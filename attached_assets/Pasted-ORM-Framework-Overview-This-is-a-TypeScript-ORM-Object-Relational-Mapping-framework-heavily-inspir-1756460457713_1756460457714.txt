@@ -1,0 +1,78 @@
+ORM Framework
+Overview
+This is a TypeScript ORM (Object-Relational Mapping) framework heavily inspired by Entity Framework Core. It provides a code-first approach to database management with decorator-based entity definitions, LINQ-style querying, change tracking, and migration support. The framework aims to bring the familiar Entity Framework development experience to TypeScript/Node.js applications.
+
+User Preferences
+Preferred communication style: Simple, everyday language.
+
+System Architecture
+Core Architecture Pattern
+The framework follows Entity Framework's architectural patterns with a layered approach:
+
+Entity Layer: Decorator-based entity definitions with metadata reflection
+Context Layer: DbContext manages entity sets, change tracking, and database operations
+Provider Layer: Pluggable database provider architecture (currently supports SQLite)
+Query Layer: LINQ-style query building with method chaining
+Decorator-Based Metadata System
+Uses TypeScript decorators and reflect-metadata for entity configuration:
+
+@Entity() marks classes as database entities
+@Column() defines column properties and constraints
+@PrimaryKey() designates primary key fields
+@OneToMany() and @ManyToOne() define relationships
+MetadataStorage centrally manages all entity metadata
+Change Tracking Implementation
+Implements Entity Framework's change tracking pattern:
+
+ChangeTracker monitors entity states (Added, Modified, Deleted, Unchanged)
+DbSet provides Add/Update/Remove operations that update tracking state
+SaveChanges() processes all tracked changes in a single transaction
+Database Provider Abstraction
+Abstract DatabaseProvider base class enables multiple database support:
+
+Currently implements SQLiteProvider using sqlite3 package
+Provider handles connection management, SQL generation, and query execution
+Clean separation allows adding MySQL, PostgreSQL providers later
+Query Builder System
+LINQ-style query building with method chaining:
+
+Where() conditions with lambda expression parsing
+Select() projections for field selection
+OrderBy() sorting with multiple fields
+Limit/offset for pagination support
+Migration Framework
+Code-first database evolution support:
+
+Abstract Migration base class for schema changes
+MigrationRunner manages migration execution order
+Up/Down methods for forward and rollback operations
+External Dependencies
+Core Dependencies
+sqlite3: Primary database engine for data persistence
+reflect-metadata: Enables decorator metadata reflection for entity configuration
+typescript: Provides strong typing and decorator support
+ts-node: Runtime TypeScript execution for development
+@types/node: Node.js type definitions
+@types/sqlite3: SQLite type definitions for better development experience
+Development Approach
+The framework is designed as a pure TypeScript library with no web framework dependencies, making it suitable for any Node.js application. The decorator-based approach requires experimental decorators to be enabled in TypeScript configuration.
+
+Recent Changes
+August 28, 2025
+✓ Implemented complete TypeScript ORM framework inspired by Entity Framework Core
+✓ Added decorator-based entity definitions (@Entity, @Column, @PrimaryKey, @OneToMany, @ManyToOne)
+✓ Implemented DbContext pattern with change tracking and SaveChanges() method
+✓ Created DbSet for entity collections with CRUD operations
+✓ Built LINQ-style query builder with method chaining (where, select, orderBy, take, skip, etc.)
+✓ Added SQLite database provider with full SQL generation
+✓ Implemented transaction support (begin, commit, rollback)
+✓ Created migration system for schema changes
+✓ Added comprehensive example with User and Post entities
+✓ Fixed TypeScript strict mode compatibility issues
+✓ Successfully tested all core functionality including queries, updates, and transactions
+✓ Added advanced LINQ operators: join, leftJoin, groupBy, having, distinct
+✓ Implemented set operations: union, unionAll, intersect, except
+✓ Added aggregate functions: min, max, sum, average, all, any, contains
+✓ Created advanced query methods: single, singleOrDefault, last, lastOrDefault, elementAt
+✓ Built comprehensive examples demonstrating advanced queries, joins, and aggregations
+✓ Enhanced SQL generation to support complex queries with GROUP BY, HAVING, JOINs
