@@ -38,7 +38,7 @@ export abstract class DbContext {
         // Initialize database provider based on options
         switch (options.provider || 'sqlite') {
             case 'sqlite':
-                this._provider = new SQLiteProvider(options.connectionString);
+                this._provider = new SQLiteProvider(options.connectionString, options.logger);
                 break;
             default:
                 throw new Error(`Provider ${options.provider} is not supported`);

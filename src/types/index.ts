@@ -50,6 +50,8 @@ export interface DbContextOptions {
     provider?: 'sqlite' | 'mysql' | 'postgresql';
     /** Optional performance tuning options. */
     performance?: PerformanceOptions;
+    /** Optional SQL logger for diagnostics. */
+    logger?: SqlLogger;
 }
 
 /**
@@ -236,3 +238,22 @@ export interface PerformanceOptions {
     /** TTL for count() cache entries in milliseconds. Default: 0 (no TTL, disabled unless enableCountCache). */
     countCacheTtlMs?: number;
 }
+
+/**
+ * Minimal SQL logger interface for centralized diagnostics.
+ */
+export interface SqlLogger {
+    /** Called right before a query is executed. */
+    queryStart?(info: { sql: string; params: any[]; traceId?: string }): void;
+    /** Called right after a query is executed. */
+    queryEnd?(info: { sql: string; params: any[]; durationMs: number; traceId?: string; rows?: number; error?: Error }): void;
+}
+
+/**
+ * Result type for non-exceptional control flow.
+ */
+export type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
+/** Create a successful Result. */
+export const ok = <T>(value: T): Result<T, never> => ({ ok: true, value });
+/** Create a failed Result. */
+export const err = <E>(error: E): Result<never, E> => ({ ok: false, error });

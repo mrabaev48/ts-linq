@@ -8,12 +8,17 @@ import { BinaryExpressionNode, ComparisonOperator, ExpressionNode, IdentifierNod
  * so the caller can fall back to client-side filtering.
  */
 export class PredicateParser<T> {
+    private static readonly MAX_LENGTH = 500;
+    private static readonly UNSUPPORTED_TOKENS = ['function', '=> {', 'return', '||', '??'];
     /**
      * Attempt to parse a predicate function into a minimal AST.
      * Returns null when encountering unsupported constructs.
      */
     public parse(predicate: (entity: T) => boolean): ExpressionNode | null {
         const str = predicate.toString();
+        // Guard rails: overly long or suspicious bodies fall back
+        if (str.length > PredicateParser.MAX_LENGTH) return null;
+        if (PredicateParser.UNSUPPORTED_TOKENS.some(t => str.includes(t))) return null;
         // crude parse: handle a => a.prop op literal and && chains
         const arrowIdx = str.indexOf('=>');
         if (arrowIdx === -1) return null;

@@ -12,8 +12,8 @@ import { SqlHelper } from '../utils/SqlHelper';
 export class SQLiteProvider extends DatabaseProvider {
     private db: sqlite3.Database | null = null;
 
-    constructor(connectionString: string) {
-        super(connectionString);
+    constructor(connectionString: string, logger?: any) {
+        super(connectionString, logger);
     }
 
     /** Open a connection to the SQLite database and enable foreign keys. */
@@ -235,6 +235,7 @@ export class SQLiteProvider extends DatabaseProvider {
         if (this.inTransaction) {
             throw new Error('Transaction already in progress');
         }
+        this.currentTraceId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
         await this.executeNonQuery('BEGIN TRANSACTION');
         this.inTransaction = true;
     }
@@ -246,6 +247,7 @@ export class SQLiteProvider extends DatabaseProvider {
         }
         await this.executeNonQuery('COMMIT');
         this.inTransaction = false;
+        this.currentTraceId = undefined;
     }
 
     /** Roll back the current SQLite transaction. */
@@ -255,6 +257,7 @@ export class SQLiteProvider extends DatabaseProvider {
         }
         await this.executeNonQuery('ROLLBACK');
         this.inTransaction = false;
+        this.currentTraceId = undefined;
     }
 
     /** Generate CREATE TABLE SQL for the entity. */
