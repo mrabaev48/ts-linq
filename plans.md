@@ -8,11 +8,11 @@
 - [done] Template Method in providers for connection/execute/map hooks
 
 ## Clean Code & Typing
-- Remove all implicit any, add strict types for EntityLoader, DbSetWithIncludes, include lists, AST nodes
-- Mark read-only data (metadata, options snapshots) as immutable; return new objects when chaining
-- Replace operator strings with enums (ComparisonOperator, LogicalOperator)
-- Extract long methods in Queryable into small private helpers
-- Strengthen JSDoc with parameter/return types and invariants
+- [done] Remove all implicit any, add strict types for EntityLoader, DbSetWithIncludes, include lists, AST nodes
+- [done] Mark read-only data (metadata, options snapshots) as immutable; return new objects when chaining
+- [done] Replace operator strings with enums (ComparisonOperator, LogicalOperator)
+- [done] Extract long methods in Queryable into small private helpers
+- [done] Strengthen JSDoc with parameter/return types and invariants
 
 ## Performance
 - [done] Anti N+1: batch one-to-many loading using IN queries per relation (per request)
@@ -32,15 +32,15 @@
 - Provide cancelable/abortable query execution (AbortSignal)
 
 ## Testing
-- Unit: AST builder, SQL visitor, predicate parser
+- [done] Unit: AST builder, SQL visitor, predicate parser
 - Integration: providers contract tests shared across dialects
 - Property-based tests (fast-check) for predicate equivalence
 - Performance regression tests for include batching
 
 ## Documentation & Tooling
-- Typedoc API reference from JSDoc
-- Guides: anti-N+1 include (batching), custom dialect strategy, specs examples
-- Add playground examples: dynamic filters, include-first chaining, joins
+- [done] Typedoc API reference from JSDoc
+- [done] Guides: anti-N+1 include (batching), custom dialect strategy, specs examples
+- [done] Add playground examples: dynamic filters, include-first chaining, joins
 
 ## Near-term actionable items
 - [done] Implement include batching (one-to-many via IN) in EntityLoader
