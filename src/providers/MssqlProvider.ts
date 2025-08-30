@@ -12,6 +12,31 @@ import { SqlHelper } from '../utils/SqlHelper';
  * - DML helpers for insert/update/delete/find operations
  * - Transaction management (begin/commit/rollback)
  * - Parameter style mapping (`?` → `@p1..@pn`)
+ *
+ * @example
+ * import 'reflect-metadata';
+ * import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
+ *
+ * @Entity({ name: 'Users' })
+ * class User {
+ *   @PrimaryKey({ autoIncrement: true }) id!: number;
+ *   @Column({ type: 'TEXT', nullable: false }) name!: string;
+ * }
+ *
+ * class AppCtx extends DbContext {
+ *   public users!: DbSet<User>;
+ *   constructor() { super({ provider: 'mssql', connectionString: process.env.MSSQL_URL! }); }
+ * }
+ *
+ * async function run() {
+ *   const ctx = new AppCtx();
+ *   await ctx.ensureCreated();
+ *   const u = new User(); u.name = 'Alice';
+ *   ctx.users.add(u);
+ *   await ctx.saveChanges();
+ *   const all = await ctx.users.toArray();
+ *   await ctx.dispose();
+ * }
  */
 export class MssqlProvider extends DatabaseProvider {
     private pool: any | null = null;

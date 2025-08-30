@@ -78,3 +78,13 @@
 - [done] Testing: integration tests gated by env MSSQL_URL; CI matrix (docker `mcr.microsoft.com/mssql/server`)
 - [done] Docs: README section with installation, config, and dialect differences
 - [done] Examples: runnable example using MSSQL and docker-compose snippet
+
+### MySQL Support
+- [done] MysqlDialect: implement SqlDialect for MySQL specifics (identifiers `\`name\``, LIMIT/OFFSET)
+- [done] MySqlProvider: provider based on `mysql2/promise` with pool
+- [done] Types mapping: VARCHAR/TEXT, INT, DOUBLE, TINYINT(1)→boolean, DATETIME, BLOB
+- [done] DDL & migrations: table/index creation with IF NOT EXISTS and backticks
+- [done] DbContext: add 'mysql' provider option and wiring
+- [done] Testing: integration tests gated by env MYSQL_URL; CI matrix
+- [done] Docs: README section with installation, config, and dialect differences
+- [done] Examples: runnable example using MySQL and docker-compose snippet
