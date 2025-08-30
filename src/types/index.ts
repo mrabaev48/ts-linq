@@ -52,6 +52,8 @@ export interface DbContextOptions {
     performance?: PerformanceOptions;
     /** Optional SQL logger for diagnostics. */
     logger?: SqlLogger;
+    /** Optional default loading behavior. */
+    loading?: LoadingDefaults;
 }
 
 /**
@@ -237,6 +239,16 @@ export interface PerformanceOptions {
     enableCountCache?: boolean;
     /** TTL for count() cache entries in milliseconds. Default: 0 (no TTL, disabled unless enableCountCache). */
     countCacheTtlMs?: number;
+}
+
+/**
+ * Default loading settings configured at the context level.
+ */
+export interface LoadingDefaults {
+    /** Default loading strategy for find/findAll and include population. */
+    strategy?: LoadingStrategy;
+    /** Default recursion depth for relationship loading (default: 1). */
+    depth?: number;
 }
 
 /**

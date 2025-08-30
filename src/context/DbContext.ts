@@ -5,7 +5,7 @@ import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy, LoadingOptions } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { DbSet } from './DbSet';
-import { DbContextOptions, PerformanceOptions, Result, ok, err } from '../types';
+import { DbContextOptions, PerformanceOptions, Result, ok, err, LoadingDefaults } from '../types';
 import { EntityCache } from '../utils/EntityCache';
 
 /**
@@ -28,6 +28,7 @@ export abstract class DbContext {
     private _defaultLoadingStrategy: LoadingStrategy = LoadingStrategy.Lazy;
     private _entityCache?: EntityCache;
     private _performanceOptions?: PerformanceOptions;
+    private _loadingDefaults: LoadingDefaults = {};
 
     /**
      * Create a new database context instance.
@@ -52,6 +53,7 @@ export abstract class DbContext {
         }
         // Store performance options for downstream consumers
         this._performanceOptions = options.performance;
+        this._loadingDefaults = options.loading || {};
         this.initializeDbSets();
     }
 
@@ -206,8 +208,9 @@ export abstract class DbContext {
         options?: LoadingOptions
     ): Promise<T | null> {
         const loadingOptions = {
-            strategy: this._defaultLoadingStrategy,
-            ...options
+            strategy: this._loadingDefaults.strategy ?? this._defaultLoadingStrategy,
+            depth: this._loadingDefaults.depth ?? options?.depth,
+            ...(options || {})
         };
         return await this._entityLoader.loadEntity(entityClass, id, loadingOptions);
     }
@@ -224,8 +227,9 @@ export abstract class DbContext {
         options?: LoadingOptions
     ): Promise<T[]> {
         const loadingOptions = {
-            strategy: this._defaultLoadingStrategy,
-            ...options
+            strategy: this._loadingDefaults.strategy ?? this._defaultLoadingStrategy,
+            depth: this._loadingDefaults.depth ?? options?.depth,
+            ...(options || {})
         };
         return await this._entityLoader.loadEntities(entityClass, loadingOptions);
     }
