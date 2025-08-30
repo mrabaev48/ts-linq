@@ -60,8 +60,10 @@ export abstract class DatabaseProvider {
 
     // Template Method hooks
     /** Called before each execute; override for logging/instrumentation. */
+    /** Default no-op hook. Override in providers for logging/instrumentation. */
     protected async beforeExecute(sql: string, params: any[]): Promise<void> { /* noop by default */ }
     /** Called after each execute; override for logging/instrumentation. */
+    /** Default no-op hook. Override in providers for logging/instrumentation. */
     protected async afterExecute(sql: string, params: any[], result: any): Promise<void> { /* noop by default */ }
 
     /** Begin a transaction. */

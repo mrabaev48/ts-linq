@@ -54,16 +54,12 @@ export class SqlHelper {
 		return value.toString();
 	}
 
-	/**
-	 * Escape an identifier like a column or table name for SQL usage.
-	 */
+	/** Escape an identifier like a column or table name for SQL usage. */
 	public static escapeIdentifier(identifier: string): string {
 		return `"${identifier.replace(/"/g, '""')}"`;
 	}
 
-	/**
-	 * Build an ORDER BY clause string from column/direction pairs.
-	 */
+	/** Build an ORDER BY clause string from column/direction pairs. */
 	public static buildOrderByClause(orderBy: Array<{ column: string; direction: 'ASC' | 'DESC' }>): string {
 		if (orderBy.length === 0) {
 			return '';
@@ -73,9 +69,7 @@ export class SqlHelper {
 		return `ORDER BY ${clauses.join(', ')}`;
 	}
 
-	/**
-	 * Build a LIMIT/OFFSET clause string.
-	 */
+	/** Build a LIMIT/OFFSET clause string. */
 	public static buildLimitClause(limit?: number, offset?: number): string {
 		const hasLimit = typeof limit === 'number' && limit > 0;
 		const hasOffset = typeof offset === 'number' && offset >= 0;

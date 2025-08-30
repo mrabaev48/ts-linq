@@ -14,6 +14,10 @@ export class QueryModel {
     public offset?: number;
     public distinct?: boolean;
 
+    /**
+     * Create a deep copy of the query model to preserve immutability
+     * when applying read-only operations (e.g., first/any).
+     */
     public clone(): QueryModel {
         const q = new QueryModel();
         q.select = this.select ? [...this.select] : undefined;

@@ -93,11 +93,10 @@ export class DbSet<T> {
     }
 
     /**
-     * Create a query builder for LINQ-like operations
-     * Similar to Entity Framework's LINQ queries
+     * Create a fluent `Queryable` for LINQ-like operations.
      *
      * @param predicate Predicate to start the query with.
-     * @returns A `QueryBuilder` configured with the predicate.
+     * @returns A `Queryable` configured with the predicate.
      */
     public where(predicate: (entity: T) => boolean): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).where(predicate);
@@ -107,7 +106,7 @@ export class DbSet<T> {
      * Select specific properties
      *
      * @param selector Projection selector.
-     * @returns A `QueryBuilder` configured with the selection.
+     * @returns A `Queryable` configured with the selection.
      */
     public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).select(selector);
@@ -117,7 +116,7 @@ export class DbSet<T> {
      * Order by a property
      *
      * @param keySelector Sort key selector.
-     * @returns This `QueryBuilder` for chaining.
+     * @returns A `Queryable` for chaining.
      */
     public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).orderBy(keySelector);
@@ -127,7 +126,7 @@ export class DbSet<T> {
      * Order by descending
      *
      * @param keySelector Sort key selector.
-     * @returns This `QueryBuilder` for chaining.
+     * @returns A `Queryable` for chaining.
      */
     public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).orderByDescending(keySelector);
@@ -137,7 +136,7 @@ export class DbSet<T> {
      * Take a specific number of entities
      *
      * @param count Number of entities to take.
-     * @returns This `QueryBuilder` for chaining.
+     * @returns A `Queryable` for chaining.
      */
     public take(count: number): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).take(count);
@@ -147,7 +146,7 @@ export class DbSet<T> {
      * Skip a specific number of entities
      *
      * @param count Number of entities to skip.
-     * @returns This `QueryBuilder` for chaining.
+     * @returns A `Queryable` for chaining.
      */
     public skip(count: number): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).skip(count);
@@ -156,7 +155,7 @@ export class DbSet<T> {
     /**
      * Get distinct entities
      *
-     * @returns This `QueryBuilder` for chaining.
+     * @returns A `Queryable` for chaining.
      */
     public distinct(): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).distinct();
