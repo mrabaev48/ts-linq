@@ -75,3 +75,229 @@ Code-first database evolution support:
 - Node.js with ES2020 support
 - TypeScript experimental decorators enabled
 - Reflect metadata polyfill loaded before entity definitions
+
+## Documentation
+
+This section walks you through using the framework with TypeScript examples.
+
+### Installation
+
+```bash
+npm install sqlite3 reflect-metadata typescript ts-node
+```
+
+Enable decorators in `tsconfig.json`:
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "ES2020",
+    "module": "commonjs"
+  }
+}
+```
+
+Load reflect-metadata before entity definitions:
+```ts
+import 'reflect-metadata';
+```
+
+### Quick Start
+
+```ts
+import 'reflect-metadata';
+import { DbContext, DbSet, Entity, Column, PrimaryKey } from './src';
+
+@Entity()
+class Product {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ nullable: false }) name!: string;
+}
+
+class AppDbContext extends DbContext {
+  public products!: DbSet<Product>;
+}
+
+async function main() {
+  const ctx = new AppDbContext({ connectionString: ':memory:', provider: 'sqlite' });
+  await ctx.ensureCreated();
+
+  const p = new Product();
+  p.name = 'Laptop';
+  ctx.products.add(p);
+  await ctx.saveChanges();
+
+  const all = await ctx.products.toArray();
+  console.log(all.length); // 1
+
+  await ctx.dispose();
+}
+main();
+```
+
+### Entities
+
+```ts
+@Entity()
+class Author {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ nullable: false }) name!: string;
+}
+```
+
+Relationships are supported:
+```ts
+@Entity()
+class Book {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ nullable: false }) title!: string;
+  @Column() authorId!: number;
+}
+
+@Entity()
+class Author {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ nullable: false }) name!: string;
+  @OneToMany(() => Book, { foreignKey: 'authorId' }) books!: Book[];
+}
+```
+
+### DbContext and DbSet
+
+```ts
+class AppDbContext extends DbContext {
+  public authors!: DbSet<Author>;
+  public books!: DbSet<Book>;
+}
+```
+
+Note about auto-generated DbSet properties:
+- For each registered entity class, a property is created on the context using a simple convention: `<ClassName>.toLowerCase() + 's'` with a basic `y → ies` rule.
+- Examples: `Author` → `authors`, `Book` → `books`, `Category` → `categories`.
+- If you need a different name, either use `set(YourEntity)` or add your own getter that delegates to `set(YourEntity)`.
+
+You can always use `context.set(Author)` if you prefer not to declare properties.
+
+### CRUD via DbSet
+
+```ts
+// Create
+const b = new Book();
+b.title = 'First Book';
+b.authorId = author.id;
+context.books.add(b);
+await context.saveChanges();
+
+// Read
+const found = await context.books.find(b.id);
+
+// Update
+found!.title = 'Updated';
+context.books.update(found!);
+await context.saveChanges();
+
+// Delete
+context.books.remove(found!);
+await context.saveChanges();
+```
+
+### LINQ-style Queries
+
+```ts
+// Filtering, sorting, pagination
+const page = await context.books
+  .where(b => b.title === 'Updated')
+  .orderBy(b => b.id)
+  .skip(0)
+  .take(10)
+  .toArray();
+
+// Aggregations and checks
+const total = await context.books.count();
+const any = await context.books.where(b => b.title === 'X').any();
+
+// First/Single
+const first = await context.books.orderBy(b => b.id).first();
+const maybe = await context.books.where(b => b.id > 999).firstOrDefault();
+```
+
+Include-first chaining (eager loading):
+```ts
+const authors = await context.authors
+  .include(a => a.books)      // declare eager includes first
+  .where(a => a.id === 1)
+  .toArray();
+```
+
+### Eager vs Lazy Loading
+
+By default loading is Lazy. Use `include` for eager loading:
+
+```ts
+// Eager load authors with books
+const authors = await context.include(Author, 'books').toArray();
+
+// Depth control
+const one = await context.find(Author, 1, { strategy: 'eager', depth: 1 });
+```
+
+Or explicitly via the context API:
+```ts
+const author = await context.find(Author, 1, { includes: ['books'] });
+```
+
+### Transactions
+
+```ts
+await context.beginTransaction();
+try {
+  // multiple operations
+  await context.saveChanges();
+  await context.commitTransaction();
+} catch (e) {
+  await context.rollbackTransaction();
+}
+```
+
+### Migrations
+
+```ts
+import { Migration } from './src';
+
+class AddAgeToUsers extends Migration {
+  protected get name() { return 'AddAgeToUsers'; }
+  protected get version() { return '002'; }
+  public async up() {
+    await provider.executeNonQuery('ALTER TABLE users ADD COLUMN age INTEGER');
+  }
+  public async down() {
+    // For SQLite you would typically recreate the table without the column (simplified here)
+  }
+}
+
+import { MigrationRunner } from './src';
+const runner = new MigrationRunner(provider);
+runner.addMigration(new AddAgeToUsers());
+await runner.migrate();
+```
+
+### Database Providers
+
+Currently `SQLiteProvider` is implemented. A provider is responsible for:
+- connecting/disconnecting
+- SQL generation (DDL/DML)
+- query execution
+- transactions
+
+New providers (MySQL/PostgreSQL) can be added by implementing the abstract `DatabaseProvider`.
+
+### Typing Tips
+
+- Prefer explicit DbSet properties in your context: `public books!: DbSet<Book>;` for better IntelliSense and types.
+- Use `set(Entity)` when your property name differs from the convention or when you don't want to declare properties.
+
+### Examples
+
+- Simple app: `examples/simple-app.ts`
+- Advanced queries: `examples/advanced-queries.ts`

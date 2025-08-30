@@ -12,15 +12,18 @@ export class QueryBuilder<T> {
     private _provider: DatabaseProvider;
     private _options: QueryOptions = {};
     private _fallbackPredicates: Array<(entity: T) => boolean> = [];
+    private _entityLoader?: any; // late injected for eager includes
+    private _includes: string[] = [];
 
     /**
      * Create a query builder bound to an entity and a database provider.
      * @param entityClass Constructor of the entity type to query.
      * @param provider Underlying provider used to execute SQL.
      */
-    constructor(entityClass: new () => T, provider: DatabaseProvider) {
+    constructor(entityClass: new () => T, provider: DatabaseProvider, entityLoader?: any) {
         this._entityClass = entityClass;
         this._provider = provider;
+        this._entityLoader = entityLoader;
     }
 
     /**
@@ -224,6 +227,16 @@ export class QueryBuilder<T> {
             for (const pred of this._fallbackPredicates) {
                 entities = entities.filter(e => {
                     try { return pred(e); } catch { return false; }
+                });
+            }
+        }
+        if (this._entityLoader && this._includes.length > 0) {
+            // Eager populate requested includes for each entity
+            for (const e of entities) {
+                await this._entityLoader.populateRelationships(e, this._entityClass, {
+                    strategy: 'eager' as any,
+                    includes: this._includes,
+                    depth: 1
                 });
             }
         }
@@ -593,6 +606,21 @@ export class QueryBuilder<T> {
         
         // Fallback to a basic join condition
         return '1=1';
+    }
+
+    /**
+     * Add eager include using a property selector. Must be called before where/select/...
+     */
+    public include(selector: (entity: T) => any): QueryBuilder<T> {
+        const selectorStr = selector.toString();
+        const match = selectorStr.match(/=>\s*\w+\.(\w+)/);
+        if (match && match[1]) {
+            const prop = match[1];
+            if (!this._includes.includes(prop)) {
+                this._includes.push(prop);
+            }
+        }
+        return this;
     }
 
     private mapRowToEntity(row: any): T {
