@@ -5,7 +5,8 @@ import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy, LoadingOptions } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { DbSet } from './DbSet';
-import { DbContextOptions } from '../types';
+import { DbContextOptions, PerformanceOptions } from '../types';
+import { EntityCache } from '../utils/EntityCache';
 
 /**
  * Base unit-of-work style context that orchestrates entity sets, change tracking
@@ -25,6 +26,8 @@ export abstract class DbContext {
     private _entityLoader: EntityLoader;
     private _dbSets: Map<Function, DbSet<any>> = new Map();
     private _defaultLoadingStrategy: LoadingStrategy = LoadingStrategy.Lazy;
+    private _entityCache?: EntityCache;
+    private _performanceOptions?: PerformanceOptions;
 
     /**
      * Create a new database context instance.
@@ -43,6 +46,12 @@ export abstract class DbContext {
 
         this._changeTracker = new ChangeTracker();
         this._entityLoader = new EntityLoader(this._provider);
+        // Initialize optional L2 entity cache
+        if (options.performance?.enableEntityCache) {
+            this._entityCache = new EntityCache(options.performance.entityCacheSize ?? 10000);
+        }
+        // Store performance options for downstream consumers
+        this._performanceOptions = options.performance;
         this.initializeDbSets();
     }
 
@@ -226,7 +235,14 @@ export abstract class DbContext {
 
         for (const entity of entities) {
             const original = (Reflect as any).getOwnMetadata?.('orm:original', entity.target) || entity.target;
-            const dbSet = new DbSet<any>(original as new () => any, this._provider, this._changeTracker, this._entityLoader);
+            const dbSet = new DbSet<any>(
+                original as new () => any,
+                this._provider,
+                this._changeTracker,
+                this._entityLoader,
+                this._entityCache,
+                this._performanceOptions
+            );
             this._dbSets.set(original, dbSet);
 
             // Create property on context instance for easy access

@@ -48,6 +48,8 @@ export interface DbContextOptions {
     connectionString: string;
     /** Database provider key; currently supported: 'sqlite'. */
     provider?: 'sqlite' | 'mysql' | 'postgresql';
+    /** Optional performance tuning options. */
+    performance?: PerformanceOptions;
 }
 
 /**
@@ -219,4 +221,18 @@ export interface QueryOptions {
     offset?: number;
     /** DISTINCT selector. */
     distinct?: boolean;
+}
+
+/**
+ * Performance-related options to tune caching and counts.
+ */
+export interface PerformanceOptions {
+    /** Enable level-2 entity cache (by primary key). Default: false. */
+    enableEntityCache?: boolean;
+    /** Maximum L2 cache size. Default: 10000. */
+    entityCacheSize?: number;
+    /** Enable count() result caching for pagination. Default: false. */
+    enableCountCache?: boolean;
+    /** TTL for count() cache entries in milliseconds. Default: 0 (no TTL, disabled unless enableCountCache). */
+    countCacheTtlMs?: number;
 }
