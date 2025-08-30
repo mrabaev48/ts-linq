@@ -362,13 +362,17 @@ export class QueryBuilder<T> {
             query += ` ORDER BY ${orderByClauses.join(', ')}`;
         }
 
-        // LIMIT and OFFSET
-        if (this._options.limit) {
+        // LIMIT and OFFSET (SQLite requires LIMIT when using OFFSET)
+        const hasLimit = this._options.limit !== undefined && this._options.limit !== null;
+        const hasOffset = this._options.offset !== undefined && this._options.offset !== null;
+        if (hasLimit) {
             query += ` LIMIT ${this._options.limit}`;
-        }
-        
-        if (this._options.offset) {
-            query += ` OFFSET ${this._options.offset}`;
+            if (hasOffset) {
+                query += ` OFFSET ${this._options.offset}`;
+            }
+        } else if (hasOffset) {
+            // SQLite accepts LIMIT -1 to mean "no limit"
+            query += ` LIMIT -1 OFFSET ${this._options.offset}`;
         }
 
         return { query, parameters };
