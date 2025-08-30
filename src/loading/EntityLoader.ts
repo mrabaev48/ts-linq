@@ -134,6 +134,24 @@ export class EntityLoader {
         }
     }
 
+    /**
+     * Public helper to populate specified relationships on a single entity instance.
+     * Useful for post-processing entities fetched by custom queries.
+     */
+    public async populateRelationships<T>(
+        entity: T,
+        entityClass: new () => T,
+        options: LoadingOptions
+    ): Promise<void> {
+        await this.loadRelationships(entity, entityClass, options);
+    }
+
+    /**
+     * Resolve a relationship target that may be provided either as a constructor
+     * or as a lazy callback returning the constructor.
+     * @param target Constructor or thunk returning a constructor
+     * @returns Concrete constructor function for the target entity
+     */
     private resolveTargetEntity(target: Function | (() => Function)) {
         const maybeCtor = target as any;
         if (typeof maybeCtor === 'function' && maybeCtor.prototype && maybeCtor.prototype.constructor) {
@@ -143,6 +161,12 @@ export class EntityLoader {
         return resolved as new () => any;
     }
 
+    /**
+     * Compute a default foreign key name for a given type using the convention
+     * camelCase(typeName) + 'Id', e.g., User -> userId.
+     * @param type Target constructor
+     * @returns Conventional foreign key column name
+     */
     private defaultForeignKeyFor(type: Function): string {
         const name = type.name || 'id';
         const camel = name.charAt(0).toLowerCase() + name.slice(1);

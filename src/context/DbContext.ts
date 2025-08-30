@@ -10,6 +10,14 @@ import { DbContextOptions } from '../types';
 /**
  * Base unit-of-work style context that orchestrates entity sets, change tracking
  * and database provider interactions. Similar to Entity Framework's `DbContext`.
+ *
+ * Note about auto-generated DbSet properties:
+ * - For each registered entity class `User`, a property is created on the context instance
+ *   using a simple pluralization of the lowercased class name:
+ *   `<ClassName>.toLowerCase() + 's'`, with a basic `y → ies` rule.
+ *   Examples: `Author` → `authors`, `Book` → `books`, `Category` → `categories`.
+ * - If you want a different property name, either add your own getter that returns `set(YourEntity)`,
+ *   or use `set(YourEntity)` directly instead of the auto-generated property.
  */
 export abstract class DbContext {
     private _provider: DatabaseProvider;
@@ -216,7 +224,12 @@ export abstract class DbContext {
     }
 
     /**
-     * Initialize DbSets for all registered entities
+     * Initialize DbSets for all registered entities.
+     *
+     * This method also defines auto-generated properties on the context instance
+     * for each entity using a simple naming convention (see class JSDoc). If your
+     * code expects different names, prefer `set(Entity)` or add your own proxy
+     * getters that delegate to `set(Entity)`.
      */
     private initializeDbSets(): void {
         const entities = MetadataStorage.getEntities();
