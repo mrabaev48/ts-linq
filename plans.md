@@ -22,8 +22,8 @@
 
 ## Reliability & Errors
 - Optional Result<T, E> for non-exceptional flows; centralize error mapping
-- Central SQL logger with timings, parameters (safe), transaction trace ids
-- Safer predicate parser: guard rails and deterministic fallbacks
+- [done] Central SQL logger with timings, parameters (safe), transaction trace ids
+- [done] Safer predicate parser: guard rails and deterministic fallbacks
 
 ## API & DX
 - [done] Validate include names against metadata; descriptive errors

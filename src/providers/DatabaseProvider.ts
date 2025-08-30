@@ -1,4 +1,4 @@
-import { EntityMetadata } from '../types';
+import { EntityMetadata, SqlLogger } from '../types';
 
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -9,13 +9,16 @@ export abstract class DatabaseProvider {
     protected connectionString: string;
     protected isConnected: boolean = false;
     protected inTransaction: boolean = false;
+    protected logger?: SqlLogger;
+    protected currentTraceId?: string;
 
     /**
      * Create a provider with a given connection string.
      * @param connectionString Provider-specific connection string.
      */
-    constructor(connectionString: string) {
+    constructor(connectionString: string, logger?: SqlLogger) {
         this.connectionString = connectionString;
+        this.logger = logger;
     }
 
     /** Connect to the database. */
@@ -40,20 +43,40 @@ export abstract class DatabaseProvider {
     public abstract findWhereIn<T>(entityClass: new () => T, column: string, values: any[]): Promise<T[]>;
     /** Execute a SQL query and return rows mapped as generic objects. */
     public async executeQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+        const startedAt = Date.now();
+        this.logger?.queryStart?.({ sql, params, traceId: this.currentTraceId });
         await this.beforeExecute(sql, params);
-        const result = await this.doExecuteQuery<T>(sql, params);
-        await this.afterExecute(sql, params, result);
-        return result;
+        try {
+            const result = await this.doExecuteQuery<T>(sql, params);
+            const durationMs = Date.now() - startedAt;
+            this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, rows: Array.isArray(result) ? result.length : undefined });
+            await this.afterExecute(sql, params, result);
+            return result;
+        } catch (error: any) {
+            const durationMs = Date.now() - startedAt;
+            this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, error });
+            throw error;
+        }
     }
     /** Provider-specific implementation of query execution. */
     protected abstract doExecuteQuery<T>(sql: string, params?: any[]): Promise<T[]>;
 
     /** Execute a non-query SQL statement and return affected row count. */
     public async executeNonQuery(sql: string, params: any[] = []): Promise<number> {
+        const startedAt = Date.now();
+        this.logger?.queryStart?.({ sql, params, traceId: this.currentTraceId });
         await this.beforeExecute(sql, params);
-        const result = await this.doExecuteNonQuery(sql, params);
-        await this.afterExecute(sql, params, result);
-        return result;
+        try {
+            const result = await this.doExecuteNonQuery(sql, params);
+            const durationMs = Date.now() - startedAt;
+            this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, rows: result });
+            await this.afterExecute(sql, params, result);
+            return result;
+        } catch (error: any) {
+            const durationMs = Date.now() - startedAt;
+            this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, error });
+            throw error;
+        }
     }
     /** Provider-specific implementation of non-query execution. */
     protected abstract doExecuteNonQuery(sql: string, params?: any[]): Promise<number>;
