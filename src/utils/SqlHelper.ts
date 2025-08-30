@@ -77,16 +77,18 @@ export class SqlHelper {
 	 * Build a LIMIT/OFFSET clause string.
 	 */
 	public static buildLimitClause(limit?: number, offset?: number): string {
-		if (!limit && !offset) {
+		const hasLimit = typeof limit === 'number' && limit > 0;
+		const hasOffset = typeof offset === 'number' && offset >= 0;
+		if (!hasLimit && !hasOffset) {
 			return '';
 		}
 		
 		let clause = '';
-		if (limit) {
+		if (hasLimit) {
 			clause += `LIMIT ${limit}`;
 		}
-		if (offset) {
-			clause += ` OFFSET ${offset}`;
+		if (hasOffset) {
+			clause += (clause ? ' ' : '') + `OFFSET ${offset}`;
 		}
 		
 		return clause.trim();
