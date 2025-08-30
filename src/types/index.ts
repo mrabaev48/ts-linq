@@ -46,8 +46,8 @@ export interface TrackedEntity {
 export interface DbContextOptions {
     /** Provider-specific connection string (e.g., file path for SQLite). */
     connectionString: string;
-    /** Database provider key; currently supported: 'sqlite'. */
-    provider?: 'sqlite' | 'mysql' | 'postgresql';
+    /** Database provider key; currently supported: 'sqlite', 'postgresql', 'mssql'. */
+    provider?: 'sqlite' | 'mysql' | 'postgresql' | 'mssql';
     /** Optional performance tuning options. */
     performance?: PerformanceOptions;
     /** Optional SQL logger for diagnostics. */
