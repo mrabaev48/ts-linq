@@ -32,6 +32,7 @@
     "typescript": "^5.9.2"
   },
   "devDependencies": {
+    "fast-check": "^4.3.0",
     "typedoc": "^0.25.13",
     "typedoc-plugin-markdown": "^4.0.0"
   }
