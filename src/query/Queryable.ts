@@ -24,6 +24,7 @@ export class Queryable<T> {
     private _includes: string[] = [];
     private _sqlBuilder = new QueryBuilder();
     private static _countCache: Map<string, { value: number; ts: number }> = new Map();
+    private _abortSignal?: AbortSignal;
 
     /**
      * Create a new Queryable bound to an entity type and provider.
@@ -43,6 +44,28 @@ export class Queryable<T> {
         this._entityLoader = entityLoader;
         this._entityCache = entityCache;
         this._performance = performance;
+    }
+
+    /**
+     * Add INNER JOIN to the query.
+     * @param otherCtor Joined entity constructor
+     * @param on Predicate (a,b) => a.prop === b.prop
+     * @param alias Optional alias for the joined table
+     */
+    public innerJoin<TOther>(otherCtor: new () => TOther, on: (left: T, right: TOther) => boolean, alias?: string): Queryable<T> {
+        this.addJoin('INNER', otherCtor, on, alias);
+        return this;
+    }
+
+    /**
+     * Add LEFT JOIN to the query.
+     * @param otherCtor Joined entity constructor
+     * @param on Predicate (a,b) => a.prop === b.prop
+     * @param alias Optional alias for the joined table
+     */
+    public leftJoin<TOther>(otherCtor: new () => TOther, on: (left: T, right: TOther) => boolean, alias?: string): Queryable<T> {
+        this.addJoin('LEFT', otherCtor, on, alias);
+        return this;
     }
 
     /**
@@ -144,6 +167,7 @@ export class Queryable<T> {
      * const items = await context.products.where(p => p.stock > 0).toArray();
      */
     public async toArray(): Promise<T[]> {
+        if (this._abortSignal?.aborted) throw new Error('Operation aborted');
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, this._model);
         const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
         let entities = rows.map(r => this.mapRowToEntity(r));
@@ -161,6 +185,7 @@ export class Queryable<T> {
      * const first = await context.books.orderBy(b => b.id).first();
      */
     public async first(): Promise<T> {
+        if (this._abortSignal?.aborted) throw new Error('Operation aborted');
         const m = this._model.clone();
         m.limit = 1;
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
@@ -184,6 +209,7 @@ export class Queryable<T> {
      * const maybe = await context.books.where(b => b.id > 10000).firstOrDefault();
      */
     public async firstOrDefault(): Promise<T | null> {
+        if (this._abortSignal?.aborted) throw new Error('Operation aborted');
         const m = this._model.clone();
         m.limit = 1;
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
@@ -253,6 +279,7 @@ export class Queryable<T> {
      * const exists = await context.products.where(p => p.name === 'Laptop').any();
      */
     public async any(): Promise<boolean> {
+        if (this._abortSignal?.aborted) throw new Error('Operation aborted');
         const m = this._model.clone();
         m.limit = 1;
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
@@ -364,6 +391,38 @@ export class Queryable<T> {
             case 'DATETIME': case 'DATE': return new Date(value);
             default: return value;
         }
+    }
+
+    /** Attach an AbortSignal to cancel execution before hitting the provider. */
+    public withAbort(signal: AbortSignal): Queryable<T> {
+        this._abortSignal = signal;
+        return this;
+    }
+
+    /** Add a JOIN clause into the model using simple predicate parsing. */
+    private addJoin<TOther>(type: 'INNER' | 'LEFT', otherCtor: new () => TOther, on: (left: T, right: TOther) => boolean, alias?: string): void {
+        const leftMeta = MetadataStorage.getEntity(this._entityClass);
+        const rightMeta = MetadataStorage.getEntity(otherCtor);
+        if (!leftMeta || !rightMeta) throw new Error('Entity metadata not found for join');
+        const onStr = this.parseJoinPredicate(on.toString(), leftMeta.tableName, rightMeta.tableName, leftMeta, rightMeta);
+        (this._model as any).joins = (this._model as any).joins || [];
+        (this._model as any).joins.push({ type, table: rightMeta.tableName, on: onStr, alias });
+    }
+
+    /**
+     * Parse a two-parameter predicate into a SQL ON expression.
+     * Supports pattern: (a,b) => a.prop === b.prop
+     */
+    private parseJoinPredicate(onStr: string, leftTable: string, rightTable: string, leftMeta: any, rightMeta: any): string {
+        // Extract identifiers and props using simple regex
+        // e.g., (a, b) => a.authorId === b.id
+        const m = onStr.match(/\((\w+)\s*,\s*(\w+)\)\s*=>\s*\1\.(\w+)\s*===?\s*\2\.(\w+)/);
+        if (!m) throw new Error(`Unable to parse join predicate: ${onStr}`);
+        const leftProp = m[3];
+        const rightProp = m[4];
+        const leftCol = (leftMeta.columns.find((c: any) => c.propertyName === leftProp)?.columnName) || leftProp;
+        const rightCol = (rightMeta.columns.find((c: any) => c.propertyName === rightProp)?.columnName) || rightProp;
+        return `${leftTable}.${leftCol} = ${rightTable}.${rightCol}`;
     }
 }
 

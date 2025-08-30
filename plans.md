@@ -27,9 +27,9 @@
 
 ## API & DX
 - [done] Validate include names against metadata; descriptive errors
-- Configurable default depth and strategy at DbContext level; override per call
-- Add typed join helpers: innerJoin/leftJoin with selectors
-- Provide cancelable/abortable query execution (AbortSignal)
+- [done] Configurable default depth and strategy at DbContext level; override per call
+- [done] Add typed join helpers: innerJoin/leftJoin with selectors
+- [done] Provide cancelable/abortable query execution (AbortSignal)
 
 ## Testing
 - [done] Unit: AST builder, SQL visitor, predicate parser
