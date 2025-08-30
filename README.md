@@ -292,6 +292,29 @@ Currently `SQLiteProvider` is implemented. A provider is responsible for:
 
 New providers (MySQL/PostgreSQL) can be added by implementing the abstract `DatabaseProvider`.
 
+### SQL Dialects
+
+The query layer is decoupled from SQL generation via a dialect strategy:
+
+- `SqlDialect` interface defines how to build SELECT queries from `QueryOptions`.
+- `SQLiteDialect` is the default implementation used by `QueryBuilder`.
+
+To provide a custom dialect (e.g., PostgreSQL), implement `SqlDialect` and pass it to `QueryBuilder` or wire it in your provider:
+
+```ts
+import { QueryBuilder } from './src/query/QueryBuilder';
+import { SqlDialect } from './src/query/SqlDialect';
+
+class PostgresDialect implements SqlDialect {
+  buildSelect(entityClass, options) {
+    // return { query, parameters }
+    throw new Error('Not implemented');
+  }
+}
+
+const qb = new QueryBuilder(new PostgresDialect());
+```
+
 ### Typing Tips
 
 - Prefer explicit DbSet properties in your context: `public books!: DbSet<Book>;` for better IntelliSense and types.
