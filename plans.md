@@ -21,7 +21,7 @@
 - [done] Optional pagination total count optimization (COUNT window caching)
 
 ## Reliability & Errors
-- Optional Result<T, E> for non-exceptional flows; centralize error mapping
+- [done] Optional Result<T, E> for non-exceptional flows; centralize error mapping
 - [done] Central SQL logger with timings, parameters (safe), transaction trace ids
 - [done] Safer predicate parser: guard rails and deterministic fallbacks
 
@@ -41,6 +41,7 @@
 - [done] Typedoc API reference from JSDoc
 - [done] Guides: anti-N+1 include (batching), custom dialect strategy, specs examples
 - [done] Add playground examples: dynamic filters, include-first chaining, joins
+ - [done] Update README with try-methods, SqlLogger, and QueryBuilder cache utilities
 
 ## Near-term actionable items
 - [done] Implement include batching (one-to-many via IN) in EntityLoader

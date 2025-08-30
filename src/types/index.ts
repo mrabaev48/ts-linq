@@ -257,3 +257,29 @@ export type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: 
 export const ok = <T>(value: T): Result<T, never> => ({ ok: true, value });
 /** Create a failed Result. */
 export const err = <E>(error: E): Result<never, E> => ({ ok: false, error });
+
+/** Generic database error with optional engine-specific code. */
+export class DatabaseError extends Error {
+    public code?: string;
+    constructor(message: string, code?: string) {
+        super(message);
+        this.name = 'DatabaseError';
+        this.code = code;
+    }
+}
+
+/** Unique constraint violation error. */
+export class UniqueConstraintError extends DatabaseError {
+    constructor(message: string, code?: string) {
+        super(message, code);
+        this.name = 'UniqueConstraintError';
+    }
+}
+
+/** Foreign key constraint violation error. */
+export class ForeignKeyConstraintError extends DatabaseError {
+    constructor(message: string, code?: string) {
+        super(message, code);
+        this.name = 'ForeignKeyConstraintError';
+    }
+}

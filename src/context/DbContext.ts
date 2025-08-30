@@ -5,7 +5,7 @@ import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy, LoadingOptions } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { DbSet } from './DbSet';
-import { DbContextOptions, PerformanceOptions } from '../types';
+import { DbContextOptions, PerformanceOptions, Result, ok, err } from '../types';
 import { EntityCache } from '../utils/EntityCache';
 
 /**
@@ -115,6 +115,16 @@ export abstract class DbContext {
 
         this._changeTracker.acceptAllChanges();
         return affectedRows;
+    }
+
+    /** Try-версия saveChanges без исключений. */
+    public async trySaveChanges(): Promise<Result<number, Error>> {
+        try {
+            const n = await this.saveChanges();
+            return ok(n);
+        } catch (e: any) {
+            return err(e);
+        }
     }
 
     /**

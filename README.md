@@ -223,6 +223,11 @@ const any = await context.books.where(b => b.title === 'X').any();
 // First/Single
 const first = await context.books.orderBy(b => b.id).first();
 const maybe = await context.books.where(b => b.id > 999).firstOrDefault();
+
+// Result-based try-variants (no exceptions):
+const firstRes = await context.books.orderBy(b => b.id).tryFirst();
+if (firstRes.ok) { /* use firstRes.value */ } else { /* handle firstRes.error */ }
+const singleRes = await context.books.where(b => b.id === 1).trySingle();
 ```
 
 Include-first chaining (eager loading):
@@ -259,6 +264,12 @@ try {
 } catch (e) {
   await context.rollbackTransaction();
 }
+
+// Result-based save without throwing
+const res = await context.trySaveChanges();
+if (!res.ok) {
+  // handle res.error
+}
 ```
 
 ### Migrations
@@ -294,6 +305,21 @@ Currently `SQLiteProvider` is implemented. A provider is responsible for:
 
 New providers (MySQL/PostgreSQL) can be added by implementing the abstract `DatabaseProvider`.
 
+#### SQL Logging
+
+You can supply a `logger` in `DbContextOptions` to receive query lifecycle events with timings and optional transaction trace ids:
+
+```ts
+import { SqlLogger } from './src/types';
+
+const logger: SqlLogger = {
+  queryStart: ({ sql, params, traceId }) => console.log('sql:start', traceId, sql, params),
+  queryEnd: ({ sql, durationMs, error }) => console.log('sql:end', durationMs, error?.message)
+};
+
+const ctx = new AppDbContext({ connectionString: ':memory:', provider: 'sqlite', logger });
+```
+
 ### SQL Dialects
 
 The query layer is decoupled from SQL generation via a dialect strategy:
@@ -315,6 +341,9 @@ class PostgresDialect implements SqlDialect {
 }
 
 const qb = new QueryBuilder(new PostgresDialect());
+
+// QueryBuilder cache utilities
+QueryBuilder.clearCache(); // clears global SQL cache
 ```
 
 ### Provider Hooks

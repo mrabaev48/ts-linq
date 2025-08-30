@@ -1,6 +1,6 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { WhereClause, OrderByClause, PerformanceOptions } from '../types';
+import { WhereClause, OrderByClause, PerformanceOptions, Result, ok, err } from '../types';
 import { QueryBuilder } from './QueryBuilder';
 import { PredicateParser } from './PredicateParser';
 import { SqlVisitor } from './ast/SqlVisitor';
@@ -170,6 +170,15 @@ export class Queryable<T> {
         if (!entities.length) throw new Error('Sequence contains no elements');
         return entities[0];
     }
+    /** Try-версия first без исключений. */
+    public async tryFirst(): Promise<Result<T, Error>> {
+        try {
+            const v = await this.first();
+            return ok(v);
+        } catch (e: any) {
+            return err(e);
+        }
+    }
     /** Returns the first entity or null.
      * @example
      * const maybe = await context.books.where(b => b.id > 10000).firstOrDefault();
@@ -188,6 +197,15 @@ export class Queryable<T> {
      * const book = await context.books.where(b => b.id === 1).single();
      */
     public async single(): Promise<T> { const r = await this.toArray(); if (r.length === 0) throw new Error('Sequence contains no elements'); if (r.length > 1) throw new Error('Sequence contains more than one element'); return r[0]; }
+    /** Try-версия single без исключений. */
+    public async trySingle(): Promise<Result<T, Error>> {
+        try {
+            const v = await this.single();
+            return ok(v);
+        } catch (e: any) {
+            return err(e);
+        }
+    }
     /** Returns one or null; throws if more than 1.
      * @example
      * const maybe = await context.books.where(b => b.id === 9999).singleOrDefault();
