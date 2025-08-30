@@ -88,3 +88,23 @@
 - [done] Testing: integration tests gated by env MYSQL_URL; CI matrix
 - [done] Docs: README section with installation, config, and dialect differences
 - [done] Examples: runnable example using MySQL and docker-compose snippet
+
+## Further Improvements
+
+- Upsert/Batch operations: insertMany, updateMany, upsert (ON CONFLICT/ON DUPLICATE KEY/MERGE)
+- Optimistic concurrency: version columns (rowversion/xmin/timestamp) and checks on update/delete
+- Migration generator: schema diff from metadata → safe migrations (ALTER with guards)
+- CLI tooling: init, generate entity/migration, migrate/rollback, seed
+- Caching: stronger L2 cache with transaction-aware invalidation; shared SQL/AST cache
+- Resilience: retry policy (idempotent ops only), jitter, circuit breaker
+- Tracing/metrics: OpenTelemetry integration, Prometheus metrics, traceId correlation
+- Identifier quoting: centralized quoting via SqlDialect for table/column names
+- Extended LINQ: groupBy/having, subqueries (exists/in), unions
+- Model validation: declarative rules checked before saveChanges
+- Pagination: keyset pagination and paginate(page,size) helper with total/TTL cache
+- Soft delete & audit: soft-delete flag, createdAt/updatedAt/createdBy/updatedBy hooks
+- Multi-tenancy: tenant scoping and default filters at DbContext level
+- Plugin/middleware API: hooks before/after materialization and execute
+- Documentation: guides for diff-migrations, upsert/batch, advanced include/join
+- Test matrix: Testcontainers-based integration for all providers in CI; property-based tests for join/include
+- Distribution: ESM/CJS builds, tree-shaking, types, changelog, semver releases
