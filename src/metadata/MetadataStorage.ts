@@ -1,6 +1,10 @@
 import { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../types';
 import { EntityMetadataBuilder } from './EntityMetadata';
 
+/**
+ * Global singleton storage that collects metadata produced by decorators
+ * and exposes finalized `EntityMetadata` for use by providers and loaders.
+ */
 export class MetadataStorage {
     private static instance: MetadataStorage;
     private entities: Map<Function, EntityMetadata> = new Map();
@@ -8,6 +12,7 @@ export class MetadataStorage {
 
     private constructor() {}
 
+    /** Get the singleton instance, creating it if necessary. */
     public static getInstance(): MetadataStorage {
         if (!MetadataStorage.instance) {
             MetadataStorage.instance = new MetadataStorage();
@@ -15,30 +20,37 @@ export class MetadataStorage {
         return MetadataStorage.instance;
     }
 
+    /** Get all finalized entities' metadata. */
     public static getEntities(): EntityMetadata[] {
         return MetadataStorage.getInstance().getAllEntities();
     }
 
+    /** Get metadata for a specific entity constructor. */
     public static getEntity(target: Function): EntityMetadata | undefined {
         return MetadataStorage.getInstance().getEntityMetadata(target);
     }
 
+    /** Register an entity and optionally set its table name. */
     public static addEntity(target: Function, tableName?: string): void {
         MetadataStorage.getInstance().registerEntity(target, tableName);
     }
 
+    /** Add column metadata for an entity. */
     public static addColumn(target: Function, column: ColumnMetadata): void {
         MetadataStorage.getInstance().addColumnMetadata(target, column);
     }
 
+    /** Mark a property as part of the primary key. */
     public static addPrimaryKey(target: Function, propertyName: string): void {
         MetadataStorage.getInstance().addPrimaryKeyMetadata(target, propertyName);
     }
 
+    /** Add relationship metadata for an entity. */
     public static addRelationship(target: Function, relationship: RelationshipMetadata): void {
         MetadataStorage.getInstance().addRelationshipMetadata(target, relationship);
     }
 
+    /** Add index metadata for an entity. */
     public static addIndex(target: Function, index: IndexMetadata): void {
         MetadataStorage.getInstance().addIndexMetadata(target, index);
     }
@@ -87,6 +99,7 @@ export class MetadataStorage {
         }
     }
 
+    /** Get finalized `EntityMetadata` for a specific constructor. */
     public getEntityMetadata(target: Function): EntityMetadata | undefined {
         if (this.builders.has(target)) {
             this.finalizeEntity(target);
@@ -94,6 +107,7 @@ export class MetadataStorage {
         return this.entities.get(target);
     }
 
+    /** Finalize and return metadata for all registered entities. */
     public getAllEntities(): EntityMetadata[] {
         // Finalize any pending builders
         for (const target of this.builders.keys()) {
@@ -102,6 +116,7 @@ export class MetadataStorage {
         return Array.from(this.entities.values());
     }
 
+    /** Clear all stored metadata and pending builders. */
     public clear(): void {
         this.entities.clear();
         this.builders.clear();

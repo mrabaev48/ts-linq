@@ -2,18 +2,31 @@ import { LoadingStrategy, LoadingOptions } from './LoadingStrategy';
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 
+/**
+ * Service responsible for loading entities with either lazy or eager strategy,
+ * including recursive loading of relationships based on provided options.
+ */
 export class EntityLoader {
     private _provider: DatabaseProvider;
     private _defaultStrategy: LoadingStrategy = LoadingStrategy.Lazy;
 
+    /**
+     * @param provider Database provider used for underlying queries.
+     */
     constructor(provider: DatabaseProvider) {
         this._provider = provider;
     }
 
+    /**
+     * Set the default loading strategy for operations.
+     */
     public setDefaultStrategy(strategy: LoadingStrategy): void {
         this._defaultStrategy = strategy;
     }
 
+    /**
+     * Load a single entity by id with optional eager includes.
+     */
     public async loadEntity<T>(
         entityClass: new () => T,
         id: any,
@@ -34,6 +47,9 @@ export class EntityLoader {
         return entity;
     }
 
+    /**
+     * Load all entities for a given type with optional eager includes.
+     */
     public async loadEntities<T>(
         entityClass: new () => T,
         options?: LoadingOptions
@@ -54,6 +70,9 @@ export class EntityLoader {
         return entities;
     }
 
+    /**
+     * Populate relationship properties on an entity according to options.
+     */
     private async loadRelationships<T>(
         entity: T,
         entityClass: new () => T,
@@ -108,12 +127,16 @@ export class DbSetWithIncludes<T> {
     private _includes: string[];
     private _entityLoader: EntityLoader;
 
+    /**
+     * Wrapper over `DbSet` that forces eager loading of specified includes.
+     */
     constructor(dbSet: any, includes: string[], entityLoader: EntityLoader) {
         this._dbSet = dbSet;
         this._includes = includes;
         this._entityLoader = entityLoader;
     }
 
+    /** Return all entities with includes applied (eager). */
     public async toArray(): Promise<T[]> {
         return await this._entityLoader.loadEntities(
             this._dbSet._entityClass,
@@ -121,6 +144,7 @@ export class DbSetWithIncludes<T> {
         );
     }
 
+    /** Find one entity by id with includes applied (eager). */
     public async find(id: any): Promise<T | null> {
         return await this._entityLoader.loadEntity(
             this._dbSet._entityClass,
@@ -129,6 +153,7 @@ export class DbSetWithIncludes<T> {
         );
     }
 
+    /** Start a filtered query using the underlying `DbSet`. */
     public where(predicate: (entity: T) => boolean): any {
         return this._dbSet.where(predicate);
     }
