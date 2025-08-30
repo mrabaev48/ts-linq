@@ -49,3 +49,20 @@
 - [done] Add SQL generation cache in QueryBuilder (simple Map with option hash)
 - [done] Validate includes at runtime against metadata and throw clear errors
 - [done] Add unit tests for new enum + parser paths, and integration tests for batched includes
+
+## Future Work
+
+### PostgreSQL Support
+- [done] PostgreSQLDialect: implement SqlDialect for Postgres specifics (identifiers, LIMIT/OFFSET, JOINs)
+- [done] PostgreSQLProvider: provider based on `pg` with connection pool (lazy dep)
+- [done] Parameter style: switch to $1..$n placeholders in generated SQL
+- [done] IN / ANY: implement findWhereIn via `= ANY($1)` with array parameters
+- Types mapping: UUID, JSONB, TIMESTAMPTZ, arrays; value conversions
+- [done] Types mapping: UUID, JSONB, TIMESTAMPTZ, arrays; value conversions
+- DDL & migrations: table/index creation with quoted identifiers and IF NOT EXISTS
+- [done] DDL & migrations: table/index creation with quoted identifiers and IF NOT EXISTS
+- [done] DbContext: add 'postgresql' provider option and wiring
+- Testing: integration tests gated by env POSTGRES_URL; CI matrix
+- [done] Docs: README section with installation, config, and dialect differences
+- Examples: runnable example using Postgres and docker-compose snippet
+- [done] Examples: runnable example using Postgres
