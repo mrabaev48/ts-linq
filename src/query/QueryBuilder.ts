@@ -11,6 +11,7 @@ export class QueryBuilder<T> {
     private _entityClass: new () => T;
     private _provider: DatabaseProvider;
     private _options: QueryOptions = {};
+    private _fallbackPredicates: Array<(entity: T) => boolean> = [];
 
     /**
      * Create a query builder bound to an entity and a database provider.
@@ -28,17 +29,20 @@ export class QueryBuilder<T> {
      * @returns This builder for chaining.
      */
     public where(predicate: (entity: T) => boolean): QueryBuilder<T> {
-        // Enhanced predicate parsing for better SQL generation
         const predicateStr = predicate.toString();
-        const { condition, parameters } = this.parsePredicateToSql(predicateStr);
-        
-        const whereClause: WhereClause = {
-            condition,
-            parameters
-        };
-        
-        this._options.where = this._options.where || [];
-        this._options.where.push(whereClause);
+        const parsed = this.parsePredicateToSql(predicateStr);
+
+        if (!parsed.parsed) {
+            // Fallback to client-side filtering when predicate can't be reliably parsed
+            this._fallbackPredicates.push(predicate);
+        } else {
+            const whereClause: WhereClause = {
+                condition: parsed.condition,
+                parameters: parsed.parameters
+            };
+            this._options.where = this._options.where || [];
+            this._options.where.push(whereClause);
+        }
         return this;
     }
 
@@ -215,7 +219,15 @@ export class QueryBuilder<T> {
     public async toArray(): Promise<T[]> {
         const sql = this.generateSql();
         const results = await this._provider.executeQuery<any>(sql.query, sql.parameters);
-        return results.map(row => this.mapRowToEntity(row));
+        let entities = results.map(row => this.mapRowToEntity(row));
+        if (this._fallbackPredicates.length > 0) {
+            for (const pred of this._fallbackPredicates) {
+                entities = entities.filter(e => {
+                    try { return pred(e); } catch { return false; }
+                });
+            }
+        }
+        return entities;
     }
 
     /**
@@ -382,7 +394,7 @@ export class QueryBuilder<T> {
      * Convert a JavaScript predicate string into a SQL condition and parameters.
      * Intended for simple, common cases; not a full expression parser.
      */
-    private parsePredicateToSql(predicateStr: string): { condition: string; parameters: any[] } {
+    private parsePredicateToSql(predicateStr: string): { condition: string; parameters: any[]; parsed: boolean } {
         // Enhanced predicate parsing for common patterns
         // This is a simplified version - a full implementation would use a proper expression parser
         
@@ -396,36 +408,48 @@ export class QueryBuilder<T> {
             if ((value.startsWith('"') && value.endsWith('"')) || 
                 (value.startsWith("'") && value.endsWith("'"))) {
                 value = value.slice(1, -1);
+                return {
+                    condition: `${property} = ?`,
+                    parameters: [value],
+                    parsed: true
+                };
             }
-            
-            return {
-                condition: `${property} = ?`,
-                parameters: [value]
-            };
+
+            // Numeric literal
+            const asNumber = Number(value);
+            if (!Number.isNaN(asNumber)) {
+                return {
+                    condition: `${property} = ?`,
+                    parameters: [asNumber],
+                    parsed: true
+                };
+            }
+
+            // If RHS looks like a variable or property path (e.g., user.id),
+            // we cannot reliably parse it to SQL. Defer to fallback filtering.
+            return { condition: '1=1', parameters: [], parsed: false };
         }
 
         // Handle greater than: p => p.property > value
         const gtMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*>\s*(.+)/);
         if (gtMatch) {
             const property = gtMatch[2];
-            const value = parseFloat(gtMatch[3]) || gtMatch[3];
-            
-            return {
-                condition: `${property} > ?`,
-                parameters: [value]
-            };
+            const num = Number(gtMatch[3]);
+            if (!Number.isNaN(num)) {
+                return { condition: `${property} > ?`, parameters: [num], parsed: true };
+            }
+            return { condition: '1=1', parameters: [], parsed: false };
         }
 
         // Handle less than: p => p.property < value
         const ltMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*<\s*(.+)/);
         if (ltMatch) {
             const property = ltMatch[2];
-            const value = parseFloat(ltMatch[3]) || ltMatch[3];
-            
-            return {
-                condition: `${property} < ?`,
-                parameters: [value]
-            };
+            const num = Number(ltMatch[3]);
+            if (!Number.isNaN(num)) {
+                return { condition: `${property} < ?`, parameters: [num], parsed: true };
+            }
+            return { condition: '1=1', parameters: [], parsed: false };
         }
 
         // Handle compound conditions: p => p.prop1 === value1 && p.prop2 > value2
@@ -447,19 +471,16 @@ export class QueryBuilder<T> {
                     }
                 }
                 
-                return {
-                    condition: conditions.join(' AND '),
-                    parameters
-                };
+                if (conditions.length > 0) {
+                    return { condition: conditions.join(' AND '), parameters, parsed: true };
+                }
+                return { condition: '1=1', parameters: [], parsed: false };
             }
         }
 
         // Fallback - return a basic condition that will work but may not be optimal
         console.warn(`Could not parse predicate: ${predicateStr}. Using fallback condition.`);
-        return {
-            condition: '1=1',
-            parameters: []
-        };
+        return { condition: '1=1', parameters: [], parsed: false };
     }
 
     /**
