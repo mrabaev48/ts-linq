@@ -454,6 +454,17 @@ export class QueryBuilder<T> {
             return { condition: '1=1', parameters: [], parsed: false };
         }
 
+        // Handle greater than or equal: p => p.property >= value
+        const gteMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*>?=\s*(.+)/);
+        if (gteMatch) {
+            const property = gteMatch[2];
+            const num = Number(gteMatch[3]);
+            if (!Number.isNaN(num)) {
+                return { condition: `${property} >= ?`, parameters: [num], parsed: true };
+            }
+            return { condition: '1=1', parameters: [], parsed: false };
+        }
+
         // Handle less than: p => p.property < value
         const ltMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*<\s*(.+)/);
         if (ltMatch) {
@@ -461,6 +472,17 @@ export class QueryBuilder<T> {
             const num = Number(ltMatch[3]);
             if (!Number.isNaN(num)) {
                 return { condition: `${property} < ?`, parameters: [num], parsed: true };
+            }
+            return { condition: '1=1', parameters: [], parsed: false };
+        }
+
+        // Handle less than or equal: p => p.property <= value
+        const lteMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*<=\s*(.+)/);
+        if (lteMatch) {
+            const property = lteMatch[2];
+            const num = Number(lteMatch[3]);
+            if (!Number.isNaN(num)) {
+                return { condition: `${property} <= ?`, parameters: [num], parsed: true };
             }
             return { condition: '1=1', parameters: [], parsed: false };
         }
@@ -532,6 +554,14 @@ export class QueryBuilder<T> {
             };
         }
 
+        // Handle prop >= value
+        const gteMatch = condition.match(/\w+\.(\w+)\s*>?=\s*(.+)/);
+        if (gteMatch) {
+            const property = gteMatch[1];
+            const value = Number(gteMatch[2]) || gteMatch[2];
+            return { condition: `${property} >= ?`, parameters: [value] };
+        }
+
         // Handle prop < value
         const ltMatch = condition.match(/\w+\.(\w+)\s*<\s*(.+)/);
         if (ltMatch) {
@@ -544,8 +574,18 @@ export class QueryBuilder<T> {
             };
         }
 
+        // Handle prop <= value
+        const lteMatch = condition.match(/\w+\.(\w+)\s*<=\s*(.+)/);
+        if (lteMatch) {
+            const property = lteMatch[1];
+            const value = Number(lteMatch[2]) || lteMatch[2];
+            return { condition: `${property} <= ?`, parameters: [value] };
+        }
+
         return null;
     }
+
+    // whereCompare removed; use `where` for both SQL-eligible and client-side predicates
 
     /**
      * Extract one or more property names referenced by a selector function string.
