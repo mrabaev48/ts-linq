@@ -14,7 +14,9 @@
     "dev": "ts-node src/index.ts",
     "example:simple": "ts-node examples/simple-app.ts",
     "example:advanced": "ts-node examples/advanced-queries.ts",
+    "example:sqlite": "ts-node examples/sqlite-app.ts",
     "example:postgres": "ts-node examples/postgres-app.ts",
+    "example:mysql": "ts-node examples/mysql-app.ts",
     "docs": "typedoc"
   },
   "keywords": [],

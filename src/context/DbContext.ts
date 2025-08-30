@@ -1,6 +1,7 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { SQLiteProvider } from '../providers/SQLiteProvider';
 import { PostgresProvider } from '../providers/PostgresProvider';
+import { MySqlProvider } from '../providers/MySqlProvider';
 import { ChangeTracker } from '../change-tracking/ChangeTracker';
 import { MssqlProvider } from '../providers/MssqlProvider';
 import { EntityLoader } from '../loading/EntityLoader';
@@ -48,6 +49,9 @@ export abstract class DbContext {
                 break;
             case 'mssql':
                 this._provider = new MssqlProvider(options.connectionString, options.logger);
+                break;
+            case 'mysql':
+                this._provider = new MySqlProvider(options.connectionString, options.logger);
                 break;
             default:
                 throw new Error(`Provider ${options.provider} is not supported`);

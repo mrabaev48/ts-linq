@@ -408,6 +408,117 @@ services:
 
 Then set `MSSQL_URL=Server=localhost;Database=ts_linq;User Id=sa;Password=Your_password123;Encrypt=false`.
 
+#### Example (CRUD)
+
+```ts
+@Entity({ name: 'Users' })
+class User { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+
+class MsCtx extends DbContext { public users!: DbSet<User>; constructor() { super({ provider: 'mssql', connectionString: process.env.MSSQL_URL! }); } }
+
+const ctx = new MsCtx();
+await ctx.ensureCreated();
+const u = new User(); u.name = 'Alice';
+ctx.users.add(u);
+await ctx.saveChanges();
+const all = await ctx.users.toArray();
+await ctx.dispose();
+```
+
+#### Example (JOIN + Include)
+
+```ts
+// JOIN (inner)
+const rows = await ctx.users
+  .innerJoin(Order, (u, o) => u.id === o.userId)
+  .where(u => u.id >= 1)
+  .toArray();
+
+// Eager Include (include-first)
+const withOrders = await ctx.users
+  .include(u => u.orders)
+  .where(u => u.id === 1)
+  .toArray();
+```
+
+### MySQL
+
+MySQL support is provided via a provider and dialect.
+
+- Install peer dependency:
+
+```bash
+npm install mysql2
+```
+
+- Use provider 'mysql' (set connection string via env):
+
+```ts
+class AppDbContext extends DbContext {
+  public users!: DbSet<User>;
+}
+
+const ctx = new AppDbContext({
+  provider: 'mysql',
+  connectionString: process.env.MYSQL_URL || 'mysql://root:password@localhost:3306/ts_linq'
+});
+```
+
+- Differences vs SQLite:
+  - Uses positional `?` parameters.
+  - LIMIT/OFFSET syntax is supported (`LIMIT n OFFSET m`).
+  - Types mapping: `INT`, `DOUBLE`, `TINYINT(1)`→boolean, `DATETIME`, `BLOB`.
+
+- Running tests with MySQL:
+  - Set `MYSQL_URL` and run `npm test` — MySQL suite will be enabled automatically.
+
+- Quick docker-compose for local MySQL:
+
+```yaml
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: ts_linq
+    ports:
+      - "3306:3306"
+```
+
+#### Example (CRUD)
+
+```ts
+@Entity({ name: 'Users' })
+class User { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+
+class MyCtx extends DbContext { public users!: DbSet<User>; constructor() { super({ provider: 'mysql', connectionString: process.env.MYSQL_URL! }); } }
+
+const ctx = new MyCtx();
+await ctx.ensureCreated();
+const u = new User(); u.name = 'Bob';
+ctx.users.add(u);
+await ctx.saveChanges();
+const all = await ctx.users.toArray();
+await ctx.dispose();
+```
+
+#### Example (JOIN + Include)
+
+```ts
+// JOIN (left)
+const rows = await ctx.users
+  .leftJoin(Order, (u, o) => u.id === o.userId)
+  .where(u => u.id > 0)
+  .toArray();
+
+// Eager Include (include-first)
+const withOrders = await ctx.users
+  .include(u => u.orders)
+  .where(u => u.name === 'Bob')
+  .toArray();
+```
+
 #### SQL Logging
 
 You can supply a `logger` in `DbContextOptions` to receive query lifecycle events with timings and optional transaction trace ids:

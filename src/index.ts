@@ -27,12 +27,14 @@ export * from './context/DbSet';
 export * from './query/Queryable';
 export * from './query/QueryBuilder';
 export * from './query/MssqlDialect';
+export * from './query/MysqlDialect';
 
 // Providers
 export * from './providers/DatabaseProvider';
 export * from './providers/SQLiteProvider';
 export * from './providers/PostgresProvider';
 export * from './providers/MssqlProvider';
+export * from './providers/MySqlProvider';
 
 // Loading
 export * from './loading/LoadingStrategy';
