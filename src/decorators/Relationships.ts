@@ -1,12 +1,26 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { RelationshipMetadata } from '../types';
 
+/**
+ * Options for configuring relationships between entities.
+ *
+ * - foreignKey: Column name on the dependent side used as the foreign key.
+ * - inverseSide: Name of the property on the related entity that points back.
+ * - cascade: Whether related operations should cascade (insert/update/delete).
+ */
 export interface RelationshipOptions {
     foreignKey?: string;
     inverseSide?: string;
     cascade?: boolean;
 }
 
+/**
+ * Declares a one-to-many relationship on a collection navigation property.
+ *
+ * @param targetEntity Function returning the target entity constructor.
+ * @param options Relationship configuration options.
+ * @returns Property decorator marking the relationship.
+ */
 export function OneToMany(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         const propertyName = propertyKey.toString();
@@ -24,6 +38,13 @@ export function OneToMany(targetEntity: () => Function, options: RelationshipOpt
     };
 }
 
+/**
+ * Declares a many-to-one relationship on a reference navigation property.
+ *
+ * @param targetEntity Function returning the target entity constructor.
+ * @param options Relationship configuration options.
+ * @returns Property decorator marking the relationship.
+ */
 export function ManyToOne(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         const propertyName = propertyKey.toString();
@@ -41,6 +62,13 @@ export function ManyToOne(targetEntity: () => Function, options: RelationshipOpt
     };
 }
 
+/**
+ * Declares a one-to-one relationship on a reference navigation property.
+ *
+ * @param targetEntity Function returning the target entity constructor.
+ * @param options Relationship configuration options.
+ * @returns Property decorator marking the relationship.
+ */
 export function OneToOne(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         const propertyName = propertyKey.toString();
@@ -58,6 +86,13 @@ export function OneToOne(targetEntity: () => Function, options: RelationshipOpti
     };
 }
 
+/**
+ * Declares a many-to-many relationship on a collection navigation property.
+ *
+ * @param targetEntity Function returning the target entity constructor.
+ * @param options Relationship configuration options.
+ * @returns Property decorator marking the relationship.
+ */
 export function ManyToMany(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
     return function (target: any, propertyKey: string | symbol) {
         const propertyName = propertyKey.toString();

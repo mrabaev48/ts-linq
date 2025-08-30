@@ -1,10 +1,16 @@
 import { EntityState, TrackedEntity } from '../types';
 
+/**
+ * Tracks entities and their states (Added, Modified, Deleted, Unchanged)
+ * to enable unit-of-work style persistence via `saveChanges`.
+ */
 export class ChangeTracker {
     private _trackedEntities: Map<any, TrackedEntity> = new Map();
 
     /**
      * Add an entity to be tracked as Added
+     * @param entity The entity instance to track.
+     * @param entityClass Constructor of the entity type.
      */
     public add(entity: any, entityClass: Function): void {
         this._trackedEntities.set(entity, {
@@ -16,6 +22,8 @@ export class ChangeTracker {
 
     /**
      * Track an entity as Modified
+     * @param entity The entity instance to mark as modified.
+     * @param entityClass Constructor of the entity type.
      */
     public update(entity: any, entityClass: Function): void {
         const existing = this._trackedEntities.get(entity);
@@ -33,6 +41,8 @@ export class ChangeTracker {
 
     /**
      * Track an entity as Deleted
+     * @param entity The entity instance to mark as deleted.
+     * @param entityClass Constructor of the entity type.
      */
     public remove(entity: any, entityClass: Function): void {
         const existing = this._trackedEntities.get(entity);
@@ -49,6 +59,8 @@ export class ChangeTracker {
 
     /**
      * Track an entity as Unchanged (loaded from database)
+     * @param entity The entity instance loaded from the database.
+     * @param entityClass Constructor of the entity type.
      */
     public attach(entity: any, entityClass: Function): void {
         this._trackedEntities.set(entity, {
@@ -61,6 +73,7 @@ export class ChangeTracker {
 
     /**
      * Get all tracked changes
+     * @returns Tracked entities excluding those in Unchanged state.
      */
     public getChanges(): TrackedEntity[] {
         return Array.from(this._trackedEntities.values())
@@ -69,6 +82,8 @@ export class ChangeTracker {
 
     /**
      * Get the state of a specific entity
+     * @param entity The entity instance.
+     * @returns The current state (defaults to Unchanged if not tracked).
      */
     public getEntityState(entity: any): EntityState {
         const tracked = this._trackedEntities.get(entity);
@@ -111,6 +126,8 @@ export class ChangeTracker {
 
     /**
      * Clone an object for original values tracking
+     * @param obj Arbitrary serializable object.
+     * @returns A deep clone via JSON serialization.
      */
     private cloneObject(obj: any): any {
         return JSON.parse(JSON.stringify(obj));
@@ -118,6 +135,9 @@ export class ChangeTracker {
 
     /**
      * Compare two objects for equality
+     * @param obj1 First object.
+     * @param obj2 Second object.
+     * @returns True if objects are deeply equal by JSON representation.
      */
     private areObjectsEqual(obj1: any, obj2: any): boolean {
         return JSON.stringify(obj1) === JSON.stringify(obj2);

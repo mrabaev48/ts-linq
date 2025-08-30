@@ -7,6 +7,10 @@ import { MetadataStorage } from '../metadata/MetadataStorage';
 import { DbSet } from './DbSet';
 import { DbContextOptions } from '../types';
 
+/**
+ * Base unit-of-work style context that orchestrates entity sets, change tracking
+ * and database provider interactions. Similar to Entity Framework's `DbContext`.
+ */
 export abstract class DbContext {
     private _provider: DatabaseProvider;
     private _changeTracker: ChangeTracker;
@@ -14,6 +18,11 @@ export abstract class DbContext {
     private _dbSets: Map<Function, DbSet<any>> = new Map();
     private _defaultLoadingStrategy: LoadingStrategy = LoadingStrategy.Lazy;
 
+    /**
+     * Create a new database context instance.
+     *
+     * @param options Connection and provider configuration.
+     */
     constructor(options: DbContextOptions) {
         // Initialize database provider based on options
         switch (options.provider || 'sqlite') {
@@ -31,6 +40,9 @@ export abstract class DbContext {
 
     /**
      * Get a DbSet for the specified entity type
+     *
+     * @param entityClass Constructor of the entity type.
+     * @returns Configured `DbSet` instance.
      */
     public set<T>(entityClass: new () => T): DbSet<T> {
         if (!this._dbSets.has(entityClass)) {
@@ -41,6 +53,8 @@ export abstract class DbContext {
 
     /**
      * Initialize the database and create tables
+     *
+     * Connects the provider and creates tables for all registered entities.
      */
     public async ensureCreated(): Promise<void> {
         await this._provider.connect();
@@ -54,6 +68,8 @@ export abstract class DbContext {
     /**
      * Save all changes tracked by the change tracker
      * Similar to Entity Framework's SaveChanges()
+     *
+     * @returns Number of affected rows.
      */
     public async saveChanges(): Promise<number> {
         const changes = this._changeTracker.getChanges();
@@ -110,6 +126,8 @@ export abstract class DbContext {
 
     /**
      * Get the underlying database provider
+     *
+     * @returns The active `DatabaseProvider` implementation.
      */
     protected get provider(): DatabaseProvider {
         return this._provider;
@@ -117,6 +135,8 @@ export abstract class DbContext {
 
     /**
      * Get the change tracker
+     *
+     * @returns The `ChangeTracker` handling entity states.
      */
     protected get changeTracker(): ChangeTracker {
         return this._changeTracker;
@@ -124,6 +144,8 @@ export abstract class DbContext {
 
     /**
      * Get the entity loader
+     *
+     * @returns The `EntityLoader` used for eager/lazy loading.
      */
     protected get entityLoader(): EntityLoader {
         return this._entityLoader;
@@ -131,6 +153,8 @@ export abstract class DbContext {
 
     /**
      * Set the default loading strategy
+     *
+     * @param strategy Loading strategy to use by default.
      */
     public setLoadingStrategy(strategy: LoadingStrategy): void {
         this._defaultLoadingStrategy = strategy;
@@ -139,6 +163,11 @@ export abstract class DbContext {
 
     /**
      * Find an entity by ID with loading options
+     *
+     * @param entityClass Constructor of the entity type.
+     * @param id Primary key value.
+     * @param options Loading options (strategy, includes, depth).
+     * @returns The found entity or null.
      */
     public async find<T>(
         entityClass: new () => T,
@@ -154,6 +183,10 @@ export abstract class DbContext {
 
     /**
      * Find entities with loading options
+     *
+     * @param entityClass Constructor of the entity type.
+     * @param options Loading options (strategy, includes, depth).
+     * @returns Array of loaded entities.
      */
     public async findAll<T>(
         entityClass: new () => T,
@@ -168,6 +201,10 @@ export abstract class DbContext {
 
     /**
      * Include related entities in the query (eager loading)
+     *
+     * @param entityClass Constructor of the entity type.
+     * @param includes Relationship property names to include.
+     * @returns A wrapper over `DbSet` that performs eager loading.
      */
     public include<T>(entityClass: new () => T, ...includes: string[]): DbSetWithIncludes<T> {
         const dbSet = this.set(entityClass);

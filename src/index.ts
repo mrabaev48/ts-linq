@@ -1,3 +1,8 @@
+/**
+ * Entry point that re-exports the ORM's public API: types, decorators,
+ * metadata access, change tracking, context/DbSet, query building,
+ * providers, loading utilities, migrations, and SQL helpers.
+ */
 // Core exports
 export * from './types';
 

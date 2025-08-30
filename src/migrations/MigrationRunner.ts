@@ -1,12 +1,18 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { Migration } from './Migration';
 
+/**
+ * A record stored in the migrations table representing an applied migration.
+ */
 export interface MigrationRecord {
     version: string;
     name: string;
     appliedAt: Date;
 }
 
+/**
+ * Executes pending migrations in order and can roll back to a target version.
+ */
 export class MigrationRunner {
     private _provider: DatabaseProvider;
     private _migrations: Migration[] = [];
@@ -15,11 +21,13 @@ export class MigrationRunner {
         this._provider = provider;
     }
 
+    /** Register a migration to be considered during `migrate()`. */
     public addMigration(migration: Migration): void {
         this._migrations.push(migration);
         this._migrations.sort((a, b) => a.getVersion().localeCompare(b.getVersion()));
     }
 
+    /** Ensure the migrations bookkeeping table exists. */
     public async ensureMigrationTableExists(): Promise<void> {
         const sql = `
             CREATE TABLE IF NOT EXISTS __migrations (
@@ -31,6 +39,7 @@ export class MigrationRunner {
         await this._provider.executeNonQuery(sql);
     }
 
+    /** Read the list of applied migrations from the database. */
     public async getAppliedMigrations(): Promise<MigrationRecord[]> {
         try {
             const results = await this._provider.executeQuery<any>(
@@ -48,6 +57,7 @@ export class MigrationRunner {
         }
     }
 
+    /** Apply all pending migrations in order. */
     public async migrate(): Promise<void> {
         await this.ensureMigrationTableExists();
         const appliedMigrations = await this.getAppliedMigrations();
@@ -76,6 +86,7 @@ export class MigrationRunner {
         }
     }
 
+    /** Roll back applied migrations down to (but not including) targetVersion. */
     public async rollback(targetVersion?: string): Promise<void> {
         await this.ensureMigrationTableExists();
         const appliedMigrations = await this.getAppliedMigrations();
