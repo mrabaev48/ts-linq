@@ -45,10 +45,14 @@ export abstract class DbContext {
      * @returns Configured `DbSet` instance.
      */
     public set<T>(entityClass: new () => T): DbSet<T> {
-        if (!this._dbSets.has(entityClass)) {
+        const normalized = (Reflect as any).getOwnMetadata?.('orm:original', entityClass) || entityClass;
+        if (!this._dbSets.has(normalized)) {
             throw new Error(`DbSet for ${entityClass.name} is not configured`);
         }
-        return this._dbSets.get(entityClass) as DbSet<T>;
+        const dbSet = this._dbSets.get(normalized) as DbSet<T>;
+        // Ensure the DbSet reflects the exact (possibly decorated) class passed in
+        (dbSet as any)._entityClass = entityClass;
+        return dbSet;
     }
 
     /**
@@ -218,11 +222,12 @@ export abstract class DbContext {
         const entities = MetadataStorage.getEntities();
 
         for (const entity of entities) {
-            const dbSet = new DbSet<any>(entity.target as new () => any, this._provider, this._changeTracker, this._entityLoader);
-            this._dbSets.set(entity.target, dbSet);
+            const original = (Reflect as any).getOwnMetadata?.('orm:original', entity.target) || entity.target;
+            const dbSet = new DbSet<any>(original as new () => any, this._provider, this._changeTracker, this._entityLoader);
+            this._dbSets.set(original, dbSet);
 
             // Create property on context instance for easy access
-            const propertyName = entity.target.name.toLowerCase() + 's';
+            const propertyName = original.name.toLowerCase() + 's';
             Object.defineProperty(this, propertyName, {
                 get: () => dbSet,
                 enumerable: true,

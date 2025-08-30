@@ -33,5 +33,13 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
         
         // Then add as primary key
         MetadataStorage.addPrimaryKey(target.constructor, propertyName);
+
+        // Persist PK for rehydration
+        const ctor = target.constructor;
+        const existing: string[] = Reflect.getOwnMetadata('orm:primaryKeys', ctor) || [];
+        if (!existing.includes(propertyName)) {
+            existing.push(propertyName);
+        }
+        Reflect.defineMetadata('orm:primaryKeys', existing, ctor);
     };
 }
