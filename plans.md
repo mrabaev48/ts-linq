@@ -33,9 +33,9 @@
 
 ## Testing
 - [done] Unit: AST builder, SQL visitor, predicate parser
-- Integration: providers contract tests shared across dialects
-- Property-based tests (fast-check) for predicate equivalence
-- Performance regression tests for include batching
+- [done] Integration: providers contract tests shared across dialects
+- [done] Property-based tests (fast-check) for predicate equivalence
+- [done] Performance regression tests for include batching
 
 ## Documentation & Tooling
 - [done] Typedoc API reference from JSDoc
