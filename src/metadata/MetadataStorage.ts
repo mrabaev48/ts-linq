@@ -10,6 +10,11 @@ export class MetadataStorage {
     private entities: Map<Function, EntityMetadata> = new Map();
     private builders: Map<Function, EntityMetadataBuilder> = new Map();
 
+    private normalizeTarget<T extends Function>(target: T): T {
+        const original = (Reflect as any).getOwnMetadata?.('orm:original', target) as T | undefined;
+        return (original || target) as T;
+    }
+
     private constructor() {}
 
     /** Get the singleton instance, creating it if necessary. */
@@ -27,7 +32,14 @@ export class MetadataStorage {
 
     /** Get metadata for a specific entity constructor. */
     public static getEntity(target: Function): EntityMetadata | undefined {
-        return MetadataStorage.getInstance().getEntityMetadata(target);
+        const original = (Reflect as any).getOwnMetadata?.('orm:original', target) || target;
+        const meta = MetadataStorage.getInstance().getEntityMetadata(original);
+        if (!meta) return undefined;
+        if (original !== target) {
+            // Return a view of metadata with target set to the provided constructor (decorated class)
+            return { ...meta, target };
+        }
+        return meta;
     }
 
     /** Register an entity and optionally set its table name. */
@@ -56,10 +68,11 @@ export class MetadataStorage {
     }
 
     private getOrCreateBuilder(target: Function): EntityMetadataBuilder {
-        if (!this.builders.has(target)) {
-            this.builders.set(target, new EntityMetadataBuilder(target));
+        const key = this.normalizeTarget(target);
+        if (!this.builders.has(key)) {
+            this.builders.set(key, new EntityMetadataBuilder(key));
         }
-        return this.builders.get(target)!;
+        return this.builders.get(key)!;
     }
 
     private registerEntity(target: Function, tableName?: string): void {
@@ -67,7 +80,7 @@ export class MetadataStorage {
         if (tableName) {
             builder.setTableName(tableName);
         }
-        this.finalizeEntity(target);
+        // Do not finalize here; allow subsequent decorators to contribute
     }
 
     private addColumnMetadata(target: Function, column: ColumnMetadata): void {
@@ -91,20 +104,22 @@ export class MetadataStorage {
     }
 
     private finalizeEntity(target: Function): void {
-        if (this.builders.has(target)) {
-            const builder = this.builders.get(target)!;
+        const key = this.normalizeTarget(target);
+        if (this.builders.has(key)) {
+            const builder = this.builders.get(key)!;
             const metadata = builder.build();
-            this.entities.set(target, metadata);
-            this.builders.delete(target);
+            this.entities.set(key, metadata);
+            this.builders.delete(key);
         }
     }
 
     /** Get finalized `EntityMetadata` for a specific constructor. */
     public getEntityMetadata(target: Function): EntityMetadata | undefined {
-        if (this.builders.has(target)) {
-            this.finalizeEntity(target);
+        const key = this.normalizeTarget(target);
+        if (this.builders.has(key)) {
+            this.finalizeEntity(key);
         }
-        return this.entities.get(target);
+        return this.entities.get(key);
     }
 
     /** Finalize and return metadata for all registered entities. */

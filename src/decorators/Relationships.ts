@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { RelationshipMetadata } from '../types';
 
@@ -35,6 +36,12 @@ export function OneToMany(targetEntity: () => Function, options: RelationshipOpt
         };
 
         MetadataStorage.addRelationship(target.constructor, relationship);
+
+        // Persist relationship for rehydration
+        const ctor = target.constructor;
+        const existing: RelationshipMetadata[] = Reflect.getOwnMetadata('orm:relationships', ctor) || [];
+        existing.push(relationship);
+        Reflect.defineMetadata('orm:relationships', existing, ctor);
     };
 }
 
@@ -59,6 +66,11 @@ export function ManyToOne(targetEntity: () => Function, options: RelationshipOpt
         };
 
         MetadataStorage.addRelationship(target.constructor, relationship);
+
+        const ctor = target.constructor;
+        const existing: RelationshipMetadata[] = Reflect.getOwnMetadata('orm:relationships', ctor) || [];
+        existing.push(relationship);
+        Reflect.defineMetadata('orm:relationships', existing, ctor);
     };
 }
 
@@ -83,6 +95,11 @@ export function OneToOne(targetEntity: () => Function, options: RelationshipOpti
         };
 
         MetadataStorage.addRelationship(target.constructor, relationship);
+
+        const ctor = target.constructor;
+        const existing: RelationshipMetadata[] = Reflect.getOwnMetadata('orm:relationships', ctor) || [];
+        existing.push(relationship);
+        Reflect.defineMetadata('orm:relationships', existing, ctor);
     };
 }
 
@@ -107,5 +124,10 @@ export function ManyToMany(targetEntity: () => Function, options: RelationshipOp
         };
 
         MetadataStorage.addRelationship(target.constructor, relationship);
+
+        const ctor = target.constructor;
+        const existing: RelationshipMetadata[] = Reflect.getOwnMetadata('orm:relationships', ctor) || [];
+        existing.push(relationship);
+        Reflect.defineMetadata('orm:relationships', existing, ctor);
     };
 }

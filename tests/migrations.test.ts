@@ -101,7 +101,8 @@ describe('Migrations', () => {
             const tableInfo = await provider.executeQuery(
                 'PRAGMA table_info(users)'
             );
-            expect(tableInfo).toHaveLength(3); // id, name, email, age
+            // After two migrations, columns: id, name, email, age
+            expect(tableInfo).toHaveLength(4);
         });
 
         it('should not run already applied migrations', async () => {

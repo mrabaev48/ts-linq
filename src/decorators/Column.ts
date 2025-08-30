@@ -1,4 +1,4 @@
-import { log } from 'console';
+import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { ColumnMetadata } from '../types';
 
@@ -54,6 +54,12 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
         };
 
         MetadataStorage.addColumn(target.constructor, columnMetadata);
+
+        // Persist on constructor to support rehydration
+        const ctor = target.constructor;
+        const existing: ColumnMetadata[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
+        existing.push(columnMetadata);
+        Reflect.defineMetadata('orm:columns', existing, ctor);
     };
 }
 
