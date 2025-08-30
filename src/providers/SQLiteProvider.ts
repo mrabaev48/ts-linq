@@ -1,7 +1,7 @@
 import * as sqlite3 from 'sqlite3';
 import { DatabaseProvider } from './DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { EntityMetadata, ColumnMetadata } from '../types';
+import { EntityMetadata, ColumnMetadata, DatabaseError, UniqueConstraintError, ForeignKeyConstraintError } from '../types';
 import { SqlHelper } from '../utils/SqlHelper';
 
 /**
@@ -204,7 +204,7 @@ export class SQLiteProvider extends DatabaseProvider {
 
             this.db.all(sql, params, (err, rows) => {
                 if (err) {
-                    reject(new Error(`Query execution failed: ${err.message}\nSQL: ${sql}\nParams: ${JSON.stringify(params)}`));
+                    reject(mapSqliteError(err));
                 } else {
                     resolve(rows as T[]);
                 }
@@ -222,7 +222,7 @@ export class SQLiteProvider extends DatabaseProvider {
 
             this.db.run(sql, params, function(err) {
                 if (err) {
-                    reject(new Error(`Non-query execution failed: ${err.message}\nSQL: ${sql}\nParams: ${JSON.stringify(params)}`));
+                    reject(mapSqliteError(err));
                 } else {
                     resolve(this.changes);
                 }
@@ -503,4 +503,19 @@ export class SQLiteProvider extends DatabaseProvider {
                 return value;
         }
     }
+}
+
+/** Map sqlite3 error to typed DatabaseError. */
+function mapSqliteError(err: any): Error {
+    const code = err?.code as string | undefined;
+    const message = err?.message || String(err);
+    if (!code) return new DatabaseError(message);
+    // sqlite codes: https://www.sqlite.org/rescode.html (library-dependent)
+    if (code === 'SQLITE_CONSTRAINT' || code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        return new UniqueConstraintError(message, code);
+    }
+    if (code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || code === 'SQLITE_CONSTRAINT_TRIGGER') {
+        return new ForeignKeyConstraintError(message, code);
+    }
+    return new DatabaseError(message, code);
 }
