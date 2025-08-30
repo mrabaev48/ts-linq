@@ -16,9 +16,9 @@
 
 ## Performance
 - [done] Anti N+1: batch one-to-many loading using IN queries per relation (per request)
-- Add per-query SQL generation cache (hash of options → {query, params})
-- Level-2 cache for row→entity mapping (optional, behind flag)
-- Optional pagination total count optimization (COUNT window caching)
+- [done] Add per-query SQL generation cache (hash of options → {query, params})
+- [done] Level-2 cache for row→entity mapping (optional, behind flag)
+- [done] Optional pagination total count optimization (COUNT window caching)
 
 ## Reliability & Errors
 - Optional Result<T, E> for non-exceptional flows; centralize error mapping
@@ -45,6 +45,6 @@
 ## Near-term actionable items
 - [done] Implement include batching (one-to-many via IN) in EntityLoader
 - [done] Introduce ComparisonOperator enum and refactor parser to use it internally
-- Add SQL generation cache in QueryBuilder (simple Map with option hash)
+- [done] Add SQL generation cache in QueryBuilder (simple Map with option hash)
 - [done] Validate includes at runtime against metadata and throw clear errors
 - [done] Add unit tests for new enum + parser paths, and integration tests for batched includes

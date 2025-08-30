@@ -1,12 +1,13 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { WhereClause, OrderByClause } from '../types';
+import { WhereClause, OrderByClause, PerformanceOptions } from '../types';
 import { QueryBuilder } from './QueryBuilder';
 import { PredicateParser } from './PredicateParser';
 import { SqlVisitor } from './ast/SqlVisitor';
 import { QueryModel } from './QueryModel';
 import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
+import { EntityCache } from '../utils/EntityCache';
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
@@ -18,8 +19,11 @@ export class Queryable<T> {
     private _model: QueryModel = new QueryModel();
     private _fallbackPredicates: Array<(entity: T) => boolean> = [];
     private _entityLoader?: EntityLoader;
+    private _entityCache?: EntityCache;
+    private _performance?: PerformanceOptions;
     private _includes: string[] = [];
     private _sqlBuilder = new QueryBuilder();
+    private static _countCache: Map<string, { value: number; ts: number }> = new Map();
 
     /**
      * Create a new Queryable bound to an entity type and provider.
@@ -27,10 +31,18 @@ export class Queryable<T> {
      * @param provider Database provider used for execution.
      * @param entityLoader Optional entity loader for eager includes.
      */
-    constructor(entityClass: new () => T, provider: DatabaseProvider, entityLoader?: EntityLoader) {
+    constructor(
+        entityClass: new () => T,
+        provider: DatabaseProvider,
+        entityLoader?: EntityLoader,
+        entityCache?: EntityCache,
+        performance?: PerformanceOptions
+    ) {
         this._entityClass = entityClass;
         this._provider = provider;
         this._entityLoader = entityLoader;
+        this._entityCache = entityCache;
+        this._performance = performance;
     }
 
     /**
@@ -53,7 +65,7 @@ export class Queryable<T> {
      * const names = await context.authors.select(a => a.name).toArray();
      */
     public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
-        const next = new Queryable<TResult>(this._entityClass as any, this._provider, this._entityLoader);
+        const next = new Queryable<TResult>(this._entityClass as any, this._provider, this._entityLoader, this._entityCache, this._performance);
         next._model = this._model.clone() as any;
         const selectorStr = selector.toString();
         const properties = this.extractPropertiesFromSelector(selectorStr);
@@ -188,7 +200,27 @@ export class Queryable<T> {
     public async count(): Promise<number> {
         const metadata = MetadataStorage.getEntity(this._entityClass);
         if (!metadata) throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
-        let query = `SELECT COUNT(*) as count FROM ${metadata.tableName}`;
+        if (this._performance?.enableCountCache) {
+            const key = this.buildCountCacheKey(metadata.tableName);
+            const ttl = this._performance.countCacheTtlMs ?? 0;
+            const hit = Queryable._countCache.get(key);
+            if (hit && (ttl <= 0 || (Date.now() - hit.ts) <= ttl)) {
+                return hit.value;
+            }
+            const value = await this.executeCountQuery(metadata.tableName);
+            Queryable._countCache.set(key, { value, ts: Date.now() });
+            return value;
+        }
+        return this.executeCountQuery(metadata.tableName);
+    }
+
+    private buildCountCacheKey(table: string): string {
+        const where = (this._model.where || []).map(w => ({ c: (w as any).condition, p: (w as any).parameters }));
+        return `${this._entityClass.name}|count|${table}|${JSON.stringify(where)}`;
+    }
+
+    private async executeCountQuery(table: string): Promise<number> {
+        let query = `SELECT COUNT(*) as count FROM ${table}`;
         let parameters: any[] = [];
         if (this._model.where && this._model.where.length > 0) {
             const whereClauses = this._model.where.map(w => (w as any).condition);
@@ -196,7 +228,7 @@ export class Queryable<T> {
             for (const where of this._model.where) parameters.push(...(where as any).parameters);
         }
         const results = await this._provider.executeQuery<{ count: number }>(query, parameters);
-        return results[0].count;
+        return results[0]?.count ?? 0;
     }
     /** Returns true if at least one row matches the query.
      * @example
@@ -275,8 +307,23 @@ export class Queryable<T> {
      * Falls back to shallow assign when no metadata is available.
      */
     private mapRowToEntity(row: any): T {
-        const entity = new this._entityClass();
         const metadata = MetadataStorage.getEntity(this._entityClass);
+        if (this._performance?.enableEntityCache && this._entityCache && metadata && metadata.primaryKeys.length > 0) {
+            const pkProp = metadata.primaryKeys[0];
+            const pkCol = metadata.columns.find(c => c.propertyName === pkProp);
+            const idValue = pkCol ? row[pkCol.columnName] : row[pkProp as any];
+            const cached = this._entityCache.get<T>(this._entityClass, idValue);
+            if (cached) return cached;
+            const entity = new this._entityClass();
+            for (const column of metadata.columns) {
+                if (row.hasOwnProperty(column.columnName)) {
+                    (entity as any)[column.propertyName] = this.convertValue(row[column.columnName], column.type);
+                }
+            }
+            this._entityCache.set(this._entityClass, idValue, entity);
+            return entity;
+        }
+        const entity = new this._entityClass();
         if (metadata) {
             for (const column of metadata.columns) {
                 if (row.hasOwnProperty(column.columnName)) {

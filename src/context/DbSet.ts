@@ -3,6 +3,8 @@ import { ChangeTracker } from '../change-tracking/ChangeTracker';
 import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingOptions } from '../loading/LoadingStrategy';
 import { Queryable } from '../query/Queryable';
+import { EntityCache } from '../utils/EntityCache';
+import { PerformanceOptions } from '../types';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
 
 /**
@@ -14,17 +16,23 @@ export class DbSet<T> {
     private _provider: DatabaseProvider;
     private _changeTracker: ChangeTracker;
     private _entityLoader: EntityLoader | undefined;
+    private _entityCache: EntityCache | undefined;
+    private _performance: PerformanceOptions | undefined;
 
     constructor(
         entityClass: new () => T,
         provider: DatabaseProvider,
         changeTracker: ChangeTracker,
-        entityLoader?: EntityLoader
+        entityLoader?: EntityLoader,
+        entityCache?: EntityCache,
+        performance?: PerformanceOptions
     ) {
         this._entityClass = entityClass;
         this._provider = provider;
         this._changeTracker = changeTracker;
         this._entityLoader = entityLoader;
+        this._entityCache = entityCache;
+        this._performance = performance;
     }
 
     /**
@@ -101,7 +109,7 @@ export class DbSet<T> {
      * const cheap = await context.products.where(p => p.price < 100).toArray();
      */
     public where(predicate: (entity: T) => boolean): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).where(predicate);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).where(predicate);
     }
 
     /**
@@ -113,7 +121,7 @@ export class DbSet<T> {
      * const names = await context.authors.select(a => a.name).toArray();
      */
     public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).select(selector);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).select(selector);
     }
 
     /**
@@ -125,7 +133,7 @@ export class DbSet<T> {
      * const ordered = await context.books.orderBy(b => b.title).toArray();
      */
     public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).orderBy(keySelector);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).orderBy(keySelector);
     }
 
     /**
@@ -137,7 +145,7 @@ export class DbSet<T> {
      * const latest = await context.books.orderByDescending(b => b.id).take(5).toArray();
      */
     public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).orderByDescending(keySelector);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).orderByDescending(keySelector);
     }
 
     /**
@@ -149,7 +157,7 @@ export class DbSet<T> {
      * const top10 = await context.products.take(10).toArray();
      */
     public take(count: number): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).take(count);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).take(count);
     }
 
     /**
@@ -161,7 +169,7 @@ export class DbSet<T> {
      * const page2 = await context.products.orderBy(p => p.id).skip(10).take(10).toArray();
      */
     public skip(count: number): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).skip(count);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).skip(count);
     }
 
     /**
@@ -172,7 +180,7 @@ export class DbSet<T> {
      * const titles = await context.books.select(b => b.title).distinct().toArray();
      */
     public distinct(): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).distinct();
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).distinct();
     }
 
     /**
@@ -183,7 +191,7 @@ export class DbSet<T> {
      * const first = await context.books.orderBy(b => b.id).first();
      */
     public async first(): Promise<T> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).first();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).first();
     }
 
     /**
@@ -194,7 +202,7 @@ export class DbSet<T> {
      * const maybe = await context.books.where(b => b.id > 10000).firstOrDefault();
      */
     public async firstOrDefault(): Promise<T | null> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).firstOrDefault();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).firstOrDefault();
     }
 
     /**
@@ -205,7 +213,7 @@ export class DbSet<T> {
      * const book = await context.books.where(b => b.id === 1).single();
      */
     public async single(): Promise<T> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).single();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).single();
     }
 
     /**
@@ -216,7 +224,7 @@ export class DbSet<T> {
      * const maybe = await context.books.where(b => b.id === 9999).singleOrDefault();
      */
     public async singleOrDefault(): Promise<T | null> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).singleOrDefault();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).singleOrDefault();
     }
 
     /**
@@ -227,7 +235,7 @@ export class DbSet<T> {
      * const count = await context.products.where(p => p.price >= 100).count();
      */
     public async count(): Promise<number> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).count();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).count();
     }
 
     /**
@@ -238,7 +246,7 @@ export class DbSet<T> {
       * const exists = await context.products.where(p => p.name === 'Laptop').any();
      */
     public async any(): Promise<boolean> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).any();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).any();
     }
 
     /**
@@ -248,7 +256,7 @@ export class DbSet<T> {
      * const authors = await context.authors.include(a => a.books).where(a => a.id === 1).toArray();
      */
     public include(selector: (entity: T) => any): Queryable<T> {
-        const qb = new Queryable<T>(this._entityClass, this._provider, this._entityLoader);
+        const qb = new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance);
         return qb.include(selector);
     }
 }
