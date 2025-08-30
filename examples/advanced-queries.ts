@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { DbContext, Entity, Column, PrimaryKey } from '../src';
+import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
 
 @Entity()
 class Product {
@@ -29,8 +29,8 @@ class Category {
 }
 
 class ShopDbContext extends DbContext {
-    public products!: any;
-    public categories!: any;
+    public products!: DbSet<Product>;
+    public categories!: DbSet<Category>;
 }
 
 async function advancedQueriesExample() {
@@ -45,11 +45,11 @@ async function advancedQueriesExample() {
         // Create sample data
         const electronics = new Category();
         electronics.name = 'Electronics';
-        context.set(Category).add(electronics);
+        context.categories.add(electronics);
 
         const books = new Category();
         books.name = 'Books';
-        context.set(Category).add(books);
+        context.categories.add(books);
 
         await context.saveChanges();
 
@@ -65,7 +65,7 @@ async function advancedQueriesExample() {
         for (const productData of products) {
             const product = new Product();
             Object.assign(product, productData);
-            context.set(Product).add(product);
+            context.products.add(product);
         }
 
         await context.saveChanges();
@@ -74,7 +74,7 @@ async function advancedQueriesExample() {
 
         // 1. Filter with complex conditions
         console.log('1. Expensive electronics (price > 50):');
-        const expensiveElectronics = await context.set(Product)
+        const expensiveElectronics = await context.products
             .where(p => p.categoryId === electronics.id && p.price > 50)
             .orderBy(p => p.price)
             .toArray();
@@ -82,7 +82,7 @@ async function advancedQueriesExample() {
 
         // 2. Pagination
         console.log('\n2. Products page 2 (skip 2, take 2):');
-        const pagedProducts = await context.set(Product)
+        const pagedProducts = await context.products
             .orderBy(p => p.name)
             .skip(2)
             .take(2)
@@ -91,10 +91,10 @@ async function advancedQueriesExample() {
 
         // 3. Aggregations
         console.log('\n3. Product statistics:');
-        const totalProducts = await context.set(Product).count();
+        const totalProducts = await context.products.count();
         console.log(`Total products: ${totalProducts}`);
 
-        const hasExpensiveProducts = await context.set(Product)
+        const hasExpensiveProducts = await context.products
             .where(p => p.price > 100)
             .any();
         console.log(`Has expensive products (>$100): ${hasExpensiveProducts}`);
@@ -102,19 +102,19 @@ async function advancedQueriesExample() {
         // 4. Single and First operations
         console.log('\n4. Single/First operations:');
         
-        const firstProduct = await context.set(Product)
+        const firstProduct = await context.products
             .orderBy(p => p.price)
             .first();
         console.log(`Cheapest product: ${firstProduct.name} - $${firstProduct.price}`);
 
-        const mostExpensive = await context.set(Product)
+        const mostExpensive = await context.products
             .orderByDescending(p => p.price)
             .first();
         console.log(`Most expensive product: ${mostExpensive.name} - $${mostExpensive.price}`);
 
         // 5. Distinct values (simplified example)
         console.log('\n5. All products (distinct):');
-        const distinctProducts = await context.set(Product)
+        const distinctProducts = await context.products
             .distinct()
             .take(3)
             .toArray();
@@ -122,7 +122,7 @@ async function advancedQueriesExample() {
 
         // 6. Complex filtering and sorting
         console.log('\n6. Low stock products (< 30), sorted by stock:');
-        const lowStockProducts = await context.set(Product)
+        const lowStockProducts = await context.products
             .where(p => p.stock < 30)
             .orderBy(p => p.stock)
             .toArray();
@@ -131,7 +131,7 @@ async function advancedQueriesExample() {
         // 7. Using firstOrDefault vs first
         console.log('\n7. First vs FirstOrDefault:');
         
-        const veryExpensiveProduct = await context.set(Product)
+        const veryExpensiveProduct = await context.products
             .where(p => p.price > 2000)
             .firstOrDefault();
         
@@ -145,14 +145,14 @@ async function advancedQueriesExample() {
         console.log('\n8. Single operations:');
         
         try {
-            const singleElectronicsItem = await context.set(Product)
+            const singleElectronicsItem = await context.products
                 .where(p => p.categoryId === electronics.id)
                 .single(); // This will throw because there are multiple electronics
         } catch (error: any) {
             console.log(`Single operation failed as expected: ${error.message}`);
         }
 
-        const singleExpensiveProduct = await context.set(Product)
+        const singleExpensiveProduct = await context.products
             .where(p => p.price > 999)
             .singleOrDefault();
         

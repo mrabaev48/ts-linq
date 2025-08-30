@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { DbContext, Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../src';
+import { DbContext, DbSet, Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../src';
 
 @Entity()
 class Author {
@@ -29,8 +29,8 @@ class Book {
 }
 
 class AppDbContext extends DbContext {
-    public authors!: any;
-    public books!: any;
+    public authors!: DbSet<Author>;
+    public books!: DbSet<Book>;
 }
 
 async function main() {
@@ -40,7 +40,7 @@ async function main() {
     // Create an author
     const author = new Author();
     author.name = 'Jane Doe';
-    context.set(Author).add(author);
+    context.authors.add(author);
     await context.saveChanges();
     console.log('Created author id:', author.id);
 
@@ -53,18 +53,18 @@ async function main() {
     book2.title = 'Second Book';
     book2.authorId = author.id;
 
-    context.set(Book).add(book1);
-    context.set(Book).add(book2);
+    context.books.add(book1);
+    context.books.add(book2);
     await context.saveChanges();
     console.log('Inserted books');
 
     // Query all authors
-    const authors = await context.set(Author).toArray();
+    const authors = await context.authors.toArray();
     console.log('Authors count:', authors.length);
 
     // Query with builder (order, skip/take)
     const pagedBooks = await context
-        .set(Book)
+        .books
         .orderBy(b => b.title)
         .skip(0)
         .take(10)
@@ -76,16 +76,16 @@ async function main() {
     console.log('Author[0] books:', authorsWithBooks[0].books?.length ?? 0);
 
     // Update
-    const first = await context.set(Book).orderBy(b => b.id).first();
+    const first = await context.books.orderBy(b => b.id).first();
     first.title = 'First Book (Updated)';
-    context.set(Book).update(first);
+    context.books.update(first);
     await context.saveChanges();
     console.log('Updated first book title');
 
     // Delete
-    context.set(Book).remove(book2);
+    context.books.remove(book2);
     await context.saveChanges();
-    const remaining = await context.set(Book).count();
+    const remaining = await context.books.count();
     console.log('Remaining books:', remaining);
 
     await context.dispose();
