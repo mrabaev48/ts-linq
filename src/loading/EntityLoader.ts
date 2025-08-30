@@ -81,24 +81,26 @@ export class EntityLoader {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata) return;
 
-        const depth = options.depth || 1;
+        const depth = options.depth ?? 1;
         if (depth <= 0) return;
 
         for (const relationship of metadata.relationships) {
             const shouldInclude = !options.includes || options.includes.includes(relationship.propertyName);
             if (!shouldInclude) continue;
 
-            const foreignKey = relationship.foreignKey || `${relationship.targetEntity.name.toLowerCase()}Id`;
-            const foreignKeyValue = (entity as any)[foreignKey];
-
-            if (!foreignKeyValue) continue;
-
             try {
+                const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
+
                 switch (relationship.type) {
                     case 'many-to-one':
-                    case 'one-to-one':
+                    case 'one-to-one': {
+                        const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
+                        const foreignKeyValue = (entity as any)[foreignKeyName];
+                        if (foreignKeyValue === undefined || foreignKeyValue === null) {
+                            break;
+                        }
                         const relatedEntity = await this.loadEntity(
-                            relationship.targetEntity as new () => any,
+                            targetCtor as new () => any,
                             foreignKeyValue,
                             { ...options, depth: depth - 1 }
                         );
@@ -106,19 +108,45 @@ export class EntityLoader {
                             (entity as any)[relationship.propertyName] = relatedEntity;
                         }
                         break;
+                    }
 
-                    case 'one-to-many':
+                    case 'one-to-many': {
+                        const parentPkProperty = metadata.primaryKeys[0];
+                        if (!parentPkProperty) {
+                            break;
+                        }
+                        const parentPkValue = (entity as any)[parentPkProperty];
+                        if (parentPkValue === undefined || parentPkValue === null) {
+                            break;
+                        }
+                        const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
                         const relatedEntities = await this._provider.findWhere(
-                            relationship.targetEntity as new () => any,
-                            { [foreignKey]: foreignKeyValue }
+                            targetCtor as new () => any,
+                            { [foreignKeyName]: parentPkValue }
                         );
                         (entity as any)[relationship.propertyName] = relatedEntities;
                         break;
+                    }
                 }
             } catch (error) {
                 console.warn(`Failed to load relationship ${relationship.propertyName}:`, error);
             }
         }
+    }
+
+    private resolveTargetEntity(target: Function | (() => Function)) {
+        const maybeCtor = target as any;
+        if (typeof maybeCtor === 'function' && maybeCtor.prototype && maybeCtor.prototype.constructor) {
+            return maybeCtor as new () => any;
+        }
+        const resolved = (target as () => Function)();
+        return resolved as new () => any;
+    }
+
+    private defaultForeignKeyFor(type: Function): string {
+        const name = type.name || 'id';
+        const camel = name.charAt(0).toLowerCase() + name.slice(1);
+        return `${camel}Id`;
     }
 }
 
