@@ -11,6 +11,7 @@ export class MetadataStorage {
     private builders: Map<Function, EntityMetadataBuilder> = new Map();
 
     private normalizeTarget<T extends Function>(target: T): T {
+        // Map decorated Extended classes back to original constructors if present
         const original = (Reflect as any).getOwnMetadata?.('orm:original', target) as T | undefined;
         return (original || target) as T;
     }
@@ -67,6 +68,9 @@ export class MetadataStorage {
         MetadataStorage.getInstance().addIndexMetadata(target, index);
     }
 
+    /**
+     * Get an existing metadata builder for a target or create a new one.
+     */
     private getOrCreateBuilder(target: Function): EntityMetadataBuilder {
         const key = this.normalizeTarget(target);
         if (!this.builders.has(key)) {
@@ -75,6 +79,10 @@ export class MetadataStorage {
         return this.builders.get(key)!;
     }
 
+    /**
+     * Register an entity constructor, optionally overriding the table name.
+     * Finalization is deferred until metadata is consumed.
+     */
     private registerEntity(target: Function, tableName?: string): void {
         const builder = this.getOrCreateBuilder(target);
         if (tableName) {
@@ -83,26 +91,33 @@ export class MetadataStorage {
         // Do not finalize here; allow subsequent decorators to contribute
     }
 
+    /** Add a column definition to the target entity's builder. */
     private addColumnMetadata(target: Function, column: ColumnMetadata): void {
         const builder = this.getOrCreateBuilder(target);
         builder.addColumn(column);
     }
 
+    /** Add a primary key property to the target entity's builder. */
     private addPrimaryKeyMetadata(target: Function, propertyName: string): void {
         const builder = this.getOrCreateBuilder(target);
         builder.addPrimaryKey(propertyName);
     }
 
+    /** Add a relationship definition to the target entity's builder. */
     private addRelationshipMetadata(target: Function, relationship: RelationshipMetadata): void {
         const builder = this.getOrCreateBuilder(target);
         builder.addRelationship(relationship);
     }
 
+    /** Add an index definition to the target entity's builder. */
     private addIndexMetadata(target: Function, index: IndexMetadata): void {
         const builder = this.getOrCreateBuilder(target);
         builder.addIndex(index);
     }
 
+    /**
+     * Finalize and store metadata for a given target if a builder exists.
+     */
     private finalizeEntity(target: Function): void {
         const key = this.normalizeTarget(target);
         if (this.builders.has(key)) {

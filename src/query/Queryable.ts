@@ -1,42 +1,51 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { JoinType, WhereClause, OrderByClause, GroupByClause, QueryOptions } from '../types';
+import { WhereClause, OrderByClause } from '../types';
 import { QueryBuilder } from './QueryBuilder';
 import { PredicateParser } from './PredicateParser';
 import { SqlVisitor } from './ast/SqlVisitor';
 import { QueryModel } from './QueryModel';
+import { EntityLoader } from '../loading/EntityLoader';
+import { LoadingStrategy } from '../loading/LoadingStrategy';
 
+/**
+ * Fluent query builder over a given entity type. Accumulates query intent
+ * in a QueryModel and delegates SQL generation to QueryBuilder.
+ */
 export class Queryable<T> {
     private _entityClass: new () => T;
     private _provider: DatabaseProvider;
     private _model: QueryModel = new QueryModel();
     private _fallbackPredicates: Array<(entity: T) => boolean> = [];
-    private _entityLoader?: any;
+    private _entityLoader?: EntityLoader;
     private _includes: string[] = [];
     private _sqlBuilder = new QueryBuilder();
 
-    constructor(entityClass: new () => T, provider: DatabaseProvider, entityLoader?: any) {
+    /**
+     * Create a new Queryable bound to an entity type and provider.
+     * @param entityClass Entity constructor.
+     * @param provider Database provider used for execution.
+     * @param entityLoader Optional entity loader for eager includes.
+     */
+    constructor(entityClass: new () => T, provider: DatabaseProvider, entityLoader?: EntityLoader) {
         this._entityClass = entityClass;
         this._provider = provider;
         this._entityLoader = entityLoader;
     }
 
+    /**
+     * Adds a filter predicate to the query. If the predicate cannot be parsed
+     * into SQL, it is stored and applied in-memory after fetching.
+     */
     public where(predicate: (entity: T) => boolean): Queryable<T> {
-        const parser = new PredicateParser<T>();
-        const ast = parser.parse(predicate);
-        if (ast) {
-            const visitor = new SqlVisitor();
-            const { condition, parameters } = visitor.toSql(ast);
-            const whereClause: WhereClause = { condition: condition as any, parameters: parameters as any } as any;
-            this._model.where = this._model.where || [];
-            this._model.where.push(whereClause);
-        } else {
-            // fallback to runtime filtering
-            this._fallbackPredicates.push(predicate);
-        }
+        this.addWhereOrFallback(predicate);
         return this;
     }
 
+    /**
+     * Projects selected properties. Returns a new Queryable of the projected type.
+     * @param selector Projection selector.
+     */
     public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
         const next = new Queryable<TResult>(this._entityClass as any, this._provider, this._entityLoader);
         next._model = this._model.clone() as any;
@@ -46,6 +55,10 @@ export class Queryable<T> {
         return next;
     }
 
+    /**
+     * Adds ASC ordering by key selector.
+     * @param keySelector Sort key selector.
+     */
     public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
         const keySelectorStr = keySelector.toString();
         const column = this.extractPropertyFromKeySelector(keySelectorStr);
@@ -55,6 +68,10 @@ export class Queryable<T> {
         return this;
     }
 
+    /**
+     * Adds DESC ordering by key selector.
+     * @param keySelector Sort key selector.
+     */
     public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
         const keySelectorStr = keySelector.toString();
         const column = this.extractPropertyFromKeySelector(keySelectorStr);
@@ -64,47 +81,68 @@ export class Queryable<T> {
         return this;
     }
 
+    /** Limits the number of returned rows. */
     public take(count: number): Queryable<T> { this._model.limit = count; return this; }
+    /** Skips given number of rows. */
     public skip(count: number): Queryable<T> { this._model.offset = count; return this; }
+    /** Ensures distinct rows. */
     public distinct(): Queryable<T> { this._model.distinct = true; return this; }
 
+    /**
+     * Adds eager-loading of a relationship using a property selector.
+     * Validates the relationship against entity metadata.
+     */
     public include(selector: (entity: T) => any): Queryable<T> {
-        const selectorStr = selector.toString();
-        const match = selectorStr.match(/=>\s*\w+\.(\w+)/);
-        if (match && match[1]) {
-            const prop = match[1];
-            // Validate include name against metadata
-            const metadata = MetadataStorage.getEntity(this._entityClass);
-            const valid = metadata?.relationships.some(r => r.propertyName === prop);
-            if (!valid) {
-                throw new Error(`Invalid include '${prop}' for ${this._entityClass.name}. Define relationship '${prop}' via decorators or fix the name.`);
-            }
-            if (!this._includes.includes(prop)) this._includes.push(prop);
+        const prop = this.extractIncludeProperty(selector);
+        const metadata = MetadataStorage.getEntity(this._entityClass);
+        const valid = metadata?.relationships.some(r => r.propertyName === prop);
+        if (!valid) {
+            throw new Error(`Invalid include '${prop}' for ${this._entityClass.name}. Define relationship '${prop}' via decorators or fix the name.`);
         }
+        if (!this._includes.includes(prop)) this._includes.push(prop);
         return this;
     }
 
+    /** Executes the query and returns materialized entities. */
     public async toArray(): Promise<T[]> {
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, this._model);
         const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
         let entities = rows.map(r => this.mapRowToEntity(r));
-        if (this._fallbackPredicates.length > 0) {
-            for (const pred of this._fallbackPredicates) {
-                entities = entities.filter(e => { try { return pred(e); } catch { return false; } });
-            }
-        }
+        entities = this.applyFallbackPredicates(entities);
         if (this._entityLoader && this._includes.length > 0) {
             await this._entityLoader.populateRelationshipsMany(entities, this._entityClass, {
-                strategy: 'eager', includes: this._includes, depth: 1
+                strategy: LoadingStrategy.Eager, includes: this._includes, depth: 1
             });
         }
         return entities;
     }
 
-    public async first(): Promise<T> { this._model.limit = 1; const r = await this.toArray(); if (!r.length) throw new Error('Sequence contains no elements'); return r[0]; }
-    public async firstOrDefault(): Promise<T | null> { this._model.limit = 1; const r = await this.toArray(); return r[0] ?? null; }
+    /** Returns the first entity or throws if none. */
+    public async first(): Promise<T> {
+        const m = this._model.clone();
+        m.limit = 1;
+        const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
+        const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
+        let entities = rows.map(r => this.mapRowToEntity(r));
+        entities = this.applyFallbackPredicates(entities);
+        if (!entities.length) throw new Error('Sequence contains no elements');
+        return entities[0];
+    }
+    /** Returns the first entity or null. */
+    public async firstOrDefault(): Promise<T | null> {
+        const m = this._model.clone();
+        m.limit = 1;
+        const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
+        const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
+        let entities = rows.map(r => this.mapRowToEntity(r));
+        entities = this.applyFallbackPredicates(entities);
+        return entities[0] ?? null;
+    }
+    /** Ensures exactly one result; throws if 0 or more than 1. */
     public async single(): Promise<T> { const r = await this.toArray(); if (r.length === 0) throw new Error('Sequence contains no elements'); if (r.length > 1) throw new Error('Sequence contains more than one element'); return r[0]; }
+    /** Returns one or null; throws if more than 1. */
     public async singleOrDefault(): Promise<T | null> { const r = await this.toArray(); if (r.length > 1) throw new Error('Sequence contains more than one element'); return r[0] ?? null; }
+    /** Returns the number of rows that match the current query. */
     public async count(): Promise<number> {
         const metadata = MetadataStorage.getEntity(this._entityClass);
         if (!metadata) throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
@@ -118,58 +156,55 @@ export class Queryable<T> {
         const results = await this._provider.executeQuery<{ count: number }>(query, parameters);
         return results[0].count;
     }
-    public async any(): Promise<boolean> { this._model.limit = 1; const r = await this.toArray(); return r.length > 0; }
+    /** Returns true if at least one row matches the query. */
+    public async any(): Promise<boolean> {
+        const m = this._model.clone();
+        m.limit = 1;
+        const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
+        const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
+        let entities = rows.map(r => this.mapRowToEntity(r));
+        entities = this.applyFallbackPredicates(entities);
+        return entities.length > 0;
+    }
 
     // helpers copied from previous QueryBuilder for parsing
-    private parsePredicateToSql(predicateStr: string): { condition: string; parameters: any[]; parsed: boolean } {
-        const equalityMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*===?\s*(.+)/);
-        if (equalityMatch) {
-            const property = equalityMatch[2];
-            let value = equalityMatch[3].trim();
-            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-                value = value.slice(1, -1);
-                return { condition: `${property} = ?`, parameters: [value], parsed: true };
-            }
-            const asNumber = Number(value);
-            if (!Number.isNaN(asNumber)) return { condition: `${property} = ?`, parameters: [asNumber], parsed: true };
-            return { condition: '1=1', parameters: [], parsed: false };
+    /** Adds a SQL where clause if possible, else stores predicate for in-memory filtering. */
+    private addWhereOrFallback(predicate: (entity: T) => boolean): void {
+        const parser = new PredicateParser<T>();
+        const ast = parser.parse(predicate);
+        if (ast) {
+            const visitor = new SqlVisitor();
+            const { condition, parameters } = visitor.toSql(ast);
+            const whereClause: WhereClause = { condition: condition as any, parameters: parameters as any } as any;
+            this._model.where = this._model.where || [];
+            this._model.where.push(whereClause);
+        } else {
+            this._fallbackPredicates.push(predicate);
         }
-        const gtMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*>\s*(.+)/);
-        if (gtMatch) { const property = gtMatch[2]; const num = Number(gtMatch[3]); if (!Number.isNaN(num)) return { condition: `${property} > ?`, parameters: [num], parsed: true }; return { condition: '1=1', parameters: [], parsed: false }; }
-        const gteMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*>?=\s*(.+)/);
-        if (gteMatch) { const property = gteMatch[2]; const num = Number(gteMatch[3]); if (!Number.isNaN(num)) return { condition: `${property} >= ?`, parameters: [num], parsed: true }; return { condition: '1=1', parameters: [], parsed: false }; }
-        const ltMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*<\s*(.+)/);
-        if (ltMatch) { const property = ltMatch[2]; const num = Number(ltMatch[3]); if (!Number.isNaN(num)) return { condition: `${property} < ?`, parameters: [num], parsed: true }; return { condition: '1=1', parameters: [], parsed: false }; }
-        const lteMatch = predicateStr.match(/(\w+)\s*=>\s*\w+\.(\w+)\s*<=\s*(.+)/);
-        if (lteMatch) { const property = lteMatch[2]; const num = Number(lteMatch[3]); if (!Number.isNaN(num)) return { condition: `${property} <= ?`, parameters: [num], parsed: true }; return { condition: '1=1', parameters: [], parsed: false }; }
-        const compoundMatch = predicateStr.match(/(\w+)\s*=>\s*(.+)/);
-        if (compoundMatch && compoundMatch[2].includes('&&')) {
-            const parts = compoundMatch[2].split('&&');
-            const conditions: string[] = [];
-            const parameters: any[] = [];
-            for (const part of parts) {
-                const result = this.parseSimpleCondition(part.trim());
-                if (result) { conditions.push(result.condition); parameters.push(...result.parameters); }
-            }
-            if (conditions.length > 0) return { condition: conditions.join(' AND '), parameters, parsed: true };
-        }
-        return { condition: '1=1', parameters: [], parsed: false };
     }
 
-    private parseSimpleCondition(condition: string): { condition: string; parameters: any[] } | null {
-        const equalityMatch = condition.match(/\w+\.(\w+)\s*===?\s*(.+)/);
-        if (equalityMatch) { const property = equalityMatch[1]; let value = equalityMatch[2].trim(); if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) { value = value.slice(1, -1); } else if (!isNaN(Number(value))) { value = value; } return { condition: `${property} = ?`, parameters: [value] }; }
-        const gtMatch = condition.match(/\w+\.(\w+)\s*>\s*(.+)/);
-        if (gtMatch) { const property = gtMatch[1]; const value = Number(gtMatch[2]) || gtMatch[2]; return { condition: `${property} > ?`, parameters: [value] }; }
-        const gteMatch = condition.match(/\w+\.(\w+)\s*>?=\s*(.+)/);
-        if (gteMatch) { const property = gteMatch[1]; const value = Number(gteMatch[2]) || gteMatch[2]; return { condition: `${property} >= ?`, parameters: [value] }; }
-        const ltMatch = condition.match(/\w+\.(\w+)\s*<\s*(.+)/);
-        if (ltMatch) { const property = ltMatch[1]; const value = Number(ltMatch[2]) || ltMatch[2]; return { condition: `${property} < ?`, parameters: [value] }; }
-        const lteMatch = condition.match(/\w+\.(\w+)\s*<=\s*(.+)/);
-        if (lteMatch) { const property = lteMatch[1]; const value = Number(lteMatch[2]) || lteMatch[2]; return { condition: `${property} <= ?`, parameters: [value] }; }
-        return null;
+    /** Applies all stored fallback predicates (runtime filters). */
+    private applyFallbackPredicates(entities: T[]): T[] {
+        if (this._fallbackPredicates.length === 0) return entities;
+        let result = entities;
+        for (const pred of this._fallbackPredicates) {
+            result = result.filter(e => { try { return pred(e); } catch { return false; } });
+        }
+        return result;
     }
 
+    /** Extracts include property name from a lambda selector. */
+    private extractIncludeProperty(selector: (entity: T) => any): string {
+        const selectorStr = selector.toString();
+        const match = selectorStr.match(/=>\s*\w+\.(\w+)/);
+        if (match && match[1]) return match[1];
+        throw new Error(`Unable to parse include selector: ${selectorStr}`);
+    }
+
+    /**
+     * Extract property names from a projection selector function string.
+     * Supports single property, object destructuring, and simple object literal forms.
+     */
     private extractPropertiesFromSelector(selectorStr: string): string[] {
         const singleMatch = selectorStr.match(/=>\s*\w+\.(\w+)/);
         if (singleMatch) return [singleMatch[1]];
@@ -180,12 +215,20 @@ export class Queryable<T> {
         return ['*'];
     }
 
+    /**
+     * Extract a single property name from a key selector function string.
+     * Throws if parsing fails.
+     */
     private extractPropertyFromKeySelector(keySelectorStr: string): string {
         const match = keySelectorStr.match(/=>\s*\w+\.(\w+)/);
         if (match) return match[1];
         throw new Error(`Unable to parse key selector: ${keySelectorStr}`);
     }
 
+    /**
+     * Map a raw database row object to a new entity instance using metadata.
+     * Falls back to shallow assign when no metadata is available.
+     */
     private mapRowToEntity(row: any): T {
         const entity = new this._entityClass();
         const metadata = MetadataStorage.getEntity(this._entityClass);
@@ -200,6 +243,9 @@ export class Queryable<T> {
         }
         return entity;
     }
+    /**
+     * Convert a primitive DB value to a runtime value according to column type.
+     */
     private convertValue(value: any, type: string): any {
         if (value == null) return value;
         switch (type.toUpperCase()) {

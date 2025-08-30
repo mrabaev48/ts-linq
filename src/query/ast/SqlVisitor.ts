@@ -5,6 +5,9 @@ import { BinaryExpressionNode, ExpressionNode, IdentifierNode, LiteralNode, Logi
  * Does not quote identifiers; relies on upstream mapping to column names.
  */
 export class SqlVisitor {
+    /**
+     * Convert an AST node to a SQL WHERE fragment and parameters.
+     */
     public toSql(node: ExpressionNode): { condition: string; parameters: any[] } {
         switch (node.type) {
             case 'BinaryExpression':
@@ -16,6 +19,9 @@ export class SqlVisitor {
         }
     }
 
+    /**
+     * Handle a binary comparison node.
+     */
     private visitBinary(node: BinaryExpressionNode): { condition: string; parameters: any[] } {
         const column = (node.left as IdentifierNode).name;
         const value = (node.right as LiteralNode).value;
@@ -23,6 +29,9 @@ export class SqlVisitor {
         return { condition: `${column} ${op} ?`, parameters: [value] };
     }
 
+    /**
+     * Handle a logical AND/OR node by concatenating child results.
+     */
     private visitLogical(node: LogicalExpressionNode): { condition: string; parameters: any[] } {
         const parts: string[] = [];
         const params: any[] = [];

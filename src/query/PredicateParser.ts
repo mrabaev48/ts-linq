@@ -8,6 +8,10 @@ import { BinaryExpressionNode, ComparisonOperator, ExpressionNode, IdentifierNod
  * so the caller can fall back to client-side filtering.
  */
 export class PredicateParser<T> {
+    /**
+     * Attempt to parse a predicate function into a minimal AST.
+     * Returns null when encountering unsupported constructs.
+     */
     public parse(predicate: (entity: T) => boolean): ExpressionNode | null {
         const str = predicate.toString();
         // crude parse: handle a => a.prop op literal and && chains
@@ -28,6 +32,9 @@ export class PredicateParser<T> {
         return this.parseBinary(body);
     }
 
+    /**
+     * Parse a simple binary comparison expression like `a.price >= 10`.
+     */
     private parseBinary(expr: string): BinaryExpressionNode | null {
         const patterns: Array<{ re: RegExp; op: ComparisonOperator }> = [
             { re: /\w+\.(\w+)\s*===?\s*(.+)/, op: ComparisonOperator.Eq },
@@ -57,6 +64,9 @@ export class PredicateParser<T> {
         return null;
     }
 
+    /**
+     * Parse a literal token into a JS value understood by SqlVisitor.
+     */
     private parseLiteral(raw: string): any {
         if ((raw.startsWith('\"') && raw.endsWith('\"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
             return raw.slice(1, -1);

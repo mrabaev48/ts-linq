@@ -41,15 +41,16 @@ Abstract DatabaseProvider base class enables multiple database support:
 - Provider handles connection management, SQL generation, and query execution
 - Clean separation allows adding MySQL, PostgreSQL providers later
 
-### Query Builder System
-LINQ-style query building with method chaining:
+### Query Layer (Queryable + QueryBuilder)
+LINQ-style query building with method chaining is provided by `Queryable`, while SQL generation is handled by a dedicated `QueryBuilder` using a pluggable `SqlDialect`.
 
-- Where() conditions with lambda expression parsing
-- Select() projections for field selection
-- OrderBy() sorting with multiple fields
-- Limit/offset for pagination support
+- `where` parses simple lambda predicates into a minimal AST (via `PredicateParser`) and generates SQL with `SqlVisitor`; for unsupported cases it falls back to in-memory filtering
+- `select` projects fields
+- `orderBy` / `orderByDescending` apply sorting
+- `take` / `skip` add pagination
+- `include` supports predicate-based eager loading; call it first in the chain (before `where/select/orderBy`) to ensure it is applied
 
-Internally, the query pipeline uses a minimal AST for simple predicates and a Visitor to generate SQL when possible, with a safe fallback to client-side filtering for complex cases (variables, function calls, etc.).
+This separation improves testability and extensibility. The AST + visitor pipeline enables SQL generation where possible, while keeping runtime semantics correct via safe fallbacks.
 
 ### Migration Framework
 Code-first database evolution support:
@@ -241,7 +242,8 @@ By default loading is Lazy. Use `include` for eager loading:
 const authors = await context.authors.include(a => a.books).toArray();
 
 // Depth control (context API still accepts options)
-const one = await context.find(Author, 1, { strategy: 'eager', depth: 1, includes: ['books'] });
+import { LoadingStrategy } from './src';
+const one = await context.find(Author, 1, { strategy: LoadingStrategy.Eager, depth: 1, includes: ['books'] });
 ```
 
 Note: when loading collections (e.g., one-to-many) for multiple parent rows, the loader batches queries internally to avoid the N+1 problem (uses IN clauses under the hood). Predicate-based include chaining can be combined with where/order/take.
@@ -262,7 +264,10 @@ try {
 ### Migrations
 
 ```ts
-import { Migration } from './src';
+import { SQLiteProvider, Migration, MigrationRunner } from './src';
+
+const provider = new SQLiteProvider(':memory:');
+await provider.connect();
 
 class AddAgeToUsers extends Migration {
   protected get name() { return 'AddAgeToUsers'; }
@@ -274,8 +279,6 @@ class AddAgeToUsers extends Migration {
     // For SQLite you would typically recreate the table without the column (simplified here)
   }
 }
-
-import { MigrationRunner } from './src';
 const runner = new MigrationRunner(provider);
 runner.addMigration(new AddAgeToUsers());
 await runner.migrate();
@@ -313,6 +316,21 @@ class PostgresDialect implements SqlDialect {
 
 const qb = new QueryBuilder(new PostgresDialect());
 ```
+
+### Provider Hooks
+
+`DatabaseProvider` exposes template-method hooks around execution for cross-cutting concerns:
+
+- `beforeExecute(sql, params)` — called before each query/non-query
+- `afterExecute(sql, params, result)` — called after execution
+
+Override these in a custom provider (or subclass) for logging, tracing, caching, metrics, etc.
+
+### Clean Code & Typing
+
+- Strict TypeScript enabled; public APIs and internal models have explicit types
+- `QueryModel` is cloned for read-only operations to avoid mutation during `first/any/...`
+- Predicate-based includes are validated against entity metadata at runtime
 
 ### Specifications
 
