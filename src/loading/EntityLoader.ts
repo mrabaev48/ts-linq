@@ -62,9 +62,7 @@ export class EntityLoader {
         };
 
         if (loadingOptions.strategy === LoadingStrategy.Eager || loadingOptions.includes) {
-            for (const entity of entities) {
-                await this.loadRelationships(entity, entityClass, loadingOptions);
-            }
+            await this.loadRelationshipsBatched(entities, entityClass, loadingOptions);
         }
 
         return entities;
@@ -85,6 +83,13 @@ export class EntityLoader {
         if (depth <= 0) return;
 
         for (const relationship of metadata.relationships) {
+            if (options.includes) {
+                // Validate includes against metadata upfront
+                for (const inc of options.includes) {
+                    const exists = metadata.relationships.some(r => r.propertyName === inc);
+                    if (!exists) throw new Error(`Invalid include '${inc}' for ${metadata.target.name}`);
+                }
+            }
             const shouldInclude = !options.includes || options.includes.includes(relationship.propertyName);
             if (!shouldInclude) continue;
 
@@ -134,6 +139,80 @@ export class EntityLoader {
         }
     }
 
+    /** Batched variant to reduce N+1 queries when loading many entities. */
+    private async loadRelationshipsBatched<T>(
+        entities: T[],
+        entityClass: new () => T,
+        options: LoadingOptions
+    ): Promise<void> {
+        if (entities.length === 0) return;
+        const metadata = MetadataStorage.getEntity(entityClass);
+        if (!metadata) return;
+        const depth = options.depth ?? 1;
+        if (depth <= 0) return;
+
+        for (const relationship of metadata.relationships) {
+            const shouldInclude = !options.includes || options.includes.includes(relationship.propertyName);
+            if (!shouldInclude) continue;
+
+            const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => any;
+
+            switch (relationship.type) {
+                case 'many-to-one':
+                case 'one-to-one': {
+                    const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
+                    const fkValues = entities
+                        .map(e => (e as any)[foreignKeyName])
+                        .filter(v => v !== undefined && v !== null);
+                    const uniqueFkValues = Array.from(new Set(fkValues));
+                    if (uniqueFkValues.length === 0) break;
+                    const related = await this._provider.findWhereIn(targetCtor, metadata.columns.find(c => c.propertyName === metadata.primaryKeys[0])?.columnName || metadata.primaryKeys[0], uniqueFkValues);
+                    const byId = new Map<any, any>();
+                    const targetMeta = MetadataStorage.getEntity(targetCtor);
+                    const targetPk = targetMeta?.primaryKeys[0];
+                    for (const r of related) byId.set((r as any)[targetPk!], r);
+                    for (const e of entities) {
+                        const fk = (e as any)[foreignKeyName];
+                        if (fk !== undefined && fk !== null) {
+                            (e as any)[relationship.propertyName] = byId.get(fk);
+                        }
+                    }
+                    // Recurse for next depth level on distinct related
+                    if (depth - 1 > 0) {
+                        await this.loadRelationshipsBatched(Array.from(byId.values()), targetCtor, { ...options, depth: depth - 1 });
+                    }
+                    break;
+                }
+                case 'one-to-many': {
+                    const parentPkProperty = metadata.primaryKeys[0];
+                    if (!parentPkProperty) break;
+                    const parentIds = entities
+                        .map(e => (e as any)[parentPkProperty])
+                        .filter(v => v !== undefined && v !== null);
+                    const uniqueParentIds = Array.from(new Set(parentIds));
+                    if (uniqueParentIds.length === 0) break;
+                    const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
+                    const related = await this._provider.findWhereIn(targetCtor, foreignKeyName, uniqueParentIds);
+                    const grouped = new Map<any, any[]>();
+                    for (const r of related) {
+                        const key = (r as any)[foreignKeyName];
+                        const arr = grouped.get(key) || [];
+                        arr.push(r);
+                        grouped.set(key, arr);
+                    }
+                    for (const e of entities) {
+                        const parentId = (e as any)[parentPkProperty];
+                        (e as any)[relationship.propertyName] = grouped.get(parentId) || [];
+                    }
+                    if (depth - 1 > 0) {
+                        await this.loadRelationshipsBatched(related, targetCtor, { ...options, depth: depth - 1 });
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     /**
      * Public helper to populate specified relationships on a single entity instance.
      * Useful for post-processing entities fetched by custom queries.
@@ -144,6 +223,18 @@ export class EntityLoader {
         options: LoadingOptions
     ): Promise<void> {
         await this.loadRelationships(entity, entityClass, options);
+    }
+
+    /**
+     * Public helper to populate relationships for many entities in a batched way.
+     * Reduces N+1 queries by grouping related fetches.
+     */
+    public async populateRelationshipsMany<T>(
+        entities: T[],
+        entityClass: new () => T,
+        options: LoadingOptions
+    ): Promise<void> {
+        await this.loadRelationshipsBatched(entities, entityClass, options);
     }
 
     /**
@@ -174,39 +265,4 @@ export class EntityLoader {
     }
 }
 
-export class DbSetWithIncludes<T> {
-    private _dbSet: any;
-    private _includes: string[];
-    private _entityLoader: EntityLoader;
-
-    /**
-     * Wrapper over `DbSet` that forces eager loading of specified includes.
-     */
-    constructor(dbSet: any, includes: string[], entityLoader: EntityLoader) {
-        this._dbSet = dbSet;
-        this._includes = includes;
-        this._entityLoader = entityLoader;
-    }
-
-    /** Return all entities with includes applied (eager). */
-    public async toArray(): Promise<T[]> {
-        return await this._entityLoader.loadEntities(
-            this._dbSet._entityClass,
-            { includes: this._includes, strategy: LoadingStrategy.Eager }
-        );
-    }
-
-    /** Find one entity by id with includes applied (eager). */
-    public async find(id: any): Promise<T | null> {
-        return await this._entityLoader.loadEntity(
-            this._dbSet._entityClass,
-            id,
-            { includes: this._includes, strategy: LoadingStrategy.Eager }
-        );
-    }
-
-    /** Start a filtered query using the underlying `DbSet`. */
-    public where(predicate: (entity: T) => boolean): any {
-        return this._dbSet.where(predicate);
-    }
-}
+// DbSetWithIncludes was removed in favor of predicate-based include API on Queryable

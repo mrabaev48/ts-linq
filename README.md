@@ -49,6 +49,8 @@ LINQ-style query building with method chaining:
 - OrderBy() sorting with multiple fields
 - Limit/offset for pagination support
 
+Internally, the query pipeline uses a minimal AST for simple predicates and a Visitor to generate SQL when possible, with a safe fallback to client-side filtering for complex cases (variables, function calls, etc.).
+
 ### Migration Framework
 Code-first database evolution support:
 
@@ -235,17 +237,14 @@ const authors = await context.authors
 By default loading is Lazy. Use `include` for eager loading:
 
 ```ts
-// Eager load authors with books
-const authors = await context.include(Author, 'books').toArray();
+// Eager load authors with books via predicate-based include
+const authors = await context.authors.include(a => a.books).toArray();
 
-// Depth control
-const one = await context.find(Author, 1, { strategy: 'eager', depth: 1 });
+// Depth control (context API still accepts options)
+const one = await context.find(Author, 1, { strategy: 'eager', depth: 1, includes: ['books'] });
 ```
 
-Or explicitly via the context API:
-```ts
-const author = await context.find(Author, 1, { includes: ['books'] });
-```
+Note: when loading collections (e.g., one-to-many) for multiple parent rows, the loader batches queries internally to avoid the N+1 problem (uses IN clauses under the hood). Predicate-based include chaining can be combined with where/order/take.
 
 ### Transactions
 
@@ -313,6 +312,21 @@ class PostgresDialect implements SqlDialect {
 }
 
 const qb = new QueryBuilder(new PostgresDialect());
+```
+
+### Specifications
+
+Use the Specification pattern to compose reusable filters that can be evaluated in-memory and (when possible) translated to SQL:
+
+```ts
+import { PredicateParser } from './src/query/PredicateParser';
+import { PredicateSpecification, Specs } from './src/query/spec/Specification';
+
+const parser = new PredicateParser<Author>();
+const byId = new PredicateSpecification<Author>(a => a.id === 1, parser.parse(a => a.id === 1));
+const hasName = new PredicateSpecification<Author>(a => a.name === 'Jane', parser.parse(a => a.name === 'Jane'));
+const spec = Specs.and(byId, hasName);
+// spec.toExpression() → AST (may be converted to SQL), spec.test(a) → boolean
 ```
 
 ### Typing Tips

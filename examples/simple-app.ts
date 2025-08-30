@@ -71,8 +71,8 @@ async function main() {
         .toArray();
     console.log('Books:', pagedBooks.map(b => b.title));
 
-    // Eager load relationships via include
-    const authorsWithBooks = await context.include(Author, 'books').toArray();
+    // Eager load relationships via predicate-based include
+    const authorsWithBooks = await context.authors.include(a => a.books).toArray();
     console.log('Author[0] books:', authorsWithBooks[0].books?.length ?? 0);
 
     // Update

@@ -1,7 +1,7 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { SQLiteProvider } from '../providers/SQLiteProvider';
 import { ChangeTracker } from '../change-tracking/ChangeTracker';
-import { EntityLoader, DbSetWithIncludes } from '../loading/EntityLoader';
+import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy, LoadingOptions } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { DbSet } from './DbSet';
@@ -211,17 +211,7 @@ export abstract class DbContext {
         return await this._entityLoader.loadEntities(entityClass, loadingOptions);
     }
 
-    /**
-     * Include related entities in the query (eager loading)
-     *
-     * @param entityClass Constructor of the entity type.
-     * @param includes Relationship property names to include.
-     * @returns A wrapper over `DbSet` that performs eager loading.
-     */
-    public include<T>(entityClass: new () => T, ...includes: string[]): DbSetWithIncludes<T> {
-        const dbSet = this.set(entityClass);
-        return new DbSetWithIncludes(dbSet, includes, this._entityLoader);
-    }
+    // Removed string-based include API in favor of predicate-based include on Queryable
 
     /**
      * Initialize DbSets for all registered entities.

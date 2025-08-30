@@ -178,8 +178,24 @@ export class SQLiteProvider extends DatabaseProvider {
         return results.map(row => this.mapRowToEntity(row, entityClass));
     }
 
+    /** Fetch rows where a single column value is within a list (IN clause). */
+    public async findWhereIn<T>(entityClass: new () => T, column: string, values: any[]): Promise<T[]> {
+        const metadata = MetadataStorage.getEntity(entityClass);
+        if (!metadata) {
+            throw new Error(`Entity metadata not found for ${entityClass.name}`);
+        }
+
+        if (!Array.isArray(values) || values.length === 0) return [];
+        const columnMeta = metadata.columns.find(c => c.propertyName === column || c.columnName === column);
+        const columnName = columnMeta ? columnMeta.columnName : column;
+        const placeholders = values.map(() => '?').join(', ');
+        const sql = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
+        const results = await this.executeQuery<any>(sql, values);
+        return results.map(row => this.mapRowToEntity(row, entityClass));
+    }
+
     /** Execute a query and return raw rows. */
-    public async executeQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+    protected async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
         return new Promise((resolve, reject) => {
             if (!this.db) {
                 reject(new Error('Database not connected'));
@@ -197,7 +213,7 @@ export class SQLiteProvider extends DatabaseProvider {
     }
 
     /** Execute a non-query statement and return affected rows count. */
-    public async executeNonQuery(sql: string, params: any[] = []): Promise<number> {
+    protected async doExecuteNonQuery(sql: string, params: any[] = []): Promise<number> {
         return new Promise((resolve, reject) => {
             if (!this.db) {
                 reject(new Error('Database not connected'));
