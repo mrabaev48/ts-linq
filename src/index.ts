@@ -30,6 +30,7 @@ export * from './query/QueryBuilder';
 // Providers
 export * from './providers/DatabaseProvider';
 export * from './providers/SQLiteProvider';
+export * from './providers/PostgresProvider';
 
 // Loading
 export * from './loading/LoadingStrategy';

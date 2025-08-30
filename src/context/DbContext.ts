@@ -1,5 +1,6 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { SQLiteProvider } from '../providers/SQLiteProvider';
+import { PostgresProvider } from '../providers/PostgresProvider';
 import { ChangeTracker } from '../change-tracking/ChangeTracker';
 import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy, LoadingOptions } from '../loading/LoadingStrategy';
@@ -40,6 +41,9 @@ export abstract class DbContext {
         switch (options.provider || 'sqlite') {
             case 'sqlite':
                 this._provider = new SQLiteProvider(options.connectionString, options.logger);
+                break;
+            case 'postgresql':
+                this._provider = new PostgresProvider(options.connectionString, options.logger);
                 break;
             default:
                 throw new Error(`Provider ${options.provider} is not supported`);

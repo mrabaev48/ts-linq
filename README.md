@@ -228,6 +228,12 @@ const maybe = await context.books.where(b => b.id > 999).firstOrDefault();
 const firstRes = await context.books.orderBy(b => b.id).tryFirst();
 if (firstRes.ok) { /* use firstRes.value */ } else { /* handle firstRes.error */ }
 const singleRes = await context.books.where(b => b.id === 1).trySingle();
+
+// Joins (inner/left)
+const joined = await context.authors
+  .innerJoin(Book, (a, b) => a.id === b.authorId)
+  .where(a => a.id >= 1)
+  .toArray();
 ```
 
 Include-first chaining (eager loading):
@@ -304,6 +310,55 @@ Currently `SQLiteProvider` is implemented. A provider is responsible for:
 - transactions
 
 New providers (MySQL/PostgreSQL) can be added by implementing the abstract `DatabaseProvider`.
+
+### PostgreSQL
+
+PostgreSQL support is provided via a dedicated provider and dialect.
+
+- Install peer dependency:
+
+```bash
+npm install pg
+```
+
+- Use provider 'postgresql' in your context options (connection string from env is recommended):
+
+```ts
+class AppDbContext extends DbContext {
+  public users!: DbSet<User>;
+}
+
+const ctx = new AppDbContext({
+  provider: 'postgresql',
+  connectionString: process.env.POSTGRES_URL || 'postgres://user:pass@localhost:5432/db'
+});
+```
+
+- Differences vs SQLite:
+  - Parameter placeholders use $1..$n instead of '?'.
+  - `findWhereIn` uses `= ANY($1)` with array parameters.
+  - Types mapping includes TIMESTAMPTZ/JSONB. Basic conversions are applied on read.
+  - DDL creation is simplified; prefer migrations for production schemas.
+
+- Running tests with PostgreSQL:
+  - Set `POSTGRES_URL` and run `npm test` — Postgres-specific suite will be enabled automatically.
+
+- Quick docker-compose for local Postgres:
+
+```yaml
+version: '3.8'
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: ts_linq
+    ports:
+      - "5432:5432"
+```
+
+Then set `POSTGRES_URL=postgres://postgres:postgres@localhost:5432/ts_linq`.
 
 #### SQL Logging
 
