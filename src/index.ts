@@ -26,11 +26,13 @@ export * from './context/DbSet';
 // Query building
 export * from './query/Queryable';
 export * from './query/QueryBuilder';
+export * from './query/MssqlDialect';
 
 // Providers
 export * from './providers/DatabaseProvider';
 export * from './providers/SQLiteProvider';
 export * from './providers/PostgresProvider';
+export * from './providers/MssqlProvider';
 
 // Loading
 export * from './loading/LoadingStrategy';

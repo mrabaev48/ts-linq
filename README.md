@@ -360,6 +360,54 @@ services:
 
 Then set `POSTGRES_URL=postgres://postgres:postgres@localhost:5432/ts_linq`.
 
+### Microsoft SQL Server (MSSQL)
+
+MSSQL support is being added via a dedicated provider and dialect.
+
+- Install peer dependency:
+
+```bash
+npm install mssql
+```
+
+- Use provider 'mssql' in your context options (set connection string via env):
+
+```ts
+class AppDbContext extends DbContext {
+  public users!: DbSet<User>;
+}
+
+const ctx = new AppDbContext({
+  provider: 'mssql',
+  connectionString: process.env.MSSQL_URL || 'Server=localhost;Database=ts_linq;User Id=sa;Password=Your_password123;Encrypt=false'
+});
+```
+
+- Differences vs SQLite:
+  - Parameter placeholders use `@p1..@pn` instead of `?`.
+  - Auto-increment retrieval uses `SCOPE_IDENTITY()` after INSERT (or OUTPUT clause).
+  - Types mapping includes `UNIQUEIDENTIFIER`, `NVARCHAR(MAX)`, `VARBINARY(MAX)`, `BIT`, `DATETIME2`.
+  - DDL creation uses `IF NOT EXISTS` checks against `sys.tables`/`sys.indexes`.
+
+- Running tests with MSSQL:
+  - Set `MSSQL_URL` and run `npm test` — MSSQL-specific suite will be enabled automatically.
+
+- Quick docker-compose for local MSSQL:
+
+```yaml
+version: '3.8'
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Your_password123"
+    ports:
+      - "1433:1433"
+```
+
+Then set `MSSQL_URL=Server=localhost;Database=ts_linq;User Id=sa;Password=Your_password123;Encrypt=false`.
+
 #### SQL Logging
 
 You can supply a `logger` in `DbContextOptions` to receive query lifecycle events with timings and optional transaction trace ids:

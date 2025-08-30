@@ -66,3 +66,15 @@
 - [done] Docs: README section with installation, config, and dialect differences
 - Examples: runnable example using Postgres and docker-compose snippet
 - [done] Examples: runnable example using Postgres
+
+### Microsoft SQL Server (MSSQL) Support
+- [done] MssqlDialect: implement SqlDialect for T-SQL specifics (identifiers in [brackets], TOP/OFFSET FETCH)
+- [done] Parameter style: switch to @p1..@pn placeholders in generated SQL
+- [done] MssqlProvider: provider based on `mssql` (tedious) with connection pool
+- [done] Types mapping: UNIQUEIDENTIFIER, NVARCHAR(MAX), VARBINARY(MAX), BIT, DATETIME2, DECIMAL
+- [done] IN with table-valued or classic IN list; WHERE IN batching
+- [done] DDL & migrations: table/index creation with IF NOT EXISTS and schema support
+- [done] DbContext: add 'mssql' provider option and wiring
+- [done] Testing: integration tests gated by env MSSQL_URL; CI matrix (docker `mcr.microsoft.com/mssql/server`)
+- [done] Docs: README section with installation, config, and dialect differences
+- [done] Examples: runnable example using MSSQL and docker-compose snippet
