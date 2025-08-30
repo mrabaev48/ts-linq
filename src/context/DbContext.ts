@@ -227,7 +227,8 @@ export abstract class DbContext {
             this._dbSets.set(original, dbSet);
 
             // Create property on context instance for easy access
-            const propertyName = original.name.toLowerCase() + 's';
+            const base = original.name.toLowerCase();
+            const propertyName = base.endsWith('y') ? base.slice(0, -1) + 'ies' : base + 's';
             Object.defineProperty(this, propertyName, {
                 get: () => dbSet,
                 enumerable: true,
