@@ -24,6 +24,7 @@ export * from './context/DbContext';
 export * from './context/DbSet';
 
 // Query building
+export * from './query/Queryable';
 export * from './query/QueryBuilder';
 
 // Providers

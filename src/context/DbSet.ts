@@ -2,7 +2,7 @@ import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { ChangeTracker } from '../change-tracking/ChangeTracker';
 import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingOptions } from '../loading/LoadingStrategy';
-import { QueryBuilder } from '../query/QueryBuilder';
+import { Queryable } from '../query/Queryable';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
 
 /**
@@ -99,8 +99,8 @@ export class DbSet<T> {
      * @param predicate Predicate to start the query with.
      * @returns A `QueryBuilder` configured with the predicate.
      */
-    public where(predicate: (entity: T) => boolean): QueryBuilder<T> {
-        return new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).where(predicate);
+    public where(predicate: (entity: T) => boolean): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).where(predicate);
     }
 
     /**
@@ -109,8 +109,8 @@ export class DbSet<T> {
      * @param selector Projection selector.
      * @returns A `QueryBuilder` configured with the selection.
      */
-    public select<TResult>(selector: (entity: T) => TResult): QueryBuilder<TResult> {
-        return new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).select(selector);
+    public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).select(selector);
     }
 
     /**
@@ -119,8 +119,8 @@ export class DbSet<T> {
      * @param keySelector Sort key selector.
      * @returns This `QueryBuilder` for chaining.
      */
-    public orderBy<TKey>(keySelector: (entity: T) => TKey): QueryBuilder<T> {
-        return new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).orderBy(keySelector);
+    public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).orderBy(keySelector);
     }
 
     /**
@@ -129,8 +129,8 @@ export class DbSet<T> {
      * @param keySelector Sort key selector.
      * @returns This `QueryBuilder` for chaining.
      */
-    public orderByDescending<TKey>(keySelector: (entity: T) => TKey): QueryBuilder<T> {
-        return new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).orderByDescending(keySelector);
+    public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).orderByDescending(keySelector);
     }
 
     /**
@@ -139,8 +139,8 @@ export class DbSet<T> {
      * @param count Number of entities to take.
      * @returns This `QueryBuilder` for chaining.
      */
-    public take(count: number): QueryBuilder<T> {
-        return new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).take(count);
+    public take(count: number): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).take(count);
     }
 
     /**
@@ -149,8 +149,8 @@ export class DbSet<T> {
      * @param count Number of entities to skip.
      * @returns This `QueryBuilder` for chaining.
      */
-    public skip(count: number): QueryBuilder<T> {
-        return new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).skip(count);
+    public skip(count: number): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).skip(count);
     }
 
     /**
@@ -158,8 +158,8 @@ export class DbSet<T> {
      *
      * @returns This `QueryBuilder` for chaining.
      */
-    public distinct(): QueryBuilder<T> {
-        return new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).distinct();
+    public distinct(): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).distinct();
     }
 
     /**
@@ -168,7 +168,7 @@ export class DbSet<T> {
      * @returns The first entity.
      */
     public async first(): Promise<T> {
-        return await new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).first();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).first();
     }
 
     /**
@@ -177,7 +177,7 @@ export class DbSet<T> {
      * @returns The first entity or null.
      */
     public async firstOrDefault(): Promise<T | null> {
-        return await new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).firstOrDefault();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).firstOrDefault();
     }
 
     /**
@@ -186,7 +186,7 @@ export class DbSet<T> {
      * @returns The single entity.
      */
     public async single(): Promise<T> {
-        return await new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).single();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).single();
     }
 
     /**
@@ -195,7 +195,7 @@ export class DbSet<T> {
      * @returns The single entity or null.
      */
     public async singleOrDefault(): Promise<T | null> {
-        return await new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).singleOrDefault();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).singleOrDefault();
     }
 
     /**
@@ -204,7 +204,7 @@ export class DbSet<T> {
      * @returns Total number of entities matching the current query.
      */
     public async count(): Promise<number> {
-        return await new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).count();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).count();
     }
 
     /**
@@ -213,15 +213,15 @@ export class DbSet<T> {
      * @returns True if at least one entity exists.
      */
     public async any(): Promise<boolean> {
-        return await new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader).any();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).any();
     }
 
     /**
      * Start a query with eager includes using a property selector.
      * Must be called before where/select/orderBy... to be applied.
      */
-    public include(selector: (entity: T) => any): QueryBuilder<T> {
-        const qb = new QueryBuilder<T>(this._entityClass, this._provider, this._entityLoader);
+    public include(selector: (entity: T) => any): Queryable<T> {
+        const qb = new Queryable<T>(this._entityClass, this._provider, this._entityLoader);
         return qb.include(selector);
     }
 }
