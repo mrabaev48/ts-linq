@@ -1,0 +1,18 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts"
+  ],
+  "tsconfig": "tsconfig.json",
+  "out": "docs",
+  "name": "ts-linq",
+  "exclude": [
+    "examples/**/*",
+    "tests/**/*"
+  ],
+  "excludeExternals": true,
+  "excludePrivate": false,
+  "excludeProtected": false,
+  "includeVersion": true,
+  "readme": "README.md"
+}

@@ -36,6 +36,9 @@ export class Queryable<T> {
     /**
      * Adds a filter predicate to the query. If the predicate cannot be parsed
      * into SQL, it is stored and applied in-memory after fetching.
+     *
+     * @example
+     * const cheap = await context.products.where(p => p.price < 100).toArray();
      */
     public where(predicate: (entity: T) => boolean): Queryable<T> {
         this.addWhereOrFallback(predicate);
@@ -45,6 +48,9 @@ export class Queryable<T> {
     /**
      * Projects selected properties. Returns a new Queryable of the projected type.
      * @param selector Projection selector.
+     *
+     * @example
+     * const names = await context.authors.select(a => a.name).toArray();
      */
     public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
         const next = new Queryable<TResult>(this._entityClass as any, this._provider, this._entityLoader);
@@ -58,6 +64,9 @@ export class Queryable<T> {
     /**
      * Adds ASC ordering by key selector.
      * @param keySelector Sort key selector.
+     *
+     * @example
+     * const ordered = await context.books.orderBy(b => b.title).toArray();
      */
     public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
         const keySelectorStr = keySelector.toString();
@@ -71,6 +80,9 @@ export class Queryable<T> {
     /**
      * Adds DESC ordering by key selector.
      * @param keySelector Sort key selector.
+     *
+     * @example
+     * const latest = await context.books.orderByDescending(b => b.id).take(5).toArray();
      */
     public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
         const keySelectorStr = keySelector.toString();
@@ -81,16 +93,28 @@ export class Queryable<T> {
         return this;
     }
 
-    /** Limits the number of returned rows. */
+    /** Limits the number of returned rows.
+     * @example
+     * const top10 = await context.products.take(10).toArray();
+     */
     public take(count: number): Queryable<T> { this._model.limit = count; return this; }
-    /** Skips given number of rows. */
+    /** Skips given number of rows.
+     * @example
+     * const page2 = await context.products.orderBy(p => p.id).skip(10).take(10).toArray();
+     */
     public skip(count: number): Queryable<T> { this._model.offset = count; return this; }
-    /** Ensures distinct rows. */
+    /** Ensures distinct rows.
+     * @example
+     * const titles = await context.books.select(b => b.title).distinct().toArray();
+     */
     public distinct(): Queryable<T> { this._model.distinct = true; return this; }
 
     /**
      * Adds eager-loading of a relationship using a property selector.
      * Validates the relationship against entity metadata.
+     *
+     * @example
+     * const authors = await context.authors.include(a => a.books).where(a => a.id === 1).toArray();
      */
     public include(selector: (entity: T) => any): Queryable<T> {
         const prop = this.extractIncludeProperty(selector);
@@ -103,7 +127,10 @@ export class Queryable<T> {
         return this;
     }
 
-    /** Executes the query and returns materialized entities. */
+    /** Executes the query and returns materialized entities.
+     * @example
+     * const items = await context.products.where(p => p.stock > 0).toArray();
+     */
     public async toArray(): Promise<T[]> {
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, this._model);
         const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
@@ -117,7 +144,10 @@ export class Queryable<T> {
         return entities;
     }
 
-    /** Returns the first entity or throws if none. */
+    /** Returns the first entity or throws if none.
+     * @example
+     * const first = await context.books.orderBy(b => b.id).first();
+     */
     public async first(): Promise<T> {
         const m = this._model.clone();
         m.limit = 1;
@@ -128,7 +158,10 @@ export class Queryable<T> {
         if (!entities.length) throw new Error('Sequence contains no elements');
         return entities[0];
     }
-    /** Returns the first entity or null. */
+    /** Returns the first entity or null.
+     * @example
+     * const maybe = await context.books.where(b => b.id > 10000).firstOrDefault();
+     */
     public async firstOrDefault(): Promise<T | null> {
         const m = this._model.clone();
         m.limit = 1;
@@ -138,11 +171,20 @@ export class Queryable<T> {
         entities = this.applyFallbackPredicates(entities);
         return entities[0] ?? null;
     }
-    /** Ensures exactly one result; throws if 0 or more than 1. */
+    /** Ensures exactly one result; throws if 0 or more than 1.
+     * @example
+     * const book = await context.books.where(b => b.id === 1).single();
+     */
     public async single(): Promise<T> { const r = await this.toArray(); if (r.length === 0) throw new Error('Sequence contains no elements'); if (r.length > 1) throw new Error('Sequence contains more than one element'); return r[0]; }
-    /** Returns one or null; throws if more than 1. */
+    /** Returns one or null; throws if more than 1.
+     * @example
+     * const maybe = await context.books.where(b => b.id === 9999).singleOrDefault();
+     */
     public async singleOrDefault(): Promise<T | null> { const r = await this.toArray(); if (r.length > 1) throw new Error('Sequence contains more than one element'); return r[0] ?? null; }
-    /** Returns the number of rows that match the current query. */
+    /** Returns the number of rows that match the current query.
+     * @example
+     * const count = await context.products.where(p => p.price >= 100).count();
+     */
     public async count(): Promise<number> {
         const metadata = MetadataStorage.getEntity(this._entityClass);
         if (!metadata) throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
@@ -156,7 +198,10 @@ export class Queryable<T> {
         const results = await this._provider.executeQuery<{ count: number }>(query, parameters);
         return results[0].count;
     }
-    /** Returns true if at least one row matches the query. */
+    /** Returns true if at least one row matches the query.
+     * @example
+     * const exists = await context.products.where(p => p.name === 'Laptop').any();
+     */
     public async any(): Promise<boolean> {
         const m = this._model.clone();
         m.limit = 1;

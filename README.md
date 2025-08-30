@@ -356,3 +356,14 @@ const spec = Specs.and(byId, hasName);
 
 - Simple app: `examples/simple-app.ts`
 - Advanced queries: `examples/advanced-queries.ts`
+
+### API Docs (TypeDoc)
+
+- Generate HTML documentation:
+
+```bash
+npm run docs
+```
+
+- Output will be in the `docs/` folder. Open `docs/index.html` in a browser.
+- The generator uses `src/index.ts` as the entry point and includes public and private APIs. If you see warnings about referenced types not included, consider exporting those types from `src/index.ts` or ignore the warnings.

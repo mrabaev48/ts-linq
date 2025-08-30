@@ -97,6 +97,8 @@ export class DbSet<T> {
      *
      * @param predicate Predicate to start the query with.
      * @returns A `Queryable` configured with the predicate.
+     * @example
+     * const cheap = await context.products.where(p => p.price < 100).toArray();
      */
     public where(predicate: (entity: T) => boolean): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).where(predicate);
@@ -107,6 +109,8 @@ export class DbSet<T> {
      *
      * @param selector Projection selector.
      * @returns A `Queryable` configured with the selection.
+     * @example
+     * const names = await context.authors.select(a => a.name).toArray();
      */
     public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).select(selector);
@@ -117,6 +121,8 @@ export class DbSet<T> {
      *
      * @param keySelector Sort key selector.
      * @returns A `Queryable` for chaining.
+     * @example
+     * const ordered = await context.books.orderBy(b => b.title).toArray();
      */
     public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).orderBy(keySelector);
@@ -127,6 +133,8 @@ export class DbSet<T> {
      *
      * @param keySelector Sort key selector.
      * @returns A `Queryable` for chaining.
+     * @example
+     * const latest = await context.books.orderByDescending(b => b.id).take(5).toArray();
      */
     public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).orderByDescending(keySelector);
@@ -137,6 +145,8 @@ export class DbSet<T> {
      *
      * @param count Number of entities to take.
      * @returns A `Queryable` for chaining.
+     * @example
+     * const top10 = await context.products.take(10).toArray();
      */
     public take(count: number): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).take(count);
@@ -147,6 +157,8 @@ export class DbSet<T> {
      *
      * @param count Number of entities to skip.
      * @returns A `Queryable` for chaining.
+     * @example
+     * const page2 = await context.products.orderBy(p => p.id).skip(10).take(10).toArray();
      */
     public skip(count: number): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).skip(count);
@@ -156,6 +168,8 @@ export class DbSet<T> {
      * Get distinct entities
      *
      * @returns A `Queryable` for chaining.
+     * @example
+     * const titles = await context.books.select(b => b.title).distinct().toArray();
      */
     public distinct(): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader).distinct();
@@ -165,6 +179,8 @@ export class DbSet<T> {
      * Get the first entity or throw if none exists
      *
      * @returns The first entity.
+     * @example
+     * const first = await context.books.orderBy(b => b.id).first();
      */
     public async first(): Promise<T> {
         return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).first();
@@ -174,6 +190,8 @@ export class DbSet<T> {
      * Get the first entity or null if none exists
      *
      * @returns The first entity or null.
+     * @example
+     * const maybe = await context.books.where(b => b.id > 10000).firstOrDefault();
      */
     public async firstOrDefault(): Promise<T | null> {
         return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).firstOrDefault();
@@ -183,6 +201,8 @@ export class DbSet<T> {
      * Get a single entity or throw if none or multiple exist
      *
      * @returns The single entity.
+     * @example
+     * const book = await context.books.where(b => b.id === 1).single();
      */
     public async single(): Promise<T> {
         return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).single();
@@ -192,6 +212,8 @@ export class DbSet<T> {
      * Get a single entity or null if none exists, throw if multiple exist
      *
      * @returns The single entity or null.
+     * @example
+     * const maybe = await context.books.where(b => b.id === 9999).singleOrDefault();
      */
     public async singleOrDefault(): Promise<T | null> {
         return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).singleOrDefault();
@@ -201,6 +223,8 @@ export class DbSet<T> {
      * Count entities
      *
      * @returns Total number of entities matching the current query.
+     * @example
+     * const count = await context.products.where(p => p.price >= 100).count();
      */
     public async count(): Promise<number> {
         return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).count();
@@ -210,6 +234,8 @@ export class DbSet<T> {
      * Check if any entities exist
      *
      * @returns True if at least one entity exists.
+      * @example
+      * const exists = await context.products.where(p => p.name === 'Laptop').any();
      */
     public async any(): Promise<boolean> {
         return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader).any();
@@ -218,6 +244,8 @@ export class DbSet<T> {
     /**
      * Start a query with eager includes using a property selector.
      * Must be called before where/select/orderBy... to be applied.
+     * @example
+     * const authors = await context.authors.include(a => a.books).where(a => a.id === 1).toArray();
      */
     public include(selector: (entity: T) => any): Queryable<T> {
         const qb = new Queryable<T>(this._entityClass, this._provider, this._entityLoader);

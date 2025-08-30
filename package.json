@@ -13,7 +13,8 @@
     "build": "tsc",
     "dev": "ts-node src/index.ts",
     "example:simple": "ts-node examples/simple-app.ts",
-    "example:advanced": "ts-node examples/advanced-queries.ts"
+    "example:advanced": "ts-node examples/advanced-queries.ts",
+    "docs": "typedoc"
   },
   "keywords": [],
   "author": "",
@@ -29,5 +30,9 @@
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "typedoc": "^0.25.13",
+    "typedoc-plugin-markdown": "^4.0.0"
   }
 }
