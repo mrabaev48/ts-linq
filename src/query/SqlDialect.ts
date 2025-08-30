@@ -1,6 +1,16 @@
 import { QueryOptions } from '../types';
 
+/**
+ * SQL dialect contract used by QueryBuilder to produce vendor-specific SQL.
+ * Implementations translate normalized QueryOptions into a SQL string and parameters.
+ */
 export interface SqlDialect {
+    /**
+     * Build a SELECT statement for the given entity and options.
+     * @param entityClass Entity constructor (to resolve table/columns via metadata)
+     * @param options Normalized query options (select/where/order/limit/...)
+     * @returns SQL string and parameter array ready for execution
+     */
     buildSelect<T>(entityClass: new () => T, options: QueryOptions): { query: string; parameters: any[] };
 }
 

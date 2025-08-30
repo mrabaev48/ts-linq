@@ -2,7 +2,16 @@ import { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { JoinType, QueryOptions } from '../types';
 
+/**
+ * SQLite implementation of SqlDialect.
+ * Handles DISTINCT, WHERE (prebuilt), GROUP BY/HAVING, ORDER BY and LIMIT/OFFSET.
+ * Adds SQLite-specific quirk: LIMIT -1 when OFFSET is provided without LIMIT.
+ */
 export class SQLiteDialect implements SqlDialect {
+    /** Build SQL for a SELECT based on normalized QueryOptions.
+     * @param entityClass Entity constructor (for table name resolution)
+     * @param options Normalized query options
+     */
     buildSelect<T>(entityClass: new () => T, options: QueryOptions): { query: string; parameters: any[] } {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);

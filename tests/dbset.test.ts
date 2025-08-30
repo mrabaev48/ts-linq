@@ -158,13 +158,13 @@ describe('DbSet', () => {
         });
 
         it('should support include(selector) chained before where', async () => {
-            // no actual relationships on TestEntity; this just verifies API does not throw
-            const results = await dbSet
-                .include(e => (e as any).nonExistingRelation)
-                .where(e => e.name === 'Entity 1')
-                .toArray();
-            expect(results).toHaveLength(1);
-            expect(results[0].name).toBe('Entity 1');
+            // include now validates against metadata; using non-existing relation should throw
+            await expect(async () => {
+                await dbSet
+                    .include(e => (e as any).nonExistingRelation)
+                    .where(e => e.name === 'Entity 1')
+                    .toArray();
+            }).rejects.toThrow(/Invalid include/);
         });
     });
 });
