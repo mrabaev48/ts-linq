@@ -8,7 +8,7 @@ import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy, LoadingOptions } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { DbSet } from './DbSet';
-import { DbContextOptions, PerformanceOptions, Result, ok, err, LoadingDefaults, ValidationError, SoftDeleteOptions, AuditOptions } from '../types';
+import { DbContextOptions, PerformanceOptions, Result, ok, err, LoadingDefaults, ValidationError, SoftDeleteOptions, AuditOptions, GlobalFilter } from '../types';
 import { EntityCache } from '../utils/EntityCache';
 
 /**
@@ -34,6 +34,7 @@ export abstract class DbContext {
     private _loadingDefaults: LoadingDefaults = {};
     private _softDelete?: SoftDeleteOptions;
     private _audit?: AuditOptions;
+    private _globalFilters?: GlobalFilter[];
 
     /**
      * Create a new database context instance.
@@ -44,6 +45,7 @@ export abstract class DbContext {
         // Initialize database provider based on options
         this._softDelete = options.softDelete;
         this._audit = options.audit;
+        this._globalFilters = options.globalFilters;
         switch (options.provider || 'sqlite') {
             case 'sqlite':
                 this._provider = new SQLiteProvider(options.connectionString, options.logger, options.middlewares, this._softDelete);
@@ -341,7 +343,8 @@ export abstract class DbContext {
                 this._changeTracker,
                 this._entityLoader,
                 this._entityCache,
-                this._performanceOptions
+                this._performanceOptions,
+                this._globalFilters
             );
             this._dbSets.set(original, dbSet);
 

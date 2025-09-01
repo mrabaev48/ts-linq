@@ -60,6 +60,8 @@ export interface DbContextOptions {
     softDelete?: SoftDeleteOptions;
     /** Optional audit configuration. */
     audit?: AuditOptions;
+    /** Optional global query filters applied to matching entities. */
+    globalFilters?: GlobalFilter[];
 }
 
 /**
@@ -98,6 +100,14 @@ export interface ColumnMetadata {
     isGenerated?: boolean;
     /** True when column is an optimistic concurrency token (version). */
     isVersion?: boolean;
+}
+
+/** Static global filter applied to all queries of a specific entity. */
+export interface GlobalFilter {
+    /** Target entity constructor. */
+    entity: Function;
+    /** WHERE clause to prepend for this entity. */
+    where: { condition: string; parameters: any[] };
 }
 
 /** Soft delete feature options. */
