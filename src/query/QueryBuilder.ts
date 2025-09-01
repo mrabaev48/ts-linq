@@ -42,7 +42,19 @@ export class QueryBuilder {
             offset: model.offset,
             distinct: model.distinct
         };
-        return this.generateSql(entityClass, opts);
+        const base = this.generateSql(entityClass, opts);
+        // Handle UNION/UNION ALL chains
+        if (model.unions && model.unions.length > 0) {
+            let sql = `${base.query}`;
+            let params = [...base.parameters];
+            for (const u of model.unions) {
+                const next = this.generateFromModel(u.entity as any, u.other);
+                sql += u.all ? ` UNION ALL ${next.query}` : ` UNION ${next.query}`;
+                params.push(...next.parameters);
+            }
+            return { query: sql, parameters: params };
+        }
+        return base;
     }
 
     /** Clears the global SQL cache. Useful for tests or after metadata changes. */

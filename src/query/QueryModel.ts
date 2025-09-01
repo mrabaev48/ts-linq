@@ -13,6 +13,7 @@ export class QueryModel {
     public limit?: number;
     public offset?: number;
     public distinct?: boolean;
+    public unions?: Array<{ all: boolean; other: QueryModel; entity: Function }>;
 
     /**
      * Create a deep copy of the query model to preserve immutability
@@ -28,6 +29,7 @@ export class QueryModel {
         q.limit = this.limit;
         q.offset = this.offset;
         q.distinct = this.distinct;
+        q.unions = this.unions ? this.unions.map(u => ({ all: u.all, other: u.other.clone(), entity: u.entity })) : undefined;
         return q;
     }
 }
