@@ -1,7 +1,21 @@
 {
   "name": "ts-linq",
   "version": "1.0.0",
-  "main": "jest.config.js",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "directories": {
     "example": "examples",
     "test": "tests"
@@ -10,7 +24,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "build": "tsc",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
     "dev": "ts-node src/index.ts",
     "example:simple": "ts-node examples/simple-app.ts",
     "example:advanced": "ts-node examples/advanced-queries.ts",
