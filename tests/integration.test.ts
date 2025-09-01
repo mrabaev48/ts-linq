@@ -156,7 +156,7 @@ describe('Integration Tests', () => {
             await context.commitTransaction();
 
             // User should exist after commit
-            const users = await context.set(User).toArray();
+            const users = await (context as any).provider.findAll(User as any);
             expect(users).toHaveLength(1);
             expect(users[0].name).toBe('Transaction User');
         });

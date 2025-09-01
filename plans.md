@@ -102,8 +102,8 @@
 - [P2] Extended LINQ: groupBy/having [done]; subqueries (exists/in) [done], unions [done]
 - [P2] Model validation: declarative rules checked before saveChanges [done]
 - [P1] Pagination: keyset pagination and paginate(page,size) helper with total/TTL cache [done]
-- [P2] Soft delete & audit: soft-delete flag, createdAt/updatedAt/createdBy/updatedBy hooks
-- [P3] Multi-tenancy: tenant scoping and default filters at DbContext level
+- [P2] Soft delete & audit: soft-delete flag, createdAt/updatedAt/createdBy/updatedBy hooks [done]
+- [P3] Multi-tenancy: tenant scoping and default filters at DbContext level [done]
 - [P2] Plugin/middleware API: hooks before/after materialization and execute [done]
 - [P2] Documentation: guides for diff-migrations, upsert/batch, advanced include/join [ongoing]; README: Pagination & Optimistic Concurrency [done]
 - [P2] Test matrix: Testcontainers-based integration for all providers in CI; property-based tests for join/include

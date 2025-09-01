@@ -1,5 +1,5 @@
 import { DatabaseProvider } from './DatabaseProvider';
-import { EntityMetadata, OptimisticConcurrencyError } from '../types';
+import { EntityMetadata, OptimisticConcurrencyError, UniqueConstraintError, DatabaseError, ForeignKeyConstraintError } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { PostgresDialect } from '../query/PostgresDialect';
 import { QueryBuilder } from '../query/QueryBuilder';
@@ -228,14 +228,22 @@ export class PostgresProvider extends DatabaseProvider {
 
     /** Low-level query execution returning rows. */
     protected async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
-        const res = await this.pool.query(sql, params);
-        return res.rows as T[];
+        try {
+            const res = await this.pool.query(sql, params);
+            return res.rows as T[];
+        } catch (e: any) {
+            throw mapPgError(e);
+        }
     }
 
     /** Low-level non-query execution returning rowCount. */
     protected async doExecuteNonQuery(sql: string, params: any[] = []): Promise<number> {
-        const res = await this.pool.query(sql, params);
-        return res.rowCount;
+        try {
+            const res = await this.pool.query(sql, params);
+            return res.rowCount;
+        } catch (e: any) {
+            throw mapPgError(e);
+        }
     }
 
     /** Begin a transaction (sets a trace id for logging). */
@@ -303,6 +311,14 @@ function convertValueFromPg(value: any, type: string): any {
         case 'JSON': return typeof value === 'string' ? JSON.parse(value) : value;
         default: return value;
     }
+}
+
+function mapPgError(err: any): Error {
+    const code = err?.code;
+    const message = err?.message || String(err);
+    if (code === '23505') return new UniqueConstraintError(message, code);
+    if (code === '23503') return new ForeignKeyConstraintError(message, code);
+    return new DatabaseError(message, code);
 }
 
 // (removed legacy free function mapRowToEntity; instance method is used)

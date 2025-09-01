@@ -592,6 +592,19 @@ const logger: SqlLogger = {
 const ctx = new AppDbContext({ connectionString: ':memory:', provider: 'sqlite', logger });
 ```
 
+OpenTelemetry (optional):
+
+```ts
+import { OpenTelemetrySqlLogger } from './src/utils/OpenTelemetrySqlLogger';
+
+const ctx = new AppDbContext({
+  connectionString: process.env.POSTGRES_URL!,
+  provider: 'postgresql',
+  logger: new OpenTelemetrySqlLogger('orders-service')
+});
+// Все запросы появятся как спаны в вашей трассировке (Jaeger/Tempo/DD и т.п.)
+```
+
 ### Extended LINQ
 
 Subqueries and unions are supported in addition to joins and includes:

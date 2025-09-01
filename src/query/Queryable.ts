@@ -500,6 +500,8 @@ export class Queryable<T> {
                 }
             }
             this._entityCache.set(this._entityClass, idValue, entity);
+            // notify middleware via provider hook
+            try { (this._provider as any).notifyEntityMaterialized?.(entity, metadata); } catch { /* ignore */ }
             return entity;
         }
         const entity = new this._entityClass();
@@ -512,6 +514,8 @@ export class Queryable<T> {
         } else {
             Object.assign(entity as any, row);
         }
+        // notify middleware via provider hook
+        try { if (metadata) (this._provider as any).notifyEntityMaterialized?.(entity, metadata); } catch { /* ignore */ }
         return entity;
     }
     /**
@@ -561,12 +565,26 @@ export class Queryable<T> {
 
     /** Apply configured global filters to the provided query model. */
     private applyGlobalFiltersToModel(model: QueryModel & { where?: WhereClause[] }): void {
-        if (!this._globalFilters || this._globalFilters.length === 0) return;
-        const filters = this._globalFilters.filter(f => f.entity === (this as any)._entityClass);
-        if (filters.length === 0) return;
+        const selfMeta = MetadataStorage.getEntity(this._entityClass);
+        if (!selfMeta) return;
         model.where = model.where || [];
-        for (const f of filters) {
-            model.where.push({ condition: f.where.condition, parameters: [...f.where.parameters] } as any);
+        // Soft-delete guard if enabled at provider level and entity has the column
+        const sd = (this._provider as any).softDeleteOptions as { enabled?: boolean; column?: string } | undefined;
+        if (sd?.enabled) {
+            const flagPropOrCol = sd.column ?? 'isDeleted';
+            const col = selfMeta.columns.find(c => c.propertyName === flagPropOrCol || c.columnName === flagPropOrCol);
+            if (col) {
+                model.where.push({ condition: `${col.columnName} = 0`, parameters: [] } as any);
+            }
+        }
+        // Explicit global filters
+        if (this._globalFilters && this._globalFilters.length > 0) {
+            for (const f of this._globalFilters) {
+                const fMeta = MetadataStorage.getEntity(f.entity as any);
+                if (fMeta && selfMeta.tableName === fMeta.tableName) {
+                    model.where.push({ condition: f.where.condition, parameters: [...f.where.parameters] } as any);
+                }
+            }
         }
     }
 }

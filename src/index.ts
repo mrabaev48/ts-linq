@@ -46,3 +46,4 @@ export * from './migrations/MigrationRunner';
 
 // Utils
 export * from './utils/SqlHelper';
+export * from './utils/OpenTelemetrySqlLogger';

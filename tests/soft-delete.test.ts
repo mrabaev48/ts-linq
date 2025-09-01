@@ -53,7 +53,7 @@ describe('Soft delete & audit', () => {
     ctx.susers.remove(u);
     await ctx.saveChanges();
 
-    const all = await ctx.susers.toArray();
+    const all = await ctx.set(SUser).toArray();
     expect(all).toHaveLength(0);
   });
 });

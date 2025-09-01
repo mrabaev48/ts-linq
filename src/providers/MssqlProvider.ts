@@ -220,8 +220,12 @@ export class MssqlProvider extends DatabaseProvider {
         const { sql, params } = prepareMssqlSql(_sql, _params || []);
         const request = new mssql.Request(this.tx || this.pool);
         params.forEach((value, i) => request.input(`p${i + 1}`, value));
-        const result = await request.query(sql);
-        return (result.recordset || []) as T[];
+        try {
+            const result = await request.query(sql);
+            return (result.recordset || []) as T[];
+        } catch (e: any) {
+            throw mapMssqlError(e);
+        }
     }
 
     /** Execute a non-query SQL statement and return affected rows count. */
@@ -231,9 +235,13 @@ export class MssqlProvider extends DatabaseProvider {
         const { sql, params } = prepareMssqlSql(_sql, _params || []);
         const request = new mssql.Request(this.tx || this.pool);
         params.forEach((value, i) => request.input(`p${i + 1}`, value));
-        const result = await request.query(sql);
-        const rowsAffected: number[] = result.rowsAffected || [];
-        return rowsAffected.reduce((sum, n) => sum + (n || 0), 0);
+        try {
+            const result = await request.query(sql);
+            const rowsAffected: number[] = result.rowsAffected || [];
+            return rowsAffected.reduce((sum, n) => sum + (n || 0), 0);
+        } catch (e: any) {
+            throw mapMssqlError(e);
+        }
     }
 
     /** Begin a database transaction. */
@@ -397,6 +405,16 @@ function safeRequireMssql(): any {
     } catch (e) {
         throw new Error('Package "mssql" is required for MssqlProvider. Install it with: npm install mssql');
     }
+}
+
+function mapMssqlError(err: any): Error {
+    const number = err?.number;
+    const message = err?.message || String(err);
+    if (number === 2627 || number === 2601) {
+        return new (require('../types').UniqueConstraintError)(message, String(number));
+    }
+    const DatabaseError = require('../types').DatabaseError;
+    return new DatabaseError(message, String(number));
 }
 
 

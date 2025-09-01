@@ -539,6 +539,10 @@ function mapSqliteError(err: any): Error {
     const message = err?.message || String(err);
     if (!code) return new DatabaseError(message);
     // sqlite codes: https://www.sqlite.org/rescode.html (library-dependent)
+    // Prefer FK if message indicates it
+    if (message && message.toLowerCase().includes('foreign key')) {
+        return new ForeignKeyConstraintError(message, code);
+    }
     if (code === 'SQLITE_CONSTRAINT' || code === 'SQLITE_CONSTRAINT_UNIQUE') {
         return new UniqueConstraintError(message, code);
     }
