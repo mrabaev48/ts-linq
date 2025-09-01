@@ -10,6 +10,7 @@ import { QueryOptions } from '../types';
  * - Leaves identifier quoting to providers/metadata (table/column names are passed as-is)
  */
 export class PostgresDialect implements SqlDialect {
+    public quoteIdentifier(identifier: string): string { return `"${identifier.replace(/"/g, '"')}`; }
     /**
      * Generate a PostgreSQL SELECT query from normalized QueryOptions.
      * @param entityClass Entity constructor to resolve table name
@@ -21,10 +22,10 @@ export class PostgresDialect implements SqlDialect {
         let query = 'SELECT ';
         if (options.distinct) query += 'DISTINCT ';
         query += options.select && options.select.length ? options.select.join(', ') : '*';
-        query += ` FROM ${metadata.tableName}`;
+        query += ` FROM "${metadata.tableName}"`;
         if ((options as any).joins) {
             for (const join of (options as any).joins as Array<{ type: string; table: string; on: string; alias?: string }>) {
-                query += ` ${join.type} JOIN ${join.table}`;
+                query += ` ${join.type} JOIN "${join.table}"`;
                 if (join.alias) query += ` AS ${join.alias}`;
                 query += ` ON ${join.on}`;
             }

@@ -41,42 +41,121 @@ export abstract class DatabaseProvider {
     public abstract findWhere<T>(entityClass: new () => T, conditions: any): Promise<T[]>;
     /** Find entities where a column value is in a list. */
     public abstract findWhereIn<T>(entityClass: new () => T, column: string, values: any[]): Promise<T[]>;
-    /** Execute a SQL query and return rows mapped as generic objects. */
-    public async executeQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
-        const startedAt = Date.now();
-        this.logger?.queryStart?.({ sql, params, traceId: this.currentTraceId });
-        await this.beforeExecute(sql, params);
+
+    /** Insert many entities in a single transaction (default implementation). */
+    public async insertMany<T>(entities: T[], entityClass: Function): Promise<T[]> {
+        if (entities.length === 0) return entities;
+        await this.beginTransaction();
         try {
-            const result = await this.doExecuteQuery<T>(sql, params);
-            const durationMs = Date.now() - startedAt;
-            this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, rows: Array.isArray(result) ? result.length : undefined });
-            await this.afterExecute(sql, params, result);
-            return result;
-        } catch (error: any) {
-            const durationMs = Date.now() - startedAt;
-            this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, error });
+            for (const e of entities) {
+                await this.insert(e, entityClass);
+            }
+            await this.commitTransaction();
+            return entities;
+        } catch (error) {
+            await this.rollbackTransaction();
             throw error;
         }
+    }
+
+    /** Update many entities in a single transaction (default implementation). */
+    public async updateMany<T>(entities: T[], entityClass: Function): Promise<T[]> {
+        if (entities.length === 0) return entities;
+        await this.beginTransaction();
+        try {
+            for (const e of entities) {
+                await this.update(e, entityClass);
+            }
+            await this.commitTransaction();
+            return entities;
+        } catch (error) {
+            await this.rollbackTransaction();
+            throw error;
+        }
+    }
+
+    /** Upsert single entity: try update, fallback to insert when no rows updated. */
+    public async upsert<T>(entity: T, entityClass: Function): Promise<T> {
+        try {
+            return await this.update(entity, entityClass);
+        } catch {
+            return await this.insert(entity, entityClass);
+        }
+    }
+
+    /** Upsert many entities within a transaction. */
+    public async upsertMany<T>(entities: T[], entityClass: Function): Promise<T[]> {
+        if (entities.length === 0) return entities;
+        await this.beginTransaction();
+        try {
+            for (const e of entities) {
+                await this.upsert(e, entityClass);
+            }
+            await this.commitTransaction();
+            return entities;
+        } catch (error) {
+            await this.rollbackTransaction();
+            throw error;
+        }
+    }
+    /** Execute a SQL query and return rows mapped as generic objects. */
+    public async executeQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+        return await this.executeWithRetry<T[]>(() => this.doExecuteQuery<T>(sql, params), sql, params);
     }
     /** Provider-specific implementation of query execution. */
     protected abstract doExecuteQuery<T>(sql: string, params?: any[]): Promise<T[]>;
 
     /** Execute a non-query SQL statement and return affected row count. */
     public async executeNonQuery(sql: string, params: any[] = []): Promise<number> {
+        return await this.executeWithRetry<number>(() => this.doExecuteNonQuery(sql, params), sql, params);
+    }
+
+    /**
+     * Retry wrapper with basic exponential backoff + jitter for idempotent operations.
+     * Retries only when not in a transaction and for errors deemed transient.
+     */
+    private async executeWithRetry<T>(fn: () => Promise<T>, sql: string, params: any[]): Promise<T> {
+        const maxAttempts = 3;
+        const baseDelayMs = 50;
         const startedAt = Date.now();
         this.logger?.queryStart?.({ sql, params, traceId: this.currentTraceId });
         await this.beforeExecute(sql, params);
-        try {
-            const result = await this.doExecuteNonQuery(sql, params);
-            const durationMs = Date.now() - startedAt;
-            this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, rows: result });
-            await this.afterExecute(sql, params, result);
-            return result;
-        } catch (error: any) {
-            const durationMs = Date.now() - startedAt;
-            this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, error });
-            throw error;
+        let attempt = 0;
+        // Do not retry within an explicit transaction
+        const allowRetry = !this.inTransaction;
+        while (true) {
+            try {
+                const result = await fn();
+                const durationMs = Date.now() - startedAt;
+                this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, rows: Array.isArray(result) ? (result as any[]).length : (typeof result === 'number' ? result : undefined) });
+                await this.afterExecute(sql, params, result);
+                return result;
+            } catch (error: any) {
+                attempt++;
+                const durationMs = Date.now() - startedAt;
+                this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, error });
+                const isTransient = this.isTransientError(error);
+                if (!allowRetry || !isTransient || attempt >= maxAttempts) {
+                    throw error;
+                }
+                const jitter = Math.floor(Math.random() * 25);
+                const backoff = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
+                await new Promise(res => setTimeout(res, backoff));
+                // next attempt
+            }
         }
+    }
+
+    /** Basic transient error classifier. Providers may override for accuracy. */
+    protected isTransientError(error: any): boolean {
+        const message = (error?.message || '').toLowerCase();
+        return (
+            message.includes('deadlock') ||
+            message.includes('timeout') ||
+            message.includes('connection') ||
+            message.includes('too many connections') ||
+            message.includes('econnreset')
+        );
     }
     /** Provider-specific implementation of non-query execution. */
     protected abstract doExecuteNonQuery(sql: string, params?: any[]): Promise<number>;

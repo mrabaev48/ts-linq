@@ -23,6 +23,8 @@ export interface ColumnOptions {
     precision?: number;
     scale?: number;
     generated?: boolean;
+    /** Marks this column as an optimistic concurrency token (version). */
+    version?: boolean;
 }
 
 /**
@@ -50,7 +52,8 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
             length: options?.length,
             precision: options?.precision,
             scale: options?.scale,
-            isGenerated: options?.generated || false
+            isGenerated: options?.generated || false,
+            isVersion: options?.version || false
         };
 
         MetadataStorage.addColumn(target.constructor, columnMetadata);

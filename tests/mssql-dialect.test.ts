@@ -12,12 +12,13 @@ describe('MssqlDialect', () => {
     new T();
     const d = new MssqlDialect();
     const { query } = d.buildSelect(T, { limit: 5 });
-    expect(query).toMatch(/^SELECT TOP \(5\) \* FROM t/);
+    expect(query).toMatch(/^SELECT TOP \(5\) \* FROM \[t\]/);
   });
   test('OFFSET/FETCH with order fallback', () => {
     new T();
     const d = new MssqlDialect();
     const { query } = d.buildSelect(T, { offset: 10 });
+    expect(query).toContain('FROM [t]');
     expect(query).toContain('ORDER BY (SELECT NULL) OFFSET 10 ROWS');
   });
   test('Numbered params @p1..', () => {

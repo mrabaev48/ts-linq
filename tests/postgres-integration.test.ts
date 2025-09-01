@@ -24,6 +24,19 @@ pgDescribe('PostgreSQL integration (requires POSTGRES_URL)', () => {
     expect(all.length).toBeGreaterThan(0);
     await ctx.dispose();
   });
+
+  test('Upsert works (ON CONFLICT)', async () => {
+    new PgUser();
+    const ctx = new PgCtx();
+    await ctx.ensureCreated();
+    const u = { id: 1, name: 'pg-upsert-1' } as any as PgUser;
+    await (ctx as any).provider.upsert(u, PgUser);
+    u.name = 'pg-upsert-2';
+    await (ctx as any).provider.upsert(u, PgUser);
+    const found = await (ctx as any).provider.findWhere(PgUser, { name: 'pg-upsert-2' });
+    expect(found.length).toBeGreaterThan(0);
+    await ctx.dispose();
+  });
 });
 
 

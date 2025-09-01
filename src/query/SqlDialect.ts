@@ -12,6 +12,9 @@ export interface SqlDialect {
      * @returns SQL string and parameter array ready for execution
      */
     buildSelect<T>(entityClass: new () => T, options: QueryOptions): { query: string; parameters: any[] };
+
+    /** Quote an identifier (table/column). Default: no quoting. Dialects override. */
+    quoteIdentifier?(identifier: string): string;
 }
 
 

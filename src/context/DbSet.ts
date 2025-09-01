@@ -6,6 +6,7 @@ import { Queryable } from '../query/Queryable';
 import { EntityCache } from '../utils/EntityCache';
 import { PerformanceOptions } from '../types';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
+import { MetadataStorage } from '../metadata/MetadataStorage';
 
 /**
  * Represents a typed set of entities and provides CRUD and LINQ-like operations
@@ -69,6 +70,22 @@ export class DbSet<T> {
     public remove(entity: T): T {
         this._changeTracker.remove(entity, this._entityClass);
         return entity;
+    }
+
+    /** Add multiple entities at once to ChangeTracker. */
+    public addRange(entities: T[]): T[] {
+        for (const e of entities) this._changeTracker.add(e, this._entityClass);
+        return entities;
+    }
+    /** Update multiple entities at once to ChangeTracker. */
+    public updateRange(entities: T[]): T[] {
+        for (const e of entities) this._changeTracker.update(e, this._entityClass);
+        return entities;
+    }
+    /** Remove multiple entities at once to ChangeTracker. */
+    public removeRange(entities: T[]): T[] {
+        for (const e of entities) this._changeTracker.remove(e, this._entityClass);
+        return entities;
     }
 
     /**
@@ -258,5 +275,62 @@ export class DbSet<T> {
     public include(selector: (entity: T) => any): Queryable<T> {
         const qb = new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance);
         return qb.include(selector);
+    }
+
+    /**
+     * Provider-level bulk insert within a transaction.
+     */
+    public async insertMany(entities: T[]): Promise<T[]> {
+        return await this._provider.insertMany<T>(entities, this._entityClass);
+    }
+    /**
+     * Provider-level bulk update within a transaction.
+     */
+    public async updateMany(entities: T[]): Promise<T[]> {
+        return await this._provider.updateMany<T>(entities, this._entityClass);
+    }
+
+    /** Upsert single entity by primary key existence check (ChangeTracker-based). */
+    public async upsert(entity: T): Promise<T> {
+        const metadata = MetadataStorage.getEntity(this._entityClass);
+        if (!metadata || metadata.primaryKeys.length === 0) throw new Error(`No primary key defined for ${this._entityClass.name}`);
+        const pk = metadata.primaryKeys[0];
+        const id = (entity as any)[pk];
+        if (id === undefined || id === null) {
+            // No PK value — treat as insert
+            this.add(entity);
+            return entity;
+        }
+        const existing = await this._provider.findById(id, this._entityClass as any);
+        if (existing) {
+            this.update(entity);
+        } else {
+            this.add(entity);
+        }
+        return entity;
+    }
+
+    /** Upsert many entities via per-entity PK existence check. */
+    public async upsertMany(entities: T[]): Promise<T[]> {
+        const metadata = MetadataStorage.getEntity(this._entityClass);
+        if (!metadata || metadata.primaryKeys.length === 0) throw new Error(`No primary key defined for ${this._entityClass.name}`);
+        const pk = metadata.primaryKeys[0];
+        // Build list of ids present
+        const pairs: Array<{ entity: T; id: any } > = entities.map(e => ({ entity: e, id: (e as any)[pk] }));
+        const ids = pairs.filter(p => p.id !== undefined && p.id !== null).map(p => p.id);
+        if (ids.length > 0) {
+            // Fetch existing ids in one go if provider supports findWhereIn for PK column
+            const pkCol = metadata.columns.find(c => c.propertyName === pk);
+            const existingRows = await this._provider.findWhereIn(this._entityClass as any, pkCol ? pkCol.propertyName : pk, ids);
+            const existingIdSet = new Set(existingRows.map((r: any) => r[pk]));
+            for (const { entity, id } of pairs) {
+                if (id === undefined || id === null) { this.add(entity); continue; }
+                if (existingIdSet.has(id)) this.update(entity); else this.add(entity);
+            }
+        } else {
+            // All new
+            this.addRange(entities);
+        }
+        return entities;
     }
 }

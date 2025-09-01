@@ -1,5 +1,5 @@
 import { DatabaseProvider } from './DatabaseProvider';
-import { EntityMetadata } from '../types';
+import { EntityMetadata, OptimisticConcurrencyError } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { PostgresDialect } from '../query/PostgresDialect';
 import { QueryBuilder } from '../query/QueryBuilder';
@@ -82,18 +82,51 @@ export class PostgresProvider extends DatabaseProvider {
         return entity;
     }
 
-    /** Update a row by primary key; returns the same entity instance. */
+    /** Update a row by primary key; supports optimistic concurrency via version column. */
     public async update<T>(entity: T, entityClass: Function): Promise<T> {
         const meta = MetadataStorage.getEntity(entityClass);
         if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+        const versionCol = meta.columns.find(c => (c as any).isVersion);
         const setCols = meta.columns.filter(c => !meta.primaryKeys.includes(c.propertyName) && !c.isGenerated);
         if (setCols.length === 0) return entity;
         const sets = setCols.map((c, i) => `"${c.columnName}" = $${i + 1}`);
         const setVals = setCols.map(c => convertValueForPg((entity as any)[c.propertyName], c.type));
+        if (versionCol) {
+            sets.push(`"${versionCol.columnName}" = "${versionCol.columnName}" + 1`);
+        }
         const where = meta.primaryKeys.map((pk, i) => `"${meta.columns.find(c => c.propertyName === pk)?.columnName || pk}" = $${setCols.length + i + 1}`);
         const whereVals = meta.primaryKeys.map(pk => (entity as any)[pk]);
-        const sql = `UPDATE "${meta.tableName}" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
-        await this.executeNonQuery(sql, [...setVals, ...whereVals]);
+        let sql = `UPDATE "${meta.tableName}" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
+        if (versionCol) {
+            sql += ` AND "${versionCol.columnName}" = $${setCols.length + meta.primaryKeys.length + 1}`;
+            whereVals.push((entity as any)[versionCol.propertyName]);
+        }
+        const affected = await this.executeNonQuery(sql, [...setVals, ...whereVals]);
+        if (affected === 0) {
+            if (versionCol) throw new OptimisticConcurrencyError();
+            throw new Error('No rows were updated. Not found or no changes.');
+        }
+        if (versionCol) (entity as any)[versionCol.propertyName] = ((entity as any)[versionCol.propertyName] ?? 0) + 1;
+        return entity;
+    }
+
+    /** Upsert using INSERT ... ON CONFLICT (pk...) DO UPDATE SET ... RETURNING *. */
+    public async upsert<T>(entity: T, entityClass: Function): Promise<T> {
+        const meta = MetadataStorage.getEntity(entityClass);
+        if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+        if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
+            return this.insert(entity, entityClass);
+        }
+        const insertCols = meta.columns.filter(c => !c.isGenerated);
+        const names = insertCols.map(c => `"${c.columnName}"`);
+        const placeholders = insertCols.map((_, i) => `$${i + 1}`);
+        const values = insertCols.map(c => convertValueForPg((entity as any)[c.propertyName], c.type));
+        const conflictTargets = meta.primaryKeys.map(pk => `"${meta.columns.find(c => c.propertyName === pk)?.columnName || pk}"`).join(', ');
+        const setCols = meta.columns.filter(c => !meta.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+        const setClause = setCols.map(c => `"${c.columnName}" = EXCLUDED."${c.columnName}"`).join(', ');
+        const sql = `INSERT INTO "${meta.tableName}" (${names.join(',')}) VALUES (${placeholders.join(',')}) ON CONFLICT (${conflictTargets}) DO UPDATE SET ${setClause} RETURNING *`;
+        const rows = await this.executeQuery<any>(sql, values);
+        if (rows[0]) Object.assign(entity as any, rows[0]);
         return entity;
     }
 

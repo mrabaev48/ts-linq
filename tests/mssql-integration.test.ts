@@ -24,6 +24,19 @@ mssqlDescribe('MSSQL integration (requires MSSQL_URL)', () => {
     expect(all.length).toBeGreaterThan(0);
     await ctx.dispose();
   });
+
+  test('Upsert works (MERGE)', async () => {
+    new MsUser();
+    const ctx = new MsCtx();
+    await ctx.ensureCreated();
+    const u = { id: 1, name: 'ms-upsert-1' } as any as MsUser;
+    await (ctx as any).provider.upsert(u, MsUser);
+    u.name = 'ms-upsert-2';
+    await (ctx as any).provider.upsert(u, MsUser);
+    const found = await (ctx as any).provider.findWhere(MsUser, { name: 'ms-upsert-2' });
+    expect(found.length).toBeGreaterThan(0);
+    await ctx.dispose();
+  });
 });
 
 

@@ -145,6 +145,86 @@ export class Queryable<T> {
     public distinct(): Queryable<T> { this._model.distinct = true; return this; }
 
     /**
+     * Group results by selected columns.
+     * @example
+     * const q = context.books.groupBy(b => b.authorId);
+     */
+    public groupBy(selector: (entity: T) => any): Queryable<T> {
+        const selectorStr = selector.toString();
+        const columns = this.extractPropertiesFromSelector(selectorStr);
+        this._model.groupBy = { columns } as any;
+        return this;
+    }
+
+    /**
+     * Apply HAVING predicate to an existing groupBy.
+     * @example
+     * const q = context.books.groupBy(b => b.authorId).having(() => true);
+     */
+    public having(predicate: (entity: T) => boolean): Queryable<T> {
+        if (!this._model.groupBy) {
+            throw new Error('having() requires a preceding groupBy()');
+        }
+        const parser = new PredicateParser<T>();
+        const ast = parser.parse(predicate);
+        if (ast) {
+            const visitor = new SqlVisitor();
+            const { condition, parameters } = visitor.toSql(ast);
+            (this._model.groupBy as any).having = { condition, parameters } as any;
+        } else {
+            // Fallback to a tautology if cannot parse; predicates on aggregates are not parsed yet
+            (this._model.groupBy as any).having = { condition: '1=1', parameters: [] } as any;
+        }
+        return this;
+    }
+
+    /**
+     * Paginate by page number and size. Applies ORDER BY fallback if missing.
+     * @example
+     * const page1 = await context.books.orderBy(b => b.id).paginate(1, 20);
+     */
+    public async paginate(page: number, size: number): Promise<{ items: T[]; total: number; page: number; size: number }>{
+        if (page < 1 || size < 1) throw new Error('paginate requires page >= 1 and size >= 1');
+        const m = this._model.clone();
+        m.limit = size;
+        m.offset = (page - 1) * size;
+        const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
+        const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
+        let items = rows.map(r => this.mapRowToEntity(r));
+        items = this.applyFallbackPredicates(items);
+
+        const total = await this.count();
+        return { items, total, page, size };
+    }
+
+    /**
+     * Keyset pagination helper. Requires a monotonic key (e.g., id).
+     * @example
+     * const page = await context.books.orderBy(b => b.id).keysetPaginate('id', lastId, 20);
+     */
+    public async keysetPaginate<TKey extends keyof T>(key: TKey, after: T[TKey] | null, size: number): Promise<{ items: T[]; pageSize: number; nextAfter: T[TKey] | null }>{
+        if (size < 1) throw new Error('keysetPaginate requires size >= 1');
+        const m = this._model.clone();
+        // Ensure order by key ASC (append if missing)
+        (m as any).orderBy = (m as any).orderBy || [];
+        const already = (m as any).orderBy.some((o: any) => o.column === String(key));
+        if (!already) (m as any).orderBy.push({ column: String(key), direction: 'ASC' });
+        m.limit = size;
+        if (after !== null && after !== undefined) {
+            // Add where key > after
+            const whereClause: any = { condition: `${String(key)} > ?`, parameters: [after] };
+            m.where = m.where || [];
+            m.where.push(whereClause as any);
+        }
+        const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
+        const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
+        let items = rows.map(r => this.mapRowToEntity(r));
+        items = this.applyFallbackPredicates(items);
+        const nextAfter = (items.length > 0) ? (items[items.length - 1] as any)[String(key)] : null;
+        return { items, pageSize: size, nextAfter };
+    }
+
+    /**
      * Adds eager-loading of a relationship using a property selector.
      * Validates the relationship against entity metadata.
      *

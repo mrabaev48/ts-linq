@@ -8,6 +8,7 @@ import { JoinType, QueryOptions } from '../types';
  * Adds SQLite-specific quirk: LIMIT -1 when OFFSET is provided without LIMIT.
  */
 export class SQLiteDialect implements SqlDialect {
+    public quoteIdentifier(identifier: string): string { return identifier; }
     /** Build SQL for a SELECT based on normalized QueryOptions.
      * @param entityClass Entity constructor (for table name resolution)
      * @param options Normalized query options

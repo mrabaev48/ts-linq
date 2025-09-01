@@ -262,6 +262,21 @@ const one = await context.find(Author, 1, { strategy: LoadingStrategy.Eager, dep
 
 Note: when loading collections (e.g., one-to-many) for multiple parent rows, the loader batches queries internally to avoid the N+1 problem (uses IN clauses under the hood). Predicate-based include chaining can be combined with where/order/take.
 
+### Pagination
+
+Offset-based pagination и keyset-пагинация из коробки:
+
+```ts
+// Offset-based: paginate(page, size) возвращает { items, total, page, size }
+const page1 = await context.books
+  .orderBy(b => b.id)
+  .paginate(1, 20);
+
+// Keyset-based: быстрая пагинация по монотонному ключу
+const first = await context.books.orderBy(b => b.id).keysetPaginate('id', null, 20);
+const next = await context.books.orderBy(b => b.id).keysetPaginate('id', first.nextAfter, 20);
+```
+
 ### Transactions
 
 ```ts
@@ -315,6 +330,25 @@ A provider is responsible for:
 - transactions
 
 New providers can be added by implementing the abstract `DatabaseProvider`.
+
+### Optimistic Concurrency
+
+Поддерживается оптимистическая блокировка через версионную колонку. Пометьте поле версии у сущности и ORM будет:
+- при `UPDATE` инкрементировать версию,
+- требовать совпадение текущей версии в `WHERE`,
+- выбрасывать `OptimisticConcurrencyError` при рассогласовании.
+
+```ts
+@Entity({ name: 'Items' })
+class Item {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'INTEGER', nullable: false, version: true }) version!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
+
+// update: WHERE id = ? AND version = ?; SET version = version + 1
+// при конфликте будет ошибка OptimisticConcurrencyError
+```
 
 ### PostgreSQL
 
@@ -446,6 +480,16 @@ const withOrders = await ctx.users
   .toArray();
 ```
 
+#### Example (Upsert)
+
+```ts
+// Insert or update depending on PK presence/conflict
+const user = new User();
+user.id = 1; // when PK provided, becomes an update if exists
+user.name = 'Alice';
+await ctx.provider.upsert(user, User);
+```
+
 ### MySQL
 
 MySQL support is provided via a provider and dialect.
@@ -522,6 +566,15 @@ const withOrders = await ctx.users
   .include(u => u.orders)
   .where(u => u.name === 'Bob')
   .toArray();
+```
+
+#### Example (Upsert)
+
+```ts
+const user = new User();
+user.id = 42;
+user.name = 'Bob';
+await ctx.provider.upsert(user, User);
 ```
 
 #### SQL Logging

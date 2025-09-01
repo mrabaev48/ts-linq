@@ -89,22 +89,22 @@
 - [done] Docs: README section with installation, config, and dialect differences
 - [done] Examples: runnable example using MySQL and docker-compose snippet
 
-## Further Improvements
+## Further Improvements (Prioritized)
 
-- Upsert/Batch operations: insertMany, updateMany, upsert (ON CONFLICT/ON DUPLICATE KEY/MERGE)
-- Optimistic concurrency: version columns (rowversion/xmin/timestamp) and checks on update/delete
-- Migration generator: schema diff from metadata → safe migrations (ALTER with guards)
-- CLI tooling: init, generate entity/migration, migrate/rollback, seed
-- Caching: stronger L2 cache with transaction-aware invalidation; shared SQL/AST cache
-- Resilience: retry policy (idempotent ops only), jitter, circuit breaker
-- Tracing/metrics: OpenTelemetry integration, Prometheus metrics, traceId correlation
-- Identifier quoting: centralized quoting via SqlDialect for table/column names
-- Extended LINQ: groupBy/having, subqueries (exists/in), unions
-- Model validation: declarative rules checked before saveChanges
-- Pagination: keyset pagination and paginate(page,size) helper with total/TTL cache
-- Soft delete & audit: soft-delete flag, createdAt/updatedAt/createdBy/updatedBy hooks
-- Multi-tenancy: tenant scoping and default filters at DbContext level
-- Plugin/middleware API: hooks before/after materialization and execute
-- Documentation: guides for diff-migrations, upsert/batch, advanced include/join
-- Test matrix: Testcontainers-based integration for all providers in CI; property-based tests for join/include
-- Distribution: ESM/CJS builds, tree-shaking, types, changelog, semver releases
+- [P1] Upsert/Batch operations: insertMany, updateMany, upsert (ON CONFLICT/ON DUPLICATE KEY/MERGE) [done]
+- [P2] Optimistic concurrency: version columns (rowversion/xmin/timestamp) and checks on update/delete [done]
+- [P3] Migration generator: schema diff from metadata → safe migrations (ALTER with guards)
+- [P3] CLI tooling: init, generate entity/migration, migrate/rollback, seed
+- [P2] Caching: stronger L2 cache with transaction-aware invalidation; shared SQL/AST cache
+- [P1] Resilience: retry policy (idempotent ops only), jitter, circuit breaker [done]
+- [P2] Tracing/metrics: OpenTelemetry integration, Prometheus metrics, traceId correlation
+- [P2] Identifier quoting: centralized quoting via SqlDialect for table/column names
+- [P2] Extended LINQ: groupBy/having, subqueries (exists/in), unions
+- [P2] Model validation: declarative rules checked before saveChanges
+- [P1] Pagination: keyset pagination and paginate(page,size) helper with total/TTL cache [done]
+- [P2] Soft delete & audit: soft-delete flag, createdAt/updatedAt/createdBy/updatedBy hooks
+- [P3] Multi-tenancy: tenant scoping and default filters at DbContext level
+- [P2] Plugin/middleware API: hooks before/after materialization and execute
+- [P2] Documentation: guides for diff-migrations, upsert/batch, advanced include/join [ongoing]
+- [P2] Test matrix: Testcontainers-based integration for all providers in CI; property-based tests for join/include
+- [P2] Distribution: ESM/CJS builds, tree-shaking, types, changelog, semver releases
