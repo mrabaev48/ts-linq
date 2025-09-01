@@ -4,10 +4,6 @@
 
 This is a TypeScript ORM (Object-Relational Mapping) framework heavily inspired by Entity Framework Core. It provides a code-first approach to database management with decorator-based entity definitions, change tracking, LINQ-style querying, and a migration system. The framework follows Entity Framework's architectural patterns with a layered design that separates concerns between entity definitions, database operations, and query building.
 
-## User Preferences
-
-Preferred communication style: Simple, everyday language.
-
 ## System Architecture
 
 ### Core Architecture Pattern
@@ -15,7 +11,7 @@ The framework follows Entity Framework's architectural patterns with a layered a
 
 - **Entity Layer**: Decorator-based entity definitions with metadata reflection
 - **Context Layer**: DbContext manages entity sets, change tracking, and database operations  
-- **Provider Layer**: Pluggable database provider architecture (currently supports SQLite)
+- **Provider Layer**: Pluggable database provider architecture (supports SQLite, PostgreSQL, MSSQL, MySQL)
 - **Query Layer**: LINQ-style query building with method chaining
 
 ### Decorator-Based Metadata System
@@ -37,9 +33,9 @@ Implements Entity Framework's change tracking pattern:
 ### Database Provider Abstraction
 Abstract DatabaseProvider base class enables multiple database support:
 
-- Currently implements SQLiteProvider using sqlite3 package
+- Implemented providers: SQLite (sqlite3), PostgreSQL (pg), MSSQL (mssql), MySQL (mysql2)
 - Provider handles connection management, SQL generation, and query execution
-- Clean separation allows adding MySQL, PostgreSQL providers later
+- Clean separation allows adding more providers later
 
 ### Query Layer (Queryable + QueryBuilder)
 LINQ-style query building with method chaining is provided by `Queryable`, while SQL generation is handled by a dedicated `QueryBuilder` using a pluggable `SqlDialect`.
@@ -86,7 +82,14 @@ This section walks you through using the framework with TypeScript examples.
 ### Installation
 
 ```bash
-npm install sqlite3 reflect-metadata typescript ts-node
+npm install reflect-metadata typescript ts-node sqlite3
+# Optional peer deps per provider:
+# PostgreSQL
+npm install pg
+# MSSQL
+npm install mssql
+# MySQL
+npm install mysql2
 ```
 
 Enable decorators in `tsconfig.json`:
@@ -303,13 +306,15 @@ await runner.migrate();
 
 ### Database Providers
 
-Currently `SQLiteProvider` is implemented. A provider is responsible for:
+Providers implemented: `SQLiteProvider`, `PostgresProvider`, `MssqlProvider`, `MySqlProvider`.
+
+A provider is responsible for:
 - connecting/disconnecting
 - SQL generation (DDL/DML)
 - query execution
 - transactions
 
-New providers (MySQL/PostgreSQL) can be added by implementing the abstract `DatabaseProvider`.
+New providers can be added by implementing the abstract `DatabaseProvider`.
 
 ### PostgreSQL
 
@@ -362,7 +367,7 @@ Then set `POSTGRES_URL=postgres://postgres:postgres@localhost:5432/ts_linq`.
 
 ### Microsoft SQL Server (MSSQL)
 
-MSSQL support is being added via a dedicated provider and dialect.
+MSSQL support is provided via a dedicated provider and dialect.
 
 - Install peer dependency:
 
