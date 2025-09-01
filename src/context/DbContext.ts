@@ -42,16 +42,16 @@ export abstract class DbContext {
         // Initialize database provider based on options
         switch (options.provider || 'sqlite') {
             case 'sqlite':
-                this._provider = new SQLiteProvider(options.connectionString, options.logger);
+                this._provider = new SQLiteProvider(options.connectionString, options.logger, options.middlewares);
                 break;
             case 'postgresql':
-                this._provider = new PostgresProvider(options.connectionString, options.logger);
+                this._provider = new PostgresProvider(options.connectionString, options.logger, options.middlewares);
                 break;
             case 'mssql':
-                this._provider = new MssqlProvider(options.connectionString, options.logger);
+                this._provider = new MssqlProvider(options.connectionString, options.logger, options.middlewares);
                 break;
             case 'mysql':
-                this._provider = new MySqlProvider(options.connectionString, options.logger);
+                this._provider = new MySqlProvider(options.connectionString, options.logger, options.middlewares);
                 break;
             default:
                 throw new Error(`Provider ${options.provider} is not supported`);

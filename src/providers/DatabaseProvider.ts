@@ -1,4 +1,4 @@
-import { EntityMetadata, SqlLogger } from '../types';
+import { EntityMetadata, OrmMiddleware, SqlLogger } from '../types';
 
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -11,14 +11,17 @@ export abstract class DatabaseProvider {
     protected inTransaction: boolean = false;
     protected logger?: SqlLogger;
     protected currentTraceId?: string;
+    protected middlewares?: OrmMiddleware[];
+    private lastExecuteStartedAt?: number;
 
     /**
      * Create a provider with a given connection string.
      * @param connectionString Provider-specific connection string.
      */
-    constructor(connectionString: string, logger?: SqlLogger) {
+    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[]) {
         this.connectionString = connectionString;
         this.logger = logger;
+        this.middlewares = middlewares;
     }
 
     /** Connect to the database. */
@@ -119,6 +122,7 @@ export abstract class DatabaseProvider {
         const baseDelayMs = 50;
         const startedAt = Date.now();
         this.logger?.queryStart?.({ sql, params, traceId: this.currentTraceId });
+        this.lastExecuteStartedAt = startedAt;
         await this.beforeExecute(sql, params);
         let attempt = 0;
         // Do not retry within an explicit transaction
@@ -163,10 +167,33 @@ export abstract class DatabaseProvider {
     // Template Method hooks
     /** Called before each execute; override for logging/instrumentation. */
     /** Default no-op hook. Override in providers for logging/instrumentation. */
-    protected async beforeExecute(sql: string, params: any[]): Promise<void> { /* noop by default */ }
+    protected async beforeExecute(sql: string, params: any[]): Promise<void> {
+        if (!this.middlewares || this.middlewares.length === 0) return;
+        const info = { sql, params, traceId: this.currentTraceId };
+        for (const mw of this.middlewares) {
+            try { await mw.beforeExecute?.(info); } catch { /* ignore middleware errors */ }
+        }
+    }
     /** Called after each execute; override for logging/instrumentation. */
     /** Default no-op hook. Override in providers for logging/instrumentation. */
-    protected async afterExecute(sql: string, params: any[], result: any): Promise<void> { /* noop by default */ }
+    protected async afterExecute(sql: string, params: any[], result: any): Promise<void> {
+        if (!this.middlewares || this.middlewares.length === 0) return;
+        const rows = Array.isArray(result) ? (result as any[]).length : (typeof result === 'number' ? result : undefined);
+        const durationMs = this.lastExecuteStartedAt ? (Date.now() - this.lastExecuteStartedAt) : 0;
+        const info = { sql, params, durationMs, traceId: this.currentTraceId, rows } as any;
+        for (const mw of this.middlewares) {
+            try { await mw.afterExecute?.(info); } catch { /* ignore middleware errors */ }
+        }
+    }
+
+    /** Notify middleware that an entity instance has been materialized. */
+    protected async notifyEntityMaterialized(entity: any, metadata?: EntityMetadata): Promise<void> {
+        if (!this.middlewares || this.middlewares.length === 0) return;
+        const info = { entity, metadata };
+        for (const mw of this.middlewares) {
+            try { await mw.entityMaterialized?.(info); } catch { /* ignore middleware errors */ }
+        }
+    }
 
     /** Begin a transaction. */
     public abstract beginTransaction(): Promise<void>;

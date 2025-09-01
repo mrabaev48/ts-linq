@@ -54,6 +54,8 @@ export interface DbContextOptions {
     logger?: SqlLogger;
     /** Optional default loading behavior. */
     loading?: LoadingDefaults;
+    /** Optional middleware pipeline for cross-cutting concerns. */
+    middlewares?: OrmMiddleware[];
 }
 
 /**
@@ -261,6 +263,13 @@ export interface SqlLogger {
     queryStart?(info: { sql: string; params: any[]; traceId?: string }): void;
     /** Called right after a query is executed. */
     queryEnd?(info: { sql: string; params: any[]; durationMs: number; traceId?: string; rows?: number; error?: Error }): void;
+}
+
+/** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */
+export interface OrmMiddleware {
+    beforeExecute?(info: { sql: string; params: any[]; traceId?: string }): void | Promise<void>;
+    afterExecute?(info: { sql: string; params: any[]; durationMs: number; traceId?: string; rows?: number; error?: Error }): void | Promise<void>;
+    entityMaterialized?(info: { entity: any; metadata?: EntityMetadata }): void | Promise<void>;
 }
 
 /**
