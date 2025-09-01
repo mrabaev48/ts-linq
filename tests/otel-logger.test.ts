@@ -1,0 +1,12 @@
+import 'reflect-metadata';
+import { OpenTelemetrySqlLogger } from '../src/utils/OpenTelemetrySqlLogger';
+
+describe('OpenTelemetrySqlLogger', () => {
+  it('does not throw when @opentelemetry/api is not installed', () => {
+    const logger = new OpenTelemetrySqlLogger('test');
+    expect(() => logger.queryStart({ sql: 'SELECT 1', params: [] })).not.toThrow();
+    expect(() => logger.queryEnd({ sql: 'SELECT 1', params: [], durationMs: 1 })).not.toThrow();
+  });
+});
+
+

@@ -217,4 +217,9 @@ export abstract class DatabaseProvider {
     public get inTransactionState(): boolean {
         return this.inTransaction;
     }
+
+    /** Soft delete configuration if enabled. */
+    public get softDeleteOptions(): SoftDeleteOptions | undefined {
+        return this.softDelete;
+    }
 }

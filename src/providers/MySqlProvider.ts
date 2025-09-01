@@ -166,16 +166,23 @@ export class MySqlProvider extends DatabaseProvider {
   }
 
   protected async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
-    if (!this.isConnected) await this.connect();
-    const [rows] = await this.pool.query(sql, params);
-    return rows as T[];
+    try {
+      if (!this.isConnected) await this.connect();
+      const [rows] = await this.pool.query(sql, params);
+      return rows as T[];
+    } catch (e: any) {
+      throw mapMySqlError(e);
+    }
   }
 
   protected async doExecuteNonQuery(sql: string, params: any[] = []): Promise<number> {
-    if (!this.isConnected) await this.connect();
-    const [result] = await this.pool.execute(sql, params);
-    // mysql2 returns OkPacket with affectedRows
-    return (result as any)?.affectedRows ?? 0;
+    try {
+      if (!this.isConnected) await this.connect();
+      const [result]: any = await this.pool.execute(sql, params);
+      return (result?.affectedRows ?? 0) as number;
+    } catch (e: any) {
+      throw mapMySqlError(e);
+    }
   }
 
   public async beginTransaction(): Promise<void> {
@@ -290,6 +297,14 @@ function mapTypeToMySql(type: string): string {
     default:
       return 'TEXT';
   }
+}
+
+function mapMySqlError(err: any): Error {
+  const code = err?.code;
+  const message = err?.message || String(err);
+  if (code === 'ER_DUP_ENTRY') return new (require('../types').UniqueConstraintError)(message, code);
+  const DatabaseError = require('../types').DatabaseError;
+  return new DatabaseError(message, code);
 }
 
 function safeRequireMysql2(): any {

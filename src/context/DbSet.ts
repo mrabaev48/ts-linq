@@ -103,7 +103,15 @@ export class DbSet<T> {
         if (this._entityLoader && options) {
             return await this._entityLoader.loadEntity(this._entityClass, id, options);
         }
-        return await this._provider.findById(id, this._entityClass);
+        // Route via Queryable to leverage L2 cache and global filters
+        const metadata = MetadataStorage.getEntity(this._entityClass);
+        if (!metadata || metadata.primaryKeys.length === 0) {
+            return await this._provider.findById(id, this._entityClass);
+        }
+        const pk = metadata.primaryKeys[0] as keyof T & string;
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters)
+            .where((e: any) => e[pk] === id)
+            .firstOrDefault();
     }
 
     /**
@@ -117,7 +125,7 @@ export class DbSet<T> {
         if (this._entityLoader && options) {
             return await this._entityLoader.loadEntities(this._entityClass, options);
         }
-        return await this._provider.findAll(this._entityClass);
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).toArray();
     }
 
     /**
