@@ -153,10 +153,21 @@ export abstract class DbContext {
             switch (change.state) {
                 case 'added':
                     await this._provider.insert(change.entity, change.entityClass);
+                    // update L2 cache
+                    if (this._entityCache) {
+                        const meta = MetadataStorage.getEntity(change.entityClass);
+                        const pk = meta?.primaryKeys[0];
+                        if (pk) this._entityCache.set(change.entityClass, (change.entity as any)[pk], change.entity);
+                    }
                     affectedRows++;
                     break;
                 case 'modified':
                     await this._provider.update(change.entity, change.entityClass);
+                    if (this._entityCache) {
+                        const meta = MetadataStorage.getEntity(change.entityClass);
+                        const pk = meta?.primaryKeys[0];
+                        if (pk) this._entityCache.set(change.entityClass, (change.entity as any)[pk], change.entity);
+                    }
                     affectedRows++;
                     break;
                 case 'deleted':
@@ -171,11 +182,20 @@ export abstract class DbContext {
                                 (change.entity as any)[deletedAt] = new Date();
                             }
                             await this._provider.update(change.entity, change.entityClass);
+                            if (this._entityCache) {
+                                const pk = meta.primaryKeys[0];
+                                this._entityCache.set(change.entityClass, (change.entity as any)[pk], change.entity);
+                            }
                             affectedRows++;
                             break;
                         }
                     }
                     await this._provider.delete(change.entity, change.entityClass);
+                    if (this._entityCache) {
+                        const meta = MetadataStorage.getEntity(change.entityClass);
+                        const pk = meta?.primaryKeys[0];
+                        if (pk) this._entityCache.remove(change.entityClass, (change.entity as any)[pk]);
+                    }
                     affectedRows++;
                     break;
             }
