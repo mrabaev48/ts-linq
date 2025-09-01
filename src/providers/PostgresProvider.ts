@@ -39,8 +39,8 @@ export class PostgresProvider extends DatabaseProvider {
         return entity;
     }
 
-    constructor(connectionString: string, logger?: any, middlewares?: any[]) {
-        super(connectionString, logger, middlewares);
+    constructor(connectionString: string, logger?: any, middlewares?: any[], softDelete?: any) {
+        super(connectionString, logger, middlewares, softDelete);
         this.qb = new QueryBuilder(new PostgresDialect());
     }
 
@@ -166,7 +166,12 @@ export class PostgresProvider extends DatabaseProvider {
         if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const pk = meta.primaryKeys[0];
         const col = meta.columns.find(c => c.propertyName === pk)?.columnName || pk;
-        const sql = `SELECT * FROM "${meta.tableName}" WHERE "${col}" = $1`;
+        let sql = `SELECT * FROM "${meta.tableName}" WHERE "${col}" = $1`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = meta.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` AND "${flag}" = FALSE`;
+        }
         const rows = await this.executeQuery<any>(sql, [id]);
         const r = rows[0];
         if (!r) return null;
@@ -178,7 +183,12 @@ export class PostgresProvider extends DatabaseProvider {
     public async findAll<T>(entityClass: new () => T): Promise<T[]> {
         const meta = MetadataStorage.getEntity(entityClass);
         if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-        const sql = `SELECT * FROM "${meta.tableName}"`;
+        let sql = `SELECT * FROM "${meta.tableName}"`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = meta.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` WHERE "${flag}" = FALSE`;
+        }
         const rows = await this.executeQuery<any>(sql);
         return rows.map(r => this.mapRowToEntity(r, entityClass));
     }
@@ -190,7 +200,12 @@ export class PostgresProvider extends DatabaseProvider {
         const keys = Object.keys(conditions);
         const clauses = keys.map((k, i) => `"${meta.columns.find(c => c.propertyName === k || c.columnName === k)?.columnName || k}" = $${i + 1}`);
         const vals = keys.map(k => conditions[k]);
-        const sql = `SELECT * FROM "${meta.tableName}" WHERE ${clauses.join(' AND ')}`;
+        let sql = `SELECT * FROM "${meta.tableName}" WHERE ${clauses.join(' AND ')}`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = meta.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` AND "${flag}" = FALSE`;
+        }
         const rows = await this.executeQuery<any>(sql, vals);
         return rows.map(r => this.mapRowToEntity(r, entityClass));
     }
@@ -201,7 +216,12 @@ export class PostgresProvider extends DatabaseProvider {
         const meta = MetadataStorage.getEntity(entityClass);
         if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const col = meta.columns.find(c => c.propertyName === column || c.columnName === column)?.columnName || column;
-        const sql = `SELECT * FROM "${meta.tableName}" WHERE "${col}" = ANY($1)`;
+        let sql = `SELECT * FROM "${meta.tableName}" WHERE "${col}" = ANY($1)`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = meta.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` AND "${flag}" = FALSE`;
+        }
         const rows = await this.executeQuery<any>(sql, [values]);
         return rows.map(r => this.mapRowToEntity(r, entityClass));
     }

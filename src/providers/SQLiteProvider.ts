@@ -12,8 +12,8 @@ import { SqlHelper } from '../utils/SqlHelper';
 export class SQLiteProvider extends DatabaseProvider {
     private db: sqlite3.Database | null = null;
 
-    constructor(connectionString: string, logger?: any, middlewares?: any[]) {
-        super(connectionString, logger, middlewares);
+    constructor(connectionString: string, logger?: any, middlewares?: any[], softDelete?: any) {
+        super(connectionString, logger, middlewares, softDelete);
     }
 
     /** Open a connection to the SQLite database and enable foreign keys. */
@@ -143,7 +143,12 @@ export class SQLiteProvider extends DatabaseProvider {
             throw new Error(`Primary key column not found for ${entityClass.name}`);
         }
 
-        const sql = `SELECT * FROM ${metadata.tableName} WHERE ${primaryKeyColumn.columnName} = ?`;
+        let sql = `SELECT * FROM ${metadata.tableName} WHERE ${primaryKeyColumn.columnName} = ?`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` AND ${flag} = 0`;
+        }
         const results = await this.executeQuery<any>(sql, [id]);
         
         return results.length > 0 ? this.mapRowToEntity(results[0], entityClass) : null;
@@ -156,7 +161,12 @@ export class SQLiteProvider extends DatabaseProvider {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
 
-        const sql = `SELECT * FROM ${metadata.tableName}`;
+        let sql = `SELECT * FROM ${metadata.tableName}`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` WHERE ${flag} = 0`;
+        }
         const results = await this.executeQuery<any>(sql);
         
         return results.map(row => this.mapRowToEntity(row, entityClass));
@@ -170,7 +180,12 @@ export class SQLiteProvider extends DatabaseProvider {
         }
 
         const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
-        const sql = `SELECT * FROM ${metadata.tableName} WHERE ${whereClause}`;
+        let sql = `SELECT * FROM ${metadata.tableName} WHERE ${whereClause}`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` AND ${flag} = 0`;
+        }
         const results = await this.executeQuery<any>(sql, params);
         
         return results.map(row => this.mapRowToEntity(row, entityClass));
@@ -187,7 +202,12 @@ export class SQLiteProvider extends DatabaseProvider {
         const columnMeta = metadata.columns.find(c => c.propertyName === column || c.columnName === column);
         const columnName = columnMeta ? columnMeta.columnName : column;
         const placeholders = values.map(() => '?').join(', ');
-        const sql = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
+        let sql = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` AND ${flag} = 0`;
+        }
         const results = await this.executeQuery<any>(sql, values);
         return results.map(row => this.mapRowToEntity(row, entityClass));
     }
@@ -324,11 +344,11 @@ export class SQLiteProvider extends DatabaseProvider {
     /** Generate INSERT SQL and parameter list for the given entity. */
     private generateInsertSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
         const insertableColumns = metadata.columns.filter(col => {
-            // Exclude auto-generated columns unless they have a value
-            if (col.isGenerated) {
-                return entity[col.propertyName] !== undefined && entity[col.propertyName] !== null;
-            }
-            return true;
+            // Exclude columns without provided value to allow DB defaults
+            const value = entity[col.propertyName];
+            // include when value is defined (can be null intentionally)
+            if (value !== undefined) return !col.isGenerated || value !== null;
+            return false;
         });
         
         const columnNames = insertableColumns.map(col => col.columnName);

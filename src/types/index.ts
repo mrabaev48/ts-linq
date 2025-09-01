@@ -56,6 +56,10 @@ export interface DbContextOptions {
     loading?: LoadingDefaults;
     /** Optional middleware pipeline for cross-cutting concerns. */
     middlewares?: OrmMiddleware[];
+    /** Optional soft delete configuration. */
+    softDelete?: SoftDeleteOptions;
+    /** Optional audit configuration. */
+    audit?: AuditOptions;
 }
 
 /**
@@ -94,6 +98,30 @@ export interface ColumnMetadata {
     isGenerated?: boolean;
     /** True when column is an optimistic concurrency token (version). */
     isVersion?: boolean;
+}
+
+/** Soft delete feature options. */
+export interface SoftDeleteOptions {
+    /** Enable soft delete behavior globally. */
+    enabled?: boolean;
+    /** Boolean column name used to mark deletion (default: 'isDeleted'). */
+    column?: string;
+    /** Optional timestamp column name when the entity was soft-deleted (default: 'deletedAt'). */
+    deletedAtColumn?: string;
+}
+
+/** Audit stamping feature options. */
+export interface AuditOptions {
+    /** Enable audit stamping globally. */
+    enabled?: boolean;
+    /** Column names used for timestamp fields. */
+    timeColumns?: { createdAt?: string; updatedAt?: string };
+    /** Column names used for user id fields. */
+    userColumns?: { createdBy?: string; updatedBy?: string };
+    /** Function to resolve current user id for stamping. */
+    getCurrentUserId?: () => any;
+    /** Function to resolve current time (default: new Date()). */
+    clock?: () => Date;
 }
 
 /**
