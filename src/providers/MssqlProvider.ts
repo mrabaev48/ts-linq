@@ -42,8 +42,8 @@ export class MssqlProvider extends DatabaseProvider {
     private pool: any | null = null;
     private tx: any | null = null;
     /** Create provider with MSSQL connection string. */
-    constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[]) {
-        super(connectionString, logger, middlewares);
+    constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[], softDelete?: any) {
+        super(connectionString, logger, middlewares, softDelete);
     }
 
     /** Open a connection pool to MSSQL server. */
@@ -155,7 +155,12 @@ export class MssqlProvider extends DatabaseProvider {
         const pk = metadata.primaryKeys[0];
         if (!pk) throw new Error(`No primary key defined for ${entityClass.name}`);
         const pkCol = metadata.columns.find(c => c.propertyName === pk)!;
-        const sql = `SELECT * FROM ${metadata.tableName} WHERE ${pkCol.columnName} = ?`;
+        let sql = `SELECT * FROM ${metadata.tableName} WHERE ${pkCol.columnName} = ?`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` AND ${flag} = 0`;
+        }
         const rows = await this.executeQuery<any>(sql, [id]);
         if (rows.length === 0) return null;
         return this.mapRowToEntity(rows[0], entityClass);
@@ -165,7 +170,12 @@ export class MssqlProvider extends DatabaseProvider {
     public async findAll<T>(entityClass: new () => T): Promise<T[]> {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-        const sql = `SELECT * FROM ${metadata.tableName}`;
+        let sql = `SELECT * FROM ${metadata.tableName}`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` WHERE ${flag} = 0`;
+        }
         const rows = await this.executeQuery<any>(sql);
         return rows.map(r => this.mapRowToEntity(r, entityClass));
     }
@@ -175,7 +185,12 @@ export class MssqlProvider extends DatabaseProvider {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
-        const sql = `SELECT * FROM ${metadata.tableName} WHERE ${whereClause}`;
+        let sql = `SELECT * FROM ${metadata.tableName} WHERE ${whereClause}`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` AND ${flag} = 0`;
+        }
         const rows = await this.executeQuery<any>(sql, params);
         return rows.map(r => this.mapRowToEntity(r, entityClass));
     }
@@ -188,7 +203,12 @@ export class MssqlProvider extends DatabaseProvider {
         const columnMeta = metadata.columns.find(c => c.propertyName === column || c.columnName === column);
         const columnName = columnMeta ? columnMeta.columnName : column;
         const placeholders = values.map(() => '?').join(', ');
-        const sql = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
+        let sql = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
+        if (this.softDelete?.enabled) {
+            const flag = this.softDelete.column ?? 'isDeleted';
+            const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+            if (has) sql += ` AND ${flag} = 0`;
+        }
         const rows = await this.executeQuery<any>(sql, values);
         return rows.map(r => this.mapRowToEntity(r, entityClass));
     }

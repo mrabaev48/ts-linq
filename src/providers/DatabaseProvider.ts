@@ -1,4 +1,4 @@
-import { EntityMetadata, OrmMiddleware, SqlLogger } from '../types';
+import { EntityMetadata, OrmMiddleware, SqlLogger, SoftDeleteOptions } from '../types';
 
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -13,15 +13,17 @@ export abstract class DatabaseProvider {
     protected currentTraceId?: string;
     protected middlewares?: OrmMiddleware[];
     private lastExecuteStartedAt?: number;
+    protected softDelete?: SoftDeleteOptions;
 
     /**
      * Create a provider with a given connection string.
      * @param connectionString Provider-specific connection string.
      */
-    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[]) {
+    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[], softDelete?: SoftDeleteOptions) {
         this.connectionString = connectionString;
         this.logger = logger;
         this.middlewares = middlewares;
+        this.softDelete = softDelete;
     }
 
     /** Connect to the database. */

@@ -34,8 +34,8 @@ import { SqlHelper } from '../utils/SqlHelper';
  */
 export class MySqlProvider extends DatabaseProvider {
   private pool: any | null = null;
-  constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[]) {
-    super(connectionString, logger, middlewares);
+  constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[], softDelete?: any) {
+    super(connectionString, logger, middlewares, softDelete);
   }
 
   public async connect(): Promise<void> {
@@ -111,14 +111,26 @@ export class MySqlProvider extends DatabaseProvider {
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const pk = metadata.primaryKeys[0];
     const pkCol = metadata.columns.find(c => c.propertyName === pk)!;
-    const rows = await this.executeQuery<any>(`SELECT * FROM ${metadata.tableName} WHERE ${pkCol.columnName} = ?`, [id]);
+    let sql = `SELECT * FROM ${metadata.tableName} WHERE ${pkCol.columnName} = ?`;
+    if (this.softDelete?.enabled) {
+      const flag = this.softDelete.column ?? 'isDeleted';
+      const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+      if (has) sql += ` AND ${flag} = 0`;
+    }
+    const rows = await this.executeQuery<any>(sql, [id]);
     return rows.length ? this.mapRowToEntity(rows[0], entityClass) : null;
   }
 
   public async findAll<T>(entityClass: new () => T): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const rows = await this.executeQuery<any>(`SELECT * FROM ${metadata.tableName}`);
+    let sql = `SELECT * FROM ${metadata.tableName}`;
+    if (this.softDelete?.enabled) {
+      const flag = this.softDelete.column ?? 'isDeleted';
+      const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+      if (has) sql += ` WHERE ${flag} = 0`;
+    }
+    const rows = await this.executeQuery<any>(sql);
     return rows.map(r => this.mapRowToEntity(r, entityClass));
   }
 
@@ -126,7 +138,13 @@ export class MySqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
-    const rows = await this.executeQuery<any>(`SELECT * FROM ${metadata.tableName} WHERE ${whereClause}`, params);
+    let sql = `SELECT * FROM ${metadata.tableName} WHERE ${whereClause}`;
+    if (this.softDelete?.enabled) {
+      const flag = this.softDelete.column ?? 'isDeleted';
+      const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+      if (has) sql += ` AND ${flag} = 0`;
+    }
+    const rows = await this.executeQuery<any>(sql, params);
     return rows.map(r => this.mapRowToEntity(r, entityClass));
   }
 
@@ -137,7 +155,13 @@ export class MySqlProvider extends DatabaseProvider {
     const columnMeta = metadata.columns.find(c => c.propertyName === column || c.columnName === column);
     const columnName = columnMeta ? columnMeta.columnName : column;
     const placeholders = values.map(() => '?').join(', ');
-    const rows = await this.executeQuery<any>(`SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`, values);
+    let sql2 = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
+    if (this.softDelete?.enabled) {
+      const flag = this.softDelete.column ?? 'isDeleted';
+      const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+      if (has) sql2 += ` AND ${flag} = 0`;
+    }
+    const rows = await this.executeQuery<any>(sql2, values);
     return rows.map(r => this.mapRowToEntity(r, entityClass));
   }
 

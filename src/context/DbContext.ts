@@ -8,7 +8,7 @@ import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy, LoadingOptions } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { DbSet } from './DbSet';
-import { DbContextOptions, PerformanceOptions, Result, ok, err, LoadingDefaults, ValidationError } from '../types';
+import { DbContextOptions, PerformanceOptions, Result, ok, err, LoadingDefaults, ValidationError, SoftDeleteOptions, AuditOptions } from '../types';
 import { EntityCache } from '../utils/EntityCache';
 
 /**
@@ -32,6 +32,8 @@ export abstract class DbContext {
     private _entityCache?: EntityCache;
     private _performanceOptions?: PerformanceOptions;
     private _loadingDefaults: LoadingDefaults = {};
+    private _softDelete?: SoftDeleteOptions;
+    private _audit?: AuditOptions;
 
     /**
      * Create a new database context instance.
@@ -40,18 +42,20 @@ export abstract class DbContext {
      */
     constructor(options: DbContextOptions) {
         // Initialize database provider based on options
+        this._softDelete = options.softDelete;
+        this._audit = options.audit;
         switch (options.provider || 'sqlite') {
             case 'sqlite':
-                this._provider = new SQLiteProvider(options.connectionString, options.logger, options.middlewares);
+                this._provider = new SQLiteProvider(options.connectionString, options.logger, options.middlewares, this._softDelete);
                 break;
             case 'postgresql':
-                this._provider = new PostgresProvider(options.connectionString, options.logger, options.middlewares);
+                this._provider = new PostgresProvider(options.connectionString, options.logger, options.middlewares, this._softDelete);
                 break;
             case 'mssql':
-                this._provider = new MssqlProvider(options.connectionString, options.logger, options.middlewares);
+                this._provider = new MssqlProvider(options.connectionString, options.logger, options.middlewares, this._softDelete);
                 break;
             case 'mysql':
-                this._provider = new MySqlProvider(options.connectionString, options.logger, options.middlewares);
+                this._provider = new MySqlProvider(options.connectionString, options.logger, options.middlewares, this._softDelete);
                 break;
             default:
                 throw new Error(`Provider ${options.provider} is not supported`);
@@ -108,11 +112,44 @@ export abstract class DbContext {
      */
     public async saveChanges(): Promise<number> {
         const changes = this._changeTracker.getChanges();
+        // Prefill DB defaults on Added entities to satisfy validation and keep entity consistent
+        for (const change of changes) {
+            if (change.state === 'added') {
+                const meta = MetadataStorage.getEntity(change.entityClass);
+                if (meta) {
+                    for (const col of meta.columns) {
+                        if ((change.entity as any)[col.propertyName] === undefined && col.defaultValue !== undefined) {
+                            (change.entity as any)[col.propertyName] = col.defaultValue;
+                        }
+                    }
+                }
+            }
+        }
         // Validate entities before persistence
         this.validateChanges(changes);
         let affectedRows = 0;
 
         for (const change of changes) {
+            // Apply audit stamping before persistence
+            if (this._audit?.enabled) {
+                const meta = MetadataStorage.getEntity(change.entityClass);
+                if (meta) {
+                    const now = (this._audit.clock ?? (() => new Date()))();
+                    const createdAt = this._audit.timeColumns?.createdAt ?? 'createdAt';
+                    const updatedAt = this._audit.timeColumns?.updatedAt ?? 'updatedAt';
+                    const createdBy = this._audit.userColumns?.createdBy ?? 'createdBy';
+                    const updatedBy = this._audit.userColumns?.updatedBy ?? 'updatedBy';
+                    const currentUser = this._audit.getCurrentUserId?.();
+                    if (change.state === 'added') {
+                        if (meta.columns.some(c => c.propertyName === createdAt)) (change.entity as any)[createdAt] = now;
+                        if (meta.columns.some(c => c.propertyName === createdBy) && currentUser !== undefined) (change.entity as any)[createdBy] = currentUser;
+                    }
+                    if (change.state === 'added' || change.state === 'modified') {
+                        if (meta.columns.some(c => c.propertyName === updatedAt)) (change.entity as any)[updatedAt] = now;
+                        if (meta.columns.some(c => c.propertyName === updatedBy) && currentUser !== undefined) (change.entity as any)[updatedBy] = currentUser;
+                    }
+                }
+            }
             switch (change.state) {
                 case 'added':
                     await this._provider.insert(change.entity, change.entityClass);
@@ -123,6 +160,21 @@ export abstract class DbContext {
                     affectedRows++;
                     break;
                 case 'deleted':
+                    // Soft delete if enabled and entity has configured column, else hard delete
+                    if (this._softDelete?.enabled) {
+                        const meta = MetadataStorage.getEntity(change.entityClass);
+                        const flag = this._softDelete.column ?? 'isDeleted';
+                        const deletedAt = this._softDelete.deletedAtColumn ?? 'deletedAt';
+                        if (meta && meta.columns.some(c => c.propertyName === flag || c.columnName === flag)) {
+                            (change.entity as any)[flag] = true;
+                            if (meta.columns.some(c => c.propertyName === deletedAt || c.columnName === deletedAt)) {
+                                (change.entity as any)[deletedAt] = new Date();
+                            }
+                            await this._provider.update(change.entity, change.entityClass);
+                            affectedRows++;
+                            break;
+                        }
+                    }
                     await this._provider.delete(change.entity, change.entityClass);
                     affectedRows++;
                     break;
@@ -295,7 +347,9 @@ export abstract class DbContext {
                 const value = change.entity[col.propertyName];
                 // Skip validation for auto-generated primary keys on Added entities
                 const isGeneratedPk = meta.primaryKeys.includes(col.propertyName) && col.isGenerated && change.state === 'added';
-                if (!col.nullable && (value === null || value === undefined) && !isGeneratedPk) {
+                // Allow DB-level defaultValue to satisfy non-null on Added when undefined in entity
+                const hasDbDefault = col.defaultValue !== undefined && change.state === 'added';
+                if (!col.nullable && (value === null || value === undefined) && !isGeneratedPk && !hasDbDefault) {
                     errors.push({ entity: meta.tableName, property: col.propertyName, message: 'Value cannot be null' });
                 }
                 if (col.length && typeof value === 'string' && value.length > col.length) {
