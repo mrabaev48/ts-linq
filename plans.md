@@ -99,7 +99,7 @@
 - [P1] Resilience: retry policy (idempotent ops only), jitter, circuit breaker [done]
 - [P2] Tracing/metrics: OpenTelemetry integration, Prometheus metrics, traceId correlation
 - [P2] Identifier quoting: centralized quoting via SqlDialect for table/column names [done]
-- [P2] Extended LINQ: groupBy/having [done]; subqueries (exists/in), unions
+- [P2] Extended LINQ: groupBy/having [done]; subqueries (exists/in) [done], unions [done]
 - [P2] Model validation: declarative rules checked before saveChanges [done]
 - [P1] Pagination: keyset pagination and paginate(page,size) helper with total/TTL cache [done]
 - [P2] Soft delete & audit: soft-delete flag, createdAt/updatedAt/createdBy/updatedBy hooks
