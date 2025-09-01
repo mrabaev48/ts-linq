@@ -36,6 +36,13 @@ export class EntityCache {
         this._store.set(key, entity);
     }
 
+    /** Remove a cached entity by class and id. */
+    public remove(entityClass: Function, id: any): void {
+        if (id === undefined || id === null) return;
+        const key = this.buildKey(entityClass, id);
+        this._store.delete(key);
+    }
+
     /** Clear all cached entities. */
     public clear(): void {
         this._store.clear();
