@@ -4,7 +4,7 @@ import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingOptions } from '../loading/LoadingStrategy';
 import { Queryable } from '../query/Queryable';
 import { EntityCache } from '../utils/EntityCache';
-import { PerformanceOptions } from '../types';
+import { PerformanceOptions, GlobalFilter } from '../types';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 
@@ -19,6 +19,7 @@ export class DbSet<T> {
     private _entityLoader: EntityLoader | undefined;
     private _entityCache: EntityCache | undefined;
     private _performance: PerformanceOptions | undefined;
+    private _globalFilters: GlobalFilter[] | undefined;
 
     constructor(
         entityClass: new () => T,
@@ -26,7 +27,8 @@ export class DbSet<T> {
         changeTracker: ChangeTracker,
         entityLoader?: EntityLoader,
         entityCache?: EntityCache,
-        performance?: PerformanceOptions
+        performance?: PerformanceOptions,
+        globalFilters?: GlobalFilter[]
     ) {
         this._entityClass = entityClass;
         this._provider = provider;
@@ -34,6 +36,7 @@ export class DbSet<T> {
         this._entityLoader = entityLoader;
         this._entityCache = entityCache;
         this._performance = performance;
+        this._globalFilters = globalFilters;
     }
 
     /**
@@ -126,16 +129,16 @@ export class DbSet<T> {
      * const cheap = await context.products.where(p => p.price < 100).toArray();
      */
     public where(predicate: (entity: T) => boolean): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).where(predicate);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).where(predicate);
     }
 
     /** Proxy: WHERE EXISTS (subquery). */
     public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).whereExists(subquery);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereExists(subquery);
     }
     /** Proxy: column IN (subquery). */
     public whereInSubquery<TOther>(column: keyof T & string, subquery: Queryable<TOther>): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).whereInSubquery(column, subquery);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereInSubquery(column, subquery);
     }
 
     /**
@@ -147,7 +150,7 @@ export class DbSet<T> {
      * const names = await context.authors.select(a => a.name).toArray();
      */
     public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).select(selector);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).select(selector);
     }
 
     /**
@@ -159,7 +162,7 @@ export class DbSet<T> {
      * const ordered = await context.books.orderBy(b => b.title).toArray();
      */
     public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).orderBy(keySelector);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderBy(keySelector);
     }
 
     /**
@@ -171,7 +174,7 @@ export class DbSet<T> {
      * const latest = await context.books.orderByDescending(b => b.id).take(5).toArray();
      */
     public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).orderByDescending(keySelector);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderByDescending(keySelector);
     }
 
     /**
@@ -183,7 +186,7 @@ export class DbSet<T> {
      * const top10 = await context.products.take(10).toArray();
      */
     public take(count: number): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).take(count);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).take(count);
     }
 
     /**
@@ -195,7 +198,7 @@ export class DbSet<T> {
      * const page2 = await context.products.orderBy(p => p.id).skip(10).take(10).toArray();
      */
     public skip(count: number): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).skip(count);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).skip(count);
     }
 
     /**
@@ -206,16 +209,16 @@ export class DbSet<T> {
      * const titles = await context.books.select(b => b.title).distinct().toArray();
      */
     public distinct(): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).distinct();
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).distinct();
     }
 
     /** Proxy: UNION of two queries of the same DbSet. */
     public union(other: Queryable<T>): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).union(other);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).union(other);
     }
     /** Proxy: UNION ALL of two queries of the same DbSet. */
     public unionAll(other: Queryable<T>): Queryable<T> {
-        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).unionAll(other);
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).unionAll(other);
     }
 
     /**
@@ -226,7 +229,7 @@ export class DbSet<T> {
      * const first = await context.books.orderBy(b => b.id).first();
      */
     public async first(): Promise<T> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).first();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).first();
     }
 
     /**
@@ -237,7 +240,7 @@ export class DbSet<T> {
      * const maybe = await context.books.where(b => b.id > 10000).firstOrDefault();
      */
     public async firstOrDefault(): Promise<T | null> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).firstOrDefault();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).firstOrDefault();
     }
 
     /**
@@ -248,7 +251,7 @@ export class DbSet<T> {
      * const book = await context.books.where(b => b.id === 1).single();
      */
     public async single(): Promise<T> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).single();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).single();
     }
 
     /**
@@ -259,7 +262,7 @@ export class DbSet<T> {
      * const maybe = await context.books.where(b => b.id === 9999).singleOrDefault();
      */
     public async singleOrDefault(): Promise<T | null> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).singleOrDefault();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).singleOrDefault();
     }
 
     /**
@@ -270,7 +273,7 @@ export class DbSet<T> {
      * const count = await context.products.where(p => p.price >= 100).count();
      */
     public async count(): Promise<number> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).count();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).count();
     }
 
     /**
@@ -281,7 +284,7 @@ export class DbSet<T> {
       * const exists = await context.products.where(p => p.name === 'Laptop').any();
      */
     public async any(): Promise<boolean> {
-        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).any();
+        return await new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).any();
     }
 
     /**
@@ -291,7 +294,7 @@ export class DbSet<T> {
      * const authors = await context.authors.include(a => a.books).where(a => a.id === 1).toArray();
      */
     public include(selector: (entity: T) => any): Queryable<T> {
-        const qb = new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance);
+        const qb = new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters);
         return qb.include(selector);
     }
 

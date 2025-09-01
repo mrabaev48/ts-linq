@@ -1,6 +1,6 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { WhereClause, OrderByClause, PerformanceOptions, Result, ok, err } from '../types';
+import { WhereClause, OrderByClause, PerformanceOptions, Result, ok, err, GlobalFilter } from '../types';
 import { QueryBuilder } from './QueryBuilder';
 import { PredicateParser } from './PredicateParser';
 import { SqlVisitor } from './ast/SqlVisitor';
@@ -25,6 +25,7 @@ export class Queryable<T> {
     private _sqlBuilder = new QueryBuilder();
     private static _countCache: Map<string, { value: number; ts: number }> = new Map();
     private _abortSignal?: AbortSignal;
+    private _globalFilters?: GlobalFilter[];
 
     /**
      * Create a new Queryable bound to an entity type and provider.
@@ -37,18 +38,20 @@ export class Queryable<T> {
         provider: DatabaseProvider,
         entityLoader?: EntityLoader,
         entityCache?: EntityCache,
-        performance?: PerformanceOptions
+        performance?: PerformanceOptions,
+        globalFilters?: GlobalFilter[]
     ) {
         this._entityClass = entityClass;
         this._provider = provider;
         this._entityLoader = entityLoader;
         this._entityCache = entityCache;
         this._performance = performance;
+        this._globalFilters = globalFilters;
     }
 
     /** Create a shallow clone sharing provider/loader but copying model. */
     public clone(): Queryable<T> {
-        const q = new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance);
+        const q = new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters);
         q._model = this._model.clone();
         return q;
     }
@@ -228,6 +231,7 @@ export class Queryable<T> {
     public async paginate(page: number, size: number): Promise<{ items: T[]; total: number; page: number; size: number }>{
         if (page < 1 || size < 1) throw new Error('paginate requires page >= 1 and size >= 1');
         const m = this._model.clone();
+        this.applyGlobalFiltersToModel(m);
         m.limit = size;
         m.offset = (page - 1) * size;
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
@@ -258,6 +262,7 @@ export class Queryable<T> {
             m.where = m.where || [];
             m.where.push(whereClause as any);
         }
+        this.applyGlobalFiltersToModel(m);
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
         const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
         let items = rows.map(r => this.mapRowToEntity(r));
@@ -290,7 +295,9 @@ export class Queryable<T> {
      */
     public async toArray(): Promise<T[]> {
         if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-        const sql = this._sqlBuilder.generateFromModel(this._entityClass, this._model);
+        const m = this._model.clone();
+        this.applyGlobalFiltersToModel(m);
+        const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
         const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
         let entities = rows.map(r => this.mapRowToEntity(r));
         entities = this.applyFallbackPredicates(entities);
@@ -310,6 +317,7 @@ export class Queryable<T> {
         if (this._abortSignal?.aborted) throw new Error('Operation aborted');
         const m = this._model.clone();
         m.limit = 1;
+        this.applyGlobalFiltersToModel(m);
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
         const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
         let entities = rows.map(r => this.mapRowToEntity(r));
@@ -334,6 +342,7 @@ export class Queryable<T> {
         if (this._abortSignal?.aborted) throw new Error('Operation aborted');
         const m = this._model.clone();
         m.limit = 1;
+        this.applyGlobalFiltersToModel(m);
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
         const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
         let entities = rows.map(r => this.mapRowToEntity(r));
@@ -388,10 +397,12 @@ export class Queryable<T> {
     private async executeCountQuery(table: string): Promise<number> {
         let query = `SELECT COUNT(*) as count FROM ${table}`;
         let parameters: any[] = [];
-        if (this._model.where && this._model.where.length > 0) {
-            const whereClauses = this._model.where.map(w => (w as any).condition);
+        const m = this._model.clone();
+        this.applyGlobalFiltersToModel(m);
+        if (m.where && m.where.length > 0) {
+            const whereClauses = m.where.map(w => (w as any).condition);
             query += ` WHERE ${whereClauses.join(' AND ')}`;
-            for (const where of this._model.where) parameters.push(...(where as any).parameters);
+            for (const where of m.where) parameters.push(...(where as any).parameters);
         }
         const results = await this._provider.executeQuery<{ count: number }>(query, parameters);
         return results[0]?.count ?? 0;
@@ -404,6 +415,7 @@ export class Queryable<T> {
         if (this._abortSignal?.aborted) throw new Error('Operation aborted');
         const m = this._model.clone();
         m.limit = 1;
+        this.applyGlobalFiltersToModel(m);
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
         const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
         let entities = rows.map(r => this.mapRowToEntity(r));
@@ -546,6 +558,16 @@ export class Queryable<T> {
         const rightCol = (rightMeta.columns.find((c: any) => c.propertyName === rightProp)?.columnName) || rightProp;
         return `${leftTable}.${leftCol} = ${rightTable}.${rightCol}`;
     }
-}
 
+    /** Apply configured global filters to the provided query model. */
+    private applyGlobalFiltersToModel(model: QueryModel & { where?: WhereClause[] }): void {
+        if (!this._globalFilters || this._globalFilters.length === 0) return;
+        const filters = this._globalFilters.filter(f => f.entity === (this as any)._entityClass);
+        if (filters.length === 0) return;
+        model.where = model.where || [];
+        for (const f of filters) {
+            model.where.push({ condition: f.where.condition, parameters: [...f.where.parameters] } as any);
+        }
+    }
+}
 
