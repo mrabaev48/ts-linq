@@ -605,6 +605,28 @@ const ctx = new AppDbContext({
 // Все запросы появятся как спаны в вашей трассировке (Jaeger/Tempo/DD и т.п.)
 ```
 
+Prometheus (optional):
+
+```ts
+import { PrometheusSqlLogger } from './src/utils/PrometheusSqlLogger';
+
+// If prom-client is installed, metrics will be recorded; otherwise this is a no-op
+const promLogger = new PrometheusSqlLogger('orders-service', { prefix: 'tsl_' });
+
+const ctx = new AppDbContext({
+  connectionString: ':memory:',
+  provider: 'sqlite',
+  logger: promLogger
+});
+
+// Exposing /metrics is up to the host app. Example with prom-client (pseudo):
+// import * as client from 'prom-client';
+// app.get('/metrics', async (_req, res) => {
+//   res.set('Content-Type', client.register.contentType);
+//   res.end(await client.register.metrics());
+// });
+```
+
 ### Extended LINQ
 
 Subqueries and unions are supported in addition to joins and includes:

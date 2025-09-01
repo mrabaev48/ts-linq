@@ -24,6 +24,8 @@
 - [done] Optional Result<T, E> for non-exceptional flows; centralize error mapping
 - [done] Central SQL logger with timings, parameters (safe), transaction trace ids
 - [done] Safer predicate parser: guard rails and deterministic fallbacks
+- [done] Provider error mapping across dialects: Unique/FK/timeout (SQLite, Postgres, MySQL, MSSQL)
+- [done] Retry policy with backoff+jitter; no-retry inside explicit transaction
 
 ## API & DX
 - [done] Validate include names against metadata; descriptive errors
@@ -36,6 +38,10 @@
 - [done] Integration: providers contract tests shared across dialects
 - [done] Property-based tests (fast-check) for predicate equivalence
 - [done] Performance regression tests for include batching
+- [done] Caching: L2 cache (hit/update/invalidate), count() TTL cache, paginate/keysetPaginate
+- [done] Retry policy tests (with/without transaction)
+- [done] Middleware tests: entityMaterialized, before/after with traceId and rows
+- [done] Error mapping tests: SQLite, Postgres, MySQL, MSSQL (unique/FK/timeout)
 
 ## Documentation & Tooling
 - [done] Typedoc API reference from JSDoc
@@ -98,6 +104,33 @@
 - [P2] Caching: stronger L2 cache with transaction-aware invalidation; shared SQL/AST cache
 - [P1] Resilience: retry policy (idempotent ops only), jitter, circuit breaker [done]
 - [P2] Tracing/metrics: OpenTelemetry integration, Prometheus metrics, traceId correlation
+  - [done] OpenTelemetry integration
+  - [done] traceId correlation in SQL logger and middleware
+  - [done] Prometheus metrics (PrometheusSqlLogger + tests + README)
+
+### Prometheus Metrics (separate task)
+- [P2] Prometheus metrics integration
+  - Metrics export:
+    - [todo] Expose optional `/metrics` endpoint (using `prom-client`), pluggable server integration
+    - [done] Provide `PrometheusSqlLogger` to emit metrics without endpoint coupling
+  - Metrics set (names tentative):
+    - [done] `db_query_total` (counter) — labels: provider, operation, entity, success
+    - [done] `db_query_duration_ms` (histogram) — labels: provider, operation, entity, success; sensible buckets
+    - [done] `db_error_total` (counter) — labels: provider, operation, error_type
+    - [todo] `db_retry_total` (counter) — labels: provider, operation
+    - [todo] `db_active_transactions` (gauge)
+    - [todo] `db_cache_hits_total` / `db_cache_misses_total` (counters) — labels: cache=sqlGen|entityL2
+  - Label schema & exemplars:
+    - [done] Standardize labels (low-cardinality): provider, operation (select/insert/update/delete/count), entity
+    - [todo] Attach traceId as exemplar when available (if supported by `prom-client` version)
+  - Configuration:
+    - [done] `prefix`, `bucketsMs`, DI of existing Prometheus client; no hard dependency
+  - Tests:
+    - [done] Unit tests for counters/histograms increments via logger hooks
+    - [todo] Integration test: start lightweight HTTP server, assert `/metrics` contains expected series
+  - Documentation:
+    - [done] README: setup with Node/Express/Fastify (example), notes on optional prom-client
+    - [todo] Add dashboards hints and example PromQL; guidance on bucket tuning and label cardinality limits
 - [P2] Identifier quoting: centralized quoting via SqlDialect for table/column names [done]
 - [P2] Extended LINQ: groupBy/having [done]; subqueries (exists/in) [done], unions [done]
 - [P2] Model validation: declarative rules checked before saveChanges [done]
