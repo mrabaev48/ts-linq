@@ -24,6 +24,19 @@ mysqlDescribe('MySQL integration (requires MYSQL_URL)', () => {
     expect(all.length).toBeGreaterThan(0);
     await ctx.dispose();
   });
+
+  test('Upsert works (ON DUPLICATE KEY)', async () => {
+    new MyUser();
+    const ctx = new MyCtx();
+    await ctx.ensureCreated();
+    const u = { id: 1, name: 'mysql-upsert-1' } as any as MyUser;
+    await (ctx as any).provider.upsert(u, MyUser);
+    u.name = 'mysql-upsert-2';
+    await (ctx as any).provider.upsert(u, MyUser);
+    const found = await (ctx as any).provider.findWhere(MyUser, { name: 'mysql-upsert-2' });
+    expect(found.length).toBeGreaterThan(0);
+    await ctx.dispose();
+  });
 });
 
 

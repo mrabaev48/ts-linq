@@ -8,7 +8,7 @@ import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy, LoadingOptions } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { DbSet } from './DbSet';
-import { DbContextOptions, PerformanceOptions, Result, ok, err, LoadingDefaults } from '../types';
+import { DbContextOptions, PerformanceOptions, Result, ok, err, LoadingDefaults, ValidationError } from '../types';
 import { EntityCache } from '../utils/EntityCache';
 
 /**
@@ -108,6 +108,8 @@ export abstract class DbContext {
      */
     public async saveChanges(): Promise<number> {
         const changes = this._changeTracker.getChanges();
+        // Validate entities before persistence
+        this.validateChanges(changes);
         let affectedRows = 0;
 
         for (const change of changes) {
@@ -280,5 +282,27 @@ export abstract class DbContext {
                 configurable: false
             });
         }
+    }
+
+    /** Basic model validation: not-null and length. */
+    private validateChanges(changes: Array<{ entity: any; entityClass: Function; state: string }>): void {
+        const errors: Array<{ entity: string; property: string; message: string }> = [];
+        for (const change of changes) {
+            if (change.state !== 'added' && change.state !== 'modified') continue;
+            const meta = MetadataStorage.getEntity(change.entityClass);
+            if (!meta) continue;
+            for (const col of meta.columns) {
+                const value = change.entity[col.propertyName];
+                // Skip validation for auto-generated primary keys on Added entities
+                const isGeneratedPk = meta.primaryKeys.includes(col.propertyName) && col.isGenerated && change.state === 'added';
+                if (!col.nullable && (value === null || value === undefined) && !isGeneratedPk) {
+                    errors.push({ entity: meta.tableName, property: col.propertyName, message: 'Value cannot be null' });
+                }
+                if (col.length && typeof value === 'string' && value.length > col.length) {
+                    errors.push({ entity: meta.tableName, property: col.propertyName, message: `Length exceeds ${col.length}` });
+                }
+            }
+        }
+        if (errors.length > 0) throw new ValidationError('Model validation failed', errors);
     }
 }

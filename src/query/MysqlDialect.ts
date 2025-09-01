@@ -9,6 +9,7 @@ import { QueryOptions } from '../types';
  * - Leaves '?' placeholders as-is (mysql2 supports positional params)
  */
 export class MysqlDialect implements SqlDialect {
+    public quoteIdentifier(identifier: string): string { return `\`${identifier.replace(/`/g, '``')}\``; }
     /**
      * Build SELECT for MySQL based on normalized QueryOptions.
      * @param entityClass Entity constructor to resolve table name
@@ -20,10 +21,10 @@ export class MysqlDialect implements SqlDialect {
         let query = 'SELECT ';
         if (options.distinct) query += 'DISTINCT ';
         query += options.select && options.select.length ? options.select.join(', ') : '*';
-        query += ` FROM ${metadata.tableName}`;
+        query += ` FROM \`${metadata.tableName}\``;
         if ((options as any).joins) {
             for (const join of (options as any).joins as Array<{ type: string; table: string; on: string; alias?: string }>) {
-                query += ` ${join.type} JOIN ${join.table}`;
+                query += ` ${join.type} JOIN \`${join.table}\``;
                 if (join.alias) query += ` AS ${join.alias}`;
                 query += ` ON ${join.on}`;
             }

@@ -1,7 +1,7 @@
 import * as sqlite3 from 'sqlite3';
 import { DatabaseProvider } from './DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { EntityMetadata, ColumnMetadata, DatabaseError, UniqueConstraintError, ForeignKeyConstraintError } from '../types';
+import { EntityMetadata, ColumnMetadata, DatabaseError, UniqueConstraintError, ForeignKeyConstraintError, OptimisticConcurrencyError } from '../types';
 import { SqlHelper } from '../utils/SqlHelper';
 
 /**
@@ -96,20 +96,27 @@ export class SQLiteProvider extends DatabaseProvider {
         });
     }
 
-    /** Update the entity row by primary key; throws if nothing affected. */
+    /** Update the entity row by primary key; supports optimistic concurrency via version column; throws if nothing affected. */
     public async update<T>(entity: T, entityClass: Function): Promise<T> {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata) {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
 
-        const { sql, params } = this.generateUpdateSql(entity, metadata);
+        const versionCol = metadata.columns.find(c => c.isVersion);
+        const { sql, params } = this.generateUpdateSql(entity, metadata, versionCol);
         const affectedRows = await this.executeNonQuery(sql, params);
         
         if (affectedRows === 0) {
+            if (versionCol) throw new OptimisticConcurrencyError();
             throw new Error(`No rows were updated. Entity may not exist or no changes detected.`);
         }
         
+        // increment version in entity
+        if (versionCol) {
+            const prop = versionCol.propertyName;
+            (entity as any)[prop] = ((entity as any)[prop] ?? 0) + 1;
+        }
         return entity;
     }
 
@@ -345,7 +352,7 @@ export class SQLiteProvider extends DatabaseProvider {
     }
 
     /** Generate UPDATE SQL and params based on non-PK columns and PK WHERE clause. */
-    private generateUpdateSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
+    private generateUpdateSql(entity: any, metadata: EntityMetadata, versionCol?: ColumnMetadata): { sql: string; params: any[] } {
         const updatableColumns = metadata.columns.filter(col => 
             !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated
         );
@@ -354,11 +361,14 @@ export class SQLiteProvider extends DatabaseProvider {
             throw new Error(`No updatable columns found for entity ${metadata.target.name}`);
         }
         
-        const setClauses = updatableColumns.map(col => `${col.columnName} = ?`);
+        const setClauses: string[] = updatableColumns.map(col => `${col.columnName} = ?`);
         const setParams = updatableColumns.map(col => {
             const value = entity[col.propertyName];
             return this.convertValueForDatabase(value, col.type);
         });
+        if (versionCol) {
+            setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
+        }
 
         const primaryKeyConditions: string[] = [];
         const whereParams: any[] = [];
@@ -370,6 +380,11 @@ export class SQLiteProvider extends DatabaseProvider {
             }
             primaryKeyConditions.push(`${pkColumn.columnName} = ?`);
             whereParams.push(entity[pkProperty]);
+        }
+
+        if (versionCol) {
+            primaryKeyConditions.push(`${versionCol.columnName} = ?`);
+            whereParams.push(entity[versionCol.propertyName]);
         }
 
         if (primaryKeyConditions.length === 0) {

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { SQLiteProvider } from '../src/providers/SQLiteProvider';
+import { OptimisticConcurrencyError } from '../src/types';
 import { Entity } from '../src/decorators/Entity';
 import { Column } from '../src/decorators/Column';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
@@ -46,6 +47,20 @@ describe('Provider contract (SQLite)', () => {
     expect(all.length).toBe(0);
   });
 
+  test('Upsert: insert then update on conflict', async () => {
+    const u = new CUser();
+    u.name = 'A';
+    // first insert via upsert
+    await provider.upsert(u, CUser);
+    expect(u.id).toBeGreaterThan(0);
+
+    // change and upsert should update
+    u.name = 'B';
+    await provider.upsert(u, CUser);
+    const all = await provider.findWhere(CUser, { name: 'B' });
+    expect(all.length).toBe(1);
+  });
+
   test('Transactions: begin/commit/rollback state flags', async () => {
     expect(provider.inTransactionState).toBe(false);
     await provider.beginTransaction();
@@ -56,6 +71,18 @@ describe('Provider contract (SQLite)', () => {
     expect(provider.inTransactionState).toBe(true);
     await provider.rollbackTransaction();
     expect(provider.inTransactionState).toBe(false);
+  });
+
+  test('Optimistic concurrency error type', async () => {
+    const u = new CUser(); u.name = 'A';
+    await provider.insert(u, CUser);
+    // prepare stale entity with wrong version by enabling version metadata retroactively
+    const meta = MetadataStorage.getEntity(CUser)!;
+    meta.columns.push({ propertyName: 'version', columnName: 'version', type: 'INTEGER', nullable: false, isGenerated: false, isVersion: true } as any);
+    await provider.executeNonQuery(`ALTER TABLE ${meta.tableName} ADD COLUMN version INTEGER DEFAULT 0`);
+    // stale update with version=5 that doesn't match 0
+    (u as any).version = 5;
+    await expect(provider.update(u, CUser)).rejects.toBeInstanceOf(OptimisticConcurrencyError);
   });
 });
 

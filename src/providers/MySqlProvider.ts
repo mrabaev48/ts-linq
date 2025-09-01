@@ -1,5 +1,5 @@
 import { DatabaseProvider } from './DatabaseProvider';
-import { EntityMetadata, ColumnMetadata, SqlLogger } from '../types';
+import { EntityMetadata, ColumnMetadata, SqlLogger, OptimisticConcurrencyError } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SqlHelper } from '../utils/SqlHelper';
 
@@ -72,9 +72,29 @@ export class MySqlProvider extends DatabaseProvider {
   public async update<T>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const { sql, params } = this.generateUpdateSql(entity as any, metadata);
+    const versionCol = metadata.columns.find(c => (c as any).isVersion);
+    const { sql, params } = this.generateUpdateSql(entity as any, metadata, versionCol as any);
     const n = await this.executeNonQuery(sql, params);
-    if (n === 0) throw new Error('No rows were updated.');
+    if (n === 0) {
+      if (versionCol) throw new OptimisticConcurrencyError();
+      throw new Error('No rows were updated.');
+    }
+    if (versionCol) (entity as any)[(versionCol as any).propertyName] = ((entity as any)[(versionCol as any).propertyName] ?? 0) + 1;
+    return entity;
+  }
+
+  /** Upsert using INSERT ... ON DUPLICATE KEY UPDATE ... */
+  public async upsert<T>(entity: T, entityClass: Function): Promise<T> {
+    const metadata = MetadataStorage.getEntity(entityClass);
+    if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+    const insertable = metadata.columns.filter(c => !c.isGenerated || (entity as any)[c.propertyName] !== undefined);
+    const names = insertable.map(c => c.columnName);
+    const placeholders = insertable.map(() => '?');
+    const params = insertable.map(c => (entity as any)[c.propertyName]);
+    const updatable = metadata.columns.filter(c => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+    const updateSet = updatable.map(c => `${c.columnName} = VALUES(${c.columnName})`).join(', ');
+    const sql = `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')}) ON DUPLICATE KEY UPDATE ${updateSet}`;
+    await this.executeNonQuery(sql, params);
     return entity;
   }
 
@@ -179,10 +199,11 @@ export class MySqlProvider extends DatabaseProvider {
     const params = insertable.map(c => entity[c.propertyName]);
     return { sql: `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`, params };
   }
-  private generateUpdateSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
+  private generateUpdateSql(entity: any, metadata: EntityMetadata, versionCol?: ColumnMetadata): { sql: string; params: any[] } {
     const updatable = metadata.columns.filter(c => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
-    const setClauses = updatable.map(c => `${c.columnName} = ?`);
+    const setClauses: string[] = updatable.map(c => `${c.columnName} = ?`);
     const setParams = updatable.map(c => entity[c.propertyName]);
+    if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
     const whereClauses: string[] = [];
     const whereParams: any[] = [];
     for (const pk of metadata.primaryKeys) {
@@ -190,6 +211,7 @@ export class MySqlProvider extends DatabaseProvider {
       whereClauses.push(`${col.columnName} = ?`);
       whereParams.push(entity[pk]);
     }
+    if (versionCol) { whereClauses.push(`${versionCol.columnName} = ?`); whereParams.push(entity[(versionCol as any).propertyName]); }
     const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, params: [...setParams, ...whereParams] };
   }

@@ -13,7 +13,7 @@ describe('MysqlDialect', () => {
     new T();
     const d = new MysqlDialect();
     const { query } = d.buildSelect(T, { limit: 10, offset: 20 });
-    expect(query).toMatch(/SELECT \* FROM t .*LIMIT 10 OFFSET 20/);
+    expect(query).toMatch(/SELECT \* FROM `t` .*LIMIT 10 OFFSET 20/);
   });
 
   test('WHERE composition keeps placeholders', () => {

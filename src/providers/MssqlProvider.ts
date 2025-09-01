@@ -1,5 +1,5 @@
 import { DatabaseProvider } from './DatabaseProvider';
-import { EntityMetadata, ColumnMetadata, SqlLogger } from '../types';
+import { EntityMetadata, ColumnMetadata, SqlLogger, OptimisticConcurrencyError } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SqlHelper } from '../utils/SqlHelper';
 
@@ -101,9 +101,14 @@ export class MssqlProvider extends DatabaseProvider {
     public async update<T>(entity: T, entityClass: Function): Promise<T> {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-        const { sql, params } = this.generateUpdateSql(entity as any, metadata);
+        const versionCol = metadata.columns.find(c => (c as any).isVersion);
+        const { sql, params } = this.generateUpdateSql(entity as any, metadata, versionCol as any);
         const n = await this.executeNonQuery(sql, params);
-        if (n === 0) throw new Error('No rows were updated.');
+        if (n === 0) {
+            if (versionCol) throw new OptimisticConcurrencyError();
+            throw new Error('No rows were updated.');
+        }
+        if (versionCol) (entity as any)[(versionCol as any).propertyName] = ((entity as any)[(versionCol as any).propertyName] ?? 0) + 1;
         return entity;
     }
 
@@ -114,6 +119,33 @@ export class MssqlProvider extends DatabaseProvider {
         const { sql, params } = this.generateDeleteSql(entity as any, metadata);
         const n = await this.executeNonQuery(sql, params);
         if (n === 0) throw new Error('No rows were deleted.');
+    }
+
+    /** Upsert using MERGE statement (simplified). */
+    public async upsert<T>(entity: T, entityClass: Function): Promise<T> {
+        const metadata = MetadataStorage.getEntity(entityClass);
+        if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+        const pk = metadata.primaryKeys;
+        if (!pk.length) return this.insert(entity, entityClass);
+
+        const updatable = metadata.columns.filter(c => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+        const sourceCols = metadata.columns.filter(c => !c.isGenerated);
+
+        const sourceSelect = sourceCols.map(c => `? AS ${c.columnName}`).join(', ');
+        const onClause = pk.map(k => {
+            const col = metadata.columns.find(c => c.propertyName === k)!;
+            return `t.${col.columnName} = s.${col.columnName}`;
+        }).join(' AND ');
+        const setClause = updatable.map(c => `t.${c.columnName} = s.${c.columnName}`).join(', ');
+        const insertCols = sourceCols.map(c => c.columnName).join(', ');
+        const insertVals = sourceCols.map(c => `s.${c.columnName}`).join(', ');
+        const params = sourceCols.map(c => (entity as any)[c.propertyName]);
+
+        const sql = `MERGE ${metadata.tableName} AS t USING (SELECT ${sourceSelect}) AS s ON (${onClause}) ` +
+            (setClause ? `WHEN MATCHED THEN UPDATE SET ${setClause} ` : '') +
+            `WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals});`;
+        await this.executeNonQuery(sql, params);
+        return entity;
     }
 
     /** Find a single entity by its primary key value. */
@@ -256,11 +288,12 @@ export class MssqlProvider extends DatabaseProvider {
         return { sql, params, returningPk };
     }
 
-    private generateUpdateSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
+    private generateUpdateSql(entity: any, metadata: EntityMetadata, versionCol?: ColumnMetadata): { sql: string; params: any[] } {
         const updatable = metadata.columns.filter(c => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
         if (updatable.length === 0) throw new Error(`No updatable columns for ${metadata.target.name}`);
-        const setClauses = updatable.map(c => `${c.columnName} = ?`);
+        const setClauses: string[] = updatable.map(c => `${c.columnName} = ?`);
         const setParams = updatable.map(c => entity[c.propertyName]);
+        if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
         const whereClauses: string[] = [];
         const whereParams: any[] = [];
         for (const pk of metadata.primaryKeys) {
@@ -268,6 +301,7 @@ export class MssqlProvider extends DatabaseProvider {
             whereClauses.push(`${col.columnName} = ?`);
             whereParams.push(entity[pk]);
         }
+        if (versionCol) { whereClauses.push(`${versionCol.columnName} = ?`); whereParams.push(entity[(versionCol as any).propertyName]); }
         const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
         return { sql, params: [...setParams, ...whereParams] };
     }

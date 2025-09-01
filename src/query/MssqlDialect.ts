@@ -10,6 +10,7 @@ import { QueryOptions } from '../types';
  * - Converts '?' placeholders to @p1..@pn for MSSQL parameter style
  */
 export class MssqlDialect implements SqlDialect {
+    public quoteIdentifier(identifier: string): string { return `[${identifier.replace(/]/g, ']]')}]`; }
     /**
      * Build a SELECT statement for MSSQL based on normalized QueryOptions.
      * @param entityClass Entity constructor to resolve table name from metadata
@@ -32,11 +33,11 @@ export class MssqlDialect implements SqlDialect {
         if (options.distinct) selectHead += 'DISTINCT ';
         if (hasLimit && !hasOffset) selectHead += `TOP (${options.limit}) `;
 
-        let query = `${selectHead}${selectList} FROM ${metadata.tableName}`;
+        let query = `${selectHead}${selectList} FROM [${metadata.tableName}]`;
 
         if ((options as any).joins) {
             for (const join of (options as any).joins as Array<{ type: string; table: string; on: string; alias?: string }>) {
-                query += ` ${join.type} JOIN ${join.table}`;
+                query += ` ${join.type} JOIN [${join.table}]`;
                 if (join.alias) query += ` AS ${join.alias}`;
                 query += ` ON ${join.on}`;
             }
@@ -46,6 +47,18 @@ export class MssqlDialect implements SqlDialect {
             const whereClauses = options.where.map(w => (w as any).condition);
             query += ` WHERE ${whereClauses.join(' AND ')}`;
             for (const where of options.where) parameters.push(...(where as any).parameters);
+        }
+
+        // GROUP BY / HAVING
+        if ((options as any).groupBy) {
+            const gb: any = (options as any).groupBy;
+            if (gb.columns && gb.columns.length > 0) {
+                query += ` GROUP BY ${gb.columns.join(', ')}`;
+            }
+            if (gb.having) {
+                query += ` HAVING ${gb.having.condition}`;
+                if (gb.having.parameters) parameters.push(...gb.having.parameters);
+            }
         }
 
         if ((options as any).orderBy && (options as any).orderBy.length > 0) {
