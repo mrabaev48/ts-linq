@@ -21,9 +21,26 @@ try { Pg = require('pg'); } catch {}
 export class PostgresProvider extends DatabaseProvider {
     private pool: any;
     private qb: QueryBuilder;
+    /** Map a row object to a new entity instance using entity metadata and notify middleware. */
+    private mapRowToEntity<T>(row: any, entityClass: new () => T): T {
+        const entity = new entityClass();
+        const meta = MetadataStorage.getEntity(entityClass);
+        if (meta) {
+            for (const col of meta.columns) {
+                if (Object.prototype.hasOwnProperty.call(row, col.columnName)) {
+                    (entity as any)[col.propertyName] = convertValueFromPg(row[col.columnName], col.type);
+                }
+            }
+        } else {
+            Object.assign(entity as any, row);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.notifyEntityMaterialized(entity, meta);
+        return entity;
+    }
 
-    constructor(connectionString: string, logger?: any) {
-        super(connectionString, logger);
+    constructor(connectionString: string, logger?: any, middlewares?: any[]) {
+        super(connectionString, logger, middlewares);
         this.qb = new QueryBuilder(new PostgresDialect());
     }
 
@@ -79,6 +96,9 @@ export class PostgresProvider extends DatabaseProvider {
         const sql = `INSERT INTO "${meta.tableName}" (${names.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
         const rows = await this.executeQuery<any>(sql, values);
         Object.assign(entity as any, rows[0]);
+        // notify materialized of inserted row state
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.notifyEntityMaterialized(entity, meta);
         return entity;
     }
 
@@ -149,7 +169,9 @@ export class PostgresProvider extends DatabaseProvider {
         const sql = `SELECT * FROM "${meta.tableName}" WHERE "${col}" = $1`;
         const rows = await this.executeQuery<any>(sql, [id]);
         const r = rows[0];
-        return r ? mapRowToEntity(r, entityClass) : null;
+        if (!r) return null;
+        const e = this.mapRowToEntity(r, entityClass);
+        return e;
     }
 
     /** Fetch all rows for the given entity type. */
@@ -158,7 +180,7 @@ export class PostgresProvider extends DatabaseProvider {
         if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const sql = `SELECT * FROM "${meta.tableName}"`;
         const rows = await this.executeQuery<any>(sql);
-        return rows.map(r => mapRowToEntity(r, entityClass));
+        return rows.map(r => this.mapRowToEntity(r, entityClass));
     }
 
     /** Find rows by simple equality conditions { column: value }. */
@@ -170,7 +192,7 @@ export class PostgresProvider extends DatabaseProvider {
         const vals = keys.map(k => conditions[k]);
         const sql = `SELECT * FROM "${meta.tableName}" WHERE ${clauses.join(' AND ')}`;
         const rows = await this.executeQuery<any>(sql, vals);
-        return rows.map(r => mapRowToEntity(r, entityClass));
+        return rows.map(r => this.mapRowToEntity(r, entityClass));
     }
 
     /** Find rows where a column equals any of provided values using Postgres ANY($1). */
@@ -181,7 +203,7 @@ export class PostgresProvider extends DatabaseProvider {
         const col = meta.columns.find(c => c.propertyName === column || c.columnName === column)?.columnName || column;
         const sql = `SELECT * FROM "${meta.tableName}" WHERE "${col}" = ANY($1)`;
         const rows = await this.executeQuery<any>(sql, [values]);
-        return rows.map(r => mapRowToEntity(r, entityClass));
+        return rows.map(r => this.mapRowToEntity(r, entityClass));
     }
 
     /** Low-level query execution returning rows. */
@@ -263,20 +285,6 @@ function convertValueFromPg(value: any, type: string): any {
     }
 }
 
-/** Map a row object to a new entity instance using entity metadata. */
-function mapRowToEntity<T>(row: any, entityClass: new () => T): T {
-    const entity = new entityClass();
-    const meta = MetadataStorage.getEntity(entityClass);
-    if (meta) {
-        for (const col of meta.columns) {
-            if (Object.prototype.hasOwnProperty.call(row, col.columnName)) {
-                (entity as any)[col.propertyName] = convertValueFromPg(row[col.columnName], col.type);
-            }
-        }
-    } else {
-        Object.assign(entity as any, row);
-    }
-    return entity;
-}
+// (removed legacy free function mapRowToEntity; instance method is used)
 
 

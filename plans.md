@@ -98,13 +98,13 @@
 - [P2] Caching: stronger L2 cache with transaction-aware invalidation; shared SQL/AST cache
 - [P1] Resilience: retry policy (idempotent ops only), jitter, circuit breaker [done]
 - [P2] Tracing/metrics: OpenTelemetry integration, Prometheus metrics, traceId correlation
-- [P2] Identifier quoting: centralized quoting via SqlDialect for table/column names
-- [P2] Extended LINQ: groupBy/having, subqueries (exists/in), unions
-- [P2] Model validation: declarative rules checked before saveChanges
+- [P2] Identifier quoting: centralized quoting via SqlDialect for table/column names [done]
+- [P2] Extended LINQ: groupBy/having [done]; subqueries (exists/in), unions
+- [P2] Model validation: declarative rules checked before saveChanges [done]
 - [P1] Pagination: keyset pagination and paginate(page,size) helper with total/TTL cache [done]
 - [P2] Soft delete & audit: soft-delete flag, createdAt/updatedAt/createdBy/updatedBy hooks
 - [P3] Multi-tenancy: tenant scoping and default filters at DbContext level
 - [P2] Plugin/middleware API: hooks before/after materialization and execute
-- [P2] Documentation: guides for diff-migrations, upsert/batch, advanced include/join [ongoing]
+- [P2] Documentation: guides for diff-migrations, upsert/batch, advanced include/join [ongoing]; README: Pagination & Optimistic Concurrency [done]
 - [P2] Test matrix: Testcontainers-based integration for all providers in CI; property-based tests for join/include
 - [P2] Distribution: ESM/CJS builds, tree-shaking, types, changelog, semver releases

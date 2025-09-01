@@ -34,8 +34,8 @@ import { SqlHelper } from '../utils/SqlHelper';
  */
 export class MySqlProvider extends DatabaseProvider {
   private pool: any | null = null;
-  constructor(connectionString: string, logger?: SqlLogger) {
-    super(connectionString, logger);
+  constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[]) {
+    super(connectionString, logger, middlewares);
   }
 
   public async connect(): Promise<void> {
@@ -238,6 +238,8 @@ export class MySqlProvider extends DatabaseProvider {
     } else {
       Object.assign(entity as any, row);
     }
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    this.notifyEntityMaterialized(entity, metadata);
     return entity;
   }
 }

@@ -12,8 +12,8 @@ import { SqlHelper } from '../utils/SqlHelper';
 export class SQLiteProvider extends DatabaseProvider {
     private db: sqlite3.Database | null = null;
 
-    constructor(connectionString: string, logger?: any) {
-        super(connectionString, logger);
+    constructor(connectionString: string, logger?: any, middlewares?: any[]) {
+        super(connectionString, logger, middlewares);
     }
 
     /** Open a connection to the SQLite database and enable foreign keys. */
@@ -71,29 +71,20 @@ export class SQLiteProvider extends DatabaseProvider {
         }
 
         const { sql, params } = this.generateInsertSql(entity, metadata);
-        
-        return new Promise((resolve, reject) => {
-            if (!this.db) {
-                reject(new Error('Database not connected'));
-                return;
-            }
-
-            this.db.run(sql, params, function(err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    // Set the generated ID if applicable
-                    const primaryKey = metadata.primaryKeys[0];
-                    if (primaryKey && this.lastID) {
-                        const primaryKeyColumn = metadata.columns.find(c => c.propertyName === primaryKey);
-                        if (primaryKeyColumn && primaryKeyColumn.isGenerated) {
-                            (entity as any)[primaryKey] = this.lastID;
-                        }
-                    }
-                    resolve(entity);
+        await this.executeNonQuery(sql, params);
+        // Handle generated PK via last_insert_rowid when applicable
+        const primaryKey = metadata.primaryKeys[0];
+        if (primaryKey) {
+            const primaryKeyColumn = metadata.columns.find(c => c.propertyName === primaryKey);
+            if (primaryKeyColumn && primaryKeyColumn.isGenerated && this.mapTypeToSQLite(primaryKeyColumn.type) === 'INTEGER') {
+                const rows = await this.executeQuery<any>('SELECT last_insert_rowid() AS id');
+                const id = rows && rows[0]?.id;
+                if (id !== undefined) {
+                    (entity as any)[primaryKey] = id;
                 }
-            });
-        });
+            }
+        }
+        return entity;
     }
 
     /** Update the entity row by primary key; supports optimistic concurrency via version column; throws if nothing affected. */
@@ -460,7 +451,9 @@ export class SQLiteProvider extends DatabaseProvider {
             // Fallback: copy all properties
             Object.assign(entity as any, row);
         }
-        
+        // notify middleware
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.notifyEntityMaterialized(entity, metadata);
         return entity;
     }
 

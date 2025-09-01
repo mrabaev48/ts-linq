@@ -42,8 +42,8 @@ export class MssqlProvider extends DatabaseProvider {
     private pool: any | null = null;
     private tx: any | null = null;
     /** Create provider with MSSQL connection string. */
-    constructor(connectionString: string, logger?: SqlLogger) {
-        super(connectionString, logger);
+    constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[]) {
+        super(connectionString, logger, middlewares);
     }
 
     /** Open a connection pool to MSSQL server. */
@@ -330,6 +330,8 @@ export class MssqlProvider extends DatabaseProvider {
         } else {
             Object.assign(entity as any, row);
         }
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.notifyEntityMaterialized(entity, metadata);
         return entity;
     }
 }
