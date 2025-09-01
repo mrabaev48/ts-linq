@@ -46,6 +46,13 @@ export class Queryable<T> {
         this._performance = performance;
     }
 
+    /** Create a shallow clone sharing provider/loader but copying model. */
+    public clone(): Queryable<T> {
+        const q = new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance);
+        q._model = this._model.clone();
+        return q;
+    }
+
     /**
      * Add INNER JOIN to the query.
      * @param otherCtor Joined entity constructor
@@ -77,6 +84,28 @@ export class Queryable<T> {
      */
     public where(predicate: (entity: T) => boolean): Queryable<T> {
         this.addWhereOrFallback(predicate);
+        return this;
+    }
+
+    /** Add EXISTS (subquery) predicate. */
+    public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
+        const qb = (subquery as any)._sqlBuilder as QueryBuilder;
+        const model = (subquery as any)._model as QueryModel;
+        const entity = (subquery as any)._entityClass as Function;
+        const { query, parameters } = qb.generateFromModel(entity as any, model);
+        this._model.where = this._model.where || [];
+        this._model.where.push({ condition: `EXISTS (${query})`, parameters } as any);
+        return this;
+    }
+
+    /** Add IN (subquery) predicate for a column. */
+    public whereInSubquery<TOther>(column: keyof T & string, subquery: Queryable<TOther>): Queryable<T> {
+        const qb = (subquery as any)._sqlBuilder as QueryBuilder;
+        const model = (subquery as any)._model as QueryModel;
+        const entity = (subquery as any)._entityClass as Function;
+        const { query, parameters } = qb.generateFromModel(entity as any, model);
+        this._model.where = this._model.where || [];
+        this._model.where.push({ condition: `${column} IN (${query})`, parameters } as any);
         return this;
     }
 
@@ -143,6 +172,19 @@ export class Queryable<T> {
      * const titles = await context.books.select(b => b.title).distinct().toArray();
      */
     public distinct(): Queryable<T> { this._model.distinct = true; return this; }
+
+    /** UNION with another queryable of the same entity. */
+    public union(other: Queryable<T>): Queryable<T> {
+        this._model.unions = this._model.unions || [];
+        this._model.unions.push({ all: false, other: (other as any)._model.clone(), entity: (other as any)._entityClass });
+        return this;
+    }
+    /** UNION ALL with another queryable of the same entity. */
+    public unionAll(other: Queryable<T>): Queryable<T> {
+        this._model.unions = this._model.unions || [];
+        this._model.unions.push({ all: true, other: (other as any)._model.clone(), entity: (other as any)._entityClass });
+        return this;
+    }
 
     /**
      * Group results by selected columns.

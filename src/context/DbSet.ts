@@ -129,6 +129,15 @@ export class DbSet<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).where(predicate);
     }
 
+    /** Proxy: WHERE EXISTS (subquery). */
+    public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).whereExists(subquery);
+    }
+    /** Proxy: column IN (subquery). */
+    public whereInSubquery<TOther>(column: keyof T & string, subquery: Queryable<TOther>): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).whereInSubquery(column, subquery);
+    }
+
     /**
      * Select specific properties
      *
@@ -198,6 +207,15 @@ export class DbSet<T> {
      */
     public distinct(): Queryable<T> {
         return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).distinct();
+    }
+
+    /** Proxy: UNION of two queries of the same DbSet. */
+    public union(other: Queryable<T>): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).union(other);
+    }
+    /** Proxy: UNION ALL of two queries of the same DbSet. */
+    public unionAll(other: Queryable<T>): Queryable<T> {
+        return new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance).unionAll(other);
     }
 
     /**
