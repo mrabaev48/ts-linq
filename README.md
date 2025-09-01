@@ -592,6 +592,21 @@ const logger: SqlLogger = {
 const ctx = new AppDbContext({ connectionString: ':memory:', provider: 'sqlite', logger });
 ```
 
+### Extended LINQ
+
+Subqueries and unions are supported in addition to joins and includes:
+
+```ts
+// Subquery IN
+const sub = ctx.orderItems.select(oi => ({ productId: (oi as any).productId } as any));
+const popular = await ctx.products.whereInSubquery('id' as any, sub).toArray();
+
+// UNION
+const q1 = ctx.products.where(p => p.price <= 10);
+const q2 = ctx.products.where(p => p.price >= 1000);
+const extremes = await q1.clone().union(q2).toArray();
+```
+
 ### SQL Dialects
 
 The query layer is decoupled from SQL generation via a dialect strategy:
@@ -658,6 +673,15 @@ const spec = Specs.and(byId, hasName);
 - Simple app: `examples/simple-app.ts`
 - Advanced queries: `examples/advanced-queries.ts`
 
+### Distribution (ESM/CJS)
+
+The package ships dual builds:
+- CJS: `dist/cjs`, main entry `package.json#main`
+- ESM: `dist/esm`, module entry `package.json#module`
+- Types: `dist/types`
+
+Node and bundlers will pick the right build via `exports`.
+
 ### API Docs (TypeDoc)
 
 - Generate HTML documentation:
@@ -668,3 +692,9 @@ npm run docs
 
 - Output will be in the `docs/` folder. Open `docs/index.html` in a browser.
 - The generator uses `src/index.ts` as the entry point and includes public and private APIs. If you see warnings about referenced types not included, consider exporting those types from `src/index.ts` or ignore the warnings.
+
+### Guides
+
+- Diff migrations: `docs/guides/diff-migrations.md`
+- Upsert & batch: `docs/guides/upsert-batch.md`
+- Advanced include & joins: `docs/guides/advanced-include-join.md`
