@@ -733,3 +733,25 @@ npm run docs
 - Diff migrations: `docs/guides/diff-migrations.md`
 - Upsert & batch: `docs/guides/upsert-batch.md`
 - Advanced include & joins: `docs/guides/advanced-include-join.md`
+
+### CLI (experimental)
+
+Минимальная CLI-утилита для SQLite.
+
+```bash
+# Печать SQL-диффа текущей схемы (по умолчанию :memory:)
+npx ts-node src/bin/ts-linq-cli.ts
+
+# Применить SQL-дифф к БД
+SQLITE_URL="file:./dev.sqlite" npx ts-node src/bin/ts-linq-cli.ts migrate
+
+# Сгенерировать файл миграции в ./migrations
+npx ts-node src/bin/ts-linq-cli.ts generate AddNewTable
+
+# Применить сиды из файла (по умолчанию ./seeds.sql)
+SQLITE_URL="file:./dev.sqlite" npx ts-node src/bin/ts-linq-cli.ts seed ./seeds.sql
+```
+
+Примечания:
+- Переменная окружения `SQLITE_URL` указывает строку подключения. По умолчанию `:memory:`.
+- Команда `rollback` для дифф-подхода не поддерживается: используйте сгенерированные миграции с явными `down()` шагами.
