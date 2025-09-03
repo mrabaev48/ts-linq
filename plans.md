@@ -117,9 +117,9 @@
     - [done] `db_query_total` (counter) — labels: provider, operation, entity, success
     - [done] `db_query_duration_ms` (histogram) — labels: provider, operation, entity, success; sensible buckets
     - [done] `db_error_total` (counter) — labels: provider, operation, error_type
-    - [todo] `db_retry_total` (counter) — labels: provider, operation
-    - [todo] `db_active_transactions` (gauge)
-    - [todo] `db_cache_hits_total` / `db_cache_misses_total` (counters) — labels: cache=sqlGen|entityL2
+    - [done] `db_retry_total` (counter) — labels: provider, operation
+    - [done] `db_active_transactions` (gauge)
+    - [done] `db_cache_hits_total` / `db_cache_misses_total` (counters) — labels: cache=sqlGen|entityL2|count
   - Label schema & exemplars:
     - [done] Standardize labels (low-cardinality): provider, operation (select/insert/update/delete/count), entity
     - [todo] Attach traceId as exemplar when available (if supported by `prom-client` version)

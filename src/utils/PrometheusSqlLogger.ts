@@ -61,6 +61,8 @@ export class PrometheusSqlLogger implements SqlLogger {
     private errorTotal?: PromCounter;
     private retryTotal?: PromCounter;
     private activeTransactions?: { inc: (labels?: LabelValues, v?: number) => void; dec: (labels?: LabelValues, v?: number) => void };
+    private cacheHits?: PromCounter;
+    private cacheMisses?: PromCounter;
 
     /**
      * Create a new PrometheusSqlLogger.
@@ -85,10 +87,13 @@ export class PrometheusSqlLogger implements SqlLogger {
                 dec: (labels?: LabelValues, v?: number) => { try { (g as any).dec(labels, v); } catch { /* ignore */ } }
             };
         }
+        // optional cache metrics (off by default unless used)
+        this.cacheHits = new this.client.Counter({ name: `${this.prefix}db_cache_hits_total`, help: 'DB cache hits', labelNames: ['cache', 'provider'] });
+        this.cacheMisses = new this.client.Counter({ name: `${this.prefix}db_cache_misses_total`, help: 'DB cache misses', labelNames: ['cache', 'provider'] });
     }
 
     /** No-op (metrics are recorded on queryEnd). */
-    public queryStart(): void {
+    public queryStart(_info?: { sql: string; params: any[]; traceId?: string; provider?: string }): void {
         // Intentionally empty: we record on queryEnd with duration.
     }
 
@@ -131,6 +136,16 @@ export class PrometheusSqlLogger implements SqlLogger {
         if (!this.enabled || !this.activeTransactions) return;
         const provider = info.provider || 'unknown';
         try { this.activeTransactions.dec({ provider }, 1); } catch { /* ignore */ }
+    }
+
+    /** Cache hit/miss hook. */
+    public cache?(info: { cache: 'sqlGen' | 'entityL2' | 'count'; hit: boolean; provider?: string }): void {
+        if (!this.enabled || !this.client) return;
+        const provider = info.provider || 'unknown';
+        try {
+            if (info.hit) this.cacheHits?.labels({ cache: info.cache, provider } as any).inc(1);
+            else this.cacheMisses?.labels({ cache: info.cache, provider } as any).inc(1);
+        } catch { /* ignore */ }
     }
 
     private safeRequirePromClient(): PromClientLike | undefined {

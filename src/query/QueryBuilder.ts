@@ -1,4 +1,5 @@
 import { QueryOptions } from '../types';
+import { SqlLogger } from '../types';
 import { SqlDialect } from './SqlDialect';
 import { SQLiteDialect } from './SQLiteDialect';
 import { QueryModel } from './QueryModel';
@@ -12,22 +13,28 @@ export class QueryBuilder {
     private static _sqlCache: Map<string, { query: string; parameters: any[] }> = new Map();
     private static readonly _MAX_CACHE_SIZE = 1000;
     private _dialect: SqlDialect;
+    private _logger?: SqlLogger;
+    private _providerName?: string;
     /**
      * Create a QueryBuilder that delegates SQL generation to a dialect.
      * @param dialect SqlDialect implementation (default: SQLiteDialect)
      */
-    constructor(dialect: SqlDialect = new SQLiteDialect()) {
+    constructor(dialect: SqlDialect = new SQLiteDialect(), logger?: SqlLogger, providerName?: string) {
         this._dialect = dialect;
+        this._logger = logger;
+        this._providerName = providerName;
     }
     /** Generate SQL from QueryOptions (legacy path). */
     public generateSql<T>(entityClass: new () => T, options: QueryOptions): { query: string; parameters: any[] } {
         const key = QueryBuilder.buildCacheKey(entityClass, options);
         const hit = QueryBuilder._sqlCache.get(key);
         if (hit) {
+            this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
             return { query: hit.query, parameters: [...hit.parameters] };
         }
         const built = this._dialect.buildSelect(entityClass, options);
         QueryBuilder.remember(key, built);
+        this._logger?.cache?.({ cache: 'sqlGen', hit: false, provider: this._providerName });
         return built;
     }
     /** Generate SQL from a QueryModel (preferred path). */
