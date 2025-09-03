@@ -22,7 +22,7 @@ export class Queryable<T> {
     private _entityCache?: EntityCache;
     private _performance?: PerformanceOptions;
     private _includes: string[] = [];
-    private _sqlBuilder = new QueryBuilder();
+    private _sqlBuilder: QueryBuilder;
     private static _countCache: Map<string, { value: number; ts: number }> = new Map();
     private _abortSignal?: AbortSignal;
     private _globalFilters?: GlobalFilter[];
@@ -47,6 +47,7 @@ export class Queryable<T> {
         this._entityCache = entityCache;
         this._performance = performance;
         this._globalFilters = globalFilters;
+        this._sqlBuilder = new QueryBuilder(undefined as any, provider.loggerRef, provider.providerLabel);
     }
 
     /** Create a shallow clone sharing provider/loader but copying model. */
@@ -380,10 +381,12 @@ export class Queryable<T> {
             const ttl = this._performance.countCacheTtlMs ?? 0;
             const hit = Queryable._countCache.get(key);
             if (hit && (ttl <= 0 || (Date.now() - hit.ts) <= ttl)) {
+                (this._provider as any).loggerRef?.cache?.({ cache: 'count', hit: true, provider: (this._provider as any).providerLabel });
                 return hit.value;
             }
             const value = await this.executeCountQuery(metadata.tableName);
             Queryable._countCache.set(key, { value, ts: Date.now() });
+            (this._provider as any).loggerRef?.cache?.({ cache: 'count', hit: false, provider: (this._provider as any).providerLabel });
             return value;
         }
         return this.executeCountQuery(metadata.tableName);
@@ -492,7 +495,10 @@ export class Queryable<T> {
             const pkCol = metadata.columns.find(c => c.propertyName === pkProp);
             const idValue = pkCol ? row[pkCol.columnName] : row[pkProp as any];
             const cached = this._entityCache.get<T>(this._entityClass, idValue);
-            if (cached) return cached;
+            if (cached) {
+                (this._provider as any).loggerRef?.cache?.({ cache: 'entityL2', hit: true, provider: (this._provider as any).providerLabel });
+                return cached;
+            }
             const entity = new this._entityClass();
             for (const column of metadata.columns) {
                 if (row.hasOwnProperty(column.columnName)) {
@@ -500,6 +506,7 @@ export class Queryable<T> {
                 }
             }
             this._entityCache.set(this._entityClass, idValue, entity);
+            (this._provider as any).loggerRef?.cache?.({ cache: 'entityL2', hit: false, provider: (this._provider as any).providerLabel });
             // notify middleware via provider hook
             try { (this._provider as any).notifyEntityMaterialized?.(entity, metadata); } catch { /* ignore */ }
             return entity;

@@ -225,4 +225,13 @@ export abstract class DatabaseProvider {
     public get softDeleteOptions(): SoftDeleteOptions | undefined {
         return this.softDelete;
     }
+
+    /** Expose provider label for metrics/loggers. */
+    public get providerLabel(): string {
+        return this.providerName;
+    }
+    /** Expose logger instance for downstream components. */
+    public get loggerRef(): SqlLogger | undefined {
+        return this.logger;
+    }
 }

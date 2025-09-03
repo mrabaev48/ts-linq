@@ -307,6 +307,8 @@ export interface SqlLogger {
     transactionStart?(info: { traceId?: string; provider?: string }): void;
     /** Called when a transaction ends (commit or rollback). */
     transactionEnd?(info: { traceId?: string; provider?: string }): void;
+    /** Cache metric hook: records hits/misses for specific caches. */
+    cache?(info: { cache: 'sqlGen' | 'entityL2' | 'count'; hit: boolean; provider?: string }): void;
 }
 
 /** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */
