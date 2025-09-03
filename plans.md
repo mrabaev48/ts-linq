@@ -48,6 +48,7 @@
 - [done] Guides: anti-N+1 include (batching), custom dialect strategy, specs examples
 - [done] Add playground examples: dynamic filters, include-first chaining, joins
  - [done] Update README with try-methods, SqlLogger, and QueryBuilder cache utilities
+- [done] Guide: test-matrix (env vars, Docker quickstart, Testcontainers plan)
 
 ## Near-term actionable items
 - [done] Implement include batching (one-to-many via IN) in EntityLoader
@@ -99,7 +100,7 @@
 
 - [P1] Upsert/Batch operations: insertMany, updateMany, upsert (ON CONFLICT/ON DUPLICATE KEY/MERGE) [done]
 - [P2] Optimistic concurrency: version columns (rowversion/xmin/timestamp) and checks on update/delete [done]
-- [P3] Migration generator: schema diff from metadata → safe migrations (ALTER with guards)
+- [P3] Migration generator: schema diff from metadata → safe migrations (ALTER with guards) [done]
 - [P2] Caching: stronger L2 cache with transaction-aware invalidation; shared SQL/AST cache [done]
 - [P1] Resilience: retry policy (idempotent ops only), jitter, circuit breaker [done]
 - [P2] Tracing/metrics: OpenTelemetry integration, Prometheus metrics, traceId correlation
@@ -138,8 +139,6 @@
 - [P3] Multi-tenancy: tenant scoping and default filters at DbContext level [done]
 - [P2] Plugin/middleware API: hooks before/after materialization and execute [done]
 - [P2] Documentation: guides for diff-migrations, upsert/batch, advanced include/join [ongoing]; README: Pagination & Optimistic Concurrency [done]
-- [P2] Test matrix: Testcontainers-based integration for all providers in CI; property-based tests for join/include
-- [P2] Distribution: ESM/CJS builds, tree-shaking, types, changelog, semver releases
   - [done] Export PrometheusEndpoint helpers in public API
 
 ## Snapshot tests (deferred)
@@ -152,3 +151,12 @@
 
 - [P3] CLI tooling: init, generate entity/migration, migrate/rollback, seed
 - Detailed plan: see `cli-plans.md`
+
+## Test matrix (deferred)
+
+- Testcontainers-based integration for all providers in CI
+- Property-based tests for join/include
+
+## Distribution (after CLI)
+
+- ESM/CJS builds, tree-shaking, types, changelog, semver releases
