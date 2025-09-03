@@ -59,15 +59,15 @@ export function generateMigrationFromDiff(
 }
 
 function buildCreateTableSql(td: TableDiff, dialect: Dialect): string {
-  const t = td.create!;
-  const cols = t.columns.map(
+  const create = td.create!;
+  const cols = create.columns.map(
     (c) =>
       `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${c.defaultValue !== undefined ? ' DEFAULT ' + formatValue(dialect, c.defaultValue) : ''}`
   );
-  if (t.primaryKeys && t.primaryKeys.length > 0)
-    cols.push(`PRIMARY KEY (${t.primaryKeys.map((pk) => q(dialect, pk)).join(', ')})`);
-  if (t.foreignKeys && t.foreignKeys.length > 0) {
-    for (const fk of t.foreignKeys) {
+  if (create.primaryKeys && create.primaryKeys.length > 0)
+    cols.push(`PRIMARY KEY (${create.primaryKeys.map((pk) => q(dialect, pk)).join(', ')})`);
+  if (create.foreignKeys && create.foreignKeys.length > 0) {
+    for (const fk of create.foreignKeys) {
       const name = fk.name ? `CONSTRAINT ${q(dialect, fk.name)} ` : '';
       const colsList = fk.columns.map((c) => q(dialect, c)).join(', ');
       const refCols = fk.refColumns.map((c) => q(dialect, c)).join(', ');
@@ -78,7 +78,7 @@ function buildCreateTableSql(td: TableDiff, dialect: Dialect): string {
       );
     }
   }
-  return `CREATE TABLE IF NOT EXISTS ${q(dialect, t.name)} (${cols.join(', ')})`;
+  return `CREATE TABLE IF NOT EXISTS ${q(dialect, create.name)} (${cols.join(', ')})`;
 }
 
 function buildAddColumnSql(
@@ -104,16 +104,16 @@ function buildDropColumnSql(dialect: Dialect, table: string, name: string): stri
 }
 
 function buildAlterTypeSql(dialect: Dialect, table: string, name: string, newType: string): string {
-  const t = q(dialect, table);
-  const c = q(dialect, name);
-  const type = mapType(dialect, newType);
+  const tableName = q(dialect, table);
+  const columnName = q(dialect, name);
+  const mappedType = mapType(dialect, newType);
   switch (dialect) {
     case 'postgresql':
-      return `ALTER TABLE ${t} ALTER COLUMN ${c} TYPE ${type}`;
+      return `ALTER TABLE ${tableName} ALTER COLUMN ${columnName} TYPE ${mappedType}`;
     case 'mysql':
-      return `ALTER TABLE ${t} MODIFY COLUMN ${c} ${type}`;
+      return `ALTER TABLE ${tableName} MODIFY COLUMN ${columnName} ${mappedType}`;
     case 'mssql':
-      return `ALTER TABLE ${t} ALTER COLUMN ${c} ${type}`;
+      return `ALTER TABLE ${tableName} ALTER COLUMN ${columnName} ${mappedType}`;
     default:
       return `-- ALTER TYPE not supported for sqlite; requires rebuild`;
   }
@@ -125,11 +125,11 @@ function buildAlterNullSql(
   name: string,
   nullable: boolean
 ): string {
-  const t = q(dialect, table);
-  const c = q(dialect, name);
+  const tableName = q(dialect, table);
+  const columnName = q(dialect, name);
   switch (dialect) {
     case 'postgresql':
-      return `ALTER TABLE ${t} ALTER COLUMN ${c} ${nullable ? 'DROP NOT NULL' : 'SET NOT NULL'}`;
+      return `ALTER TABLE ${tableName} ALTER COLUMN ${columnName} ${nullable ? 'DROP NOT NULL' : 'SET NOT NULL'}`;
     case 'mysql':
       // Для MySQL требуется полный тип, здесь используется общий тип TEXT как упрощение
       return `-- MySQL requires full type in MODIFY for nullability; include in type alter`;

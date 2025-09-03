@@ -14,10 +14,10 @@ async function main() {
   const gen = new DiffMigrationGenerator(provider);
   const steps = await gen.generate();
   if (cmd === 'apply-diff' || cmd === 'migrate') {
-    for (const s of steps) {
-      if (!s.sql.trim().startsWith('--')) {
+    for (const step of steps) {
+      if (!step.sql.trim().startsWith('--')) {
         // eslint-disable-next-line no-await-in-loop
-        await provider.executeNonQuery(s.sql);
+        await provider.executeNonQuery(step.sql);
       }
     }
     console.log(`Applied ${steps.length} step(s).`);
@@ -45,18 +45,18 @@ async function main() {
       process.exitCode = 2;
     } else {
       const text = fs.readFileSync(sqlFile, 'utf8');
-      const stmts = text
+      const statements = text
         .split(';')
-        .map((s) => s.trim())
+        .map((stmt) => stmt.trim())
         .filter(Boolean);
-      for (const s of stmts) {
+      for (const statement of statements) {
         // eslint-disable-next-line no-await-in-loop
-        await provider.executeNonQuery(s);
+        await provider.executeNonQuery(statement);
       }
-      console.log(`Applied ${stmts.length} seed statements from ${sqlFile}`);
+      console.log(`Applied ${statements.length} seed statements from ${sqlFile}`);
     }
   } else {
-    for (const s of steps) console.log(s.sql);
+    for (const step of steps) console.log(step.sql);
   }
   await provider.disconnect();
 }

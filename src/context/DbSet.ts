@@ -77,17 +77,17 @@ export class DbSet<T> {
 
   /** Add multiple entities at once to ChangeTracker. */
   public addRange(entities: T[]): T[] {
-    for (const e of entities) this._changeTracker.add(e, this._entityClass);
+    for (const entity of entities) this._changeTracker.add(entity, this._entityClass);
     return entities;
   }
   /** Update multiple entities at once to ChangeTracker. */
   public updateRange(entities: T[]): T[] {
-    for (const e of entities) this._changeTracker.update(e, this._entityClass);
+    for (const entity of entities) this._changeTracker.update(entity, this._entityClass);
     return entities;
   }
   /** Remove multiple entities at once to ChangeTracker. */
   public removeRange(entities: T[]): T[] {
-    for (const e of entities) this._changeTracker.remove(e, this._entityClass);
+    for (const entity of entities) this._changeTracker.remove(entity, this._entityClass);
     return entities;
   }
 

@@ -22,11 +22,11 @@ export class EntityCache {
   public get<T>(entityClass: Function, id: any): T | undefined {
     if (id === undefined || id === null) return undefined;
     const key = this.buildKey(entityClass, id);
-    return this._store.get(key);
+    return this._store.get(key) as T | undefined;
   }
 
   /** Store an entity instance with FIFO eviction when size exceeds limit. */
-  public set(entityClass: Function, id: any, entity: any): void {
+  public set<T>(entityClass: Function, id: any, entity: T): void {
     if (id === undefined || id === null) return;
     if (this._store.size >= this._maxSize) {
       const firstKey = this._store.keys().next().value as string | undefined;

@@ -64,9 +64,9 @@ export class QueryBuilder {
     if (model.unions && model.unions.length > 0) {
       let sql = `${base.query}`;
       let params = [...base.parameters];
-      for (const u of model.unions) {
-        const next = this.generateFromModel(u.entity as any, u.other);
-        sql += u.all ? ` UNION ALL ${next.query}` : ` UNION ${next.query}`;
+      for (const unionEntry of model.unions) {
+        const next = this.generateFromModel(unionEntry.entity as any, unionEntry.other);
+        sql += unionEntry.all ? ` UNION ALL ${next.query}` : ` UNION ${next.query}`;
         params.push(...next.parameters);
       }
       return { query: sql, parameters: params };

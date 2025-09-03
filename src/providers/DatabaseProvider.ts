@@ -63,8 +63,8 @@ export abstract class DatabaseProvider {
     if (entities.length === 0) return entities;
     await this.beginTransaction();
     try {
-      for (const e of entities) {
-        await this.insert(e, entityClass);
+      for (const entity of entities) {
+        await this.insert(entity, entityClass);
       }
       await this.commitTransaction();
       return entities;
@@ -79,8 +79,8 @@ export abstract class DatabaseProvider {
     if (entities.length === 0) return entities;
     await this.beginTransaction();
     try {
-      for (const e of entities) {
-        await this.update(e, entityClass);
+      for (const entity of entities) {
+        await this.update(entity, entityClass);
       }
       await this.commitTransaction();
       return entities;
@@ -104,8 +104,8 @@ export abstract class DatabaseProvider {
     if (entities.length === 0) return entities;
     await this.beginTransaction();
     try {
-      for (const e of entities) {
-        await this.upsert(e, entityClass);
+      for (const entity of entities) {
+        await this.upsert(entity, entityClass);
       }
       await this.commitTransaction();
       return entities;
