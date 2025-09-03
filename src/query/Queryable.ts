@@ -50,6 +50,11 @@ export class Queryable<T> {
         this._sqlBuilder = new QueryBuilder(undefined as any, provider.loggerRef, provider.providerLabel);
     }
 
+    /** Clear global count() cache (used on transaction rollback to avoid stale values). */
+    public static clearCountCache(): void {
+        Queryable._countCache.clear();
+    }
+
     /** Create a shallow clone sharing provider/loader but copying model. */
     public clone(): Queryable<T> {
         const q = new Queryable<T>(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters);
