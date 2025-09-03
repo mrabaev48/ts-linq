@@ -260,20 +260,20 @@ export class PrometheusSqlLogger implements SqlLogger {
   }
 
   private parseOperation(sql: string): string {
-    const m = sql.trim().match(/^(SELECT|INSERT|UPDATE|DELETE)\b/i);
-    return m ? m[1].toUpperCase() : 'OTHER';
+    const match = sql.trim().match(/^(SELECT|INSERT|UPDATE|DELETE)\b/i);
+    return match ? match[1].toUpperCase() : 'OTHER';
   }
 
   private parseEntity(sql: string): string | undefined {
     const up = sql.toUpperCase();
     // FROM table or INTO table
-    let m = up.match(/\bFROM\s+([A-Z0-9_"`\[\]]+)/);
-    if (m && m[1]) return this.cleanIdentifier(m[1]);
-    m = up.match(/\bINTO\s+([A-Z0-9_"`\[\]]+)/);
-    if (m && m[1]) return this.cleanIdentifier(m[1]);
+    let match = up.match(/\bFROM\s+([A-Z0-9_"`\[\]]+)/);
+    if (match && match[1]) return this.cleanIdentifier(match[1]);
+    match = up.match(/\bINTO\s+([A-Z0-9_"`\[\]]+)/);
+    if (match && match[1]) return this.cleanIdentifier(match[1]);
     // UPDATE table SET
-    m = up.match(/^UPDATE\s+([A-Z0-9_"`\[\]]+)/);
-    if (m && m[1]) return this.cleanIdentifier(m[1]);
+    match = up.match(/^UPDATE\s+([A-Z0-9_"`\[\]]+)/);
+    if (match && match[1]) return this.cleanIdentifier(match[1]);
     return undefined;
   }
 

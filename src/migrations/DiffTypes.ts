@@ -57,43 +57,46 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
   const expectedNames = new Set(expected.tables.map((t) => t.name));
 
   // New or altered tables
-  for (const e of expected.tables) {
-    const a = actualByName.get(e.name);
-    if (!a) {
-      diffs.push({ table: e.name, create: e });
+  for (const expectedTable of expected.tables) {
+    const actualTable = actualByName.get(expectedTable.name);
+    if (!actualTable) {
+      diffs.push({ table: expectedTable.name, create: expectedTable });
       continue;
     }
     const changes: ColumnChange[] = [];
-    const actualColsByName = new Map(a.columns.map((c) => [c.name, c] as const));
-    for (const ec of e.columns) {
-      const ac = actualColsByName.get(ec.name);
-      if (!ac) {
-        changes.push({ kind: 'add', column: ec });
+    const actualColsByName = new Map(actualTable.columns.map((c) => [c.name, c] as const));
+    for (const expectedColumn of expectedTable.columns) {
+      const actualColumn = actualColsByName.get(expectedColumn.name);
+      if (!actualColumn) {
+        changes.push({ kind: 'add', column: expectedColumn });
       } else {
-        const typeChanged = normalizeType(ec.type) !== normalizeType((ac as any).type);
+        const typeChanged =
+          normalizeType(expectedColumn.type) !== normalizeType((actualColumn as any).type);
         // Compare by nullable flag when available in snapshot
         const nullableChanged =
-          typeof (ac as any).nullable === 'boolean' ? ec.nullable !== (ac as any).nullable : false;
+          typeof (actualColumn as any).nullable === 'boolean'
+            ? expectedColumn.nullable !== (actualColumn as any).nullable
+            : false;
         const needsAlter = typeChanged || nullableChanged;
         if (needsAlter) {
-          changes.push({ kind: 'alter', column: ec, prev: ac });
+          changes.push({ kind: 'alter', column: expectedColumn, prev: actualColumn });
         }
       }
     }
     // Drops
-    const expectedColsByName = new Map(e.columns.map((c) => [c.name, c] as const));
-    for (const ac of a.columns) {
-      if (!expectedColsByName.has(ac.name)) {
-        changes.push({ kind: 'drop', column: ac });
+    const expectedColsByName = new Map(expectedTable.columns.map((c) => [c.name, c] as const));
+    for (const actualColumn of actualTable.columns) {
+      if (!expectedColsByName.has(actualColumn.name)) {
+        changes.push({ kind: 'drop', column: actualColumn });
       }
     }
-    if (changes.length > 0) diffs.push({ table: e.name, columnChanges: changes });
+    if (changes.length > 0) diffs.push({ table: expectedTable.name, columnChanges: changes });
   }
   // Dropped tables
-  const expectedByName = new Map(expected.tables.map((t) => [t.name, t] as const));
-  for (const a of actual.tables) {
-    if (!expectedByName.has(a.name)) {
-      diffs.push({ table: a.name, drop: true });
+  const expectedByName = new Map(expected.tables.map((table) => [table.name, table] as const));
+  for (const actualTable of actual.tables) {
+    if (!expectedByName.has(actualTable.name)) {
+      diffs.push({ table: actualTable.name, drop: true });
     }
   }
   return { tables: diffs };

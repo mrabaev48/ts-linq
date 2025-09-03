@@ -31,7 +31,7 @@ import { SqlHelper } from '../utils/SqlHelper';
  * async function run() {
  *   const ctx = new AppCtx();
  *   await ctx.ensureCreated();
- *   const u = new User(); u.name = 'Alice';
+ *   const user = new User(); user.name = 'Alice';
  *   ctx.users.add(u);
  *   await ctx.saveChanges();
  *   const all = await ctx.users.toArray();

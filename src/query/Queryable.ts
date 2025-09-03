@@ -69,7 +69,7 @@ export class Queryable<T> {
 
   /** Create a shallow clone sharing provider/loader but copying model. */
   public clone(): Queryable<T> {
-    const q = new Queryable<T>(
+    const clonedQueryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -77,8 +77,8 @@ export class Queryable<T> {
       this._performance,
       this._globalFilters
     );
-    q._model = this._model.clone();
-    return q;
+    clonedQueryable._model = this._model.clone();
+    return clonedQueryable;
   }
 
   /**
@@ -125,10 +125,13 @@ export class Queryable<T> {
 
   /** Add EXISTS (subquery) predicate. */
   public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
-    const qb = (subquery as any)._sqlBuilder as QueryBuilder;
-    const model = (subquery as any)._model as QueryModel;
-    const entity = (subquery as any)._entityClass as Function;
-    const { query, parameters } = qb.generateFromModel(entity as any, model);
+    const subqueryBuilder = (subquery as any)._sqlBuilder as QueryBuilder;
+    const subqueryModel = (subquery as any)._model as QueryModel;
+    const subqueryEntity = (subquery as any)._entityClass as Function;
+    const { query, parameters } = subqueryBuilder.generateFromModel(
+      subqueryEntity as any,
+      subqueryModel
+    );
     this._model.where = this._model.where || [];
     this._model.where.push({ condition: `EXISTS (${query})`, parameters } as any);
     return this;
@@ -139,10 +142,13 @@ export class Queryable<T> {
     column: keyof T & string,
     subquery: Queryable<TOther>
   ): Queryable<T> {
-    const qb = (subquery as any)._sqlBuilder as QueryBuilder;
-    const model = (subquery as any)._model as QueryModel;
-    const entity = (subquery as any)._entityClass as Function;
-    const { query, parameters } = qb.generateFromModel(entity as any, model);
+    const subqueryBuilder = (subquery as any)._sqlBuilder as QueryBuilder;
+    const subqueryModel = (subquery as any)._model as QueryModel;
+    const subqueryEntity = (subquery as any)._entityClass as Function;
+    const { query, parameters } = subqueryBuilder.generateFromModel(
+      subqueryEntity as any,
+      subqueryModel
+    );
     this._model.where = this._model.where || [];
     this._model.where.push({ condition: `${column} IN (${query})`, parameters } as any);
     return this;
@@ -292,14 +298,11 @@ export class Queryable<T> {
     size: number
   ): Promise<{ items: T[]; total: number; page: number; size: number }> {
     if (page < 1 || size < 1) throw new Error('paginate requires page >= 1 and size >= 1');
-    const m = this._model.clone();
-    this.applyGlobalFiltersToModel(m);
-    m.limit = size;
-    m.offset = (page - 1) * size;
-    const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
-    const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
-    let items = rows.map((r) => this.mapRowToEntity(r));
-    items = this.applyFallbackPredicates(items);
+    const queryModel = this._model.clone();
+    this.applyGlobalFiltersToModel(queryModel);
+    queryModel.limit = size;
+    queryModel.offset = (page - 1) * size;
+    const items = await this.executeAndMaterialize(queryModel);
 
     const total = await this.count();
     return { items, total, page, size };
@@ -316,23 +319,21 @@ export class Queryable<T> {
     size: number
   ): Promise<{ items: T[]; pageSize: number; nextAfter: T[TKey] | null }> {
     if (size < 1) throw new Error('keysetPaginate requires size >= 1');
-    const m = this._model.clone();
+    const queryModel = this._model.clone();
     // Ensure order by key ASC (append if missing)
-    (m as any).orderBy = (m as any).orderBy || [];
-    const already = (m as any).orderBy.some((o: any) => o.column === String(key));
-    if (!already) (m as any).orderBy.push({ column: String(key), direction: 'ASC' });
-    m.limit = size;
+    (queryModel as any).orderBy = (queryModel as any).orderBy || [];
+    const hasOrderByKey = (queryModel as any).orderBy.some((o: any) => o.column === String(key));
+    if (!hasOrderByKey)
+      (queryModel as any).orderBy.push({ column: String(key), direction: 'ASC' });
+    queryModel.limit = size;
     if (after !== null && after !== undefined) {
       // Add where key > after
       const whereClause: any = { condition: `${String(key)} > ?`, parameters: [after] };
-      m.where = m.where || [];
-      m.where.push(whereClause as any);
+      queryModel.where = queryModel.where || [];
+      queryModel.where.push(whereClause as any);
     }
-    this.applyGlobalFiltersToModel(m);
-    const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
-    const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
-    let items = rows.map((r) => this.mapRowToEntity(r));
-    items = this.applyFallbackPredicates(items);
+    this.applyGlobalFiltersToModel(queryModel);
+    const items = await this.executeAndMaterialize(queryModel);
     const nextAfter = items.length > 0 ? (items[items.length - 1] as any)[String(key)] : null;
     return { items, pageSize: size, nextAfter };
   }
@@ -363,20 +364,9 @@ export class Queryable<T> {
    */
   public async toArray(): Promise<T[]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const m = this._model.clone();
-    this.applyGlobalFiltersToModel(m);
-    const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
-    const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
-    let entities = rows.map((r) => this.mapRowToEntity(r));
-    entities = this.applyFallbackPredicates(entities);
-    if (this._entityLoader && this._includes.length > 0) {
-      await this._entityLoader.populateRelationshipsMany(entities, this._entityClass, {
-        strategy: LoadingStrategy.Eager,
-        includes: this._includes,
-        depth: 1
-      });
-    }
-    return entities;
+    const queryModel = this._model.clone();
+    this.applyGlobalFiltersToModel(queryModel);
+    return this.executeAndMaterialize(queryModel);
   }
 
   /** Returns the first entity or throws if none.
@@ -385,23 +375,20 @@ export class Queryable<T> {
    */
   public async first(): Promise<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const m = this._model.clone();
-    m.limit = 1;
-    this.applyGlobalFiltersToModel(m);
-    const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
-    const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
-    let entities = rows.map((r) => this.mapRowToEntity(r));
-    entities = this.applyFallbackPredicates(entities);
+    const queryModel = this._model.clone();
+    queryModel.limit = 1;
+    this.applyGlobalFiltersToModel(queryModel);
+    const entities = await this.executeAndMaterialize(queryModel);
     if (!entities.length) throw new Error('Sequence contains no elements');
     return entities[0];
   }
   /** Try-версия first без исключений. */
   public async tryFirst(): Promise<Result<T, Error>> {
     try {
-      const v = await this.first();
-      return ok(v);
-    } catch (e: any) {
-      return err(e);
+      const value = await this.first();
+      return ok(value);
+    } catch (error: any) {
+      return err(error);
     }
   }
   /** Returns the first entity or null.
@@ -410,13 +397,10 @@ export class Queryable<T> {
    */
   public async firstOrDefault(): Promise<T | null> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const m = this._model.clone();
-    m.limit = 1;
-    this.applyGlobalFiltersToModel(m);
-    const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
-    const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
-    let entities = rows.map((r) => this.mapRowToEntity(r));
-    entities = this.applyFallbackPredicates(entities);
+    const queryModel = this._model.clone();
+    queryModel.limit = 1;
+    this.applyGlobalFiltersToModel(queryModel);
+    const entities = await this.executeAndMaterialize(queryModel);
     return entities[0] ?? null;
   }
   /** Ensures exactly one result; throws if 0 or more than 1.
@@ -424,18 +408,18 @@ export class Queryable<T> {
    * const book = await context.books.where(b => b.id === 1).single();
    */
   public async single(): Promise<T> {
-    const r = await this.toArray();
-    if (r.length === 0) throw new Error('Sequence contains no elements');
-    if (r.length > 1) throw new Error('Sequence contains more than one element');
-    return r[0];
+    const results = await this.toArray();
+    if (results.length === 0) throw new Error('Sequence contains no elements');
+    if (results.length > 1) throw new Error('Sequence contains more than one element');
+    return results[0];
   }
   /** Try-версия single без исключений. */
   public async trySingle(): Promise<Result<T, Error>> {
     try {
-      const v = await this.single();
-      return ok(v);
-    } catch (e: any) {
-      return err(e);
+      const value = await this.single();
+      return ok(value);
+    } catch (error: any) {
+      return err(error);
     }
   }
   /** Returns one or null; throws if more than 1.
@@ -443,9 +427,9 @@ export class Queryable<T> {
    * const maybe = await context.books.where(b => b.id === 9999).singleOrDefault();
    */
   public async singleOrDefault(): Promise<T | null> {
-    const r = await this.toArray();
-    if (r.length > 1) throw new Error('Sequence contains more than one element');
-    return r[0] ?? null;
+    const results = await this.toArray();
+    if (results.length > 1) throw new Error('Sequence contains more than one element');
+    return results[0] ?? null;
   }
   /** Returns the number of rows that match the current query.
    * @example
@@ -479,22 +463,22 @@ export class Queryable<T> {
   }
 
   private buildCountCacheKey(table: string): string {
-    const where = (this._model.where || []).map((w) => ({
-      c: (w as any).condition,
-      p: (w as any).parameters
+    const normalizedWhere = (this._model.where || []).map((clause) => ({
+      c: (clause as any).condition,
+      p: (clause as any).parameters
     }));
-    return `${this._entityClass.name}|count|${table}|${JSON.stringify(where)}`;
+    return `${this._entityClass.name}|count|${table}|${JSON.stringify(normalizedWhere)}`;
   }
 
   private async executeCountQuery(table: string): Promise<number> {
     let query = `SELECT COUNT(*) as count FROM ${table}`;
     let parameters: any[] = [];
-    const m = this._model.clone();
-    this.applyGlobalFiltersToModel(m);
-    if (m.where && m.where.length > 0) {
-      const whereClauses = m.where.map((w) => (w as any).condition);
+    const queryModel = this._model.clone();
+    this.applyGlobalFiltersToModel(queryModel);
+    if (queryModel.where && queryModel.where.length > 0) {
+      const whereClauses = queryModel.where.map((w) => (w as any).condition);
       query += ` WHERE ${whereClauses.join(' AND ')}`;
-      for (const where of m.where) parameters.push(...(where as any).parameters);
+      for (const clause of queryModel.where) parameters.push(...(clause as any).parameters);
     }
     const results = await this._provider.executeQuery<{ count: number }>(query, parameters);
     return results[0]?.count ?? 0;
@@ -505,13 +489,10 @@ export class Queryable<T> {
    */
   public async any(): Promise<boolean> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const m = this._model.clone();
-    m.limit = 1;
-    this.applyGlobalFiltersToModel(m);
-    const sql = this._sqlBuilder.generateFromModel(this._entityClass, m);
-    const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
-    let entities = rows.map((r) => this.mapRowToEntity(r));
-    entities = this.applyFallbackPredicates(entities);
+    const queryModel = this._model.clone();
+    queryModel.limit = 1;
+    this.applyGlobalFiltersToModel(queryModel);
+    const entities = await this.executeAndMaterialize(queryModel);
     return entities.length > 0;
   }
 
@@ -538,16 +519,32 @@ export class Queryable<T> {
   private applyFallbackPredicates(entities: T[]): T[] {
     if (this._fallbackPredicates.length === 0) return entities;
     let result = entities;
-    for (const pred of this._fallbackPredicates) {
-      result = result.filter((e) => {
+    for (const predicate of this._fallbackPredicates) {
+      result = result.filter((entityItem) => {
         try {
-          return pred(e);
+          return predicate(entityItem);
         } catch {
           return false;
         }
       });
     }
     return result;
+  }
+
+  /** Executes provided model, maps rows to entities and applies fallback predicates. */
+  private async executeAndMaterialize(model: QueryModel): Promise<T[]> {
+    const sql = this._sqlBuilder.generateFromModel(this._entityClass, model);
+    const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
+    let entities = rows.map((r) => this.mapRowToEntity(r));
+    entities = this.applyFallbackPredicates(entities);
+    if (this._entityLoader && this._includes.length > 0 && (model as any).limit !== 1) {
+      await this._entityLoader.populateRelationshipsMany(entities, this._entityClass, {
+        strategy: LoadingStrategy.Eager,
+        includes: this._includes,
+        depth: 1
+      });
+    }
+    return entities;
   }
 
   /** Extracts include property name from a lambda selector. */
@@ -721,10 +718,10 @@ export class Queryable<T> {
   ): string {
     // Extract identifiers and props using simple regex
     // e.g., (a, b) => a.authorId === b.id
-    const m = onStr.match(/\((\w+)\s*,\s*(\w+)\)\s*=>\s*\1\.(\w+)\s*===?\s*\2\.(\w+)/);
-    if (!m) throw new Error(`Unable to parse join predicate: ${onStr}`);
-    const leftProp = m[3];
-    const rightProp = m[4];
+    const match = onStr.match(/\((\w+)\s*,\s*(\w+)\)\s*=>\s*\1\.(\w+)\s*===?\s*\2\.(\w+)/);
+    if (!match) throw new Error(`Unable to parse join predicate: ${onStr}`);
+    const leftProp = match[3];
+    const rightProp = match[4];
     const leftCol =
       leftMeta.columns.find((c: any) => c.propertyName === leftProp)?.columnName || leftProp;
     const rightCol =
@@ -738,11 +735,11 @@ export class Queryable<T> {
     if (!selfMeta) return;
     model.where = model.where || [];
     // Soft-delete guard if enabled at provider level and entity has the column
-    const sd = (this._provider as any).softDeleteOptions as
+    const softDeleteOptions = (this._provider as any).softDeleteOptions as
       | { enabled?: boolean; column?: string }
       | undefined;
-    if (sd?.enabled) {
-      const flagPropOrCol = sd.column ?? 'isDeleted';
+    if (softDeleteOptions?.enabled) {
+      const flagPropOrCol = softDeleteOptions.column ?? 'isDeleted';
       const col = selfMeta.columns.find(
         (c) => c.propertyName === flagPropOrCol || c.columnName === flagPropOrCol
       );
@@ -752,12 +749,12 @@ export class Queryable<T> {
     }
     // Explicit global filters
     if (this._globalFilters && this._globalFilters.length > 0) {
-      for (const f of this._globalFilters) {
-        const fMeta = MetadataStorage.getEntity(f.entity as any);
-        if (fMeta && selfMeta.tableName === fMeta.tableName) {
+      for (const globalFilter of this._globalFilters) {
+        const filterMeta = MetadataStorage.getEntity(globalFilter.entity as any);
+        if (filterMeta && selfMeta.tableName === filterMeta.tableName) {
           model.where.push({
-            condition: f.where.condition,
-            parameters: [...f.where.parameters]
+            condition: globalFilter.where.condition,
+            parameters: [...globalFilter.where.parameters]
           } as any);
         }
       }

@@ -204,10 +204,10 @@ export class PostgresProvider extends DatabaseProvider {
       if (has) sql += ` AND "${flag}" = FALSE`;
     }
     const rows = await this.executeQuery<any>(sql, [id]);
-    const r = rows[0];
-    if (!r) return null;
-    const e = this.mapRowToEntity(r, entityClass);
-    return e;
+    const firstRow = rows[0];
+    if (!firstRow) return null;
+    const entity = this.mapRowToEntity(firstRow, entityClass);
+    return entity;
   }
 
   /** Fetch all rows for the given entity type. */

@@ -61,10 +61,10 @@ export class PredicateParser<T> {
       { re: /\w+\.(\w+)\s*<\s*(.+)/, op: ComparisonOperator.Lt }
     ];
     for (const { re, op } of patterns) {
-      const m = expr.match(re);
-      if (m) {
-        const id: IdentifierNode = { type: 'Identifier', name: m[1] };
-        const litRaw = m[2].trim();
+      const match = expr.match(re);
+      if (match) {
+        const id: IdentifierNode = { type: 'Identifier', name: match[1] };
+        const litRaw = match[2].trim();
         // If right side looks like an identifier (variable), bail out to fallback
         if (/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/.test(litRaw)) {
           return null;

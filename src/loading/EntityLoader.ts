@@ -174,11 +174,11 @@ export class EntityLoader {
           const byId = new Map<any, any>();
           const targetMeta = MetadataStorage.getEntity(targetCtor);
           const targetPk = targetMeta?.primaryKeys[0];
-          for (const r of related) byId.set((r as any)[targetPk!], r);
-          for (const e of entities) {
-            const fk = (e as any)[foreignKeyName];
+          for (const relatedEntity of related) byId.set((relatedEntity as any)[targetPk!], relatedEntity);
+          for (const entityItem of entities) {
+            const fk = (entityItem as any)[foreignKeyName];
             if (fk !== undefined && fk !== null) {
-              (e as any)[relationship.propertyName] = byId.get(fk);
+              (entityItem as any)[relationship.propertyName] = byId.get(fk);
             }
           }
           // Recurse for next depth level on distinct related
@@ -205,15 +205,15 @@ export class EntityLoader {
             uniqueParentIds
           );
           const grouped = new Map<any, any[]>();
-          for (const r of related) {
-            const key = (r as any)[foreignKeyName];
+          for (const relatedEntity of related) {
+            const key = (relatedEntity as any)[foreignKeyName];
             const arr = grouped.get(key) || [];
-            arr.push(r);
+            arr.push(relatedEntity);
             grouped.set(key, arr);
           }
-          for (const e of entities) {
-            const parentId = (e as any)[parentPkProperty];
-            (e as any)[relationship.propertyName] = grouped.get(parentId) || [];
+          for (const entityItem of entities) {
+            const parentId = (entityItem as any)[parentPkProperty];
+            (entityItem as any)[relationship.propertyName] = grouped.get(parentId) || [];
           }
           if (depth - 1 > 0) {
             await this.loadRelationshipsBatched(related, targetCtor, {

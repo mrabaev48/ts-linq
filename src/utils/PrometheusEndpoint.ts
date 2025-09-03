@@ -42,18 +42,20 @@ export async function startPrometheusServer(options?: {
   const port = options?.port ?? 0;
   const path = options?.path ?? '/metrics';
   const client = options?.client;
-  const server = http.createServer(async (req, res) => {
+  const server = http.createServer((req, res) => {
     if (req.url === path) {
-      try {
-        const { contentType, body } = await getPrometheusMetrics(client);
-        res.statusCode = 200;
-        res.setHeader('Content-Type', contentType);
-        res.end(body);
-      } catch (e: any) {
-        res.statusCode = 500;
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.end(`# metrics error: ${e?.message || String(e)}`);
-      }
+      getPrometheusMetrics(client)
+        .then(({ contentType, body }) => {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', contentType);
+          res.end(body);
+        })
+        .catch((e) => {
+          const message = (e as Error)?.message || String(e);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+          res.end(`# metrics error: ${message}`);
+        });
       return;
     }
     res.statusCode = 404;

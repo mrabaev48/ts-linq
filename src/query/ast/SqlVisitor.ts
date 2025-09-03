@@ -43,9 +43,9 @@ export class SqlVisitor {
     const parts: string[] = [];
     const params: any[] = [];
     for (const expr of node.expressions) {
-      const r = this.toSql(expr);
-      parts.push(r.condition);
-      params.push(...r.parameters);
+      const result = this.toSql(expr);
+      parts.push(result.condition);
+      params.push(...result.parameters);
     }
     const joiner = node.operator === LogicalOperator.And ? ' AND ' : ' OR ';
     return { condition: parts.join(joiner), parameters: params };

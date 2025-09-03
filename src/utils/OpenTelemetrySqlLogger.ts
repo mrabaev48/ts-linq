@@ -1,23 +1,43 @@
-import { SqlLogger } from '../types';
+import type { SqlLogger } from '../types';
+
+/** Minimal subset of OpenTelemetry API we use dynamically. */
+interface OtelLike {
+  trace: {
+    getTracer: (serviceName: string) => { startSpan: (name: string, opts?: any) => SpanLike };
+  };
+}
+interface SpanLike {
+  setAttribute: (key: string, value: unknown) => void;
+  recordException: (err: { name: string; message: string }) => void;
+  setStatus: (status: { code: number; message?: string }) => void;
+  end: () => void;
+}
+
+function safeRequireOtel(): OtelLike | undefined {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const otel = require('@opentelemetry/api') as OtelLike;
+    if (otel && otel.trace && typeof otel.trace.getTracer === 'function') return otel;
+  } catch {
+    /* ignore */
+  }
+  return undefined;
+}
 
 /**
  * OpenTelemetry-based SqlLogger implementation.
  * Uses dynamic require to avoid hard dependency on @opentelemetry/api.
  */
 export class OpenTelemetrySqlLogger implements SqlLogger {
-  private tracer: any;
-  private spanByTraceId: Map<string | undefined, any> = new Map();
+  private tracer: { startSpan: (name: string, opts?: any) => SpanLike } | undefined;
+  private spanByTraceId: Map<string | undefined, SpanLike> = new Map();
 
   constructor(serviceName: string = 'ts-linq') {
-    try {
-      const otel = require('@opentelemetry/api');
-      this.tracer = otel.trace.getTracer(serviceName);
-    } catch {
-      this.tracer = undefined;
-    }
+    const otel = safeRequireOtel();
+    this.tracer = otel?.trace.getTracer(serviceName);
   }
 
-  queryStart(info: { sql: string; params: any[]; traceId?: string }): void {
+  queryStart(info: { sql: string; params: unknown[]; traceId?: string }): void {
     if (!this.tracer) return;
     const span = this.tracer.startSpan('db.query', {
       attributes: {
@@ -31,7 +51,7 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
 
   queryEnd(info: {
     sql: string;
-    params: any[];
+    params: unknown[];
     durationMs: number;
     traceId?: string;
     rows?: number;

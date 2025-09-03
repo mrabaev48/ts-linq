@@ -20,13 +20,13 @@ export class QueryModel {
    * when applying read-only operations (e.g., first/any).
    */
   public clone(): QueryModel {
-    const q = new QueryModel();
-    q.select = this.select ? [...this.select] : undefined;
-    q.where = this.where
+    const clonedModel = new QueryModel();
+    clonedModel.select = this.select ? [...this.select] : undefined;
+    clonedModel.where = this.where
       ? this.where.map((w) => ({ condition: w.condition, parameters: [...w.parameters] }))
       : undefined;
-    q.orderBy = this.orderBy ? this.orderBy.map((o) => ({ ...o })) : undefined;
-    q.groupBy = this.groupBy
+    clonedModel.orderBy = this.orderBy ? this.orderBy.map((o) => ({ ...o })) : undefined;
+    clonedModel.groupBy = this.groupBy
       ? {
           columns: [...this.groupBy.columns],
           having: this.groupBy.having
@@ -37,13 +37,17 @@ export class QueryModel {
             : undefined
         }
       : undefined;
-    q.joins = this.joins ? this.joins.map((j) => ({ ...j })) : undefined;
-    q.limit = this.limit;
-    q.offset = this.offset;
-    q.distinct = this.distinct;
-    q.unions = this.unions
-      ? this.unions.map((u) => ({ all: u.all, other: u.other.clone(), entity: u.entity }))
+    clonedModel.joins = this.joins ? this.joins.map((j) => ({ ...j })) : undefined;
+    clonedModel.limit = this.limit;
+    clonedModel.offset = this.offset;
+    clonedModel.distinct = this.distinct;
+    clonedModel.unions = this.unions
+      ? this.unions.map((unionItem) => ({
+          all: unionItem.all,
+          other: unionItem.other.clone(),
+          entity: unionItem.entity
+        }))
       : undefined;
-    return q;
+    return clonedModel;
   }
 }
