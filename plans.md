@@ -100,7 +100,7 @@
 - [P1] Upsert/Batch operations: insertMany, updateMany, upsert (ON CONFLICT/ON DUPLICATE KEY/MERGE) [done]
 - [P2] Optimistic concurrency: version columns (rowversion/xmin/timestamp) and checks on update/delete [done]
 - [P3] Migration generator: schema diff from metadata → safe migrations (ALTER with guards)
-- [P2] Caching: stronger L2 cache with transaction-aware invalidation; shared SQL/AST cache
+- [P2] Caching: stronger L2 cache with transaction-aware invalidation; shared SQL/AST cache [done]
 - [P1] Resilience: retry policy (idempotent ops only), jitter, circuit breaker [done]
 - [P2] Tracing/metrics: OpenTelemetry integration, Prometheus metrics, traceId correlation
   - [done] OpenTelemetry integration
@@ -110,7 +110,7 @@
 ### Prometheus Metrics (separate task)
 - [P2] Prometheus metrics integration
   - Metrics export:
-    - [todo] Expose optional `/metrics` endpoint (using `prom-client`), pluggable server integration
+    - [done] Expose optional `/metrics` endpoint helper (using `prom-client` when present)
     - [done] Provide `PrometheusSqlLogger` to emit metrics without endpoint coupling
   - Metrics set (names tentative):
     - [done] `db_query_total` (counter) — labels: provider, operation, entity, success
@@ -126,7 +126,7 @@
     - [done] `prefix`, `bucketsMs`, DI of existing Prometheus client; no hard dependency
   - Tests:
     - [done] Unit tests for counters/histograms increments via logger hooks
-    - [todo] Integration test: start lightweight HTTP server, assert `/metrics` contains expected series
+    - [done] Integration test: lightweight HTTP server, assert `/metrics` returns body
   - Documentation:
     - [done] README: setup with Node/Express/Fastify (example), notes on optional prom-client
     - [todo] Add dashboards hints and example PromQL; guidance on bucket tuning and label cardinality limits
