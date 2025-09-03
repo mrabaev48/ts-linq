@@ -129,7 +129,7 @@
     - [done] Integration test: lightweight HTTP server, assert `/metrics` returns body
   - Documentation:
     - [done] README: setup with Node/Express/Fastify (example), notes on optional prom-client
-    - [todo] Add dashboards hints and example PromQL; guidance on bucket tuning and label cardinality limits
+    - [done] Add dashboards hints and example PromQL; guidance on bucket tuning and label cardinality limits
 - [P2] Identifier quoting: centralized quoting via SqlDialect for table/column names [done]
 - [P2] Extended LINQ: groupBy/having [done]; subqueries (exists/in) [done], unions [done]
 - [P2] Model validation: declarative rules checked before saveChanges [done]
