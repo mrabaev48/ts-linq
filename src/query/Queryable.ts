@@ -55,11 +55,7 @@ export class Queryable<T> {
     this._entityCache = entityCache;
     this._performance = performance;
     this._globalFilters = globalFilters;
-    this._sqlBuilder = new QueryBuilder(
-      undefined as any,
-      provider.loggerRef,
-      provider.providerLabel
-    );
+    this._sqlBuilder = new QueryBuilder(provider.getDialect(), provider.loggerRef, provider.providerLabel);
   }
 
   /** Clear global count() cache (used on transaction rollback to avoid stale values). */
