@@ -5,9 +5,17 @@ import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
 
 @Entity({ name: 'Users' })
-class User { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+class User {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
 
-class SqliteCtx extends DbContext { public users!: any; constructor() { super({ connectionString: ':memory:', provider: 'sqlite' }); } }
+class SqliteCtx extends DbContext {
+  public users!: any;
+  constructor() {
+    super({ connectionString: ':memory:', provider: 'sqlite' });
+  }
+}
 
 async function main() {
   new User();
@@ -23,6 +31,7 @@ async function main() {
   await ctx.dispose();
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
-
-
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

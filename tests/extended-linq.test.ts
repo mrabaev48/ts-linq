@@ -19,7 +19,9 @@ function defineEntities() {
 class Ctx extends DbContext {
   public as!: DbSet<any>;
   public bs!: DbSet<any>;
-  constructor() { super({ provider: 'sqlite', connectionString: ':memory:' }); }
+  constructor() {
+    super({ provider: 'sqlite', connectionString: ':memory:' });
+  }
 }
 
 describe('Extended LINQ: subqueries and unions', () => {
@@ -29,18 +31,26 @@ describe('Extended LINQ: subqueries and unions', () => {
     const { A, B } = defineEntities();
     ctx = new Ctx();
     await ctx.ensureCreated();
-    const a1 = new (A as any)(); a1.name = 'x';
-    const a2 = new (A as any)(); a2.name = 'y';
-    (ctx as any)['as'].add(a1); (ctx as any)['as'].add(a2);
+    const a1 = new (A as any)();
+    a1.name = 'x';
+    const a2 = new (A as any)();
+    a2.name = 'y';
+    (ctx as any)['as'].add(a1);
+    (ctx as any)['as'].add(a2);
     await ctx.saveChanges();
-    const b1 = new (B as any)(); b1.aId = a1.id;
+    const b1 = new (B as any)();
+    b1.aId = a1.id;
     (ctx as any)['bs'].add(b1);
     await ctx.saveChanges();
   });
-  afterEach(async () => { await ctx.dispose(); });
+  afterEach(async () => {
+    await ctx.dispose();
+  });
 
   it('whereInSubquery selects As that have Bs', async () => {
-    const sub = (ctx as any)['bs'].where((b: any) => true).select((b: any) => ({ aId: b.aId } as any));
+    const sub = (ctx as any)['bs']
+      .where((b: any) => true)
+      .select((b: any) => ({ aId: b.aId }) as any);
     const result = await (ctx as any)['as'].whereInSubquery('id' as any, sub).toArray();
     expect(result.length).toBe(1);
   });
@@ -52,5 +62,3 @@ describe('Extended LINQ: subqueries and unions', () => {
     expect(res.length).toBe(2);
   });
 });
-
-

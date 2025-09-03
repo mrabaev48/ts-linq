@@ -36,7 +36,9 @@ describe('Soft delete & audit', () => {
     ctx = new SoftCtx();
     await ctx.ensureCreated();
   });
-  afterEach(async () => { await ctx.dispose(); });
+  afterEach(async () => {
+    await ctx.dispose();
+  });
 
   it('filters out soft-deleted rows and stamps audit fields', async () => {
     const u = new SUser();
@@ -57,5 +59,3 @@ describe('Soft delete & audit', () => {
     expect(all).toHaveLength(0);
   });
 });
-
-

@@ -5,16 +5,18 @@ This guide shows a pragmatic approach to generating safe schema diffs from entit
 > Production systems should use explicit, reviewed migrations. The diff flow is a helper for development.
 
 ## Goals
+
 - Detect new/removed/changed columns and indexes
 - Generate additive-safe SQL (CREATE TABLE/INDEX IF NOT EXISTS, ADD COLUMN)
 - Avoid destructive ops by default; emit comments/TODOs for manual handling
 
 ## Steps
-1) Read entity metadata from `MetadataStorage`
-2) Query live schema (PRAGMA in SQLite; information_schema/sys catalogs in others)
-3) Build snapshots and compute `SchemaDiff` via `compareSchemas()`
-4) Generate SQL per dialect: `generateMigrationFromDiff(diff, 'postgresql'|'mysql'|'mssql'|'sqlite')`
-5) (Опционально) Применить через `Migration`/`MigrationRunner` или исполнять SQL напрямую
+
+1. Read entity metadata from `MetadataStorage`
+2. Query live schema (PRAGMA in SQLite; information_schema/sys catalogs in others)
+3. Build snapshots and compute `SchemaDiff` via `compareSchemas()`
+4. Generate SQL per dialect: `generateMigrationFromDiff(diff, 'postgresql'|'mysql'|'mssql'|'sqlite')`
+5. (Опционально) Применить через `Migration`/`MigrationRunner` или исполнять SQL напрямую
 
 ## API usage
 
@@ -45,10 +47,12 @@ for (const sql of up) await provider.executeNonQuery(sql);
 - SQLite: ограниченная поддержка `ALTER`; сложные изменения требуют перестроения таблицы (в генераторе это учитывается).
 
 ## Notes
+
 - For non-SQLite, use `information_schema.columns` (MySQL/Postgres) and `sys.columns` (MSSQL)
 - Avoid dropping columns or altering types automatically; prefer rebuild or ручные миграции
 - Prefer hand-written follow-up migrations for destructive changes
 
 ## Testing
+
 - Unit: сравнение snapshots → `compareSchemas`, генерация SQL `generateMigrationFromDiff`
 - Integration: выполнить SQL на тестовой БД и повторно — операции должны быть идемпотентны

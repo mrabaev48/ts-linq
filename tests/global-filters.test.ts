@@ -21,11 +21,17 @@ class Ctx extends DbContext {
 describe('Global filters', () => {
   it('applies soft-delete filter to all queries', async () => {
     const { Item } = defineEntities();
-    const ctx = new Ctx([{ entity: (Item as any), where: { condition: 'isDeleted = 0', parameters: [] } }]);
+    const ctx = new Ctx([
+      { entity: Item as any, where: { condition: 'isDeleted = 0', parameters: [] } }
+    ]);
     await ctx.ensureCreated();
 
-    const a = new (Item as any)(); a.name = 'A'; a.isDeleted = false;
-    const b = new (Item as any)(); b.name = 'B'; b.isDeleted = true;
+    const a = new (Item as any)();
+    a.name = 'A';
+    a.isDeleted = false;
+    const b = new (Item as any)();
+    b.name = 'B';
+    b.isDeleted = true;
     (ctx as any)['items'].add(a);
     (ctx as any)['items'].add(b);
     await ctx.saveChanges();
@@ -39,5 +45,3 @@ describe('Global filters', () => {
     await ctx.dispose();
   });
 });
-
-

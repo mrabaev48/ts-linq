@@ -8,5 +8,3 @@ describe('OpenTelemetrySqlLogger', () => {
     expect(() => logger.queryEnd({ sql: 'SELECT 1', params: [], durationMs: 1 })).not.toThrow();
   });
 });
-
-

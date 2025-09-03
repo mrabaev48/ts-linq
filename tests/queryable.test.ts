@@ -34,7 +34,9 @@ describe('Queryable', () => {
     q = new Queryable(E, provider) as any;
   });
 
-  afterEach(async () => { await provider.disconnect(); });
+  afterEach(async () => {
+    await provider.disconnect();
+  });
 
   it('toArray returns all', async () => {
     const res = await q.toArray();
@@ -42,9 +44,7 @@ describe('Queryable', () => {
   });
 
   it('where with >= translates to SQL', async () => {
-    const res = await q.where(e => e.age >= 22).toArray();
-    expect(res.every(x => x.age >= 22)).toBe(true);
+    const res = await q.where((e) => e.age >= 22).toArray();
+    expect(res.every((x) => x.age >= 22)).toBe(true);
   });
 });
-
-
