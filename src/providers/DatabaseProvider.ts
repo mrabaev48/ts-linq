@@ -1,4 +1,6 @@
 import { EntityMetadata, OrmMiddleware, SqlLogger, SoftDeleteOptions } from '../types';
+import { SqlDialect } from '../query/SqlDialect';
+import { SQLiteDialect } from '../query/SQLiteDialect';
 
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -39,6 +41,11 @@ export abstract class DatabaseProvider {
   public abstract disconnect(): Promise<void>;
   /** Create a table for the provided entity metadata if it does not exist. */
   public abstract createTable(entityMetadata: EntityMetadata): Promise<void>;
+  /** Return SQL dialect used by this provider (Strategy per provider). */
+  public getDialect(): SqlDialect {
+    // Default to SQLite dialect for backward compatibility in tests/stubs
+    return new SQLiteDialect();
+  }
   /** Insert an entity instance into its table and return the inserted entity. */
   public abstract insert<T>(entity: T, entityClass: Function): Promise<T>;
   /** Update an existing entity row and return the updated entity. */

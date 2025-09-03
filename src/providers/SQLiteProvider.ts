@@ -10,6 +10,8 @@ import {
   OptimisticConcurrencyError
 } from '../types';
 import { SqlHelper } from '../utils/SqlHelper';
+import { SqlDialect } from '../query/SqlDialect';
+import { SQLiteDialect } from '../query/SQLiteDialect';
 
 /**
  * SQLite implementation of `DatabaseProvider` using the `sqlite3` package.
@@ -299,6 +301,11 @@ export class SQLiteProvider extends DatabaseProvider {
     const tid = this.currentTraceId;
     this.currentTraceId = undefined;
     this.logger?.transactionEnd?.({ traceId: tid, provider: this.providerName });
+  }
+
+  /** Provide SQL dialect for this provider. */
+  public getDialect(): SqlDialect {
+    return new SQLiteDialect();
   }
 
   /** Generate CREATE TABLE SQL for the entity. */

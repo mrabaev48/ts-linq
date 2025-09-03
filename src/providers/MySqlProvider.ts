@@ -2,6 +2,8 @@ import { DatabaseProvider } from './DatabaseProvider';
 import { EntityMetadata, ColumnMetadata, SqlLogger, OptimisticConcurrencyError } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SqlHelper } from '../utils/SqlHelper';
+import { SqlDialect } from '../query/SqlDialect';
+import { MysqlDialect } from '../query/MysqlDialect';
 
 /**
  * MySQL provider based on `mysql2/promise`.
@@ -215,6 +217,11 @@ export class MySqlProvider extends DatabaseProvider {
     await this.pool.query('ROLLBACK');
     this.inTransaction = false;
     this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
+  }
+
+  /** Provide SQL dialect for this provider. */
+  public getDialect(): SqlDialect {
+    return new MysqlDialect();
   }
 
   private generateCreateTableSql(metadata: EntityMetadata): string {

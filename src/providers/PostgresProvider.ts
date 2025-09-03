@@ -9,6 +9,7 @@ import {
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { PostgresDialect } from '../query/PostgresDialect';
 import { QueryBuilder } from '../query/QueryBuilder';
+import { SqlDialect } from '../query/SqlDialect';
 
 // Lazy require to avoid hard dependency if not installed
 let Pg: any;
@@ -49,7 +50,7 @@ export class PostgresProvider extends DatabaseProvider {
 
   constructor(connectionString: string, logger?: any, middlewares?: any[], softDelete?: any) {
     super(connectionString, logger, middlewares, softDelete);
-    this.qb = new QueryBuilder(new PostgresDialect());
+    this.qb = new QueryBuilder(this.getDialect());
     this.providerName = 'postgresql';
   }
 
@@ -189,6 +190,11 @@ export class PostgresProvider extends DatabaseProvider {
     const vals = meta.primaryKeys.map((pk) => (entity as any)[pk]);
     const sql = `DELETE FROM "${meta.tableName}" WHERE ${where.join(' AND ')}`;
     await this.executeNonQuery(sql, vals);
+  }
+
+  /** Provide SQL dialect for this provider. */
+  public getDialect(): SqlDialect {
+    return new PostgresDialect();
   }
 
   /** Fetch a single row by its primary key value. */
