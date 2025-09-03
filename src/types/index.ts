@@ -54,6 +54,12 @@ export interface DbContextOptions {
   logger?: SqlLogger;
   /** Optional factory to create a SqlLogger per provider (overrides logger if set). */
   loggerFactory?: SqlLoggerFactory;
+  /** Optional multiple logger factories to be composed. */
+  loggerFactories?: SqlLoggerFactory[];
+  /** Optional static loggers to be composed along with factories. */
+  loggers?: SqlLogger[];
+  /** Optional retry policy to override default provider retry behavior. */
+  retryPolicy?: RetryPolicy;
   /** Optional default loading behavior. */
   loading?: LoadingDefaults;
   /** Optional middleware pipeline for cross-cutting concerns. */
@@ -330,6 +336,14 @@ export interface SqlLogger {
 /** Factory for creating SqlLogger per provider to satisfy DIP. */
 export interface SqlLoggerFactory {
   create(provider: 'sqlite' | 'mysql' | 'postgresql' | 'mssql' | string): SqlLogger | undefined;
+}
+
+/** Retry policy contract for controlling retries/backoff on transient errors. */
+export interface RetryPolicy {
+  /** Decide whether to retry given error at the attempt (1-based). */
+  shouldRetry(error: unknown, attempt: number, inTransaction: boolean): boolean;
+  /** Calculate delay before next retry attempt in milliseconds. */
+  getDelayMs(attempt: number): number;
 }
 
 /** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */

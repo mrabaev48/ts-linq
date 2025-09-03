@@ -7,7 +7,8 @@ import {
   DatabaseError,
   UniqueConstraintError,
   ForeignKeyConstraintError,
-  OptimisticConcurrencyError
+  OptimisticConcurrencyError,
+  RetryPolicy
 } from '../types';
 import { SqlHelper } from '../utils/SqlHelper';
 import { SqlDialect } from '../query/SqlDialect';
@@ -23,8 +24,14 @@ export class SQLiteProvider extends DatabaseProvider {
   private db: sqlite3.Database | null = null;
   private ddl = new SQLiteDdlStrategy();
 
-  constructor(connectionString: string, logger?: any, middlewares?: any[], softDelete?: any) {
-    super(connectionString, logger, middlewares, softDelete);
+  constructor(
+    connectionString: string,
+    logger?: any,
+    middlewares?: any[],
+    softDelete?: any,
+    retryPolicy?: RetryPolicy
+  ) {
+    super(connectionString, logger, middlewares, softDelete, retryPolicy);
     this.providerName = 'sqlite';
   }
 

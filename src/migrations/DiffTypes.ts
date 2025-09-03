@@ -43,8 +43,20 @@ export interface TableDiff {
   table: string;
   create?: TableSnapshot;
   drop?: boolean;
+  /** Rename this table to a new name. */
+  renameTo?: string;
   columnChanges?: ColumnChange[];
-  // future: indexChanges, fkChanges
+  /** Rename columns within an existing table. */
+  columnRenames?: Array<{ from: string; to: string }>;
+  /** Create these indexes on the existing table. */
+  indexCreates?: IndexDef[];
+  /** Drop these index names from the existing table. */
+  indexDrops?: string[];
+  /** Create these foreign keys on the existing table. */
+  fkCreates?: ForeignKeyDef[];
+  /** Drop these foreign key constraint names from the existing table. */
+  fkDrops?: string[];
+  // future: fkChanges
 }
 
 export interface SchemaDiff {

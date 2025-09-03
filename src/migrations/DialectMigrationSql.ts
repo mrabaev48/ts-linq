@@ -9,6 +9,22 @@ export function generateMigrationFromDiff(
   const up: string[] = [];
   const down: string[] = [];
   for (const td of diff.tables) {
+    if ((td as any).renameTo) {
+      const to = (td as any).renameTo as string;
+      switch (dialect) {
+        case 'postgresql':
+          up.push(`ALTER TABLE ${q(dialect, td.table)} RENAME TO ${q(dialect, to)}`);
+          break;
+        case 'mysql':
+          up.push(`RENAME TABLE ${q(dialect, td.table)} TO ${q(dialect, to)}`);
+          break;
+        case 'mssql':
+          up.push(`EXEC sp_rename '${td.table}', '${to}'`);
+          break;
+        default:
+          up.push(`ALTER TABLE ${q(dialect, td.table)} RENAME TO ${q(dialect, to)}`);
+      }
+    }
     if (td.create) {
       up.push(buildCreateTableSql(td, dialect));
       // create indexes if defined
@@ -27,6 +43,61 @@ export function generateMigrationFromDiff(
       up.push(`DROP TABLE ${q(dialect, td.table)}`);
       // Down неизвестен без snapshot, пропустим
       continue;
+    }
+    if ((td as any).indexCreates && (td as any).indexCreates.length > 0) {
+      for (const idx of (td as any).indexCreates) {
+        const uniq = idx.unique ? 'UNIQUE ' : '';
+        const cols = idx.columns.map((c: string) => q(dialect, c)).join(', ');
+        const name = q(dialect, idx.name);
+        up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, td.table)} (${cols})`);
+      }
+    }
+    if ((td as any).indexDrops && (td as any).indexDrops.length > 0) {
+      for (const nameRaw of (td as any).indexDrops) {
+        const name = q(dialect, nameRaw);
+        // Generic DROP INDEX form; some dialects require table qualifier or IF EXISTS, kept simple here
+        up.push(`DROP INDEX ${name}`);
+      }
+    }
+    if ((td as any).fkCreates && (td as any).fkCreates.length > 0) {
+      for (const fk of (td as any).fkCreates) {
+        const name = fk.name ? `CONSTRAINT ${q(dialect, fk.name)} ` : '';
+        const cols = fk.columns.map((c: string) => q(dialect, c)).join(', ');
+        const refCols = fk.refColumns.map((c: string) => q(dialect, c)).join(', ');
+        const onDel = fk.onDelete ? ` ON DELETE ${fk.onDelete}` : '';
+        const onUpd = fk.onUpdate ? ` ON UPDATE ${fk.onUpdate}` : '';
+        switch (dialect) {
+          case 'postgresql':
+          case 'mysql':
+          case 'mssql':
+            up.push(
+              `ALTER TABLE ${q(dialect, td.table)} ADD ${name}FOREIGN KEY (${cols}) REFERENCES ${q(
+                dialect,
+                fk.refTable
+              )} (${refCols})${onDel}${onUpd}`
+            );
+            break;
+          default:
+            up.push(`-- SQLite requires table rebuild to add FK: ${name}(${cols}) -> ${fk.refTable}(${refCols})`);
+        }
+      }
+    }
+    if ((td as any).fkDrops && (td as any).fkDrops.length > 0) {
+      for (const nameRaw of (td as any).fkDrops) {
+        switch (dialect) {
+          case 'postgresql':
+            up.push(`ALTER TABLE ${q(dialect, td.table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`);
+            break;
+          case 'mysql':
+            up.push(`ALTER TABLE ${q(dialect, td.table)} DROP FOREIGN KEY ${q(dialect, nameRaw)}`);
+            break;
+          case 'mssql':
+            up.push(`ALTER TABLE ${q(dialect, td.table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`);
+            break;
+          default:
+            up.push(`-- SQLite requires table rebuild to drop FK: ${nameRaw}`);
+        }
+      }
     }
     if (td.columnChanges && td.columnChanges.length > 0) {
       for (const ch of td.columnChanges) {
@@ -51,6 +122,27 @@ export function generateMigrationFromDiff(
           if (typeof prevNullable === 'boolean' && prevNullable !== ch.column.nullable) {
             up.push(buildAlterNullSql(dialect, td.table, ch.column.name, ch.column.nullable));
           }
+        } else if (ch.kind === 'drop') {
+          // Generate DROP COLUMN for dialects that support it
+          up.push(buildDropColumnSql(dialect, td.table, ch.column.name));
+        }
+      }
+    }
+    if ((td as any).columnRenames && (td as any).columnRenames.length > 0) {
+      for (const rn of (td as any).columnRenames) {
+        switch (dialect) {
+          case 'postgresql':
+            up.push(`ALTER TABLE ${q(dialect, td.table)} RENAME COLUMN ${q(dialect, rn.from)} TO ${q(dialect, rn.to)}`);
+            break;
+          case 'mysql':
+            // MySQL требует полный тип в MODIFY/CHANGE COLUMN — оставим как комментарий
+            up.push(`-- MySQL requires full type for CHANGE COLUMN ${rn.from} -> ${rn.to}`);
+            break;
+          case 'mssql':
+            up.push(`EXEC sp_rename '${td.table}.${rn.from}', '${rn.to}', 'COLUMN'`);
+            break;
+          default:
+            up.push(`-- SQLite column rename requires pragma or rebuild: ${rn.from} -> ${rn.to}`);
         }
       }
     }

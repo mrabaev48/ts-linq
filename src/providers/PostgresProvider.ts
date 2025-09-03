@@ -4,7 +4,8 @@ import {
   OptimisticConcurrencyError,
   UniqueConstraintError,
   DatabaseError,
-  ForeignKeyConstraintError
+  ForeignKeyConstraintError,
+  RetryPolicy
 } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { PostgresDialect } from '../query/PostgresDialect';
@@ -50,8 +51,14 @@ export class PostgresProvider extends DatabaseProvider {
     return entity;
   }
 
-  constructor(connectionString: string, logger?: any, middlewares?: any[], softDelete?: any) {
-    super(connectionString, logger, middlewares, softDelete);
+  constructor(
+    connectionString: string,
+    logger?: any,
+    middlewares?: any[],
+    softDelete?: any,
+    retryPolicy?: RetryPolicy
+  ) {
+    super(connectionString, logger, middlewares, softDelete, retryPolicy);
     this.qb = new QueryBuilder(this.getDialect());
     this.providerName = 'postgresql';
   }

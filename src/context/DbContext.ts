@@ -21,6 +21,7 @@ import {
   GlobalFilter
 } from '../types';
 import { EntityCache, EntityCacheLike } from '../utils/EntityCache';
+import { CompositeSqlLoggerFactory } from '../utils/CompositeSqlLoggerFactory';
 
 /**
  * Base unit-of-work style context that orchestrates entity sets, change tracking
@@ -58,14 +59,19 @@ export abstract class DbContext {
     this._audit = options.audit;
     this._globalFilters = options.globalFilters;
     const providerKey = options.provider || 'sqlite';
-    const logger = options.loggerFactory?.create(providerKey) ?? options.logger;
+    const compositeFactory =
+      options.loggerFactories || options.loggers
+        ? new CompositeSqlLoggerFactory({ factories: [options.loggerFactory, ...(options.loggerFactories ?? [])], loggers: options.loggers })
+        : undefined;
+    const logger = compositeFactory?.create(providerKey) ?? options.loggerFactory?.create(providerKey) ?? options.logger;
     switch (providerKey) {
       case 'sqlite':
         this._provider = new SQLiteProvider(
           options.connectionString,
           logger,
           options.middlewares,
-          this._softDelete
+          this._softDelete,
+          options.retryPolicy
         );
         break;
       case 'postgresql':
@@ -73,7 +79,8 @@ export abstract class DbContext {
           options.connectionString,
           logger,
           options.middlewares,
-          this._softDelete
+          this._softDelete,
+          options.retryPolicy
         );
         break;
       case 'mssql':
@@ -81,7 +88,8 @@ export abstract class DbContext {
           options.connectionString,
           logger,
           options.middlewares,
-          this._softDelete
+          this._softDelete,
+          options.retryPolicy
         );
         break;
       case 'mysql':
@@ -89,7 +97,8 @@ export abstract class DbContext {
           options.connectionString,
           logger,
           options.middlewares,
-          this._softDelete
+          this._softDelete,
+          options.retryPolicy
         );
         break;
       default:

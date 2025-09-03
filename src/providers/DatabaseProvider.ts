@@ -1,4 +1,4 @@
-import { EntityMetadata, OrmMiddleware, SqlLogger, SoftDeleteOptions } from '../types';
+import { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions } from '../types';
 import { SqlDialect } from '../query/SqlDialect';
 import { SQLiteDialect } from '../query/SQLiteDialect';
 
@@ -16,6 +16,7 @@ export abstract class DatabaseProvider {
   protected middlewares?: OrmMiddleware[];
   private lastExecuteStartedAt?: number;
   protected softDelete?: SoftDeleteOptions;
+  protected retryPolicy?: RetryPolicy;
   /** Logical provider name for logging/metrics (sqlite|postgresql|mysql|mssql|unknown). */
   protected providerName: string = 'unknown';
 
@@ -27,12 +28,14 @@ export abstract class DatabaseProvider {
     connectionString: string,
     logger?: SqlLogger,
     middlewares?: OrmMiddleware[],
-    softDelete?: SoftDeleteOptions
+    softDelete?: SoftDeleteOptions,
+    retryPolicy?: RetryPolicy
   ) {
     this.connectionString = connectionString;
     this.logger = logger;
     this.middlewares = middlewares;
     this.softDelete = softDelete;
+    this.retryPolicy = retryPolicy;
   }
 
   /** Connect to the database. */
@@ -186,11 +189,15 @@ export abstract class DatabaseProvider {
           provider: this.providerName
         });
         const isTransient = this.isTransientError(error);
-        if (!allowRetry || !isTransient || attempt >= maxAttempts) {
+        const should = this.retryPolicy
+          ? this.retryPolicy.shouldRetry(error, attempt, this.inTransaction)
+          : isTransient;
+        if (!allowRetry || !should || attempt >= maxAttempts) {
           throw error;
         }
         const jitter = Math.floor(Math.random() * 25);
-        const backoff = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
+        const defaultBackoff = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
+        const backoff = this.retryPolicy ? this.retryPolicy.getDelayMs(attempt) : defaultBackoff;
         this.logger?.retry?.({
           sql,
           params,
