@@ -627,6 +627,44 @@ const ctx = new AppDbContext({
 // });
 ```
 
+Prometheus dashboards & PromQL (examples):
+
+- Buckets (histogram): tune `bucketsMs` by target latency (p95 around middle buckets). For low-latency SQLite use tighter buckets (e.g., [2, 5, 10, 20, 50, 100]). For network DBs add higher buckets (e.g., up to 2000ms).
+- Label cardinality: keep `entity` low-cardinality (table names). Avoid high-cardinality labels like raw SQL or user ids.
+
+Example PromQL:
+
+```promql
+# Total queries per provider (rate)
+sum by (provider) (rate(db_query_total[5m]))
+
+# Error rate by provider
+sum by (provider) (rate(db_error_total[5m]))
+  /
+sum by (provider) (rate(db_query_total[5m]))
+
+# p95 query duration in milliseconds by provider
+histogram_quantile(0.95, sum by (le, provider) (rate(db_query_duration_ms_bucket[5m])))
+
+# Cache hit ratio (sqlGen)
+sum(rate(db_cache_hits_total{cache="sqlGen"}[5m]))
+  /
+(sum(rate(db_cache_hits_total{cache="sqlGen"}[5m])) + sum(rate(db_cache_misses_total{cache="sqlGen"}[5m])))
+
+# Retries per second
+sum(rate(db_retry_total[5m]))
+
+# Active transactions gauge by provider
+db_active_transactions
+```
+
+Dashboard hints:
+
+- Overview: query rate, error rate, p50/p95 latency (by provider), active transactions.
+- Cache: sqlGen hit ratio, entityL2 hit ratio, count cache hit ratio.
+- Top entities: split duration/throughput by `entity` (limit panels to top N to avoid cardinality blow-up).
+- Tracing linkage: if exemplars enabled, use Prometheus+Tempo/Grafana to jump from latency samples to traces.
+
 Exemplars (traceId):
 
 - When `traceId` is available, `PrometheusSqlLogger` attaches it as an exemplar to `db_query_duration_ms` (if your `prom-client` supports exemplars, v14+). This enables linking metrics samples to traces in backends that support exemplars (e.g., Tempo, Grafana LGTM).
@@ -739,6 +777,7 @@ npm run docs
 - Diff migrations: `docs/guides/diff-migrations.md`
 - Upsert & batch: `docs/guides/upsert-batch.md`
 - Advanced include & joins: `docs/guides/advanced-include-join.md`
+- Test matrix: `docs/guides/test-matrix.md`
 
 ### CLI (experimental)
 

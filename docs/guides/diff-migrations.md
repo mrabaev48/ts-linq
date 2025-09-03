@@ -11,41 +11,44 @@ This guide shows a pragmatic approach to generating safe schema diffs from entit
 
 ## Steps
 1) Read entity metadata from `MetadataStorage`
-2) Query live schema (PRAGMA in SQLite; information_schema in others)
-3) Compare and produce operations: CreateTable, AddColumn, CreateIndex
-4) Wrap as `Migration` with idempotent SQL
+2) Query live schema (PRAGMA in SQLite; information_schema/sys catalogs in others)
+3) Build snapshots and compute `SchemaDiff` via `compareSchemas()`
+4) Generate SQL per dialect: `generateMigrationFromDiff(diff, 'postgresql'|'mysql'|'mssql'|'sqlite')`
+5) (Опционально) Применить через `Migration`/`MigrationRunner` или исполнять SQL напрямую
 
-## Example (SQLite sketch)
+## API usage
+
 ```ts
-import { Migration, MigrationRunner } from '../../src';
-import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import { DiffMigrationGenerator } from '../../src/migrations/DiffMigrationGenerator';
+import { generateMigrationFromDiff } from '../../src/migrations/DialectMigrationSql';
 
-class DiffMigration extends Migration {
-  protected get name() { return 'Diff_' + Date.now(); }
-  protected get version() { return String(Date.now()); }
-  public async up() {
-    const entities = MetadataStorage.getEntities();
-    for (const e of entities) {
-      await provider.executeNonQuery(`CREATE TABLE IF NOT EXISTS ${e.tableName} (/* columns */)`);
-      // add columns
-      for (const c of e.columns) {
-        // check existence via PRAGMA table_info
-        // if not exists: ALTER TABLE ADD COLUMN
-      }
-      // indexes
-      for (const i of e.indexes) {
-        await provider.executeNonQuery(`CREATE ${i.unique ? 'UNIQUE ' : ''}INDEX IF NOT EXISTS ${i.name} ON ${e.tableName} (${i.columns.join(', ')})`);
-      }
-    }
-  }
-  public async down() { /* no-op for diffs */ }
-}
+// 1) Построить diff (пример для SQLite провайдера)
+const gen = new DiffMigrationGenerator(provider /* DatabaseProvider */);
+const steps = await gen.generate(); // минимальный набор SQL для SQLite
+
+// 2) Или построить общий SchemaDiff и сгенерировать SQL для другого диалекта
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import { compareSchemas } from '../../src/migrations/DiffTypes';
+
+// expected/actual snapshots → diff → SQL (примерно как делает DiffMigrationGenerator внутри)
+// ...получите snapshots, затем:
+const diff = compareSchemas(expectedSnapshot, actualSnapshot);
+const { up, down } = generateMigrationFromDiff(diff, 'postgresql');
+for (const sql of up) await provider.executeNonQuery(sql);
 ```
+
+## Dialect notes
+
+- PostgreSQL: кавычки идентификаторов `"name"`, `ALTER COLUMN TYPE`, `SET/DROP NOT NULL`.
+- MySQL: кавычки `` `name` ``, `MODIFY/CHANGE COLUMN` (для nullability нужен полный тип).
+- MSSQL: кавычки `[name]`, `ALTER COLUMN` (тип обязателен при смене nullability).
+- SQLite: ограниченная поддержка `ALTER`; сложные изменения требуют перестроения таблицы (в генераторе это учитывается).
 
 ## Notes
 - For non-SQLite, use `information_schema.columns` (MySQL/Postgres) and `sys.columns` (MSSQL)
-- Avoid dropping columns or altering types automatically; output warnings
+- Avoid dropping columns or altering types automatically; prefer rebuild or ручные миграции
 - Prefer hand-written follow-up migrations for destructive changes
 
 ## Testing
-- Run against a scratch DB, then run `MigrationRunner` and verify idempotency
+- Unit: сравнение snapshots → `compareSchemas`, генерация SQL `generateMigrationFromDiff`
+- Integration: выполнить SQL на тестовой БД и повторно — операции должны быть идемпотентны
