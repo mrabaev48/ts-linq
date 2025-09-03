@@ -3,50 +3,48 @@
  * Intended as a best-effort level-2 cache to reduce allocations and mapping work.
  */
 export class EntityCache {
-    private _store: Map<string, any> = new Map();
-    private _maxSize: number;
+  private _store: Map<string, any> = new Map();
+  private _maxSize: number;
 
-    /**
-     * @param maxSize Maximum number of cached items before FIFO eviction.
-     */
-    constructor(maxSize: number = 10000) {
-        this._maxSize = maxSize;
-    }
+  /**
+   * @param maxSize Maximum number of cached items before FIFO eviction.
+   */
+  constructor(maxSize: number = 10000) {
+    this._maxSize = maxSize;
+  }
 
-    /** Build a stable cache key from entity constructor and id. */
-    private buildKey(entityClass: Function, id: any): string {
-        return `${entityClass.name}|${String(id)}`;
-    }
+  /** Build a stable cache key from entity constructor and id. */
+  private buildKey(entityClass: Function, id: any): string {
+    return `${entityClass.name}|${String(id)}`;
+  }
 
-    /** Retrieve a cached entity instance by class and id. */
-    public get<T>(entityClass: Function, id: any): T | undefined {
-        if (id === undefined || id === null) return undefined;
-        const key = this.buildKey(entityClass, id);
-        return this._store.get(key);
-    }
+  /** Retrieve a cached entity instance by class and id. */
+  public get<T>(entityClass: Function, id: any): T | undefined {
+    if (id === undefined || id === null) return undefined;
+    const key = this.buildKey(entityClass, id);
+    return this._store.get(key);
+  }
 
-    /** Store an entity instance with FIFO eviction when size exceeds limit. */
-    public set(entityClass: Function, id: any, entity: any): void {
-        if (id === undefined || id === null) return;
-        if (this._store.size >= this._maxSize) {
-            const firstKey = this._store.keys().next().value as string | undefined;
-            if (firstKey !== undefined) this._store.delete(firstKey);
-        }
-        const key = this.buildKey(entityClass, id);
-        this._store.set(key, entity);
+  /** Store an entity instance with FIFO eviction when size exceeds limit. */
+  public set(entityClass: Function, id: any, entity: any): void {
+    if (id === undefined || id === null) return;
+    if (this._store.size >= this._maxSize) {
+      const firstKey = this._store.keys().next().value as string | undefined;
+      if (firstKey !== undefined) this._store.delete(firstKey);
     }
+    const key = this.buildKey(entityClass, id);
+    this._store.set(key, entity);
+  }
 
-    /** Remove a cached entity by class and id. */
-    public remove(entityClass: Function, id: any): void {
-        if (id === undefined || id === null) return;
-        const key = this.buildKey(entityClass, id);
-        this._store.delete(key);
-    }
+  /** Remove a cached entity by class and id. */
+  public remove(entityClass: Function, id: any): void {
+    if (id === undefined || id === null) return;
+    const key = this.buildKey(entityClass, id);
+    this._store.delete(key);
+  }
 
-    /** Clear all cached entities. */
-    public clear(): void {
-        this._store.clear();
-    }
+  /** Clear all cached entities. */
+  public clear(): void {
+    this._store.clear();
+  }
 }
-
-

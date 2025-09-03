@@ -19,13 +19,15 @@ describe('SQLite optimistic concurrency', () => {
     new VItem();
     // mark version column in metadata
     const meta = MetadataStorage.getEntity(VItem)!;
-    const vcol = meta.columns.find(c => c.propertyName === 'version');
+    const vcol = meta.columns.find((c) => c.propertyName === 'version');
     if (vcol) (vcol as any).isVersion = true;
     provider = new SQLiteProvider(':memory:');
     await provider.connect();
     await provider.createTable(meta);
   });
-  afterEach(async () => { await provider.disconnect(); });
+  afterEach(async () => {
+    await provider.disconnect();
+  });
 
   test('increments version on update and enforces match', async () => {
     const item = new VItem();
@@ -52,5 +54,3 @@ describe('SQLite optimistic concurrency', () => {
     await expect(provider.update(stale, VItem)).rejects.toBeInstanceOf(OptimisticConcurrencyError);
   });
 });
-
-

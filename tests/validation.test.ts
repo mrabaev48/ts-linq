@@ -11,7 +11,12 @@ class ValUser {
   @Column({ type: 'TEXT', nullable: false, length: 5 }) name!: string;
 }
 
-class ValCtx extends DbContext { public valusers!: any; constructor() { super({ connectionString: ':memory:', provider: 'sqlite' }); } }
+class ValCtx extends DbContext {
+  public valusers!: any;
+  constructor() {
+    super({ connectionString: ':memory:', provider: 'sqlite' });
+  }
+}
 
 describe('Model validation', () => {
   test('saveChanges throws ValidationError on null and length violations', async () => {
@@ -39,5 +44,3 @@ describe('Model validation', () => {
     await ctx.dispose();
   });
 });
-
-

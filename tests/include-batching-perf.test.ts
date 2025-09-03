@@ -38,7 +38,8 @@ describe('Include batching performance', () => {
     };
 
     // Ensure decorators are applied
-    new PerfAuthor(); new PerfBook();
+    new PerfAuthor();
+    new PerfBook();
     const ctx = new PerfCtx(logger);
     await ctx.ensureCreated();
 
@@ -60,12 +61,10 @@ describe('Include batching performance', () => {
     expect(authors.length).toBe(10);
 
     // Count SELECT statements during the measured operation
-    const starts = events.filter(e => e.t === 'start' && /^SELECT/i.test(e.sql || '')).length;
+    const starts = events.filter((e) => e.t === 'start' && /^SELECT/i.test(e.sql || '')).length;
     // Expect 2 selects: one for authors, one batched IN for books
     expect(starts).toBe(2);
 
     await ctx.dispose();
   });
 });
-
-

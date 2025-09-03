@@ -8,11 +8,15 @@ import { MssqlDialect } from '../src/query/MssqlDialect';
 import { MysqlDialect } from '../src/query/MysqlDialect';
 
 @Entity({ name: 't' })
-class T { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'INTEGER' }) authorId!: number; @Column({ type: 'TEXT' }) name!: string; }
+class T {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'INTEGER' }) authorId!: number;
+  @Column({ type: 'TEXT' }) name!: string;
+}
 
 const options = {
   select: ['authorId'],
-  groupBy: { columns: ['authorId'], having: { condition: 'COUNT(*) > ?', parameters: [1] } },
+  groupBy: { columns: ['authorId'], having: { condition: 'COUNT(*) > ?', parameters: [1] } }
 } as any;
 
 describe('GROUP BY / HAVING in dialects', () => {
@@ -50,5 +54,3 @@ describe('GROUP BY / HAVING in dialects', () => {
     expect(parameters).toEqual([1]);
   });
 });
-
-

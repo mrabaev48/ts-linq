@@ -73,14 +73,16 @@ export class MySqlProvider extends DatabaseProvider {
   public async update<T>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const versionCol = metadata.columns.find(c => (c as any).isVersion);
+    const versionCol = metadata.columns.find((c) => (c as any).isVersion);
     const { sql, params } = this.generateUpdateSql(entity as any, metadata, versionCol as any);
     const n = await this.executeNonQuery(sql, params);
     if (n === 0) {
       if (versionCol) throw new OptimisticConcurrencyError();
       throw new Error('No rows were updated.');
     }
-    if (versionCol) (entity as any)[(versionCol as any).propertyName] = ((entity as any)[(versionCol as any).propertyName] ?? 0) + 1;
+    if (versionCol)
+      (entity as any)[(versionCol as any).propertyName] =
+        ((entity as any)[(versionCol as any).propertyName] ?? 0) + 1;
     return entity;
   }
 
@@ -88,12 +90,16 @@ export class MySqlProvider extends DatabaseProvider {
   public async upsert<T>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const insertable = metadata.columns.filter(c => !c.isGenerated || (entity as any)[c.propertyName] !== undefined);
-    const names = insertable.map(c => c.columnName);
+    const insertable = metadata.columns.filter(
+      (c) => !c.isGenerated || (entity as any)[c.propertyName] !== undefined
+    );
+    const names = insertable.map((c) => c.columnName);
     const placeholders = insertable.map(() => '?');
-    const params = insertable.map(c => (entity as any)[c.propertyName]);
-    const updatable = metadata.columns.filter(c => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
-    const updateSet = updatable.map(c => `${c.columnName} = VALUES(${c.columnName})`).join(', ');
+    const params = insertable.map((c) => (entity as any)[c.propertyName]);
+    const updatable = metadata.columns.filter(
+      (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated
+    );
+    const updateSet = updatable.map((c) => `${c.columnName} = VALUES(${c.columnName})`).join(', ');
     const sql = `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')}) ON DUPLICATE KEY UPDATE ${updateSet}`;
     await this.executeNonQuery(sql, params);
     return entity;
@@ -111,11 +117,11 @@ export class MySqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const pk = metadata.primaryKeys[0];
-    const pkCol = metadata.columns.find(c => c.propertyName === pk)!;
+    const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
     let sql = `SELECT * FROM ${metadata.tableName} WHERE ${pkCol.columnName} = ?`;
     if (this.softDelete?.enabled) {
       const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
     const rows = await this.executeQuery<any>(sql, [id]);
@@ -128,11 +134,11 @@ export class MySqlProvider extends DatabaseProvider {
     let sql = `SELECT * FROM ${metadata.tableName}`;
     if (this.softDelete?.enabled) {
       const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` WHERE ${flag} = 0`;
     }
     const rows = await this.executeQuery<any>(sql);
-    return rows.map(r => this.mapRowToEntity(r, entityClass));
+    return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
   public async findWhere<T>(entityClass: new () => T, conditions: any): Promise<T[]> {
@@ -142,28 +148,34 @@ export class MySqlProvider extends DatabaseProvider {
     let sql = `SELECT * FROM ${metadata.tableName} WHERE ${whereClause}`;
     if (this.softDelete?.enabled) {
       const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
     const rows = await this.executeQuery<any>(sql, params);
-    return rows.map(r => this.mapRowToEntity(r, entityClass));
+    return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
-  public async findWhereIn<T>(entityClass: new () => T, column: string, values: any[]): Promise<T[]> {
+  public async findWhereIn<T>(
+    entityClass: new () => T,
+    column: string,
+    values: any[]
+  ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     if (!values?.length) return [];
-    const columnMeta = metadata.columns.find(c => c.propertyName === column || c.columnName === column);
+    const columnMeta = metadata.columns.find(
+      (c) => c.propertyName === column || c.columnName === column
+    );
     const columnName = columnMeta ? columnMeta.columnName : column;
     const placeholders = values.map(() => '?').join(', ');
     let sql2 = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
     if (this.softDelete?.enabled) {
       const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some(c => c.propertyName === flag || c.columnName === flag);
+      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql2 += ` AND ${flag} = 0`;
     }
     const rows = await this.executeQuery<any>(sql2, values);
-    return rows.map(r => this.mapRowToEntity(r, entityClass));
+    return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
   protected async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
@@ -209,9 +221,11 @@ export class MySqlProvider extends DatabaseProvider {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
     }
-    const cols: string[] = metadata.columns.map(c => this.generateColumnDefinition(c));
+    const cols: string[] = metadata.columns.map((c) => this.generateColumnDefinition(c));
     if (metadata.primaryKeys.length) {
-      const pkCols = metadata.primaryKeys.map(pk => metadata.columns.find(c => c.propertyName === pk)?.columnName || pk);
+      const pkCols = metadata.primaryKeys.map(
+        (pk) => metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk
+      );
       cols.push(`PRIMARY KEY (${pkCols.join(', ')})`);
     }
     return `CREATE TABLE IF NOT EXISTS ${metadata.tableName} (${cols.join(', ')})`;
@@ -220,33 +234,51 @@ export class MySqlProvider extends DatabaseProvider {
     let def = `${column.columnName} ${mapTypeToMySql(column.type)}`;
     if (column.length) def += `(${column.length})`;
     if (!column.nullable) def += ' NOT NULL';
-    if (column.defaultValue !== undefined) def += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
+    if (column.defaultValue !== undefined)
+      def += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
     return def;
   }
-  private generateCreateIndexSql(table: string, index: { name: string; columns: string[]; unique: boolean }): string {
+  private generateCreateIndexSql(
+    table: string,
+    index: { name: string; columns: string[]; unique: boolean }
+  ): string {
     const uniq = index.unique ? 'UNIQUE ' : '';
     return `CREATE ${uniq}INDEX IF NOT EXISTS ${index.name} ON ${table} (${index.columns.join(', ')})`;
   }
   private generateInsertSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
-    const insertable = metadata.columns.filter(c => !c.isGenerated || entity[c.propertyName] !== undefined);
-    const names = insertable.map(c => c.columnName);
+    const insertable = metadata.columns.filter(
+      (c) => !c.isGenerated || entity[c.propertyName] !== undefined
+    );
+    const names = insertable.map((c) => c.columnName);
     const placeholders = insertable.map(() => '?');
-    const params = insertable.map(c => entity[c.propertyName]);
-    return { sql: `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`, params };
+    const params = insertable.map((c) => entity[c.propertyName]);
+    return {
+      sql: `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
+      params
+    };
   }
-  private generateUpdateSql(entity: any, metadata: EntityMetadata, versionCol?: ColumnMetadata): { sql: string; params: any[] } {
-    const updatable = metadata.columns.filter(c => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
-    const setClauses: string[] = updatable.map(c => `${c.columnName} = ?`);
-    const setParams = updatable.map(c => entity[c.propertyName]);
+  private generateUpdateSql(
+    entity: any,
+    metadata: EntityMetadata,
+    versionCol?: ColumnMetadata
+  ): { sql: string; params: any[] } {
+    const updatable = metadata.columns.filter(
+      (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated
+    );
+    const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
+    const setParams = updatable.map((c) => entity[c.propertyName]);
     if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
     const whereClauses: string[] = [];
     const whereParams: any[] = [];
     for (const pk of metadata.primaryKeys) {
-      const col = metadata.columns.find(c => c.propertyName === pk)!;
+      const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${col.columnName} = ?`);
       whereParams.push(entity[pk]);
     }
-    if (versionCol) { whereClauses.push(`${versionCol.columnName} = ?`); whereParams.push(entity[(versionCol as any).propertyName]); }
+    if (versionCol) {
+      whereClauses.push(`${versionCol.columnName} = ?`);
+      whereParams.push(entity[(versionCol as any).propertyName]);
+    }
     const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, params: [...setParams, ...whereParams] };
   }
@@ -254,7 +286,7 @@ export class MySqlProvider extends DatabaseProvider {
     const whereClauses: string[] = [];
     const params: any[] = [];
     for (const pk of metadata.primaryKeys) {
-      const col = metadata.columns.find(c => c.propertyName === pk)!;
+      const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${col.columnName} = ?`);
       params.push(entity[pk]);
     }
@@ -306,7 +338,8 @@ function mapTypeToMySql(type: string): string {
 function mapMySqlError(err: any): Error {
   const code = err?.code;
   const message = err?.message || String(err);
-  if (code === 'ER_DUP_ENTRY') return new (require('../types').UniqueConstraintError)(message, code);
+  if (code === 'ER_DUP_ENTRY')
+    return new (require('../types').UniqueConstraintError)(message, code);
   const DatabaseError = require('../types').DatabaseError;
   return new DatabaseError(message, code);
 }
@@ -316,8 +349,8 @@ function safeRequireMysql2(): any {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('mysql2/promise');
   } catch (e) {
-    throw new Error('Package "mysql2" is required for MySqlProvider. Install it with: npm install mysql2');
+    throw new Error(
+      'Package "mysql2" is required for MySqlProvider. Install it with: npm install mysql2'
+    );
   }
 }
-
-

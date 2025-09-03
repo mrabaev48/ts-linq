@@ -12,7 +12,12 @@ function defineEntities() {
   return { DUser };
 }
 
-class DCtx extends DbContext { public dusers!: DbSet<any>; constructor() { super({ provider: 'sqlite', connectionString: ':memory:' }); } }
+class DCtx extends DbContext {
+  public dusers!: DbSet<any>;
+  constructor() {
+    super({ provider: 'sqlite', connectionString: ':memory:' });
+  }
+}
 
 describe('Schema diff migration (SQLite minimal)', () => {
   beforeEach(() => MetadataStorage.getInstance().clear());
@@ -27,11 +32,14 @@ describe('Schema diff migration (SQLite minimal)', () => {
     expect(Array.isArray(steps)).toBe(true);
     // Since provider.createTable was used during ensureCreated, table exists, so steps may be empty or ALTERs
     // We add a new property to force ADD COLUMN
-    (MetadataStorage.getEntity(DUser) as any).columns.push({ propertyName: 'age', columnName: 'age', type: 'INTEGER', nullable: true });
+    (MetadataStorage.getEntity(DUser) as any).columns.push({
+      propertyName: 'age',
+      columnName: 'age',
+      type: 'INTEGER',
+      nullable: true
+    });
     const steps2 = await gen.generate();
-    expect(steps2.some(s => /ALTER TABLE DUsers ADD COLUMN age/i.test(s.sql))).toBe(true);
+    expect(steps2.some((s) => /ALTER TABLE DUsers ADD COLUMN age/i.test(s.sql))).toBe(true);
     await ctx.dispose();
   });
 });
-
-

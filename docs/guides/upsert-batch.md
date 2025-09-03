@@ -38,4 +38,3 @@ await ctx.provider.upsertMany(users, User);
 ## Optimistic Concurrency
 
 If your entity has a version column (`@Column({ version: true })`), updates will enforce version match and increment.
-

@@ -8,8 +8,8 @@ Call `include` before `where/select/orderBy` to ensure eager loading is applied:
 
 ```ts
 const authors = await ctx.authors
-  .include(a => a.books)
-  .where(a => a.id >= 1)
+  .include((a) => a.books)
+  .where((a) => a.id >= 1)
   .toArray();
 ```
 
@@ -21,8 +21,8 @@ const authors = await ctx.authors
 
 ```ts
 await ctx.authors
-  .include(a => a.books)
-  .include(a => (a as any).profile)
+  .include((a) => a.books)
+  .include((a) => (a as any).profile)
   .toArray();
 ```
 
@@ -33,7 +33,7 @@ Use `innerJoin` and `leftJoin` with simple predicate `(a, b) => a.prop === b.pro
 ```ts
 const rows = await ctx.authors
   .innerJoin(Book, (a, b) => a.id === b.authorId)
-  .where(a => a.id > 0)
+  .where((a) => a.id > 0)
   .toArray();
 ```
 
@@ -45,7 +45,7 @@ Joins are primarily for filtering/projection scenarios. When you need full graph
 - `union(query)`, `unionAll(query)`
 
 ```ts
-const q1 = ctx.books.where(b => b.title === 'A');
-const q2 = ctx.books.where(b => b.title === 'B');
+const q1 = ctx.books.where((b) => b.title === 'A');
+const q2 = ctx.books.where((b) => b.title === 'B');
 const both = await q1.clone().union(q2).toArray();
 ```

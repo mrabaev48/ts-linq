@@ -12,7 +12,12 @@ function defineEntitiesV1() {
   return { RUser };
 }
 
-class RCtx extends DbContext { public rusers!: DbSet<any>; constructor() { super({ provider: 'sqlite', connectionString: ':memory:' }); } }
+class RCtx extends DbContext {
+  public rusers!: DbSet<any>;
+  constructor() {
+    super({ provider: 'sqlite', connectionString: ':memory:' });
+  }
+}
 
 describe('Schema diff rebuild (SQLite minimal)', () => {
   beforeEach(() => MetadataStorage.getInstance().clear());
@@ -23,12 +28,12 @@ describe('Schema diff rebuild (SQLite minimal)', () => {
     await ctx.ensureCreated();
     // change column type in metadata
     const meta = MetadataStorage.getEntity(RUser)!;
-    const nameCol = meta.columns.find(c => c.propertyName === 'name')!;
+    const nameCol = meta.columns.find((c) => c.propertyName === 'name')!;
     nameCol.type = 'INTEGER' as any;
 
     const gen = new DiffMigrationGenerator((ctx as any).provider);
     const steps = await gen.generate();
-    const sqls = steps.map(s => s.sql).join('\n');
+    const sqls = steps.map((s) => s.sql).join('\n');
     expect(sqls).toMatch(/CREATE TABLE IF NOT EXISTS __new_RUsers/i);
     expect(sqls).toMatch(/INSERT INTO __new_RUsers/i);
     expect(sqls).toMatch(/DROP TABLE RUsers/i);
@@ -36,5 +41,3 @@ describe('Schema diff rebuild (SQLite minimal)', () => {
     await ctx.dispose();
   });
 });
-
-

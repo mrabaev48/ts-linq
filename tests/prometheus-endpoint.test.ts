@@ -3,7 +3,9 @@ import { startPrometheusServer, getPrometheusMetrics } from '../src/utils/Promet
 
 class FakeRegister {
   public contentType = 'text/plain; version=0.0.4; charset=utf-8';
-  metrics(): string { return '# HELP test 1\n# TYPE test counter\ntest 1'; }
+  metrics(): string {
+    return '# HELP test 1\n# TYPE test counter\ntest 1';
+  }
 }
 const fakeClient = { register: new FakeRegister() } as any;
 
@@ -15,7 +17,11 @@ describe('Prometheus endpoint helpers', () => {
   });
 
   it('startPrometheusServer serves /metrics with fake client', async () => {
-    const { server, port, close } = await startPrometheusServer({ client: fakeClient, port: 0, path: '/metrics' });
+    const { server, port, close } = await startPrometheusServer({
+      client: fakeClient,
+      port: 0,
+      path: '/metrics'
+    });
     const res = await fetch(`http://127.0.0.1:${port}/metrics`);
     const text = await res.text();
     expect(res.status).toBe(200);
@@ -23,5 +29,3 @@ describe('Prometheus endpoint helpers', () => {
     await close();
   });
 });
-
-

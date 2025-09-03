@@ -10,7 +10,9 @@ class DummyDialect implements SqlDialect {
 
 class CapturingLogger {
   public cacheCalls: any[] = [];
-  cache(info: any) { this.cacheCalls.push(info); }
+  cache(info: any) {
+    this.cacheCalls.push(info);
+  }
 }
 
 class User {}
@@ -23,8 +25,8 @@ describe('QueryBuilder cache metrics', () => {
     const a = qb.generateSql(User as any, opts);
     const b = qb.generateSql(User as any, opts);
     expect(a.query).toBe(b.query);
-    const hasMiss = logger.cacheCalls.some(c => c.cache === 'sqlGen' && c.hit === false);
-    const hasHit = logger.cacheCalls.some(c => c.cache === 'sqlGen' && c.hit === true);
+    const hasMiss = logger.cacheCalls.some((c) => c.cache === 'sqlGen' && c.hit === false);
+    const hasHit = logger.cacheCalls.some((c) => c.cache === 'sqlGen' && c.hit === true);
     expect(hasMiss).toBe(true);
     expect(hasHit).toBe(true);
   });
@@ -35,29 +37,27 @@ import 'reflect-metadata';
 import { QueryOptions } from '../src/types';
 
 class DialectStub implements SqlDialect {
-    public calls = 0;
-    buildSelect<T>(entityClass: new () => T, options: QueryOptions) {
-        this.calls++;
-        return { query: 'SELECT x', parameters: [] as any[] };
-    }
+  public calls = 0;
+  buildSelect<T>(entityClass: new () => T, options: QueryOptions) {
+    this.calls++;
+    return { query: 'SELECT x', parameters: [] as any[] };
+  }
 }
 
 describe('QueryBuilder cache', () => {
-    beforeEach(() => QueryBuilder.clearCache());
+  beforeEach(() => QueryBuilder.clearCache());
 
-    test('clearCache forces regeneration', () => {
-        class E {}
-        const d = new DialectStub();
-        const qb = new QueryBuilder(d);
-        const opts: QueryOptions = {};
-        qb.generateSql(E, opts);
-        expect(d.calls).toBe(1);
-        qb.generateSql(E, opts);
-        expect(d.calls).toBe(1); // cached
-        QueryBuilder.clearCache();
-        qb.generateSql(E, opts);
-        expect(d.calls).toBe(2);
-    });
+  test('clearCache forces regeneration', () => {
+    class E {}
+    const d = new DialectStub();
+    const qb = new QueryBuilder(d);
+    const opts: QueryOptions = {};
+    qb.generateSql(E, opts);
+    expect(d.calls).toBe(1);
+    qb.generateSql(E, opts);
+    expect(d.calls).toBe(1); // cached
+    QueryBuilder.clearCache();
+    qb.generateSql(E, opts);
+    expect(d.calls).toBe(2);
+  });
 });
-
-

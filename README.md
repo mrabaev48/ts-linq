@@ -7,14 +7,16 @@ This is a TypeScript ORM (Object-Relational Mapping) framework heavily inspired 
 ## System Architecture
 
 ### Core Architecture Pattern
+
 The framework follows Entity Framework's architectural patterns with a layered approach:
 
 - **Entity Layer**: Decorator-based entity definitions with metadata reflection
-- **Context Layer**: DbContext manages entity sets, change tracking, and database operations  
+- **Context Layer**: DbContext manages entity sets, change tracking, and database operations
 - **Provider Layer**: Pluggable database provider architecture (supports SQLite, PostgreSQL, MSSQL, MySQL)
 - **Query Layer**: LINQ-style query building with method chaining
 
 ### Decorator-Based Metadata System
+
 Uses TypeScript decorators and reflect-metadata for entity configuration:
 
 - `@Entity()` marks classes as database entities
@@ -24,6 +26,7 @@ Uses TypeScript decorators and reflect-metadata for entity configuration:
 - MetadataStorage centrally manages all entity metadata
 
 ### Change Tracking Implementation
+
 Implements Entity Framework's change tracking pattern:
 
 - ChangeTracker monitors entity states (Added, Modified, Deleted, Unchanged)
@@ -31,6 +34,7 @@ Implements Entity Framework's change tracking pattern:
 - SaveChanges() processes all tracked changes in a single transaction
 
 ### Database Provider Abstraction
+
 Abstract DatabaseProvider base class enables multiple database support:
 
 - Implemented providers: SQLite (sqlite3), PostgreSQL (pg), MSSQL (mssql), MySQL (mysql2)
@@ -38,6 +42,7 @@ Abstract DatabaseProvider base class enables multiple database support:
 - Clean separation allows adding more providers later
 
 ### Query Layer (Queryable + QueryBuilder)
+
 LINQ-style query building with method chaining is provided by `Queryable`, while SQL generation is handled by a dedicated `QueryBuilder` using a pluggable `SqlDialect`.
 
 - `where` parses simple lambda predicates into a minimal AST (via `PredicateParser`) and generates SQL with `SqlVisitor`; for unsupported cases it falls back to in-memory filtering
@@ -49,6 +54,7 @@ LINQ-style query building with method chaining is provided by `Queryable`, while
 This separation improves testability and extensibility. The AST + visitor pipeline enables SQL generation where possible, while keeping runtime semantics correct via safe fallbacks.
 
 ### Migration Framework
+
 Code-first database evolution support:
 
 - Abstract Migration base class for schema changes
@@ -58,11 +64,13 @@ Code-first database evolution support:
 ## External Dependencies
 
 ### Core Dependencies
+
 - **sqlite3**: Primary database engine for SQLite provider
 - **reflect-metadata**: Enables TypeScript decorator metadata reflection
 - **typescript**: TypeScript compiler and type definitions
 
 ### Development Dependencies
+
 - **jest**: Testing framework with comprehensive test coverage
 - **ts-jest**: TypeScript preprocessor for Jest
 - **ts-node**: TypeScript execution environment for Node.js
@@ -71,6 +79,7 @@ Code-first database evolution support:
 - **@types/jest**: Jest type definitions
 
 ### Runtime Requirements
+
 - Node.js with ES2020 support
 - TypeScript experimental decorators enabled
 - Reflect metadata polyfill loaded before entity definitions
@@ -93,6 +102,7 @@ npm install mysql2
 ```
 
 Enable decorators in `tsconfig.json`:
+
 ```json
 {
   "compilerOptions": {
@@ -105,6 +115,7 @@ Enable decorators in `tsconfig.json`:
 ```
 
 Load reflect-metadata before entity definitions:
+
 ```ts
 import 'reflect-metadata';
 ```
@@ -153,6 +164,7 @@ class Author {
 ```
 
 Relationships are supported:
+
 ```ts
 @Entity()
 class Book {
@@ -179,6 +191,7 @@ class AppDbContext extends DbContext {
 ```
 
 Note about auto-generated DbSet properties:
+
 - For each registered entity class, a property is created on the context using a simple convention: `<ClassName>.toLowerCase() + 's'` with a basic `y → ies` rule.
 - Examples: `Author` → `authors`, `Book` → `books`, `Category` → `categories`.
 - If you need a different name, either use `set(YourEntity)` or add your own getter that delegates to `set(YourEntity)`.
@@ -213,37 +226,42 @@ await context.saveChanges();
 ```ts
 // Filtering, sorting, pagination
 const page = await context.books
-  .where(b => b.title === 'Updated')
-  .orderBy(b => b.id)
+  .where((b) => b.title === 'Updated')
+  .orderBy((b) => b.id)
   .skip(0)
   .take(10)
   .toArray();
 
 // Aggregations and checks
 const total = await context.books.count();
-const any = await context.books.where(b => b.title === 'X').any();
+const any = await context.books.where((b) => b.title === 'X').any();
 
 // First/Single
-const first = await context.books.orderBy(b => b.id).first();
-const maybe = await context.books.where(b => b.id > 999).firstOrDefault();
+const first = await context.books.orderBy((b) => b.id).first();
+const maybe = await context.books.where((b) => b.id > 999).firstOrDefault();
 
 // Result-based try-variants (no exceptions):
-const firstRes = await context.books.orderBy(b => b.id).tryFirst();
-if (firstRes.ok) { /* use firstRes.value */ } else { /* handle firstRes.error */ }
-const singleRes = await context.books.where(b => b.id === 1).trySingle();
+const firstRes = await context.books.orderBy((b) => b.id).tryFirst();
+if (firstRes.ok) {
+  /* use firstRes.value */
+} else {
+  /* handle firstRes.error */
+}
+const singleRes = await context.books.where((b) => b.id === 1).trySingle();
 
 // Joins (inner/left)
 const joined = await context.authors
   .innerJoin(Book, (a, b) => a.id === b.authorId)
-  .where(a => a.id >= 1)
+  .where((a) => a.id >= 1)
   .toArray();
 ```
 
 Include-first chaining (eager loading):
+
 ```ts
 const authors = await context.authors
-  .include(a => a.books)      // declare eager includes first
-  .where(a => a.id === 1)
+  .include((a) => a.books) // declare eager includes first
+  .where((a) => a.id === 1)
   .toArray();
 ```
 
@@ -253,11 +271,15 @@ By default loading is Lazy. Use `include` for eager loading:
 
 ```ts
 // Eager load authors with books via predicate-based include
-const authors = await context.authors.include(a => a.books).toArray();
+const authors = await context.authors.include((a) => a.books).toArray();
 
 // Depth control (context API still accepts options)
 import { LoadingStrategy } from './src';
-const one = await context.find(Author, 1, { strategy: LoadingStrategy.Eager, depth: 1, includes: ['books'] });
+const one = await context.find(Author, 1, {
+  strategy: LoadingStrategy.Eager,
+  depth: 1,
+  includes: ['books']
+});
 ```
 
 Note: when loading collections (e.g., one-to-many) for multiple parent rows, the loader batches queries internally to avoid the N+1 problem (uses IN clauses under the hood). Predicate-based include chaining can be combined with where/order/take.
@@ -268,13 +290,11 @@ Offset-based pagination и keyset-пагинация из коробки:
 
 ```ts
 // Offset-based: paginate(page, size) возвращает { items, total, page, size }
-const page1 = await context.books
-  .orderBy(b => b.id)
-  .paginate(1, 20);
+const page1 = await context.books.orderBy((b) => b.id).paginate(1, 20);
 
 // Keyset-based: быстрая пагинация по монотонному ключу
-const first = await context.books.orderBy(b => b.id).keysetPaginate('id', null, 20);
-const next = await context.books.orderBy(b => b.id).keysetPaginate('id', first.nextAfter, 20);
+const first = await context.books.orderBy((b) => b.id).keysetPaginate('id', null, 20);
+const next = await context.books.orderBy((b) => b.id).keysetPaginate('id', first.nextAfter, 20);
 ```
 
 ### Transactions
@@ -305,8 +325,12 @@ const provider = new SQLiteProvider(':memory:');
 await provider.connect();
 
 class AddAgeToUsers extends Migration {
-  protected get name() { return 'AddAgeToUsers'; }
-  protected get version() { return '002'; }
+  protected get name() {
+    return 'AddAgeToUsers';
+  }
+  protected get version() {
+    return '002';
+  }
   public async up() {
     await provider.executeNonQuery('ALTER TABLE users ADD COLUMN age INTEGER');
   }
@@ -324,6 +348,7 @@ await runner.migrate();
 Providers implemented: `SQLiteProvider`, `PostgresProvider`, `MssqlProvider`, `MySqlProvider`.
 
 A provider is responsible for:
+
 - connecting/disconnecting
 - SQL generation (DDL/DML)
 - query execution
@@ -334,6 +359,7 @@ New providers can be added by implementing the abstract `DatabaseProvider`.
 ### Optimistic Concurrency
 
 Поддерживается оптимистическая блокировка через версионную колонку. Пометьте поле версии у сущности и ORM будет:
+
 - при `UPDATE` инкрементировать версию,
 - требовать совпадение текущей версии в `WHERE`,
 - выбрасывать `OptimisticConcurrencyError` при рассогласовании.
@@ -394,7 +420,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: ts_linq
     ports:
-      - "5432:5432"
+      - '5432:5432'
 ```
 
 Then set `POSTGRES_URL=postgres://postgres:postgres@localhost:5432/ts_linq`.
@@ -418,7 +444,9 @@ class AppDbContext extends DbContext {
 
 const ctx = new AppDbContext({
   provider: 'mssql',
-  connectionString: process.env.MSSQL_URL || 'Server=localhost;Database=ts_linq;User Id=sa;Password=Your_password123;Encrypt=false'
+  connectionString:
+    process.env.MSSQL_URL ||
+    'Server=localhost;Database=ts_linq;User Id=sa;Password=Your_password123;Encrypt=false'
 });
 ```
 
@@ -439,10 +467,10 @@ services:
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
-      ACCEPT_EULA: "Y"
-      SA_PASSWORD: "Your_password123"
+      ACCEPT_EULA: 'Y'
+      SA_PASSWORD: 'Your_password123'
     ports:
-      - "1433:1433"
+      - '1433:1433'
 ```
 
 Then set `MSSQL_URL=Server=localhost;Database=ts_linq;User Id=sa;Password=Your_password123;Encrypt=false`.
@@ -451,13 +479,22 @@ Then set `MSSQL_URL=Server=localhost;Database=ts_linq;User Id=sa;Password=Your_p
 
 ```ts
 @Entity({ name: 'Users' })
-class User { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+class User {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
 
-class MsCtx extends DbContext { public users!: DbSet<User>; constructor() { super({ provider: 'mssql', connectionString: process.env.MSSQL_URL! }); } }
+class MsCtx extends DbContext {
+  public users!: DbSet<User>;
+  constructor() {
+    super({ provider: 'mssql', connectionString: process.env.MSSQL_URL! });
+  }
+}
 
 const ctx = new MsCtx();
 await ctx.ensureCreated();
-const u = new User(); u.name = 'Alice';
+const u = new User();
+u.name = 'Alice';
 ctx.users.add(u);
 await ctx.saveChanges();
 const all = await ctx.users.toArray();
@@ -470,13 +507,13 @@ await ctx.dispose();
 // JOIN (inner)
 const rows = await ctx.users
   .innerJoin(Order, (u, o) => u.id === o.userId)
-  .where(u => u.id >= 1)
+  .where((u) => u.id >= 1)
   .toArray();
 
 // Eager Include (include-first)
 const withOrders = await ctx.users
-  .include(u => u.orders)
-  .where(u => u.id === 1)
+  .include((u) => u.orders)
+  .where((u) => u.id === 1)
   .toArray();
 ```
 
@@ -532,20 +569,29 @@ services:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: ts_linq
     ports:
-      - "3306:3306"
+      - '3306:3306'
 ```
 
 #### Example (CRUD)
 
 ```ts
 @Entity({ name: 'Users' })
-class User { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+class User {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
 
-class MyCtx extends DbContext { public users!: DbSet<User>; constructor() { super({ provider: 'mysql', connectionString: process.env.MYSQL_URL! }); } }
+class MyCtx extends DbContext {
+  public users!: DbSet<User>;
+  constructor() {
+    super({ provider: 'mysql', connectionString: process.env.MYSQL_URL! });
+  }
+}
 
 const ctx = new MyCtx();
 await ctx.ensureCreated();
-const u = new User(); u.name = 'Bob';
+const u = new User();
+u.name = 'Bob';
 ctx.users.add(u);
 await ctx.saveChanges();
 const all = await ctx.users.toArray();
@@ -558,13 +604,13 @@ await ctx.dispose();
 // JOIN (left)
 const rows = await ctx.users
   .leftJoin(Order, (u, o) => u.id === o.userId)
-  .where(u => u.id > 0)
+  .where((u) => u.id > 0)
   .toArray();
 
 // Eager Include (include-first)
 const withOrders = await ctx.users
-  .include(u => u.orders)
-  .where(u => u.name === 'Bob')
+  .include((u) => u.orders)
+  .where((u) => u.name === 'Bob')
   .toArray();
 ```
 
@@ -670,19 +716,18 @@ Exemplars (traceId):
 - When `traceId` is available, `PrometheusSqlLogger` attaches it as an exemplar to `db_query_duration_ms` (if your `prom-client` supports exemplars, v14+). This enables linking metrics samples to traces in backends that support exemplars (e.g., Tempo, Grafana LGTM).
 - No hard dependency: if exemplars are not supported, metrics still record without them.
 
-
 ### Extended LINQ
 
 Subqueries and unions are supported in addition to joins and includes:
 
 ```ts
 // Subquery IN
-const sub = ctx.orderItems.select(oi => ({ productId: (oi as any).productId } as any));
+const sub = ctx.orderItems.select((oi) => ({ productId: (oi as any).productId }) as any);
 const popular = await ctx.products.whereInSubquery('id' as any, sub).toArray();
 
 // UNION
-const q1 = ctx.products.where(p => p.price <= 10);
-const q2 = ctx.products.where(p => p.price >= 1000);
+const q1 = ctx.products.where((p) => p.price <= 10);
+const q2 = ctx.products.where((p) => p.price >= 1000);
 const extremes = await q1.clone().union(q2).toArray();
 ```
 
@@ -736,8 +781,14 @@ import { PredicateParser } from './src/query/PredicateParser';
 import { PredicateSpecification, Specs } from './src/query/spec/Specification';
 
 const parser = new PredicateParser<Author>();
-const byId = new PredicateSpecification<Author>(a => a.id === 1, parser.parse(a => a.id === 1));
-const hasName = new PredicateSpecification<Author>(a => a.name === 'Jane', parser.parse(a => a.name === 'Jane'));
+const byId = new PredicateSpecification<Author>(
+  (a) => a.id === 1,
+  parser.parse((a) => a.id === 1)
+);
+const hasName = new PredicateSpecification<Author>(
+  (a) => a.name === 'Jane',
+  parser.parse((a) => a.name === 'Jane')
+);
 const spec = Specs.and(byId, hasName);
 // spec.toExpression() → AST (may be converted to SQL), spec.test(a) → boolean
 ```
@@ -755,6 +806,7 @@ const spec = Specs.and(byId, hasName);
 ### Distribution (ESM/CJS)
 
 The package ships dual builds:
+
 - CJS: `dist/cjs`, main entry `package.json#main`
 - ESM: `dist/esm`, module entry `package.json#module`
 - Types: `dist/types`
@@ -798,5 +850,6 @@ SQLITE_URL="file:./dev.sqlite" npx ts-node src/bin/ts-linq-cli.ts seed ./seeds.s
 ```
 
 Примечания:
+
 - Переменная окружения `SQLITE_URL` указывает строку подключения. По умолчанию `:memory:`.
 - Команда `rollback` для дифф-подхода не поддерживается: используйте сгенерированные миграции с явными `down()` шагами.

@@ -14,7 +14,11 @@ function defineEntity() {
 class CacheCtx extends DbContext {
   public cusers!: DbSet<any>;
   constructor() {
-    super({ provider: 'sqlite', connectionString: ':memory:', performance: { enableEntityCache: true, entityCacheSize: 100 } });
+    super({
+      provider: 'sqlite',
+      connectionString: ':memory:',
+      performance: { enableEntityCache: true, entityCacheSize: 100 }
+    });
   }
 }
 
@@ -28,7 +32,9 @@ describe('L2 Entity Cache', () => {
     ctx = new CacheCtx();
     await ctx.ensureCreated();
   });
-  afterEach(async () => { await ctx.dispose(); });
+  afterEach(async () => {
+    await ctx.dispose();
+  });
 
   it('caches entity on first load and returns same instance next time', async () => {
     const u = new CUser();
@@ -67,5 +73,3 @@ describe('L2 Entity Cache', () => {
     expect(afterDelete).toBeNull();
   });
 });
-
-

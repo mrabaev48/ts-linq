@@ -8,9 +8,17 @@ const MSSQL_URL = process.env.MSSQL_URL || '';
 const mssqlDescribe = MSSQL_URL ? describe : describe.skip;
 
 @Entity({ name: 'MsUsers' })
-class MsUser { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+class MsUser {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
 
-class MsCtx extends DbContext { public msusers!: any; constructor() { super({ connectionString: MSSQL_URL, provider: 'mssql' }); } }
+class MsCtx extends DbContext {
+  public msusers!: any;
+  constructor() {
+    super({ connectionString: MSSQL_URL, provider: 'mssql' });
+  }
+}
 
 mssqlDescribe('MSSQL integration (requires MSSQL_URL)', () => {
   test('CRUD happy path', async () => {
@@ -38,5 +46,3 @@ mssqlDescribe('MSSQL integration (requires MSSQL_URL)', () => {
     await ctx.dispose();
   });
 });
-
-

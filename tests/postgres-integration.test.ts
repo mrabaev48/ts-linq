@@ -8,9 +8,17 @@ const PG_URL = process.env.POSTGRES_URL || '';
 const pgDescribe = PG_URL ? describe : describe.skip;
 
 @Entity({ name: 'PgUsers' })
-class PgUser { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+class PgUser {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
 
-class PgCtx extends DbContext { public pgusers!: any; constructor() { super({ connectionString: PG_URL, provider: 'postgresql' }); } }
+class PgCtx extends DbContext {
+  public pgusers!: any;
+  constructor() {
+    super({ connectionString: PG_URL, provider: 'postgresql' });
+  }
+}
 
 pgDescribe('PostgreSQL integration (requires POSTGRES_URL)', () => {
   test('CRUD happy path', async () => {
@@ -38,5 +46,3 @@ pgDescribe('PostgreSQL integration (requires POSTGRES_URL)', () => {
     await ctx.dispose();
   });
 });
-
-

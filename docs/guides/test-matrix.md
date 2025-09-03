@@ -13,6 +13,7 @@
 ## Быстрый старт с Docker (локально)
 
 PostgreSQL:
+
 ```bash
 docker run -d --rm -p 5432:5432 \
   -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=ts_linq \
@@ -22,6 +23,7 @@ npm test
 ```
 
 MySQL:
+
 ```bash
 docker run -d --rm -p 3306:3306 \
   -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=ts_linq \
@@ -31,6 +33,7 @@ npm test
 ```
 
 MSSQL:
+
 ```bash
 docker run -d --rm -p 1433:1433 \
   -e ACCEPT_EULA=Y -e SA_PASSWORD='Your_password123' \
