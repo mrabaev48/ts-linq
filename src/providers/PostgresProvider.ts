@@ -8,6 +8,7 @@ import {
 } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { PostgresDialect } from '../query/PostgresDialect';
+import { PostgresDdlStrategy } from './postgres/PostgresDdlStrategy';
 import { QueryBuilder } from '../query/QueryBuilder';
 import { SqlDialect } from '../query/SqlDialect';
 
@@ -30,6 +31,7 @@ try {
 export class PostgresProvider extends DatabaseProvider {
   private pool: any;
   private qb: QueryBuilder;
+  private ddl = new PostgresDdlStrategy();
   /** Map a row object to a new entity instance using entity metadata and notify middleware. */
   private mapRowToEntity<T>(row: any, entityClass: new () => T): T {
     const entity = new entityClass();
@@ -73,28 +75,12 @@ export class PostgresProvider extends DatabaseProvider {
    * Also ensures declared indexes exist. For complex schemas prefer migrations.
    */
   public async createTable(entityMetadata: EntityMetadata): Promise<void> {
-    // Simplified DDL: map to basic types; users should prefer migrations
-    const cols = entityMetadata.columns.map((c) => {
-      const t = mapTypeToPg(c.type);
-      const nn = c.nullable ? '' : ' NOT NULL';
-      return `"${c.columnName}" ${t}${nn}`;
-    });
-    if (entityMetadata.primaryKeys.length > 0) {
-      const pk = entityMetadata.primaryKeys
-        .map(
-          (pk) => `"${entityMetadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}"`
-        )
-        .join(', ');
-      cols.push(`PRIMARY KEY (${pk})`);
-    }
-    const sql = `CREATE TABLE IF NOT EXISTS "${entityMetadata.tableName}" (${cols.join(', ')})`;
+    const sql = this.ddl.generateCreateTableSql(entityMetadata);
     await this.executeNonQuery(sql);
 
     // Create indexes
     for (const index of entityMetadata.indexes) {
-      const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-      const colsList = index.columns.map((c) => `"${c}"`).join(', ');
-      const idxSql = `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS "${index.name}" ON "${entityMetadata.tableName}" (${colsList})`;
+      const idxSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, index);
       await this.executeNonQuery(idxSql);
     }
   }

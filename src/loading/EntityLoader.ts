@@ -174,7 +174,8 @@ export class EntityLoader {
           const byId = new Map<any, any>();
           const targetMeta = MetadataStorage.getEntity(targetCtor);
           const targetPk = targetMeta?.primaryKeys[0];
-          for (const relatedEntity of related) byId.set((relatedEntity as any)[targetPk!], relatedEntity);
+          for (const relatedEntity of related)
+            byId.set((relatedEntity as any)[targetPk!], relatedEntity);
           for (const entityItem of entities) {
             const fk = (entityItem as any)[foreignKeyName];
             if (fk !== undefined && fk !== null) {

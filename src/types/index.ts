@@ -52,6 +52,8 @@ export interface DbContextOptions {
   performance?: PerformanceOptions;
   /** Optional SQL logger for diagnostics. */
   logger?: SqlLogger;
+  /** Optional factory to create a SqlLogger per provider (overrides logger if set). */
+  loggerFactory?: SqlLoggerFactory;
   /** Optional default loading behavior. */
   loading?: LoadingDefaults;
   /** Optional middleware pipeline for cross-cutting concerns. */
@@ -323,6 +325,11 @@ export interface SqlLogger {
   transactionEnd?(info: { traceId?: string; provider?: string }): void;
   /** Cache metric hook: records hits/misses for specific caches. */
   cache?(info: { cache: 'sqlGen' | 'entityL2' | 'count'; hit: boolean; provider?: string }): void;
+}
+
+/** Factory for creating SqlLogger per provider to satisfy DIP. */
+export interface SqlLoggerFactory {
+  create(provider: 'sqlite' | 'mysql' | 'postgresql' | 'mssql' | string): SqlLogger | undefined;
 }
 
 /** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */
