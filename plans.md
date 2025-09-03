@@ -142,6 +142,12 @@
 - [P2] Distribution: ESM/CJS builds, tree-shaking, types, changelog, semver releases
   - [done] Export PrometheusEndpoint helpers in public API
 
+## Snapshot tests (deferred)
+
+- Добавить снапшот-тесты для полного SQL миграций (несколько таблиц/индексов/FK)
+- Зафиксировать формат/порядок вывода перед релизом
+- Использовать как канареек для регрессий форматирования
+
 ## CLI (deferred to the end)
 
 - [P3] CLI tooling: init, generate entity/migration, migrate/rollback, seed
