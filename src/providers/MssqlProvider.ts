@@ -44,6 +44,7 @@ export class MssqlProvider extends DatabaseProvider {
     /** Create provider with MSSQL connection string. */
     constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[], softDelete?: any) {
         super(connectionString, logger, middlewares, softDelete);
+        this.providerName = 'mssql';
     }
 
     /** Open a connection pool to MSSQL server. */
@@ -252,6 +253,7 @@ export class MssqlProvider extends DatabaseProvider {
         this.tx = new mssql.Transaction(this.pool);
         await this.tx.begin();
         this.inTransaction = true;
+        this.logger?.transactionStart?.({ traceId: this.currentTraceId, provider: this.providerName });
     }
 
     /** Commit the current transaction. */
@@ -260,6 +262,7 @@ export class MssqlProvider extends DatabaseProvider {
         await this.tx.commit();
         this.tx = null;
         this.inTransaction = false;
+        this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
     }
 
     /** Roll back the current transaction. */
@@ -268,6 +271,7 @@ export class MssqlProvider extends DatabaseProvider {
         await this.tx.rollback();
         this.tx = null;
         this.inTransaction = false;
+        this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
     }
 
     // Private helpers

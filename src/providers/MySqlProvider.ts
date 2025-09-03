@@ -36,6 +36,7 @@ export class MySqlProvider extends DatabaseProvider {
   private pool: any | null = null;
   constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[], softDelete?: any) {
     super(connectionString, logger, middlewares, softDelete);
+    this.providerName = 'mysql';
   }
 
   public async connect(): Promise<void> {
@@ -189,16 +190,19 @@ export class MySqlProvider extends DatabaseProvider {
     if (!this.isConnected) await this.connect();
     await this.pool.query('START TRANSACTION');
     this.inTransaction = true;
+    this.logger?.transactionStart?.({ traceId: this.currentTraceId, provider: this.providerName });
   }
   public async commitTransaction(): Promise<void> {
     if (!this.inTransaction) throw new Error('No transaction in progress');
     await this.pool.query('COMMIT');
     this.inTransaction = false;
+    this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
   }
   public async rollbackTransaction(): Promise<void> {
     if (!this.inTransaction) throw new Error('No transaction in progress');
     await this.pool.query('ROLLBACK');
     this.inTransaction = false;
+    this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
   }
 
   private generateCreateTableSql(metadata: EntityMetadata): string {

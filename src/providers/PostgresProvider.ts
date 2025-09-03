@@ -42,6 +42,7 @@ export class PostgresProvider extends DatabaseProvider {
     constructor(connectionString: string, logger?: any, middlewares?: any[], softDelete?: any) {
         super(connectionString, logger, middlewares, softDelete);
         this.qb = new QueryBuilder(new PostgresDialect());
+        this.providerName = 'postgresql';
     }
 
     /** Open a connection pool to PostgreSQL using the connection string. */
@@ -252,20 +253,25 @@ export class PostgresProvider extends DatabaseProvider {
         this.currentTraceId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
         await this.executeNonQuery('BEGIN');
         this.inTransaction = true;
+        this.logger?.transactionStart?.({ traceId: this.currentTraceId, provider: this.providerName });
     }
     /** Commit the current transaction. */
     public async commitTransaction(): Promise<void> {
         if (!this.inTransaction) throw new Error('No transaction in progress');
         await this.executeNonQuery('COMMIT');
         this.inTransaction = false;
+        const tid = this.currentTraceId;
         this.currentTraceId = undefined;
+        this.logger?.transactionEnd?.({ traceId: tid, provider: this.providerName });
     }
     /** Roll back the current transaction. */
     public async rollbackTransaction(): Promise<void> {
         if (!this.inTransaction) throw new Error('No transaction in progress');
         await this.executeNonQuery('ROLLBACK');
         this.inTransaction = false;
+        const tid = this.currentTraceId;
         this.currentTraceId = undefined;
+        this.logger?.transactionEnd?.({ traceId: tid, provider: this.providerName });
     }
 }
 

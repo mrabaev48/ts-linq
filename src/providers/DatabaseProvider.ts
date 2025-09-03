@@ -14,6 +14,8 @@ export abstract class DatabaseProvider {
     protected middlewares?: OrmMiddleware[];
     private lastExecuteStartedAt?: number;
     protected softDelete?: SoftDeleteOptions;
+    /** Logical provider name for logging/metrics (sqlite|postgresql|mysql|mssql|unknown). */
+    protected providerName: string = 'unknown';
 
     /**
      * Create a provider with a given connection string.
@@ -123,7 +125,7 @@ export abstract class DatabaseProvider {
         const maxAttempts = 3;
         const baseDelayMs = 50;
         const startedAt = Date.now();
-        this.logger?.queryStart?.({ sql, params, traceId: this.currentTraceId });
+        this.logger?.queryStart?.({ sql, params, traceId: this.currentTraceId, provider: this.providerName });
         this.lastExecuteStartedAt = startedAt;
         await this.beforeExecute(sql, params);
         let attempt = 0;
@@ -133,19 +135,20 @@ export abstract class DatabaseProvider {
             try {
                 const result = await fn();
                 const durationMs = Date.now() - startedAt;
-                this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, rows: Array.isArray(result) ? (result as any[]).length : (typeof result === 'number' ? result : undefined) });
+                this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, rows: Array.isArray(result) ? (result as any[]).length : (typeof result === 'number' ? result : undefined), provider: this.providerName });
                 await this.afterExecute(sql, params, result);
                 return result;
             } catch (error: any) {
                 attempt++;
                 const durationMs = Date.now() - startedAt;
-                this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, error });
+                this.logger?.queryEnd?.({ sql, params, durationMs, traceId: this.currentTraceId, error, provider: this.providerName });
                 const isTransient = this.isTransientError(error);
                 if (!allowRetry || !isTransient || attempt >= maxAttempts) {
                     throw error;
                 }
                 const jitter = Math.floor(Math.random() * 25);
                 const backoff = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
+                this.logger?.retry?.({ sql, params, attempt, traceId: this.currentTraceId, provider: this.providerName });
                 await new Promise(res => setTimeout(res, backoff));
                 // next attempt
             }

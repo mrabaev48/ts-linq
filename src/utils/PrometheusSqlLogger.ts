@@ -12,6 +12,7 @@ interface PromHistogram {
 interface PromClientLike {
     Counter: new (cfg: any) => PromCounter;
     Histogram: new (cfg: any) => PromHistogram;
+    Gauge?: new (cfg: any) => { inc: (labels?: LabelValues, v?: number) => void; dec: (labels?: LabelValues, v?: number) => void };
 }
 
 /**
@@ -58,6 +59,8 @@ export class PrometheusSqlLogger implements SqlLogger {
     private queryTotal?: PromCounter;
     private queryDuration?: PromHistogram;
     private errorTotal?: PromCounter;
+    private retryTotal?: PromCounter;
+    private activeTransactions?: { inc: (labels?: LabelValues, v?: number) => void; dec: (labels?: LabelValues, v?: number) => void };
 
     /**
      * Create a new PrometheusSqlLogger.
@@ -74,6 +77,14 @@ export class PrometheusSqlLogger implements SqlLogger {
         this.queryTotal = new this.client.Counter({ name: `${this.prefix}db_query_total`, help: 'Total DB queries', labelNames });
         this.queryDuration = new this.client.Histogram({ name: `${this.prefix}db_query_duration_ms`, help: 'DB query duration (ms)', labelNames, buckets });
         this.errorTotal = new this.client.Counter({ name: `${this.prefix}db_error_total`, help: 'Total DB errors', labelNames: ['provider', 'operation', 'entity', 'error_type'] });
+        this.retryTotal = new this.client.Counter({ name: `${this.prefix}db_retry_total`, help: 'Total DB retry attempts', labelNames: ['provider', 'operation', 'entity'] });
+        if (this.client.Gauge) {
+            const g = new this.client.Gauge({ name: `${this.prefix}db_active_transactions`, help: 'Active DB transactions', labelNames: ['provider'] });
+            this.activeTransactions = {
+                inc: (labels?: LabelValues, v?: number) => { try { (g as any).inc(labels, v); } catch { /* ignore */ } },
+                dec: (labels?: LabelValues, v?: number) => { try { (g as any).dec(labels, v); } catch { /* ignore */ } }
+            };
+        }
     }
 
     /** No-op (metrics are recorded on queryEnd). */
@@ -82,11 +93,11 @@ export class PrometheusSqlLogger implements SqlLogger {
     }
 
     /** Record query counters and durations, and errors if present. */
-    public queryEnd(info: { sql: string; params: any[]; durationMs: number; traceId?: string; rows?: number; error?: Error }): void {
+    public queryEnd(info: { sql: string; params: any[]; durationMs: number; traceId?: string; rows?: number; error?: Error; provider?: string }): void {
         if (!this.enabled || !this.client || !this.queryTotal || !this.queryDuration) return;
         const op = this.parseOperation(info.sql);
         const entity = this.parseEntity(info.sql) || 'unknown';
-        const provider = 'unknown';
+        const provider = info.provider || 'unknown';
         const success = info.error ? 'false' : 'true';
         const labels = { provider, operation: op, entity, success } as LabelValues;
         try {
@@ -97,6 +108,29 @@ export class PrometheusSqlLogger implements SqlLogger {
                 this.errorTotal.labels(errLabels).inc(1);
             }
         } catch { /* swallow metric errors */ }
+    }
+
+    /** Record a retry attempt. */
+    public retry?(info: { sql: string; params: any[]; attempt: number; traceId?: string; provider?: string }): void {
+        if (!this.enabled || !this.client || !this.retryTotal) return;
+        const op = this.parseOperation(info.sql);
+        const entity = this.parseEntity(info.sql) || 'unknown';
+        const provider = info.provider || 'unknown';
+        try {
+            this.retryTotal.labels({ provider, operation: op, entity }).inc(1);
+        } catch { /* ignore */ }
+    }
+
+    /** Track active transactions gauge. */
+    public transactionStart?(info: { traceId?: string; provider?: string }): void {
+        if (!this.enabled || !this.activeTransactions) return;
+        const provider = info.provider || 'unknown';
+        try { this.activeTransactions.inc({ provider }, 1); } catch { /* ignore */ }
+    }
+    public transactionEnd?(info: { traceId?: string; provider?: string }): void {
+        if (!this.enabled || !this.activeTransactions) return;
+        const provider = info.provider || 'unknown';
+        try { this.activeTransactions.dec({ provider }, 1); } catch { /* ignore */ }
     }
 
     private safeRequirePromClient(): PromClientLike | undefined {
