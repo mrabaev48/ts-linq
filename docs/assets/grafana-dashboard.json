@@ -1,0 +1,14 @@
+{
+  "title": "ts-linq Observability",
+  "panels": [
+    { "type": "stat", "title": "p95 (ms)", "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(db_query_duration_ms_bucket[5m]))) * 1000" }] },
+    { "type": "stat", "title": "p99 (ms)", "targets": [{ "expr": "histogram_quantile(0.99, sum by (le, provider) (rate(db_query_duration_ms_bucket[5m]))) * 1000" }] },
+    { "type": "graph", "title": "Error rate", "targets": [{ "expr": "sum by (provider) (rate(db_error_total[5m])) / sum by (provider) (rate(db_query_total[5m]))" }] },
+    { "type": "graph", "title": "Retries rps", "targets": [{ "expr": "sum by (provider) (rate(db_retry_total[5m]))" }] },
+    { "type": "graph", "title": "Cache hit ratio (sqlGen)", "targets": [{ "expr": "sum(rate(db_cache_hits_total{cache=\"sqlGen\"}[5m])) / (sum(rate(db_cache_hits_total{cache=\"sqlGen\"}[5m])) + sum(rate(db_cache_misses_total{cache=\"sqlGen\"}[5m])))" }] },
+    { "type": "graph", "title": "Cache size by cache", "targets": [{ "expr": "db_cache_size" }] },
+    { "type": "graph", "title": "Cache evictions rps", "targets": [{ "expr": "sum by (provider, cache) (rate(db_cache_evictions_total[5m]))" }] }
+  ]
+}
+
+

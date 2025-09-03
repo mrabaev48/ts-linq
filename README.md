@@ -922,6 +922,48 @@ const ctx = new AppDbContext({
 
 Override these in a custom provider (or subclass) for logging, tracing, caching, metrics, etc.
 
+### Performance Options & External Caches
+
+You can inject external caches via `DbContextOptions.performance` for fine control over limits/TTL:
+
+```ts
+import { InMemorySqlCache } from './src/query/SqlCache';
+import { InMemoryCountCache } from './src/query/CountCache';
+
+const ctx = new AppDbContext({
+  provider: 'sqlite',
+  connectionString: ':memory:',
+  performance: {
+    enableEntityCache: true,
+    entityCacheSize: 20_000,
+    enableCountCache: true,
+    countCacheTtlMs: 10_000,
+    countCache: new InMemoryCountCache(10_000 /* ttl */, 5_000 /* maxSize */),
+    sqlCache: new InMemorySqlCache(2_000)
+  }
+});
+```
+
+Benchmarks & profiling:
+
+- Quick: `npm run bench` (SQLite)
+- Multi: `npm run bench:multi` (env: `POSTGRES_URL`, `MYSQL_URL`, `BENCH_PROVIDERS=sqlite,postgresql,mysql`, `BENCH_FORMAT=csv|json`)
+- Profiling: `npm run bench:profile:cpu`, `npm run bench:profile:heap` (Node CPU/Heap profiles)
+
+Best Practices (PerformanceOptions & metrics):
+
+- L2 cache: включайте при чтениях по PK и повторном доступе к тем же сущностям; начинайте с `entityCacheSize: 10k–20k`.
+- SQL gen cache: типичные размеры 1–2k; LRU (по умолчанию) помогает защитить горячие ключи.
+- Count cache: задайте `enableCountCache` и `countCacheTtlMs` (например 5–30s) для пагинации; избегайте на быстро меняющихся наборах.
+- Внешние кэши: используйте инъекцию `sqlCache`/`countCache` для тонкой настройки (лимиты/TTL, разделение на контексты).
+- Buckets (гистограмма):
+  - SQLite (in‑proc): `[2, 5, 10, 20, 50, 100]` (цель p95 в середине диапазона)
+  - Postgres/MySQL (сеть): добавьте высокие значения до 1000–2000ms
+- Alerting (ориентиры, корректируйте под SLO):
+  - p95: предупреждение > 200ms (10m), критично > 500ms (10m) для сетевых БД; для SQLite ниже (например 50/100ms)
+  - Error rate: предупреждение > 1% (10m), критично > 5% (10m)
+  - Retries: «шум» > 1 rps по провайдеру (10m)
+
 ### Clean Code & Typing
 
 - Strict TypeScript enabled; public APIs and internal models have explicit types

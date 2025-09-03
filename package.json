@@ -38,7 +38,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "bench": "ts-node bench/quick.ts"
+    "bench": "ts-node bench/quick.ts",
+    "bench:multi": "ts-node bench/multi.ts",
+    "bench:profile:cpu": "node --cpu-prof -r ts-node/register/transpile-only bench/multi.ts",
+    "bench:profile:heap": "node --heap-prof -r ts-node/register/transpile-only bench/multi.ts"
   },
   "keywords": [],
   "author": "",
