@@ -1,5 +1,5 @@
 import { DatabaseProvider } from './DatabaseProvider';
-import { EntityMetadata, ColumnMetadata, SqlLogger, OptimisticConcurrencyError } from '../types';
+import { EntityMetadata, ColumnMetadata, SqlLogger, OptimisticConcurrencyError, RetryPolicy } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SqlHelper } from '../utils/SqlHelper';
 import { MssqlDdlStrategy } from './mssql/MssqlDdlStrategy';
@@ -46,8 +46,14 @@ export class MssqlProvider extends DatabaseProvider {
   private tx: any | null = null;
   private ddl = new MssqlDdlStrategy();
   /** Create provider with MSSQL connection string. */
-  constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[], softDelete?: any) {
-    super(connectionString, logger, middlewares, softDelete);
+  constructor(
+    connectionString: string,
+    logger?: SqlLogger,
+    middlewares?: any[],
+    softDelete?: any,
+    retryPolicy?: RetryPolicy
+  ) {
+    super(connectionString, logger, middlewares, softDelete, retryPolicy);
     this.providerName = 'mssql';
   }
 

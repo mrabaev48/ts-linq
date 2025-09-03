@@ -3,6 +3,7 @@ import { DbContext } from '../src/context/DbContext';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { ColumnMetadata } from '../src/types';
 import { SqlLogger, SqlLoggerFactory } from '../src/types';
+import { CompositeSqlLoggerFactory } from '../src/utils/CompositeSqlLoggerFactory';
 
 class LfUser {}
 MetadataStorage.addEntity(LfUser, 'lf_user');
@@ -34,8 +35,18 @@ class TestLoggerFactory implements SqlLoggerFactory {
 
 class Ctx extends DbContext {
   public users!: any;
-  constructor(p: 'sqlite' | 'postgresql' | 'mysql' | 'mssql', loggerFactory?: SqlLoggerFactory) {
-    super({ provider: p, connectionString: ':memory:', loggerFactory });
+  constructor(
+    p: 'sqlite' | 'postgresql' | 'mysql' | 'mssql',
+    loggerFactory?: SqlLoggerFactory,
+    extra?: { factories?: SqlLoggerFactory[]; loggers?: SqlLogger[] }
+  ) {
+    super({
+      provider: p,
+      connectionString: ':memory:',
+      loggerFactory,
+      loggerFactories: extra?.factories,
+      loggers: extra?.loggers
+    });
   }
 }
 
@@ -48,5 +59,16 @@ describe('SqlLoggerFactory integration', () => {
     // Trigger any simple query via provider to ensure logger is created and used
     await (ctx as any).provider.executeQuery('SELECT 1');
     expect(factory.createdFor[0]).toBe('sqlite');
+  });
+
+  test('composite factory is applied when options.loggerFactories/loggers provided', async () => {
+    const f1: SqlLoggerFactory = { create: jest.fn(() => ({ queryStart: jest.fn() })) };
+    const f2: SqlLoggerFactory = { create: jest.fn(() => ({ queryEnd: jest.fn() })) };
+    const staticL: SqlLogger = { retry: jest.fn() };
+    const ctx = new Ctx('sqlite', undefined, { factories: [f1, f2], loggers: [staticL] });
+    await ctx.ensureCreated();
+    await (ctx as any).provider.executeQuery('SELECT 1');
+    expect((f1.create as jest.Mock).mock.calls[0][0]).toBe('sqlite');
+    expect((f2.create as jest.Mock).mock.calls[0][0]).toBe('sqlite');
   });
 });

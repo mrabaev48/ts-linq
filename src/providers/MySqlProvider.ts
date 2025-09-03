@@ -1,5 +1,5 @@
 import { DatabaseProvider } from './DatabaseProvider';
-import { EntityMetadata, ColumnMetadata, SqlLogger, OptimisticConcurrencyError } from '../types';
+import { EntityMetadata, ColumnMetadata, SqlLogger, OptimisticConcurrencyError, RetryPolicy } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SqlHelper } from '../utils/SqlHelper';
 import { SqlDialect } from '../query/SqlDialect';
@@ -38,8 +38,14 @@ import { MySqlDdlStrategy } from './mysql/MySqlDdlStrategy';
 export class MySqlProvider extends DatabaseProvider {
   private pool: any | null = null;
   private ddl = new MySqlDdlStrategy();
-  constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[], softDelete?: any) {
-    super(connectionString, logger, middlewares, softDelete);
+  constructor(
+    connectionString: string,
+    logger?: SqlLogger,
+    middlewares?: any[],
+    softDelete?: any,
+    retryPolicy?: RetryPolicy
+  ) {
+    super(connectionString, logger, middlewares, softDelete, retryPolicy);
     this.providerName = 'mysql';
   }
 
