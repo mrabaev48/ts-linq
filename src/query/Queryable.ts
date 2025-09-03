@@ -76,10 +76,12 @@ export class Queryable<T> {
     this._entityCache = entityCache;
     this._performance = performance;
     this._globalFilters = globalFilters;
+    this._externalCountCache = performance?.countCache;
     this._sqlBuilder = new QueryBuilder(
       provider.getDialect(),
       provider.loggerRef,
-      provider.providerLabel
+      provider.providerLabel,
+      performance?.sqlCache
     );
   }
 
@@ -470,6 +472,11 @@ export class Queryable<T> {
       const ttl = this._performance.countCacheTtlMs ?? 0;
       const hit = this._externalCountCache?.get(key) ?? Queryable._countCache.get(key);
       if (hit && (ttl <= 0 || Date.now() - hit.ts <= ttl)) {
+        // LRU touch for internal cache
+        if (!this._externalCountCache) {
+          Queryable._countCache.delete(key);
+          Queryable._countCache.set(key, hit);
+        }
         safeCache((this._provider as any).loggerRef, {
           cache: 'count',
           hit: true,
@@ -515,13 +522,20 @@ export class Queryable<T> {
 
   private async executeCountQuery(table: string): Promise<number> {
     let query = `SELECT COUNT(*) as count FROM ${table}`;
-    let parameters: any[] = [];
+    const parameters: any[] = [];
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
     if (queryModel.where && queryModel.where.length > 0) {
-      const whereClauses = queryModel.where.map((w) => (w as any).condition);
-      query += ` WHERE ${whereClauses.join(' AND ')}`;
-      for (const clause of queryModel.where) parameters.push(...(clause as any).parameters);
+      // Build WHERE and parameters in a single pass to reduce allocations
+      let first = true;
+      query += ' WHERE ';
+      for (const w of queryModel.where as any[]) {
+        if (!first) query += ' AND ';
+        first = false;
+        query += w.condition;
+        const p = w.parameters as any[];
+        for (let i = 0; i < p.length; i++) parameters.push(p[i]);
+      }
     }
     const results = await this._provider.executeQuery<{ count: number }>(query, parameters);
     return results[0]?.count ?? 0;

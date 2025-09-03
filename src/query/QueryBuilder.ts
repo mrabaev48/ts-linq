@@ -84,30 +84,33 @@ export class QueryBuilder {
     QueryBuilder._sqlCache.clear();
   }
 
-  /** Create a stable cache key from entity constructor and query options. */
+  /** Create a stable, lightweight cache key. */
   private static buildCacheKey<T>(entityClass: new () => T, options: QueryOptions): string {
-    // Normalize undefineds to keep stable JSON representation
-    const normalized: QueryOptions = {
-      select: options.select ?? undefined,
-      where: options.where?.map((w) => ({ condition: w.condition, parameters: [...w.parameters] })),
-      orderBy: options.orderBy?.map((o) => ({ column: o.column, direction: o.direction })),
-      groupBy: options.groupBy
-        ? {
-            columns: [...options.groupBy.columns],
-            having: options.groupBy.having
-              ? {
-                  condition: options.groupBy.having.condition,
-                  parameters: [...options.groupBy.having.parameters]
-                }
-              : undefined
-          }
-        : undefined,
-      joins: options.joins?.map((j) => ({ type: j.type, table: j.table, on: j.on })),
-      limit: options.limit ?? undefined,
-      offset: options.offset ?? undefined,
-      distinct: options.distinct ?? undefined
-    };
-    return `${entityClass.name}|${JSON.stringify(normalized)}`;
+    let key = entityClass.name;
+    key += '|s:' + (options.select ? options.select.join(',') : '');
+    if (options.where && options.where.length) {
+      key += '|w:';
+      for (const w of options.where) {
+        key += w.condition + '(' + (w.parameters?.join('|') ?? '') + ');';
+      }
+    }
+    if (options.orderBy && options.orderBy.length) {
+      key += '|o:';
+      for (const o of options.orderBy) key += o.column + ':' + o.direction + ';';
+    }
+    if (options.groupBy) {
+      key += '|g:' + options.groupBy.columns.join(',');
+      if (options.groupBy.having)
+        key += '{' + options.groupBy.having.condition + '(' + (options.groupBy.having.parameters?.join('|') ?? '') + ')}';
+    }
+    if (options.joins && options.joins.length) {
+      key += '|j:';
+      for (const j of options.joins) key += j.type + ':' + j.table + ':' + j.on + ';';
+    }
+    if (options.limit !== undefined) key += '|l:' + options.limit;
+    if (options.offset !== undefined) key += '|f:' + options.offset;
+    if (options.distinct) key += '|d:1';
+    return key;
   }
 
   /** Store an item in the cache with simple FIFO eviction. */
@@ -140,6 +143,12 @@ export class QueryBuilder {
 
   private getFromCache(key: string): SqlCacheEntry | undefined {
     if (this._cache) return this._cache.get(key);
-    return QueryBuilder._sqlCache.get(key);
+    const val = QueryBuilder._sqlCache.get(key);
+    if (val) {
+      // LRU touch: move to the most-recent position
+      QueryBuilder._sqlCache.delete(key);
+      QueryBuilder._sqlCache.set(key, val);
+    }
+    return val;
   }
 }

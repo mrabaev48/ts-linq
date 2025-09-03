@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import type { SqlCache } from '../query/SqlCache';
+import type { CountCache } from '../query/CountCache';
 
 /**
  * Core types and metadata contracts used across the ORM.
@@ -289,6 +291,10 @@ export interface PerformanceOptions {
   enableCountCache?: boolean;
   /** TTL for count() cache entries in milliseconds. Default: 0 (no TTL, disabled unless enableCountCache). */
   countCacheTtlMs?: number;
+  /** Optional external SQL generation cache implementation. */
+  sqlCache?: SqlCache;
+  /** Optional external count cache implementation. */
+  countCache?: CountCache;
 }
 
 /**
