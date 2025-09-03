@@ -7,7 +7,7 @@ interface PromCounter {
     labels(labels: LabelValues): { inc: (v?: number) => void };
 }
 interface PromHistogram {
-    labels(labels: LabelValues): { observe: (v: number) => void };
+    labels(labels: LabelValues): { observe: (v: number, exemplar?: any) => void };
 }
 interface PromClientLike {
     Counter: new (cfg: any) => PromCounter;
@@ -107,7 +107,13 @@ export class PrometheusSqlLogger implements SqlLogger {
         const labels = { provider, operation: op, entity, success } as LabelValues;
         try {
             this.queryTotal.labels(labels).inc(1);
-            this.queryDuration.labels(labels).observe(Math.max(0, info.durationMs));
+            // Attach exemplar when traceId is present and prom-client supports it
+            const duration = Math.max(0, info.durationMs);
+            try {
+                (this.queryDuration.labels(labels) as any).observe(duration, info.traceId ? { traceId: info.traceId } : undefined);
+            } catch {
+                this.queryDuration.labels(labels).observe(duration as any);
+            }
             if (info.error && this.errorTotal) {
                 const errLabels = { provider, operation: op, entity, error_type: info.error.name || 'Error' } as LabelValues;
                 this.errorTotal.labels(errLabels).inc(1);

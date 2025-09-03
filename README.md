@@ -627,6 +627,12 @@ const ctx = new AppDbContext({
 // });
 ```
 
+Exemplars (traceId):
+
+- When `traceId` is available, `PrometheusSqlLogger` attaches it as an exemplar to `db_query_duration_ms` (if your `prom-client` supports exemplars, v14+). This enables linking metrics samples to traces in backends that support exemplars (e.g., Tempo, Grafana LGTM).
+- No hard dependency: if exemplars are not supported, metrics still record without them.
+
+
 ### Extended LINQ
 
 Subqueries and unions are supported in addition to joins and includes:
