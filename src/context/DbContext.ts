@@ -229,6 +229,9 @@ export abstract class DbContext {
      */
     public async commitTransaction(): Promise<void> {
         await this._provider.commitTransaction();
+        // Invalidate count cache after commit to avoid stale totals across contexts
+        // This is a coarse-grained approach since count cache is global
+        try { (require('../query/Queryable') as any).Queryable.clearCountCache(); } catch { /* ignore */ }
     }
 
     /**
@@ -236,6 +239,11 @@ export abstract class DbContext {
      */
     public async rollbackTransaction(): Promise<void> {
         await this._provider.rollbackTransaction();
+        // Invalidate L2 cache and count cache on rollback to ensure consistency
+        if (this._entityCache) {
+            try { this._entityCache.clear(); } catch { /* ignore */ }
+        }
+        try { (require('../query/Queryable') as any).Queryable.clearCountCache(); } catch { /* ignore */ }
     }
 
     /**
