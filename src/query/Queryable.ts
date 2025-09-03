@@ -19,6 +19,7 @@ import { EntityCache, EntityCacheLike } from '../utils/EntityCache';
 import { CountCache } from './CountCache';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
+import { safeCache, safeCacheEvicted, safeCacheSize } from '../utils/MetricsSafe';
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
@@ -35,10 +36,25 @@ export class Queryable<T> {
   private _includes: string[] = [];
   private _sqlBuilder: QueryBuilder;
   private static _countCache: Map<string, { value: number; ts: number }> = new Map();
+  private static readonly _COUNT_CACHE_MAX = 2000;
   private _externalCountCache?: CountCache;
   private _abortSignal?: AbortSignal;
   private _globalFilters?: GlobalFilter[];
   private _globalFilterApplier = new GlobalFilterApplier();
+  // Lightweight signature of WHERE clauses for fast count() cache keys
+  private _whereSignature: string = '[]';
+  // Predicates and parsing optimizations
+  private static readonly REGEX_SINGLE_PROP = /=>\s*\w+\.(\w+)/;
+  private static readonly REGEX_OBJECT = /=>\s*\(\s*\{([^}]+)\}\s*\)/;
+  private static readonly REGEX_SIMPLE_OBJECT = /=>\s*\{([^}]+)\}/;
+  private static readonly REGEX_PROP_IN_OBJECT = /\w+:\s*\w+\.(\w+)/;
+  private static readonly REGEX_ANY_PROP = /(\w+)/;
+  private static readonly PREDICATE_CACHE_MAX = 1000;
+  private static _predicateSqlCache: Map<string, WhereClause> = new Map();
+  private static readonly SELECTOR_CACHE_MAX = 1000;
+  private static _selectorPropsCache: Map<string, string[]> = new Map();
+  private static _keySelectorCache: Map<string, string> = new Map();
+  private static _includePropCache: Map<string, string> = new Map();
 
   /**
    * Create a new Queryable bound to an entity type and provider.
@@ -70,6 +86,7 @@ export class Queryable<T> {
   /** Clear global count() cache (used on transaction rollback to avoid stale values). */
   public static clearCountCache(): void {
     Queryable._countCache.clear();
+    safeCacheSize((this as any)._lastProviderLogger, { cache: 'count', size: 0 });
   }
 
   /** Create a shallow clone sharing provider/loader but copying model. */
@@ -83,6 +100,8 @@ export class Queryable<T> {
       this._globalFilters
     );
     clonedQueryable._model = this._model.clone();
+    // preserve where signature for accurate count cache keys
+    (clonedQueryable as any)._whereSignature = (this as any)._whereSignature;
     return clonedQueryable;
   }
 
@@ -138,7 +157,9 @@ export class Queryable<T> {
       subqueryModel
     );
     this._model.where = this._model.where || [];
-    this._model.where.push({ condition: `EXISTS (${query})`, parameters } as any);
+    const clause = { condition: `EXISTS (${query})`, parameters } as any;
+    this._model.where.push(clause);
+    this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
     return this;
   }
 
@@ -155,7 +176,9 @@ export class Queryable<T> {
       subqueryModel
     );
     this._model.where = this._model.where || [];
-    this._model.where.push({ condition: `${column} IN (${query})`, parameters } as any);
+    const clause = { condition: `${column} IN (${query})`, parameters } as any;
+    this._model.where.push(clause);
+    this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
     return this;
   }
 
@@ -447,18 +470,36 @@ export class Queryable<T> {
       const ttl = this._performance.countCacheTtlMs ?? 0;
       const hit = this._externalCountCache?.get(key) ?? Queryable._countCache.get(key);
       if (hit && (ttl <= 0 || Date.now() - hit.ts <= ttl)) {
-        (this._provider as any).loggerRef?.cache?.({
+        safeCache((this._provider as any).loggerRef, {
           cache: 'count',
           hit: true,
-          provider: (this._provider as any).providerLabel
+          provider: (this._provider as any).providerLabel,
+          ttl: ttl > 0
         });
         return hit.value;
       }
       const value = await this.executeCountQuery(metadata.tableName);
       const entry = { value, ts: Date.now() };
       if (this._externalCountCache) this._externalCountCache.set(key, entry);
-      else Queryable._countCache.set(key, entry);
-      (this._provider as any).loggerRef?.cache?.({
+      else {
+        if (Queryable._countCache.size >= Queryable._COUNT_CACHE_MAX) {
+          const firstKey = Queryable._countCache.keys().next().value as string | undefined;
+          if (firstKey !== undefined) {
+            Queryable._countCache.delete(firstKey);
+            safeCacheEvicted((this._provider as any).loggerRef, {
+              cache: 'count',
+              provider: (this._provider as any).providerLabel
+            });
+          }
+        }
+        Queryable._countCache.set(key, entry);
+      }
+      safeCacheSize((this._provider as any).loggerRef, {
+        cache: 'count',
+        size: this._externalCountCache ? -1 : Queryable._countCache.size,
+        provider: (this._provider as any).providerLabel
+      });
+      safeCache((this._provider as any).loggerRef, {
         cache: 'count',
         hit: false,
         provider: (this._provider as any).providerLabel
@@ -469,11 +510,7 @@ export class Queryable<T> {
   }
 
   private buildCountCacheKey(table: string): string {
-    const normalizedWhere = (this._model.where || []).map((clause) => ({
-      c: (clause as any).condition,
-      p: (clause as any).parameters
-    }));
-    return `${this._entityClass.name}|count|${table}|${JSON.stringify(normalizedWhere)}`;
+    return `${this._entityClass.name}|count|${table}|${this._whereSignature}`;
   }
 
   private async executeCountQuery(table: string): Promise<number> {
@@ -505,20 +542,38 @@ export class Queryable<T> {
   // helpers copied from previous QueryBuilder for parsing
   /** Adds a SQL where clause if possible, else stores predicate for in-memory filtering. */
   private addWhereOrFallback(predicate: (entity: T) => boolean): void {
+    const cacheKey = predicate.toString();
+    const cached = Queryable._predicateSqlCache.get(cacheKey);
+    if (cached) {
+      this._model.where = this._model.where || [];
+      // clone parameters array to avoid accidental mutations across queries
+      this._model.where.push({ condition: cached.condition, parameters: [...(cached as any).parameters] } as any);
+      // update where signature on cache hit as well
+      this._whereSignature += `|${(cached as any).condition}:${JSON.stringify((cached as any).parameters)}`;
+      return;
+    }
     const parser = new PredicateParser<T>();
     const ast = parser.parse(predicate);
-    if (ast) {
-      const visitor = new SqlVisitor();
-      const { condition, parameters } = visitor.toSql(ast);
-      const whereClause: WhereClause = {
-        condition: condition as any,
-        parameters: parameters as any
-      } as any;
-      this._model.where = this._model.where || [];
-      this._model.where.push(whereClause);
-    } else {
+    if (!ast) {
       this._fallbackPredicates.push(predicate);
+      return;
     }
+    const visitor = new SqlVisitor();
+    const { condition, parameters } = visitor.toSql(ast);
+    const whereClause: WhereClause = {
+      condition: condition as any,
+      parameters: parameters as any
+    } as any;
+    this._model.where = this._model.where || [];
+    this._model.where.push(whereClause);
+    // update where signature for faster count cache keys
+    this._whereSignature += `|${(whereClause as any).condition}:${JSON.stringify((whereClause as any).parameters)}`;
+    // cache with simple FIFO eviction
+    if (Queryable._predicateSqlCache.size >= Queryable.PREDICATE_CACHE_MAX) {
+      const firstKey = Queryable._predicateSqlCache.keys().next().value as string | undefined;
+      if (firstKey !== undefined) Queryable._predicateSqlCache.delete(firstKey);
+    }
+    Queryable._predicateSqlCache.set(cacheKey, { condition: whereClause.condition, parameters: [...(whereClause as any).parameters] } as any);
   }
 
   /** Applies all stored fallback predicates (runtime filters). */
@@ -556,8 +611,13 @@ export class Queryable<T> {
   /** Extracts include property name from a lambda selector. */
   private extractIncludeProperty(selector: (entity: T) => any): string {
     const selectorStr = selector.toString();
-    const match = selectorStr.match(/=>\s*\w+\.(\w+)/);
-    if (match && match[1]) return match[1];
+    const cached = Queryable._includePropCache.get(selectorStr);
+    if (cached) return cached;
+    const match = selectorStr.match(Queryable.REGEX_SINGLE_PROP);
+    if (match && match[1]) {
+      Queryable._includePropCache.set(selectorStr, match[1]);
+      return match[1];
+    }
     throw new Error(`Unable to parse include selector: ${selectorStr}`);
   }
 
@@ -566,23 +626,29 @@ export class Queryable<T> {
    * Supports single property, object destructuring, and simple object literal forms.
    */
   private extractPropertiesFromSelector(selectorStr: string): string[] {
-    const singleMatch = selectorStr.match(/=>\s*\w+\.(\w+)/);
+    const cached = Queryable._selectorPropsCache.get(selectorStr);
+    if (cached) return [...cached];
+    const singleMatch = selectorStr.match(Queryable.REGEX_SINGLE_PROP);
     if (singleMatch) return [singleMatch[1]];
-    const objectMatch = selectorStr.match(/=>\s*\(\s*\{([^}]+)\}\s*\)/);
+    const objectMatch = selectorStr.match(Queryable.REGEX_OBJECT);
     if (objectMatch) {
       const props = objectMatch[1].split(',');
-      return props.map((prop) => {
-        const match = prop.match(/\w+:\s*\w+\.(\w+)/);
+      const result = props.map((prop) => {
+        const match = prop.match(Queryable.REGEX_PROP_IN_OBJECT);
         return match ? match[1] : prop.trim();
       });
+      Queryable._selectorPropsCache.set(selectorStr, [...result]);
+      return result;
     }
-    const simpleObjectMatch = selectorStr.match(/=>\s*\{([^}]+)\}/);
+    const simpleObjectMatch = selectorStr.match(Queryable.REGEX_SIMPLE_OBJECT);
     if (simpleObjectMatch) {
       const props = simpleObjectMatch[1].split(',');
-      return props.map((prop) => {
-        const match = prop.match(/\w+:\s*\w+\.(\w+)/) || prop.match(/(\w+)/);
+      const result = props.map((prop) => {
+        const match = prop.match(Queryable.REGEX_PROP_IN_OBJECT) || prop.match(Queryable.REGEX_ANY_PROP);
         return match ? match[1] : prop.trim();
       });
+      Queryable._selectorPropsCache.set(selectorStr, [...result]);
+      return result;
     }
     return ['*'];
   }
@@ -592,8 +658,13 @@ export class Queryable<T> {
    * Throws if parsing fails.
    */
   private extractPropertyFromKeySelector(keySelectorStr: string): string {
-    const match = keySelectorStr.match(/=>\s*\w+\.(\w+)/);
-    if (match) return match[1];
+    const cached = Queryable._keySelectorCache.get(keySelectorStr);
+    if (cached) return cached;
+    const match = keySelectorStr.match(Queryable.REGEX_SINGLE_PROP);
+    if (match) {
+      Queryable._keySelectorCache.set(keySelectorStr, match[1]);
+      return match[1];
+    }
     throw new Error(`Unable to parse key selector: ${keySelectorStr}`);
   }
 
@@ -636,6 +707,13 @@ export class Queryable<T> {
         hit: false,
         provider: (this._provider as any).providerLabel
       });
+      try {
+        (this._provider as any).loggerRef?.cacheSize?.({
+          cache: 'entityL2',
+          size: (this._entityCache as any).size?.() ?? -1,
+          provider: (this._provider as any).providerLabel
+        });
+      } catch {/* ignore */}
       // notify middleware via provider hook
       try {
         (this._provider as any).notifyEntityMaterialized?.(entity, metadata);

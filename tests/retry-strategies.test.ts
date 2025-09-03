@@ -61,5 +61,3 @@ describe('RetryPolicy strategies', () => {
     spy.mockRestore();
   });
 });
-
-

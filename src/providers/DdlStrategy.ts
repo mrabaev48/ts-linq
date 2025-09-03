@@ -7,5 +7,3 @@ export interface DdlStrategy {
     index: { name: string; columns: string[]; unique: boolean }
   ): string;
 }
-
-

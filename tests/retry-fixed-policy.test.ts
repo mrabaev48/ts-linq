@@ -19,7 +19,11 @@ MetadataStorage.addPrimaryKey(FxUser, 'id');
 class Ctx extends DbContext {
   public users!: any;
   constructor() {
-    super({ provider: 'sqlite', connectionString: ':memory:', retryPolicy: new FixedIntervalRetryPolicy(25) });
+    super({
+      provider: 'sqlite',
+      connectionString: ':memory:',
+      retryPolicy: new FixedIntervalRetryPolicy(25)
+    });
   }
 }
 
@@ -44,5 +48,3 @@ describe('FixedIntervalRetryPolicy', () => {
     spy.mockRestore();
   });
 });
-
-

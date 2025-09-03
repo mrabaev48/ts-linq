@@ -86,5 +86,3 @@ export class CompositeSqlLogger implements SqlLogger {
     }
   }
 }
-
-

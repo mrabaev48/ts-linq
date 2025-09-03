@@ -61,6 +61,12 @@ Code-first database evolution support:
 - MigrationRunner manages migration execution order
 - Up/Down methods for forward and rollback operations
 
+Advanced building blocks:
+
+- DiffBasedMigration (Template Method) — генерирует up/down из SchemaDiff с хуками `before/after` для всего этапа и каждой SQL-команды (можно скипать отдельные шаги)
+- MigrationBuilder (fluent) — сборка SchemaDiff: create/alter/drop column, create/drop index, add/drop FK, rename table/column
+- MigrationFileBuilder — генерация TypeScript‑класса миграции из SchemaDiff (с up/down)
+
 ## External Dependencies
 
 ### Core Dependencies
@@ -341,6 +347,34 @@ class AddAgeToUsers extends Migration {
 const runner = new MigrationRunner(provider);
 runner.addMigration(new AddAgeToUsers());
 await runner.migrate();
+```
+
+Fluent‑diff и генерация классов:
+
+```ts
+import { MigrationBuilder, MigrationFileBuilder } from './src';
+
+const diff = new MigrationBuilder()
+  .createTable('users', (t) => {
+    t.column('id', 'INTEGER', { nullable: false }).primaryKey('id');
+    t.column('name', 'TEXT', { nullable: false }).index('idx_users_name', ['name']);
+  })
+  .addForeignKey('orders', {
+    columns: ['user_id'],
+    refTable: 'users',
+    refColumns: ['id'],
+    onDelete: 'CASCADE'
+  })
+  .renameTable('temp_users', 'users')
+  .renameColumn('users', 'name', 'full_name')
+  .toDiff();
+
+const { filename, source } = MigrationFileBuilder.build(diff, {
+  className: 'CreateUsersAndOrders',
+  version: '001',
+  dialect: 'postgresql'
+});
+// save source to migrations/001_CreateUsersAndOrders.ts and register it in MigrationRunner
 ```
 
 ### Database Providers
@@ -638,6 +672,25 @@ const logger: SqlLogger = {
 const ctx = new AppDbContext({ connectionString: ':memory:', provider: 'sqlite', logger });
 ```
 
+Composite логгеры (композиция Prometheus + OTEL или других):
+
+```ts
+import { CompositeSqlLoggerFactory, OpenTelemetrySqlLogger, PrometheusSqlLogger } from './src';
+
+const factory = new CompositeSqlLoggerFactory({
+  loggers: [
+    new OpenTelemetrySqlLogger('orders-service'),
+    new PrometheusSqlLogger('orders-service', { prefix: 'tsl_' })
+  ]
+});
+
+const ctx = new AppDbContext({
+  connectionString: ':memory:',
+  provider: 'sqlite',
+  loggerFactory: factory
+});
+```
+
 OpenTelemetry (optional):
 
 ```ts
@@ -692,6 +745,9 @@ sum by (provider) (rate(db_query_total[5m]))
 # p95 query duration in milliseconds by provider
 histogram_quantile(0.95, sum by (le, provider) (rate(db_query_duration_ms_bucket[5m])))
 
+# p99 query duration in milliseconds by provider
+histogram_quantile(0.99, sum by (le, provider) (rate(db_query_duration_ms_bucket[5m])))
+
 # Cache hit ratio (sqlGen)
 sum(rate(db_cache_hits_total{cache="sqlGen"}[5m]))
   /
@@ -710,6 +766,88 @@ Dashboard hints:
 - Cache: sqlGen hit ratio, entityL2 hit ratio, count cache hit ratio.
 - Top entities: split duration/throughput by `entity` (limit panels to top N to avoid cardinality blow-up).
 - Tracing linkage: if exemplars enabled, use Prometheus+Tempo/Grafana to jump from latency samples to traces.
+
+Alerting (recommended):
+
+- Purpose: detect latency/error spikes early; keep bucket config realistic to your SLOs.
+- Core signals:
+  - p95/p99 latency: `db_query_duration_ms_bucket`
+  - Error rate: `db_error_total / db_query_total`
+  - Retries: `db_retry_total`
+  - Cache health: `db_cache_hits_total`, `db_cache_misses_total`, `db_cache_evictions_total`, `db_cache_size`
+  - Count cache detail: `db_count_cache_ttl_hits_total`, `db_count_cache_hard_hits_total`
+
+PromQL snippets:
+
+```promql
+# p95 / p99 latency by provider (5m window)
+histogram_quantile(0.95, sum by (le, provider) (rate(db_query_duration_ms_bucket[5m])))
+histogram_quantile(0.99, sum by (le, provider) (rate(db_query_duration_ms_bucket[5m])))
+
+# Error rate by provider
+sum by (provider) (rate(db_error_total[5m])) / sum by (provider) (rate(db_query_total[5m]))
+
+# Retry rate (ops/s)
+sum by (provider) (rate(db_retry_total[5m]))
+
+# Cache hit ratio (count cache)
+sum(rate(db_cache_hits_total{cache="count"}[5m]))
+/ (sum(rate(db_cache_hits_total{cache="count"}[5m])) + sum(rate(db_cache_misses_total{cache="count"}[5m])))
+
+# Cache evictions (capacity pressure)
+sum by (provider, cache) (rate(db_cache_evictions_total[5m]))
+
+# Count cache hits breakdown
+sum by (provider) (rate(db_count_cache_ttl_hits_total[5m]))
+sum by (provider) (rate(db_count_cache_hard_hits_total[5m]))
+```
+
+Alertmanager examples (tune thresholds per env):
+
+```yaml
+groups:
+  - name: ts-linq-alerts
+    rules:
+      - alert: DbP95LatencyHigh
+        expr: histogram_quantile(0.95, sum by (le, provider) (rate(db_query_duration_ms_bucket[5m]))) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DB p95 latency high (>200ms)"
+          description: "Provider {{ $labels.provider }} p95 > 200ms for 10m"
+
+      - alert: DbErrorRateHigh
+        expr: (sum by (provider) (rate(db_error_total[5m])) / sum by (provider) (rate(db_query_total[5m]))) > 0.01
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DB error rate >1%"
+          description: "Provider {{ $labels.provider }} error rate > 1% for 10m"
+
+      - alert: DbRetriesSpike
+        expr: sum by (provider) (rate(db_retry_total[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DB retries elevated"
+          description: "Provider {{ $labels.provider }} retries > 1 rps for 10m"
+
+      - alert: DbCacheEvictionsHigh
+        expr: sum by (provider, cache) (rate(db_cache_evictions_total[5m])) > 10
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "DB cache evictions high"
+          description: "{{ $labels.cache }} cache under pressure for {{ $labels.provider }}"
+```
+
+Notes:
+- Keep label cardinality low; prefer `provider`, optional `entity` if bounded.
+- Tune histogram buckets (`bucketsMs`) so that target p95 lies inside observed buckets.
 
 Exemplars (traceId):
 
@@ -755,6 +893,24 @@ const qb = new QueryBuilder(new PostgresDialect());
 
 // QueryBuilder cache utilities
 QueryBuilder.clearCache(); // clears global SQL cache
+```
+
+### Retry Policies
+
+Можно управлять ретраями через стратегию `RetryPolicy` (инъекция через `DbContextOptions.retryPolicy`). Доступны:
+
+- ExponentialBackoffRetryPolicy — экспоненциальная задержка с джиттером
+- FixedIntervalRetryPolicy — фиксированный интервал между попытками
+- NoRetryPolicy — без ретраев
+
+```ts
+import { FixedIntervalRetryPolicy } from './src/utils/RetryPolicies';
+
+const ctx = new AppDbContext({
+  provider: 'sqlite',
+  connectionString: ':memory:',
+  retryPolicy: new FixedIntervalRetryPolicy(100)
+});
 ```
 
 ### Provider Hooks

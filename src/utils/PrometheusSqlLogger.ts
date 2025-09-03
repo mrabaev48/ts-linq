@@ -15,6 +15,7 @@ interface PromClientLike {
   Gauge?: new (cfg: any) => {
     inc: (labels?: LabelValues, v?: number) => void;
     dec: (labels?: LabelValues, v?: number) => void;
+    set?: (labels: LabelValues, v: number) => void;
   };
 }
 
@@ -69,6 +70,10 @@ export class PrometheusSqlLogger implements SqlLogger {
   };
   private cacheHits?: PromCounter;
   private cacheMisses?: PromCounter;
+  private cacheSizeGauge?: any;
+  private countCacheTtlHits?: PromCounter;
+  private countCacheHardHits?: PromCounter;
+  private cacheEvictions?: PromCounter;
 
   /**
    * Create a new PrometheusSqlLogger.
@@ -135,6 +140,29 @@ export class PrometheusSqlLogger implements SqlLogger {
     this.cacheMisses = new this.client.Counter({
       name: `${this.prefix}db_cache_misses_total`,
       help: 'DB cache misses',
+      labelNames: ['cache', 'provider']
+    });
+    // optional detailed counters for count cache
+    this.countCacheTtlHits = new this.client.Counter({
+      name: `${this.prefix}db_count_cache_ttl_hits_total`,
+      help: 'Count cache TTL hits',
+      labelNames: ['provider']
+    });
+    this.countCacheHardHits = new this.client.Counter({
+      name: `${this.prefix}db_count_cache_hard_hits_total`,
+      help: 'Count cache hard hits (external or no TTL)',
+      labelNames: ['provider']
+    });
+    if (this.client.Gauge) {
+      this.cacheSizeGauge = new this.client.Gauge({
+        name: `${this.prefix}db_cache_size`,
+        help: 'DB cache size (items)',
+        labelNames: ['cache', 'provider']
+      });
+    }
+    this.cacheEvictions = new this.client.Counter({
+      name: `${this.prefix}db_cache_evictions_total`,
+      help: 'DB cache evictions due to capacity limits',
       labelNames: ['cache', 'provider']
     });
   }
@@ -241,9 +269,34 @@ export class PrometheusSqlLogger implements SqlLogger {
     try {
       if (info.hit) this.cacheHits?.labels({ cache: info.cache, provider } as any).inc(1);
       else this.cacheMisses?.labels({ cache: info.cache, provider } as any).inc(1);
+      if (info.cache === 'count' && info.hit) {
+        const ttl = (info as any).ttl as boolean | undefined;
+        if (ttl === true) this.countCacheTtlHits?.labels({ provider } as any).inc(1);
+        else if (ttl === false) this.countCacheHardHits?.labels({ provider } as any).inc(1);
+      }
     } catch {
       /* ignore */
     }
+  }
+
+  /** Cache size setter (optional API, used via duck typing). */
+  public cacheSize?(info: { cache: 'sqlGen' | 'entityL2' | 'count'; size: number; provider?: string }): void {
+    if (!this.enabled || !this.cacheSizeGauge) return;
+    const provider = info.provider || 'unknown';
+    try {
+      (this.cacheSizeGauge as any).set?.({ cache: info.cache, provider }, info.size);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** Eviction counter (optional API, used via duck typing). */
+  public cacheEvicted?(info: { cache: 'sqlGen' | 'entityL2' | 'count'; provider?: string }): void {
+    if (!this.enabled || !this.cacheEvictions) return;
+    const provider = info.provider || 'unknown';
+    try {
+      this.cacheEvictions.labels({ cache: info.cache, provider } as any).inc(1);
+    } catch {/* ignore */}
   }
 
   private safeRequirePromClient(): PromClientLike | undefined {

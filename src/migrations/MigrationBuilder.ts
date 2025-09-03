@@ -35,7 +35,12 @@ class TableBuilder {
   }
 
   column(name: string, type: string, opts?: { nullable?: boolean; defaultValue?: any }): this {
-    this.columns.push({ name, type, nullable: opts?.nullable ?? true, defaultValue: opts?.defaultValue });
+    this.columns.push({
+      name,
+      type,
+      nullable: opts?.nullable ?? true,
+      defaultValue: opts?.defaultValue
+    });
     return this;
   }
 
@@ -80,17 +85,49 @@ export class MigrationBuilder {
     return this;
   }
 
-  alterTable(name: string, ops: (t: {
-    addColumn: (name: string, type: string, opts?: { nullable?: boolean; defaultValue?: any }) => void;
-    alterColumn: (name: string, type?: string, opts?: { nullable?: boolean; defaultValue?: any }) => void;
-    dropColumn: (name: string) => void;
-  }) => void): this {
+  alterTable(
+    name: string,
+    ops: (t: {
+      addColumn: (
+        name: string,
+        type: string,
+        opts?: { nullable?: boolean; defaultValue?: any }
+      ) => void;
+      alterColumn: (
+        name: string,
+        type?: string,
+        opts?: { nullable?: boolean; defaultValue?: any }
+      ) => void;
+      dropColumn: (name: string) => void;
+    }) => void
+  ): this {
     const api = {
-      addColumn: (colName: string, type: string, opts?: { nullable?: boolean; defaultValue?: any }) => {
-        this.columnAdds.push({ table: name, col: { name: colName, type, nullable: opts?.nullable ?? true, defaultValue: opts?.defaultValue } });
+      addColumn: (
+        colName: string,
+        type: string,
+        opts?: { nullable?: boolean; defaultValue?: any }
+      ) => {
+        this.columnAdds.push({
+          table: name,
+          col: {
+            name: colName,
+            type,
+            nullable: opts?.nullable ?? true,
+            defaultValue: opts?.defaultValue
+          }
+        });
       },
-      alterColumn: (colName: string, type?: string, opts?: { nullable?: boolean; defaultValue?: any }) => {
-        const target = { name: colName, type: type ?? 'TEXT', nullable: opts?.nullable ?? true, defaultValue: opts?.defaultValue };
+      alterColumn: (
+        colName: string,
+        type?: string,
+        opts?: { nullable?: boolean; defaultValue?: any }
+      ) => {
+        const target = {
+          name: colName,
+          type: type ?? 'TEXT',
+          nullable: opts?.nullable ?? true,
+          defaultValue: opts?.defaultValue
+        };
         // Provide a synthetic prev to force emission of ALTER statements when prior state is unknown
         const prev = {
           name: colName,
@@ -120,7 +157,14 @@ export class MigrationBuilder {
 
   addForeignKey(
     table: string,
-    fk: { name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }
+    fk: {
+      name?: string;
+      columns: string[];
+      refTable: string;
+      refColumns: string[];
+      onDelete?: string;
+      onUpdate?: string;
+    }
   ): this {
     this.fkCreates.push({ table, fk });
     return this;
@@ -156,7 +200,11 @@ export class MigrationBuilder {
             defaultValue: c.defaultValue
           })) as any,
           primaryKeys: tb.primaryKeys,
-          indexes: tb.indexes.map((i) => ({ name: i.name, columns: i.columns, unique: !!i.unique })),
+          indexes: tb.indexes.map((i) => ({
+            name: i.name,
+            columns: i.columns,
+            unique: !!i.unique
+          })),
           foreignKeys: tb.foreignKeys.map((f) => ({
             name: f.name,
             columns: f.columns,
@@ -183,7 +231,15 @@ export class MigrationBuilder {
       return td;
     };
     for (const add of this.columnAdds) {
-      ensure(add.table).columnChanges!.push({ kind: 'add', column: { name: add.col.name, type: add.col.type, nullable: add.col.nullable ?? true, defaultValue: add.col.defaultValue } } as any);
+      ensure(add.table).columnChanges!.push({
+        kind: 'add',
+        column: {
+          name: add.col.name,
+          type: add.col.type,
+          nullable: add.col.nullable ?? true,
+          defaultValue: add.col.defaultValue
+        }
+      } as any);
     }
     for (const alt of this.columnAlters) {
       ensure(alt.table).columnChanges!.push({
@@ -198,13 +254,20 @@ export class MigrationBuilder {
       } as any);
     }
     for (const drop of this.columnDrops) {
-      ensure(drop.table).columnChanges!.push({ kind: 'drop', column: { name: drop.name, type: 'TEXT', nullable: true } } as any);
+      ensure(drop.table).columnChanges!.push({
+        kind: 'drop',
+        column: { name: drop.name, type: 'TEXT', nullable: true }
+      } as any);
     }
     // Index creates/drops
     for (const ic of this.indexCreates) {
       const td = ensure(ic.table);
       (td as any).indexCreates = (td as any).indexCreates || [];
-      (td as any).indexCreates.push({ name: ic.index.name, columns: ic.index.columns, unique: !!ic.index.unique });
+      (td as any).indexCreates.push({
+        name: ic.index.name,
+        columns: ic.index.columns,
+        unique: !!ic.index.unique
+      });
     }
     for (const id of this.indexDrops) {
       const td = ensure(id.table);
@@ -239,5 +302,3 @@ export class MigrationBuilder {
     return generateMigrationFromDiff(this.toDiff(), dialect);
   }
 }
-
-

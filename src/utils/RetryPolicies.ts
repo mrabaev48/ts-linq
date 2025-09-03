@@ -58,5 +58,3 @@ export class FixedIntervalRetryPolicy implements RetryPolicy {
     return this.delayMs;
   }
 }
-
-

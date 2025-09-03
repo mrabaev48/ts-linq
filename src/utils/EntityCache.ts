@@ -7,17 +7,22 @@ export interface EntityCacheLike {
   set<T>(entityClass: Function, id: any, entity: T): void;
   remove(entityClass: Function, id: any): void;
   clear(): void;
+  size?(): number;
 }
 
 export class EntityCache implements EntityCacheLike {
   private _store: Map<string, any> = new Map();
   private _maxSize: number;
+  private _logger?: any;
+  private _providerLabel?: string;
 
   /**
    * @param maxSize Maximum number of cached items before FIFO eviction.
    */
-  constructor(maxSize: number = 10000) {
+  constructor(maxSize: number = 10000, logger?: any, providerLabel?: string) {
     this._maxSize = maxSize;
+    this._logger = logger;
+    this._providerLabel = providerLabel;
   }
 
   /** Build a stable cache key from entity constructor and id. */
@@ -37,7 +42,12 @@ export class EntityCache implements EntityCacheLike {
     if (id === undefined || id === null) return;
     if (this._store.size >= this._maxSize) {
       const firstKey = this._store.keys().next().value as string | undefined;
-      if (firstKey !== undefined) this._store.delete(firstKey);
+      if (firstKey !== undefined) {
+        this._store.delete(firstKey);
+        try {
+          this._logger?.cacheEvicted?.({ cache: 'entityL2', provider: this._providerLabel });
+        } catch {/* ignore */}
+      }
     }
     const key = this.buildKey(entityClass, id);
     this._store.set(key, entity);
@@ -53,5 +63,10 @@ export class EntityCache implements EntityCacheLike {
   /** Clear all cached entities. */
   public clear(): void {
     this._store.clear();
+  }
+
+  /** Current number of cached items. */
+  public size(): number {
+    return this._store.size;
   }
 }

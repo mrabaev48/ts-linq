@@ -1,6 +1,7 @@
 import { QueryOptions } from '../types';
 import { SqlLogger } from '../types';
 import { SqlDialect } from './SqlDialect';
+import { safeCacheSize, safeCacheEvicted } from '../utils/MetricsSafe';
 import { SQLiteDialect } from './SQLiteDialect';
 import { QueryModel } from './QueryModel';
 import { SqlCache, SqlCacheEntry } from './SqlCache';
@@ -113,13 +114,28 @@ export class QueryBuilder {
   private remember(key: string, value: { query: string; parameters: any[] }): void {
     if (this._cache) {
       this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
+      try {
+        (this._logger as any)?.cacheSize?.({
+          cache: 'sqlGen',
+          size: this._cache.size?.() ?? -1,
+          provider: this._providerName
+        });
+      } catch {/* ignore */}
       return;
     }
     if (QueryBuilder._sqlCache.size >= QueryBuilder._MAX_CACHE_SIZE) {
       const firstKey = QueryBuilder._sqlCache.keys().next().value as string | undefined;
-      if (firstKey !== undefined) QueryBuilder._sqlCache.delete(firstKey);
+      if (firstKey !== undefined) {
+        QueryBuilder._sqlCache.delete(firstKey);
+        safeCacheEvicted(this._logger, { cache: 'sqlGen', provider: this._providerName });
+      }
     }
     QueryBuilder._sqlCache.set(key, { query: value.query, parameters: [...value.parameters] });
+    safeCacheSize(this._logger, {
+      cache: 'sqlGen',
+      size: QueryBuilder._sqlCache.size,
+      provider: this._providerName
+    });
   }
 
   private getFromCache(key: string): SqlCacheEntry | undefined {

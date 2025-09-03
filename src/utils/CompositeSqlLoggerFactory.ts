@@ -9,7 +9,12 @@ export class CompositeSqlLoggerFactory implements SqlLoggerFactory {
   private readonly factories: Array<SqlLoggerFactory | undefined>;
   private readonly statics: Array<SqlLogger | undefined>;
 
-  constructor(options: { factories?: Array<SqlLoggerFactory | undefined>; loggers?: Array<SqlLogger | undefined> } = {}) {
+  constructor(
+    options: {
+      factories?: Array<SqlLoggerFactory | undefined>;
+      loggers?: Array<SqlLogger | undefined>;
+    } = {}
+  ) {
     this.factories = options.factories ?? [];
     this.statics = options.loggers ?? [];
   }
@@ -31,5 +36,3 @@ export class CompositeSqlLoggerFactory implements SqlLoggerFactory {
     return new CompositeSqlLogger(...delegates);
   }
 }
-
-

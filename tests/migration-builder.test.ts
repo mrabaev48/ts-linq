@@ -33,16 +33,17 @@ describe('MigrationBuilder', () => {
     });
     const { up } = mb.toSql('postgresql');
     const createSql = up.find((s) => s.startsWith('CREATE TABLE'))!;
-    expect(createSql).toContain('FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE NO ACTION');
+    expect(createSql).toContain(
+      'FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE NO ACTION'
+    );
   });
 
   test('alterTable add/alter/drop column generates SQL', () => {
-    const mb = new MigrationBuilder()
-      .alterTable('users', (t) => {
-        t.addColumn('age', 'INTEGER', { nullable: false, defaultValue: 0 });
-        t.alterColumn('name', 'TEXT', { nullable: false });
-        t.dropColumn('legacy');
-      });
+    const mb = new MigrationBuilder().alterTable('users', (t) => {
+      t.addColumn('age', 'INTEGER', { nullable: false, defaultValue: 0 });
+      t.alterColumn('name', 'TEXT', { nullable: false });
+      t.dropColumn('legacy');
+    });
     const { up } = mb.toSql('postgresql');
     expect(up.some((s) => s.startsWith('ALTER TABLE "users" ADD COLUMN'))).toBeTruthy();
     expect(up.some((s) => s.includes('ALTER TABLE "users" ALTER COLUMN "name"'))).toBeTruthy();
@@ -59,5 +60,3 @@ describe('MigrationBuilder', () => {
     expect(up.some((s) => s.startsWith('DROP INDEX "idx_old"'))).toBeTruthy();
   });
 });
-
-

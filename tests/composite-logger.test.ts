@@ -40,7 +40,11 @@ describe('CompositeSqlLogger', () => {
 
   test('swallows delegate errors', () => {
     const ok: SqlLogger = { queryStart: jest.fn() };
-    const bad: SqlLogger = { queryStart: () => { throw new Error('boom'); } };
+    const bad: SqlLogger = {
+      queryStart: () => {
+        throw new Error('boom');
+      }
+    };
     const c = new CompositeSqlLogger(bad, ok);
     expect(() => c.queryStart({ sql: 'SELECT 1', params: [] })).not.toThrow();
     expect((ok.queryStart as jest.Mock).mock.calls.length).toBe(1);
@@ -72,5 +76,3 @@ describe('CompositeSqlLoggerFactory', () => {
     expect(comp).toBeUndefined();
   });
 });
-
-

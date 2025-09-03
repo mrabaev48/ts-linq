@@ -7,7 +7,14 @@ const meta: EntityMetadata = {
   target: class U {},
   tableName: 'users',
   columns: [
-    { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true, isVersion: false },
+    {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false,
+      isGenerated: true,
+      isVersion: false
+    },
     { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false, isVersion: false }
   ],
   primaryKeys: ['id'],
@@ -30,5 +37,3 @@ describe('DdlBuilder', () => {
     expect(all.indexSqls[0]).toContain('CREATE INDEX');
   });
 });
-
-

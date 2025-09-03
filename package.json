@@ -37,7 +37,8 @@
     "lint": "eslint . --ext .ts --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "bench": "ts-node bench/quick.ts"
   },
   "keywords": [],
   "author": "",
