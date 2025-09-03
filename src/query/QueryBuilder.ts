@@ -3,18 +3,20 @@ import { SqlLogger } from '../types';
 import { SqlDialect } from './SqlDialect';
 import { SQLiteDialect } from './SQLiteDialect';
 import { QueryModel } from './QueryModel';
+import { SqlCache, SqlCacheEntry } from './SqlCache';
 
 /**
  * QueryBuilder is now focused solely on generating SQL
  * from an entity class and accumulated query options.
  */
 export class QueryBuilder {
-  /** Shared cache for generated SQL keyed by entity + options hash. */
+  /** Shared in-memory cache if external SqlCache is not provided. */
   private static _sqlCache: Map<string, { query: string; parameters: any[] }> = new Map();
   private static readonly _MAX_CACHE_SIZE = 1000;
   private _dialect: SqlDialect;
   private _logger?: SqlLogger;
   private _providerName?: string;
+  private _cache?: SqlCache;
   /**
    * Create a QueryBuilder that delegates SQL generation to a dialect.
    * @param dialect SqlDialect implementation (default: SQLiteDialect)
@@ -22,11 +24,13 @@ export class QueryBuilder {
   constructor(
     dialect: SqlDialect = new SQLiteDialect(),
     logger?: SqlLogger,
-    providerName?: string
+    providerName?: string,
+    cache?: SqlCache
   ) {
     this._dialect = dialect;
     this._logger = logger;
     this._providerName = providerName;
+    this._cache = cache;
   }
   /** Generate SQL from QueryOptions (legacy path). */
   public generateSql<T>(
@@ -34,13 +38,13 @@ export class QueryBuilder {
     options: QueryOptions
   ): { query: string; parameters: any[] } {
     const key = QueryBuilder.buildCacheKey(entityClass, options);
-    const hit = QueryBuilder._sqlCache.get(key);
+    const hit = this.getFromCache(key);
     if (hit) {
       this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
       return { query: hit.query, parameters: [...hit.parameters] };
     }
     const built = this._dialect.buildSelect(entityClass, options);
-    QueryBuilder.remember(key, built);
+    this.remember(key, built);
     this._logger?.cache?.({ cache: 'sqlGen', hit: false, provider: this._providerName });
     return built;
   }
@@ -106,11 +110,20 @@ export class QueryBuilder {
   }
 
   /** Store an item in the cache with simple FIFO eviction. */
-  private static remember(key: string, value: { query: string; parameters: any[] }): void {
+  private remember(key: string, value: { query: string; parameters: any[] }): void {
+    if (this._cache) {
+      this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
+      return;
+    }
     if (QueryBuilder._sqlCache.size >= QueryBuilder._MAX_CACHE_SIZE) {
       const firstKey = QueryBuilder._sqlCache.keys().next().value as string | undefined;
       if (firstKey !== undefined) QueryBuilder._sqlCache.delete(firstKey);
     }
     QueryBuilder._sqlCache.set(key, { query: value.query, parameters: [...value.parameters] });
+  }
+
+  private getFromCache(key: string): SqlCacheEntry | undefined {
+    if (this._cache) return this._cache.get(key);
+    return QueryBuilder._sqlCache.get(key);
   }
 }
