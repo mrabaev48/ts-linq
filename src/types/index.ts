@@ -298,9 +298,15 @@ export interface LoadingDefaults {
  */
 export interface SqlLogger {
     /** Called right before a query is executed. */
-    queryStart?(info: { sql: string; params: any[]; traceId?: string }): void;
+    queryStart?(info: { sql: string; params: any[]; traceId?: string; provider?: string }): void;
     /** Called right after a query is executed. */
-    queryEnd?(info: { sql: string; params: any[]; durationMs: number; traceId?: string; rows?: number; error?: Error }): void;
+    queryEnd?(info: { sql: string; params: any[]; durationMs: number; traceId?: string; rows?: number; error?: Error; provider?: string }): void;
+    /** Called when a retry attempt is scheduled/executed for a transient error. */
+    retry?(info: { sql: string; params: any[]; attempt: number; traceId?: string; provider?: string }): void;
+    /** Called when a transaction begins (for gauges/metrics). */
+    transactionStart?(info: { traceId?: string; provider?: string }): void;
+    /** Called when a transaction ends (commit or rollback). */
+    transactionEnd?(info: { traceId?: string; provider?: string }): void;
 }
 
 /** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */
