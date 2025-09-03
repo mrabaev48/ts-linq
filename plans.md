@@ -121,7 +121,7 @@
     - [done] `db_cache_hits_total` / `db_cache_misses_total` (counters) — labels: cache=sqlGen|entityL2|count
   - Label schema & exemplars:
     - [done] Standardize labels (low-cardinality): provider, operation (select/insert/update/delete/count), entity
-    - [todo] Attach traceId as exemplar when available (if supported by `prom-client` version)
+    - [done] Attach traceId as exemplar when available (if supported by `prom-client` version)
   - Configuration:
     - [done] `prefix`, `bucketsMs`, DI of existing Prometheus client; no hard dependency
   - Tests:
@@ -140,6 +140,7 @@
 - [P2] Documentation: guides for diff-migrations, upsert/batch, advanced include/join [ongoing]; README: Pagination & Optimistic Concurrency [done]
 - [P2] Test matrix: Testcontainers-based integration for all providers in CI; property-based tests for join/include
 - [P2] Distribution: ESM/CJS builds, tree-shaking, types, changelog, semver releases
+  - [done] Export PrometheusEndpoint helpers in public API
 
 ## CLI (deferred to the end)
 

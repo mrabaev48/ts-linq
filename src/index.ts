@@ -48,3 +48,4 @@ export * from './migrations/MigrationRunner';
 export * from './utils/SqlHelper';
 export * from './utils/OpenTelemetrySqlLogger';
 export * from './utils/PrometheusSqlLogger';
+export * from './utils/PrometheusEndpoint';
