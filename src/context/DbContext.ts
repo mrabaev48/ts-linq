@@ -61,9 +61,15 @@ export abstract class DbContext {
     const providerKey = options.provider || 'sqlite';
     const compositeFactory =
       options.loggerFactories || options.loggers
-        ? new CompositeSqlLoggerFactory({ factories: [options.loggerFactory, ...(options.loggerFactories ?? [])], loggers: options.loggers })
+        ? new CompositeSqlLoggerFactory({
+            factories: [options.loggerFactory, ...(options.loggerFactories ?? [])],
+            loggers: options.loggers
+          })
         : undefined;
-    const logger = compositeFactory?.create(providerKey) ?? options.loggerFactory?.create(providerKey) ?? options.logger;
+    const logger =
+      compositeFactory?.create(providerKey) ??
+      options.loggerFactory?.create(providerKey) ??
+      options.logger;
     switch (providerKey) {
       case 'sqlite':
         this._provider = new SQLiteProvider(
@@ -109,7 +115,11 @@ export abstract class DbContext {
     this._entityLoader = new EntityLoader(this._provider);
     // Initialize optional L2 entity cache
     if (options.performance?.enableEntityCache) {
-      this._entityCache = new EntityCache(options.performance.entityCacheSize ?? 10000);
+      this._entityCache = new EntityCache(
+        options.performance.entityCacheSize ?? 10000,
+        (this._provider as any).loggerRef,
+        (this._provider as any).providerLabel
+      );
     }
     // Store performance options for downstream consumers
     this._performanceOptions = options.performance;
@@ -294,6 +304,14 @@ export abstract class DbContext {
     // This is a coarse-grained approach since count cache is global
     try {
       (require('../query/Queryable') as any).Queryable.clearCountCache();
+      if (this._entityCache) {
+        const { safeCacheSize } = require('../utils/MetricsSafe');
+        safeCacheSize((this._provider as any).loggerRef, {
+          cache: 'entityL2',
+          size: (this._entityCache as any).size?.() ?? -1,
+          provider: (this._provider as any).providerLabel
+        });
+      }
     } catch {
       /* ignore */
     }
@@ -308,6 +326,12 @@ export abstract class DbContext {
     if (this._entityCache) {
       try {
         this._entityCache.clear();
+        const { safeCacheSize } = require('../utils/MetricsSafe');
+        safeCacheSize((this._provider as any).loggerRef, {
+          cache: 'entityL2',
+          size: (this._entityCache as any).size?.() ?? 0,
+          provider: (this._provider as any).providerLabel
+        });
       } catch {
         /* ignore */
       }

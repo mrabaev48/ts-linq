@@ -19,6 +19,10 @@
 - [done] Add per-query SQL generation cache (hash of options → {query, params})
 - [done] Level-2 cache for row→entity mapping (optional, behind flag)
 - [done] Optional pagination total count optimization (COUNT window caching)
+ - [done] Predicate→SQL cache for where() with eviction
+ - [done] Precompiled regexes and caches for selector/include/key parsing
+ - [done] Faster count cache key via incremental where signature
+ - [done] Micro-benchmark script with avg/p95/p99 output (npm run bench)
 
 ## Reliability & Errors
 - [done] Optional Result<T, E> for non-exceptional flows; centralize error mapping

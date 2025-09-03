@@ -20,5 +20,3 @@ describe('Rename table/column', () => {
     expect(upSqlite.some((s) => s.startsWith('-- SQLite column rename'))).toBeTruthy();
   });
 });
-
-

@@ -9,16 +9,31 @@ class TestDiffMigration extends DiffBasedMigration {
     super();
     this.provider = provider;
   }
-  protected dialect(): Dialect { return 'sqlite'; }
+  protected dialect(): Dialect {
+    return 'sqlite';
+  }
   protected diff(): SchemaDiff {
     return {
       tables: [
-        { table: 't_new', create: { name: 't_new', columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any], primaryKeys: ['id'], indexes: [], foreignKeys: [] } as any }
+        {
+          table: 't_new',
+          create: {
+            name: 't_new',
+            columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any],
+            primaryKeys: ['id'],
+            indexes: [],
+            foreignKeys: []
+          } as any
+        }
       ]
     } as any;
   }
-  protected get name() { return 'TestDiffMigration'; }
-  protected get version() { return '000-diff'; }
+  protected get name() {
+    return 'TestDiffMigration';
+  }
+  protected get version() {
+    return '000-diff';
+  }
 }
 
 describe('DiffBasedMigration', () => {
@@ -35,15 +50,34 @@ describe('DiffBasedMigration', () => {
     await p.connect();
     const calls: string[] = [];
     class M extends TestDiffMigration {
-      protected async beforeUp(sqls: string[]): Promise<void> { calls.push('beforeUp:' + sqls.length); }
-      protected async afterUp(sqls: string[]): Promise<void> { calls.push('afterUp:' + sqls.length); }
+      protected async beforeUp(sqls: string[]): Promise<void> {
+        calls.push('beforeUp:' + sqls.length);
+      }
+      protected async afterUp(sqls: string[]): Promise<void> {
+        calls.push('afterUp:' + sqls.length);
+      }
       protected async beforeUpStatement(sql: string): Promise<boolean> {
         calls.push('beforeStmt');
         return !sql.includes('noop');
       }
-      protected async afterUpStatement(sql: string): Promise<void> { calls.push('afterStmt'); }
+      protected async afterUpStatement(sql: string): Promise<void> {
+        calls.push('afterStmt');
+      }
       protected diff(): SchemaDiff {
-        return { tables: [ { table: 'a', create: { name: 'a', columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any], primaryKeys: ['id'], indexes: [], foreignKeys: [] } as any } ], } as any;
+        return {
+          tables: [
+            {
+              table: 'a',
+              create: {
+                name: 'a',
+                columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any],
+                primaryKeys: ['id'],
+                indexes: [],
+                foreignKeys: []
+              } as any
+            }
+          ]
+        } as any;
       }
     }
     // Spy to inject a noop statement behavior by intercepting provider call
@@ -64,5 +98,3 @@ describe('DiffBasedMigration', () => {
     await p.disconnect();
   });
 });
-
-

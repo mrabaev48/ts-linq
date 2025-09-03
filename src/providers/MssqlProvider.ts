@@ -1,5 +1,11 @@
 import { DatabaseProvider } from './DatabaseProvider';
-import { EntityMetadata, ColumnMetadata, SqlLogger, OptimisticConcurrencyError, RetryPolicy } from '../types';
+import {
+  EntityMetadata,
+  ColumnMetadata,
+  SqlLogger,
+  OptimisticConcurrencyError,
+  RetryPolicy
+} from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SqlHelper } from '../utils/SqlHelper';
 import { MssqlDdlStrategy } from './mssql/MssqlDdlStrategy';

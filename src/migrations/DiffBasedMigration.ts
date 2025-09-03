@@ -16,7 +16,9 @@ export abstract class DiffBasedMigration extends Migration {
   /** Hook after executing all UP statements. */
   protected async afterUp(_sqls: string[]): Promise<void> {}
   /** Hook before executing a single UP statement; return false to skip. */
-  protected async beforeUpStatement(_sql: string): Promise<boolean> { return true; }
+  protected async beforeUpStatement(_sql: string): Promise<boolean> {
+    return true;
+  }
   /** Hook after executing a single UP statement. */
   protected async afterUpStatement(_sql: string): Promise<void> {}
   /** Hook before executing all DOWN statements. */
@@ -24,7 +26,9 @@ export abstract class DiffBasedMigration extends Migration {
   /** Hook after executing all DOWN statements. */
   protected async afterDown(_sqls: string[]): Promise<void> {}
   /** Hook before executing a single DOWN statement; return false to skip. */
-  protected async beforeDownStatement(_sql: string): Promise<boolean> { return true; }
+  protected async beforeDownStatement(_sql: string): Promise<boolean> {
+    return true;
+  }
   /** Hook after executing a single DOWN statement. */
   protected async afterDownStatement(_sql: string): Promise<void> {}
 
@@ -52,5 +56,3 @@ export abstract class DiffBasedMigration extends Migration {
     await this.afterDown(down);
   }
 }
-
-

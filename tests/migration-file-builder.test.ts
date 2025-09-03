@@ -33,5 +33,3 @@ describe('MigrationFileBuilder', () => {
     expect(source).toContain('CREATE INDEX');
   });
 });
-
-

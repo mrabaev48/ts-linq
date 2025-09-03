@@ -78,7 +78,9 @@ export function generateMigrationFromDiff(
             );
             break;
           default:
-            up.push(`-- SQLite requires table rebuild to add FK: ${name}(${cols}) -> ${fk.refTable}(${refCols})`);
+            up.push(
+              `-- SQLite requires table rebuild to add FK: ${name}(${cols}) -> ${fk.refTable}(${refCols})`
+            );
         }
       }
     }
@@ -132,7 +134,9 @@ export function generateMigrationFromDiff(
       for (const rn of (td as any).columnRenames) {
         switch (dialect) {
           case 'postgresql':
-            up.push(`ALTER TABLE ${q(dialect, td.table)} RENAME COLUMN ${q(dialect, rn.from)} TO ${q(dialect, rn.to)}`);
+            up.push(
+              `ALTER TABLE ${q(dialect, td.table)} RENAME COLUMN ${q(dialect, rn.from)} TO ${q(dialect, rn.to)}`
+            );
             break;
           case 'mysql':
             // MySQL требует полный тип в MODIFY/CHANGE COLUMN — оставим как комментарий
