@@ -12,6 +12,7 @@ import {
 import { SqlHelper } from '../utils/SqlHelper';
 import { SqlDialect } from '../query/SqlDialect';
 import { SQLiteDialect } from '../query/SQLiteDialect';
+import { SQLiteDdlStrategy } from './sqlite/SQLiteDdlStrategy';
 
 /**
  * SQLite implementation of `DatabaseProvider` using the `sqlite3` package.
@@ -20,6 +21,7 @@ import { SQLiteDialect } from '../query/SQLiteDialect';
  */
 export class SQLiteProvider extends DatabaseProvider {
   private db: sqlite3.Database | null = null;
+  private ddl = new SQLiteDdlStrategy();
 
   constructor(connectionString: string, logger?: any, middlewares?: any[], softDelete?: any) {
     super(connectionString, logger, middlewares, softDelete);
@@ -63,12 +65,12 @@ export class SQLiteProvider extends DatabaseProvider {
 
   /** Create a table from entity metadata and ensure indexes exist. */
   public async createTable(entityMetadata: EntityMetadata): Promise<void> {
-    const sql = this.generateCreateTableSql(entityMetadata);
+    const sql = this.ddl.generateCreateTableSql(entityMetadata);
     await this.executeNonQuery(sql);
 
     // Create indexes
     for (const index of entityMetadata.indexes) {
-      const indexSql = this.generateCreateIndexSql(entityMetadata.tableName, index);
+      const indexSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, index);
       await this.executeNonQuery(indexSql);
     }
   }
@@ -309,69 +311,7 @@ export class SQLiteProvider extends DatabaseProvider {
   }
 
   /** Generate CREATE TABLE SQL for the entity. */
-  private generateCreateTableSql(metadata: EntityMetadata): string {
-    if (!metadata || !metadata.columns) {
-      throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
-    }
-    const columns = metadata.columns.map((col) => this.generateColumnDefinition(col));
-
-    if (metadata.primaryKeys.length > 0) {
-      const primaryKeyColumns = metadata.primaryKeys.map((pk) => {
-        const column = metadata.columns.find((c) => c.propertyName === pk);
-        return column ? column.columnName : pk;
-      });
-
-      // Special handling for SQLite AUTOINCREMENT
-      if (metadata.primaryKeys.length === 1) {
-        const pkColumn = metadata.columns.find((c) => c.propertyName === metadata.primaryKeys[0]);
-        if (pkColumn && pkColumn.isGenerated && this.mapTypeToSQLite(pkColumn.type) === 'INTEGER') {
-          // For single INTEGER AUTOINCREMENT primary key, use inline PRIMARY KEY AUTOINCREMENT
-          const pkIndex = metadata.columns.findIndex(
-            (c) => c.propertyName === metadata.primaryKeys[0]
-          );
-          columns[pkIndex] += ' PRIMARY KEY AUTOINCREMENT';
-        } else {
-          columns.push(`PRIMARY KEY (${primaryKeyColumns.join(', ')})`);
-        }
-      } else {
-        columns.push(`PRIMARY KEY (${primaryKeyColumns.join(', ')})`);
-      }
-    }
-
-    return `CREATE TABLE IF NOT EXISTS ${metadata.tableName} (${columns.join(', ')})`;
-  }
-
-  /** Generate a single column definition for CREATE TABLE. */
-  private generateColumnDefinition(column: ColumnMetadata): string {
-    let definition = `${column.columnName} ${this.mapTypeToSQLite(column.type)}`;
-
-    if (column.length) {
-      definition += `(${column.length})`;
-    }
-
-    // For SQLite, AUTOINCREMENT must be used with PRIMARY KEY and INTEGER type
-    if (column.isGenerated && this.mapTypeToSQLite(column.type) === 'INTEGER') {
-      // Skip NOT NULL and other constraints for auto-increment primary key
-      // The PRIMARY KEY constraint will be added separately
-      definition += '';
-    } else {
-      if (!column.nullable) {
-        definition += ' NOT NULL';
-      }
-
-      if (column.defaultValue !== undefined) {
-        definition += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
-      }
-    }
-
-    return definition;
-  }
-
-  /** Generate CREATE INDEX SQL for an index metadata item. */
-  private generateCreateIndexSql(tableName: string, index: any): string {
-    const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-    return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS ${index.name} ON ${tableName} (${index.columns.join(', ')})`;
-  }
+  // DDL generation moved to SQLiteDdlStrategy
 
   /** Generate INSERT SQL and parameter list for the given entity. */
   private generateInsertSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
@@ -473,27 +413,7 @@ export class SQLiteProvider extends DatabaseProvider {
 
   /** Map a generic type string to an SQLite column type. */
   private mapTypeToSQLite(type: string): string {
-    switch (type.toUpperCase()) {
-      case 'TEXT':
-      case 'STRING':
-        return 'TEXT';
-      case 'INTEGER':
-      case 'NUMBER':
-        return 'INTEGER';
-      case 'REAL':
-      case 'FLOAT':
-      case 'DOUBLE':
-        return 'REAL';
-      case 'BOOLEAN':
-        return 'INTEGER';
-      case 'DATETIME':
-      case 'DATE':
-        return 'TEXT';
-      case 'BLOB':
-        return 'BLOB';
-      default:
-        return 'TEXT';
-    }
+    return this.ddl.mapTypeToSQLite(type);
   }
 
   /** Map a database row object to a new entity instance using metadata. */

@@ -2,6 +2,7 @@ import { DatabaseProvider } from './DatabaseProvider';
 import { EntityMetadata, ColumnMetadata, SqlLogger, OptimisticConcurrencyError } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SqlHelper } from '../utils/SqlHelper';
+import { MssqlDdlStrategy } from './mssql/MssqlDdlStrategy';
 import { SqlDialect } from '../query/SqlDialect';
 import { MssqlDialect } from '../query/MssqlDialect';
 
@@ -43,6 +44,7 @@ import { MssqlDialect } from '../query/MssqlDialect';
 export class MssqlProvider extends DatabaseProvider {
   private pool: any | null = null;
   private tx: any | null = null;
+  private ddl = new MssqlDdlStrategy();
   /** Create provider with MSSQL connection string. */
   constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[], softDelete?: any) {
     super(connectionString, logger, middlewares, softDelete);
@@ -81,11 +83,11 @@ export class MssqlProvider extends DatabaseProvider {
 
   /** Create table and indexes using entity metadata if absent. */
   public async createTable(entityMetadata: EntityMetadata): Promise<void> {
-    const sql = this.generateCreateTableSql(entityMetadata);
+    const sql = this.ddl.generateCreateTableSql(entityMetadata);
     await this.executeNonQuery(sql);
     // Indexes
     for (const index of entityMetadata.indexes) {
-      const idxSql = this.generateCreateIndexSql(entityMetadata.tableName, index);
+      const idxSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, index);
       await this.executeNonQuery(idxSql);
     }
   }
@@ -305,44 +307,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   // Private helpers
-  private generateCreateTableSql(metadata: EntityMetadata): string {
-    if (!metadata || !metadata.columns) {
-      throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
-    }
-    const columns: string[] = metadata.columns.map((c: ColumnMetadata) =>
-      this.generateColumnDefinition(c)
-    );
-    if (metadata.primaryKeys.length > 0) {
-      const pkCols = metadata.primaryKeys.map((pk) => {
-        const col = metadata.columns.find((c) => c.propertyName === pk);
-        return col ? col.columnName : pk;
-      });
-      columns.push(`PRIMARY KEY (${pkCols.join(', ')})`);
-    }
-    return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${metadata.tableName}') BEGIN CREATE TABLE ${metadata.tableName} (${columns.join(', ')}) END`;
-  }
-
-  private generateColumnDefinition(column: ColumnMetadata): string {
-    let definition = `${column.columnName} ${mapTypeToMssql(column.type)}`;
-    if (column.length) {
-      definition += `(${column.length})`;
-    }
-    if (!column.nullable) {
-      definition += ' NOT NULL';
-    }
-    if (column.defaultValue !== undefined) {
-      definition += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
-    }
-    return definition;
-  }
-
-  private generateCreateIndexSql(
-    tableName: string,
-    index: { name: string; columns: string[]; unique: boolean }
-  ): string {
-    const unique = index.unique ? 'UNIQUE ' : '';
-    return `IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='${index.name}' AND object_id=OBJECT_ID('${tableName}')) CREATE ${unique}INDEX ${index.name} ON ${tableName} (${index.columns.join(', ')})`;
-  }
+  // DDL generation moved to MssqlDdlStrategy
 
   private generateInsertSql(
     entity: any,

@@ -9,5 +9,3 @@ export interface SqlCache {
   clear(): void;
   size(): number;
 }
-
-

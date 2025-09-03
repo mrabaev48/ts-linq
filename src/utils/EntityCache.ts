@@ -2,7 +2,14 @@
  * Simple in-memory FIFO cache for entities keyed by `<EntityName>|<id>`.
  * Intended as a best-effort level-2 cache to reduce allocations and mapping work.
  */
-export class EntityCache {
+export interface EntityCacheLike {
+  get<T>(entityClass: Function, id: any): T | undefined;
+  set<T>(entityClass: Function, id: any, entity: T): void;
+  remove(entityClass: Function, id: any): void;
+  clear(): void;
+}
+
+export class EntityCache implements EntityCacheLike {
   private _store: Map<string, any> = new Map();
   private _maxSize: number;
 

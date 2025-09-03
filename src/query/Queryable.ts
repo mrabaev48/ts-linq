@@ -15,7 +15,10 @@ import { SqlVisitor } from './ast/SqlVisitor';
 import { QueryModel } from './QueryModel';
 import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
-import { EntityCache } from '../utils/EntityCache';
+import { EntityCache, EntityCacheLike } from '../utils/EntityCache';
+import { CountCache } from './CountCache';
+import { JoinPredicateParser } from './JoinPredicateParser';
+import { GlobalFilterApplier } from './GlobalFilterApplier';
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
@@ -27,13 +30,15 @@ export class Queryable<T> {
   private _model: QueryModel = new QueryModel();
   private _fallbackPredicates: Array<(entity: T) => boolean> = [];
   private _entityLoader?: EntityLoader;
-  private _entityCache?: EntityCache;
+  private _entityCache?: EntityCacheLike;
   private _performance?: PerformanceOptions;
   private _includes: string[] = [];
   private _sqlBuilder: QueryBuilder;
   private static _countCache: Map<string, { value: number; ts: number }> = new Map();
+  private _externalCountCache?: CountCache;
   private _abortSignal?: AbortSignal;
   private _globalFilters?: GlobalFilter[];
+  private _globalFilterApplier = new GlobalFilterApplier();
 
   /**
    * Create a new Queryable bound to an entity type and provider.
@@ -45,7 +50,7 @@ export class Queryable<T> {
     entityClass: new () => T,
     provider: DatabaseProvider,
     entityLoader?: EntityLoader,
-    entityCache?: EntityCache,
+    entityCache?: EntityCacheLike,
     performance?: PerformanceOptions,
     globalFilters?: GlobalFilter[]
   ) {
@@ -55,7 +60,11 @@ export class Queryable<T> {
     this._entityCache = entityCache;
     this._performance = performance;
     this._globalFilters = globalFilters;
-    this._sqlBuilder = new QueryBuilder(provider.getDialect(), provider.loggerRef, provider.providerLabel);
+    this._sqlBuilder = new QueryBuilder(
+      provider.getDialect(),
+      provider.loggerRef,
+      provider.providerLabel
+    );
   }
 
   /** Clear global count() cache (used on transaction rollback to avoid stale values). */
@@ -319,8 +328,7 @@ export class Queryable<T> {
     // Ensure order by key ASC (append if missing)
     (queryModel as any).orderBy = (queryModel as any).orderBy || [];
     const hasOrderByKey = (queryModel as any).orderBy.some((o: any) => o.column === String(key));
-    if (!hasOrderByKey)
-      (queryModel as any).orderBy.push({ column: String(key), direction: 'ASC' });
+    if (!hasOrderByKey) (queryModel as any).orderBy.push({ column: String(key), direction: 'ASC' });
     queryModel.limit = size;
     if (after !== null && after !== undefined) {
       // Add where key > after
@@ -437,7 +445,7 @@ export class Queryable<T> {
     if (this._performance?.enableCountCache) {
       const key = this.buildCountCacheKey(metadata.tableName);
       const ttl = this._performance.countCacheTtlMs ?? 0;
-      const hit = Queryable._countCache.get(key);
+      const hit = this._externalCountCache?.get(key) ?? Queryable._countCache.get(key);
       if (hit && (ttl <= 0 || Date.now() - hit.ts <= ttl)) {
         (this._provider as any).loggerRef?.cache?.({
           cache: 'count',
@@ -447,7 +455,9 @@ export class Queryable<T> {
         return hit.value;
       }
       const value = await this.executeCountQuery(metadata.tableName);
-      Queryable._countCache.set(key, { value, ts: Date.now() });
+      const entry = { value, ts: Date.now() };
+      if (this._externalCountCache) this._externalCountCache.set(key, entry);
+      else Queryable._countCache.set(key, entry);
       (this._provider as any).loggerRef?.cache?.({
         cache: 'count',
         hit: false,
@@ -712,48 +722,16 @@ export class Queryable<T> {
     leftMeta: any,
     rightMeta: any
   ): string {
-    // Extract identifiers and props using simple regex
-    // e.g., (a, b) => a.authorId === b.id
-    const match = onStr.match(/\((\w+)\s*,\s*(\w+)\)\s*=>\s*\1\.(\w+)\s*===?\s*\2\.(\w+)/);
-    if (!match) throw new Error(`Unable to parse join predicate: ${onStr}`);
-    const leftProp = match[3];
-    const rightProp = match[4];
-    const leftCol =
-      leftMeta.columns.find((c: any) => c.propertyName === leftProp)?.columnName || leftProp;
-    const rightCol =
-      rightMeta.columns.find((c: any) => c.propertyName === rightProp)?.columnName || rightProp;
-    return `${leftTable}.${leftCol} = ${rightTable}.${rightCol}`;
+    return JoinPredicateParser.parse(onStr, leftTable, rightTable, leftMeta, rightMeta);
   }
 
   /** Apply configured global filters to the provided query model. */
   private applyGlobalFiltersToModel(model: QueryModel & { where?: WhereClause[] }): void {
-    const selfMeta = MetadataStorage.getEntity(this._entityClass);
-    if (!selfMeta) return;
-    model.where = model.where || [];
-    // Soft-delete guard if enabled at provider level and entity has the column
-    const softDeleteOptions = (this._provider as any).softDeleteOptions as
-      | { enabled?: boolean; column?: string }
-      | undefined;
-    if (softDeleteOptions?.enabled) {
-      const flagPropOrCol = softDeleteOptions.column ?? 'isDeleted';
-      const col = selfMeta.columns.find(
-        (c) => c.propertyName === flagPropOrCol || c.columnName === flagPropOrCol
-      );
-      if (col) {
-        model.where.push({ condition: `${col.columnName} = 0`, parameters: [] } as any);
-      }
-    }
-    // Explicit global filters
-    if (this._globalFilters && this._globalFilters.length > 0) {
-      for (const globalFilter of this._globalFilters) {
-        const filterMeta = MetadataStorage.getEntity(globalFilter.entity as any);
-        if (filterMeta && selfMeta.tableName === filterMeta.tableName) {
-          model.where.push({
-            condition: globalFilter.where.condition,
-            parameters: [...globalFilter.where.parameters]
-          } as any);
-        }
-      }
-    }
+    this._globalFilterApplier.apply(
+      this._entityClass,
+      model,
+      (this._provider as any).softDeleteOptions,
+      this._globalFilters
+    );
   }
 }

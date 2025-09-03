@@ -20,7 +20,7 @@ import {
   AuditOptions,
   GlobalFilter
 } from '../types';
-import { EntityCache } from '../utils/EntityCache';
+import { EntityCache, EntityCacheLike } from '../utils/EntityCache';
 
 /**
  * Base unit-of-work style context that orchestrates entity sets, change tracking
@@ -40,7 +40,7 @@ export abstract class DbContext {
   private _entityLoader: EntityLoader;
   private _dbSets: Map<Function, DbSet<any>> = new Map();
   private _defaultLoadingStrategy: LoadingStrategy = LoadingStrategy.Lazy;
-  private _entityCache?: EntityCache;
+  private _entityCache?: EntityCacheLike;
   private _performanceOptions?: PerformanceOptions;
   private _loadingDefaults: LoadingDefaults = {};
   private _softDelete?: SoftDeleteOptions;
@@ -57,11 +57,13 @@ export abstract class DbContext {
     this._softDelete = options.softDelete;
     this._audit = options.audit;
     this._globalFilters = options.globalFilters;
-    switch (options.provider || 'sqlite') {
+    const providerKey = options.provider || 'sqlite';
+    const logger = options.loggerFactory?.create(providerKey) ?? options.logger;
+    switch (providerKey) {
       case 'sqlite':
         this._provider = new SQLiteProvider(
           options.connectionString,
-          options.logger,
+          logger,
           options.middlewares,
           this._softDelete
         );
@@ -69,7 +71,7 @@ export abstract class DbContext {
       case 'postgresql':
         this._provider = new PostgresProvider(
           options.connectionString,
-          options.logger,
+          logger,
           options.middlewares,
           this._softDelete
         );
@@ -77,7 +79,7 @@ export abstract class DbContext {
       case 'mssql':
         this._provider = new MssqlProvider(
           options.connectionString,
-          options.logger,
+          logger,
           options.middlewares,
           this._softDelete
         );
@@ -85,7 +87,7 @@ export abstract class DbContext {
       case 'mysql':
         this._provider = new MySqlProvider(
           options.connectionString,
-          options.logger,
+          logger,
           options.middlewares,
           this._softDelete
         );

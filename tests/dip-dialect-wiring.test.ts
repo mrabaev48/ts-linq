@@ -15,15 +15,31 @@ class ProviderStub extends DatabaseProvider {
   public async connect(): Promise<void> {}
   public async disconnect(): Promise<void> {}
   public async createTable(): Promise<void> {}
-  public async insert<T>(entity: T): Promise<T> { return entity; }
-  public async update<T>(entity: T): Promise<T> { return entity; }
+  public async insert<T>(entity: T): Promise<T> {
+    return entity;
+  }
+  public async update<T>(entity: T): Promise<T> {
+    return entity;
+  }
   public async delete<T>(): Promise<void> {}
-  public async findById<T>(): Promise<T | null> { return null; }
-  public async findAll<T>(): Promise<T[]> { return []; }
-  public async findWhere<T>(): Promise<T[]> { return []; }
-  public async findWhereIn<T>(): Promise<T[]> { return []; }
-  protected async doExecuteQuery<T>(_sql: string, _params?: any[]): Promise<T[]> { return []; }
-  protected async doExecuteNonQuery(_sql: string, _params?: any[]): Promise<number> { return 0; }
+  public async findById<T>(): Promise<T | null> {
+    return null;
+  }
+  public async findAll<T>(): Promise<T[]> {
+    return [];
+  }
+  public async findWhere<T>(): Promise<T[]> {
+    return [];
+  }
+  public async findWhereIn<T>(): Promise<T[]> {
+    return [];
+  }
+  protected async doExecuteQuery<T>(_sql: string, _params?: any[]): Promise<T[]> {
+    return [];
+  }
+  protected async doExecuteNonQuery(_sql: string, _params?: any[]): Promise<number> {
+    return 0;
+  }
   public async beginTransaction(): Promise<void> {}
   public async commitTransaction(): Promise<void> {}
   public async rollbackTransaction(): Promise<void> {}
@@ -56,7 +72,9 @@ describe('DIP: provider → dialect wiring', () => {
   test('Queryable uses provider.getDialect()', async () => {
     class DummyProvider extends ProviderStub {
       public capturedSql: string | undefined;
-      public getDialect(): SqlDialect { return new DummyDialect(); }
+      public getDialect(): SqlDialect {
+        return new DummyDialect();
+      }
       protected async doExecuteQuery<T>(sql: string, _params?: any[]): Promise<T[]> {
         this.capturedSql = sql;
         return [] as any;
@@ -70,5 +88,3 @@ describe('DIP: provider → dialect wiring', () => {
     expect(provider.capturedSql).toContain('/*DUMMY DIALECT*/');
   });
 });
-
-

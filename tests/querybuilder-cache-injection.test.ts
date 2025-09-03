@@ -12,10 +12,18 @@ class DummyDialect implements SqlDialect {
 
 class InMemorySqlCache implements SqlCache {
   private map = new Map<string, SqlCacheEntry>();
-  get(key: string): SqlCacheEntry | undefined { return this.map.get(key); }
-  set(key: string, value: SqlCacheEntry): void { this.map.set(key, value); }
-  clear(): void { this.map.clear(); }
-  size(): number { return this.map.size; }
+  get(key: string): SqlCacheEntry | undefined {
+    return this.map.get(key);
+  }
+  set(key: string, value: SqlCacheEntry): void {
+    this.map.set(key, value);
+  }
+  clear(): void {
+    this.map.clear();
+  }
+  size(): number {
+    return this.map.size;
+  }
 }
 
 class E {}
@@ -37,5 +45,3 @@ describe('QueryBuilder external SqlCache injection', () => {
     expect(dialect.calls).toBe(1);
   });
 });
-
-

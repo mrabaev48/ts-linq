@@ -4,6 +4,7 @@ import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SqlHelper } from '../utils/SqlHelper';
 import { SqlDialect } from '../query/SqlDialect';
 import { MysqlDialect } from '../query/MysqlDialect';
+import { MySqlDdlStrategy } from './mysql/MySqlDdlStrategy';
 
 /**
  * MySQL provider based on `mysql2/promise`.
@@ -36,6 +37,7 @@ import { MysqlDialect } from '../query/MysqlDialect';
  */
 export class MySqlProvider extends DatabaseProvider {
   private pool: any | null = null;
+  private ddl = new MySqlDdlStrategy();
   constructor(connectionString: string, logger?: SqlLogger, middlewares?: any[], softDelete?: any) {
     super(connectionString, logger, middlewares, softDelete);
     this.providerName = 'mysql';
@@ -57,10 +59,10 @@ export class MySqlProvider extends DatabaseProvider {
   }
 
   public async createTable(entity: EntityMetadata): Promise<void> {
-    const sql = this.generateCreateTableSql(entity);
+    const sql = this.ddl.generateCreateTableSql(entity);
     await this.executeNonQuery(sql);
     for (const idx of entity.indexes) {
-      await this.executeNonQuery(this.generateCreateIndexSql(entity.tableName, idx));
+      await this.executeNonQuery(this.ddl.generateCreateIndexSql(entity.tableName, idx));
     }
   }
 
@@ -224,34 +226,7 @@ export class MySqlProvider extends DatabaseProvider {
     return new MysqlDialect();
   }
 
-  private generateCreateTableSql(metadata: EntityMetadata): string {
-    if (!metadata || !metadata.columns) {
-      throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
-    }
-    const cols: string[] = metadata.columns.map((c) => this.generateColumnDefinition(c));
-    if (metadata.primaryKeys.length) {
-      const pkCols = metadata.primaryKeys.map(
-        (pk) => metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk
-      );
-      cols.push(`PRIMARY KEY (${pkCols.join(', ')})`);
-    }
-    return `CREATE TABLE IF NOT EXISTS ${metadata.tableName} (${cols.join(', ')})`;
-  }
-  private generateColumnDefinition(column: ColumnMetadata): string {
-    let def = `${column.columnName} ${mapTypeToMySql(column.type)}`;
-    if (column.length) def += `(${column.length})`;
-    if (!column.nullable) def += ' NOT NULL';
-    if (column.defaultValue !== undefined)
-      def += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
-    return def;
-  }
-  private generateCreateIndexSql(
-    table: string,
-    index: { name: string; columns: string[]; unique: boolean }
-  ): string {
-    const uniq = index.unique ? 'UNIQUE ' : '';
-    return `CREATE ${uniq}INDEX IF NOT EXISTS ${index.name} ON ${table} (${index.columns.join(', ')})`;
-  }
+  // DDL generation moved to MySqlDdlStrategy
   private generateInsertSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
     const insertable = metadata.columns.filter(
       (c) => !c.isGenerated || entity[c.propertyName] !== undefined

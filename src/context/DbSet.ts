@@ -3,7 +3,7 @@ import { ChangeTracker } from '../change-tracking/ChangeTracker';
 import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingOptions } from '../loading/LoadingStrategy';
 import { Queryable } from '../query/Queryable';
-import { EntityCache } from '../utils/EntityCache';
+import { EntityCache, EntityCacheLike } from '../utils/EntityCache';
 import { PerformanceOptions, GlobalFilter } from '../types';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
@@ -17,7 +17,7 @@ export class DbSet<T> {
   private _provider: DatabaseProvider;
   private _changeTracker: ChangeTracker;
   private _entityLoader: EntityLoader | undefined;
-  private _entityCache: EntityCache | undefined;
+  private _entityCache: EntityCacheLike | undefined;
   private _performance: PerformanceOptions | undefined;
   private _globalFilters: GlobalFilter[] | undefined;
 
@@ -26,7 +26,7 @@ export class DbSet<T> {
     provider: DatabaseProvider,
     changeTracker: ChangeTracker,
     entityLoader?: EntityLoader,
-    entityCache?: EntityCache,
+    entityCache?: EntityCacheLike,
     performance?: PerformanceOptions,
     globalFilters?: GlobalFilter[]
   ) {
