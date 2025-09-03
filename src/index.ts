@@ -43,6 +43,8 @@ export * from './loading/EntityLoader';
 // Migrations
 export * from './migrations/Migration';
 export * from './migrations/MigrationRunner';
+export * from './migrations/DiffTypes';
+export * from './migrations/DialectMigrationSql';
 
 // Utils
 export * from './utils/SqlHelper';
