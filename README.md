@@ -1021,6 +1021,7 @@ npm run docs
 
 - Output will be in the `docs/` folder. Open `docs/index.html` in a browser.
 - The generator uses `src/index.ts` as the entry point and includes public and private APIs. If you see warnings about referenced types not included, consider exporting those types from `src/index.ts` or ignore the warnings.
+ - Contribution & Architecture: see `CONTRIBUTING.md` and `docs/guides/architecture.md`.
 
 ### Guides
 
