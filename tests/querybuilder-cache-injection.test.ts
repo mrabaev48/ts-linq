@@ -1,11 +1,14 @@
 import { QueryBuilder } from '../src/query/QueryBuilder';
-import { SqlDialect } from '../src/query/SqlDialect';
-import { QueryOptions, SqlParameter } from '../src/types';
-import { SqlCache, SqlCacheEntry } from '../src/query/SqlCache';
+import type { SqlDialect } from '../src/query/SqlDialect';
+import type { QueryOptions, SqlParameter } from '../src/types';
+import type { SqlCache, SqlCacheEntry } from '../src/query/SqlCache';
 
 class DummyDialect implements SqlDialect {
   public calls = 0;
-  buildSelect<T>(_entityClass: new () => T, _options: QueryOptions): { query: string; parameters: SqlParameter[] } {
+  buildSelect<T>(
+    _entityClass: new () => T,
+    _options: QueryOptions
+  ): { query: string; parameters: SqlParameter[] } {
     this.calls++;
     return { query: 'SELECT 1', parameters: [] };
   }
@@ -38,8 +41,8 @@ describe('QueryBuilder external SqlCache injection', () => {
     const qb = new QueryBuilder(dialect, undefined, 'sqlite', cache);
 
     const opts: QueryOptions = { where: [] };
-    const a = qb.generateSql(E as any, opts);
-    const b = qb.generateSql(E as any, opts);
+    const a = qb.generateSql(E, opts);
+    const b = qb.generateSql(E, opts);
     expect(a.query).toBe('SELECT 1');
     expect(b.query).toBe('SELECT 1');
     expect(cache.size()).toBe(1);

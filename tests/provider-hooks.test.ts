@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { SQLiteProvider } from '../src/providers/SQLiteProvider';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
-import { SqlParameter } from '../src/types';
+import type { SqlParameter } from '../src/types';
 
 class HookedProvider extends SQLiteProvider {
   public before: Array<string> = [];
@@ -9,7 +9,11 @@ class HookedProvider extends SQLiteProvider {
   protected async beforeExecute(sql: string, params: readonly SqlParameter[]): Promise<void> {
     this.before.push(sql);
   }
-  protected async afterExecute(sql: string, params: readonly SqlParameter[], result: unknown): Promise<void> {
+  protected async afterExecute(
+    sql: string,
+    params: readonly SqlParameter[],
+    result: unknown
+  ): Promise<void> {
     this.after.push(sql);
   }
 }

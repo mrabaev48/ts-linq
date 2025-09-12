@@ -1,4 +1,4 @@
-import { SchemaDiff, TableDiff } from './DiffTypes';
+import type { SchemaDiff, TableDiff } from './DiffTypes';
 
 export type Dialect = 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
 
@@ -44,23 +44,77 @@ export function generateMigrationFromDiff(
       // Down неизвестен без snapshot, пропустим
       continue;
     }
-    if ((tableDiff as unknown as { indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }> }).indexCreates && (tableDiff as unknown as { indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }> }).indexCreates!.length > 0) {
-      for (const idx of (tableDiff as unknown as { indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }> }).indexCreates!) {
+    if (
+      (
+        tableDiff as unknown as {
+          indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }>;
+        }
+      ).indexCreates &&
+      (
+        tableDiff as unknown as {
+          indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }>;
+        }
+      ).indexCreates!.length > 0
+    ) {
+      for (const idx of (
+        tableDiff as unknown as {
+          indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }>;
+        }
+      ).indexCreates!) {
         const uniq = idx.unique ? 'UNIQUE ' : '';
         const cols = idx.columns.map((column: string) => q(dialect, column)).join(', ');
         const name = q(dialect, idx.name);
         up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})`);
       }
     }
-    if ((tableDiff as unknown as { indexDrops?: string[] }).indexDrops && (tableDiff as unknown as { indexDrops?: string[] }).indexDrops!.length > 0) {
+    if (
+      (tableDiff as unknown as { indexDrops?: string[] }).indexDrops &&
+      (tableDiff as unknown as { indexDrops?: string[] }).indexDrops!.length > 0
+    ) {
       for (const nameRaw of (tableDiff as unknown as { indexDrops?: string[] }).indexDrops!) {
         const name = q(dialect, nameRaw);
         // Generic DROP INDEX form; some dialects require table qualifier or IF EXISTS, kept simple here
         up.push(`DROP INDEX ${name}`);
       }
     }
-    if ((tableDiff as unknown as { fkCreates?: Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }> }).fkCreates && (tableDiff as unknown as { fkCreates?: Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }> }).fkCreates!.length > 0) {
-      for (const fk of (tableDiff as unknown as { fkCreates?: Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }> }).fkCreates!) {
+    if (
+      (
+        tableDiff as unknown as {
+          fkCreates?: Array<{
+            name?: string;
+            columns: string[];
+            refTable: string;
+            refColumns: string[];
+            onDelete?: string;
+            onUpdate?: string;
+          }>;
+        }
+      ).fkCreates &&
+      (
+        tableDiff as unknown as {
+          fkCreates?: Array<{
+            name?: string;
+            columns: string[];
+            refTable: string;
+            refColumns: string[];
+            onDelete?: string;
+            onUpdate?: string;
+          }>;
+        }
+      ).fkCreates!.length > 0
+    ) {
+      for (const fk of (
+        tableDiff as unknown as {
+          fkCreates?: Array<{
+            name?: string;
+            columns: string[];
+            refTable: string;
+            refColumns: string[];
+            onDelete?: string;
+            onUpdate?: string;
+          }>;
+        }
+      ).fkCreates!) {
         const name = fk.name ? `CONSTRAINT ${q(dialect, fk.name)} ` : '';
         const cols = fk.columns.map((column: string) => q(dialect, column)).join(', ');
         const refCols = fk.refColumns.map((column: string) => q(dialect, column)).join(', ');
@@ -84,17 +138,26 @@ export function generateMigrationFromDiff(
         }
       }
     }
-    if ((tableDiff as unknown as { fkDrops?: string[] }).fkDrops && (tableDiff as unknown as { fkDrops?: string[] }).fkDrops!.length > 0) {
+    if (
+      (tableDiff as unknown as { fkDrops?: string[] }).fkDrops &&
+      (tableDiff as unknown as { fkDrops?: string[] }).fkDrops!.length > 0
+    ) {
       for (const nameRaw of (tableDiff as unknown as { fkDrops?: string[] }).fkDrops!) {
         switch (dialect) {
           case 'postgresql':
-            up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`);
+            up.push(
+              `ALTER TABLE ${q(dialect, tableDiff.table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`
+            );
             break;
           case 'mysql':
-            up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} DROP FOREIGN KEY ${q(dialect, nameRaw)}`);
+            up.push(
+              `ALTER TABLE ${q(dialect, tableDiff.table)} DROP FOREIGN KEY ${q(dialect, nameRaw)}`
+            );
             break;
           case 'mssql':
-            up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`);
+            up.push(
+              `ALTER TABLE ${q(dialect, tableDiff.table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`
+            );
             break;
           default:
             up.push(`-- SQLite requires table rebuild to drop FK: ${nameRaw}`);
@@ -122,7 +185,9 @@ export function generateMigrationFromDiff(
             up.push(buildAlterTypeSql(dialect, tableDiff.table, ch.column.name, ch.column.type));
           const prevNullable = (ch.prev as { nullable?: boolean } | undefined)?.nullable;
           if (typeof prevNullable === 'boolean' && prevNullable !== ch.column.nullable) {
-            up.push(buildAlterNullSql(dialect, tableDiff.table, ch.column.name, ch.column.nullable));
+            up.push(
+              buildAlterNullSql(dialect, tableDiff.table, ch.column.name, ch.column.nullable)
+            );
           }
         } else if (ch.kind === 'drop') {
           // Generate DROP COLUMN for dialects that support it
@@ -130,8 +195,15 @@ export function generateMigrationFromDiff(
         }
       }
     }
-    if ((tableDiff as unknown as { columnRenames?: Array<{ from: string; to: string }> }).columnRenames && (tableDiff as unknown as { columnRenames?: Array<{ from: string; to: string }> }).columnRenames!.length > 0) {
-      for (const rn of (tableDiff as unknown as { columnRenames?: Array<{ from: string; to: string }> }).columnRenames!) {
+    if (
+      (tableDiff as unknown as { columnRenames?: Array<{ from: string; to: string }> })
+        .columnRenames &&
+      (tableDiff as unknown as { columnRenames?: Array<{ from: string; to: string }> })
+        .columnRenames!.length > 0
+    ) {
+      for (const rn of (
+        tableDiff as unknown as { columnRenames?: Array<{ from: string; to: string }> }
+      ).columnRenames!) {
         switch (dialect) {
           case 'postgresql':
             up.push(

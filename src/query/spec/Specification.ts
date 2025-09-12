@@ -1,4 +1,5 @@
-import { ExpressionNode, LogicalExpressionNode, LogicalOperator } from '../ast/Nodes';
+import type { ExpressionNode, LogicalExpressionNode } from '../ast/Nodes';
+import { LogicalOperator } from '../ast/Nodes';
 
 /**
  * Specification pattern: composable, testable business rules that can be

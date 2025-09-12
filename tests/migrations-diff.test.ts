@@ -28,12 +28,23 @@ describe('Schema diff migration (SQLite minimal)', () => {
     const ctx = new DCtx();
     await ctx.ensureCreated();
 
-    const gen = new DiffMigrationGenerator((ctx as unknown as { provider: DatabaseProvider }).provider);
+    const gen = new DiffMigrationGenerator(
+      (ctx as unknown as { provider: DatabaseProvider }).provider
+    );
     const steps = await gen.generate();
     expect(Array.isArray(steps)).toBe(true);
     // Since provider.createTable was used during ensureCreated, table exists, so steps may be empty or ALTERs
     // We add a new property to force ADD COLUMN
-    (MetadataStorage.getEntity(DUser) as unknown as { columns: Array<{ propertyName: string; columnName: string; type: string; nullable: boolean }> }).columns.push({
+    (
+      MetadataStorage.getEntity(DUser) as unknown as {
+        columns: Array<{
+          propertyName: string;
+          columnName: string;
+          type: string;
+          nullable: boolean;
+        }>;
+      }
+    ).columns.push({
       propertyName: 'age',
       columnName: 'age',
       type: 'INTEGER',

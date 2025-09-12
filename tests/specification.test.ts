@@ -11,8 +11,14 @@ describe('Specification', () => {
   it('Composite AND combines expressions', () => {
     type AB = { a?: number; b?: number };
     const parser = new PredicateParser<AB>();
-    const s1 = new PredicateSpecification<AB>((x) => (x.a as number) === 1, parser.parse((x: any) => x.a === 1));
-    const s2 = new PredicateSpecification<AB>((x) => (x.b as number) > 0, parser.parse((x: any) => x.b > 0));
+    const s1 = new PredicateSpecification<AB>(
+      (x) => (x.a as number) === 1,
+      parser.parse((x: AB) => (x.a as number) === 1)
+    );
+    const s2 = new PredicateSpecification<AB>(
+      (x) => (x.b as number) > 0,
+      parser.parse((x: AB) => (x.b as number) > 0)
+    );
     const andSpec = Specs.and<AB>(s1, s2);
     const expr = andSpec.toExpression();
     expect(expr).toBeTruthy();

@@ -3,6 +3,8 @@ import { DbContext } from '../src/context/DbContext';
 import { Entity } from '../src/decorators/Entity';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
+import type { DbSet } from '../src/context/DbSet';
+import type { MssqlProvider } from '../src/providers/MssqlProvider';
 
 const MSSQL_URL = process.env.MSSQL_URL || '';
 const mssqlDescribe = MSSQL_URL ? describe : describe.skip;
@@ -14,7 +16,7 @@ class MsUser {
 }
 
 class MsCtx extends DbContext {
-  public msusers!: any;
+  public msusers!: DbSet<MsUser>;
   constructor() {
     super({ connectionString: MSSQL_URL, provider: 'mssql' });
   }
@@ -25,7 +27,8 @@ mssqlDescribe('MSSQL integration (requires MSSQL_URL)', () => {
     new MsUser();
     const ctx = new MsCtx();
     await ctx.ensureCreated();
-    const u = { name: 'ms-user' } as any as MsUser;
+    const u = new MsUser();
+    u.name = 'ms-user';
     ctx.msusers.add(u);
     await ctx.saveChanges();
     const all = await ctx.msusers.toArray();
@@ -37,11 +40,14 @@ mssqlDescribe('MSSQL integration (requires MSSQL_URL)', () => {
     new MsUser();
     const ctx = new MsCtx();
     await ctx.ensureCreated();
-    const u = { id: 1, name: 'ms-upsert-1' } as any as MsUser;
-    await (ctx as any).provider.upsert(u, MsUser);
+    const u = new MsUser();
+    u.id = 1;
+    u.name = 'ms-upsert-1';
+    const provider = (ctx as unknown as { provider: MssqlProvider }).provider;
+    await provider.upsert(u, MsUser);
     u.name = 'ms-upsert-2';
-    await (ctx as any).provider.upsert(u, MsUser);
-    const found = await (ctx as any).provider.findWhere(MsUser, { name: 'ms-upsert-2' });
+    await provider.upsert(u, MsUser);
+    const found = await provider.findWhere(MsUser, { name: 'ms-upsert-2' });
     expect(found.length).toBeGreaterThan(0);
     await ctx.dispose();
   });

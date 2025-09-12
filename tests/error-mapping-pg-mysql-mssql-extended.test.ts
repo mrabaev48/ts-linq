@@ -6,47 +6,53 @@ import { MssqlProvider } from '../src/providers/MssqlProvider';
 
 class PgFK extends PostgresProvider {
   public async connect() {
-    (this as any).pool = {
+    type Pool = { query: () => Promise<never> };
+    (this as unknown as { pool?: Pool }).pool = {
       query: async () => {
-        const e: any = new Error('insert or update on table violates foreign key constraint');
-        e.code = '23503';
-        throw e;
+        const err = new Error(
+          'insert or update on table violates foreign key constraint'
+        ) as Error & {
+          code?: string;
+        };
+        err.code = '23503';
+        throw err;
       }
     };
-    this['isConnected'] = true;
+    (this as unknown as { isConnected: boolean }).isConnected = true;
   }
   public async disconnect() {
-    this['isConnected'] = false;
+    (this as unknown as { isConnected: boolean }).isConnected = false;
   }
 }
 
 class MyTimeout extends MySqlProvider {
   public async connect() {
-    (this as any).pool = {
+    type Pool = { query: () => Promise<never>; execute: () => Promise<never> };
+    (this as unknown as { pool?: Pool }).pool = {
       query: async () => {
-        const e: any = new Error('timeout');
-        e.code = 'PROTOCOL_SEQUENCE_TIMEOUT';
-        throw e;
+        const err = new Error('timeout') as Error & { code?: string };
+        err.code = 'PROTOCOL_SEQUENCE_TIMEOUT';
+        throw err;
       },
       execute: async () => {
-        const e: any = new Error('timeout');
-        e.code = 'PROTOCOL_SEQUENCE_TIMEOUT';
-        throw e;
+        const err = new Error('timeout') as Error & { code?: string };
+        err.code = 'PROTOCOL_SEQUENCE_TIMEOUT';
+        throw err;
       }
     };
-    this['isConnected'] = true;
+    (this as unknown as { isConnected: boolean }).isConnected = true;
   }
   public async disconnect() {
-    this['isConnected'] = false;
+    (this as unknown as { isConnected: boolean }).isConnected = false;
   }
 }
 
 class MsTimeout extends MssqlProvider {
   public async connect() {
-    this['isConnected'] = true;
+    (this as unknown as { isConnected: boolean }).isConnected = true;
   }
   public async disconnect() {
-    this['isConnected'] = false;
+    (this as unknown as { isConnected: boolean }).isConnected = false;
   }
   protected async doExecuteNonQuery(): Promise<number> {
     throw new DatabaseError('timeout');

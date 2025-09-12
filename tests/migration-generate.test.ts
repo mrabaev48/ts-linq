@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { generateMigrationFromDiff } from '../src/migrations/DialectMigrationSql';
-import { SchemaDiff } from '../src/migrations/DiffTypes';
+import type { SchemaDiff } from '../src/migrations/DiffTypes';
 
 describe('generateMigration SQL', () => {
   it('creates up SQL with PK, index and FK (postgresql)', () => {
@@ -11,16 +11,16 @@ describe('generateMigration SQL', () => {
           create: {
             name: 'Orders',
             columns: [
-              { name: 'id', type: 'INTEGER', nullable: false } as any,
-              { name: 'userId', type: 'INTEGER', nullable: false } as any,
-              { name: 'note', type: 'TEXT', nullable: true } as any
+              { name: 'id', type: 'INTEGER', nullable: false },
+              { name: 'userId', type: 'INTEGER', nullable: false },
+              { name: 'note', type: 'TEXT', nullable: true }
             ],
             primaryKeys: ['id'],
             indexes: [{ name: 'idx_orders_user', columns: ['userId'], unique: false }],
             foreignKeys: [
               { columns: ['userId'], refTable: 'Users', refColumns: ['id'], onDelete: 'CASCADE' }
             ]
-          } as any
+          }
         }
       ]
     };

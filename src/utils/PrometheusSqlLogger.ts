@@ -1,4 +1,4 @@
-import { SqlLogger, SqlParameter } from '../types';
+import type { SqlLogger, SqlParameter } from '../types';
 
 type LabelValues = Record<string, string>;
 
@@ -200,10 +200,14 @@ export class PrometheusSqlLogger implements SqlLogger {
       // Attach exemplar when traceId is present and prom-client supports it
       const duration = Math.max(0, info.durationMs);
       try {
-        this.queryDuration.labels(labels).observe(
-          duration,
-          info.traceId ? { traceId: info.traceId } : (undefined as unknown as Record<string, unknown>)
-        );
+        this.queryDuration
+          .labels(labels)
+          .observe(
+            duration,
+            info.traceId
+              ? { traceId: info.traceId }
+              : (undefined as unknown as Record<string, unknown>)
+          );
       } catch {
         this.queryDuration.labels(labels).observe(duration);
       }
@@ -282,7 +286,11 @@ export class PrometheusSqlLogger implements SqlLogger {
   }
 
   /** Cache size setter (optional API, used via duck typing). */
-  public cacheSize?(info: { cache: 'sqlGen' | 'entityL2' | 'count'; size: number; provider?: string }): void {
+  public cacheSize?(info: {
+    cache: 'sqlGen' | 'entityL2' | 'count';
+    size: number;
+    provider?: string;
+  }): void {
     if (!this.enabled || !this.cacheSizeGauge) return;
     const provider = info.provider || 'unknown';
     try {

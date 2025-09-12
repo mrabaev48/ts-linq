@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { ColumnMetadata, RelationshipMetadata } from '../types';
+import type { ColumnMetadata, RelationshipMetadata } from '../types';
 
 /**
  * Options for configuring an entity/table.
@@ -26,13 +26,12 @@ export function Entity(options: EntityOptions = {}): ClassDecorator {
     MetadataStorage.addEntity(target, tableName);
 
     // Return lightweight subclass that re-registers metadata if storage was cleared
-    const ExtendedClass = class extends (target as unknown as new (
-      ...args: unknown[]
-    ) => object) {
+    const ExtendedClass = class extends (target as unknown as new (...args: unknown[]) => object) {
       constructor(...args: unknown[]) {
         super(...args);
         if (!MetadataStorage.getEntity(target)) {
-          const tn = (Reflect.getOwnMetadata('orm:tableName', target) as string | undefined) || tableName;
+          const tn =
+            (Reflect.getOwnMetadata('orm:tableName', target) as string | undefined) || tableName;
           MetadataStorage.addEntity(target, tn);
           const columns = (Reflect.getOwnMetadata('orm:columns', target) as ColumnMetadata[]) || [];
           for (const col of columns) {

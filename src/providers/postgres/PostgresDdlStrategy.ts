@@ -1,4 +1,5 @@
-import { EntityMetadata, ColumnMetadata } from '../../types';
+import type { EntityMetadata } from '../../types';
+import { ColumnMetadata } from '../../types';
 import { SqlHelper } from '../../utils/SqlHelper';
 
 export class PostgresDdlStrategy {
@@ -11,7 +12,8 @@ export class PostgresDdlStrategy {
     if (entityMetadata.primaryKeys.length > 0) {
       const primaryKeySql = entityMetadata.primaryKeys
         .map(
-          (primaryKey) => `"${entityMetadata.columns.find((column) => column.propertyName === primaryKey)?.columnName || primaryKey}"`
+          (primaryKey) =>
+            `"${entityMetadata.columns.find((column) => column.propertyName === primaryKey)?.columnName || primaryKey}"`
         )
         .join(', ');
       columnSqls.push(`PRIMARY KEY (${primaryKeySql})`);

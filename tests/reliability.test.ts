@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
-import { SqlLogger, SqlParameter } from '../src/types';
+import type { SqlLogger, SqlParameter } from '../src/types';
 import { PredicateParser } from '../src/query/PredicateParser';
 
 describe('Reliability & Errors', () => {
@@ -34,7 +34,10 @@ describe('Reliability & Errors', () => {
       public async findWhereIn<T>(): Promise<T[]> {
         return [];
       }
-      protected async doExecuteQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]> {
+      protected async doExecuteQuery<T>(
+        sql: string,
+        params?: readonly SqlParameter[]
+      ): Promise<T[]> {
         if (sql.includes('FAIL')) throw new Error('boom');
         return [{ ok: true }] as unknown as T[];
       }
@@ -64,12 +67,12 @@ describe('Reliability & Errors', () => {
   });
 
   test('PredicateParser guard rails produce null for complex predicates', () => {
-    const parser = new PredicateParser<any>();
-    const complex = (a: any) => {
+    const parser = new PredicateParser<{ price: number; stock: number }>();
+    const complex = (a: { price: number; stock: number }) => {
       const x = a.price > 10 || a.stock > 0;
       return x;
     };
-    const res = parser.parse(complex as any);
+    const res = parser.parse(complex);
     expect(res).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { WhereClause, OrderByClause, GroupByClause, JoinClause } from '../types';
+import type { WhereClause, OrderByClause, GroupByClause, JoinClause } from '../types';
 
 /**
  * Immutable-ish carrier for a query intent. Used by Queryable to

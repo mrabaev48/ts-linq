@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { RelationshipMetadata } from '../types';
+import type { RelationshipMetadata } from '../types';
 
 /**
  * Options for configuring relationships between entities.
@@ -38,7 +38,10 @@ export function OneToMany(
       cascade: options?.cascade || false
     };
 
-    MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
+    MetadataStorage.addRelationship(
+      (target as { constructor: Function }).constructor,
+      relationship
+    );
 
     // Persist relationship for rehydration
     const ctor = (target as { constructor: Function }).constructor;
@@ -72,7 +75,10 @@ export function ManyToOne(
       cascade: options?.cascade || false
     };
 
-    MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
+    MetadataStorage.addRelationship(
+      (target as { constructor: Function }).constructor,
+      relationship
+    );
 
     const ctor = (target as { constructor: Function }).constructor;
     const existing: RelationshipMetadata[] =
@@ -105,7 +111,10 @@ export function OneToOne(
       cascade: options?.cascade || false
     };
 
-    MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
+    MetadataStorage.addRelationship(
+      (target as { constructor: Function }).constructor,
+      relationship
+    );
 
     const ctor = (target as { constructor: Function }).constructor;
     const existing: RelationshipMetadata[] =
@@ -138,7 +147,10 @@ export function ManyToMany(
       cascade: options?.cascade || false
     };
 
-    MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
+    MetadataStorage.addRelationship(
+      (target as { constructor: Function }).constructor,
+      relationship
+    );
 
     const ctor = (target as { constructor: Function }).constructor;
     const existing: RelationshipMetadata[] =

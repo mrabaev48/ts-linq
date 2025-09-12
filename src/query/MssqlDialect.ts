@@ -1,6 +1,6 @@
-import { SqlDialect } from './SqlDialect';
+import type { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { QueryOptions, SqlParameter } from '../types';
+import type { QueryOptions, SqlParameter } from '../types';
 
 /**
  * MSSQL dialect for SELECT generation.
@@ -61,7 +61,8 @@ export class MssqlDialect implements SqlDialect {
       }
       if (options.groupBy.having) {
         query += ` HAVING ${options.groupBy.having.condition}`;
-        if (options.groupBy.having.parameters) parameters.push(...options.groupBy.having.parameters);
+        if (options.groupBy.having.parameters)
+          parameters.push(...options.groupBy.having.parameters);
       }
     }
 

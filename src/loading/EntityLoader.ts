@@ -1,5 +1,6 @@
-import { LoadingStrategy, LoadingOptions } from './LoadingStrategy';
-import { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { LoadingOptions } from './LoadingStrategy';
+import { LoadingStrategy } from './LoadingStrategy';
+import type { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 
 /**
@@ -50,7 +51,10 @@ export class EntityLoader {
   /**
    * Load all entities for a given type with optional eager includes.
    */
-  public async loadEntities<T extends object>(entityClass: new () => T, options?: LoadingOptions): Promise<T[]> {
+  public async loadEntities<T extends object>(
+    entityClass: new () => T,
+    options?: LoadingOptions
+  ): Promise<T[]> {
     const entities = await this._provider.findAll(entityClass);
 
     const loadingOptions = {
@@ -108,7 +112,8 @@ export class EntityLoader {
               { ...options, depth: depth - 1 }
             );
             if (relatedEntity) {
-              (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntity as unknown;
+              (entity as Record<string, unknown>)[relationship.propertyName] =
+                relatedEntity as unknown;
             }
             break;
           }
@@ -127,7 +132,8 @@ export class EntityLoader {
             const relatedEntities = await this._provider.findWhere(targetCtor as new () => object, {
               [foreignKeyName]: parentPkValue
             });
-            (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntities as unknown;
+            (entity as Record<string, unknown>)[relationship.propertyName] =
+              relatedEntities as unknown;
             break;
           }
         }
@@ -175,19 +181,27 @@ export class EntityLoader {
           const targetMeta = MetadataStorage.getEntity(targetCtor);
           const targetPk = targetMeta?.primaryKeys[0];
           for (const relatedEntity of related)
-            byId.set((relatedEntity as unknown as Record<string, unknown>)[targetPk as string], relatedEntity);
+            byId.set(
+              (relatedEntity as unknown as Record<string, unknown>)[targetPk as string],
+              relatedEntity
+            );
           for (const entityItem of entities) {
             const fk = (entityItem as unknown as Record<string, unknown>)[foreignKeyName];
             if (fk !== undefined && fk !== null) {
-              (entityItem as unknown as Record<string, unknown>)[relationship.propertyName] = byId.get(fk) as unknown;
+              (entityItem as unknown as Record<string, unknown>)[relationship.propertyName] =
+                byId.get(fk);
             }
           }
           // Recurse for next depth level on distinct related
           if (depth - 1 > 0) {
-            await this.loadRelationshipsBatched(Array.from(byId.values()) as unknown[], targetCtor as new () => object, {
-              ...options,
-              depth: depth - 1
-            });
+            await this.loadRelationshipsBatched(
+              Array.from(byId.values()),
+              targetCtor as new () => object,
+              {
+                ...options,
+                depth: depth - 1
+              }
+            );
           }
           break;
         }
@@ -207,7 +221,7 @@ export class EntityLoader {
           );
           const grouped = new Map<unknown, unknown[]>();
           for (const relatedEntity of related) {
-            const key = (relatedEntity as unknown as Record<string, unknown>)[foreignKeyName as string];
+            const key = (relatedEntity as unknown as Record<string, unknown>)[foreignKeyName];
             const arr = grouped.get(key) || [];
             arr.push(relatedEntity);
             grouped.set(key, arr);
@@ -218,10 +232,14 @@ export class EntityLoader {
               (grouped.get(parentId) || []) as unknown;
           }
           if (depth - 1 > 0) {
-            await this.loadRelationshipsBatched(related as unknown[], targetCtor as new () => object, {
-              ...options,
-              depth: depth - 1
-            });
+            await this.loadRelationshipsBatched(
+              related as unknown[],
+              targetCtor as new () => object,
+              {
+                ...options,
+                depth: depth - 1
+              }
+            );
           }
           break;
         }

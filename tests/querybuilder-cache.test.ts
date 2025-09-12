@@ -1,10 +1,13 @@
 import 'reflect-metadata';
 import { QueryBuilder } from '../src/query/QueryBuilder';
-import { SqlDialect } from '../src/query/SqlDialect';
-import { QueryOptions, SqlParameter, CacheInfo } from '../src/types';
+import type { SqlDialect } from '../src/query/SqlDialect';
+import type { QueryOptions, SqlParameter, CacheInfo } from '../src/types';
 
 class DummyDialect implements SqlDialect {
-  buildSelect<T>(entityClass: new () => T, _options: QueryOptions): { query: string; parameters: SqlParameter[] } {
+  buildSelect<T>(
+    entityClass: new () => T,
+    _options: QueryOptions
+  ): { query: string; parameters: SqlParameter[] } {
     return { query: `SELECT * FROM ${entityClass.name}`, parameters: [] };
   }
 }
@@ -21,10 +24,14 @@ class User {}
 describe('QueryBuilder cache metrics', () => {
   it('emits cache miss then hit for the same options', () => {
     const logger = new CapturingLogger();
-    const qb = new QueryBuilder(new DummyDialect() as any, logger as any, 'sqlite');
-    const opts = { select: ['*'] } as any;
-    const a = qb.generateSql(User as any, opts);
-    const b = qb.generateSql(User as any, opts);
+    const qb = new QueryBuilder(
+      new DummyDialect(),
+      logger as unknown as { cache?: (i: CacheInfo) => void },
+      'sqlite'
+    );
+    const opts: QueryOptions = { select: ['*'] };
+    const a = qb.generateSql(User, opts);
+    const b = qb.generateSql(User, opts);
     expect(a.query).toBe(b.query);
     const hasMiss = logger.cacheCalls.some((c) => c.cache === 'sqlGen' && c.hit === false);
     const hasHit = logger.cacheCalls.some((c) => c.cache === 'sqlGen' && c.hit === true);

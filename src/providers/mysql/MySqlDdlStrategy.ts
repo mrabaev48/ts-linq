@@ -1,4 +1,4 @@
-import { EntityMetadata, ColumnMetadata } from '../../types';
+import type { EntityMetadata, ColumnMetadata } from '../../types';
 import { SqlHelper } from '../../utils/SqlHelper';
 
 export class MySqlDdlStrategy {

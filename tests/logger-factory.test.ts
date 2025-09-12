@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import { ColumnMetadata } from '../src/types';
-import { SqlLogger, SqlLoggerFactory, QueryStartInfo } from '../src/types';
+import type { ColumnMetadata } from '../src/types';
+import type { SqlLogger, SqlLoggerFactory, QueryStartInfo } from '../src/types';
 import { CompositeSqlLoggerFactory } from '../src/utils/CompositeSqlLoggerFactory';
 
 class LfUser {}
@@ -57,9 +57,11 @@ describe('SqlLoggerFactory integration', () => {
     await ctx.ensureCreated();
     // a simple query to trigger queryStart using Queryable to avoid loader path
     // Trigger any simple query via provider to ensure logger is created and used
-    await (ctx as unknown as { provider: { executeQuery: (sql: string, params?: unknown[]) => Promise<unknown[]> } }).provider.executeQuery(
-      'SELECT 1'
-    );
+    await (
+      ctx as unknown as {
+        provider: { executeQuery: (sql: string, params?: unknown[]) => Promise<unknown[]> };
+      }
+    ).provider.executeQuery('SELECT 1');
     expect(factory.createdFor[0]).toBe('sqlite');
   });
 
@@ -69,9 +71,11 @@ describe('SqlLoggerFactory integration', () => {
     const staticL: SqlLogger = { retry: jest.fn() };
     const ctx = new Ctx('sqlite', undefined, { factories: [f1, f2], loggers: [staticL] });
     await ctx.ensureCreated();
-    await (ctx as unknown as { provider: { executeQuery: (sql: string, params?: unknown[]) => Promise<unknown[]> } }).provider.executeQuery(
-      'SELECT 1'
-    );
+    await (
+      ctx as unknown as {
+        provider: { executeQuery: (sql: string, params?: unknown[]) => Promise<unknown[]> };
+      }
+    ).provider.executeQuery('SELECT 1');
     expect((f1.create as jest.Mock).mock.calls[0][0]).toBe('sqlite');
     expect((f2.create as jest.Mock).mock.calls[0][0]).toBe('sqlite');
   });

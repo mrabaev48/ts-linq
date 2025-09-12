@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
-import { SqlDialect } from '../src/query/SqlDialect';
-import { QueryOptions, SqlParameter } from '../src/types';
-import { SqlCache, SqlCacheEntry } from '../src/query/SqlCache';
-import { CountCache, CountCacheEntry } from '../src/query/CountCache';
+import type { SqlDialect } from '../src/query/SqlDialect';
+import type { QueryOptions, SqlParameter } from '../src/types';
+import type { SqlCache, SqlCacheEntry } from '../src/query/SqlCache';
+import type { CountCache, CountCacheEntry } from '../src/query/CountCache';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 class ProviderStub extends DatabaseProvider {
@@ -14,30 +14,52 @@ class ProviderStub extends DatabaseProvider {
   public async connect(): Promise<void> {}
   public async disconnect(): Promise<void> {}
   public async createTable(): Promise<void> {}
-  public async insert<T>(entity: T): Promise<T> { return entity; }
-  public async update<T>(entity: T): Promise<T> { return entity; }
+  public async insert<T>(entity: T): Promise<T> {
+    return entity;
+  }
+  public async update<T>(entity: T): Promise<T> {
+    return entity;
+  }
   public async delete<T>(): Promise<void> {}
-  public async findById<T>(): Promise<T | null> { return null; }
-  public async findAll<T>(): Promise<T[]> { return [] as any; }
-  public async findWhere<T>(): Promise<T[]> { return [] as any; }
-  public async findWhereIn<T>(): Promise<T[]> { return [] as any; }
+  public async findById<T>(): Promise<T | null> {
+    return null;
+  }
+  public async findAll<T>(): Promise<T[]> {
+    return [] as T[];
+  }
+  public async findWhere<T>(): Promise<T[]> {
+    return [] as T[];
+  }
+  public async findWhereIn<T>(): Promise<T[]> {
+    return [] as T[];
+  }
   public async beginTransaction(): Promise<void> {}
   public async commitTransaction(): Promise<void> {}
   public async rollbackTransaction(): Promise<void> {}
-  public getDialect(): SqlDialect { return this.dialect; }
+  public getDialect(): SqlDialect {
+    return this.dialect;
+  }
   protected async doExecuteQuery<T>(sql: string, _params?: readonly SqlParameter[]): Promise<T[]> {
     this.calls++;
     if (sql.startsWith('SELECT COUNT(')) {
-      return [{ count: this.rows.length }] as any;
+      return [{ count: this.rows.length }] as unknown as T[];
     }
-    return [] as any;
+    return [] as T[];
   }
-  protected async doExecuteNonQuery(_sql: string, _params?: readonly SqlParameter[]): Promise<number> { return 0; }
+  protected async doExecuteNonQuery(
+    _sql: string,
+    _params?: readonly SqlParameter[]
+  ): Promise<number> {
+    return 0;
+  }
 }
 
 class DummyDialect implements SqlDialect {
   public builds = 0;
-  buildSelect<T>(_entityClass: new () => T, _options: QueryOptions): { query: string; parameters: SqlParameter[] } {
+  buildSelect<T>(
+    _entityClass: new () => T,
+    _options: QueryOptions
+  ): { query: string; parameters: SqlParameter[] } {
     this.builds++;
     return { query: 'SELECT 1', parameters: [] };
   }
@@ -45,17 +67,31 @@ class DummyDialect implements SqlDialect {
 
 class ExtSqlCache implements SqlCache {
   private map = new Map<string, SqlCacheEntry>();
-  get(key: string): SqlCacheEntry | undefined { return this.map.get(key); }
-  set(key: string, value: SqlCacheEntry): void { this.map.set(key, value); }
-  clear(): void { this.map.clear(); }
-  size(): number { return this.map.size; }
+  get(key: string): SqlCacheEntry | undefined {
+    return this.map.get(key);
+  }
+  set(key: string, value: SqlCacheEntry): void {
+    this.map.set(key, value);
+  }
+  clear(): void {
+    this.map.clear();
+  }
+  size(): number {
+    return this.map.size;
+  }
 }
 
 class ExtCountCache implements CountCache {
   private map = new Map<string, CountCacheEntry>();
-  get(key: string): CountCacheEntry | undefined { return this.map.get(key); }
-  set(key: string, entry: CountCacheEntry): void { this.map.set(key, entry); }
-  clear(): void { this.map.clear(); }
+  get(key: string): CountCacheEntry | undefined {
+    return this.map.get(key);
+  }
+  set(key: string, entry: CountCacheEntry): void {
+    this.map.set(key, entry);
+  }
+  clear(): void {
+    this.map.clear();
+  }
 }
 
 class E {}
@@ -83,21 +119,33 @@ describe('PerformanceOptions external caches injection', () => {
     const provider = new ProviderStub('conn');
     provider.dialect = new DummyDialect();
     const sqlCache = new ExtSqlCache();
-    const q = new Queryable<any>(E as any, provider as any, undefined, undefined, { sqlCache });
+    const q = new Queryable<object>(
+      E as unknown as new () => object,
+      provider as unknown as DatabaseProvider,
+      undefined,
+      undefined,
+      { sqlCache }
+    );
     await q.toArray();
     await q.toArray();
-    expect((provider as any).dialect.builds).toBe(1);
+    expect((provider.dialect as DummyDialect).builds).toBe(1);
     expect(sqlCache.size()).toBe(1);
   });
 
   test('countCache returns cached value on second call', async () => {
     const provider = new ProviderStub('conn');
-    (provider as any)._dialect = new DummyDialect();
+    (provider as unknown as { _dialect?: SqlDialect })._dialect = new DummyDialect();
     const countCache = new ExtCountCache();
-    const q = new Queryable<any>(E as any, provider as any, undefined, undefined, {
-      countCache,
-      enableCountCache: true
-    });
+    const q = new Queryable<object>(
+      E as unknown as new () => object,
+      provider as unknown as DatabaseProvider,
+      undefined,
+      undefined,
+      {
+        countCache,
+        enableCountCache: true
+      }
+    );
     provider.rows = [{}, {}, {}];
     const a = await q.count();
     expect(a).toBe(3);
@@ -106,5 +154,3 @@ describe('PerformanceOptions external caches injection', () => {
     expect(b).toBe(3);
   });
 });
-
-

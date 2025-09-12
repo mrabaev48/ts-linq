@@ -12,7 +12,10 @@ export interface CountCache {
 /** In-memory CountCache with TTL and max size (FIFO eviction). */
 export class InMemoryCountCache implements CountCache {
   private store = new Map<string, CountCacheEntry>();
-  constructor(private ttlMs: number = 10_000, private maxSize: number = 2000) {}
+  constructor(
+    private ttlMs: number = 10_000,
+    private maxSize: number = 2000
+  ) {}
   get(key: string): CountCacheEntry | undefined {
     const hit = this.store.get(key);
     if (!hit) return undefined;
@@ -24,7 +27,7 @@ export class InMemoryCountCache implements CountCache {
   }
   set(key: string, entry: CountCacheEntry): void {
     if (this.store.size >= this.maxSize) {
-      const first = this.store.keys().next().value as string | undefined;
+      const first = this.store.keys().next().value;
       if (first !== undefined) this.store.delete(first);
     }
     this.store.set(key, entry);

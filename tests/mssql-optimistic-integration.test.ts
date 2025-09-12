@@ -5,6 +5,8 @@ import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { OptimisticConcurrencyError } from '../src/types';
+import type { DbSet } from '../src/context/DbSet';
+import type { MssqlProvider } from '../src/providers/MssqlProvider';
 
 const MSSQL_URL = process.env.MSSQL_URL || '';
 const msDescribe = MSSQL_URL ? describe : describe.skip;
@@ -17,7 +19,7 @@ class MsItemV {
 }
 
 class MsCtxV extends DbContext {
-  public msitemvs!: any;
+  public msitemvs!: DbSet<MsItemV>;
   constructor() {
     super({ connectionString: MSSQL_URL, provider: 'mssql' });
   }
@@ -27,16 +29,20 @@ msDescribe('MSSQL optimistic concurrency (requires MSSQL_URL)', () => {
   test('throws OptimisticConcurrencyError on version mismatch', async () => {
     new MsItemV();
     const meta = MetadataStorage.getEntity(MsItemV)!;
-    (meta.columns.find((c) => c.propertyName === 'version') as any).isVersion = true;
+    const vcol = meta.columns.find((c) => c.propertyName === 'version');
+    if (vcol) vcol.isVersion = true;
     const ctx = new MsCtxV();
     await ctx.ensureCreated();
-    const u = { name: 'ms', version: 0 } as any as MsItemV;
+    const u = new MsItemV();
+    u.name = 'ms';
+    u.version = 0;
     ctx.msitemvs.add(u);
     await ctx.saveChanges();
     u.name = 'ms-1';
-    await (ctx as any).provider.update(u, MsItemV);
-    const stale: any = { id: (u as any).id, name: 'ms-2', version: 0 };
-    await expect((ctx as any).provider.update(stale, MsItemV)).rejects.toBeInstanceOf(
+    const provider = (ctx as unknown as { provider: MssqlProvider }).provider;
+    await provider.update(u, MsItemV);
+    const stale: MsItemV = { id: u.id, name: 'ms-2', version: 0 } as MsItemV;
+    await expect(provider.update(stale, MsItemV)).rejects.toBeInstanceOf(
       OptimisticConcurrencyError
     );
     await ctx.dispose();

@@ -31,7 +31,7 @@ describe('Queryable', () => {
       e.age = 20 + i;
       await provider.insert(e, E);
     }
-    q = new Queryable(E, provider) as any;
+    q = new Queryable(E, provider);
   });
 
   afterEach(async () => {

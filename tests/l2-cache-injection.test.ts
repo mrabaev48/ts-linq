@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
-import { SqlDialect } from '../src/query/SqlDialect';
-import { QueryOptions, SqlParameter } from '../src/types';
+import type { SqlDialect } from '../src/query/SqlDialect';
+import type { QueryOptions, SqlParameter } from '../src/types';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import { EntityCacheLike } from '../src/utils/EntityCache';
+import type { EntityCacheLike } from '../src/utils/EntityCache';
 
 class ProviderStub extends DatabaseProvider {
   public async connect(): Promise<void> {}
@@ -21,18 +21,21 @@ class ProviderStub extends DatabaseProvider {
     return null;
   }
   public async findAll<T>(): Promise<T[]> {
-    return [] as any;
+    return [] as unknown as T[];
   }
   public async findWhere<T>(): Promise<T[]> {
-    return [] as any;
+    return [] as unknown as T[];
   }
   public async findWhereIn<T>(): Promise<T[]> {
-    return [] as any;
+    return [] as unknown as T[];
   }
-  protected async doExecuteQuery<T>(_sql: string, _params?: any[]): Promise<T[]> {
-    return [{ id: 1 }] as any;
+  protected async doExecuteQuery<T>(_sql: string, _params?: readonly SqlParameter[]): Promise<T[]> {
+    return [{ id: 1 } as unknown as T];
   }
-  protected async doExecuteNonQuery(_sql: string, _params?: any[]): Promise<number> {
+  protected async doExecuteNonQuery(
+    _sql: string,
+    _params?: readonly SqlParameter[]
+  ): Promise<number> {
     return 0;
   }
   public async beginTransaction(): Promise<void> {}
@@ -41,27 +44,33 @@ class ProviderStub extends DatabaseProvider {
 }
 
 class DummyDialect implements SqlDialect {
-  buildSelect<T>(_entityClass: new () => T, _options: any): { query: string; parameters: any[] } {
+  buildSelect<T>(
+    _entityClass: new () => T,
+    _options: QueryOptions
+  ): {
+    query: string;
+    parameters: SqlParameter[];
+  } {
     return { query: 'SELECT 1', parameters: [] };
   }
 }
 
 class CapturingEntityCache implements EntityCacheLike {
-  public gets: Array<{ key: string; id: any }> = [];
-  public sets: Array<{ key: string; id: any }> = [];
-  private store = new Map<string, any>();
-  private k(entityClass: Function, id: any) {
+  public gets: Array<{ key: string; id: unknown }> = [];
+  public sets: Array<{ key: string; id: unknown }> = [];
+  private store = new Map<string, unknown>();
+  private k(entityClass: Function, id: unknown) {
     return `${entityClass.name}|${id}`;
   }
-  get<T>(entityClass: Function, id: any): T | undefined {
+  get<T>(entityClass: Function, id: unknown): T | undefined {
     this.gets.push({ key: entityClass.name, id });
-    return this.store.get(this.k(entityClass, id));
+    return this.store.get(this.k(entityClass, id)) as T | undefined;
   }
-  set<T>(entityClass: Function, id: any, entity: T): void {
+  set<T>(entityClass: Function, id: unknown, entity: T): void {
     this.sets.push({ key: entityClass.name, id });
     this.store.set(this.k(entityClass, id), entity);
   }
-  remove(entityClass: Function, id: any): void {
+  remove(entityClass: Function, id: unknown): void {
     this.store.delete(this.k(entityClass, id));
   }
   clear(): void {
@@ -87,11 +96,11 @@ describe('L2 cache injection (EntityCacheLike)', () => {
     MetadataStorage.getEntity(E);
 
     const provider = new ProviderStub('conn');
-    // Optional: override dialect to a dummy one if needed
-    (provider as any).getDialect = () => new DummyDialect();
+    // Override dialect to a dummy one via method override pattern
+    (provider as unknown as { getDialect: () => SqlDialect }).getDialect = () => new DummyDialect();
 
     const cache = new CapturingEntityCache();
-    const q = new Queryable<any>(E as any, provider as any, undefined, cache, {
+    const q = new Queryable<E>(E as unknown as new () => E, provider, undefined, cache, {
       enableEntityCache: true
     });
     await q.toArray();

@@ -55,20 +55,29 @@ describe('QueryBuilder (SQL generation only)', () => {
   describe('basic operations', () => {
     it('should return all entities with toArray', async () => {
       const sql = queryBuilder.generateSql(QueryTestEntity, {});
-      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(
+        sql.query,
+        sql.parameters
+      );
       expect(results).toHaveLength(10);
     });
 
     it('should count entities', async () => {
       const sql = queryBuilder.generateSql(QueryTestEntity, {});
-      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(
+        sql.query,
+        sql.parameters
+      );
       const count = results.length;
       expect(count).toBe(10);
     });
 
     it('should check if any entities exist', async () => {
       const sql = queryBuilder.generateSql(QueryTestEntity, {});
-      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(
+        sql.query,
+        sql.parameters
+      );
       expect(results.length > 0).toBe(true);
     });
   });
@@ -77,21 +86,30 @@ describe('QueryBuilder (SQL generation only)', () => {
     it('should limit results with take', async () => {
       const opts: QueryOptions = { limit: 5 };
       const sql = queryBuilder.generateSql(QueryTestEntity, opts);
-      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(
+        sql.query,
+        sql.parameters
+      );
       expect(results).toHaveLength(5);
     });
 
     it('should skip results', async () => {
       const opts: QueryOptions = { offset: 5 };
       const sql = queryBuilder.generateSql(QueryTestEntity, opts);
-      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(
+        sql.query,
+        sql.parameters
+      );
       expect(results).toHaveLength(5);
     });
 
     it('should combine take and skip for pagination', async () => {
       const opts: QueryOptions = { offset: 3, limit: 2 };
       const sql = queryBuilder.generateSql(QueryTestEntity, opts);
-      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(
+        sql.query,
+        sql.parameters
+      );
       expect(results).toHaveLength(2);
     });
   });
@@ -101,7 +119,10 @@ describe('QueryBuilder (SQL generation only)', () => {
       const sql = queryBuilder.generateSql(QueryTestEntity, {
         orderBy: [{ column: 'age', direction: 'ASC' }]
       });
-      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(
+        sql.query,
+        sql.parameters
+      );
       expect((results[0] as { age: number }).age).toBeLessThan((results[1] as { age: number }).age);
     });
 
@@ -109,8 +130,13 @@ describe('QueryBuilder (SQL generation only)', () => {
       const sql = queryBuilder.generateSql(QueryTestEntity, {
         orderBy: [{ column: 'age', direction: 'DESC' }]
       });
-      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
-      expect((results[0] as { age: number }).age).toBeGreaterThan((results[1] as { age: number }).age);
+      const results = await provider.executeQuery<Record<string, unknown>>(
+        sql.query,
+        sql.parameters
+      );
+      expect((results[0] as { age: number }).age).toBeGreaterThan(
+        (results[1] as { age: number }).age
+      );
     });
   });
 

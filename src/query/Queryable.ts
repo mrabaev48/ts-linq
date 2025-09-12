@@ -1,14 +1,23 @@
-import { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { WhereClause, OrderByClause, PerformanceOptions, Result, ok, err, GlobalFilter, SqlParameter } from '../types';
+import type {
+  WhereClause,
+  OrderByClause,
+  PerformanceOptions,
+  Result,
+  GlobalFilter,
+  SqlParameter
+} from '../types';
+import { ok, err } from '../types';
 import { QueryBuilder } from './QueryBuilder';
 import { PredicateParser } from './PredicateParser';
 import { SqlVisitor } from './ast/SqlVisitor';
 import { QueryModel } from './QueryModel';
-import { EntityLoader } from '../loading/EntityLoader';
+import type { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
-import { EntityCache, EntityCacheLike } from '../utils/EntityCache';
-import { CountCache } from './CountCache';
+import type { EntityCacheLike } from '../utils/EntityCache';
+import { EntityCache } from '../utils/EntityCache';
+import type { CountCache } from './CountCache';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { safeCache, safeCacheEvicted, safeCacheSize } from '../utils/MetricsSafe';
@@ -343,13 +352,17 @@ export class Queryable<T> {
     queryModel.limit = size;
     if (after !== null && after !== undefined) {
       // Add where key > after
-      const whereClause: WhereClause = { condition: `${String(key)} > ?`, parameters: [after as unknown as SqlParameter] };
+      const whereClause: WhereClause = {
+        condition: `${String(key)} > ?`,
+        parameters: [after as unknown as SqlParameter]
+      };
       queryModel.where = queryModel.where || [];
       queryModel.where.push(whereClause);
     }
     this.applyGlobalFiltersToModel(queryModel);
     const items = await this.executeAndMaterialize(queryModel);
-    const last = items.length > 0 ? (items[items.length - 1] as unknown as Record<string, unknown>) : null;
+    const last =
+      items.length > 0 ? (items[items.length - 1] as unknown as Record<string, unknown>) : null;
     const nextAfter = last ? (last[String(key)] as T[TKey] | null) : null;
     return { items, pageSize: size, nextAfter };
   }
@@ -477,7 +490,7 @@ export class Queryable<T> {
       if (this._externalCountCache) this._externalCountCache.set(key, entry);
       else {
         if (Queryable._countCache.size >= Queryable._COUNT_CACHE_MAX) {
-          const firstKey = Queryable._countCache.keys().next().value as string | undefined;
+          const firstKey = Queryable._countCache.keys().next().value;
           if (firstKey !== undefined) {
             Queryable._countCache.delete(firstKey);
             safeCacheEvicted(this._provider.loggerRef, {
@@ -520,8 +533,9 @@ export class Queryable<T> {
         if (!isFirstCondition) query += ' AND ';
         isFirstCondition = false;
         query += whereClause.condition;
-        const clauseParams = whereClause.parameters as readonly SqlParameter[];
-        for (let paramIndex = 0; paramIndex < clauseParams.length; paramIndex++) parameters.push(clauseParams[paramIndex]);
+        const clauseParams = whereClause.parameters;
+        for (let paramIndex = 0; paramIndex < clauseParams.length; paramIndex++)
+          parameters.push(clauseParams[paramIndex]);
       }
     }
     const results = await this._provider.executeQuery<{ count: number }>(query, parameters);
@@ -571,10 +585,13 @@ export class Queryable<T> {
     this._whereSignature += `|${whereClause.condition}:${JSON.stringify(whereClause.parameters)}`;
     // cache with simple FIFO eviction
     if (Queryable._predicateSqlCache.size >= Queryable.PREDICATE_CACHE_MAX) {
-      const firstKey = Queryable._predicateSqlCache.keys().next().value as string | undefined;
+      const firstKey = Queryable._predicateSqlCache.keys().next().value;
       if (firstKey !== undefined) Queryable._predicateSqlCache.delete(firstKey);
     }
-    Queryable._predicateSqlCache.set(cacheKey, { condition: whereClause.condition, parameters: [...whereClause.parameters] });
+    Queryable._predicateSqlCache.set(cacheKey, {
+      condition: whereClause.condition,
+      parameters: [...whereClause.parameters]
+    });
   }
 
   /** Applies all stored fallback predicates (runtime filters). */
@@ -596,7 +613,10 @@ export class Queryable<T> {
   /** Executes provided model, maps rows to entities and applies fallback predicates. */
   private async executeAndMaterialize(model: QueryModel): Promise<T[]> {
     const sql = this._sqlBuilder.generateFromModel(this._entityClass, model);
-    const rows = await this._provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+    const rows = await this._provider.executeQuery<Record<string, unknown>>(
+      sql.query,
+      sql.parameters
+    );
     let entities = rows.map((row) => this.mapRowToEntity(row));
     entities = this.applyFallbackPredicates(entities);
     if (this._entityLoader && this._includes.length > 0 && model.limit !== 1) {
@@ -645,7 +665,8 @@ export class Queryable<T> {
     if (simpleObjectMatch) {
       const props = simpleObjectMatch[1].split(',');
       const result = props.map((prop) => {
-        const match = prop.match(Queryable.REGEX_PROP_IN_OBJECT) || prop.match(Queryable.REGEX_ANY_PROP);
+        const match =
+          prop.match(Queryable.REGEX_PROP_IN_OBJECT) || prop.match(Queryable.REGEX_ANY_PROP);
         return match ? match[1] : prop.trim();
       });
       Queryable._selectorPropsCache.set(selectorStr, [...result]);
@@ -685,7 +706,7 @@ export class Queryable<T> {
       const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
       const idValue = pkCol
         ? (row as Record<string, unknown>)[pkCol.columnName]
-        : (row as Record<string, unknown>)[pkProp as string];
+        : (row as Record<string, unknown>)[pkProp];
       const cached = this._entityCache.get<T>(this._entityClass, idValue);
       if (cached) {
         this._provider.loggerRef?.cache?.({
@@ -712,7 +733,11 @@ export class Queryable<T> {
       });
       // optional size metric via duck-typed logger method if present
       try {
-        (this._provider.loggerRef as unknown as { cacheSize?: (p: { cache: 'entityL2'; size: number; provider?: string }) => void })?.cacheSize?.({
+        (
+          this._provider.loggerRef as unknown as {
+            cacheSize?: (p: { cache: 'entityL2'; size: number; provider?: string }) => void;
+          }
+        )?.cacheSize?.({
           cache: 'entityL2',
           size: this._entityCache.size?.() ?? -1,
           provider: this._provider.providerLabel
@@ -729,7 +754,9 @@ export class Queryable<T> {
       }
       // notify middleware via provider hook
       try {
-        (this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }).notifyEntityMaterialized?.(entity, metadata);
+        (
+          this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }
+        ).notifyEntityMaterialized?.(entity, metadata);
       } catch (e) {
         try {
           const { warnIfLoggerDebug } = require('../utils/MetricsSafe') as {
@@ -758,7 +785,9 @@ export class Queryable<T> {
     // notify middleware via provider hook
     try {
       if (metadata)
-        (this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }).notifyEntityMaterialized?.(entity, metadata);
+        (
+          this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }
+        ).notifyEntityMaterialized?.(entity, metadata);
     } catch (e) {
       try {
         const { warnIfLoggerDebug } = require('../utils/MetricsSafe') as {
@@ -814,7 +843,12 @@ export class Queryable<T> {
       rightMeta
     );
     this._model.joins = this._model.joins || [];
-    this._model.joins.push({ type: type as unknown as import('../types').JoinType, table: rightMeta.tableName, on: onStr, alias });
+    this._model.joins.push({
+      type: type as unknown as import('../types').JoinType,
+      table: rightMeta.tableName,
+      on: onStr,
+      alias
+    });
   }
 
   /**

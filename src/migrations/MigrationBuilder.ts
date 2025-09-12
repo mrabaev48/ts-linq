@@ -1,5 +1,6 @@
-import { SchemaDiff, TableDiff } from './DiffTypes';
-import { Dialect, generateMigrationFromDiff } from './DialectMigrationSql';
+import type { SchemaDiff, TableDiff } from './DiffTypes';
+import type { Dialect } from './DialectMigrationSql';
+import { generateMigrationFromDiff } from './DialectMigrationSql';
 
 interface ColumnDef {
   name: string;

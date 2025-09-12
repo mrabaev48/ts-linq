@@ -63,7 +63,7 @@ export async function startPrometheusServer(options?: {
   });
   await new Promise<void>((resolve) => server.listen(port, resolve));
   const address = server.address();
-  const actualPort = typeof address === 'object' && address ? (address.port as number) : port || 0;
+  const actualPort = typeof address === 'object' && address ? address.port : port || 0;
   const close = async () => await new Promise<void>((resolve) => server.close(() => resolve()));
   return { server, port: actualPort, close };
 }

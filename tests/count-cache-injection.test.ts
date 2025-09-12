@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
-import { SqlDialect } from '../src/query/SqlDialect';
-import { SqlParameter } from '../src/types';
-import { CountCache, CountCacheEntry } from '../src/query/CountCache';
+import type { SqlDialect } from '../src/query/SqlDialect';
+import type { SqlParameter } from '../src/types';
+import type { CountCache, CountCacheEntry } from '../src/query/CountCache';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 class ProviderStub extends DatabaseProvider {
@@ -11,6 +11,9 @@ class ProviderStub extends DatabaseProvider {
   public async connect(): Promise<void> {}
   public async disconnect(): Promise<void> {}
   public async createTable(): Promise<void> {}
+  public override getDialect(): SqlDialect {
+    return new DummyDialect();
+  }
   public async insert<T>(entity: T): Promise<T> {
     return entity;
   }
@@ -22,21 +25,24 @@ class ProviderStub extends DatabaseProvider {
     return null;
   }
   public async findAll<T>(): Promise<T[]> {
-    return [] as any;
+    return [] as unknown as T[];
   }
   public async findWhere<T>(): Promise<T[]> {
-    return [] as any;
+    return [] as unknown as T[];
   }
   public async findWhereIn<T>(): Promise<T[]> {
-    return [] as any;
+    return [] as unknown as T[];
   }
   protected async doExecuteQuery<T>(sql: string, _params?: readonly SqlParameter[]): Promise<T[]> {
     if (sql.startsWith('SELECT COUNT(')) {
-      return [{ count: this.rows.length }] as any;
+      return [{ count: this.rows.length }] as unknown as T[];
     }
     return [] as unknown as T[];
   }
-  protected async doExecuteNonQuery(_sql: string, _params?: readonly SqlParameter[]): Promise<number> {
+  protected async doExecuteNonQuery(
+    _sql: string,
+    _params?: readonly SqlParameter[]
+  ): Promise<number> {
     return 0;
   }
   public async beginTransaction(): Promise<void> {}
@@ -84,14 +90,13 @@ function registerEntity(target: Function, table: string, pk: string): void {
 describe('Queryable external CountCache injection (non-breaking opt-in)', () => {
   test('uses external count cache when provided', async () => {
     const provider = new ProviderStub('conn');
-    (provider as any)._dialect = new DummyDialect();
     const cache = new InMemoryCountCache();
     // finalize metadata and construct queryable
     registerEntity(E, 'e', 'id');
-    const q = new Queryable<any>(E as any, provider as any);
-    (q as any)._externalCountCache = cache;
-    // enable count cache behavior
-    (q as any)._performance = { enableCountCache: true };
+    const q = new Queryable<E>(E as unknown as new () => E, provider, undefined, undefined, {
+      enableCountCache: true,
+      countCache: cache
+    });
 
     // first call populates
     provider.rows = [{}, {}, {}];

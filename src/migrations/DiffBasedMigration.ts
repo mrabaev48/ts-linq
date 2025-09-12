@@ -1,7 +1,8 @@
 import { Migration } from './Migration';
-import { DatabaseProvider } from '../providers/DatabaseProvider';
-import { SchemaDiff } from './DiffTypes';
-import { Dialect, generateMigrationFromDiff } from './DialectMigrationSql';
+import type { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { SchemaDiff } from './DiffTypes';
+import type { Dialect } from './DialectMigrationSql';
+import { generateMigrationFromDiff } from './DialectMigrationSql';
 
 /**
  * Template Method-style base for migrations that are generated from a SchemaDiff.

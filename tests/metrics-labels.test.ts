@@ -1,35 +1,53 @@
 import 'reflect-metadata';
 import { PrometheusSqlLogger } from '../src/utils/PrometheusSqlLogger';
 
+type LabelValues = Record<string, string>;
+
 class CapturingCounter {
   public name: string;
-  public calls: Array<{ lbl: any; v?: number }> = [];
-  constructor(cfg: any) {
+  public calls: Array<{ lbl: LabelValues; v?: number }> = [];
+  constructor(cfg: { name: string }) {
     this.name = cfg.name;
   }
-  labels(lbl: any) {
+  labels(lbl: LabelValues) {
     return { inc: (v?: number) => this.calls.push({ lbl, v }) };
   }
 }
 class CapturingHistogram {
   public name: string;
-  public calls: Array<{ lbl: any; v: number }> = [];
-  constructor(cfg: any) {
+  public calls: Array<{ lbl: LabelValues; v: number }> = [];
+  constructor(cfg: { name: string }) {
     this.name = cfg.name;
   }
-  labels(lbl: any) {
+  labels(lbl: LabelValues) {
     return { observe: (v: number) => this.calls.push({ lbl, v }) };
   }
 }
-const fakeClient = { Counter: CapturingCounter as any, Histogram: CapturingHistogram as any };
+type TestPromCounter = {
+  labels(labels: LabelValues): { inc: (v?: number) => void };
+};
+type TestPromHistogram = {
+  labels(labels: LabelValues): { observe: (v: number) => void };
+};
+type TestPromClientLike = {
+  Counter: new (cfg: Record<string, unknown>) => TestPromCounter;
+  Histogram: new (cfg: Record<string, unknown>) => TestPromHistogram;
+};
+const fakeClient = {
+  Counter: CapturingCounter,
+  Histogram: CapturingHistogram
+} as unknown as TestPromClientLike;
 
 describe('PrometheusSqlLogger labels', () => {
   it('emits provider/operation/entity/success labels', () => {
-    const logger = new PrometheusSqlLogger('svc', { client: fakeClient as any, prefix: 'tsl_' });
+    const logger = new PrometheusSqlLogger('svc', { client: fakeClient, prefix: 'tsl_' });
     // @ts-ignore access test internals
-    const queryTotal: CapturingCounter = (logger as any).queryTotal;
+    const queryTotal: CapturingCounter = (logger as unknown as { queryTotal: CapturingCounter })
+      .queryTotal;
     // @ts-ignore
-    const queryDuration: CapturingHistogram = (logger as any).queryDuration;
+    const queryDuration: CapturingHistogram = (
+      logger as unknown as { queryDuration: CapturingHistogram }
+    ).queryDuration;
     logger.queryEnd?.({
       sql: 'SELECT * FROM "Users"',
       params: [],
@@ -38,7 +56,7 @@ describe('PrometheusSqlLogger labels', () => {
     });
     expect(queryTotal.calls.length).toBe(1);
     expect(queryDuration.calls.length).toBe(1);
-    const lbl = queryTotal.calls[0].lbl;
+    const lbl: LabelValues = queryTotal.calls[0].lbl;
     expect(lbl.provider).toBe('postgresql');
     expect(lbl.operation).toBe('SELECT');
     // entity parser upper-cases SQL before extracting, then strips quotes
@@ -47,9 +65,10 @@ describe('PrometheusSqlLogger labels', () => {
   });
 
   it('records error_type when error present', () => {
-    const logger = new PrometheusSqlLogger('svc', { client: fakeClient as any, prefix: 'tsl_' });
+    const logger = new PrometheusSqlLogger('svc', { client: fakeClient, prefix: 'tsl_' });
     // @ts-ignore
-    const errorTotal: CapturingCounter = (logger as any).errorTotal;
+    const errorTotal: CapturingCounter = (logger as unknown as { errorTotal: CapturingCounter })
+      .errorTotal;
     logger.queryEnd?.({
       sql: 'UPDATE Users SET name = $1',
       params: ['x'],
@@ -58,7 +77,7 @@ describe('PrometheusSqlLogger labels', () => {
       error: new TypeError('boom')
     });
     expect(errorTotal.calls.length).toBe(1);
-    const lbl = errorTotal.calls[0].lbl;
+    const lbl: LabelValues = errorTotal.calls[0].lbl;
     expect(lbl.error_type).toBe('TypeError');
   });
 });
