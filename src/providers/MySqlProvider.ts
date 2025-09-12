@@ -100,8 +100,8 @@ export class MySqlProvider extends DatabaseProvider {
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const versionCol = metadata.columns.find((c) => c.isVersion);
     const { sql, params } = this.generateUpdateSql(entity as Record<string, unknown>, metadata, versionCol);
-    const n = await this.executeNonQuery(sql, params);
-    if (n === 0) {
+    const affectedRows = await this.executeNonQuery(sql, params);
+    if (affectedRows === 0) {
       if (versionCol) throw new OptimisticConcurrencyError();
       throw new Error('No rows were updated.');
     }
@@ -137,8 +137,8 @@ export class MySqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const { sql, params } = this.generateDeleteSql(entity as Record<string, unknown>, metadata);
-    const n = await this.executeNonQuery(sql, params);
-    if (n === 0) throw new Error('No rows were deleted.');
+    const affectedRows = await this.executeNonQuery(sql, params);
+    if (affectedRows === 0) throw new Error('No rows were deleted.');
   }
 
   public async findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null> {

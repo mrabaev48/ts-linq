@@ -18,11 +18,22 @@ import { QueryBuilder } from '../query/QueryBuilder';
 import { SqlDialect } from '../query/SqlDialect';
 
 // Lazy require to avoid hard dependency if not installed
-let Pg: { Pool: new (cfg: { connectionString: string }) => PgPoolLike } | undefined;
+let Pg: {
+  Pool: new (cfg: { connectionString: string }) => PgPoolLike;
+};
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   Pg = require('pg');
-} catch {}
+} catch (e) {
+  try {
+    const { warnIfLoggerDebug } = require('../utils/MetricsSafe') as {
+      warnIfLoggerDebug: (method: string, error: unknown) => void;
+    };
+    warnIfLoggerDebug('require(pg)', e);
+  } catch {
+    /* ignore */
+  }
+}
 
 interface PgQueryResult<T = unknown> {
   rows: T[];

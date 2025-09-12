@@ -514,14 +514,14 @@ export class Queryable<T> {
     this.applyGlobalFiltersToModel(queryModel);
     if (queryModel.where && queryModel.where.length > 0) {
       // Build WHERE and parameters in a single pass to reduce allocations
-      let first = true;
+      let isFirstCondition = true;
       query += ' WHERE ';
-      for (const w of queryModel.where) {
-        if (!first) query += ' AND ';
-        first = false;
-        query += w.condition;
-        const p = w.parameters as readonly SqlParameter[];
-        for (let i = 0; i < p.length; i++) parameters.push(p[i]);
+      for (const whereClause of queryModel.where) {
+        if (!isFirstCondition) query += ' AND ';
+        isFirstCondition = false;
+        query += whereClause.condition;
+        const clauseParams = whereClause.parameters as readonly SqlParameter[];
+        for (let paramIndex = 0; paramIndex < clauseParams.length; paramIndex++) parameters.push(clauseParams[paramIndex]);
       }
     }
     const results = await this._provider.executeQuery<{ count: number }>(query, parameters);
@@ -597,7 +597,7 @@ export class Queryable<T> {
   private async executeAndMaterialize(model: QueryModel): Promise<T[]> {
     const sql = this._sqlBuilder.generateFromModel(this._entityClass, model);
     const rows = await this._provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
-    let entities = rows.map((r) => this.mapRowToEntity(r));
+    let entities = rows.map((row) => this.mapRowToEntity(row));
     entities = this.applyFallbackPredicates(entities);
     if (this._entityLoader && this._includes.length > 0 && model.limit !== 1) {
       await this._entityLoader.populateRelationshipsMany(entities, this._entityClass, {
@@ -717,11 +717,29 @@ export class Queryable<T> {
           size: this._entityCache.size?.() ?? -1,
           provider: this._provider.providerLabel
         });
-      } catch {/* ignore */}
+      } catch (e) {
+        try {
+          const { warnIfLoggerDebug } = require('../utils/MetricsSafe') as {
+            warnIfLoggerDebug: (method: string, error: unknown) => void;
+          };
+          warnIfLoggerDebug('notify:entityMaterialized', e);
+        } catch {
+          /* ignore */
+        }
+      }
       // notify middleware via provider hook
       try {
         (this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }).notifyEntityMaterialized?.(entity, metadata);
-      } catch {/* ignore */}
+      } catch (e) {
+        try {
+          const { warnIfLoggerDebug } = require('../utils/MetricsSafe') as {
+            warnIfLoggerDebug: (method: string, error: unknown) => void;
+          };
+          warnIfLoggerDebug('notify:entityMaterialized', e);
+        } catch {
+          /* ignore */
+        }
+      }
       return entity;
     }
     const entity = new this._entityClass();
@@ -741,7 +759,16 @@ export class Queryable<T> {
     try {
       if (metadata)
         (this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }).notifyEntityMaterialized?.(entity, metadata);
-    } catch {/* ignore */}
+    } catch (e) {
+      try {
+        const { warnIfLoggerDebug } = require('../utils/MetricsSafe') as {
+          warnIfLoggerDebug: (method: string, error: unknown) => void;
+        };
+        warnIfLoggerDebug('notify:entityMaterialized', e);
+      } catch {
+        /* ignore */
+      }
+    }
     return entity;
   }
   /**

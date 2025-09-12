@@ -26,7 +26,7 @@ export class SqlHelper {
       } else if (Array.isArray(value)) {
         const placeholders = value.map(() => '?').join(', ');
         clauses.push(`${key} IN (${placeholders})`);
-        for (const v of value) params.push(SqlHelper.ensureSqlParameter(v));
+        for (const arrayValue of value) params.push(SqlHelper.ensureSqlParameter(arrayValue));
       } else {
         clauses.push(`${key} = ?`);
         params.push(SqlHelper.ensureSqlParameter(value));

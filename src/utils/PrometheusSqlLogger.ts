@@ -111,7 +111,7 @@ export class PrometheusSqlLogger implements SqlLogger {
       labelNames: ['provider', 'operation', 'entity']
     });
     if (this.client.Gauge) {
-      const g = new this.client.Gauge({
+      const gauge = new this.client.Gauge({
         name: `${this.prefix}db_active_transactions`,
         help: 'Active DB transactions',
         labelNames: ['provider']
@@ -119,14 +119,14 @@ export class PrometheusSqlLogger implements SqlLogger {
       this.activeTransactions = {
         inc: (labels?: LabelValues, v?: number) => {
           try {
-            g.inc(labels, v);
+            gauge.inc(labels, v);
           } catch {
             /* ignore */
           }
         },
         dec: (labels?: LabelValues, v?: number) => {
           try {
-            g.dec(labels, v);
+            gauge.dec(labels, v);
           } catch {
             /* ignore */
           }
@@ -298,7 +298,16 @@ export class PrometheusSqlLogger implements SqlLogger {
     const provider = info.provider || 'unknown';
     try {
       this.cacheEvictions.labels({ cache: info.cache, provider }).inc(1);
-    } catch {/* ignore */}
+    } catch (e) {
+      try {
+        const { warnIfLoggerDebug } = require('./MetricsSafe') as {
+          warnIfLoggerDebug: (method: string, error: unknown) => void;
+        };
+        warnIfLoggerDebug('cacheEvicted', e);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   private safeRequirePromClient(): PromClientLike | undefined {

@@ -90,13 +90,13 @@ export class QueryBuilder {
     key += '|s:' + (options.select ? options.select.join(',') : '');
     if (options.where && options.where.length) {
       key += '|w:';
-      for (const w of options.where) {
-        key += w.condition + '(' + (w.parameters?.join('|') ?? '') + ')';
+      for (const whereClause of options.where) {
+        key += whereClause.condition + '(' + (whereClause.parameters?.join('|') ?? '') + ')';
       }
     }
     if (options.orderBy && options.orderBy.length) {
       key += '|o:';
-      for (const o of options.orderBy) key += o.column + ':' + o.direction + ';';
+      for (const orderBy of options.orderBy) key += orderBy.column + ':' + orderBy.direction + ';';
     }
     if (options.groupBy) {
       key += '|g:' + options.groupBy.columns.join(',');
@@ -105,7 +105,7 @@ export class QueryBuilder {
     }
     if (options.joins && options.joins.length) {
       key += '|j:';
-      for (const j of options.joins) key += j.type + ':' + j.table + ':' + j.on + ';';
+      for (const joinClause of options.joins) key += joinClause.type + ':' + joinClause.table + ':' + joinClause.on + ';';
     }
     if (options.limit !== undefined) key += '|l:' + options.limit;
     if (options.offset !== undefined) key += '|f:' + options.offset;

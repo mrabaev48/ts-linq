@@ -13,61 +13,79 @@ export class CompositeSqlLogger implements SqlLogger {
   }
 
   queryStart(info: QueryStartInfo): void {
-    for (const d of this.delegates) {
+    for (const delegate of this.delegates) {
       try {
-        d.queryStart?.(info);
-      } catch {
-        /* ignore delegate errors */
+        delegate.queryStart?.(info);
+      } catch (e) {
+        const { warnIfLoggerDebug } = require('./MetricsSafe') as {
+          warnIfLoggerDebug: (method: string, error: unknown) => void;
+        };
+        warnIfLoggerDebug('queryStart', e);
       }
     }
   }
 
   queryEnd(info: QueryEndInfo): void {
-    for (const d of this.delegates) {
+    for (const delegate of this.delegates) {
       try {
-        d.queryEnd?.(info);
-      } catch {
-        /* ignore delegate errors */
+        delegate.queryEnd?.(info);
+      } catch (e) {
+        const { warnIfLoggerDebug } = require('./MetricsSafe') as {
+          warnIfLoggerDebug: (method: string, error: unknown) => void;
+        };
+        warnIfLoggerDebug('queryEnd', e);
       }
     }
   }
 
   retry(info: RetryInfo): void {
-    for (const d of this.delegates) {
+    for (const delegate of this.delegates) {
       try {
-        d.retry?.(info);
-      } catch {
-        /* ignore delegate errors */
+        delegate.retry?.(info);
+      } catch (e) {
+        const { warnIfLoggerDebug } = require('./MetricsSafe') as {
+          warnIfLoggerDebug: (method: string, error: unknown) => void;
+        };
+        warnIfLoggerDebug('retry', e);
       }
     }
   }
 
   transactionStart(info: TransactionInfo): void {
-    for (const d of this.delegates) {
+    for (const delegate of this.delegates) {
       try {
-        d.transactionStart?.(info);
-      } catch {
-        /* ignore delegate errors */
+        delegate.transactionStart?.(info);
+      } catch (e) {
+        const { warnIfLoggerDebug } = require('./MetricsSafe') as {
+          warnIfLoggerDebug: (method: string, error: unknown) => void;
+        };
+        warnIfLoggerDebug('transactionStart', e);
       }
     }
   }
 
   transactionEnd(info: TransactionInfo): void {
-    for (const d of this.delegates) {
+    for (const delegate of this.delegates) {
       try {
-        d.transactionEnd?.(info);
-      } catch {
-        /* ignore delegate errors */
+        delegate.transactionEnd?.(info);
+      } catch (e) {
+        const { warnIfLoggerDebug } = require('./MetricsSafe') as {
+          warnIfLoggerDebug: (method: string, error: unknown) => void;
+        };
+        warnIfLoggerDebug('transactionEnd', e);
       }
     }
   }
 
   cache(info: CacheInfo): void {
-    for (const d of this.delegates) {
+    for (const delegate of this.delegates) {
       try {
-        d.cache?.(info);
-      } catch {
-        /* ignore delegate errors */
+        delegate.cache?.(info);
+      } catch (e) {
+        const { warnIfLoggerDebug } = require('./MetricsSafe') as {
+          warnIfLoggerDebug: (method: string, error: unknown) => void;
+        };
+        warnIfLoggerDebug('cache', e);
       }
     }
   }

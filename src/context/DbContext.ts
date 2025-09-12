@@ -294,8 +294,8 @@ export abstract class DbContext {
   /** Try-версия saveChanges без исключений. */
   public async trySaveChanges(): Promise<Result<number, Error>> {
     try {
-      const n = await this.saveChanges();
-      return ok(n);
+      const affected = await this.saveChanges();
+      return ok(affected);
     } catch (e: unknown) {
       return err(e as Error);
     }

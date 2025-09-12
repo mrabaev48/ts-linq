@@ -15,10 +15,10 @@ function debugEnabled(): boolean {
 
 function tryInvoke(logger: unknown, method: 'cache' | 'cacheSize' | 'cacheEvicted', payload: unknown): void {
   try {
-    const maybeFn = (logger as Record<string, unknown> | undefined)?.[method] as
+    const maybeMethod = (logger as Record<string, unknown> | undefined)?.[method] as
       | ((arg: unknown) => void)
       | undefined;
-    maybeFn?.(payload);
+    maybeMethod?.(payload);
   } catch (e) {
     if (debugEnabled()) {
       try {
@@ -41,6 +41,20 @@ export function safeCacheSize(logger: unknown, payload: { cache: 'sqlGen' | 'ent
 
 export function safeCacheEvicted(logger: unknown, payload: { cache: 'sqlGen' | 'entityL2' | 'count'; provider?: string }): void {
   tryInvoke(logger, 'cacheEvicted', payload);
+}
+
+/** Conditionally warn on swallowed logging errors when TSL_LOGGER_DEBUG is enabled. */
+export function warnIfLoggerDebug(method: string, error: unknown): void {
+  try {
+    const env = (process as unknown as { env?: Record<string, string | undefined> }).env;
+    const debug = env?.TSL_LOGGER_DEBUG;
+    if (debug === '1' || debug === 'true' || debug === 'on') {
+      // eslint-disable-next-line no-console
+      console.warn('[ts-linq logger]', method, error);
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 
