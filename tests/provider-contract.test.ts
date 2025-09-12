@@ -39,7 +39,7 @@ describe('Provider contract (SQLite)', () => {
     expect(all.length).toBe(1);
 
     const first = all[0];
-    (first as any).name = 'B';
+    first.name = 'B';
     await provider.update(first, CUser);
 
     all = await provider.findWhere(CUser, { name: 'B' });
@@ -89,12 +89,12 @@ describe('Provider contract (SQLite)', () => {
       nullable: false,
       isGenerated: false,
       isVersion: true
-    } as any);
+    });
     await provider.executeNonQuery(
       `ALTER TABLE ${meta.tableName} ADD COLUMN version INTEGER DEFAULT 0`
     );
     // stale update with version=5 that doesn't match 0
-    (u as any).version = 5;
+    (u as unknown as { version: number }).version = 5;
     await expect(provider.update(u, CUser)).rejects.toBeInstanceOf(OptimisticConcurrencyError);
   });
 });

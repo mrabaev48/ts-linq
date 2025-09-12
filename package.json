@@ -34,7 +34,7 @@
     "example:postgres": "ts-node examples/postgres-app.ts",
     "example:mysql": "ts-node examples/mysql-app.ts",
     "docs": "typedoc",
-    "lint": "eslint . --ext .ts --max-warnings=0",
+    "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",

@@ -1,4 +1,4 @@
-import { ColumnMetadata, RelationshipMetadata, IndexMetadata, EntityMetadata } from '../types';
+import type { ColumnMetadata, RelationshipMetadata, IndexMetadata, EntityMetadata } from '../types';
 
 /**
  * Builder for incrementally constructing `EntityMetadata` while decorators

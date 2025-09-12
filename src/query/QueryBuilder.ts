@@ -1,10 +1,10 @@
-import { QueryOptions, SqlParameter } from '../types';
-import { SqlLogger } from '../types';
-import { SqlDialect } from './SqlDialect';
+import type { QueryOptions, SqlParameter } from '../types';
+import type { SqlLogger } from '../types';
+import type { SqlDialect } from './SqlDialect';
 import { safeCacheSize, safeCacheEvicted } from '../utils/MetricsSafe';
 import { SQLiteDialect } from './SQLiteDialect';
-import { QueryModel } from './QueryModel';
-import { SqlCache, SqlCacheEntry } from './SqlCache';
+import type { QueryModel } from './QueryModel';
+import type { SqlCache, SqlCacheEntry } from './SqlCache';
 
 /**
  * QueryBuilder is now focused solely on generating SQL
@@ -68,7 +68,7 @@ export class QueryBuilder {
     // Handle UNION/UNION ALL chains
     if (model.unions && model.unions.length > 0) {
       let sql = `${base.query}`;
-      let params: SqlParameter[] = [...base.parameters];
+      const params: SqlParameter[] = [...base.parameters];
       for (const unionEntry of model.unions) {
         const next = this.generateFromModel(unionEntry.entity, unionEntry.other);
         sql += unionEntry.all ? ` UNION ALL ${next.query}` : ` UNION ${next.query}`;
@@ -90,22 +90,28 @@ export class QueryBuilder {
     key += '|s:' + (options.select ? options.select.join(',') : '');
     if (options.where && options.where.length) {
       key += '|w:';
-      for (const w of options.where) {
-        key += w.condition + '(' + (w.parameters?.join('|') ?? '') + ')';
+      for (const whereClause of options.where) {
+        key += whereClause.condition + '(' + (whereClause.parameters?.join('|') ?? '') + ')';
       }
     }
     if (options.orderBy && options.orderBy.length) {
       key += '|o:';
-      for (const o of options.orderBy) key += o.column + ':' + o.direction + ';';
+      for (const orderBy of options.orderBy) key += orderBy.column + ':' + orderBy.direction + ';';
     }
     if (options.groupBy) {
       key += '|g:' + options.groupBy.columns.join(',');
       if (options.groupBy.having)
-        key += '{' + options.groupBy.having.condition + '(' + (options.groupBy.having.parameters?.join('|') ?? '') + ')}';
+        key +=
+          '{' +
+          options.groupBy.having.condition +
+          '(' +
+          (options.groupBy.having.parameters?.join('|') ?? '') +
+          ')}';
     }
     if (options.joins && options.joins.length) {
       key += '|j:';
-      for (const j of options.joins) key += j.type + ':' + j.table + ':' + j.on + ';';
+      for (const joinClause of options.joins)
+        key += joinClause.type + ':' + joinClause.table + ':' + joinClause.on + ';';
     }
     if (options.limit !== undefined) key += '|l:' + options.limit;
     if (options.offset !== undefined) key += '|f:' + options.offset;
@@ -114,7 +120,10 @@ export class QueryBuilder {
   }
 
   /** Store an item in the cache with simple FIFO eviction. */
-  private remember(key: string, value: { query: string; parameters: readonly SqlParameter[] }): void {
+  private remember(
+    key: string,
+    value: { query: string; parameters: readonly SqlParameter[] }
+  ): void {
     if (this._cache) {
       this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
       safeCacheSize(this._logger, {
@@ -125,7 +134,7 @@ export class QueryBuilder {
       return;
     }
     if (QueryBuilder._sqlCache.size >= QueryBuilder._MAX_CACHE_SIZE) {
-      const firstKey = QueryBuilder._sqlCache.keys().next().value as string | undefined;
+      const firstKey = QueryBuilder._sqlCache.keys().next().value;
       if (firstKey !== undefined) {
         QueryBuilder._sqlCache.delete(firstKey);
         safeCacheEvicted(this._logger, { cache: 'sqlGen', provider: this._providerName });

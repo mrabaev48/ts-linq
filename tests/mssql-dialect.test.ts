@@ -28,7 +28,7 @@ describe('MssqlDialect', () => {
     new T();
     const d = new MssqlDialect();
     const { query } = d.buildSelect(T, {
-      where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }] as any
+      where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }]
     });
     expect(query).toContain('name = @p1 AND id > @p2');
   });

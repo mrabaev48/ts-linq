@@ -32,7 +32,9 @@ describe('Schema diff rebuild (SQLite minimal)', () => {
     const nameCol = meta.columns.find((c) => c.propertyName === 'name')!;
     nameCol.type = 'INTEGER';
 
-    const gen = new DiffMigrationGenerator((ctx as unknown as { provider: DatabaseProvider }).provider);
+    const gen = new DiffMigrationGenerator(
+      (ctx as unknown as { provider: DatabaseProvider }).provider
+    );
     const steps = await gen.generate();
     const sqls = steps.map((s) => s.sql).join('\n');
     expect(sqls).toMatch(/CREATE TABLE IF NOT EXISTS __new_RUsers/i);

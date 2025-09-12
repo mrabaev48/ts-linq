@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { PredicateParser } from '../src/query/PredicateParser';
-import { ExpressionNode } from '../src/query/ast/Nodes';
+import type { ExpressionNode } from '../src/query/ast/Nodes';
 
 describe('PredicateParser', () => {
   it('parses simple equality', () => {
@@ -10,7 +10,9 @@ describe('PredicateParser', () => {
   });
   it('parses conjunction with >= and >', () => {
     const p = new PredicateParser<{ price: number; stock: number }>();
-    const ast = p.parse((x: { price: number; stock: number }) => x.price >= 10 && x.stock > 0) as ExpressionNode;
+    const ast = p.parse(
+      (x: { price: number; stock: number }) => x.price >= 10 && x.stock > 0
+    ) as ExpressionNode;
     expect(ast).toBeTruthy();
   });
   it('returns null for variable comparison (fallback)', () => {

@@ -21,7 +21,7 @@ class TestMigration001 extends Migration {
     await this.provider.executeNonQuery('DROP TABLE users');
   }
 
-  constructor(private provider: any) {
+  constructor(private provider: SQLiteProvider) {
     super();
   }
 }
@@ -53,7 +53,7 @@ class TestMigration002 extends Migration {
     await this.provider.executeNonQuery('ALTER TABLE users_new RENAME TO users');
   }
 
-  constructor(private provider: any) {
+  constructor(private provider: SQLiteProvider) {
     super();
   }
 }

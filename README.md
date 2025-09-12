@@ -814,8 +814,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "DB p95 latency high (>200ms)"
-          description: "Provider {{ $labels.provider }} p95 > 200ms for 10m"
+          summary: 'DB p95 latency high (>200ms)'
+          description: 'Provider {{ $labels.provider }} p95 > 200ms for 10m'
 
       - alert: DbErrorRateHigh
         expr: (sum by (provider) (rate(db_error_total[5m])) / sum by (provider) (rate(db_query_total[5m]))) > 0.01
@@ -823,8 +823,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "DB error rate >1%"
-          description: "Provider {{ $labels.provider }} error rate > 1% for 10m"
+          summary: 'DB error rate >1%'
+          description: 'Provider {{ $labels.provider }} error rate > 1% for 10m'
 
       - alert: DbRetriesSpike
         expr: sum by (provider) (rate(db_retry_total[5m])) > 1
@@ -832,8 +832,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "DB retries elevated"
-          description: "Provider {{ $labels.provider }} retries > 1 rps for 10m"
+          summary: 'DB retries elevated'
+          description: 'Provider {{ $labels.provider }} retries > 1 rps for 10m'
 
       - alert: DbCacheEvictionsHigh
         expr: sum by (provider, cache) (rate(db_cache_evictions_total[5m])) > 10
@@ -841,11 +841,12 @@ groups:
         labels:
           severity: info
         annotations:
-          summary: "DB cache evictions high"
-          description: "{{ $labels.cache }} cache under pressure for {{ $labels.provider }}"
+          summary: 'DB cache evictions high'
+          description: '{{ $labels.cache }} cache under pressure for {{ $labels.provider }}'
 ```
 
 Notes:
+
 - Keep label cardinality low; prefer `provider`, optional `entity` if bounded.
 - Tune histogram buckets (`bucketsMs`) so that target p95 lies inside observed buckets.
 
@@ -1021,7 +1022,7 @@ npm run docs
 
 - Output will be in the `docs/` folder. Open `docs/index.html` in a browser.
 - The generator uses `src/index.ts` as the entry point and includes public and private APIs. If you see warnings about referenced types not included, consider exporting those types from `src/index.ts` or ignore the warnings.
- - Contribution & Architecture: see `CONTRIBUTING.md` and `docs/guides/architecture.md`.
+- Contribution & Architecture: see `CONTRIBUTING.md` and `docs/guides/architecture.md`.
 
 ### Guides
 

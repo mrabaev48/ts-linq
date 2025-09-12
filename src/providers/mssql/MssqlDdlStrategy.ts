@@ -1,4 +1,4 @@
-import { EntityMetadata, ColumnMetadata } from '../../types';
+import type { EntityMetadata, ColumnMetadata } from '../../types';
 import { SqlHelper } from '../../utils/SqlHelper';
 
 export class MssqlDdlStrategy {
@@ -6,15 +6,15 @@ export class MssqlDdlStrategy {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
     }
-    const columns: string[] = metadata.columns.map((c: ColumnMetadata) =>
-      this.generateColumnDefinition(c)
+    const columns: string[] = metadata.columns.map((column: ColumnMetadata) =>
+      this.generateColumnDefinition(column)
     );
     if (metadata.primaryKeys.length > 0) {
-      const pkCols = metadata.primaryKeys.map((pk) => {
-        const col = metadata.columns.find((c) => c.propertyName === pk);
+      const primaryKeyColumns = metadata.primaryKeys.map((pk) => {
+        const col = metadata.columns.find((column) => column.propertyName === pk);
         return col ? col.columnName : pk;
       });
-      columns.push(`PRIMARY KEY (${pkCols.join(', ')})`);
+      columns.push(`PRIMARY KEY (${primaryKeyColumns.join(', ')})`);
     }
     return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${metadata.tableName}') BEGIN CREATE TABLE ${metadata.tableName} (${columns.join(', ')}) END`;
   }

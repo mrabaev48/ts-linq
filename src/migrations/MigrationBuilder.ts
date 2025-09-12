@@ -1,5 +1,6 @@
-import { SchemaDiff, TableDiff } from './DiffTypes';
-import { Dialect, generateMigrationFromDiff } from './DialectMigrationSql';
+import type { SchemaDiff, TableDiff } from './DiffTypes';
+import type { Dialect } from './DialectMigrationSql';
+import { generateMigrationFromDiff } from './DialectMigrationSql';
 
 interface ColumnDef {
   name: string;
@@ -260,40 +261,40 @@ export class MigrationBuilder {
       });
     }
     // Index creates/drops
-    for (const ic of this.indexCreates) {
-      const td = ensure(ic.table);
-      td.indexCreates = td.indexCreates ?? [];
-      td.indexCreates.push({
-        name: ic.index.name,
-        columns: ic.index.columns,
-        unique: !!ic.index.unique
+    for (const indexCreate of this.indexCreates) {
+      const tableDiff = ensure(indexCreate.table);
+      tableDiff.indexCreates = tableDiff.indexCreates ?? [];
+      tableDiff.indexCreates.push({
+        name: indexCreate.index.name,
+        columns: indexCreate.index.columns,
+        unique: !!indexCreate.index.unique
       });
     }
-    for (const id of this.indexDrops) {
-      const td = ensure(id.table);
-      td.indexDrops = td.indexDrops ?? [];
-      td.indexDrops.push(id.name);
+    for (const indexDrop of this.indexDrops) {
+      const tableDiff = ensure(indexDrop.table);
+      tableDiff.indexDrops = tableDiff.indexDrops ?? [];
+      tableDiff.indexDrops.push(indexDrop.name);
     }
     // FK creates/drops
-    for (const fc of this.fkCreates) {
-      const td = ensure(fc.table);
-      td.fkCreates = td.fkCreates ?? [];
-      td.fkCreates.push(fc.fk);
+    for (const foreignKeyCreate of this.fkCreates) {
+      const tableDiff = ensure(foreignKeyCreate.table);
+      tableDiff.fkCreates = tableDiff.fkCreates ?? [];
+      tableDiff.fkCreates.push(foreignKeyCreate.fk);
     }
-    for (const fd of this.fkDrops) {
-      const td = ensure(fd.table);
-      td.fkDrops = td.fkDrops ?? [];
-      td.fkDrops.push(fd.name);
+    for (const foreignKeyDrop of this.fkDrops) {
+      const tableDiff = ensure(foreignKeyDrop.table);
+      tableDiff.fkDrops = tableDiff.fkDrops ?? [];
+      tableDiff.fkDrops.push(foreignKeyDrop.name);
     }
     // Renames
-    for (const t of this.tableRenames) {
-      const td = ensure(t.from);
-      td.renameTo = t.to;
+    for (const tableRename of this.tableRenames) {
+      const tableDiff = ensure(tableRename.from);
+      tableDiff.renameTo = tableRename.to;
     }
-    for (const c of this.columnRenames) {
-      const td = ensure(c.table);
-      td.columnRenames = td.columnRenames ?? [];
-      td.columnRenames.push({ from: c.from, to: c.to });
+    for (const columnRename of this.columnRenames) {
+      const tableDiff = ensure(columnRename.table);
+      tableDiff.columnRenames = tableDiff.columnRenames ?? [];
+      tableDiff.columnRenames.push({ from: columnRename.from, to: columnRename.to });
     }
     return { tables } as SchemaDiff;
   }

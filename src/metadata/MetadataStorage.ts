@@ -1,4 +1,4 @@
-import { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../types';
+import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../types';
 import { EntityMetadataBuilder } from './EntityMetadata';
 
 /**
@@ -16,7 +16,7 @@ export class MetadataStorage {
       .getOwnMetadata;
     const maybe = getOwn?.('orm:original', target);
     const original = typeof maybe === 'function' ? (maybe as T) : undefined;
-    return (original ?? target) as T;
+    return original ?? target;
   }
 
   private constructor() {}
@@ -39,7 +39,7 @@ export class MetadataStorage {
     const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
       .getOwnMetadata;
     const maybe = getOwn?.('orm:original', target);
-    const original = typeof maybe === 'function' ? (maybe as Function) : target;
+    const original = typeof maybe === 'function' ? maybe : target;
     const meta = MetadataStorage.getInstance().getEntityMetadata(original);
     if (!meta) return undefined;
     if (original !== target) {

@@ -19,7 +19,9 @@ describe('Property-based: keyset pagination correctness', () => {
           const seen: number[] = [];
 
           for (let i = 0; i < 100; i++) {
-            const page = unique.filter((x) => (after === null ? true : x > after)).slice(0, pageSize);
+            const page = unique
+              .filter((x) => (after === null ? true : x > after))
+              .slice(0, pageSize);
             if (page.length === 0) break;
             // strictly increasing within page
             for (let j = 1; j < page.length; j++) expect(page[j]).toBeGreaterThan(page[j - 1]);
@@ -38,5 +40,3 @@ describe('Property-based: keyset pagination correctness', () => {
     );
   });
 });
-
-

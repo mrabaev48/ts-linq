@@ -14,10 +14,11 @@ class T {
   @Column({ type: 'TEXT' }) name!: string;
 }
 
-const options = {
+import type { QueryOptions } from '../src/types';
+const options: QueryOptions = {
   select: ['authorId'],
   groupBy: { columns: ['authorId'], having: { condition: 'COUNT(*) > ?', parameters: [1] } }
-} as any;
+};
 
 describe('GROUP BY / HAVING in dialects', () => {
   test('SQLite', () => {

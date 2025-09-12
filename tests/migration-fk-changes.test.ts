@@ -1,5 +1,5 @@
 import { generateMigrationFromDiff } from '../src/migrations/DialectMigrationSql';
-import { SchemaDiff } from '../src/migrations/DiffTypes';
+import type { SchemaDiff } from '../src/migrations/DiffTypes';
 
 describe('FK add/drop SQL generation', () => {
   test('postgres add/drop fk', () => {
@@ -15,11 +15,11 @@ describe('FK add/drop SQL generation', () => {
               refColumns: ['id'],
               onDelete: 'CASCADE'
             }
-          ] as any
+          ]
         },
-        { table: 'orders', fkDrops: ['fk_old'] as unknown as string[] }
+        { table: 'orders', fkDrops: ['fk_old'] }
       ]
-    } as unknown as { tables: Array<{ table: string; fkCreates?: Array<{ columns: string[]; refTable: string; refColumns: string[]; onDelete?: string }>; fkDrops?: string[] }> };
+    };
     const { up } = generateMigrationFromDiff(diff, 'postgresql');
     expect(
       up.some((s) =>
@@ -36,9 +36,9 @@ describe('FK add/drop SQL generation', () => {
           table: 'orders',
           fkCreates: [{ columns: ['user_id'], refTable: 'users', refColumns: ['id'] }]
         },
-        { table: 'orders', fkDrops: ['fk_old'] as unknown as string[] }
+        { table: 'orders', fkDrops: ['fk_old'] }
       ]
-    } as unknown as { tables: Array<{ table: string; fkCreates?: Array<{ columns: string[]; refTable: string; refColumns: string[] }>; fkDrops?: string[] }> };
+    };
     const { up } = generateMigrationFromDiff(diff, 'mysql');
     expect(
       up.some((s) =>
@@ -55,9 +55,9 @@ describe('FK add/drop SQL generation', () => {
           table: 'orders',
           fkCreates: [{ columns: ['user_id'], refTable: 'users', refColumns: ['id'] }]
         },
-        { table: 'orders', fkDrops: ['fk_old'] as unknown as string[] }
+        { table: 'orders', fkDrops: ['fk_old'] }
       ]
-    } as unknown as { tables: Array<{ table: string; fkCreates?: Array<{ columns: string[]; refTable: string; refColumns: string[] }>; fkDrops?: string[] }> };
+    };
     const { up } = generateMigrationFromDiff(diff, 'sqlite');
     expect(up.some((s) => s.startsWith('-- SQLite requires table rebuild'))).toBeTruthy();
   });

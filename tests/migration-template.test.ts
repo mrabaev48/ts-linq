@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { generateMigrationClassSource } from '../src/migrations/MigrationTemplate';
-import { SchemaDiff } from '../src/migrations/DiffTypes';
+import type { SchemaDiff } from '../src/migrations/DiffTypes';
 
 describe('MigrationTemplate', () => {
   it('generates a TS class with up/down', () => {
@@ -10,11 +10,11 @@ describe('MigrationTemplate', () => {
           table: 'Users',
           create: {
             name: 'Users',
-            columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any],
+            columns: [{ name: 'id', type: 'INTEGER', nullable: false }],
             primaryKeys: ['id'],
             indexes: [],
             foreignKeys: []
-          } as any
+          }
         }
       ]
     };

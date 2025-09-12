@@ -24,12 +24,18 @@ class FakePg extends PostgresProvider {
   public async disconnect() {
     /* no-op */
   }
-  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<T[]> {
     this.lastSql = sql;
     this.lastParams = params as SqlParameter[];
     return this.rowsToReturn as unknown as T[];
   }
-  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
+  protected async doExecuteNonQuery(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<number> {
     this.lastSql = sql;
     this.lastParams = params as SqlParameter[];
     return 1;
@@ -45,12 +51,18 @@ class FakeMy extends MySqlProvider {
   public async disconnect() {
     /* no-op */
   }
-  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<T[]> {
     this.lastSql = sql;
     this.lastParams = params as SqlParameter[];
     return [] as unknown as T[];
   }
-  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
+  protected async doExecuteNonQuery(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<number> {
     this.lastSql = sql;
     this.lastParams = params as SqlParameter[];
     return 1;
@@ -66,12 +78,18 @@ class FakeMs extends MssqlProvider {
   public async disconnect() {
     /* no-op */
   }
-  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<T[]> {
     this.lastSql = sql;
     this.lastParams = params as SqlParameter[];
     return [] as unknown as T[];
   }
-  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
+  protected async doExecuteNonQuery(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<number> {
     this.lastSql = sql;
     this.lastParams = params as SqlParameter[];
     return 1;
@@ -86,20 +104,20 @@ describe('Provider upsert SQL (unit)', () => {
   test('PostgresProvider generates ON CONFLICT DO UPDATE and returns row', async () => {
     const p = new FakePg('postgres://fake');
     const u = new UpUser();
-    u.id = 10 as any;
+    u.id = 10;
     u.name = 'A';
     p.rowsToReturn = [{ id: 10, name: 'B' }];
     await p.upsert(u, UpUser);
     expect(p.lastSql).toMatch(/INSERT INTO "UpUsers"/);
     expect(p.lastSql).toMatch(/ON CONFLICT .* DO UPDATE SET/);
     expect(Array.isArray(p.lastParams)).toBe(true);
-    expect((u as any).name).toBe('B');
+    expect(u.name).toBe('B');
   });
 
   test('MySqlProvider generates ON DUPLICATE KEY UPDATE', async () => {
     const p = new FakeMy('mysql://fake');
     const u = new UpUser();
-    u.id = 11 as any;
+    u.id = 11;
     u.name = 'A';
     await p.upsert(u, UpUser);
     expect(p.lastSql).toMatch(/INSERT INTO UpUsers/);
@@ -110,7 +128,7 @@ describe('Provider upsert SQL (unit)', () => {
   test('MssqlProvider generates MERGE statement', async () => {
     const p = new FakeMs('mssql://fake');
     const u = new UpUser();
-    u.id = 12 as any;
+    u.id = 12;
     u.name = 'A';
     await p.upsert(u, UpUser);
     expect(p.lastSql).toMatch(/MERGE\s+UpUsers\s+AS\s+t/i);

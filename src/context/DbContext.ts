@@ -1,26 +1,26 @@
-import { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { DatabaseProvider } from '../providers/DatabaseProvider';
 import { SQLiteProvider } from '../providers/SQLiteProvider';
 import { PostgresProvider } from '../providers/PostgresProvider';
 import { MySqlProvider } from '../providers/MySqlProvider';
 import { ChangeTracker } from '../change-tracking/ChangeTracker';
 import { MssqlProvider } from '../providers/MssqlProvider';
 import { EntityLoader } from '../loading/EntityLoader';
-import { LoadingStrategy, LoadingOptions } from '../loading/LoadingStrategy';
+import type { LoadingOptions } from '../loading/LoadingStrategy';
+import { LoadingStrategy } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { DbSet } from './DbSet';
-import {
+import type {
   DbContextOptions,
   PerformanceOptions,
   Result,
-  ok,
-  err,
   LoadingDefaults,
-  ValidationError,
   SoftDeleteOptions,
   AuditOptions,
   GlobalFilter
 } from '../types';
-import { EntityCache, EntityCacheLike } from '../utils/EntityCache';
+import { ok, err, ValidationError } from '../types';
+import type { EntityCacheLike } from '../utils/EntityCache';
+import { EntityCache } from '../utils/EntityCache';
 import { CompositeSqlLoggerFactory } from '../utils/CompositeSqlLoggerFactory';
 
 function getOriginal<T extends Function>(target: T): T {
@@ -148,7 +148,7 @@ export abstract class DbContext {
     const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
       .getOwnMetadata;
     const maybe = getOwn?.('orm:original', entityClass);
-    const normalized = (typeof maybe === 'function' ? (maybe as Function) : entityClass) as Function;
+    const normalized = typeof maybe === 'function' ? maybe : entityClass;
     if (!this._dbSets.has(normalized)) {
       throw new Error(`DbSet for ${entityClass.name} is not configured`);
     }
@@ -197,7 +197,9 @@ export abstract class DbContext {
       }
     }
     // Validate entities before persistence
-    this.validateChanges(changes as Array<{ entity: Record<string, unknown>; entityClass: Function; state: string }>);
+    this.validateChanges(
+      changes as Array<{ entity: Record<string, unknown>; entityClass: Function; state: string }>
+    );
     let affectedRows = 0;
 
     for (const change of changes) {
@@ -215,13 +217,15 @@ export abstract class DbContext {
             if (meta.columns.some((c) => c.propertyName === createdAt))
               (change.entity as Record<string, unknown>)[createdAt] = now;
             if (meta.columns.some((c) => c.propertyName === createdBy) && currentUser !== undefined)
-              (change.entity as Record<string, unknown>)[createdBy] = currentUser as unknown as string;
+              (change.entity as Record<string, unknown>)[createdBy] =
+                currentUser as unknown as string;
           }
           if (change.state === 'added' || change.state === 'modified') {
             if (meta.columns.some((c) => c.propertyName === updatedAt))
               (change.entity as Record<string, unknown>)[updatedAt] = now;
             if (meta.columns.some((c) => c.propertyName === updatedBy) && currentUser !== undefined)
-              (change.entity as Record<string, unknown>)[updatedBy] = currentUser as unknown as string;
+              (change.entity as Record<string, unknown>)[updatedBy] =
+                currentUser as unknown as string;
           }
         }
       }
@@ -233,7 +237,11 @@ export abstract class DbContext {
             const meta = MetadataStorage.getEntity(change.entityClass);
             const pk = meta?.primaryKeys[0];
             if (pk)
-              this._entityCache.set(change.entityClass, (change.entity as Record<string, unknown>)[pk], change.entity);
+              this._entityCache.set(
+                change.entityClass,
+                (change.entity as Record<string, unknown>)[pk],
+                change.entity
+              );
           }
           affectedRows++;
           break;
@@ -243,7 +251,11 @@ export abstract class DbContext {
             const meta = MetadataStorage.getEntity(change.entityClass);
             const pk = meta?.primaryKeys[0];
             if (pk)
-              this._entityCache.set(change.entityClass, (change.entity as Record<string, unknown>)[pk], change.entity);
+              this._entityCache.set(
+                change.entityClass,
+                (change.entity as Record<string, unknown>)[pk],
+                change.entity
+              );
           }
           affectedRows++;
           break;
@@ -280,7 +292,11 @@ export abstract class DbContext {
           if (this._entityCache) {
             const meta = MetadataStorage.getEntity(change.entityClass);
             const pk = meta?.primaryKeys[0];
-            if (pk) this._entityCache.remove(change.entityClass, (change.entity as Record<string, unknown>)[pk]);
+            if (pk)
+              this._entityCache.remove(
+                change.entityClass,
+                (change.entity as Record<string, unknown>)[pk]
+              );
           }
           affectedRows++;
           break;
@@ -294,8 +310,8 @@ export abstract class DbContext {
   /** Try-версия saveChanges без исключений. */
   public async trySaveChanges(): Promise<Result<number, Error>> {
     try {
-      const n = await this.saveChanges();
-      return ok(n);
+      const affected = await this.saveChanges();
+      return ok(affected);
     } catch (e: unknown) {
       return err(e as Error);
     }
@@ -316,10 +332,15 @@ export abstract class DbContext {
     // Invalidate count cache after commit to avoid stale totals across contexts
     // This is a coarse-grained approach since count cache is global
     try {
-      (require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }).Queryable.clearCountCache();
+      (
+        require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }
+      ).Queryable.clearCountCache();
       if (this._entityCache) {
         const { safeCacheSize } = require('../utils/MetricsSafe') as {
-          safeCacheSize: (logger: unknown, payload: { cache: 'entityL2'; size: number; provider?: string }) => void;
+          safeCacheSize: (
+            logger: unknown,
+            payload: { cache: 'entityL2'; size: number; provider?: string }
+          ) => void;
         };
         safeCacheSize(this._provider.loggerRef, {
           cache: 'entityL2',
@@ -342,7 +363,10 @@ export abstract class DbContext {
       try {
         this._entityCache.clear();
         const { safeCacheSize } = require('../utils/MetricsSafe') as {
-          safeCacheSize: (logger: unknown, payload: { cache: 'entityL2'; size: number; provider?: string }) => void;
+          safeCacheSize: (
+            logger: unknown,
+            payload: { cache: 'entityL2'; size: number; provider?: string }
+          ) => void;
         };
         safeCacheSize(this._provider.loggerRef, {
           cache: 'entityL2',
@@ -354,7 +378,9 @@ export abstract class DbContext {
       }
     }
     try {
-      (require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }).Queryable.clearCountCache();
+      (
+        require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }
+      ).Queryable.clearCountCache();
     } catch {
       /* ignore */
     }
@@ -432,7 +458,10 @@ export abstract class DbContext {
    * @param options Loading options (strategy, includes, depth).
    * @returns Array of loaded entities.
    */
-  public async findAll<T extends object>(entityClass: new () => T, options?: LoadingOptions): Promise<T[]> {
+  public async findAll<T extends object>(
+    entityClass: new () => T,
+    options?: LoadingOptions
+  ): Promise<T[]> {
     const loadingOptions = {
       strategy: this._loadingDefaults.strategy ?? this._defaultLoadingStrategy,
       depth: this._loadingDefaults.depth ?? options?.depth,
@@ -488,7 +517,7 @@ export abstract class DbContext {
       const meta = MetadataStorage.getEntity(change.entityClass);
       if (!meta) continue;
       for (const col of meta.columns) {
-        const value = change.entity[col.propertyName as keyof typeof change.entity];
+        const value = change.entity[col.propertyName];
         // Skip validation for auto-generated primary keys on Added entities
         const isGeneratedPk =
           meta.primaryKeys.includes(col.propertyName) &&

@@ -5,7 +5,7 @@ describe('JoinPredicateParser', () => {
     const leftMeta = { columns: [{ propertyName: 'authorId', columnName: 'author_id' }] };
     const rightMeta = { columns: [{ propertyName: 'id', columnName: 'id' }] };
     const on = (a: { authorId: unknown }, b: { id: unknown }) => a.authorId === b.id;
-    const sql = JoinPredicateParser.parse(on.toString(), 'books', 'authors', leftMeta as any, rightMeta as any);
+    const sql = JoinPredicateParser.parse(on.toString(), 'books', 'authors', leftMeta, rightMeta);
     expect(sql).toBe('books.author_id = authors.id');
   });
 });

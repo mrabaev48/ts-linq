@@ -1,5 +1,5 @@
 import { MigrationFileBuilder } from '../src/migrations/MigrationFileBuilder';
-import { SchemaDiff } from '../src/migrations/DiffTypes';
+import type { SchemaDiff } from '../src/migrations/DiffTypes';
 
 describe('MigrationFileBuilder', () => {
   test('builds TS migration class from diff', () => {

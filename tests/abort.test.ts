@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
+import { DbSet } from '../src/context/DbSet';
 import { Entity } from '../src/decorators/Entity';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
@@ -11,7 +12,7 @@ class A {
 }
 
 class Ctx extends DbContext {
-  public a!: any;
+  public a!: DbSet<A>;
   constructor() {
     super({ connectionString: ':memory:', provider: 'sqlite' });
   }

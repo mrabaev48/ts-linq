@@ -1,17 +1,17 @@
 import { DatabaseProvider } from './DatabaseProvider';
-import {
+import type {
   EntityMetadata,
   ColumnMetadata,
   SqlLogger,
-  OptimisticConcurrencyError,
   RetryPolicy,
   OrmMiddleware,
   SoftDeleteOptions
 } from '../types';
+import { OptimisticConcurrencyError } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { SqlParameter } from '../types';
+import type { SqlParameter } from '../types';
 import { SqlHelper } from '../utils/SqlHelper';
-import { SqlDialect } from '../query/SqlDialect';
+import type { SqlDialect } from '../query/SqlDialect';
 import { MysqlDialect } from '../query/MysqlDialect';
 import { MySqlDdlStrategy } from './mysql/MySqlDdlStrategy';
 
@@ -99,16 +99,20 @@ export class MySqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const versionCol = metadata.columns.find((c) => c.isVersion);
-    const { sql, params } = this.generateUpdateSql(entity as Record<string, unknown>, metadata, versionCol);
-    const n = await this.executeNonQuery(sql, params);
-    if (n === 0) {
+    const { sql, params } = this.generateUpdateSql(
+      entity as Record<string, unknown>,
+      metadata,
+      versionCol
+    );
+    const affectedRows = await this.executeNonQuery(sql, params);
+    if (affectedRows === 0) {
       if (versionCol) throw new OptimisticConcurrencyError();
       throw new Error('No rows were updated.');
     }
     if (versionCol) {
-      const prop = versionCol.propertyName as string;
+      const prop = versionCol.propertyName;
       const rec = entity as Record<string, unknown>;
-      const current = typeof rec[prop] === 'number' ? (rec[prop] as number) : Number(rec[prop] ?? 0);
+      const current = typeof rec[prop] === 'number' ? rec[prop] : Number(rec[prop] ?? 0);
       rec[prop] = current + 1;
     }
     return entity;
@@ -123,7 +127,9 @@ export class MySqlProvider extends DatabaseProvider {
     );
     const names = insertable.map((c) => c.columnName);
     const placeholders = insertable.map(() => '?');
-    const params: SqlParameter[] = insertable.map((c) => (entity as Record<string, unknown>)[c.propertyName] as SqlParameter);
+    const params: SqlParameter[] = insertable.map(
+      (c) => (entity as Record<string, unknown>)[c.propertyName] as SqlParameter
+    );
     const updatable = metadata.columns.filter(
       (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated
     );
@@ -137,11 +143,14 @@ export class MySqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const { sql, params } = this.generateDeleteSql(entity as Record<string, unknown>, metadata);
-    const n = await this.executeNonQuery(sql, params);
-    if (n === 0) throw new Error('No rows were deleted.');
+    const affectedRows = await this.executeNonQuery(sql, params);
+    if (affectedRows === 0) throw new Error('No rows were deleted.');
   }
 
-  public async findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null> {
+  public async findById<T extends object>(
+    id: unknown,
+    entityClass: new () => T
+  ): Promise<T | null> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const pk = metadata.primaryKeys[0];
@@ -152,7 +161,9 @@ export class MySqlProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, [this.coerceToSqlParameter(id)]);
+    const rows = await this.executeQuery<Record<string, unknown>>(sql, [
+      this.coerceToSqlParameter(id)
+    ]);
     return rows.length ? this.mapRowToEntity(rows[0], entityClass) : null;
   }
 
@@ -169,7 +180,10 @@ export class MySqlProvider extends DatabaseProvider {
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
-  public async findWhere<T extends object>(entityClass: new () => T, conditions: Record<string, unknown>): Promise<T[]> {
+  public async findWhere<T extends object>(
+    entityClass: new () => T,
+    conditions: Record<string, unknown>
+  ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
@@ -207,7 +221,10 @@ export class MySqlProvider extends DatabaseProvider {
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
-  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<T[]> {
     try {
       if (!this.isConnected) await this.connect();
       const pool = this.pool as MySqlPoolLike;
@@ -218,7 +235,10 @@ export class MySqlProvider extends DatabaseProvider {
     }
   }
 
-  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
+  protected async doExecuteNonQuery(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<number> {
     try {
       if (!this.isConnected) await this.connect();
       const pool = this.pool as MySqlPoolLike;
@@ -256,7 +276,7 @@ export class MySqlProvider extends DatabaseProvider {
   public getDialect(): SqlDialect {
     return new MysqlDialect();
   }
-  
+
   /** Coerce arbitrary JS value into a valid SqlParameter for MySQL. */
   private coerceToSqlParameter(value: unknown): SqlParameter {
     if (
@@ -277,13 +297,18 @@ export class MySqlProvider extends DatabaseProvider {
   }
 
   // DDL generation moved to MySqlDdlStrategy
-  private generateInsertSql(entity: Record<string, unknown>, metadata: EntityMetadata): { sql: string; params: SqlParameter[] } {
+  private generateInsertSql(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; params: SqlParameter[] } {
     const insertable = metadata.columns.filter(
       (c) => !c.isGenerated || entity[c.propertyName] !== undefined
     );
     const names = insertable.map((c) => c.columnName);
     const placeholders = insertable.map(() => '?');
-    const params: SqlParameter[] = insertable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
+    const params: SqlParameter[] = insertable.map((c) =>
+      this.coerceToSqlParameter(entity[c.propertyName])
+    );
     return {
       sql: `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
       params
@@ -298,7 +323,9 @@ export class MySqlProvider extends DatabaseProvider {
       (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated
     );
     const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
-    const setParams: SqlParameter[] = updatable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
+    const setParams: SqlParameter[] = updatable.map((c) =>
+      this.coerceToSqlParameter(entity[c.propertyName])
+    );
     if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
     const whereClauses: string[] = [];
     const whereParams: SqlParameter[] = [];
@@ -314,7 +341,10 @@ export class MySqlProvider extends DatabaseProvider {
     const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, params: [...setParams, ...whereParams] };
   }
-  private generateDeleteSql(entity: Record<string, unknown>, metadata: EntityMetadata): { sql: string; params: SqlParameter[] } {
+  private generateDeleteSql(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; params: SqlParameter[] } {
     const whereClauses: string[] = [];
     const params: SqlParameter[] = [];
     for (const pk of metadata.primaryKeys) {
@@ -331,7 +361,9 @@ export class MySqlProvider extends DatabaseProvider {
     if (metadata) {
       for (const column of metadata.columns) {
         if (Object.prototype.hasOwnProperty.call(row as object, column.columnName)) {
-          (entity as Record<string, unknown>)[column.propertyName] = (row as Record<string, unknown>)[column.columnName];
+          (entity as Record<string, unknown>)[column.propertyName] = (
+            row as Record<string, unknown>
+          )[column.columnName];
         }
       }
     } else {

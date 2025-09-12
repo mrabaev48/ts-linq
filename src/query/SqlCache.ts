@@ -1,4 +1,4 @@
-import { SqlParameter } from '../types';
+import type { SqlParameter } from '../types';
 
 export interface SqlCacheEntry {
   query: string;
@@ -21,7 +21,7 @@ export class InMemorySqlCache implements SqlCache {
   }
   set(key: string, value: SqlCacheEntry): void {
     if (this.store.size >= this.maxSize) {
-      const first = this.store.keys().next().value as string | undefined;
+      const first = this.store.keys().next().value;
       if (first !== undefined) this.store.delete(first);
     }
     this.store.set(key, { query: value.query, parameters: [...value.parameters] });

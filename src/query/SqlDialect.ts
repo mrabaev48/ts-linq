@@ -1,4 +1,4 @@
-import { QueryOptions, SqlParameter } from '../types';
+import type { QueryOptions, SqlParameter } from '../types';
 
 /**
  * SQL dialect contract used by QueryBuilder to produce vendor-specific SQL.

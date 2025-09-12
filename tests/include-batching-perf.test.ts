@@ -22,8 +22,11 @@ class PerfBook {
 }
 
 class PerfCtx extends DbContext {
-  public perfauthors!: any;
-  public perfbooks!: any;
+  public perfauthors!: {
+    add: (a: PerfAuthor) => void;
+    include: (sel: (a: PerfAuthor) => unknown) => { toArray: () => Promise<PerfAuthor[]> };
+  };
+  public perfbooks!: { add: (b: PerfBook) => void };
   constructor(logger?: SqlLogger) {
     super({ connectionString: ':memory:', provider: 'sqlite', logger });
   }
@@ -31,7 +34,7 @@ class PerfCtx extends DbContext {
 
 describe('Include batching performance', () => {
   test('one-to-many include is batched into a single IN query (no N+1)', async () => {
-    const events: any[] = [];
+    const events: Array<{ t: 'start' | 'end'; sql?: string }> = [];
     const logger: SqlLogger = {
       queryStart: (i) => events.push({ t: 'start', ...i }),
       queryEnd: (i) => events.push({ t: 'end', ...i })
@@ -45,10 +48,13 @@ describe('Include batching performance', () => {
 
     // Seed 10 authors + 10 books
     for (let i = 0; i < 10; i++) {
-      const a = { name: `A${i}` } as any as PerfAuthor;
+      const a = { name: `A${i}` } as unknown as PerfAuthor;
       ctx.perfauthors.add(a);
       await ctx.saveChanges();
-      const b = { title: `B${i}`, authorId: (a as any).id } as any as PerfBook;
+      const b = {
+        title: `B${i}`,
+        authorId: (a as unknown as { id: number }).id
+      } as unknown as PerfBook;
       ctx.perfbooks.add(b);
       await ctx.saveChanges();
     }

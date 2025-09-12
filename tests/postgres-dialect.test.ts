@@ -24,7 +24,7 @@ describe('PostgresDialect', () => {
     new T();
     const d = new PostgresDialect();
     const { query, parameters } = d.buildSelect(T, {
-      where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }] as any
+      where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }]
     });
     expect(query).toContain('name = $1 AND id > $2');
     expect(parameters).toEqual(['a', 1]);

@@ -19,9 +19,7 @@ function createUser() {
   return User;
 }
 
-class TestDbContext extends DbContext {
-  public users!: any; // Will be set by DbContext initialization
-}
+class TestDbContext extends DbContext {}
 
 describe('DbContext', () => {
   let context: TestDbContext;

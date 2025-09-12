@@ -47,7 +47,10 @@ class ProviderStub extends DatabaseProvider {
     this.lastSql = sql;
     return [] as unknown as T[];
   }
-  protected async doExecuteNonQuery(sql: string, params?: readonly SqlParameter[]): Promise<number> {
+  protected async doExecuteNonQuery(
+    sql: string,
+    params?: readonly SqlParameter[]
+  ): Promise<number> {
     this.lastSql = sql;
     return 0;
   }

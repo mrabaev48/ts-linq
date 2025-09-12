@@ -1,6 +1,6 @@
-import { SqlDialect } from './SqlDialect';
+import type { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { JoinClause, OrderByClause, QueryOptions, WhereClause, SqlParameter } from '../types';
+import type { JoinClause, OrderByClause, QueryOptions, WhereClause, SqlParameter } from '../types';
 
 /**
  * SQLite implementation of SqlDialect.
@@ -28,7 +28,7 @@ export class SQLiteDialect implements SqlDialect {
 
     // JOINs
     if (options.joins && options.joins.length > 0) {
-      for (const join of options.joins as JoinClause[]) {
+      for (const join of options.joins) {
         query += ` ${join.type} JOIN ${join.table}`;
         if (join.alias) query += ` AS ${join.alias}`;
         query += ` ON ${join.on}`;
@@ -39,9 +39,9 @@ export class SQLiteDialect implements SqlDialect {
 
     // WHERE
     if (options.where && options.where.length > 0) {
-      const whereClauses = options.where.map((w: WhereClause) => w.condition);
+      const whereClauses = options.where.map((whereClause: WhereClause) => whereClause.condition);
       query += ` WHERE ${whereClauses.join(' AND ')}`;
-      for (const where of options.where) parameters.push(...where.parameters);
+      for (const whereClause of options.where) parameters.push(...whereClause.parameters);
     }
 
     // GROUP BY / HAVING
@@ -56,7 +56,7 @@ export class SQLiteDialect implements SqlDialect {
     // ORDER BY
     if (options.orderBy && options.orderBy.length > 0) {
       const orderByClauses = options.orderBy.map(
-        (o: OrderByClause) => `${o.column} ${o.direction}`
+        (orderBy: OrderByClause) => `${orderBy.column} ${orderBy.direction}`
       );
       query += ` ORDER BY ${orderByClauses.join(', ')}`;
     }
