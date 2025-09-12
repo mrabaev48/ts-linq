@@ -4,6 +4,18 @@ import 'reflect-metadata';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { NodeChecksumPort } from '../cli/runtime/nodeAdapters';
+import { parseArgs } from '../cli/runtime/args';
+import { makeEffectiveConfig } from '../cli/runtime/config';
+import { loadBootstrapFiles, loadEntitiesFromGlobs } from '../cli/runtime/bootstrap';
+import { CommandRegistry } from '../cli/runtime/registry';
+import { StatusCommand } from '../cli/commands/status';
+import { ConfigPrintCommand } from '../cli/commands/configPrint';
+import { DiffCommand } from '../cli/commands/diff';
+import { MigrateCommand } from '../cli/commands/migrate';
+import { RollbackCommand } from '../cli/commands/rollback';
+import { VerifyCommand } from '../cli/commands/verify';
+import { InitCommand } from '../cli/commands/init';
 import { DiffMigrationGenerator } from '../migrations/DiffMigrationGenerator';
 import { MigrationRunner } from '../migrations/MigrationRunner';
 import type { Migration } from '../migrations/Migration';
@@ -12,6 +24,8 @@ import { PostgresProvider } from '../providers/PostgresProvider';
 import { MySqlProvider } from '../providers/MySqlProvider';
 import { MssqlProvider } from '../providers/MssqlProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
+import { SeedCommand } from '../cli/commands/seed';
+import { GenerateEntityCommand } from '../cli/commands/generateEntity';
 
 type ProviderId = 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
 
@@ -49,68 +63,7 @@ interface EffectiveConfig {
   bootstrap: string[];
 }
 
-function parseArgs(argv: string[]): { cmd?: string; rest: string[]; flags: Flags } {
-  const rest: string[] = [];
-  const flags: Flags = {};
-  let cmd: string | undefined;
-  for (const arg of argv) {
-    if (arg.startsWith('--')) {
-      const [k, v] = arg.replace(/^--/, '').split('=');
-      switch (k) {
-        case 'provider':
-          flags.provider = v as ProviderId;
-          break;
-        case 'conn':
-          flags.conn = v;
-          break;
-        case 'json':
-          flags.json = true;
-          break;
-        case 'dry-run':
-          flags.dryRun = true;
-          break;
-        case 'cwd':
-          flags.cwd = v;
-          break;
-        case 'to':
-          flags.toVersion = v;
-          break;
-        case 'step':
-          flags.step = Number(v);
-          break;
-        case 'verbose':
-          flags.verbose = true;
-          break;
-        case 'quiet':
-          flags.quiet = true;
-          break;
-        case 'out':
-          flags.out = v;
-          break;
-        case 'create':
-          flags.create = true;
-          break;
-        case 'help':
-          cmd = 'help';
-          break;
-        case 'version':
-          cmd = 'version';
-          break;
-        default:
-          // ignore unknown flags for now
-          break;
-      }
-    } else if (arg.startsWith('-')) {
-      if (arg.includes('h')) cmd = 'help';
-      if (arg.includes('v')) cmd = cmd ?? 'version';
-    } else if (!cmd) {
-      cmd = arg;
-    } else {
-      rest.push(arg);
-    }
-  }
-  return { cmd, rest, flags };
-}
+// parseArgs moved to ../cli/runtime/args
 
 function printHelp(): void {
   const usage = `
@@ -126,6 +79,7 @@ Commands:
   status [--json]                   Show migrations status
   diff [--json] [--out <file>]      Show schema diff (does not modify DB)
   generate migration <Name>         Create a migration file in migrations/
+  generate entity <Name>            Create an entity class in src/entities/ (flags: --dir, --pk, --columns)
   migrate [--dry-run]               Apply schema diff (temporary shortcut)
   apply-diff                        Same as migrate (temporary)
   seed [--file <path>]              Apply SQL seed file
@@ -169,12 +123,7 @@ function createProvider(id: ProviderId, conn: string) {
   }
 }
 
-function resolveConnectionString(input?: string | { env: string }): string | undefined {
-  if (!input) return undefined;
-  if (typeof input === 'string') return input;
-  const envVar = input.env;
-  return process.env[envVar];
-}
+// resolveConnectionString inlined in runtime/config
 
 function tryRequire(modulePath: string): unknown | undefined {
   try {
@@ -185,97 +134,13 @@ function tryRequire(modulePath: string): unknown | undefined {
   }
 }
 
-async function loadEntitiesFromGlobs(globs: string[], cwd: string): Promise<void> {
-  if (!globs || globs.length === 0) return;
-  // Ensure decorators metadata is available before loading entity modules
-  tryRequire('reflect-metadata');
-  tryRequire('ts-node/register/transpile-only');
-  for (const pattern of globs) {
-    // naive glob support: only supports simple wildcard at the end like dir/*.ts
-    if (pattern.includes('*')) {
-      const dir = path.resolve(cwd, pattern.split('*')[0]);
-      if (!fs.existsSync(dir)) continue;
-      const files = fs.readdirSync(dir).filter((f) => f.endsWith('.ts') || f.endsWith('.js'));
-      for (const f of files) tryRequire(path.join(dir, f));
-    } else {
-      tryRequire(path.resolve(cwd, pattern));
-    }
-  }
-  // Touch metadata to ensure registration side-effects executed
-  MetadataStorage.getEntities();
-}
+// loadEntitiesFromGlobs moved to ../cli/runtime/bootstrap
 
-async function loadBootstrapFiles(files: string[], cwd: string): Promise<void> {
-  if (!files || files.length === 0) return;
-  tryRequire('reflect-metadata');
-  tryRequire('ts-node/register/transpile-only');
-  for (const f of files) {
-    const p = path.resolve(cwd, f);
-    // Load bootstrap scripts; surface errors to aid debugging
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      require(p);
-    } catch (err) {
-      // Re-throw to make failures visible to the caller/tests
-      throw err;
-    }
-  }
-  // Ensure metadata builders are finalized after bootstrap side effects
-  MetadataStorage.getEntities();
-}
+// loadBootstrapFiles moved to ../cli/runtime/bootstrap
 
-function loadUserConfig(cwd: string): { config?: CliConfig; path?: string } {
-  const candidates = [
-    'tslinq.config.ts',
-    'tslinq.config.js',
-    'tslinq.config.cjs',
-    'tslinq.config.mjs',
-    'tslinq.config.json'
-  ];
-  for (const name of candidates) {
-    const p = path.resolve(cwd, name);
-    if (!fs.existsSync(p)) continue;
-    if (name.endsWith('.ts')) {
-      // best-effort ts support
-      tryRequire('ts-node/register/transpile-only');
-    }
-    if (name.endsWith('.json')) {
-      try {
-        const raw = fs.readFileSync(p, 'utf8');
-        const json = JSON.parse(raw) as CliConfig;
-        return { config: json, path: p };
-      } catch {
-        return { config: undefined, path: p };
-      }
-    }
-    const mod = tryRequire(p) as { default?: CliConfig } | CliConfig | undefined;
-    if (!mod) return { config: undefined, path: p };
-    const cfg = (mod as { default?: CliConfig }).default ?? (mod as CliConfig);
-    return { config: cfg, path: p };
-  }
-  return {};
-}
+// loadUserConfig moved to ../cli/runtime/config
 
-function makeEffectiveConfig(flags: Flags): EffectiveConfig {
-  const cwd = flags.cwd || process.cwd();
-  const { config: fileConfig } = loadUserConfig(cwd);
-  const envProvider = (process.env.PROVIDER as ProviderId | undefined);
-  const envConn =
-    process.env.POSTGRES_URL || process.env.MYSQL_URL || process.env.MSSQL_URL || process.env.SQLITE_URL;
-  const provider: ProviderId = flags.provider || fileConfig?.provider || envProvider || 'sqlite';
-  const cfgConn = resolveConnectionString(fileConfig?.connectionString);
-  const connectionString = flags.conn || cfgConn || envConn || ':memory:';
-  const migrationsDir = fileConfig?.migrationsDir
-    ? path.resolve(cwd, fileConfig.migrationsDir)
-    : path.resolve(cwd, 'migrations');
-  const seedsDir = fileConfig?.seedsDir
-    ? path.resolve(cwd, fileConfig.seedsDir)
-    : path.resolve(cwd, 'seeds');
-  const entitiesGlobs = fileConfig?.entitiesGlobs ?? [];
-  const metrics = { enabled: Boolean(fileConfig?.metrics?.enabled) };
-  const bootstrap = fileConfig?.bootstrap ?? [];
-  return { provider, connectionString, migrationsDir, seedsDir, entitiesGlobs, metrics, bootstrap };
-}
+// makeEffectiveConfig moved to ../cli/runtime/config
 
 async function tryLoadMigrations(
   migrationsDir: string,
@@ -554,10 +419,16 @@ function findMigrationsIndex(migrationsDir: string): string | undefined {
 }
 
 function computeFileSha256(filePath: string): string {
-  const data = fs.readFileSync(filePath);
-  const hash = crypto.createHash('sha256');
-  hash.update(data);
-  return hash.digest('hex');
+  // Delegate to port to conform to DIP; keep fallback for safety
+  try {
+    const port = new NodeChecksumPort();
+    return port.sha256(filePath);
+  } catch {
+    const data = fs.readFileSync(filePath);
+    const hash = crypto.createHash('sha256');
+    hash.update(data);
+    return hash.digest('hex');
+  }
 }
 
 async function cmdVerify(flags: Flags): Promise<number> {
@@ -610,6 +481,45 @@ async function cmdVerify(flags: Flags): Promise<number> {
 async function main() {
   const { cmd, rest, flags } = parseArgs(process.argv.slice(2));
   const command = cmd || 'help';
+  const registry = new CommandRegistry();
+  registry.register('status', new StatusCommand());
+  registry.register('config', new ConfigPrintCommand());
+  registry.register('diff', new DiffCommand());
+  registry.register('migrate', new MigrateCommand());
+  registry.register('apply-diff', new MigrateCommand());
+  registry.register('rollback', new RollbackCommand());
+  registry.register('verify', new VerifyCommand());
+  registry.register('init', new InitCommand());
+  registry.register('seed', new SeedCommand());
+  registry.register('generate:entity', new GenerateEntityCommand());
+
+  const run = async (name: string): Promise<void> => {
+    const handler = registry.get(name);
+    if (!handler) {
+      printHelp();
+      process.exitCode = 2;
+      return;
+    }
+    try {
+      const code = await handler.execute(rest, flags);
+      if (typeof code === 'number') process.exitCode = code;
+    } catch (err) {
+      if (flags.json) {
+        // eslint-disable-next-line no-console
+        console.log(
+          JSON.stringify(
+            { ok: false, error: (err as Error)?.message ?? String(err) },
+            null,
+            2
+          )
+        );
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(err);
+      }
+      process.exitCode = 1;
+    }
+  };
   switch (command) {
     case 'help':
       printHelp();
@@ -618,37 +528,42 @@ async function main() {
       printVersion();
       return;
     case 'status':
-      process.exitCode = await cmdStatus(flags);
+      await run('status');
       return;
     case 'generate':
       if (rest[0] === 'migration') {
         process.exitCode = await cmdGenerateMigration(rest[1]);
-      } else {
-        console.error('Only "generate migration <Name>" is supported at the moment');
-        process.exitCode = 2;
+        return;
       }
+      if (rest[0] === 'entity') {
+        const name = rest[1] || 'Entity';
+        await run('generate:entity');
+        return;
+      }
+      console.error('Only "generate migration <Name>" or "generate entity <Name>" are supported at the moment');
+      process.exitCode = 2;
       return;
     case 'config':
-      process.exitCode = await cmdConfigPrint(flags);
+      await run('config');
       return;
     case 'init':
-      process.exitCode = await cmdInit(flags);
+      await run('init');
       return;
     case 'diff':
-      process.exitCode = await cmdDiff(flags);
+      await run('diff');
       return;
     case 'seed':
-      process.exitCode = await cmdSeed(rest[0], flags);
+      await run('seed');
       return;
     case 'migrate':
     case 'apply-diff':
-      process.exitCode = await cmdMigrate(flags);
+      await run(command);
       return;
     case 'rollback':
-      process.exitCode = await cmdRollback(flags);
+      await run('rollback');
       return;
     case 'verify':
-      process.exitCode = await cmdVerify(flags);
+      await run('verify');
       return;
     default:
       // Unknown command → show help and non-zero exit
