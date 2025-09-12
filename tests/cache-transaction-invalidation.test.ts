@@ -12,12 +12,17 @@ function defineEntity() {
 }
 
 class AppCtx extends DbContext {
-  public items!: DbSet<any>;
+  public items!: DbSet<InstanceType<ReturnType<typeof defineEntity>['TItem']>>;
   constructor() {
     super({
       connectionString: ':memory:',
       provider: 'sqlite',
-      performance: { enableEntityCache: true, entityCacheSize: 100, enableCountCache: true, countCacheTtlMs: 60000 }
+      performance: {
+        enableEntityCache: true,
+        entityCacheSize: 100,
+        enableCountCache: true,
+        countCacheTtlMs: 60000
+      }
     });
   }
 }
@@ -35,7 +40,8 @@ describe('Transaction-aware cache invalidation', () => {
     await ctx.ensureCreated();
 
     // seed: 1 row
-    const a = new Item(); a.name = 'A';
+    const a = new Item();
+    a.name = 'A';
     ctx.set(Item).add(a);
     await ctx.saveChanges();
 
@@ -44,7 +50,8 @@ describe('Transaction-aware cache invalidation', () => {
 
     // begin tx, insert second row, then commit
     await ctx.beginTransaction();
-    const b = new Item(); b.name = 'B';
+    const b = new Item();
+    b.name = 'B';
     ctx.set(Item).add(b);
     await ctx.saveChanges();
     await ctx.commitTransaction(); // should clear global count cache
@@ -59,7 +66,8 @@ describe('Transaction-aware cache invalidation', () => {
     const ctx = new AppCtx();
     await ctx.ensureCreated();
 
-    const it = new Item(); it.name = 'A';
+    const it = new Item();
+    it.name = 'A';
     ctx.set(Item).add(it);
     await ctx.saveChanges();
 
@@ -80,5 +88,3 @@ describe('Transaction-aware cache invalidation', () => {
     await ctx.dispose();
   });
 });
-
-

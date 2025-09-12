@@ -8,9 +8,17 @@ const MYSQL_URL = process.env.MYSQL_URL || '';
 const mysqlDescribe = MYSQL_URL ? describe : describe.skip;
 
 @Entity({ name: 'MyUsers' })
-class MyUser { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+class MyUser {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
 
-class MyCtx extends DbContext { public myusers!: any; constructor() { super({ connectionString: MYSQL_URL, provider: 'mysql' }); } }
+class MyCtx extends DbContext {
+  public myusers!: any;
+  constructor() {
+    super({ connectionString: MYSQL_URL, provider: 'mysql' });
+  }
+}
 
 mysqlDescribe('MySQL integration (requires MYSQL_URL)', () => {
   test('CRUD happy path', async () => {
@@ -38,5 +46,3 @@ mysqlDescribe('MySQL integration (requires MYSQL_URL)', () => {
     await ctx.dispose();
   });
 });
-
-

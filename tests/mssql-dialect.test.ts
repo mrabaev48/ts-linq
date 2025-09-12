@@ -5,7 +5,10 @@ import { Column } from '../src/decorators/Column';
 import { MssqlDialect } from '../src/query/MssqlDialect';
 
 @Entity({ name: 't' })
-class T { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT' }) name!: string; }
+class T {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT' }) name!: string;
+}
 
 describe('MssqlDialect', () => {
   test('TOP with limit only', () => {
@@ -24,9 +27,9 @@ describe('MssqlDialect', () => {
   test('Numbered params @p1..', () => {
     new T();
     const d = new MssqlDialect();
-    const { query } = d.buildSelect(T, { where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }] as any });
+    const { query } = d.buildSelect(T, {
+      where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }] as any
+    });
     expect(query).toContain('name = @p1 AND id > @p2');
   });
 });
-
-

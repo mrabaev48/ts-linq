@@ -19,13 +19,15 @@ describe('SQLite optimistic concurrency', () => {
     new VItem();
     // mark version column in metadata
     const meta = MetadataStorage.getEntity(VItem)!;
-    const vcol = meta.columns.find(c => c.propertyName === 'version');
-    if (vcol) (vcol as any).isVersion = true;
+    const vcol = meta.columns.find((c) => c.propertyName === 'version');
+    if (vcol) vcol.isVersion = true;
     provider = new SQLiteProvider(':memory:');
     await provider.connect();
     await provider.createTable(meta);
   });
-  afterEach(async () => { await provider.disconnect(); });
+  afterEach(async () => {
+    await provider.disconnect();
+  });
 
   test('increments version on update and enforces match', async () => {
     const item = new VItem();
@@ -34,23 +36,21 @@ describe('SQLite optimistic concurrency', () => {
     await provider.insert(item, VItem);
     // emulate DB-generated id by re-read
     const all = await provider.findAll(VItem);
-    const created = all[0];
-    expect((created as any).version ?? 0).toBe(0);
+    const created = all[0] as VItem;
+    expect(created.version ?? 0).toBe(0);
 
     // Set version explicitly then update
-    item.id = (created as any).id;
+    item.id = created.id;
     item.version = 0;
     item.name = 'B';
-    const updated = await provider.update(item, VItem);
-    expect((updated as any).version).toBe(1);
+    const updated = (await provider.update(item, VItem)) as VItem;
+    expect(updated.version).toBe(1);
 
     // Stale update with old version should affect 0 rows → throw
     const stale = new VItem();
-    (stale as any).id = (item as any).id;
+    stale.id = item.id;
     stale.version = 0; // old
     stale.name = 'C';
     await expect(provider.update(stale, VItem)).rejects.toBeInstanceOf(OptimisticConcurrencyError);
   });
 });
-
-

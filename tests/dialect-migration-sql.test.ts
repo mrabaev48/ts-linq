@@ -7,7 +7,7 @@ const baseDiff: SchemaDiff = {
     {
       table: 'Users',
       columnChanges: [
-        { kind: 'add', column: { name: 'age', type: 'INTEGER', nullable: true } as any },
+        { kind: 'add', column: { name: 'age', type: 'INTEGER', nullable: true } as any }
       ]
     }
   ]
@@ -17,12 +17,22 @@ describe('Dialect migration SQL', () => {
   it('postgresql add column + create table snapshot', () => {
     const diff: SchemaDiff = {
       tables: [
-        { table: 'Users', create: { name: 'Users', columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any], primaryKeys: ['id'], indexes: [], foreignKeys: [] } as any },
+        {
+          table: 'Users',
+          create: {
+            name: 'Users',
+            columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any],
+            primaryKeys: ['id'],
+            indexes: [],
+            foreignKeys: []
+          } as any
+        },
         ...baseDiff.tables
       ]
     };
     const { up } = generateMigrationFromDiff(diff, 'postgresql');
-    const expected = 'CREATE TABLE IF NOT EXISTS "Users" ("id" INTEGER NOT NULL, PRIMARY KEY ("id"))\nALTER TABLE "Users" ADD COLUMN "age" INTEGER';
+    const expected =
+      'CREATE TABLE IF NOT EXISTS "Users" ("id" INTEGER NOT NULL, PRIMARY KEY ("id"))\nALTER TABLE "Users" ADD COLUMN "age" INTEGER';
     expect(up.join('\n')).toBe(expected);
   });
 
@@ -38,7 +48,18 @@ describe('Dialect migration SQL', () => {
 
   it('alter type/null (postgresql)', () => {
     const diff: SchemaDiff = {
-      tables: [{ table: 'Users', columnChanges: [ { kind: 'alter', column: { name: 'age', type: 'TEXT', nullable: false } as any, prev: { name: 'age', type: 'INTEGER', nullable: true } as any } ] }]
+      tables: [
+        {
+          table: 'Users',
+          columnChanges: [
+            {
+              kind: 'alter',
+              column: { name: 'age', type: 'TEXT', nullable: false } as any,
+              prev: { name: 'age', type: 'INTEGER', nullable: true } as any
+            }
+          ]
+        }
+      ]
     };
     const { up } = generateMigrationFromDiff(diff, 'postgresql');
     expect(up).toEqual([
@@ -56,27 +77,81 @@ describe('Dialect migration SQL', () => {
   });
 
   it('ADD COLUMN NOT NULL with DEFAULT (postgres/mysql/mssql/sqlite)', () => {
-    const base: SchemaDiff = { tables: [{ table: 'Users', columnChanges: [ { kind: 'add', column: { name: 'active', type: 'BOOLEAN', nullable: false, defaultValue: true } as any } ] }] } as any;
-    expect(generateMigrationFromDiff(base, 'postgresql').up[0]).toBe('ALTER TABLE "Users" ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT TRUE');
-    expect(generateMigrationFromDiff(base, 'mysql').up[0]).toBe('ALTER TABLE `Users` ADD COLUMN `active` TINYINT(1) NOT NULL DEFAULT 1');
-    expect(generateMigrationFromDiff(base, 'mssql').up[0]).toBe('ALTER TABLE [Users] ADD [active] BIT NOT NULL DEFAULT 1');
+    const base: SchemaDiff = {
+      tables: [
+        {
+          table: 'Users',
+          columnChanges: [
+            {
+              kind: 'add',
+              column: {
+                name: 'active',
+                type: 'BOOLEAN',
+                nullable: false,
+                defaultValue: true
+              } as any
+            }
+          ]
+        }
+      ]
+    } as any;
+    expect(generateMigrationFromDiff(base, 'postgresql').up[0]).toBe(
+      'ALTER TABLE "Users" ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT TRUE'
+    );
+    expect(generateMigrationFromDiff(base, 'mysql').up[0]).toBe(
+      'ALTER TABLE `Users` ADD COLUMN `active` TINYINT(1) NOT NULL DEFAULT 1'
+    );
+    expect(generateMigrationFromDiff(base, 'mssql').up[0]).toBe(
+      'ALTER TABLE [Users] ADD [active] BIT NOT NULL DEFAULT 1'
+    );
     // sqlite: BOOLEAN→INTEGER, TRUE→1
-    expect(generateMigrationFromDiff(base, 'sqlite').up[0]).toBe('ALTER TABLE Users ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
+    expect(generateMigrationFromDiff(base, 'sqlite').up[0]).toBe(
+      'ALTER TABLE Users ADD COLUMN active INTEGER NOT NULL DEFAULT 1'
+    );
   });
 
   it('alter nullability for mysql/mssql yields comment placeholder', () => {
-    const diff: SchemaDiff = { tables: [{ table: 'Users', columnChanges: [ { kind: 'alter', column: { name: 'age', type: 'INTEGER', nullable: false } as any, prev: { name: 'age', type: 'INTEGER', nullable: true } as any } ] }] } as any;
+    const diff: SchemaDiff = {
+      tables: [
+        {
+          table: 'Users',
+          columnChanges: [
+            {
+              kind: 'alter',
+              column: { name: 'age', type: 'INTEGER', nullable: false } as any,
+              prev: { name: 'age', type: 'INTEGER', nullable: true } as any
+            }
+          ]
+        }
+      ]
+    } as any;
     const my = generateMigrationFromDiff(diff, 'mysql').up;
     const ms = generateMigrationFromDiff(diff, 'mssql').up;
-    expect(my.some(s => s.includes('MySQL requires full type'))).toBe(true);
-    expect(ms.some(s => s.includes('MSSQL requires full type'))).toBe(true);
+    expect(my.some((s) => s.includes('MySQL requires full type'))).toBe(true);
+    expect(ms.some((s) => s.includes('MSSQL requires full type'))).toBe(true);
   });
 
   it('FK in CREATE TABLE (postgresql)', () => {
-    const diff: SchemaDiff = { tables: [{ table: 'Orders', create: { name: 'Orders', columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any, { name: 'userId', type: 'INTEGER', nullable: false } as any], primaryKeys: ['id'], indexes: [], foreignKeys: [{ columns: ['userId'], refTable: 'Users', refColumns: ['id'] }] } as any }] };
+    const diff: SchemaDiff = {
+      tables: [
+        {
+          table: 'Orders',
+          create: {
+            name: 'Orders',
+            columns: [
+              { name: 'id', type: 'INTEGER', nullable: false } as any,
+              { name: 'userId', type: 'INTEGER', nullable: false } as any
+            ],
+            primaryKeys: ['id'],
+            indexes: [],
+            foreignKeys: [{ columns: ['userId'], refTable: 'Users', refColumns: ['id'] }]
+          } as any
+        }
+      ]
+    };
     const { up } = generateMigrationFromDiff(diff, 'postgresql');
-    expect(up[0]).toBe('CREATE TABLE IF NOT EXISTS "Orders" ("id" INTEGER NOT NULL, "userId" INTEGER NOT NULL, PRIMARY KEY ("id"), FOREIGN KEY ("userId") REFERENCES "Users" ("id"))');
+    expect(up[0]).toBe(
+      'CREATE TABLE IF NOT EXISTS "Orders" ("id" INTEGER NOT NULL, "userId" INTEGER NOT NULL, PRIMARY KEY ("id"), FOREIGN KEY ("userId") REFERENCES "Users" ("id"))'
+    );
   });
 });
-
-

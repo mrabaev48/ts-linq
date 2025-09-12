@@ -5,12 +5,15 @@ import { OrmMiddleware } from '../src/types';
 
 function defineE() {
   @Entity()
-  class MW { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+  class MW {
+    @PrimaryKey({ autoIncrement: true }) id!: number;
+    @Column({ type: 'TEXT', nullable: false }) name!: string;
+  }
   return { MW };
 }
 
 class MWCtx extends DbContext {
-  public mws!: DbSet<any>;
+  public mws!: DbSet<InstanceType<ReturnType<typeof defineE>['MW']>>;
   constructor(middlewares: OrmMiddleware[]) {
     super({ provider: 'sqlite', connectionString: ':memory:', middlewares });
   }
@@ -21,23 +24,30 @@ describe('Middleware entityMaterialized hook', () => {
 
   it('fires entityMaterialized for each materialized row', async () => {
     const { MW } = defineE();
-    const seen: any[] = [];
+    const seen: Array<{ name: string }> = [];
     const mw: OrmMiddleware = {
-      entityMaterialized: async ({ entity }) => { seen.push(entity); }
+      entityMaterialized: async ({ entity }) => {
+        seen.push(entity as { name: string });
+      }
     };
     const ctx = new MWCtx([mw]);
     await ctx.ensureCreated();
-    const a = new MW(); a.name = 'A'; ctx.mws.add(a);
-    const b = new MW(); b.name = 'B'; ctx.mws.add(b);
+    const a = new MW();
+    a.name = 'A';
+    ctx.mws.add(a);
+    const b = new MW();
+    b.name = 'B';
+    ctx.mws.add(b);
     await ctx.saveChanges();
 
-    const rows = await ctx.set(MW).orderBy(x => x.id).toArray();
+    const rows = await ctx
+      .set(MW)
+      .orderBy((x) => x.id)
+      .toArray();
     expect(rows).toHaveLength(2);
     // entityMaterialized может быть асинхронным — подождём микротаск-тик
-    await new Promise(res => setTimeout(res, 0));
-    expect(seen.map(e => e.name).sort()).toEqual(['A','B']);
+    await new Promise((res) => setTimeout(res, 0));
+    expect(seen.map((e) => e.name).sort()).toEqual(['A', 'B']);
     await ctx.dispose();
   });
 });
-
-

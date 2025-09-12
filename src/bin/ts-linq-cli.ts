@@ -7,26 +7,31 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 async function main() {
-  const [,, cmd, arg1] = process.argv;
+  const [, , cmd, arg1] = process.argv;
   const conn = process.env.SQLITE_URL || ':memory:';
   const provider = new SQLiteProvider(conn);
   await provider.connect();
   const gen = new DiffMigrationGenerator(provider);
   const steps = await gen.generate();
   if (cmd === 'apply-diff' || cmd === 'migrate') {
-    for (const s of steps) {
-      if (!s.sql.trim().startsWith('--')) {
+    for (const step of steps) {
+      if (!step.sql.trim().startsWith('--')) {
         // eslint-disable-next-line no-await-in-loop
-        await provider.executeNonQuery(s.sql);
+        await provider.executeNonQuery(step.sql);
       }
     }
     console.log(`Applied ${steps.length} step(s).`);
   } else if (cmd === 'rollback') {
-    console.warn('Rollback is not supported for diff-based migrations. Please provide explicit down migrations.');
+    console.warn(
+      'Rollback is not supported for diff-based migrations. Please provide explicit down migrations.'
+    );
     process.exitCode = 2;
   } else if (cmd === 'generate') {
     const name = (arg1 || 'Migration').replace(/\s+/g, '_');
-    const ts = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+    const ts = new Date()
+      .toISOString()
+      .replace(/[-:TZ.]/g, '')
+      .slice(0, 14);
     const dir = path.resolve(process.cwd(), 'migrations');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, `${ts}_${name}.ts`);
@@ -40,19 +45,23 @@ async function main() {
       process.exitCode = 2;
     } else {
       const text = fs.readFileSync(sqlFile, 'utf8');
-      const stmts = text.split(';').map(s => s.trim()).filter(Boolean);
-      for (const s of stmts) {
+      const statements = text
+        .split(';')
+        .map((stmt) => stmt.trim())
+        .filter(Boolean);
+      for (const statement of statements) {
         // eslint-disable-next-line no-await-in-loop
-        await provider.executeNonQuery(s);
+        await provider.executeNonQuery(statement);
       }
-      console.log(`Applied ${stmts.length} seed statements from ${sqlFile}`);
+      console.log(`Applied ${statements.length} seed statements from ${sqlFile}`);
     }
   } else {
-    for (const s of steps) console.log(s.sql);
+    for (const step of steps) console.log(step.sql);
   }
   await provider.disconnect();
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
-
-
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

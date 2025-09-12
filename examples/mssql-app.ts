@@ -14,7 +14,9 @@ class MssqlAppDbContext extends DbContext {
   public users!: DbSet<User>;
   constructor() {
     super({
-      connectionString: process.env.MSSQL_URL || 'Server=localhost;Database=ts_linq;User Id=sa;Password=Your_password123;Encrypt=false',
+      connectionString:
+        process.env.MSSQL_URL ||
+        'Server=localhost;Database=ts_linq;User Id=sa;Password=Your_password123;Encrypt=false',
       provider: 'mssql'
     });
   }
@@ -35,9 +37,7 @@ async function main() {
   await ctx.dispose();
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-
-

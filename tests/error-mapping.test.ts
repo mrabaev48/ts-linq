@@ -8,7 +8,9 @@ describe('SQLite error mapping', () => {
     await p.connect();
     await p.executeNonQuery('CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT UNIQUE)');
     await p.executeNonQuery('INSERT INTO t (name) VALUES (?)', ['A']);
-    await expect(p.executeNonQuery('INSERT INTO t (name) VALUES (?)', ['A'])).rejects.toBeInstanceOf(UniqueConstraintError);
+    await expect(
+      p.executeNonQuery('INSERT INTO t (name) VALUES (?)', ['A'])
+    ).rejects.toBeInstanceOf(UniqueConstraintError);
     await p.disconnect();
   });
 
@@ -17,10 +19,12 @@ describe('SQLite error mapping', () => {
     await p.connect();
     // foreign keys are enabled in connect()
     await p.executeNonQuery('CREATE TABLE parent (id INTEGER PRIMARY KEY)');
-    await p.executeNonQuery('CREATE TABLE child (id INTEGER PRIMARY KEY, parentId INTEGER, FOREIGN KEY(parentId) REFERENCES parent(id))');
-    await expect(p.executeNonQuery('INSERT INTO child (parentId) VALUES (?)', [999])).rejects.toBeInstanceOf(ForeignKeyConstraintError);
+    await p.executeNonQuery(
+      'CREATE TABLE child (id INTEGER PRIMARY KEY, parentId INTEGER, FOREIGN KEY(parentId) REFERENCES parent(id))'
+    );
+    await expect(
+      p.executeNonQuery('INSERT INTO child (parentId) VALUES (?)', [999])
+    ).rejects.toBeInstanceOf(ForeignKeyConstraintError);
     await p.disconnect();
   });
 });
-
-

@@ -7,7 +7,10 @@ import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 @Entity({ name: 'C_Users' })
-class CUser { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+class CUser {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
 
 describe('Provider contract (SQLite)', () => {
   let provider: SQLiteProvider;
@@ -74,16 +77,24 @@ describe('Provider contract (SQLite)', () => {
   });
 
   test('Optimistic concurrency error type', async () => {
-    const u = new CUser(); u.name = 'A';
+    const u = new CUser();
+    u.name = 'A';
     await provider.insert(u, CUser);
     // prepare stale entity with wrong version by enabling version metadata retroactively
     const meta = MetadataStorage.getEntity(CUser)!;
-    meta.columns.push({ propertyName: 'version', columnName: 'version', type: 'INTEGER', nullable: false, isGenerated: false, isVersion: true } as any);
-    await provider.executeNonQuery(`ALTER TABLE ${meta.tableName} ADD COLUMN version INTEGER DEFAULT 0`);
+    meta.columns.push({
+      propertyName: 'version',
+      columnName: 'version',
+      type: 'INTEGER',
+      nullable: false,
+      isGenerated: false,
+      isVersion: true
+    } as any);
+    await provider.executeNonQuery(
+      `ALTER TABLE ${meta.tableName} ADD COLUMN version INTEGER DEFAULT 0`
+    );
     // stale update with version=5 that doesn't match 0
     (u as any).version = 5;
     await expect(provider.update(u, CUser)).rejects.toBeInstanceOf(OptimisticConcurrencyError);
   });
 });
-
-

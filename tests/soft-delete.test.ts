@@ -15,8 +15,8 @@ function defineSUser() {
   return SUser;
 }
 
-class SoftCtx<TUser> extends DbContext {
-  public susers!: DbSet<any>;
+class SoftCtx<TUser extends object> extends DbContext {
+  public susers!: DbSet<TUser>;
   constructor() {
     super({
       provider: 'sqlite',
@@ -28,7 +28,7 @@ class SoftCtx<TUser> extends DbContext {
 }
 
 describe('Soft delete & audit', () => {
-  let ctx: SoftCtx<any>;
+  let ctx: SoftCtx<InstanceType<ReturnType<typeof defineSUser>>>;
   let SUser: ReturnType<typeof defineSUser>;
   beforeEach(async () => {
     MetadataStorage.getInstance().clear();
@@ -36,7 +36,9 @@ describe('Soft delete & audit', () => {
     ctx = new SoftCtx();
     await ctx.ensureCreated();
   });
-  afterEach(async () => { await ctx.dispose(); });
+  afterEach(async () => {
+    await ctx.dispose();
+  });
 
   it('filters out soft-deleted rows and stamps audit fields', async () => {
     const u = new SUser();
@@ -57,5 +59,3 @@ describe('Soft delete & audit', () => {
     expect(all).toHaveLength(0);
   });
 });
-
-

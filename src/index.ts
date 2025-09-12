@@ -26,6 +26,7 @@ export * from './context/DbSet';
 // Query building
 export * from './query/Queryable';
 export * from './query/QueryBuilder';
+export * from './query/SqlCache';
 export * from './query/MssqlDialect';
 export * from './query/MysqlDialect';
 
@@ -45,9 +46,17 @@ export * from './migrations/Migration';
 export * from './migrations/MigrationRunner';
 export * from './migrations/DiffTypes';
 export * from './migrations/DialectMigrationSql';
+export * from './migrations/MigrationBuilder';
+export * from './migrations/DiffBasedMigration';
+export * from './migrations/MigrationFileBuilder';
 
 // Utils
 export * from './utils/SqlHelper';
 export * from './utils/OpenTelemetrySqlLogger';
 export * from './utils/PrometheusSqlLogger';
 export * from './utils/PrometheusEndpoint';
+export * from './utils/CompositeSqlLogger';
+export * from './utils/CompositeSqlLoggerFactory';
+export * from './providers/DdlStrategy';
+export * from './providers/DdlBuilder';
+export * from './utils/RetryPolicies';

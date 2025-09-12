@@ -10,16 +10,25 @@ const PG_URL = process.env.POSTGRES_URL || '';
 const pgDescribe = PG_URL ? describe : describe.skip;
 
 @Entity({ name: 'PgItemsV' })
-class PgItemV { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'INTEGER', nullable: false }) version!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+class PgItemV {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'INTEGER', nullable: false }) version!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
 
-class PgCtxV extends DbContext { public pgitemvs!: any; constructor() { super({ connectionString: PG_URL, provider: 'postgresql' }); } }
+class PgCtxV extends DbContext {
+  public pgitemvs!: any;
+  constructor() {
+    super({ connectionString: PG_URL, provider: 'postgresql' });
+  }
+}
 
 pgDescribe('PostgreSQL optimistic concurrency (requires POSTGRES_URL)', () => {
   test('throws OptimisticConcurrencyError on version mismatch', async () => {
     new PgItemV();
     // mark version column
     const meta = MetadataStorage.getEntity(PgItemV)!;
-    const vcol = meta.columns.find(c => c.propertyName === 'version');
+    const vcol = meta.columns.find((c) => c.propertyName === 'version');
     if (vcol) (vcol as any).isVersion = true;
 
     const ctx = new PgCtxV();
@@ -35,9 +44,9 @@ pgDescribe('PostgreSQL optimistic concurrency (requires POSTGRES_URL)', () => {
 
     // stale update with old version
     const stale: any = { id: (u as any).id, name: 'pg-2', version: 0 };
-    await expect((ctx as any).provider.update(stale, PgItemV)).rejects.toBeInstanceOf(OptimisticConcurrencyError);
+    await expect((ctx as any).provider.update(stale, PgItemV)).rejects.toBeInstanceOf(
+      OptimisticConcurrencyError
+    );
     await ctx.dispose();
   });
 });
-
-

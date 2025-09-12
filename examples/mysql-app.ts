@@ -5,9 +5,20 @@ import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
 
 @Entity({ name: 'Users' })
-class User { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT', nullable: false }) name!: string; }
+class User {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT', nullable: false }) name!: string;
+}
 
-class MySqlCtx extends DbContext { public users!: any; constructor() { super({ connectionString: process.env.MYSQL_URL || 'mysql://root:password@localhost:3306/ts_linq', provider: 'mysql' }); } }
+class MySqlCtx extends DbContext {
+  public users!: any;
+  constructor() {
+    super({
+      connectionString: process.env.MYSQL_URL || 'mysql://root:password@localhost:3306/ts_linq',
+      provider: 'mysql'
+    });
+  }
+}
 
 async function main() {
   new User();
@@ -21,6 +32,7 @@ async function main() {
   await ctx.dispose();
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
-
-
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
