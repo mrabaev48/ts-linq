@@ -1,4 +1,4 @@
-import { SqlLogger, SqlParameter } from '../types';
+import type { SqlLogger, SqlParameter } from '../types';
 
 type LabelValues = Record<string, string>;
 
@@ -111,7 +111,7 @@ export class PrometheusSqlLogger implements SqlLogger {
       labelNames: ['provider', 'operation', 'entity']
     });
     if (this.client.Gauge) {
-      const g = new this.client.Gauge({
+      const gauge = new this.client.Gauge({
         name: `${this.prefix}db_active_transactions`,
         help: 'Active DB transactions',
         labelNames: ['provider']
@@ -119,14 +119,14 @@ export class PrometheusSqlLogger implements SqlLogger {
       this.activeTransactions = {
         inc: (labels?: LabelValues, v?: number) => {
           try {
-            g.inc(labels, v);
+            gauge.inc(labels, v);
           } catch {
             /* ignore */
           }
         },
         dec: (labels?: LabelValues, v?: number) => {
           try {
-            g.dec(labels, v);
+            gauge.dec(labels, v);
           } catch {
             /* ignore */
           }
@@ -200,10 +200,14 @@ export class PrometheusSqlLogger implements SqlLogger {
       // Attach exemplar when traceId is present and prom-client supports it
       const duration = Math.max(0, info.durationMs);
       try {
-        this.queryDuration.labels(labels).observe(
-          duration,
-          info.traceId ? { traceId: info.traceId } : (undefined as unknown as Record<string, unknown>)
-        );
+        this.queryDuration
+          .labels(labels)
+          .observe(
+            duration,
+            info.traceId
+              ? { traceId: info.traceId }
+              : (undefined as unknown as Record<string, unknown>)
+          );
       } catch {
         this.queryDuration.labels(labels).observe(duration);
       }
@@ -282,7 +286,11 @@ export class PrometheusSqlLogger implements SqlLogger {
   }
 
   /** Cache size setter (optional API, used via duck typing). */
-  public cacheSize?(info: { cache: 'sqlGen' | 'entityL2' | 'count'; size: number; provider?: string }): void {
+  public cacheSize?(info: {
+    cache: 'sqlGen' | 'entityL2' | 'count';
+    size: number;
+    provider?: string;
+  }): void {
     if (!this.enabled || !this.cacheSizeGauge) return;
     const provider = info.provider || 'unknown';
     try {
@@ -298,7 +306,16 @@ export class PrometheusSqlLogger implements SqlLogger {
     const provider = info.provider || 'unknown';
     try {
       this.cacheEvictions.labels({ cache: info.cache, provider }).inc(1);
-    } catch {/* ignore */}
+    } catch (e) {
+      try {
+        const { warnIfLoggerDebug } = require('./MetricsSafe') as {
+          warnIfLoggerDebug: (method: string, error: unknown) => void;
+        };
+        warnIfLoggerDebug('cacheEvicted', e);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   private safeRequirePromClient(): PromClientLike | undefined {

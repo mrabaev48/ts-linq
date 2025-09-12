@@ -83,7 +83,8 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
         changes.push({ kind: 'add', column: expectedColumn });
       } else {
         const typeChanged =
-          normalizeType(expectedColumn.type) !== normalizeType((actualColumn as { type?: string }).type ?? '');
+          normalizeType(expectedColumn.type) !==
+          normalizeType((actualColumn as { type?: string }).type ?? '');
         // Compare by nullable flag when available in snapshot
         const nullableChanged =
           typeof (actualColumn as { nullable?: boolean }).nullable === 'boolean'
@@ -114,8 +115,8 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
   return { tables: diffs };
 }
 
-function normalizeType(t: string): string {
-  return String(t || '')
+function normalizeType(typeName: string): string {
+  return String(typeName || '')
     .trim()
     .toUpperCase();
 }

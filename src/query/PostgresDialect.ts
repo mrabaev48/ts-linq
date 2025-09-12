@@ -1,6 +1,6 @@
-import { SqlDialect } from './SqlDialect';
+import type { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { QueryOptions, SqlParameter } from '../types';
+import type { QueryOptions, SqlParameter } from '../types';
 
 /**
  * PostgreSQL implementation of SqlDialect.
@@ -37,9 +37,9 @@ export class PostgresDialect implements SqlDialect {
     }
     const parameters: SqlParameter[] = [];
     if (options.where && options.where.length > 0) {
-      const whereClauses = options.where.map((w) => w.condition);
+      const whereClauses = options.where.map((whereClause) => whereClause.condition);
       query += ` WHERE ${whereClauses.join(' AND ')}`;
-      for (const where of options.where) parameters.push(...where.parameters);
+      for (const whereClause of options.where) parameters.push(...whereClause.parameters);
     }
     if (options.groupBy) {
       query += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
@@ -49,7 +49,9 @@ export class PostgresDialect implements SqlDialect {
       }
     }
     if (options.orderBy && options.orderBy.length > 0) {
-      const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
+      const orderByClauses = options.orderBy.map(
+        (orderBy) => `${orderBy.column} ${orderBy.direction}`
+      );
       query += ` ORDER BY ${orderByClauses.join(', ')}`;
     }
     const hasLimit = options.limit !== undefined && options.limit !== null;

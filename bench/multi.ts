@@ -19,7 +19,9 @@ class BenchCtx extends DbContext {
   public users = this.set(BenchUser);
 }
 
-function nowMs(): number { return Number(process.hrtime.bigint() / BigInt(1_000_000)); }
+function nowMs(): number {
+  return Number(process.hrtime.bigint() / BigInt(1_000_000));
+}
 
 function percentile(values: number[], p: number): number {
   if (values.length === 0) return 0;
@@ -30,21 +32,31 @@ function percentile(values: number[], p: number): number {
 
 async function ensureSchema(ctx: BenchCtx) {
   const prov = (ctx as unknown as { provider?: unknown })['provider'] as
-    | { providerKey?: ProviderKey; connect: () => Promise<void>; executeNonQuery: (sql: string, params?: unknown[]) => Promise<number> }
+    | {
+        providerKey?: ProviderKey;
+        connect: () => Promise<void>;
+        executeNonQuery: (sql: string, params?: unknown[]) => Promise<number>;
+      }
     | undefined;
   const provider: ProviderKey = prov?.providerKey ?? 'sqlite';
   if (provider === 'sqlite') {
     await prov.connect();
     await prov.executeNonQuery('DROP TABLE IF EXISTS users');
-    await prov.executeNonQuery('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, age INTEGER NOT NULL)');
+    await prov.executeNonQuery(
+      'CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, age INTEGER NOT NULL)'
+    );
   } else if (provider === 'postgresql') {
     await prov.connect();
     await prov.executeNonQuery('DROP TABLE IF EXISTS users');
-    await prov.executeNonQuery('CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, age INTEGER NOT NULL)');
+    await prov.executeNonQuery(
+      'CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, age INTEGER NOT NULL)'
+    );
   } else if (provider === 'mysql') {
     await prov.connect();
     await prov.executeNonQuery('DROP TABLE IF EXISTS users');
-    await prov.executeNonQuery('CREATE TABLE users (id INT PRIMARY KEY AUTO_INCREMENT, name TEXT NOT NULL, age INT NOT NULL)');
+    await prov.executeNonQuery(
+      'CREATE TABLE users (id INT PRIMARY KEY AUTO_INCREMENT, name TEXT NOT NULL, age INT NOT NULL)'
+    );
   }
 }
 
@@ -74,7 +86,11 @@ async function runScenarios(ctx: BenchCtx, iterations: number) {
     const age = 18 + (i % 50);
 
     let t = nowMs();
-    await ctx.users.where((u) => u.age >= age).orderBy((u) => u.id).take(10).toArray();
+    await ctx.users
+      .where((u) => u.age >= age)
+      .orderBy((u) => u.id)
+      .take(10)
+      .toArray();
     durations.select10.push(nowMs() - t);
 
     t = nowMs();
@@ -82,10 +98,14 @@ async function runScenarios(ctx: BenchCtx, iterations: number) {
     durations.count.push(nowMs() - t);
 
     t = nowMs();
-    await ctx.users.orderBy((u) => u.id).skip((i % 10) * 10).take(10).toArray();
+    await ctx.users
+      .orderBy((u) => u.id)
+      .skip((i % 10) * 10)
+      .take(10)
+      .toArray();
     durations.paginate_offset.push(nowMs() - t);
 
-    const after = i % 2 === 0 ? (i % 100) : null;
+    const after = i % 2 === 0 ? i % 100 : null;
     t = nowMs();
     await ctx.users.orderBy((u) => u.id).keysetPaginate('id', after, 10);
     durations.paginate_keyset.push(nowMs() - t);
@@ -95,12 +115,15 @@ async function runScenarios(ctx: BenchCtx, iterations: number) {
 
 function output(provider: ProviderKey, fmt: 'csv' | 'json', durations: Record<string, number[]>) {
   const stats = Object.fromEntries(
-    Object.entries(durations).map(([k, v]) => [k, {
-      n: v.length,
-      avg: v.reduce((a, b) => a + b, 0) / Math.max(1, v.length),
-      p95: percentile(v, 0.95),
-      p99: percentile(v, 0.99)
-    }])
+    Object.entries(durations).map(([k, v]) => [
+      k,
+      {
+        n: v.length,
+        avg: v.reduce((a, b) => a + b, 0) / Math.max(1, v.length),
+        p95: percentile(v, 0.95),
+        p99: percentile(v, 0.99)
+      }
+    ])
   );
   if (fmt === 'json') {
     // eslint-disable-next-line no-console
@@ -110,12 +133,20 @@ function output(provider: ProviderKey, fmt: 'csv' | 'json', durations: Record<st
     console.log(`provider,scenario,n,avg_ms,p95_ms,p99_ms`);
     for (const [k, s] of Object.entries(stats)) {
       // eslint-disable-next-line no-console
-      console.log(`${provider},${k},${s.n},${s.avg.toFixed(2)},${s.p95.toFixed(2)},${s.p99.toFixed(2)}`);
+      console.log(
+        `${provider},${k},${s.n},${s.avg.toFixed(2)},${s.p95.toFixed(2)},${s.p99.toFixed(2)}`
+      );
     }
   }
 }
 
-async function runForProvider(provider: ProviderKey, conn: string | undefined, fmt: 'csv' | 'json', rows: number, iters: number) {
+async function runForProvider(
+  provider: ProviderKey,
+  conn: string | undefined,
+  fmt: 'csv' | 'json',
+  rows: number,
+  iters: number
+) {
   if (!conn && provider !== 'sqlite') {
     // eslint-disable-next-line no-console
     console.log(`# skipping ${provider}: no connection string`);
@@ -153,5 +184,3 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-
-

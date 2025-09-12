@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import type { DbSet } from '../src/context/DbSet';
 import { DbContext } from '../src/context/DbContext';
 import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
@@ -41,10 +42,7 @@ function createBlogEntities() {
   return { User, Post };
 }
 
-class BlogDbContext extends DbContext {
-  public users!: any;
-  public posts!: any;
-}
+class BlogDbContext extends DbContext {}
 
 describe('Integration Tests', () => {
   let context: BlogDbContext;
@@ -162,7 +160,7 @@ describe('Integration Tests', () => {
       await context.commitTransaction();
 
       // User should exist after commit
-      const users = await (context as any).provider.findAll(User as any);
+      const users = await context.findAll(User);
       expect(users).toHaveLength(1);
       expect(users[0].name).toBe('Transaction User');
     });

@@ -23,7 +23,7 @@ describe('MysqlDialect', () => {
     new T();
     const d = new MysqlDialect();
     const { query, parameters } = d.buildSelect(T, {
-      where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }] as any
+      where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }]
     });
     expect(query).toContain('WHERE name = ? AND id > ?');
     expect(parameters).toEqual(['a', 1]);

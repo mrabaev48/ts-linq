@@ -1,6 +1,6 @@
-import { SqlDialect } from './SqlDialect';
+import type { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { QueryOptions, SqlParameter } from '../types';
+import type { QueryOptions, SqlParameter } from '../types';
 
 /**
  * MySQL dialect for SELECT generation.

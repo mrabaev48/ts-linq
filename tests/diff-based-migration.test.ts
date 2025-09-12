@@ -1,6 +1,6 @@
 import { DiffBasedMigration } from '../src/migrations/DiffBasedMigration';
-import { Dialect } from '../src/migrations/DialectMigrationSql';
-import { SchemaDiff } from '../src/migrations/DiffTypes';
+import type { Dialect } from '../src/migrations/DialectMigrationSql';
+import type { SchemaDiff } from '../src/migrations/DiffTypes';
 import { SQLiteProvider } from '../src/providers/SQLiteProvider';
 
 class TestDiffMigration extends DiffBasedMigration {
@@ -82,7 +82,12 @@ describe('DiffBasedMigration', () => {
     }
     // Spy to inject a noop statement behavior by intercepting provider call
     const spy = jest
-      .spyOn(p as any, 'executeNonQuery')
+      .spyOn(
+        p as unknown as {
+          executeNonQuery: (sql: string, params?: readonly unknown[]) => Promise<number>;
+        },
+        'executeNonQuery'
+      )
       .mockImplementation(async (...args: unknown[]) => {
         const sql = String(args[0]);
         if (sql.includes('CREATE TABLE') && Math.random() < -1) await Promise.resolve(); // never true

@@ -8,47 +8,51 @@ import { MssqlProvider } from '../src/providers/MssqlProvider';
 
 class PgFake extends PostgresProvider {
   public async connect() {
-    (this as any).pool = {
+    type Pool = { query: () => Promise<never> };
+    (this as unknown as { pool?: Pool }).pool = {
       query: async () => {
-        throw Object.assign(new Error('duplicate key value violates unique constraint'), {
-          code: '23505'
-        });
+        const err = new Error('duplicate key value violates unique constraint') as Error & {
+          code?: string;
+        };
+        err.code = '23505';
+        throw err;
       }
     };
-    this['isConnected'] = true;
+    (this as unknown as { isConnected: boolean }).isConnected = true;
   }
   public async disconnect() {
-    this['isConnected'] = false;
+    (this as unknown as { isConnected: boolean }).isConnected = false;
   }
 }
 
 class MyFake extends MySqlProvider {
   public async connect() {
-    (this as any).pool = {
+    type Pool = { query: () => Promise<never>; execute: () => Promise<never> };
+    (this as unknown as { pool?: Pool }).pool = {
       query: async () => {
-        const e: any = new Error('dup');
-        e.code = 'ER_DUP_ENTRY';
-        throw e;
+        const err = new Error('dup') as Error & { code?: string };
+        err.code = 'ER_DUP_ENTRY';
+        throw err;
       },
       execute: async () => {
-        const e: any = new Error('dup');
-        e.code = 'ER_DUP_ENTRY';
-        throw e;
+        const err = new Error('dup') as Error & { code?: string };
+        err.code = 'ER_DUP_ENTRY';
+        throw err;
       }
     };
-    this['isConnected'] = true;
+    (this as unknown as { isConnected: boolean }).isConnected = true;
   }
   public async disconnect() {
-    this['isConnected'] = false;
+    (this as unknown as { isConnected: boolean }).isConnected = false;
   }
 }
 
 class MsFake extends MssqlProvider {
   public async connect() {
-    this['isConnected'] = true;
+    (this as unknown as { isConnected: boolean }).isConnected = true;
   }
   public async disconnect() {
-    this['isConnected'] = false;
+    (this as unknown as { isConnected: boolean }).isConnected = false;
   }
   protected async doExecuteNonQuery(): Promise<number> {
     throw new UniqueConstraintError('Violation of UNIQUE KEY constraint', '2627');

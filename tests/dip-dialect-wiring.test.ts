@@ -8,8 +8,9 @@ import { SQLiteDialect } from '../src/query/SQLiteDialect';
 import { MysqlDialect } from '../src/query/MysqlDialect';
 import { PostgresDialect } from '../src/query/PostgresDialect';
 import { MssqlDialect } from '../src/query/MssqlDialect';
-import { SqlDialect } from '../src/query/SqlDialect';
-import { QueryOptions, SqlParameter } from '../src/types';
+import type { SqlDialect } from '../src/query/SqlDialect';
+import type { SqlParameter } from '../src/types';
+import { QueryOptions } from '../src/types';
 import { Queryable } from '../src/query/Queryable';
 
 class ProviderStub extends DatabaseProvider {
@@ -38,7 +39,10 @@ class ProviderStub extends DatabaseProvider {
   protected async doExecuteQuery<T>(_sql: string, _params?: readonly SqlParameter[]): Promise<T[]> {
     return [];
   }
-  protected async doExecuteNonQuery(_sql: string, _params?: readonly SqlParameter[]): Promise<number> {
+  protected async doExecuteNonQuery(
+    _sql: string,
+    _params?: readonly SqlParameter[]
+  ): Promise<number> {
     return 0;
   }
   public async beginTransaction(): Promise<void> {}
@@ -76,7 +80,10 @@ describe('DIP: provider → dialect wiring', () => {
       public getDialect(): SqlDialect {
         return new DummyDialect();
       }
-      protected async doExecuteQuery<T>(sql: string, _params?: readonly SqlParameter[]): Promise<T[]> {
+      protected async doExecuteQuery<T>(
+        sql: string,
+        _params?: readonly SqlParameter[]
+      ): Promise<T[]> {
         this.capturedSql = sql;
         return [] as unknown as T[];
       }
@@ -84,7 +91,7 @@ describe('DIP: provider → dialect wiring', () => {
 
     class T {}
     const provider = new DummyProvider('conn');
-    const q = new Queryable<T>(T as any, provider);
+    const q = new Queryable<T>(T as unknown as new () => T, provider);
     await q.toArray();
     expect(provider.capturedSql).toContain('/*DUMMY DIALECT*/');
   });

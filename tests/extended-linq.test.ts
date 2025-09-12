@@ -62,8 +62,12 @@ describe('Extended LINQ: subqueries and unions', () => {
   });
 
   it('union and unionAll basic', async () => {
-    const q1 = (ctx as unknown as { as: DbSet<InstanceType<typeof A>> }).as.where((a) => a.name === 'x');
-    const q2 = (ctx as unknown as { as: DbSet<InstanceType<typeof A>> }).as.where((a) => a.name === 'y');
+    const q1 = (ctx as unknown as { as: DbSet<InstanceType<typeof A>> }).as.where(
+      (a) => a.name === 'x'
+    );
+    const q2 = (ctx as unknown as { as: DbSet<InstanceType<typeof A>> }).as.where(
+      (a) => a.name === 'y'
+    );
     const res = await q1.clone().union(q2).toArray();
     expect(res.length).toBe(2);
   });

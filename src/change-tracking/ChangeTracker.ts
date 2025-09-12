@@ -1,4 +1,5 @@
-import { EntityState, TrackedEntity } from '../types';
+import type { TrackedEntity } from '../types';
+import { EntityState } from '../types';
 
 /**
  * Tracks entities and their states (Added, Modified, Deleted, Unchanged)

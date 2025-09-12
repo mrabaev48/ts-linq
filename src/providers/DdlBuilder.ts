@@ -1,5 +1,5 @@
-import { EntityMetadata } from '../types';
-import { DdlStrategy } from './DdlStrategy';
+import type { EntityMetadata } from '../types';
+import type { DdlStrategy } from './DdlStrategy';
 
 /**
  * Small facade over a DdlStrategy to generate CREATE TABLE and INDEX statements

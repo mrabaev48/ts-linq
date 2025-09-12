@@ -1,4 +1,4 @@
-import { SqlParameter } from '../types';
+import type { SqlParameter } from '../types';
 
 enum SqlInlineValueType {
   String = 'string',
@@ -16,7 +16,10 @@ export class SqlHelper {
    * @param conditions Key/value pairs to translate into SQL.
    * @returns Object with SQL fragment and parameter list.
    */
-  public static buildWhereClause(conditions: Record<string, unknown>): { whereClause: string; params: SqlParameter[] } {
+  public static buildWhereClause(conditions: Record<string, unknown>): {
+    whereClause: string;
+    params: SqlParameter[];
+  } {
     const clauses: string[] = [];
     const params: SqlParameter[] = [];
 
@@ -26,7 +29,7 @@ export class SqlHelper {
       } else if (Array.isArray(value)) {
         const placeholders = value.map(() => '?').join(', ');
         clauses.push(`${key} IN (${placeholders})`);
-        for (const v of value) params.push(SqlHelper.ensureSqlParameter(v));
+        for (const arrayValue of value) params.push(SqlHelper.ensureSqlParameter(arrayValue));
       } else {
         clauses.push(`${key} = ?`);
         params.push(SqlHelper.ensureSqlParameter(value));

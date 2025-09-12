@@ -1,5 +1,12 @@
-import { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions, SqlParameter } from '../types';
-import { SqlDialect } from '../query/SqlDialect';
+import type {
+  EntityMetadata,
+  OrmMiddleware,
+  RetryPolicy,
+  SqlLogger,
+  SoftDeleteOptions,
+  SqlParameter
+} from '../types';
+import type { SqlDialect } from '../query/SqlDialect';
 import { SQLiteDialect } from '../query/SQLiteDialect';
 
 /**
@@ -56,11 +63,17 @@ export abstract class DatabaseProvider {
   /** Delete an entity row. */
   public abstract delete<T extends object>(entity: T, entityClass: Function): Promise<void>;
   /** Find an entity by primary key value. */
-  public abstract findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null>;
+  public abstract findById<T extends object>(
+    id: unknown,
+    entityClass: new () => T
+  ): Promise<T | null>;
   /** Get all entities of a given type. */
   public abstract findAll<T extends object>(entityClass: new () => T): Promise<T[]>;
   /** Find entities by a simple conditions object (key/value pairs). */
-  public abstract findWhere<T extends object>(entityClass: new () => T, conditions: Record<string, unknown>): Promise<T[]>;
+  public abstract findWhere<T extends object>(
+    entityClass: new () => T,
+    conditions: Record<string, unknown>
+  ): Promise<T[]>;
   /** Find entities where a column value is in a list. */
   public abstract findWhereIn<T extends object>(
     entityClass: new () => T,
@@ -144,7 +157,11 @@ export abstract class DatabaseProvider {
    * Retry wrapper with basic exponential backoff + jitter for idempotent operations.
    * Retries only when not in a transaction and for errors deemed transient.
    */
-  private async executeWithRetry<T>(fn: () => Promise<T>, sql: string, params: readonly SqlParameter[]): Promise<T> {
+  private async executeWithRetry<T>(
+    fn: () => Promise<T>,
+    sql: string,
+    params: readonly SqlParameter[]
+  ): Promise<T> {
     const maxAttempts = 3;
     const baseDelayMs = 50;
     const startedAt = Date.now();
@@ -230,7 +247,10 @@ export abstract class DatabaseProvider {
     );
   }
   /** Provider-specific implementation of non-query execution. */
-  protected abstract doExecuteNonQuery(sql: string, params?: readonly SqlParameter[]): Promise<number>;
+  protected abstract doExecuteNonQuery(
+    sql: string,
+    params?: readonly SqlParameter[]
+  ): Promise<number>;
 
   // Template Method hooks
   /** Called before each execute; override for logging/instrumentation. */
@@ -248,7 +268,11 @@ export abstract class DatabaseProvider {
   }
   /** Called after each execute; override for logging/instrumentation. */
   /** Default no-op hook. Override in providers for logging/instrumentation. */
-  protected async afterExecute(sql: string, params: readonly SqlParameter[], result: unknown): Promise<void> {
+  protected async afterExecute(
+    sql: string,
+    params: readonly SqlParameter[],
+    result: unknown
+  ): Promise<void> {
     if (!this.middlewares || this.middlewares.length === 0) return;
     const rows = Array.isArray(result)
       ? (result as unknown[]).length
@@ -267,7 +291,10 @@ export abstract class DatabaseProvider {
   }
 
   /** Notify middleware that an entity instance has been materialized. */
-  protected async notifyEntityMaterialized<T extends object>(entity: T, metadata?: EntityMetadata): Promise<void> {
+  protected async notifyEntityMaterialized<T extends object>(
+    entity: T,
+    metadata?: EntityMetadata
+  ): Promise<void> {
     if (!this.middlewares || this.middlewares.length === 0) return;
     const info: { entity: object; metadata?: EntityMetadata } = { entity, metadata };
     for (const mw of this.middlewares) {

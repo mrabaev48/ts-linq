@@ -1,5 +1,5 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { GlobalFilter, SoftDeleteOptions, WhereClause } from '../types';
+import type { GlobalFilter, SoftDeleteOptions, WhereClause } from '../types';
 
 export class GlobalFilterApplier {
   public apply(

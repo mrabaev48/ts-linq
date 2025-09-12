@@ -36,14 +36,14 @@ describe('SQLite optimistic concurrency', () => {
     await provider.insert(item, VItem);
     // emulate DB-generated id by re-read
     const all = await provider.findAll(VItem);
-    const created = all[0] as VItem;
+    const created = all[0];
     expect(created.version ?? 0).toBe(0);
 
     // Set version explicitly then update
     item.id = created.id;
     item.version = 0;
     item.name = 'B';
-    const updated = (await provider.update(item, VItem)) as VItem;
+    const updated = await provider.update(item, VItem);
     expect(updated.version).toBe(1);
 
     // Stale update with old version should affect 0 rows → throw
