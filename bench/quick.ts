@@ -31,7 +31,15 @@ async function main() {
     connectionString: ':memory:',
     performance: { enableCountCache: true, countCacheTtlMs: 10_000 }
   });
-  const prov = (ctx as unknown as { provider?: { connect: () => Promise<void>; executeNonQuery: (sql: string, params?: unknown[]) => Promise<number>; disconnect: () => Promise<void> } })['provider'];
+  const prov = (
+    ctx as unknown as {
+      provider?: {
+        connect: () => Promise<void>;
+        executeNonQuery: (sql: string, params?: unknown[]) => Promise<number>;
+        disconnect: () => Promise<void>;
+      };
+    }
+  )['provider'];
   await prov?.connect();
   await prov?.executeNonQuery(
     'CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER)'
@@ -63,7 +71,10 @@ async function main() {
     durationsSelect.push(Number(t2 - t1) / 1_000_000);
 
     const t3 = process.hrtime.bigint();
-    const c = await ctx.set(BenchUser).where((u) => u.age >= age).count();
+    const c = await ctx
+      .set(BenchUser)
+      .where((u) => u.age >= age)
+      .count();
     const t4 = process.hrtime.bigint();
     durationsCount.push(Number(t4 - t3) / 1_000_000);
     if (!list || typeof c !== 'number') throw new Error('bench sanity');
@@ -88,5 +99,3 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-
-

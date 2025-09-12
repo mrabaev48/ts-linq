@@ -1,5 +1,5 @@
-import { DatabaseProvider } from '../providers/DatabaseProvider';
-import { Migration } from './Migration';
+import type { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { Migration } from './Migration';
 
 /**
  * A record stored in the migrations table representing an applied migration.
@@ -42,9 +42,11 @@ export class MigrationRunner {
   /** Read the list of applied migrations from the database. */
   public async getAppliedMigrations(): Promise<MigrationRecord[]> {
     try {
-      const results = await this._provider.executeQuery<{ version: string; name: string; applied_at: string }>(
-        'SELECT version, name, applied_at FROM __migrations ORDER BY version'
-      );
+      const results = await this._provider.executeQuery<{
+        version: string;
+        name: string;
+        applied_at: string;
+      }>('SELECT version, name, applied_at FROM __migrations ORDER BY version');
 
       return results.map((row) => ({
         version: row.version,

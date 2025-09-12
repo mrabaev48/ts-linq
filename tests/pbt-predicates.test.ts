@@ -26,7 +26,7 @@ describe('Property-based: predicate SQL vs JS filtering', () => {
           const ast = parser.parse(pred);
           // Parser may return null for closure-captured constants; if null, we accept fallback.
           if (!ast) return true;
-          const { condition, parameters } = visitor.toSql(ast!);
+          const { condition, parameters } = visitor.toSql(ast);
           // Simulate SQL semantics using JS (>= and >)
           const js = rows.filter(pred);
           // Simulate param binding and evaluation

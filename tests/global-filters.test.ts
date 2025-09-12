@@ -21,9 +21,7 @@ class Ctx extends DbContext {
 describe('Global filters', () => {
   it('applies soft-delete filter to all queries', async () => {
     const { Item } = defineEntities();
-    const ctx = new Ctx([
-      { entity: Item, where: { condition: 'isDeleted = 0', parameters: [] } }
-    ]);
+    const ctx = new Ctx([{ entity: Item, where: { condition: 'isDeleted = 0', parameters: [] } }]);
     await ctx.ensureCreated();
 
     const a = new Item();
@@ -36,7 +34,9 @@ describe('Global filters', () => {
     (ctx as unknown as { items: DbSet<InstanceType<typeof Item>> }).items.add(b);
     await ctx.saveChanges();
 
-    const all = await (ctx as unknown as { items: DbSet<InstanceType<typeof Item>> }).items.toArray();
+    const all = await (
+      ctx as unknown as { items: DbSet<InstanceType<typeof Item>> }
+    ).items.toArray();
     expect(all.map((x) => x.name)).toEqual(['A']);
 
     const maybe = await (ctx as unknown as { items: DbSet<InstanceType<typeof Item>> }).items

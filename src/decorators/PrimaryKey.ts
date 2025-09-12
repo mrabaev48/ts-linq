@@ -1,5 +1,6 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { Column, ColumnOptions } from './Column';
+import type { ColumnOptions } from './Column';
+import { Column } from './Column';
 
 /**
  * Options for configuring a primary key property.

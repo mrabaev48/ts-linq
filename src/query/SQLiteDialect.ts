@@ -1,6 +1,6 @@
-import { SqlDialect } from './SqlDialect';
+import type { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { JoinClause, OrderByClause, QueryOptions, WhereClause, SqlParameter } from '../types';
+import type { JoinClause, OrderByClause, QueryOptions, WhereClause, SqlParameter } from '../types';
 
 /**
  * SQLite implementation of SqlDialect.
@@ -28,7 +28,7 @@ export class SQLiteDialect implements SqlDialect {
 
     // JOINs
     if (options.joins && options.joins.length > 0) {
-      for (const join of options.joins as JoinClause[]) {
+      for (const join of options.joins) {
         query += ` ${join.type} JOIN ${join.table}`;
         if (join.alias) query += ` AS ${join.alias}`;
         query += ` ON ${join.on}`;

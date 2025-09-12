@@ -32,9 +32,7 @@ describe('DbSet', () => {
 
     provider = new SQLiteProvider(':memory:');
     changeTracker = new ChangeTracker();
-    dbSet = new DbSet(TestEntity, provider, changeTracker) as DbSet<
-      InstanceType<typeof TestEntity>
-    >;
+    dbSet = new DbSet(TestEntity, provider, changeTracker);
 
     await provider.connect();
     const metadata = MetadataStorage.getEntity(TestEntity)!;
@@ -163,7 +161,7 @@ describe('DbSet', () => {
       // include now validates against metadata; using non-existing relation should throw
       await expect(async () => {
         await dbSet
-          .include((e) => (e as any).nonExistingRelation)
+          .include((e) => (e as unknown as { nonExistingRelation: unknown }).nonExistingRelation)
           .where((e) => e.name === 'Entity 1')
           .toArray();
       }).rejects.toThrow(/Invalid include/);

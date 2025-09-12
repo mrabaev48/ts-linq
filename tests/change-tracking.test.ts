@@ -3,7 +3,11 @@ import { EntityState } from '../src/types';
 
 describe('ChangeTracker', () => {
   let changeTracker: ChangeTracker;
-  let testEntity: any;
+  interface TestEntityShape {
+    id: number;
+    name: string;
+  }
+  let testEntity: TestEntityShape;
 
   beforeEach(() => {
     changeTracker = new ChangeTracker();

@@ -1,7 +1,7 @@
 import { DdlBuilder } from '../src/providers/DdlBuilder';
 import { SQLiteDdlStrategy } from '../src/providers/sqlite/SQLiteDdlStrategy';
 import { PostgresDdlStrategy } from '../src/providers/postgres/PostgresDdlStrategy';
-import { EntityMetadata } from '../src/types';
+import type { EntityMetadata } from '../src/types';
 
 const meta: EntityMetadata = {
   target: class U {},

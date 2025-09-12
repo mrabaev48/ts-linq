@@ -3,6 +3,8 @@ import { DbContext } from '../src/context/DbContext';
 import { Entity } from '../src/decorators/Entity';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
+import type { DbSet } from '../src/context/DbSet';
+import type { PostgresProvider } from '../src/providers/PostgresProvider';
 
 const PG_URL = process.env.POSTGRES_URL || '';
 const pgDescribe = PG_URL ? describe : describe.skip;
@@ -14,7 +16,7 @@ class PgUser {
 }
 
 class PgCtx extends DbContext {
-  public pgusers!: any;
+  public pgusers!: DbSet<PgUser>;
   constructor() {
     super({ connectionString: PG_URL, provider: 'postgresql' });
   }
@@ -25,7 +27,8 @@ pgDescribe('PostgreSQL integration (requires POSTGRES_URL)', () => {
     new PgUser();
     const ctx = new PgCtx();
     await ctx.ensureCreated();
-    const u = { name: 'pg-user' } as any as PgUser;
+    const u = new PgUser();
+    u.name = 'pg-user';
     ctx.pgusers.add(u);
     await ctx.saveChanges();
     const all = await ctx.pgusers.toArray();
@@ -37,11 +40,14 @@ pgDescribe('PostgreSQL integration (requires POSTGRES_URL)', () => {
     new PgUser();
     const ctx = new PgCtx();
     await ctx.ensureCreated();
-    const u = { id: 1, name: 'pg-upsert-1' } as any as PgUser;
-    await (ctx as any).provider.upsert(u, PgUser);
+    const u = new PgUser();
+    u.id = 1;
+    u.name = 'pg-upsert-1';
+    const provider = (ctx as unknown as { provider: PostgresProvider }).provider;
+    await provider.upsert(u, PgUser);
     u.name = 'pg-upsert-2';
-    await (ctx as any).provider.upsert(u, PgUser);
-    const found = await (ctx as any).provider.findWhere(PgUser, { name: 'pg-upsert-2' });
+    await provider.upsert(u, PgUser);
+    const found = await provider.findWhere(PgUser, { name: 'pg-upsert-2' });
     expect(found.length).toBeGreaterThan(0);
     await ctx.dispose();
   });

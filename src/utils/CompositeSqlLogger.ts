@@ -1,4 +1,12 @@
-import { SqlLogger, SqlParameter, QueryStartInfo, QueryEndInfo, RetryInfo, TransactionInfo, CacheInfo } from '../types';
+import type {
+  SqlLogger,
+  QueryStartInfo,
+  QueryEndInfo,
+  RetryInfo,
+  TransactionInfo,
+  CacheInfo
+} from '../types';
+import { SqlParameter } from '../types';
 
 /**
  * Composite logger that fan-outs all SqlLogger calls to a list of delegates.

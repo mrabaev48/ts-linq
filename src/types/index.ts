@@ -403,7 +403,11 @@ export interface RetryDecisionInfo {
 
 /** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */
 export interface OrmMiddleware {
-  beforeExecute?(info: { sql: string; params: readonly SqlParameter[]; traceId?: string }): void | Promise<void>;
+  beforeExecute?(info: {
+    sql: string;
+    params: readonly SqlParameter[];
+    traceId?: string;
+  }): void | Promise<void>;
   afterExecute?(info: {
     sql: string;
     params: readonly SqlParameter[];

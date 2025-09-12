@@ -1,7 +1,8 @@
-import { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SQLiteSchemaInspector } from './SchemaInspector';
-import { SchemaSnapshot, TableSnapshot, compareSchemas, ColumnDef } from './DiffTypes';
+import type { SchemaSnapshot, TableSnapshot, ColumnDef } from './DiffTypes';
+import { compareSchemas } from './DiffTypes';
 
 export interface MigrationStep {
   sql: string;
@@ -55,7 +56,11 @@ export class DiffMigrationGenerator {
       const info = await inspector.getTableInfo(tableName);
       actualTables.push({
         name: tableName,
-        columns: info.columns.map((col) => ({ name: col.name, type: this.normalizeType(col.type), nullable: !col.notnull })),
+        columns: info.columns.map((col) => ({
+          name: col.name,
+          type: this.normalizeType(col.type),
+          nullable: !col.notnull
+        })),
         primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
         indexes: [],
         foreignKeys: []
@@ -67,7 +72,11 @@ export class DiffMigrationGenerator {
     for (const tableDiff of diff.tables) {
       if (tableDiff.create) {
         steps.push({
-          sql: this.buildCreateTableSql(tableDiff.create.name, tableDiff.create.columns, tableDiff.create.primaryKeys)
+          sql: this.buildCreateTableSql(
+            tableDiff.create.name,
+            tableDiff.create.columns,
+            tableDiff.create.primaryKeys
+          )
         });
         continue;
       }
@@ -88,16 +97,21 @@ export class DiffMigrationGenerator {
             defaultValue: column.defaultValue
           }));
           const pkCols = entityMeta.primaryKeys.map(
-            (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
+            (pk) =>
+              entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
           );
           steps.push({ sql: this.buildCreateTableSql(tempTable, cols, pkCols) });
           const info = await inspector.getTableInfo(tableDiff.table);
           const commonColumns = info.columns
             .map((col) => col.name)
-            .filter((columnName) => entityMeta.columns.some((col) => col.columnName === columnName));
+            .filter((columnName) =>
+              entityMeta.columns.some((col) => col.columnName === columnName)
+            );
           if (commonColumns.length > 0) {
             const columnList = commonColumns.join(', ');
-            steps.push({ sql: `INSERT INTO ${tempTable} (${columnList}) SELECT ${columnList} FROM ${tableDiff.table}` });
+            steps.push({
+              sql: `INSERT INTO ${tempTable} (${columnList}) SELECT ${columnList} FROM ${tableDiff.table}`
+            });
           }
           steps.push({ sql: `DROP TABLE ${tableDiff.table}` });
           steps.push({ sql: `ALTER TABLE ${tempTable} RENAME TO ${tableDiff.table}` });
@@ -111,7 +125,9 @@ export class DiffMigrationGenerator {
               columnChange.column.defaultValue !== undefined
                 ? ` DEFAULT ${this.formatValue(columnChange.column.defaultValue)}`
                 : '';
-            steps.push({ sql: `ALTER TABLE ${tableDiff.table} ADD COLUMN ${columnChange.column.name} ${this.mapType(columnChange.column.type)}${nn}${def}` });
+            steps.push({
+              sql: `ALTER TABLE ${tableDiff.table} ADD COLUMN ${columnChange.column.name} ${this.mapType(columnChange.column.type)}${nn}${def}`
+            });
           }
         }
       }
@@ -135,15 +151,12 @@ export class DiffMigrationGenerator {
     return steps;
   }
 
-  private buildCreateTableSql(
-    table: string,
-    columns: ColumnDef[],
-    primaryKeys: string[]
-  ): string {
+  private buildCreateTableSql(table: string, columns: ColumnDef[], primaryKeys: string[]): string {
     const colDefs = columns.map((c) => {
       const type = this.mapType(c.type);
       const nn = c.nullable ? '' : ' NOT NULL';
-      const def = c.defaultValue !== undefined ? ` DEFAULT ${this.formatValue(c.defaultValue)}` : '';
+      const def =
+        c.defaultValue !== undefined ? ` DEFAULT ${this.formatValue(c.defaultValue)}` : '';
       const colName = c.name;
       return `${colName} ${type}${nn}${def}`;
     });

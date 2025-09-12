@@ -3,7 +3,9 @@ import type { SqlLogger, SqlParameter } from '../types';
 /** Minimal subset of OpenTelemetry API we use dynamically. */
 interface OtelLike {
   trace: {
-    getTracer: (serviceName: string) => { startSpan: (name: string, opts?: { attributes?: Record<string, unknown> }) => SpanLike };
+    getTracer: (serviceName: string) => {
+      startSpan: (name: string, opts?: { attributes?: Record<string, unknown> }) => SpanLike;
+    };
   };
 }
 interface SpanLike {
@@ -39,7 +41,12 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
     this.tracer = otel?.trace.getTracer(serviceName);
   }
 
-  queryStart(info: { sql: string; params: readonly SqlParameter[]; traceId?: string; provider?: string }): void {
+  queryStart(info: {
+    sql: string;
+    params: readonly SqlParameter[];
+    traceId?: string;
+    provider?: string;
+  }): void {
     if (!this.tracer) return;
     const span = this.tracer.startSpan('db.query', {
       attributes: {

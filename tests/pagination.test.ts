@@ -51,7 +51,9 @@ describe('Pagination helpers', () => {
   });
 
   it('keysetPaginate(key, after, size) returns correct window and nextAfter', async () => {
-    const q = ctx.set(PItem).orderBy((x: InstanceType<ReturnType<typeof defineEntities>['PItem']>) => x.id);
+    const q = ctx
+      .set(PItem)
+      .orderBy((x: InstanceType<ReturnType<typeof defineEntities>['PItem']>) => x.id);
     const p1 = await q.keysetPaginate('id', null, 4);
     expect(p1.items).toHaveLength(4);
     expect(p1.items[0].name).toBe('N1');

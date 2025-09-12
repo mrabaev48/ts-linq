@@ -14,8 +14,12 @@ maybe('PostgreSQL advanced migrations (FK add, rename table)', () => {
     await p.executeNonQuery('DROP TABLE IF EXISTS "orders"');
     await p.executeNonQuery('DROP TABLE IF EXISTS "orders_renamed"');
     await p.executeNonQuery('DROP TABLE IF EXISTS "users"');
-    await p.executeNonQuery('CREATE TABLE "users" ("id" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)');
-    await p.executeNonQuery('CREATE TABLE "orders" ("id" INTEGER PRIMARY KEY, "user_id" INTEGER NOT NULL)');
+    await p.executeNonQuery(
+      'CREATE TABLE "users" ("id" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)'
+    );
+    await p.executeNonQuery(
+      'CREATE TABLE "orders" ("id" INTEGER PRIMARY KEY, "user_id" INTEGER NOT NULL)'
+    );
   });
 
   afterAll(async () => {
@@ -23,8 +27,8 @@ maybe('PostgreSQL advanced migrations (FK add, rename table)', () => {
       await p.executeNonQuery('DROP TABLE IF EXISTS "orders"');
       await p.executeNonQuery('DROP TABLE IF EXISTS "orders_renamed"');
       await p.executeNonQuery('DROP TABLE IF EXISTS "users"');
-    } catch {
-      /* ignore */
+    } catch (e) {
+      // ignore cleanup in CI
     }
     await p.disconnect();
   });
@@ -35,25 +39,33 @@ maybe('PostgreSQL advanced migrations (FK add, rename table)', () => {
         {
           table: 'orders',
           fkCreates: [
-            { name: 'fk_orders_users', columns: ['user_id'], refTable: 'users', refColumns: ['id'], onDelete: 'CASCADE' }
+            {
+              name: 'fk_orders_users',
+              columns: ['user_id'],
+              refTable: 'users',
+              refColumns: ['id'],
+              onDelete: 'CASCADE'
+            }
           ]
-        } as any
+        }
       ]
-    } as any;
+    };
     const { up } = generateMigrationFromDiff(diff, 'postgresql');
     for (const sql of up) await p.executeNonQuery(sql);
 
     await p.executeNonQuery('INSERT INTO "users" ("id","name") VALUES ($1,$2)', [1, 'u']);
-    await expect(p.executeNonQuery('INSERT INTO "orders" ("id","user_id") VALUES ($1,$2)', [1, 1])).resolves.toBe(1);
-    await expect(p.executeNonQuery('INSERT INTO "orders" ("id","user_id") VALUES ($1,$2)', [2, 999])).rejects.toBeTruthy();
+    await expect(
+      p.executeNonQuery('INSERT INTO "orders" ("id","user_id") VALUES ($1,$2)', [1, 1])
+    ).resolves.toBe(1);
+    await expect(
+      p.executeNonQuery('INSERT INTO "orders" ("id","user_id") VALUES ($1,$2)', [2, 999])
+    ).rejects.toBeTruthy();
   });
 
   test('rename table orders -> orders_renamed', async () => {
-    const diff = { tables: [{ table: 'orders', renameTo: 'orders_renamed' }] } as any;
+    const diff = { tables: [{ table: 'orders', renameTo: 'orders_renamed' }] };
     const { up } = generateMigrationFromDiff(diff, 'postgresql');
     for (const sql of up) await p.executeNonQuery(sql);
     await expect(p.executeQuery('SELECT * FROM "orders_renamed"')).resolves.toBeDefined();
   });
 });
-
-

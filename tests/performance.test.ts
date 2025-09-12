@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { QueryBuilder } from '../src/query/QueryBuilder';
-import { SqlDialect } from '../src/query/SqlDialect';
-import { QueryOptions, PerformanceOptions, SqlParameter } from '../src/types';
+import type { SqlDialect } from '../src/query/SqlDialect';
+import type { QueryOptions, PerformanceOptions, SqlParameter } from '../src/types';
 import { EntityCache } from '../src/utils/EntityCache';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';

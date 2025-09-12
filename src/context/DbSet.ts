@@ -1,10 +1,10 @@
-import { DatabaseProvider } from '../providers/DatabaseProvider';
-import { ChangeTracker } from '../change-tracking/ChangeTracker';
-import { EntityLoader } from '../loading/EntityLoader';
-import { LoadingOptions } from '../loading/LoadingStrategy';
+import type { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { ChangeTracker } from '../change-tracking/ChangeTracker';
+import type { EntityLoader } from '../loading/EntityLoader';
+import type { LoadingOptions } from '../loading/LoadingStrategy';
 import { Queryable } from '../query/Queryable';
-import { EntityCacheLike } from '../utils/EntityCache';
-import { PerformanceOptions, GlobalFilter } from '../types';
+import type { EntityCacheLike } from '../utils/EntityCache';
+import type { PerformanceOptions, GlobalFilter } from '../types';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 
@@ -379,7 +379,9 @@ export class DbSet<T extends object> {
         pkCol ? pkCol.propertyName : pk,
         ids
       );
-      const existingIdSet = new Set(existingRows.map((r) => (r as unknown as Record<string, unknown>)[pk]));
+      const existingIdSet = new Set(
+        existingRows.map((r) => (r as unknown as Record<string, unknown>)[pk])
+      );
       for (const { entity, id } of pairs) {
         if (id === undefined || id === null) {
           this.add(entity);

@@ -5,6 +5,8 @@ import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { OptimisticConcurrencyError } from '../src/types';
+import type { DbSet } from '../src/context/DbSet';
+import type { MySqlProvider } from '../src/providers/MySqlProvider';
 
 const MYSQL_URL = process.env.MYSQL_URL || '';
 const myDescribe = MYSQL_URL ? describe : describe.skip;
@@ -17,7 +19,7 @@ class MyItemV {
 }
 
 class MyCtxV extends DbContext {
-  public myitemvs!: any;
+  public myitemvs!: DbSet<MyItemV>;
   constructor() {
     super({ connectionString: MYSQL_URL, provider: 'mysql' });
   }
@@ -27,16 +29,20 @@ myDescribe('MySQL optimistic concurrency (requires MYSQL_URL)', () => {
   test('throws OptimisticConcurrencyError on version mismatch', async () => {
     new MyItemV();
     const meta = MetadataStorage.getEntity(MyItemV)!;
-    (meta.columns.find((c) => c.propertyName === 'version') as any).isVersion = true;
+    const versionCol = meta.columns.find((c) => c.propertyName === 'version');
+    if (versionCol) versionCol.isVersion = true;
     const ctx = new MyCtxV();
     await ctx.ensureCreated();
-    const u = { name: 'my', version: 0 } as any as MyItemV;
+    const u = new MyItemV();
+    u.name = 'my';
+    u.version = 0;
     ctx.myitemvs.add(u);
     await ctx.saveChanges();
     u.name = 'my-1';
-    await (ctx as any).provider.update(u, MyItemV);
-    const stale: any = { id: (u as any).id, name: 'my-2', version: 0 };
-    await expect((ctx as any).provider.update(stale, MyItemV)).rejects.toBeInstanceOf(
+    const provider = (ctx as unknown as { provider: MySqlProvider }).provider;
+    await provider.update(u, MyItemV);
+    const stale: MyItemV = { id: u.id, name: 'my-2', version: 0 } as MyItemV;
+    await expect(provider.update(stale, MyItemV)).rejects.toBeInstanceOf(
       OptimisticConcurrencyError
     );
     await ctx.dispose();

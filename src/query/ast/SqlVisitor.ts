@@ -1,12 +1,12 @@
-import {
+import type {
   BinaryExpressionNode,
   ExpressionNode,
   IdentifierNode,
   LiteralNode,
-  LogicalExpressionNode,
-  LogicalOperator
+  LogicalExpressionNode
 } from './Nodes';
-import { SqlParameter } from '../../types';
+import { LogicalOperator } from './Nodes';
+import type { SqlParameter } from '../../types';
 
 /**
  * Visitor that turns a supported AST into a SQL WHERE fragment with parameters.
@@ -30,9 +30,12 @@ export class SqlVisitor {
   /**
    * Handle a binary comparison node.
    */
-  private visitBinary(node: BinaryExpressionNode): { condition: string; parameters: SqlParameter[] } {
-    const column = (node.left as IdentifierNode).name;
-    const value = (node.right as LiteralNode).value;
+  private visitBinary(node: BinaryExpressionNode): {
+    condition: string;
+    parameters: SqlParameter[];
+  } {
+    const column = node.left.name;
+    const value = node.right.value;
     const op = node.operator;
     return { condition: `${column} ${op} ?`, parameters: [value] };
   }
@@ -40,7 +43,10 @@ export class SqlVisitor {
   /**
    * Handle a logical AND/OR node by concatenating child results.
    */
-  private visitLogical(node: LogicalExpressionNode): { condition: string; parameters: SqlParameter[] } {
+  private visitLogical(node: LogicalExpressionNode): {
+    condition: string;
+    parameters: SqlParameter[];
+  } {
     const parts: string[] = [];
     const params: SqlParameter[] = [];
     for (const expr of node.expressions) {

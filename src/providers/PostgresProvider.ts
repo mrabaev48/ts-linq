@@ -1,21 +1,23 @@
 import { DatabaseProvider } from './DatabaseProvider';
-import {
+import type {
   EntityMetadata,
-  OptimisticConcurrencyError,
-  UniqueConstraintError,
-  DatabaseError,
-  ForeignKeyConstraintError,
   RetryPolicy,
   SqlParameter,
   OrmMiddleware,
   SoftDeleteOptions,
   SqlLogger
 } from '../types';
+import {
+  OptimisticConcurrencyError,
+  UniqueConstraintError,
+  DatabaseError,
+  ForeignKeyConstraintError
+} from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { PostgresDialect } from '../query/PostgresDialect';
 import { PostgresDdlStrategy } from './postgres/PostgresDdlStrategy';
 import { QueryBuilder } from '../query/QueryBuilder';
-import { SqlDialect } from '../query/SqlDialect';
+import type { SqlDialect } from '../query/SqlDialect';
 
 // Lazy require to avoid hard dependency if not installed
 let Pg: {
@@ -146,7 +148,9 @@ export class PostgresProvider extends DatabaseProvider {
     const names = cols.map((c) => `"${c.columnName}"`);
     const placeholders = cols.map((_, i) => `$${i + 1}`);
     const values: SqlParameter[] = cols.map((c) =>
-      this.coerceToSqlParameter(convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type))
+      this.coerceToSqlParameter(
+        convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type)
+      )
     );
     const sql = `INSERT INTO "${meta.tableName}" (${names.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
     const rows = await this.executeQuery<Record<string, unknown>>(sql, values);
@@ -168,7 +172,9 @@ export class PostgresProvider extends DatabaseProvider {
     if (setCols.length === 0) return entity;
     const sets = setCols.map((c, i) => `"${c.columnName}" = $${i + 1}`);
     const setVals: SqlParameter[] = setCols.map((c) =>
-      this.coerceToSqlParameter(convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type))
+      this.coerceToSqlParameter(
+        convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type)
+      )
     );
     if (versionCol) {
       sets.push(`"${versionCol.columnName}" = "${versionCol.columnName}" + 1`);
@@ -183,7 +189,9 @@ export class PostgresProvider extends DatabaseProvider {
     let sql = `UPDATE "${meta.tableName}" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
     if (versionCol) {
       sql += ` AND "${versionCol.columnName}" = $${setCols.length + meta.primaryKeys.length + 1}`;
-      whereVals.push(this.coerceToSqlParameter((entity as Record<string, unknown>)[versionCol.propertyName]));
+      whereVals.push(
+        this.coerceToSqlParameter((entity as Record<string, unknown>)[versionCol.propertyName])
+      );
     }
     const affected = await this.executeNonQuery(sql, [...setVals, ...whereVals]);
     if (affected === 0) {
@@ -193,7 +201,7 @@ export class PostgresProvider extends DatabaseProvider {
     if (versionCol) {
       const prop = versionCol.propertyName;
       const rec = entity as Record<string, unknown>;
-      const cur = typeof rec[prop] === 'number' ? (rec[prop] as number) : Number(rec[prop] ?? 0);
+      const cur = typeof rec[prop] === 'number' ? rec[prop] : Number(rec[prop] ?? 0);
       rec[prop] = cur + 1;
     }
     return entity;
@@ -210,7 +218,9 @@ export class PostgresProvider extends DatabaseProvider {
     const names = insertCols.map((c) => `"${c.columnName}"`);
     const placeholders = insertCols.map((_, i) => `$${i + 1}`);
     const values: SqlParameter[] = insertCols.map((c) =>
-      this.coerceToSqlParameter(convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type))
+      this.coerceToSqlParameter(
+        convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type)
+      )
     );
     const conflictTargets = meta.primaryKeys
       .map((pk) => `"${meta.columns.find((c) => c.propertyName === pk)?.columnName || pk}"`)
@@ -248,7 +258,10 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Fetch a single row by its primary key value. */
-  public async findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null> {
+  public async findById<T extends object>(
+    id: unknown,
+    entityClass: new () => T
+  ): Promise<T | null> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const pk = meta.primaryKeys[0];
@@ -259,7 +272,9 @@ export class PostgresProvider extends DatabaseProvider {
       const has = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND "${flag}" = FALSE`;
     }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, [this.coerceToSqlParameter(id)]);
+    const rows = await this.executeQuery<Record<string, unknown>>(sql, [
+      this.coerceToSqlParameter(id)
+    ]);
     const firstRow = rows[0];
     if (!firstRow) return null;
     const entity = this.mapRowToEntity(firstRow, entityClass);
@@ -281,7 +296,10 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Find rows by simple equality conditions { column: value }. */
-  public async findWhere<T extends object>(entityClass: new () => T, conditions: Record<string, unknown>): Promise<T[]> {
+  public async findWhere<T extends object>(
+    entityClass: new () => T,
+    conditions: Record<string, unknown>
+  ): Promise<T[]> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const keys = Object.keys(conditions);
@@ -289,7 +307,7 @@ export class PostgresProvider extends DatabaseProvider {
       (k, i) =>
         `"${meta.columns.find((c) => c.propertyName === k || c.columnName === k)?.columnName || k}" = $${i + 1}`
     );
-    const vals = keys.map((k) => this.coerceToSqlParameter((conditions as Record<string, unknown>)[k]));
+    const vals = keys.map((k) => this.coerceToSqlParameter(conditions[k]));
     let sql = `SELECT * FROM "${meta.tableName}" WHERE ${clauses.join(' AND ')}`;
     if (this.softDelete?.enabled) {
       const flag = this.softDelete.column ?? 'isDeleted';
@@ -318,22 +336,30 @@ export class PostgresProvider extends DatabaseProvider {
       const has = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND "${flag}" = FALSE`;
     }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, [values as unknown as SqlParameter]);
+    const rows = await this.executeQuery<Record<string, unknown>>(sql, [
+      values as unknown as SqlParameter
+    ]);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
   /** Low-level query execution returning rows. */
-  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<T[]> {
     try {
       const res = await this.pool.query<T>(sql, params);
-      return res.rows as T[];
+      return res.rows;
     } catch (e: unknown) {
       throw mapPgError(e);
     }
   }
 
   /** Low-level non-query execution returning rowCount. */
-  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
+  protected async doExecuteNonQuery(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<number> {
     try {
       const res = await this.pool.query(sql, params);
       return res.rowCount;

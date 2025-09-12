@@ -43,7 +43,7 @@ export class EntityCache implements EntityCacheLike {
   public set<T>(entityClass: Function, id: unknown, entity: T): void {
     if (id === undefined || id === null) return;
     if (this._store.size >= this._maxSize) {
-      const firstKey = this._store.keys().next().value as string | undefined;
+      const firstKey = this._store.keys().next().value;
       if (firstKey !== undefined) {
         this._store.delete(firstKey);
         try {

@@ -22,7 +22,9 @@ maybe('MySQL advanced migrations (FK add, rename table)', () => {
       await p.executeNonQuery('DROP TABLE IF EXISTS orders');
       await p.executeNonQuery('DROP TABLE IF EXISTS orders_renamed');
       await p.executeNonQuery('DROP TABLE IF EXISTS users');
-    } catch {}
+    } catch (e) {
+      // ignore cleanup errors in CI envs without full perms
+    }
     await p.disconnect();
   });
 
@@ -31,24 +33,28 @@ maybe('MySQL advanced migrations (FK add, rename table)', () => {
       tables: [
         {
           table: 'orders',
-          fkCreates: [{ columns: ['user_id'], refTable: 'users', refColumns: ['id'], onDelete: 'CASCADE' }]
-        } as any
+          fkCreates: [
+            { columns: ['user_id'], refTable: 'users', refColumns: ['id'], onDelete: 'CASCADE' }
+          ]
+        }
       ]
-    } as any;
+    };
     const { up } = generateMigrationFromDiff(diff, 'mysql');
     for (const sql of up) await p.executeNonQuery(sql);
 
     await p.executeNonQuery('INSERT INTO users (id,name) VALUES (?,?)', [1, 'u']);
-    await expect(p.executeNonQuery('INSERT INTO orders (id,user_id) VALUES (?,?)', [1, 1])).resolves.toBe(1);
-    await expect(p.executeNonQuery('INSERT INTO orders (id,user_id) VALUES (?,?)', [2, 999])).rejects.toBeTruthy();
+    await expect(
+      p.executeNonQuery('INSERT INTO orders (id,user_id) VALUES (?,?)', [1, 1])
+    ).resolves.toBe(1);
+    await expect(
+      p.executeNonQuery('INSERT INTO orders (id,user_id) VALUES (?,?)', [2, 999])
+    ).rejects.toBeTruthy();
   });
 
   test('rename table orders -> orders_renamed', async () => {
-    const diff = { tables: [{ table: 'orders', renameTo: 'orders_renamed' }] } as any;
+    const diff = { tables: [{ table: 'orders', renameTo: 'orders_renamed' }] };
     const { up } = generateMigrationFromDiff(diff, 'mysql');
     for (const sql of up) await p.executeNonQuery(sql);
     await expect(p.executeQuery('SELECT * FROM orders_renamed')).resolves.toBeDefined();
   });
 });
-
-

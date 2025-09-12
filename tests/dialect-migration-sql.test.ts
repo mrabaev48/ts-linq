@@ -1,14 +1,12 @@
 import 'reflect-metadata';
 import { generateMigrationFromDiff } from '../src/migrations/DialectMigrationSql';
-import { SchemaDiff } from '../src/migrations/DiffTypes';
+import type { SchemaDiff } from '../src/migrations/DiffTypes';
 
 const baseDiff: SchemaDiff = {
   tables: [
     {
       table: 'Users',
-      columnChanges: [
-        { kind: 'add', column: { name: 'age', type: 'INTEGER', nullable: true } as any }
-      ]
+      columnChanges: [{ kind: 'add', column: { name: 'age', type: 'INTEGER', nullable: true } }]
     }
   ]
 };
@@ -21,11 +19,11 @@ describe('Dialect migration SQL', () => {
           table: 'Users',
           create: {
             name: 'Users',
-            columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any],
+            columns: [{ name: 'id', type: 'INTEGER', nullable: false }],
             primaryKeys: ['id'],
             indexes: [],
             foreignKeys: []
-          } as any
+          }
         },
         ...baseDiff.tables
       ]
@@ -54,8 +52,8 @@ describe('Dialect migration SQL', () => {
           columnChanges: [
             {
               kind: 'alter',
-              column: { name: 'age', type: 'TEXT', nullable: false } as any,
-              prev: { name: 'age', type: 'INTEGER', nullable: true } as any
+              column: { name: 'age', type: 'TEXT', nullable: false },
+              prev: { name: 'age', type: 'INTEGER', nullable: true }
             }
           ]
         }
@@ -69,7 +67,7 @@ describe('Dialect migration SQL', () => {
   });
 
   it('drop table emits DROP TABLE (all dialects)', () => {
-    const diff: SchemaDiff = { tables: [{ table: 'Obsolete', drop: true }] } as any;
+    const diff: SchemaDiff = { tables: [{ table: 'Obsolete', drop: true }] };
     expect(generateMigrationFromDiff(diff, 'postgresql').up[0]).toBe('DROP TABLE "Obsolete"');
     expect(generateMigrationFromDiff(diff, 'mysql').up[0]).toBe('DROP TABLE `Obsolete`');
     expect(generateMigrationFromDiff(diff, 'mssql').up[0]).toBe('DROP TABLE [Obsolete]');
@@ -89,12 +87,12 @@ describe('Dialect migration SQL', () => {
                 type: 'BOOLEAN',
                 nullable: false,
                 defaultValue: true
-              } as any
+              }
             }
           ]
         }
       ]
-    } as any;
+    };
     expect(generateMigrationFromDiff(base, 'postgresql').up[0]).toBe(
       'ALTER TABLE "Users" ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT TRUE'
     );
@@ -118,13 +116,13 @@ describe('Dialect migration SQL', () => {
           columnChanges: [
             {
               kind: 'alter',
-              column: { name: 'age', type: 'INTEGER', nullable: false } as any,
-              prev: { name: 'age', type: 'INTEGER', nullable: true } as any
+              column: { name: 'age', type: 'INTEGER', nullable: false },
+              prev: { name: 'age', type: 'INTEGER', nullable: true }
             }
           ]
         }
       ]
-    } as any;
+    };
     const my = generateMigrationFromDiff(diff, 'mysql').up;
     const ms = generateMigrationFromDiff(diff, 'mssql').up;
     expect(my.some((s) => s.includes('MySQL requires full type'))).toBe(true);
@@ -139,13 +137,13 @@ describe('Dialect migration SQL', () => {
           create: {
             name: 'Orders',
             columns: [
-              { name: 'id', type: 'INTEGER', nullable: false } as any,
-              { name: 'userId', type: 'INTEGER', nullable: false } as any
+              { name: 'id', type: 'INTEGER', nullable: false },
+              { name: 'userId', type: 'INTEGER', nullable: false }
             ],
             primaryKeys: ['id'],
             indexes: [],
             foreignKeys: [{ columns: ['userId'], refTable: 'Users', refColumns: ['id'] }]
-          } as any
+          }
         }
       ]
     };

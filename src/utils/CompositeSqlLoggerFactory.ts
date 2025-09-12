@@ -1,4 +1,4 @@
-import { SqlLogger, SqlLoggerFactory } from '../types';
+import type { SqlLogger, SqlLoggerFactory } from '../types';
 import { CompositeSqlLogger } from './CompositeSqlLogger';
 
 /**

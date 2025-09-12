@@ -1,12 +1,11 @@
-import {
+import type {
   BinaryExpressionNode,
-  ComparisonOperator,
   ExpressionNode,
   IdentifierNode,
   LiteralNode,
-  LogicalExpressionNode,
-  LogicalOperator
+  LogicalExpressionNode
 } from './ast/Nodes';
+import { ComparisonOperator, LogicalOperator } from './ast/Nodes';
 
 /**
  * Very lightweight parser that converts supported predicate functions

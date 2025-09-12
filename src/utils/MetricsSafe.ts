@@ -13,7 +13,11 @@ function debugEnabled(): boolean {
   }
 }
 
-function tryInvoke(logger: unknown, method: 'cache' | 'cacheSize' | 'cacheEvicted', payload: unknown): void {
+function tryInvoke(
+  logger: unknown,
+  method: 'cache' | 'cacheSize' | 'cacheEvicted',
+  payload: unknown
+): void {
   try {
     const maybeMethod = (logger as Record<string, unknown> | undefined)?.[method] as
       | ((arg: unknown) => void)
@@ -31,15 +35,29 @@ function tryInvoke(logger: unknown, method: 'cache' | 'cacheSize' | 'cacheEvicte
   }
 }
 
-export function safeCache(logger: unknown, payload: { cache: 'sqlGen' | 'entityL2' | 'count'; hit: boolean; provider?: string; ttl?: boolean }): void {
+export function safeCache(
+  logger: unknown,
+  payload: {
+    cache: 'sqlGen' | 'entityL2' | 'count';
+    hit: boolean;
+    provider?: string;
+    ttl?: boolean;
+  }
+): void {
   tryInvoke(logger, 'cache', payload);
 }
 
-export function safeCacheSize(logger: unknown, payload: { cache: 'sqlGen' | 'entityL2' | 'count'; size: number; provider?: string }): void {
+export function safeCacheSize(
+  logger: unknown,
+  payload: { cache: 'sqlGen' | 'entityL2' | 'count'; size: number; provider?: string }
+): void {
   tryInvoke(logger, 'cacheSize', payload);
 }
 
-export function safeCacheEvicted(logger: unknown, payload: { cache: 'sqlGen' | 'entityL2' | 'count'; provider?: string }): void {
+export function safeCacheEvicted(
+  logger: unknown,
+  payload: { cache: 'sqlGen' | 'entityL2' | 'count'; provider?: string }
+): void {
   tryInvoke(logger, 'cacheEvicted', payload);
 }
 
@@ -56,5 +74,3 @@ export function warnIfLoggerDebug(method: string, error: unknown): void {
     /* ignore */
   }
 }
-
-

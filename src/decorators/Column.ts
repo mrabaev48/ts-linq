@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { ColumnMetadata, ColumnType } from '../types';
+import type { ColumnMetadata, ColumnType } from '../types';
 
 /**
  * Options for configuring a column mapping on an entity property.

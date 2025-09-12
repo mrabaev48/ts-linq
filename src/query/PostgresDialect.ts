@@ -1,6 +1,6 @@
-import { SqlDialect } from './SqlDialect';
+import type { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { QueryOptions, SqlParameter } from '../types';
+import type { QueryOptions, SqlParameter } from '../types';
 
 /**
  * PostgreSQL implementation of SqlDialect.
@@ -49,7 +49,9 @@ export class PostgresDialect implements SqlDialect {
       }
     }
     if (options.orderBy && options.orderBy.length > 0) {
-      const orderByClauses = options.orderBy.map((orderBy) => `${orderBy.column} ${orderBy.direction}`);
+      const orderByClauses = options.orderBy.map(
+        (orderBy) => `${orderBy.column} ${orderBy.direction}`
+      );
       query += ` ORDER BY ${orderByClauses.join(', ')}`;
     }
     const hasLimit = options.limit !== undefined && options.limit !== null;
