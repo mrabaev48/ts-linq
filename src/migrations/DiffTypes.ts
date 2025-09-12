@@ -114,8 +114,8 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
   return { tables: diffs };
 }
 
-function normalizeType(t: string): string {
-  return String(t || '')
+function normalizeType(typeName: string): string {
+  return String(typeName || '')
     .trim()
     .toUpperCase();
 }

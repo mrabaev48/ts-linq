@@ -27,9 +27,9 @@ export class ExponentialBackoffRetryPolicy implements RetryPolicy {
   }
 
   public getDelayMs(attempt: number): number {
-    const jitter = Math.floor(Math.random() * Math.min(25, this.baseDelayMs));
-    const v = this.baseDelayMs * Math.pow(this.factor, Math.max(0, attempt - 1)) + jitter;
-    return Math.min(this.maxDelayMs, v);
+    const jitterMs = Math.floor(Math.random() * Math.min(25, this.baseDelayMs));
+    const computedDelayMs = this.baseDelayMs * Math.pow(this.factor, Math.max(0, attempt - 1)) + jitterMs;
+    return Math.min(this.maxDelayMs, computedDelayMs);
   }
 }
 

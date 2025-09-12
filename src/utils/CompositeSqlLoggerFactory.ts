@@ -21,16 +21,16 @@ export class CompositeSqlLoggerFactory implements SqlLoggerFactory {
 
   create(provider: 'sqlite' | 'mysql' | 'postgresql' | 'mssql' | string): SqlLogger | undefined {
     const delegates: SqlLogger[] = [];
-    for (const f of this.factories) {
+    for (const factory of this.factories) {
       try {
-        const l = f?.create(provider);
-        if (l) delegates.push(l);
+        const logger = factory?.create(provider);
+        if (logger) delegates.push(logger);
       } catch {
         /* ignore factory errors */
       }
     }
-    for (const l of this.statics) {
-      if (l) delegates.push(l);
+    for (const staticLogger of this.statics) {
+      if (staticLogger) delegates.push(staticLogger);
     }
     if (delegates.length === 0) return undefined;
     return new CompositeSqlLogger(...delegates);

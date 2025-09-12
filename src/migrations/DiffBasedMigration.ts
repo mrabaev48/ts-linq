@@ -33,8 +33,8 @@ export abstract class DiffBasedMigration extends Migration {
   protected async afterDownStatement(_sql: string): Promise<void> {}
 
   public async up(): Promise<void> {
-    const d = await this.diff();
-    const { up } = generateMigrationFromDiff(d, this.dialect());
+    const schemaDiff = await this.diff();
+    const { up } = generateMigrationFromDiff(schemaDiff, this.dialect());
     await this.beforeUp(up);
     for (const sql of up) {
       if (!(await this.beforeUpStatement(sql))) continue;
@@ -45,8 +45,8 @@ export abstract class DiffBasedMigration extends Migration {
   }
 
   public async down(): Promise<void> {
-    const d = await this.diff();
-    const { down } = generateMigrationFromDiff(d, this.dialect());
+    const schemaDiff = await this.diff();
+    const { down } = generateMigrationFromDiff(schemaDiff, this.dialect());
     await this.beforeDown(down);
     for (const sql of down) {
       if (!(await this.beforeDownStatement(sql))) continue;
