@@ -12,7 +12,7 @@ function defineEntity() {
 }
 
 class CacheCtx extends DbContext {
-  public cusers!: DbSet<any>;
+  public cusers!: DbSet<InstanceType<ReturnType<typeof defineEntity>['CUser']>>;
   constructor() {
     super({
       provider: 'sqlite',

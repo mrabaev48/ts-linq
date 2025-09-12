@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
+import { ColumnMetadata, RelationshipMetadata } from '../types';
 
 /**
  * Options for configuring an entity/table.
@@ -25,33 +26,37 @@ export function Entity(options: EntityOptions = {}): ClassDecorator {
     MetadataStorage.addEntity(target, tableName);
 
     // Return lightweight subclass that re-registers metadata if storage was cleared
-    const Extended: any = class extends (target as any) {
-      constructor(...args: any[]) {
+    const ExtendedClass = class extends (target as unknown as new (
+      ...args: unknown[]
+    ) => object) {
+      constructor(...args: unknown[]) {
         super(...args);
         if (!MetadataStorage.getEntity(target)) {
-          const tn = Reflect.getOwnMetadata('orm:tableName', target) || tableName;
+          const tn = (Reflect.getOwnMetadata('orm:tableName', target) as string | undefined) || tableName;
           MetadataStorage.addEntity(target, tn);
-          const columns = Reflect.getOwnMetadata('orm:columns', target) || [];
+          const columns = (Reflect.getOwnMetadata('orm:columns', target) as ColumnMetadata[]) || [];
           for (const col of columns) {
             MetadataStorage.addColumn(target, col);
           }
-          const primaryKeys = Reflect.getOwnMetadata('orm:primaryKeys', target) || [];
+          const primaryKeys = (Reflect.getOwnMetadata('orm:primaryKeys', target) as string[]) || [];
           for (const pk of primaryKeys) {
             MetadataStorage.addPrimaryKey(target, pk);
           }
-          const relationships = Reflect.getOwnMetadata('orm:relationships', target) || [];
+          const relationships =
+            (Reflect.getOwnMetadata('orm:relationships', target) as RelationshipMetadata[]) || [];
           for (const rel of relationships) {
+            const te = rel.targetEntity;
             const resolvedTarget =
-              typeof rel.targetEntity === 'function' && !(rel.targetEntity as any).prototype
-                ? (rel.targetEntity as () => Function)()
-                : rel.targetEntity;
+              typeof te === 'function' && (te as { prototype?: unknown }).prototype
+                ? (te as Function)
+                : (te as () => Function)();
             MetadataStorage.addRelationship(target, { ...rel, targetEntity: resolvedTarget });
           }
         }
       }
     };
     // Let storage map back from Extended to original for getEntity lookups
-    Reflect.defineMetadata('orm:original', target, Extended);
-    return Extended as TFunction;
+    Reflect.defineMetadata('orm:original', target, ExtendedClass);
+    return ExtendedClass as unknown as TFunction;
   };
 }

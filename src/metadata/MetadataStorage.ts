@@ -12,8 +12,11 @@ export class MetadataStorage {
 
   private normalizeTarget<T extends Function>(target: T): T {
     // Map decorated Extended classes back to original constructors if present
-    const original = (Reflect as any).getOwnMetadata?.('orm:original', target) as T | undefined;
-    return (original || target) as T;
+    const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
+      .getOwnMetadata;
+    const maybe = getOwn?.('orm:original', target);
+    const original = typeof maybe === 'function' ? (maybe as T) : undefined;
+    return (original ?? target) as T;
   }
 
   private constructor() {}
@@ -33,7 +36,10 @@ export class MetadataStorage {
 
   /** Get metadata for a specific entity constructor. */
   public static getEntity(target: Function): EntityMetadata | undefined {
-    const original = (Reflect as any).getOwnMetadata?.('orm:original', target) || target;
+    const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
+      .getOwnMetadata;
+    const maybe = getOwn?.('orm:original', target);
+    const original = typeof maybe === 'function' ? (maybe as Function) : target;
     const meta = MetadataStorage.getInstance().getEntityMetadata(original);
     if (!meta) return undefined;
     if (original !== target) {

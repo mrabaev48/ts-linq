@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { ColumnMetadata } from '../types';
+import { ColumnMetadata, ColumnType } from '../types';
 
 /**
  * Options for configuring a column mapping on an entity property.
@@ -16,9 +16,9 @@ import { ColumnMetadata } from '../types';
  */
 export interface ColumnOptions {
   name?: string;
-  type?: string;
+  type?: ColumnType | string;
   nullable?: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   length?: number;
   precision?: number;
   scale?: number;
@@ -37,11 +37,13 @@ export interface ColumnOptions {
  * @returns A property decorator that records column metadata.
  */
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
+  return function (target: object, propertyKey: string | symbol) {
     const propertyName = propertyKey.toString();
 
     // Get the design type using reflect-metadata
-    const designType = Reflect.getMetadata('design:type', target, propertyKey);
+    const designType = Reflect.getMetadata('design:type', target, propertyKey) as
+      | { name?: string }
+      | undefined;
 
     const columnMetadata: ColumnMetadata = {
       propertyName,
@@ -56,10 +58,10 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
       isVersion: options?.version || false
     };
 
-    MetadataStorage.addColumn(target.constructor, columnMetadata);
+    MetadataStorage.addColumn((target as { constructor: Function }).constructor, columnMetadata);
 
     // Persist on constructor to support rehydration
-    const ctor = target.constructor;
+    const ctor = (target as { constructor: Function }).constructor;
     const existing: ColumnMetadata[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
     existing.push(columnMetadata);
     Reflect.defineMetadata('orm:columns', existing, ctor);
@@ -72,8 +74,8 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
  * @param type The runtime constructor captured by `reflect-metadata` (e.g., String, Number).
  * @returns A string representing the SQL type to use.
  */
-function getTypeString(type: any): string {
-  if (!type) return 'TEXT';
+function getTypeString(type: { name?: string } | undefined): ColumnType {
+  if (!type || !type.name) return 'TEXT';
 
   switch (type.name) {
     case 'String':

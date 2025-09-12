@@ -1,6 +1,11 @@
 import { DbContext } from '../src/context/DbContext';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { ColumnMetadata, RetryPolicy } from '../src/types';
+
+interface ProviderInternal {
+  doExecuteNonQuery: (...args: unknown[]) => unknown;
+  executeNonQuery(sql: string, params?: readonly unknown[]): Promise<number>;
+}
 import { ExponentialBackoffRetryPolicy, NoRetryPolicy } from '../src/utils/RetryPolicies';
 
 class RsUser {}
@@ -17,7 +22,7 @@ MetadataStorage.addColumn(RsUser, idCol);
 MetadataStorage.addPrimaryKey(RsUser, 'id');
 
 class Ctx extends DbContext {
-  public rs_users!: any;
+  public rs_users!: unknown;
   constructor(policy?: RetryPolicy) {
     super({ provider: 'sqlite', connectionString: ':memory:', retryPolicy: policy });
   }
@@ -28,9 +33,9 @@ describe('RetryPolicy strategies', () => {
     const ctx = new Ctx(new NoRetryPolicy());
     await ctx.ensureCreated();
     // Spy on provider.executeWithRetry through executeNonQuery by forcing an error and checking timing
-    const p: any = (ctx as any).provider;
-    const spy = jest.spyOn(p as any, 'doExecuteNonQuery').mockImplementation(() => {
-      const err: any = new Error('timeout');
+    const p = (ctx as unknown as { provider: unknown }).provider as ProviderInternal;
+    const spy = jest.spyOn(p, 'doExecuteNonQuery' as any).mockImplementation(() => {
+      const err: Error & { message: string } = new Error('timeout');
       err.message = 'timeout';
       throw err;
     });
@@ -44,11 +49,11 @@ describe('RetryPolicy strategies', () => {
   test('ExponentialBackoffRetryPolicy retries with backoff', async () => {
     const ctx = new Ctx(new ExponentialBackoffRetryPolicy({ baseDelayMs: 10 }));
     await ctx.ensureCreated();
-    const p: any = (ctx as any).provider;
+    const p = (ctx as unknown as { provider: unknown }).provider as ProviderInternal;
     let fails = 2;
-    const spy = jest.spyOn(p as any, 'doExecuteNonQuery').mockImplementation(() => {
+    const spy = jest.spyOn(p, 'doExecuteNonQuery' as any).mockImplementation(() => {
       if (fails-- > 0) {
-        const err: any = new Error('timeout');
+        const err: Error & { message: string } = new Error('timeout');
         err.message = 'timeout';
         throw err;
       }

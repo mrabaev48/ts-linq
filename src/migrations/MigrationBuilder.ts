@@ -4,8 +4,8 @@ import { Dialect, generateMigrationFromDiff } from './DialectMigrationSql';
 interface ColumnDef {
   name: string;
   type: string;
-  nullable?: boolean;
-  defaultValue?: any;
+  nullable: boolean;
+  defaultValue?: unknown;
 }
 
 interface IndexDef {
@@ -34,7 +34,7 @@ class TableBuilder {
     this.name = name;
   }
 
-  column(name: string, type: string, opts?: { nullable?: boolean; defaultValue?: any }): this {
+  column(name: string, type: string, opts?: { nullable?: boolean; defaultValue?: unknown }): this {
     this.columns.push({
       name,
       type,
@@ -91,12 +91,12 @@ export class MigrationBuilder {
       addColumn: (
         name: string,
         type: string,
-        opts?: { nullable?: boolean; defaultValue?: any }
+        opts?: { nullable?: boolean; defaultValue?: unknown }
       ) => void;
       alterColumn: (
         name: string,
         type?: string,
-        opts?: { nullable?: boolean; defaultValue?: any }
+        opts?: { nullable?: boolean; defaultValue?: unknown }
       ) => void;
       dropColumn: (name: string) => void;
     }) => void
@@ -105,7 +105,7 @@ export class MigrationBuilder {
       addColumn: (
         colName: string,
         type: string,
-        opts?: { nullable?: boolean; defaultValue?: any }
+        opts?: { nullable?: boolean; defaultValue?: unknown }
       ) => {
         this.columnAdds.push({
           table: name,
@@ -120,7 +120,7 @@ export class MigrationBuilder {
       alterColumn: (
         colName: string,
         type?: string,
-        opts?: { nullable?: boolean; defaultValue?: any }
+        opts?: { nullable?: boolean; defaultValue?: unknown }
       ) => {
         const target = {
           name: colName,
@@ -129,13 +129,13 @@ export class MigrationBuilder {
           defaultValue: opts?.defaultValue
         };
         // Provide a synthetic prev to force emission of ALTER statements when prior state is unknown
-        const prev = {
+        const prev: ColumnDef = {
           name: colName,
           type: type ? '__DIFF_FORCE__' : target.type,
           // Flip nullable if provided to ensure difference is detected; otherwise leave undefined
-          ...(typeof opts?.nullable === 'boolean' ? { nullable: !opts.nullable } : {})
-        } as any;
-        this.columnAlters.push({ table: name, col: target as any, prev });
+          nullable: typeof opts?.nullable === 'boolean' ? !opts.nullable : target.nullable
+        };
+        this.columnAlters.push({ table: name, col: target, prev });
       },
       dropColumn: (colName: string) => {
         this.columnDrops.push({ table: name, name: colName });
@@ -198,7 +198,7 @@ export class MigrationBuilder {
             type: c.type,
             nullable: c.nullable ?? true,
             defaultValue: c.defaultValue
-          })) as any,
+          })),
           primaryKeys: tb.primaryKeys,
           indexes: tb.indexes.map((i) => ({
             name: i.name,
@@ -217,7 +217,7 @@ export class MigrationBuilder {
       });
     }
     for (const name of this.drops) {
-      tables.push({ table: name, drop: true } as any);
+      tables.push({ table: name, drop: true });
     }
     // Column changes
     const byTable = new Map<string, TableDiff>();
@@ -239,7 +239,7 @@ export class MigrationBuilder {
           nullable: add.col.nullable ?? true,
           defaultValue: add.col.defaultValue
         }
-      } as any);
+      });
     }
     for (const alt of this.columnAlters) {
       ensure(alt.table).columnChanges!.push({
@@ -251,19 +251,19 @@ export class MigrationBuilder {
           defaultValue: alt.col.defaultValue
         },
         prev: alt.prev
-      } as any);
+      });
     }
     for (const drop of this.columnDrops) {
       ensure(drop.table).columnChanges!.push({
         kind: 'drop',
         column: { name: drop.name, type: 'TEXT', nullable: true }
-      } as any);
+      });
     }
     // Index creates/drops
     for (const ic of this.indexCreates) {
       const td = ensure(ic.table);
-      (td as any).indexCreates = (td as any).indexCreates || [];
-      (td as any).indexCreates.push({
+      td.indexCreates = td.indexCreates ?? [];
+      td.indexCreates.push({
         name: ic.index.name,
         columns: ic.index.columns,
         unique: !!ic.index.unique
@@ -271,29 +271,29 @@ export class MigrationBuilder {
     }
     for (const id of this.indexDrops) {
       const td = ensure(id.table);
-      (td as any).indexDrops = (td as any).indexDrops || [];
-      (td as any).indexDrops.push(id.name);
+      td.indexDrops = td.indexDrops ?? [];
+      td.indexDrops.push(id.name);
     }
     // FK creates/drops
     for (const fc of this.fkCreates) {
       const td = ensure(fc.table);
-      (td as any).fkCreates = (td as any).fkCreates || [];
-      (td as any).fkCreates.push(fc.fk);
+      td.fkCreates = td.fkCreates ?? [];
+      td.fkCreates.push(fc.fk);
     }
     for (const fd of this.fkDrops) {
       const td = ensure(fd.table);
-      (td as any).fkDrops = (td as any).fkDrops || [];
-      (td as any).fkDrops.push(fd.name);
+      td.fkDrops = td.fkDrops ?? [];
+      td.fkDrops.push(fd.name);
     }
     // Renames
     for (const t of this.tableRenames) {
       const td = ensure(t.from);
-      (td as any).renameTo = t.to;
+      td.renameTo = t.to;
     }
     for (const c of this.columnRenames) {
       const td = ensure(c.table);
-      (td as any).columnRenames = (td as any).columnRenames || [];
-      (td as any).columnRenames.push({ from: c.from, to: c.to });
+      td.columnRenames = td.columnRenames ?? [];
+      td.columnRenames.push({ from: c.from, to: c.to });
     }
     return { tables } as SchemaDiff;
   }

@@ -1,4 +1,4 @@
-import { QueryOptions } from '../types';
+import { QueryOptions, SqlParameter } from '../types';
 import { SqlLogger } from '../types';
 import { SqlDialect } from './SqlDialect';
 import { safeCacheSize, safeCacheEvicted } from '../utils/MetricsSafe';
@@ -12,7 +12,7 @@ import { SqlCache, SqlCacheEntry } from './SqlCache';
  */
 export class QueryBuilder {
   /** Shared in-memory cache if external SqlCache is not provided. */
-  private static _sqlCache: Map<string, { query: string; parameters: any[] }> = new Map();
+  private static _sqlCache: Map<string, { query: string; parameters: SqlParameter[] }> = new Map();
   private static readonly _MAX_CACHE_SIZE = 1000;
   private _dialect: SqlDialect;
   private _logger?: SqlLogger;
@@ -37,12 +37,12 @@ export class QueryBuilder {
   public generateSql<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): { query: string; parameters: any[] } {
+  ): { query: string; parameters: readonly SqlParameter[] } {
     const key = QueryBuilder.buildCacheKey(entityClass, options);
     const hit = this.getFromCache(key);
     if (hit) {
       this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
-      return { query: hit.query, parameters: [...hit.parameters] };
+      return { query: hit.query, parameters: [...hit.parameters] } as const;
     }
     const built = this._dialect.buildSelect(entityClass, options);
     this.remember(key, built);
@@ -50,10 +50,10 @@ export class QueryBuilder {
     return built;
   }
   /** Generate SQL from a QueryModel (preferred path). */
-  public generateFromModel<T>(
-    entityClass: new () => T,
+  public generateFromModel(
+    entityClass: new () => unknown,
     model: QueryModel
-  ): { query: string; parameters: any[] } {
+  ): { query: string; parameters: readonly SqlParameter[] } {
     const opts: QueryOptions = {
       select: model.select,
       where: model.where,
@@ -68,9 +68,9 @@ export class QueryBuilder {
     // Handle UNION/UNION ALL chains
     if (model.unions && model.unions.length > 0) {
       let sql = `${base.query}`;
-      let params = [...base.parameters];
+      let params: SqlParameter[] = [...base.parameters];
       for (const unionEntry of model.unions) {
-        const next = this.generateFromModel(unionEntry.entity as any, unionEntry.other);
+        const next = this.generateFromModel(unionEntry.entity, unionEntry.other);
         sql += unionEntry.all ? ` UNION ALL ${next.query}` : ` UNION ${next.query}`;
         params.push(...next.parameters);
       }
@@ -91,7 +91,7 @@ export class QueryBuilder {
     if (options.where && options.where.length) {
       key += '|w:';
       for (const w of options.where) {
-        key += w.condition + '(' + (w.parameters?.join('|') ?? '') + ');';
+        key += w.condition + '(' + (w.parameters?.join('|') ?? '') + ')';
       }
     }
     if (options.orderBy && options.orderBy.length) {
@@ -114,16 +114,14 @@ export class QueryBuilder {
   }
 
   /** Store an item in the cache with simple FIFO eviction. */
-  private remember(key: string, value: { query: string; parameters: any[] }): void {
+  private remember(key: string, value: { query: string; parameters: readonly SqlParameter[] }): void {
     if (this._cache) {
       this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
-      try {
-        (this._logger as any)?.cacheSize?.({
-          cache: 'sqlGen',
-          size: this._cache.size?.() ?? -1,
-          provider: this._providerName
-        });
-      } catch {/* ignore */}
+      safeCacheSize(this._logger, {
+        cache: 'sqlGen',
+        size: this._cache.size?.() ?? -1,
+        provider: this._providerName
+      });
       return;
     }
     if (QueryBuilder._sqlCache.size >= QueryBuilder._MAX_CACHE_SIZE) {

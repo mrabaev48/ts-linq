@@ -6,6 +6,7 @@ import {
   LogicalExpressionNode,
   LogicalOperator
 } from './Nodes';
+import { SqlParameter } from '../../types';
 
 /**
  * Visitor that turns a supported AST into a SQL WHERE fragment with parameters.
@@ -15,7 +16,7 @@ export class SqlVisitor {
   /**
    * Convert an AST node to a SQL WHERE fragment and parameters.
    */
-  public toSql(node: ExpressionNode): { condition: string; parameters: any[] } {
+  public toSql(node: ExpressionNode): { condition: string; parameters: SqlParameter[] } {
     switch (node.type) {
       case 'BinaryExpression':
         return this.visitBinary(node as BinaryExpressionNode);
@@ -29,7 +30,7 @@ export class SqlVisitor {
   /**
    * Handle a binary comparison node.
    */
-  private visitBinary(node: BinaryExpressionNode): { condition: string; parameters: any[] } {
+  private visitBinary(node: BinaryExpressionNode): { condition: string; parameters: SqlParameter[] } {
     const column = (node.left as IdentifierNode).name;
     const value = (node.right as LiteralNode).value;
     const op = node.operator;
@@ -39,9 +40,9 @@ export class SqlVisitor {
   /**
    * Handle a logical AND/OR node by concatenating child results.
    */
-  private visitLogical(node: LogicalExpressionNode): { condition: string; parameters: any[] } {
+  private visitLogical(node: LogicalExpressionNode): { condition: string; parameters: SqlParameter[] } {
     const parts: string[] = [];
-    const params: any[] = [];
+    const params: SqlParameter[] = [];
     for (const expr of node.expressions) {
       const result = this.toSql(expr);
       parts.push(result.condition);

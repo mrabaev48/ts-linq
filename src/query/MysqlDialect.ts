@@ -1,6 +1,6 @@
 import { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { QueryOptions } from '../types';
+import { QueryOptions, SqlParameter } from '../types';
 
 /**
  * MySQL dialect for SELECT generation.
@@ -20,40 +20,35 @@ export class MysqlDialect implements SqlDialect {
   public buildSelect<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): { query: string; parameters: any[] } {
+  ): { query: string; parameters: readonly SqlParameter[] } {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     let query = 'SELECT ';
     if (options.distinct) query += 'DISTINCT ';
     query += options.select && options.select.length ? options.select.join(', ') : '*';
     query += ` FROM \`${metadata.tableName}\``;
-    if ((options as any).joins) {
-      for (const join of (options as any).joins as Array<{
-        type: string;
-        table: string;
-        on: string;
-        alias?: string;
-      }>) {
+    if (options.joins && options.joins.length) {
+      for (const join of options.joins) {
         query += ` ${join.type} JOIN \`${join.table}\``;
         if (join.alias) query += ` AS ${join.alias}`;
         query += ` ON ${join.on}`;
       }
     }
-    const parameters: any[] = [];
+    const parameters: SqlParameter[] = [];
     if (options.where && options.where.length > 0) {
-      const whereClauses = options.where.map((w) => (w as any).condition);
+      const whereClauses = options.where.map((w) => w.condition);
       query += ` WHERE ${whereClauses.join(' AND ')}`;
-      for (const where of options.where) parameters.push(...(where as any).parameters);
+      for (const where of options.where) parameters.push(...where.parameters);
     }
     if (options.groupBy) {
       query += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
       if (options.groupBy.having) {
-        query += ` HAVING ${(options.groupBy.having as any).condition}`;
-        parameters.push(...(options.groupBy.having as any).parameters);
+        query += ` HAVING ${options.groupBy.having.condition}`;
+        parameters.push(...options.groupBy.having.parameters);
       }
     }
-    if ((options as any).orderBy && (options as any).orderBy.length > 0) {
-      const orderByClauses = (options as any).orderBy.map((o: any) => `${o.column} ${o.direction}`);
+    if (options.orderBy && options.orderBy.length > 0) {
+      const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
       query += ` ORDER BY ${orderByClauses.join(', ')}`;
     }
     const hasLimit = options.limit !== undefined && options.limit !== null;

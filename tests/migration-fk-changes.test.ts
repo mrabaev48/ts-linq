@@ -17,9 +17,9 @@ describe('FK add/drop SQL generation', () => {
             }
           ] as any
         },
-        { table: 'orders', fkDrops: ['fk_old'] as any }
+        { table: 'orders', fkDrops: ['fk_old'] as unknown as string[] }
       ]
-    } as any;
+    } as unknown as { tables: Array<{ table: string; fkCreates?: Array<{ columns: string[]; refTable: string; refColumns: string[]; onDelete?: string }>; fkDrops?: string[] }> };
     const { up } = generateMigrationFromDiff(diff, 'postgresql');
     expect(
       up.some((s) =>
@@ -34,11 +34,11 @@ describe('FK add/drop SQL generation', () => {
       tables: [
         {
           table: 'orders',
-          fkCreates: [{ columns: ['user_id'], refTable: 'users', refColumns: ['id'] }] as any
+          fkCreates: [{ columns: ['user_id'], refTable: 'users', refColumns: ['id'] }]
         },
-        { table: 'orders', fkDrops: ['fk_old'] as any }
+        { table: 'orders', fkDrops: ['fk_old'] as unknown as string[] }
       ]
-    } as any;
+    } as unknown as { tables: Array<{ table: string; fkCreates?: Array<{ columns: string[]; refTable: string; refColumns: string[] }>; fkDrops?: string[] }> };
     const { up } = generateMigrationFromDiff(diff, 'mysql');
     expect(
       up.some((s) =>
@@ -53,11 +53,11 @@ describe('FK add/drop SQL generation', () => {
       tables: [
         {
           table: 'orders',
-          fkCreates: [{ columns: ['user_id'], refTable: 'users', refColumns: ['id'] }] as any
+          fkCreates: [{ columns: ['user_id'], refTable: 'users', refColumns: ['id'] }]
         },
-        { table: 'orders', fkDrops: ['fk_old'] as any }
+        { table: 'orders', fkDrops: ['fk_old'] as unknown as string[] }
       ]
-    } as any;
+    } as unknown as { tables: Array<{ table: string; fkCreates?: Array<{ columns: string[]; refTable: string; refColumns: string[] }>; fkDrops?: string[] }> };
     const { up } = generateMigrationFromDiff(diff, 'sqlite');
     expect(up.some((s) => s.startsWith('-- SQLite requires table rebuild'))).toBeTruthy();
   });

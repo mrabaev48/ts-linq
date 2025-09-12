@@ -1,4 +1,4 @@
-import { SqlLogger } from '../types';
+import { SqlLogger, SqlParameter } from '../types';
 
 type LabelValues = Record<string, string>;
 
@@ -7,16 +7,18 @@ interface PromCounter {
   labels(labels: LabelValues): { inc: (v?: number) => void };
 }
 interface PromHistogram {
-  labels(labels: LabelValues): { observe: (v: number, exemplar?: any) => void };
+  labels(labels: LabelValues): { observe: (v: number, exemplar?: Record<string, unknown>) => void };
 }
 interface PromClientLike {
-  Counter: new (cfg: any) => PromCounter;
-  Histogram: new (cfg: any) => PromHistogram;
-  Gauge?: new (cfg: any) => {
-    inc: (labels?: LabelValues, v?: number) => void;
-    dec: (labels?: LabelValues, v?: number) => void;
-    set?: (labels: LabelValues, v: number) => void;
-  };
+  Counter: new (cfg: Record<string, unknown>) => PromCounter;
+  Histogram: new (cfg: Record<string, unknown>) => PromHistogram;
+  Gauge?: new (cfg: Record<string, unknown>) => PromGauge;
+}
+
+interface PromGauge {
+  inc: (labels?: LabelValues, v?: number) => void;
+  dec: (labels?: LabelValues, v?: number) => void;
+  set?: (labels: LabelValues, v: number) => void;
 }
 
 /**
@@ -70,7 +72,7 @@ export class PrometheusSqlLogger implements SqlLogger {
   };
   private cacheHits?: PromCounter;
   private cacheMisses?: PromCounter;
-  private cacheSizeGauge?: any;
+  private cacheSizeGauge?: PromGauge;
   private countCacheTtlHits?: PromCounter;
   private countCacheHardHits?: PromCounter;
   private cacheEvictions?: PromCounter;
@@ -117,14 +119,14 @@ export class PrometheusSqlLogger implements SqlLogger {
       this.activeTransactions = {
         inc: (labels?: LabelValues, v?: number) => {
           try {
-            (g as any).inc(labels, v);
+            g.inc(labels, v);
           } catch {
             /* ignore */
           }
         },
         dec: (labels?: LabelValues, v?: number) => {
           try {
-            (g as any).dec(labels, v);
+            g.dec(labels, v);
           } catch {
             /* ignore */
           }
@@ -170,7 +172,7 @@ export class PrometheusSqlLogger implements SqlLogger {
   /** No-op (metrics are recorded on queryEnd). */
   public queryStart(_info?: {
     sql: string;
-    params: any[];
+    params: readonly SqlParameter[];
     traceId?: string;
     provider?: string;
   }): void {
@@ -180,7 +182,7 @@ export class PrometheusSqlLogger implements SqlLogger {
   /** Record query counters and durations, and errors if present. */
   public queryEnd(info: {
     sql: string;
-    params: any[];
+    params: readonly SqlParameter[];
     durationMs: number;
     traceId?: string;
     rows?: number;
@@ -198,12 +200,12 @@ export class PrometheusSqlLogger implements SqlLogger {
       // Attach exemplar when traceId is present and prom-client supports it
       const duration = Math.max(0, info.durationMs);
       try {
-        (this.queryDuration.labels(labels) as any).observe(
+        this.queryDuration.labels(labels).observe(
           duration,
-          info.traceId ? { traceId: info.traceId } : undefined
+          info.traceId ? { traceId: info.traceId } : (undefined as unknown as Record<string, unknown>)
         );
       } catch {
-        this.queryDuration.labels(labels).observe(duration as any);
+        this.queryDuration.labels(labels).observe(duration);
       }
       if (info.error && this.errorTotal) {
         const errLabels = {
@@ -222,7 +224,7 @@ export class PrometheusSqlLogger implements SqlLogger {
   /** Record a retry attempt. */
   public retry?(info: {
     sql: string;
-    params: any[];
+    params: readonly SqlParameter[];
     attempt: number;
     traceId?: string;
     provider?: string;
@@ -267,12 +269,12 @@ export class PrometheusSqlLogger implements SqlLogger {
     if (!this.enabled || !this.client) return;
     const provider = info.provider || 'unknown';
     try {
-      if (info.hit) this.cacheHits?.labels({ cache: info.cache, provider } as any).inc(1);
-      else this.cacheMisses?.labels({ cache: info.cache, provider } as any).inc(1);
+      if (info.hit) this.cacheHits?.labels({ cache: info.cache, provider }).inc(1);
+      else this.cacheMisses?.labels({ cache: info.cache, provider }).inc(1);
       if (info.cache === 'count' && info.hit) {
-        const ttl = (info as any).ttl as boolean | undefined;
-        if (ttl === true) this.countCacheTtlHits?.labels({ provider } as any).inc(1);
-        else if (ttl === false) this.countCacheHardHits?.labels({ provider } as any).inc(1);
+        const ttl = (info as unknown as { ttl?: boolean }).ttl;
+        if (ttl === true) this.countCacheTtlHits?.labels({ provider }).inc(1);
+        else if (ttl === false) this.countCacheHardHits?.labels({ provider }).inc(1);
       }
     } catch {
       /* ignore */
@@ -284,7 +286,7 @@ export class PrometheusSqlLogger implements SqlLogger {
     if (!this.enabled || !this.cacheSizeGauge) return;
     const provider = info.provider || 'unknown';
     try {
-      (this.cacheSizeGauge as any).set?.({ cache: info.cache, provider }, info.size);
+      this.cacheSizeGauge?.set?.({ cache: info.cache, provider }, info.size);
     } catch {
       /* ignore */
     }
@@ -295,7 +297,7 @@ export class PrometheusSqlLogger implements SqlLogger {
     if (!this.enabled || !this.cacheEvictions) return;
     const provider = info.provider || 'unknown';
     try {
-      this.cacheEvictions.labels({ cache: info.cache, provider } as any).inc(1);
+      this.cacheEvictions.labels({ cache: info.cache, provider }).inc(1);
     } catch {/* ignore */}
   }
 

@@ -19,14 +19,14 @@ class TestDiffMigration extends DiffBasedMigration {
           table: 't_new',
           create: {
             name: 't_new',
-            columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any],
+            columns: [{ name: 'id', type: 'INTEGER', nullable: false }],
             primaryKeys: ['id'],
             indexes: [],
             foreignKeys: []
-          } as any
+          }
         }
       ]
-    } as any;
+    };
   }
   protected get name() {
     return 'TestDiffMigration';
@@ -70,23 +70,23 @@ describe('DiffBasedMigration', () => {
               table: 'a',
               create: {
                 name: 'a',
-                columns: [{ name: 'id', type: 'INTEGER', nullable: false } as any],
+                columns: [{ name: 'id', type: 'INTEGER', nullable: false }],
                 primaryKeys: ['id'],
                 indexes: [],
                 foreignKeys: []
-              } as any
+              }
             }
           ]
-        } as any;
+        };
       }
     }
     // Spy to inject a noop statement behavior by intercepting provider call
     const spy = jest
       .spyOn(p as any, 'executeNonQuery')
-      .mockImplementation(async (...args: any[]) => {
+      .mockImplementation(async (...args: unknown[]) => {
         const sql = String(args[0]);
         if (sql.includes('CREATE TABLE') && Math.random() < -1) await Promise.resolve(); // never true
-        return 0 as any;
+        return 0 as number;
       });
     const m = new M(p);
     await m.up();

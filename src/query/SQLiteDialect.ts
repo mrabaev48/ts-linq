@@ -1,6 +1,6 @@
 import { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { JoinClause, OrderByClause, QueryOptions, WhereClause } from '../types';
+import { JoinClause, OrderByClause, QueryOptions, WhereClause, SqlParameter } from '../types';
 
 /**
  * SQLite implementation of SqlDialect.
@@ -18,7 +18,7 @@ export class SQLiteDialect implements SqlDialect {
   buildSelect<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): { query: string; parameters: any[] } {
+  ): { query: string; parameters: readonly SqlParameter[] } {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     let query = 'SELECT ';
@@ -35,7 +35,7 @@ export class SQLiteDialect implements SqlDialect {
       }
     }
 
-    const parameters: any[] = [];
+    const parameters: SqlParameter[] = [];
 
     // WHERE
     if (options.where && options.where.length > 0) {

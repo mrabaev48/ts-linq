@@ -1,4 +1,4 @@
-import { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions } from '../types';
+import { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions, SqlParameter } from '../types';
 import { SqlDialect } from '../query/SqlDialect';
 import { SQLiteDialect } from '../query/SQLiteDialect';
 
@@ -50,26 +50,26 @@ export abstract class DatabaseProvider {
     return new SQLiteDialect();
   }
   /** Insert an entity instance into its table and return the inserted entity. */
-  public abstract insert<T>(entity: T, entityClass: Function): Promise<T>;
+  public abstract insert<T extends object>(entity: T, entityClass: Function): Promise<T>;
   /** Update an existing entity row and return the updated entity. */
-  public abstract update<T>(entity: T, entityClass: Function): Promise<T>;
+  public abstract update<T extends object>(entity: T, entityClass: Function): Promise<T>;
   /** Delete an entity row. */
-  public abstract delete<T>(entity: T, entityClass: Function): Promise<void>;
+  public abstract delete<T extends object>(entity: T, entityClass: Function): Promise<void>;
   /** Find an entity by primary key value. */
-  public abstract findById<T>(id: any, entityClass: new () => T): Promise<T | null>;
+  public abstract findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null>;
   /** Get all entities of a given type. */
-  public abstract findAll<T>(entityClass: new () => T): Promise<T[]>;
+  public abstract findAll<T extends object>(entityClass: new () => T): Promise<T[]>;
   /** Find entities by a simple conditions object (key/value pairs). */
-  public abstract findWhere<T>(entityClass: new () => T, conditions: any): Promise<T[]>;
+  public abstract findWhere<T extends object>(entityClass: new () => T, conditions: Record<string, unknown>): Promise<T[]>;
   /** Find entities where a column value is in a list. */
-  public abstract findWhereIn<T>(
+  public abstract findWhereIn<T extends object>(
     entityClass: new () => T,
     column: string,
-    values: any[]
+    values: unknown[]
   ): Promise<T[]>;
 
   /** Insert many entities in a single transaction (default implementation). */
-  public async insertMany<T>(entities: T[], entityClass: Function): Promise<T[]> {
+  public async insertMany<T extends object>(entities: T[], entityClass: Function): Promise<T[]> {
     if (entities.length === 0) return entities;
     await this.beginTransaction();
     try {
@@ -85,7 +85,7 @@ export abstract class DatabaseProvider {
   }
 
   /** Update many entities in a single transaction (default implementation). */
-  public async updateMany<T>(entities: T[], entityClass: Function): Promise<T[]> {
+  public async updateMany<T extends object>(entities: T[], entityClass: Function): Promise<T[]> {
     if (entities.length === 0) return entities;
     await this.beginTransaction();
     try {
@@ -101,7 +101,7 @@ export abstract class DatabaseProvider {
   }
 
   /** Upsert single entity: try update, fallback to insert when no rows updated. */
-  public async upsert<T>(entity: T, entityClass: Function): Promise<T> {
+  public async upsert<T extends object>(entity: T, entityClass: Function): Promise<T> {
     try {
       return await this.update(entity, entityClass);
     } catch {
@@ -110,7 +110,7 @@ export abstract class DatabaseProvider {
   }
 
   /** Upsert many entities within a transaction. */
-  public async upsertMany<T>(entities: T[], entityClass: Function): Promise<T[]> {
+  public async upsertMany<T extends object>(entities: T[], entityClass: Function): Promise<T[]> {
     if (entities.length === 0) return entities;
     await this.beginTransaction();
     try {
@@ -125,14 +125,14 @@ export abstract class DatabaseProvider {
     }
   }
   /** Execute a SQL query and return rows mapped as generic objects. */
-  public async executeQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+  public async executeQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
     return await this.executeWithRetry<T[]>(() => this.doExecuteQuery<T>(sql, params), sql, params);
   }
   /** Provider-specific implementation of query execution. */
-  protected abstract doExecuteQuery<T>(sql: string, params?: any[]): Promise<T[]>;
+  protected abstract doExecuteQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]>;
 
   /** Execute a non-query SQL statement and return affected row count. */
-  public async executeNonQuery(sql: string, params: any[] = []): Promise<number> {
+  public async executeNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
     return await this.executeWithRetry<number>(
       () => this.doExecuteNonQuery(sql, params),
       sql,
@@ -144,7 +144,7 @@ export abstract class DatabaseProvider {
    * Retry wrapper with basic exponential backoff + jitter for idempotent operations.
    * Retries only when not in a transaction and for errors deemed transient.
    */
-  private async executeWithRetry<T>(fn: () => Promise<T>, sql: string, params: any[]): Promise<T> {
+  private async executeWithRetry<T>(fn: () => Promise<T>, sql: string, params: readonly SqlParameter[]): Promise<T> {
     const maxAttempts = 3;
     const baseDelayMs = 50;
     const startedAt = Date.now();
@@ -169,7 +169,7 @@ export abstract class DatabaseProvider {
           durationMs,
           traceId: this.currentTraceId,
           rows: Array.isArray(result)
-            ? (result as any[]).length
+            ? (result as unknown[]).length
             : typeof result === 'number'
               ? result
               : undefined,
@@ -177,7 +177,7 @@ export abstract class DatabaseProvider {
         });
         await this.afterExecute(sql, params, result);
         return result;
-      } catch (error: any) {
+      } catch (error) {
         attempt++;
         const durationMs = Date.now() - startedAt;
         this.logger?.queryEnd?.({
@@ -185,12 +185,19 @@ export abstract class DatabaseProvider {
           params,
           durationMs,
           traceId: this.currentTraceId,
-          error,
+          error: error as Error,
           provider: this.providerName
         });
         const isTransient = this.isTransientError(error);
         const should = this.retryPolicy
-          ? this.retryPolicy.shouldRetry(error, attempt, this.inTransaction)
+          ? (this.retryPolicy.shouldRetryEx?.({
+              error,
+              attempt,
+              inTransaction: this.inTransaction,
+              sql,
+              params,
+              provider: this.providerName
+            }) ?? this.retryPolicy.shouldRetry(error, attempt, this.inTransaction))
           : isTransient;
         if (!allowRetry || !should || attempt >= maxAttempts) {
           throw error;
@@ -212,8 +219,8 @@ export abstract class DatabaseProvider {
   }
 
   /** Basic transient error classifier. Providers may override for accuracy. */
-  protected isTransientError(error: any): boolean {
-    const message = (error?.message || '').toLowerCase();
+  protected isTransientError(error: unknown): boolean {
+    const message = (error instanceof Error ? error.message : String(error ?? '')).toLowerCase();
     return (
       message.includes('deadlock') ||
       message.includes('timeout') ||
@@ -223,12 +230,12 @@ export abstract class DatabaseProvider {
     );
   }
   /** Provider-specific implementation of non-query execution. */
-  protected abstract doExecuteNonQuery(sql: string, params?: any[]): Promise<number>;
+  protected abstract doExecuteNonQuery(sql: string, params?: readonly SqlParameter[]): Promise<number>;
 
   // Template Method hooks
   /** Called before each execute; override for logging/instrumentation. */
   /** Default no-op hook. Override in providers for logging/instrumentation. */
-  protected async beforeExecute(sql: string, params: any[]): Promise<void> {
+  protected async beforeExecute(sql: string, params: readonly SqlParameter[]): Promise<void> {
     if (!this.middlewares || this.middlewares.length === 0) return;
     const info = { sql, params, traceId: this.currentTraceId };
     for (const mw of this.middlewares) {
@@ -241,15 +248,15 @@ export abstract class DatabaseProvider {
   }
   /** Called after each execute; override for logging/instrumentation. */
   /** Default no-op hook. Override in providers for logging/instrumentation. */
-  protected async afterExecute(sql: string, params: any[], result: any): Promise<void> {
+  protected async afterExecute(sql: string, params: readonly SqlParameter[], result: unknown): Promise<void> {
     if (!this.middlewares || this.middlewares.length === 0) return;
     const rows = Array.isArray(result)
-      ? (result as any[]).length
+      ? (result as unknown[]).length
       : typeof result === 'number'
         ? result
         : undefined;
     const durationMs = this.lastExecuteStartedAt ? Date.now() - this.lastExecuteStartedAt : 0;
-    const info = { sql, params, durationMs, traceId: this.currentTraceId, rows } as any;
+    const info = { sql, params, durationMs, traceId: this.currentTraceId, rows } as const;
     for (const mw of this.middlewares) {
       try {
         await mw.afterExecute?.(info);
@@ -260,9 +267,9 @@ export abstract class DatabaseProvider {
   }
 
   /** Notify middleware that an entity instance has been materialized. */
-  protected async notifyEntityMaterialized(entity: any, metadata?: EntityMetadata): Promise<void> {
+  protected async notifyEntityMaterialized<T extends object>(entity: T, metadata?: EntityMetadata): Promise<void> {
     if (!this.middlewares || this.middlewares.length === 0) return;
-    const info = { entity, metadata };
+    const info: { entity: object; metadata?: EntityMetadata } = { entity, metadata };
     for (const mw of this.middlewares) {
       try {
         await mw.entityMaterialized?.(info);

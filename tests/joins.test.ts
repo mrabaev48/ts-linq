@@ -4,6 +4,7 @@ import { Column } from '../src/decorators/Column';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
+import { SqlParameter } from '../src/types';
 
 @Entity({ name: 'Authors' })
 class Author {
@@ -42,11 +43,11 @@ class ProviderStub extends DatabaseProvider {
   public async findWhereIn<T>(): Promise<T[]> {
     return [];
   }
-  protected async doExecuteQuery<T>(sql: string, params?: any[]): Promise<T[]> {
+  protected async doExecuteQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]> {
     this.lastSql = sql;
-    return [] as any;
+    return [] as unknown as T[];
   }
-  protected async doExecuteNonQuery(sql: string, params?: any[]): Promise<number> {
+  protected async doExecuteNonQuery(sql: string, params?: readonly SqlParameter[]): Promise<number> {
     this.lastSql = sql;
     return 0;
   }

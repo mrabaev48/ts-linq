@@ -24,14 +24,14 @@ const meta: EntityMetadata = {
 
 describe('DdlBuilder', () => {
   test('builds SQLite table and index SQL', () => {
-    const b = new DdlBuilder(new SQLiteDdlStrategy() as any);
+    const b = new DdlBuilder(new SQLiteDdlStrategy());
     const all = b.buildAll(meta);
     expect(all.tableSql).toMatch(/^CREATE TABLE IF NOT EXISTS users/);
     expect(all.indexSqls[0]).toContain('CREATE INDEX');
   });
 
   test('builds Postgres table and index SQL', () => {
-    const b = new DdlBuilder(new PostgresDdlStrategy() as any);
+    const b = new DdlBuilder(new PostgresDdlStrategy());
     const all = b.buildAll(meta);
     expect(all.tableSql).toMatch(/^CREATE TABLE IF NOT EXISTS/);
     expect(all.indexSqls[0]).toContain('CREATE INDEX');

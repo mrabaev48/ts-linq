@@ -1,16 +1,17 @@
 import 'reflect-metadata';
 import { QueryBuilder } from '../src/query/QueryBuilder';
 import { SqlDialect } from '../src/query/SqlDialect';
+import { QueryOptions, SqlParameter, CacheInfo } from '../src/types';
 
 class DummyDialect implements SqlDialect {
-  buildSelect<T>(entityClass: new () => T, _options: any): { query: string; parameters: any[] } {
-    return { query: `SELECT * FROM ${(entityClass as any).name}`, parameters: [] };
+  buildSelect<T>(entityClass: new () => T, _options: QueryOptions): { query: string; parameters: SqlParameter[] } {
+    return { query: `SELECT * FROM ${entityClass.name}`, parameters: [] };
   }
 }
 
 class CapturingLogger {
-  public cacheCalls: any[] = [];
-  cache(info: any) {
+  public cacheCalls: CacheInfo[] = [];
+  cache(info: CacheInfo) {
     this.cacheCalls.push(info);
   }
 }
@@ -33,14 +34,12 @@ describe('QueryBuilder cache metrics', () => {
 });
 
 import 'reflect-metadata';
-// (no duplicate imports)
-import { QueryOptions } from '../src/types';
 
 class DialectStub implements SqlDialect {
   public calls = 0;
   buildSelect<T>(entityClass: new () => T, options: QueryOptions) {
     this.calls++;
-    return { query: 'SELECT x', parameters: [] as any[] };
+    return { query: 'SELECT x', parameters: [] };
   }
 }
 

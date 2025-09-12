@@ -12,7 +12,7 @@ function defineEntity() {
 }
 
 class AppCtx extends DbContext {
-  public items!: DbSet<any>;
+  public items!: DbSet<InstanceType<ReturnType<typeof defineEntity>['TItem']>>;
   constructor() {
     super({
       connectionString: ':memory:',

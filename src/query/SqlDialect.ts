@@ -1,4 +1,4 @@
-import { QueryOptions } from '../types';
+import { QueryOptions, SqlParameter } from '../types';
 
 /**
  * SQL dialect contract used by QueryBuilder to produce vendor-specific SQL.
@@ -14,7 +14,7 @@ export interface SqlDialect {
   buildSelect<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): { query: string; parameters: any[] };
+  ): { query: string; parameters: readonly SqlParameter[] };
 
   /** Quote an identifier (table/column). Default: no quoting. Dialects override. */
   quoteIdentifier?(identifier: string): string;

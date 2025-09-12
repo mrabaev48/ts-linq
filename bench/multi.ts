@@ -29,8 +29,10 @@ function percentile(values: number[], p: number): number {
 }
 
 async function ensureSchema(ctx: BenchCtx) {
-  const prov: any = (ctx as any)['provider'];
-  const provider: ProviderKey = (prov?.providerKey || 'sqlite') as ProviderKey;
+  const prov = (ctx as unknown as { provider?: unknown })['provider'] as
+    | { providerKey?: ProviderKey; connect: () => Promise<void>; executeNonQuery: (sql: string, params?: unknown[]) => Promise<number> }
+    | undefined;
+  const provider: ProviderKey = prov?.providerKey ?? 'sqlite';
   if (provider === 'sqlite') {
     await prov.connect();
     await prov.executeNonQuery('DROP TABLE IF EXISTS users');
@@ -49,7 +51,10 @@ async function ensureSchema(ctx: BenchCtx) {
 async function seed(ctx: BenchCtx, rows: number) {
   await ctx.beginTransaction();
   for (let i = 0; i < rows; i++) {
-    await (ctx as any)['provider'].executeNonQuery('INSERT INTO users(name, age) VALUES (?, ?)', [
+    const prov = (ctx as unknown as { provider?: unknown })['provider'] as {
+      executeNonQuery: (sql: string, params?: unknown[]) => Promise<number>;
+    };
+    await prov.executeNonQuery('INSERT INTO users(name, age) VALUES (?, ?)', [
       `user_${i}`,
       18 + (i % 50)
     ]);
@@ -69,20 +74,20 @@ async function runScenarios(ctx: BenchCtx, iterations: number) {
     const age = 18 + (i % 50);
 
     let t = nowMs();
-    await ctx.users.where((u) => (u as any).age >= age).orderBy((u) => (u as any).id).take(10).toArray();
+    await ctx.users.where((u) => u.age >= age).orderBy((u) => u.id).take(10).toArray();
     durations.select10.push(nowMs() - t);
 
     t = nowMs();
-    await ctx.users.where((u) => (u as any).age >= age).count();
+    await ctx.users.where((u) => u.age >= age).count();
     durations.count.push(nowMs() - t);
 
     t = nowMs();
-    await ctx.users.orderBy((u) => (u as any).id).skip((i % 10) * 10).take(10).toArray();
+    await ctx.users.orderBy((u) => u.id).skip((i % 10) * 10).take(10).toArray();
     durations.paginate_offset.push(nowMs() - t);
 
     const after = i % 2 === 0 ? (i % 100) : null;
     t = nowMs();
-    await ctx.users.orderBy((u) => (u as any).id).keysetPaginate('id' as any, after as any, 10);
+    await ctx.users.orderBy((u) => u.id).keysetPaginate('id', after, 10);
     durations.paginate_keyset.push(nowMs() - t);
   }
   return durations;
@@ -105,7 +110,7 @@ function output(provider: ProviderKey, fmt: 'csv' | 'json', durations: Record<st
     console.log(`provider,scenario,n,avg_ms,p95_ms,p99_ms`);
     for (const [k, s] of Object.entries(stats)) {
       // eslint-disable-next-line no-console
-      console.log(`${provider},${k},${(s as any).n},${(s as any).avg.toFixed(2)},${(s as any).p95.toFixed(2)},${(s as any).p99.toFixed(2)}`);
+      console.log(`${provider},${k},${s.n},${s.avg.toFixed(2)},${s.p95.toFixed(2)},${s.p99.toFixed(2)}`);
     }
   }
 }
@@ -120,16 +125,17 @@ async function runForProvider(provider: ProviderKey, conn: string | undefined, f
     provider,
     connectionString: provider === 'sqlite' ? ':memory:' : (conn as string),
     performance: { enableCountCache: true, countCacheTtlMs: 10_000 }
-  } as any);
+  });
   await ensureSchema(ctx);
   await seed(ctx, rows);
   const durations = await runScenarios(ctx, iters);
   output(provider, fmt, durations);
-  await (ctx as any)['provider'].disconnect();
+  const prov = (ctx as unknown as { provider?: { disconnect: () => Promise<void> } })['provider'];
+  await prov?.disconnect();
 }
 
 async function main() {
-  const fmt = (process.env.BENCH_FORMAT as any) === 'json' ? 'json' : 'csv';
+  const fmt: 'csv' | 'json' = process.env.BENCH_FORMAT === 'json' ? 'json' : 'csv';
   const rows = parseInt(process.env.BENCH_ROWS || '5000', 10);
   const iters = parseInt(process.env.BENCH_ITERS || '2000', 10);
   const providers = (process.env.BENCH_PROVIDERS || 'sqlite').split(',') as ProviderKey[];

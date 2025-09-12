@@ -19,19 +19,19 @@ export class GlobalFilterApplier {
         (c) => c.propertyName === flagPropOrCol || c.columnName === flagPropOrCol
       );
       if (col) {
-        model.where.push({ condition: `${col.columnName} = 0`, parameters: [] } as any);
+        model.where.push({ condition: `${col.columnName} = 0`, parameters: [] });
       }
     }
 
     // Explicit global filters
     if (globalFilters && globalFilters.length > 0) {
       for (const globalFilter of globalFilters) {
-        const filterMeta = MetadataStorage.getEntity(globalFilter.entity as any);
+        const filterMeta = MetadataStorage.getEntity(globalFilter.entity);
         if (filterMeta && selfMeta.tableName === filterMeta.tableName) {
           model.where.push({
             condition: globalFilter.where.condition,
             parameters: [...globalFilter.where.parameters]
-          } as any);
+          });
         }
       }
     }

@@ -30,15 +30,16 @@ async function main() {
     provider: 'sqlite',
     connectionString: ':memory:',
     performance: { enableCountCache: true, countCacheTtlMs: 10_000 }
-  } as any);
-  await (ctx as any)['provider'].connect();
-  await (ctx as any)['provider'].executeNonQuery(
+  });
+  const prov = (ctx as unknown as { provider?: { connect: () => Promise<void>; executeNonQuery: (sql: string, params?: unknown[]) => Promise<number>; disconnect: () => Promise<void> } })['provider'];
+  await prov?.connect();
+  await prov?.executeNonQuery(
     'CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER)'
   );
   // seed
   await ctx.beginTransaction();
   for (let i = 0; i < rows; i++) {
-    await (ctx as any)['provider'].executeNonQuery('INSERT INTO users(name, age) VALUES (?, ?)', [
+    await prov?.executeNonQuery('INSERT INTO users(name, age) VALUES (?, ?)', [
       `user_${i}`,
       18 + (i % 50)
     ]);
@@ -80,7 +81,7 @@ async function main() {
   stats('select(10)', durationsSelect);
   stats('count()', durationsCount);
 
-  await (ctx as any)['provider'].disconnect();
+  await prov?.disconnect();
 }
 
 main().catch((e) => {

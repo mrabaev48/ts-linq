@@ -19,7 +19,7 @@ export interface PrimaryKeyOptions extends ColumnOptions {
  * @returns A property decorator.
  */
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
+  return function (target: object, propertyKey: string | symbol) {
     const propertyName = propertyKey.toString();
 
     // Add as column first
@@ -32,10 +32,10 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
     Column(columnOptions)(target, propertyKey);
 
     // Then add as primary key
-    MetadataStorage.addPrimaryKey(target.constructor, propertyName);
+    MetadataStorage.addPrimaryKey((target as { constructor: Function }).constructor, propertyName);
 
     // Persist PK for rehydration
-    const ctor = target.constructor;
+    const ctor = (target as { constructor: Function }).constructor;
     const existing: string[] = Reflect.getOwnMetadata('orm:primaryKeys', ctor) || [];
     if (!existing.includes(propertyName)) {
       existing.push(propertyName);

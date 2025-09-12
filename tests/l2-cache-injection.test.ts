@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
 import { SqlDialect } from '../src/query/SqlDialect';
+import { QueryOptions, SqlParameter } from '../src/types';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { EntityCacheLike } from '../src/utils/EntityCache';
 

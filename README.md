@@ -859,9 +859,9 @@ Exemplars (traceId):
 Subqueries and unions are supported in addition to joins and includes:
 
 ```ts
-// Subquery IN
-const sub = ctx.orderItems.select((oi) => ({ productId: (oi as any).productId }) as any);
-const popular = await ctx.products.whereInSubquery('id' as any, sub).toArray();
+// Subquery IN (typed)
+const sub = ctx.orderItems.select((oi) => ({ productId: oi.productId }));
+const popular = await ctx.products.whereInSubquery('id', sub).toArray();
 
 // UNION
 const q1 = ctx.products.where((p) => p.price <= 10);

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { QueryBuilder } from '../src/query/QueryBuilder';
 import { SqlDialect } from '../src/query/SqlDialect';
-import { QueryOptions, PerformanceOptions } from '../src/types';
+import { QueryOptions, PerformanceOptions, SqlParameter } from '../src/types';
 import { EntityCache } from '../src/utils/EntityCache';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
@@ -12,7 +12,7 @@ class FakeDialect implements SqlDialect {
   public buildSelect<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): { query: string; parameters: any[] } {
+  ): { query: string; parameters: SqlParameter[] } {
     this.calls++;
     return { query: 'SELECT 1', parameters: [1] };
   }
@@ -110,9 +110,9 @@ describe('Performance optimizations', () => {
       protected async doExecuteQuery<T>(sql: string): Promise<T[]> {
         if (sql.includes('COUNT(*)')) {
           this.countCalls++;
-          return [{ count: 42 }] as any;
+          return [{ count: 42 }] as unknown as T[];
         }
-        return [] as any;
+        return [] as unknown as T[];
       }
       protected async doExecuteNonQuery(): Promise<number> {
         return 0;

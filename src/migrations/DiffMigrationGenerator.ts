@@ -1,7 +1,7 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SQLiteSchemaInspector } from './SchemaInspector';
-import { SchemaSnapshot, TableSnapshot, compareSchemas } from './DiffTypes';
+import { SchemaSnapshot, TableSnapshot, compareSchemas, ColumnDef } from './DiffTypes';
 
 export interface MigrationStep {
   sql: string;
@@ -23,39 +23,43 @@ export class DiffMigrationGenerator {
     const entities = MetadataStorage.getEntities();
     // Build expected snapshot from metadata
     const expected: SchemaSnapshot = {
-      tables: entities.map(
-        (e) =>
-          ({
-            name: e.tableName,
-            columns: e.columns.map((c) => ({
-              name: c.columnName,
-              type: this.mapType(c.type),
-              nullable: c.nullable,
-              defaultValue: c.defaultValue,
-              isPrimaryKey: e.primaryKeys.includes(c.propertyName)
-            })),
-            primaryKeys: e.primaryKeys.map(
-              (pk) => e.columns.find((c: any) => c.propertyName === pk)?.columnName || pk
-            ),
-            indexes: e.indexes || [],
-            foreignKeys: []
-          }) as unknown as TableSnapshot
-      )
+      tables: entities.map((e) => {
+        const columns: ColumnDef[] = e.columns.map((c) => ({
+          name: c.columnName,
+          type: this.mapType(c.type),
+          nullable: c.nullable,
+          defaultValue: c.defaultValue,
+          isPrimaryKey: e.primaryKeys.includes(c.propertyName)
+        }));
+        const primaryKeys = e.primaryKeys.map(
+          (pk) => e.columns.find((c) => c.propertyName === pk)?.columnName || pk
+        );
+        const indexes = (e.indexes || []).map((i) => ({
+          name: i.name,
+          columns: i.columns,
+          unique: !!i.unique
+        }));
+        return {
+          name: e.tableName,
+          columns,
+          primaryKeys,
+          indexes,
+          foreignKeys: []
+        } as TableSnapshot;
+      })
     };
     // Build actual snapshot from SQLite
     const tableNames = await inspector.listTables();
-    const actualTables: TableSnapshot[] = [] as any;
+    const actualTables: TableSnapshot[] = [];
     for (const tableName of tableNames) {
       const info = await inspector.getTableInfo(tableName);
       actualTables.push({
         name: tableName,
-        columns: info.columns.map(
-          (c) => ({ name: c.name, type: this.normalizeType(c.type), nullable: !c.notnull }) as any
-        ),
+        columns: info.columns.map((c) => ({ name: c.name, type: this.normalizeType(c.type), nullable: !c.notnull })),
         primaryKeys: info.columns.filter((c) => c.pk > 0).map((c) => c.name),
         indexes: [],
         foreignKeys: []
-      } as any);
+      });
     }
     const actual: SchemaSnapshot = { tables: actualTables };
     const diff = compareSchemas(expected, actual);
@@ -63,11 +67,7 @@ export class DiffMigrationGenerator {
     for (const td of diff.tables) {
       if (td.create) {
         steps.push({
-          sql: this.buildCreateTableSql(
-            td.create.name,
-            td.create.columns as any,
-            td.create.primaryKeys
-          )
+          sql: this.buildCreateTableSql(td.create.name, td.create.columns, td.create.primaryKeys)
         });
         continue;
       }
@@ -81,9 +81,16 @@ export class DiffMigrationGenerator {
         if (hasDestructive) {
           const meta = entities.find((e) => e.tableName === td.table)!;
           const temp = `__new_${td.table}`;
-          steps.push({
-            sql: this.buildCreateTableSql(temp, meta.columns as any, meta.primaryKeys)
-          });
+          const cols: ColumnDef[] = meta.columns.map((c) => ({
+            name: c.columnName,
+            type: c.type,
+            nullable: c.nullable,
+            defaultValue: c.defaultValue
+          }));
+          const pkCols = meta.primaryKeys.map(
+            (pk) => meta.columns.find((c) => c.propertyName === pk)?.columnName || pk
+          );
+          steps.push({ sql: this.buildCreateTableSql(temp, cols, pkCols) });
           const info = await inspector.getTableInfo(td.table);
           const commonColumns = info.columns
             .map((c) => c.name)
@@ -130,19 +137,20 @@ export class DiffMigrationGenerator {
     return steps;
   }
 
-  private buildCreateTableSql(table: string, columns: any[], primaryKeys: string[]): string {
+  private buildCreateTableSql(
+    table: string,
+    columns: ColumnDef[],
+    primaryKeys: string[]
+  ): string {
     const colDefs = columns.map((c) => {
       const type = this.mapType(c.type);
       const nn = c.nullable ? '' : ' NOT NULL';
-      const def =
-        c.defaultValue !== undefined ? ` DEFAULT ${this.formatValue(c.defaultValue)}` : '';
-      return `${c.columnName} ${type}${nn}${def}`;
+      const def = c.defaultValue !== undefined ? ` DEFAULT ${this.formatValue(c.defaultValue)}` : '';
+      const colName = c.name;
+      return `${colName} ${type}${nn}${def}`;
     });
     if (Array.isArray(primaryKeys) && primaryKeys.length > 0) {
-      const pkCols = primaryKeys.map(
-        (pk) => columns.find((c: any) => c.propertyName === pk)?.columnName || pk
-      );
-      colDefs.push(`PRIMARY KEY (${pkCols.join(', ')})`);
+      colDefs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`);
     }
     return `CREATE TABLE IF NOT EXISTS ${table} (${colDefs.join(', ')})`;
   }
@@ -172,7 +180,7 @@ export class DiffMigrationGenerator {
     return this.mapType(type);
   }
 
-  private formatValue(v: any): string {
+  private formatValue(v: unknown): string {
     if (v === null) return 'NULL';
     if (typeof v === 'number') return String(v);
     if (typeof v === 'boolean') return v ? '1' : '0';

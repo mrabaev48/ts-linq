@@ -1,3 +1,12 @@
+import { SqlParameter } from '../types';
+
+enum SqlInlineValueType {
+  String = 'string',
+  Number = 'number',
+  Boolean = 'boolean',
+  Object = 'object'
+}
+
 export class SqlHelper {
   /**
    * Build a WHERE clause from a simple conditions object.
@@ -7,9 +16,9 @@ export class SqlHelper {
    * @param conditions Key/value pairs to translate into SQL.
    * @returns Object with SQL fragment and parameter list.
    */
-  public static buildWhereClause(conditions: any): { whereClause: string; params: any[] } {
+  public static buildWhereClause(conditions: Record<string, unknown>): { whereClause: string; params: SqlParameter[] } {
     const clauses: string[] = [];
-    const params: any[] = [];
+    const params: SqlParameter[] = [];
 
     for (const [key, value] of Object.entries(conditions)) {
       if (value === null || value === undefined) {
@@ -17,10 +26,10 @@ export class SqlHelper {
       } else if (Array.isArray(value)) {
         const placeholders = value.map(() => '?').join(', ');
         clauses.push(`${key} IN (${placeholders})`);
-        params.push(...value);
+        for (const v of value) params.push(SqlHelper.ensureSqlParameter(v));
       } else {
         clauses.push(`${key} = ?`);
-        params.push(value);
+        params.push(SqlHelper.ensureSqlParameter(value));
       }
     }
 
@@ -30,28 +39,48 @@ export class SqlHelper {
     };
   }
 
+  /** Coerce an arbitrary value into a SqlParameter. */
+  private static ensureSqlParameter(value: unknown): SqlParameter {
+    if (
+      value === null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value instanceof Date ||
+      value instanceof Uint8Array
+    ) {
+      return value as SqlParameter;
+    }
+    // Fallback: JSON-encode objects (including arrays) into TEXT
+    try {
+      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+    } catch {
+      return String(value) as unknown as SqlParameter;
+    }
+  }
+
   /**
    * Format a value for inline usage in SQL (e.g., DEFAULT expressions).
    * Escapes quotes for strings, formats dates as ISO strings.
    */
-  public static formatValue(value: any): string {
+  public static formatValue(value: unknown): string {
     if (value === null || value === undefined) {
       return 'NULL';
     }
 
-    if (typeof value === 'string') {
-      return `'${value.replace(/'/g, "''")}'`;
+    if (typeof value === SqlInlineValueType.String) {
+      return `'${(value as string).replace(/'/g, "''")}'`;
     }
 
-    if (typeof value === 'boolean') {
-      return value ? '1' : '0';
+    if (typeof value === SqlInlineValueType.Boolean) {
+      return (value as boolean) ? '1' : '0';
     }
 
     if (value instanceof Date) {
       return `'${value.toISOString()}'`;
     }
 
-    return value.toString();
+    return String(value);
   }
 
   /** Escape an identifier like a column or table name for SQL usage. */

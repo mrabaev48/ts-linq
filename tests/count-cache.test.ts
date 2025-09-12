@@ -12,7 +12,7 @@ function defineEntities() {
 }
 
 class Ctx extends DbContext {
-  public citems!: DbSet<any>;
+  public citems!: DbSet<InstanceType<ReturnType<typeof defineEntities>['CItem']>>;
   constructor(ttl: number) {
     super({
       provider: 'sqlite',
