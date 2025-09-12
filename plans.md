@@ -19,6 +19,14 @@
 - [done] Add per-query SQL generation cache (hash of options → {query, params})
 - [done] Level-2 cache for row→entity mapping (optional, behind flag)
 - [done] Optional pagination total count optimization (COUNT window caching)
+ - [done] Predicate→SQL cache for where() with eviction
+ - [done] Precompiled regexes and caches for selector/include/key parsing
+ - [done] Faster count cache key via incremental where signature
+ - [done] Micro-benchmark script with avg/p95/p99 output (npm run bench)
+ - [done] Cache eviction metrics + size gauge; TTL vs hard hits for count
+ - [done] External caches (InMemorySqlCache, InMemoryCountCache) + injection in PerformanceOptions
+ - [done] Multi-bench (SQLite/PG/MySQL by env), CSV/JSON output, profile scripts
+ - [done] Grafana dashboard json with key panels
 
 ## Reliability & Errors
 - [done] Optional Result<T, E> for non-exceptional flows; centralize error mapping

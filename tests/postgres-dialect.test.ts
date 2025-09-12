@@ -5,7 +5,10 @@ import { Column } from '../src/decorators/Column';
 import { PostgresDialect } from '../src/query/PostgresDialect';
 
 @Entity({ name: 't' })
-class T { @PrimaryKey({ autoIncrement: true }) id!: number; @Column({ type: 'TEXT' }) name!: string; }
+class T {
+  @PrimaryKey({ autoIncrement: true }) id!: number;
+  @Column({ type: 'TEXT' }) name!: string;
+}
 
 describe('PostgresDialect', () => {
   test('LIMIT and OFFSET (OFFSET allowed without LIMIT)', () => {
@@ -20,10 +23,10 @@ describe('PostgresDialect', () => {
   test('Numbered params $1..$n', () => {
     new T();
     const d = new PostgresDialect();
-    const { query, parameters } = d.buildSelect(T, { where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }] as any });
+    const { query, parameters } = d.buildSelect(T, {
+      where: [{ condition: 'name = ? AND id > ?', parameters: ['a', 1] }] as any
+    });
     expect(query).toContain('name = $1 AND id > $2');
     expect(parameters).toEqual(['a', 1]);
   });
 });
-
-
