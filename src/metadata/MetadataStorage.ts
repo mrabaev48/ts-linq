@@ -24,7 +24,14 @@ export class MetadataStorage {
   /** Get the singleton instance, creating it if necessary. */
   public static getInstance(): MetadataStorage {
     if (!MetadataStorage.instance) {
-      MetadataStorage.instance = new MetadataStorage();
+      // Ensure true singleton across potential multiple module instances (e.g., ts-node vs compiled)
+      const g = globalThis as unknown as { __tslinq_metadata_storage?: MetadataStorage };
+      if (g.__tslinq_metadata_storage) {
+        MetadataStorage.instance = g.__tslinq_metadata_storage;
+      } else {
+        MetadataStorage.instance = new MetadataStorage();
+        g.__tslinq_metadata_storage = MetadataStorage.instance;
+      }
     }
     return MetadataStorage.instance;
   }
