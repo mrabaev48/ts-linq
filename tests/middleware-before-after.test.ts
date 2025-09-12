@@ -13,7 +13,7 @@ function defineBM() {
 }
 
 class MWCtx2 extends DbContext {
-  public mwbs!: DbSet<any>;
+  public mwbs!: DbSet<InstanceType<ReturnType<typeof defineBM>['MWB']>>;
   constructor(middlewares: OrmMiddleware[]) {
     super({ provider: 'sqlite', connectionString: ':memory:', middlewares });
   }
@@ -24,8 +24,8 @@ describe('Middleware beforeExecute/afterExecute', () => {
 
   it('fires before and after for queries and non-queries with traceId/rows', async () => {
     const { MWB } = defineBM();
-    const before: any[] = [];
-    const after: any[] = [];
+    const before: string[] = [];
+    const after: string[] = [];
     const seenTraceIds: Array<string | undefined> = [];
     const seenRows: Array<number | undefined> = [];
     const mw: OrmMiddleware = {

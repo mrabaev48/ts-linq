@@ -12,7 +12,7 @@ function defineEntities() {
 }
 
 class PContext extends DbContext {
-  public pitems!: DbSet<any>;
+  public pitems!: DbSet<InstanceType<ReturnType<typeof defineEntities>['PItem']>>;
   constructor() {
     super({ provider: 'sqlite', connectionString: ':memory:' });
   }
@@ -51,11 +51,11 @@ describe('Pagination helpers', () => {
   });
 
   it('keysetPaginate(key, after, size) returns correct window and nextAfter', async () => {
-    const q = ctx.set(PItem).orderBy((x) => x.id);
-    const p1 = await q.keysetPaginate('id' as any, null, 4);
+    const q = ctx.set(PItem).orderBy((x: InstanceType<ReturnType<typeof defineEntities>['PItem']>) => x.id);
+    const p1 = await q.keysetPaginate('id', null, 4);
     expect(p1.items).toHaveLength(4);
     expect(p1.items[0].name).toBe('N1');
-    const p2 = await q.keysetPaginate('id' as any, p1.nextAfter, 4);
+    const p2 = await q.keysetPaginate('id', p1.nextAfter, 4);
     expect(p2.items.map((i) => i.name)).toEqual(['N5', 'N6', 'N7', 'N8']);
   });
 });

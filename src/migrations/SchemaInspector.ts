@@ -4,7 +4,7 @@ export interface TableColumnInfo {
   name: string;
   type: string;
   notnull: boolean;
-  dflt_value: any;
+  dflt_value: unknown;
   pk: number;
 }
 

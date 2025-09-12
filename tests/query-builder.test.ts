@@ -3,6 +3,7 @@ import { QueryBuilder } from '../src/query/QueryBuilder';
 import { SQLiteProvider } from '../src/providers/SQLiteProvider';
 import { Entity, Column, PrimaryKey } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { QueryOptions } from '../src/types';
 
 // Define test entity inside function to ensure decorators execute properly
 function createQueryTestEntity() {
@@ -22,7 +23,7 @@ function createQueryTestEntity() {
 
 describe('QueryBuilder (SQL generation only)', () => {
   let provider: SQLiteProvider;
-  let queryBuilder: any;
+  let queryBuilder: QueryBuilder;
   let QueryTestEntity: ReturnType<typeof createQueryTestEntity>;
 
   beforeEach(async () => {
@@ -44,7 +45,7 @@ describe('QueryBuilder (SQL generation only)', () => {
       await provider.insert(entity, QueryTestEntity);
     }
 
-    queryBuilder = new (class extends (QueryBuilder as any) {})();
+    queryBuilder = new QueryBuilder();
   });
 
   afterEach(async () => {
@@ -54,63 +55,62 @@ describe('QueryBuilder (SQL generation only)', () => {
   describe('basic operations', () => {
     it('should return all entities with toArray', async () => {
       const sql = queryBuilder.generateSql(QueryTestEntity, {});
-      const results = await provider.executeQuery<any>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
       expect(results).toHaveLength(10);
     });
 
     it('should count entities', async () => {
       const sql = queryBuilder.generateSql(QueryTestEntity, {});
-      const results = await provider.executeQuery<any>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
       const count = results.length;
       expect(count).toBe(10);
     });
 
     it('should check if any entities exist', async () => {
       const sql = queryBuilder.generateSql(QueryTestEntity, {});
-      const results = await provider.executeQuery<any>(sql.query, sql.parameters);
+      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
       expect(results.length > 0).toBe(true);
     });
   });
 
   describe('take and skip', () => {
     it('should limit results with take', async () => {
-      const sql = queryBuilder.generateSql(QueryTestEntity, { limit: 5 } as any);
-      const results = await provider.executeQuery<any>(sql.query, sql.parameters);
+      const opts: QueryOptions = { limit: 5 };
+      const sql = queryBuilder.generateSql(QueryTestEntity, opts);
+      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
       expect(results).toHaveLength(5);
     });
 
     it('should skip results', async () => {
-      const sql = queryBuilder.generateSql(QueryTestEntity, { offset: 5 } as any);
-      const results = await provider.executeQuery<any>(sql.query, sql.parameters);
+      const opts: QueryOptions = { offset: 5 };
+      const sql = queryBuilder.generateSql(QueryTestEntity, opts);
+      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
       expect(results).toHaveLength(5);
     });
 
     it('should combine take and skip for pagination', async () => {
-      const sql = queryBuilder.generateSql(QueryTestEntity, { offset: 3, limit: 2 } as any);
-      const results = await provider.executeQuery<any>(sql.query, sql.parameters);
+      const opts: QueryOptions = { offset: 3, limit: 2 };
+      const sql = queryBuilder.generateSql(QueryTestEntity, opts);
+      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
       expect(results).toHaveLength(2);
     });
   });
 
   describe('ordering', () => {
     it('should order by ascending', async () => {
-      const results = await provider.executeQuery<any>(
-        queryBuilder.generateSql(QueryTestEntity, {
-          orderBy: [{ column: 'age', direction: 'ASC' }]
-        } as any).query
-      );
-
-      expect(results[0].age).toBeLessThan(results[1].age);
+      const sql = queryBuilder.generateSql(QueryTestEntity, {
+        orderBy: [{ column: 'age', direction: 'ASC' }]
+      });
+      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+      expect((results[0] as { age: number }).age).toBeLessThan((results[1] as { age: number }).age);
     });
 
     it('should order by descending', async () => {
-      const results = await provider.executeQuery<any>(
-        queryBuilder.generateSql(QueryTestEntity, {
-          orderBy: [{ column: 'age', direction: 'DESC' }]
-        } as any).query
-      );
-
-      expect(results[0].age).toBeGreaterThan(results[1].age);
+      const sql = queryBuilder.generateSql(QueryTestEntity, {
+        orderBy: [{ column: 'age', direction: 'DESC' }]
+      });
+      const results = await provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
+      expect((results[0] as { age: number }).age).toBeGreaterThan((results[1] as { age: number }).age);
     });
   });
 
@@ -119,16 +119,16 @@ describe('QueryBuilder (SQL generation only)', () => {
       const { query, parameters } = queryBuilder.generateSql(QueryTestEntity, {
         orderBy: [{ column: 'id', direction: 'ASC' }],
         limit: 1
-      } as any);
-      const rows = await provider.executeQuery<any>(query, parameters);
+      });
+      const rows = await provider.executeQuery<Record<string, unknown>>(query, parameters);
       expect(rows).toHaveLength(1);
-      expect(rows[0].id).toBe(1);
+      expect((rows[0] as { id: number }).id).toBe(1);
     });
 
     it('should return empty when no results with LIMIT 1', async () => {
       await provider.executeNonQuery('DELETE FROM QueryTestEntity');
-      const { query, parameters } = queryBuilder.generateSql(QueryTestEntity, { limit: 1 } as any);
-      const rows = await provider.executeQuery<any>(query, parameters);
+      const { query, parameters } = queryBuilder.generateSql(QueryTestEntity, { limit: 1 });
+      const rows = await provider.executeQuery<Record<string, unknown>>(query, parameters);
       expect(rows).toHaveLength(0);
     });
   });
@@ -140,29 +140,29 @@ describe('QueryBuilder (SQL generation only)', () => {
       entity.name = 'Single';
       entity.age = 25;
       await provider.insert(entity, QueryTestEntity);
-      const { query, parameters } = queryBuilder.generateSql(QueryTestEntity, {} as any);
-      const rows = await provider.executeQuery<any>(query, parameters);
+      const { query, parameters } = queryBuilder.generateSql(QueryTestEntity, {});
+      const rows = await provider.executeQuery<Record<string, unknown>>(query, parameters);
       expect(rows).toHaveLength(1);
-      expect(rows[0].name).toBe('Single');
+      expect((rows[0] as { name: string }).name).toBe('Single');
     });
 
     it('should return zero rows when none exist', async () => {
       await provider.executeNonQuery('DELETE FROM QueryTestEntity');
-      const { query, parameters } = queryBuilder.generateSql(QueryTestEntity, {} as any);
-      const rows = await provider.executeQuery<any>(query, parameters);
+      const { query, parameters } = queryBuilder.generateSql(QueryTestEntity, {});
+      const rows = await provider.executeQuery<Record<string, unknown>>(query, parameters);
       expect(rows).toHaveLength(0);
     });
 
     it('should return multiple rows when multiple exist', async () => {
-      const { query, parameters } = queryBuilder.generateSql(QueryTestEntity, {} as any);
-      const rows = await provider.executeQuery<any>(query, parameters);
+      const { query, parameters } = queryBuilder.generateSql(QueryTestEntity, {});
+      const rows = await provider.executeQuery<Record<string, unknown>>(query, parameters);
       expect(rows.length).toBeGreaterThan(1);
     });
   });
 
   describe('distinct', () => {
     it('should generate DISTINCT select', async () => {
-      const { query } = queryBuilder.generateSql(QueryTestEntity, { distinct: true } as any);
+      const { query } = queryBuilder.generateSql(QueryTestEntity, { distinct: true });
       expect(query.toUpperCase()).toContain('SELECT DISTINCT');
     });
   });

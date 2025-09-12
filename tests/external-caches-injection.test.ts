@@ -2,12 +2,13 @@ import 'reflect-metadata';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
 import { SqlDialect } from '../src/query/SqlDialect';
+import { QueryOptions, SqlParameter } from '../src/types';
 import { SqlCache, SqlCacheEntry } from '../src/query/SqlCache';
 import { CountCache, CountCacheEntry } from '../src/query/CountCache';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 class ProviderStub extends DatabaseProvider {
-  public rows: any[] = [];
+  public rows: Array<Record<string, unknown>> = [];
   public calls = 0;
   public dialect: SqlDialect = new DummyDialect();
   public async connect(): Promise<void> {}
@@ -24,19 +25,19 @@ class ProviderStub extends DatabaseProvider {
   public async commitTransaction(): Promise<void> {}
   public async rollbackTransaction(): Promise<void> {}
   public getDialect(): SqlDialect { return this.dialect; }
-  protected async doExecuteQuery<T>(sql: string, _params?: any[]): Promise<T[]> {
+  protected async doExecuteQuery<T>(sql: string, _params?: readonly SqlParameter[]): Promise<T[]> {
     this.calls++;
     if (sql.startsWith('SELECT COUNT(')) {
       return [{ count: this.rows.length }] as any;
     }
     return [] as any;
   }
-  protected async doExecuteNonQuery(_sql: string, _params?: any[]): Promise<number> { return 0; }
+  protected async doExecuteNonQuery(_sql: string, _params?: readonly SqlParameter[]): Promise<number> { return 0; }
 }
 
 class DummyDialect implements SqlDialect {
   public builds = 0;
-  buildSelect<T>(_entityClass: new () => T, _options: any): { query: string; parameters: any[] } {
+  buildSelect<T>(_entityClass: new () => T, _options: QueryOptions): { query: string; parameters: SqlParameter[] } {
     this.builds++;
     return { query: 'SELECT 1', parameters: [] };
   }

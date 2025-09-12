@@ -27,7 +27,7 @@ const baseMeta = {
   primaryKeys: ['id'],
   relationships: [],
   indexes: [{ name: 'idx_name', columns: ['name'], unique: false }]
-} as any;
+};
 
 describe('DDL strategies', () => {
   test('SQLiteDdlStrategy generates CREATE TABLE and INDEX', () => {

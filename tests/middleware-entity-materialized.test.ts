@@ -13,7 +13,7 @@ function defineE() {
 }
 
 class MWCtx extends DbContext {
-  public mws!: DbSet<any>;
+  public mws!: DbSet<InstanceType<ReturnType<typeof defineE>['MW']>>;
   constructor(middlewares: OrmMiddleware[]) {
     super({ provider: 'sqlite', connectionString: ':memory:', middlewares });
   }
@@ -24,10 +24,10 @@ describe('Middleware entityMaterialized hook', () => {
 
   it('fires entityMaterialized for each materialized row', async () => {
     const { MW } = defineE();
-    const seen: any[] = [];
+    const seen: Array<{ name: string }> = [];
     const mw: OrmMiddleware = {
       entityMaterialized: async ({ entity }) => {
-        seen.push(entity);
+        seen.push(entity as { name: string });
       }
     };
     const ctx = new MWCtx([mw]);

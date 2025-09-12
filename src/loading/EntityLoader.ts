@@ -27,9 +27,9 @@ export class EntityLoader {
   /**
    * Load a single entity by id with optional eager includes.
    */
-  public async loadEntity<T>(
+  public async loadEntity<T extends object>(
     entityClass: new () => T,
-    id: any,
+    id: unknown,
     options?: LoadingOptions
   ): Promise<T | null> {
     const entity = await this._provider.findById(id, entityClass);
@@ -50,7 +50,7 @@ export class EntityLoader {
   /**
    * Load all entities for a given type with optional eager includes.
    */
-  public async loadEntities<T>(entityClass: new () => T, options?: LoadingOptions): Promise<T[]> {
+  public async loadEntities<T extends object>(entityClass: new () => T, options?: LoadingOptions): Promise<T[]> {
     const entities = await this._provider.findAll(entityClass);
 
     const loadingOptions = {
@@ -98,17 +98,17 @@ export class EntityLoader {
           case 'many-to-one':
           case 'one-to-one': {
             const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
-            const foreignKeyValue = (entity as any)[foreignKeyName];
+            const foreignKeyValue = (entity as Record<string, unknown>)[foreignKeyName];
             if (foreignKeyValue === undefined || foreignKeyValue === null) {
               break;
             }
             const relatedEntity = await this.loadEntity(
-              targetCtor as new () => any,
+              targetCtor as new () => object,
               foreignKeyValue,
               { ...options, depth: depth - 1 }
             );
             if (relatedEntity) {
-              (entity as any)[relationship.propertyName] = relatedEntity;
+              (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntity as unknown;
             }
             break;
           }
@@ -118,16 +118,16 @@ export class EntityLoader {
             if (!parentPkProperty) {
               break;
             }
-            const parentPkValue = (entity as any)[parentPkProperty];
+            const parentPkValue = (entity as Record<string, unknown>)[parentPkProperty];
             if (parentPkValue === undefined || parentPkValue === null) {
               break;
             }
             const foreignKeyName =
               relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
-            const relatedEntities = await this._provider.findWhere(targetCtor as new () => any, {
+            const relatedEntities = await this._provider.findWhere(targetCtor as new () => object, {
               [foreignKeyName]: parentPkValue
             });
-            (entity as any)[relationship.propertyName] = relatedEntities;
+            (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntities as unknown;
             break;
           }
         }
@@ -154,37 +154,37 @@ export class EntityLoader {
         !options.includes || options.includes.includes(relationship.propertyName);
       if (!shouldInclude) continue;
 
-      const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => any;
+      const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => unknown;
 
       switch (relationship.type) {
         case 'many-to-one':
         case 'one-to-one': {
           const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
           const fkValues = entities
-            .map((e) => (e as any)[foreignKeyName])
+            .map((e) => (e as unknown as Record<string, unknown>)[foreignKeyName])
             .filter((v) => v !== undefined && v !== null);
           const uniqueFkValues = Array.from(new Set(fkValues));
           if (uniqueFkValues.length === 0) break;
           const related = await this._provider.findWhereIn(
-            targetCtor,
+            targetCtor as new () => object,
             metadata.columns.find((c) => c.propertyName === metadata.primaryKeys[0])?.columnName ||
               metadata.primaryKeys[0],
             uniqueFkValues
           );
-          const byId = new Map<any, any>();
+          const byId = new Map<unknown, unknown>();
           const targetMeta = MetadataStorage.getEntity(targetCtor);
           const targetPk = targetMeta?.primaryKeys[0];
           for (const relatedEntity of related)
-            byId.set((relatedEntity as any)[targetPk!], relatedEntity);
+            byId.set((relatedEntity as unknown as Record<string, unknown>)[targetPk as string], relatedEntity);
           for (const entityItem of entities) {
-            const fk = (entityItem as any)[foreignKeyName];
+            const fk = (entityItem as unknown as Record<string, unknown>)[foreignKeyName];
             if (fk !== undefined && fk !== null) {
-              (entityItem as any)[relationship.propertyName] = byId.get(fk);
+              (entityItem as unknown as Record<string, unknown>)[relationship.propertyName] = byId.get(fk) as unknown;
             }
           }
           // Recurse for next depth level on distinct related
           if (depth - 1 > 0) {
-            await this.loadRelationshipsBatched(Array.from(byId.values()), targetCtor, {
+            await this.loadRelationshipsBatched(Array.from(byId.values()) as unknown[], targetCtor as new () => object, {
               ...options,
               depth: depth - 1
             });
@@ -195,29 +195,30 @@ export class EntityLoader {
           const parentPkProperty = metadata.primaryKeys[0];
           if (!parentPkProperty) break;
           const parentIds = entities
-            .map((e) => (e as any)[parentPkProperty])
+            .map((e) => (e as unknown as Record<string, unknown>)[parentPkProperty])
             .filter((v) => v !== undefined && v !== null);
           const uniqueParentIds = Array.from(new Set(parentIds));
           if (uniqueParentIds.length === 0) break;
           const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
           const related = await this._provider.findWhereIn(
-            targetCtor,
+            targetCtor as new () => object,
             foreignKeyName,
             uniqueParentIds
           );
-          const grouped = new Map<any, any[]>();
+          const grouped = new Map<unknown, unknown[]>();
           for (const relatedEntity of related) {
-            const key = (relatedEntity as any)[foreignKeyName];
+            const key = (relatedEntity as unknown as Record<string, unknown>)[foreignKeyName as string];
             const arr = grouped.get(key) || [];
             arr.push(relatedEntity);
             grouped.set(key, arr);
           }
           for (const entityItem of entities) {
-            const parentId = (entityItem as any)[parentPkProperty];
-            (entityItem as any)[relationship.propertyName] = grouped.get(parentId) || [];
+            const parentId = (entityItem as unknown as Record<string, unknown>)[parentPkProperty];
+            (entityItem as unknown as Record<string, unknown>)[relationship.propertyName] =
+              (grouped.get(parentId) || []) as unknown;
           }
           if (depth - 1 > 0) {
-            await this.loadRelationshipsBatched(related, targetCtor, {
+            await this.loadRelationshipsBatched(related as unknown[], targetCtor as new () => object, {
               ...options,
               depth: depth - 1
             });
@@ -259,12 +260,12 @@ export class EntityLoader {
    * @returns Concrete constructor function for the target entity
    */
   private resolveTargetEntity(target: Function | (() => Function)) {
-    const maybeCtor = target as any;
-    if (typeof maybeCtor === 'function' && maybeCtor.prototype && maybeCtor.prototype.constructor) {
-      return maybeCtor as new () => any;
+    const maybeCtor = target as { prototype?: unknown } | (() => Function);
+    if (typeof maybeCtor === 'function' && 'prototype' in maybeCtor && maybeCtor.prototype) {
+      return maybeCtor as unknown as new () => unknown;
     }
     const resolved = (target as () => Function)();
-    return resolved as new () => any;
+    return resolved as unknown as new () => unknown;
   }
 
   /**

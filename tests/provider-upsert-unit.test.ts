@@ -6,6 +6,7 @@ import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { PostgresProvider } from '../src/providers/PostgresProvider';
 import { MySqlProvider } from '../src/providers/MySqlProvider';
 import { MssqlProvider } from '../src/providers/MssqlProvider';
+import { SqlParameter } from '../src/types';
 
 @Entity({ name: 'UpUsers' })
 class UpUser {
@@ -15,64 +16,64 @@ class UpUser {
 
 class FakePg extends PostgresProvider {
   public lastSql?: string;
-  public lastParams?: any[];
-  public rowsToReturn: any[] = [{ id: 1, name: 'pg' }];
+  public lastParams?: SqlParameter[];
+  public rowsToReturn: Array<Record<string, unknown>> = [{ id: 1, name: 'pg' }];
   public async connect() {
     /* no-op */
   }
   public async disconnect() {
     /* no-op */
   }
-  protected async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
     this.lastSql = sql;
-    this.lastParams = params;
-    return this.rowsToReturn as any;
+    this.lastParams = params as SqlParameter[];
+    return this.rowsToReturn as unknown as T[];
   }
-  protected async doExecuteNonQuery(sql: string, params: any[] = []): Promise<number> {
+  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
     this.lastSql = sql;
-    this.lastParams = params;
+    this.lastParams = params as SqlParameter[];
     return 1;
   }
 }
 
 class FakeMy extends MySqlProvider {
   public lastSql?: string;
-  public lastParams?: any[];
+  public lastParams?: SqlParameter[];
   public async connect() {
     /* no-op */
   }
   public async disconnect() {
     /* no-op */
   }
-  protected async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
     this.lastSql = sql;
-    this.lastParams = params;
-    return [] as any;
+    this.lastParams = params as SqlParameter[];
+    return [] as unknown as T[];
   }
-  protected async doExecuteNonQuery(sql: string, params: any[] = []): Promise<number> {
+  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
     this.lastSql = sql;
-    this.lastParams = params;
+    this.lastParams = params as SqlParameter[];
     return 1;
   }
 }
 
 class FakeMs extends MssqlProvider {
   public lastSql?: string;
-  public lastParams?: any[];
+  public lastParams?: SqlParameter[];
   public async connect() {
     /* no-op */
   }
   public async disconnect() {
     /* no-op */
   }
-  protected async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
     this.lastSql = sql;
-    this.lastParams = params;
-    return [] as any;
+    this.lastParams = params as SqlParameter[];
+    return [] as unknown as T[];
   }
-  protected async doExecuteNonQuery(sql: string, params: any[] = []): Promise<number> {
+  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
     this.lastSql = sql;
-    this.lastParams = params;
+    this.lastParams = params as SqlParameter[];
     return 1;
   }
 }

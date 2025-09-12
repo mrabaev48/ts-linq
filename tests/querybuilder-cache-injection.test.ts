@@ -1,10 +1,11 @@
 import { QueryBuilder } from '../src/query/QueryBuilder';
 import { SqlDialect } from '../src/query/SqlDialect';
+import { QueryOptions, SqlParameter } from '../src/types';
 import { SqlCache, SqlCacheEntry } from '../src/query/SqlCache';
 
 class DummyDialect implements SqlDialect {
   public calls = 0;
-  buildSelect<T>(_entityClass: new () => T, _options: any): { query: string; parameters: any[] } {
+  buildSelect<T>(_entityClass: new () => T, _options: QueryOptions): { query: string; parameters: SqlParameter[] } {
     this.calls++;
     return { query: 'SELECT 1', parameters: [] };
   }
@@ -36,7 +37,7 @@ describe('QueryBuilder external SqlCache injection', () => {
     const cache = new InMemorySqlCache();
     const qb = new QueryBuilder(dialect, undefined, 'sqlite', cache);
 
-    const opts: any = { where: [] };
+    const opts: QueryOptions = { where: [] };
     const a = qb.generateSql(E as any, opts);
     const b = qb.generateSql(E as any, opts);
     expect(a.query).toBe('SELECT 1');

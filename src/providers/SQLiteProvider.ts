@@ -8,7 +8,11 @@ import {
   UniqueConstraintError,
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
-  RetryPolicy
+  RetryPolicy,
+  SqlParameter,
+  OrmMiddleware,
+  SoftDeleteOptions,
+  SqlLogger
 } from '../types';
 import { SqlHelper } from '../utils/SqlHelper';
 import { SqlDialect } from '../query/SqlDialect';
@@ -19,6 +23,8 @@ import { SQLiteDdlStrategy } from './sqlite/SQLiteDdlStrategy';
  * SQLite implementation of `DatabaseProvider` using the `sqlite3` package.
  * Handles connection lifecycle, DDL/DML generation and execution, and
  * simple value conversions between JS and SQLite.
+ *
+ * Note: sqlite3 driver is callback-based; provider wraps calls into Promises.
  */
 export class SQLiteProvider extends DatabaseProvider {
   private db: sqlite3.Database | null = null;
@@ -26,9 +32,9 @@ export class SQLiteProvider extends DatabaseProvider {
 
   constructor(
     connectionString: string,
-    logger?: any,
-    middlewares?: any[],
-    softDelete?: any,
+    logger?: SqlLogger,
+    middlewares?: OrmMiddleware[],
+    softDelete?: SoftDeleteOptions,
     retryPolicy?: RetryPolicy
   ) {
     super(connectionString, logger, middlewares, softDelete, retryPolicy);
@@ -83,13 +89,13 @@ export class SQLiteProvider extends DatabaseProvider {
   }
 
   /** Insert the entity and set generated primary key when applicable. */
-  public async insert<T>(entity: T, entityClass: Function): Promise<T> {
+  public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) {
       throw new Error(`Entity metadata not found for ${entityClass.name}`);
     }
 
-    const { sql, params } = this.generateInsertSql(entity, metadata);
+    const { sql, params } = this.generateInsertSql(entity as Record<string, unknown>, metadata);
     await this.executeNonQuery(sql, params);
     // Handle generated PK via last_insert_rowid when applicable
     const primaryKey = metadata.primaryKeys[0];
@@ -100,10 +106,10 @@ export class SQLiteProvider extends DatabaseProvider {
         primaryKeyColumn.isGenerated &&
         this.mapTypeToSQLite(primaryKeyColumn.type) === 'INTEGER'
       ) {
-        const rows = await this.executeQuery<any>('SELECT last_insert_rowid() AS id');
+        const rows = await this.executeQuery<{ id: number }>('SELECT last_insert_rowid() AS id');
         const id = rows && rows[0]?.id;
         if (id !== undefined) {
-          (entity as any)[primaryKey] = id;
+          (entity as Record<string, unknown>)[primaryKey] = id as unknown as SqlParameter;
         }
       }
     }
@@ -111,14 +117,14 @@ export class SQLiteProvider extends DatabaseProvider {
   }
 
   /** Update the entity row by primary key; supports optimistic concurrency via version column; throws if nothing affected. */
-  public async update<T>(entity: T, entityClass: Function): Promise<T> {
+  public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) {
       throw new Error(`Entity metadata not found for ${entityClass.name}`);
     }
 
     const versionCol = metadata.columns.find((c) => c.isVersion);
-    const { sql, params } = this.generateUpdateSql(entity, metadata, versionCol);
+    const { sql, params } = this.generateUpdateSql(entity as Record<string, unknown>, metadata, versionCol);
     const affectedRows = await this.executeNonQuery(sql, params);
 
     if (affectedRows === 0) {
@@ -129,19 +135,21 @@ export class SQLiteProvider extends DatabaseProvider {
     // increment version in entity
     if (versionCol) {
       const prop = versionCol.propertyName;
-      (entity as any)[prop] = ((entity as any)[prop] ?? 0) + 1;
+      const rec = entity as Record<string, unknown>;
+      const current = typeof rec[prop] === 'number' ? (rec[prop] as number) : Number(rec[prop] ?? 0);
+      rec[prop] = current + 1;
     }
     return entity;
   }
 
   /** Delete the entity row by primary key; throws if nothing affected. */
-  public async delete<T>(entity: T, entityClass: Function): Promise<void> {
+  public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) {
       throw new Error(`Entity metadata not found for ${entityClass.name}`);
     }
 
-    const { sql, params } = this.generateDeleteSql(entity, metadata);
+    const { sql, params } = this.generateDeleteSql(entity as Record<string, unknown>, metadata);
     const affectedRows = await this.executeNonQuery(sql, params);
 
     if (affectedRows === 0) {
@@ -150,7 +158,7 @@ export class SQLiteProvider extends DatabaseProvider {
   }
 
   /** Fetch a single entity by primary key value. */
-  public async findById<T>(id: any, entityClass: new () => T): Promise<T | null> {
+  public async findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) {
       throw new Error(`Entity metadata not found for ${entityClass.name}`);
@@ -172,13 +180,13 @@ export class SQLiteProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
-    const results = await this.executeQuery<any>(sql, [id]);
+    const results = await this.executeQuery<Record<string, unknown>>(sql, [this.coerceToSqlParameter(id)]);
 
-    return results.length > 0 ? this.mapRowToEntity(results[0], entityClass) : null;
+    return results.length > 0 ? this.mapRowToEntity<T>(results[0], entityClass) : null;
   }
 
   /** Fetch all rows for the given entity type. */
-  public async findAll<T>(entityClass: new () => T): Promise<T[]> {
+  public async findAll<T extends object>(entityClass: new () => T): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) {
       throw new Error(`Entity metadata not found for ${entityClass.name}`);
@@ -190,13 +198,13 @@ export class SQLiteProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` WHERE ${flag} = 0`;
     }
-    const results = await this.executeQuery<any>(sql);
+    const results = await this.executeQuery<Record<string, unknown>>(sql);
 
-    return results.map((row) => this.mapRowToEntity(row, entityClass));
+    return results.map((row) => this.mapRowToEntity<T>(row, entityClass));
   }
 
   /** Fetch rows that match a simple conditions object. */
-  public async findWhere<T>(entityClass: new () => T, conditions: any): Promise<T[]> {
+  public async findWhere<T extends object>(entityClass: new () => T, conditions: Record<string, unknown>): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) {
       throw new Error(`Entity metadata not found for ${entityClass.name}`);
@@ -209,16 +217,16 @@ export class SQLiteProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
-    const results = await this.executeQuery<any>(sql, params);
+    const results = await this.executeQuery<Record<string, unknown>>(sql, params);
 
-    return results.map((row) => this.mapRowToEntity(row, entityClass));
+    return results.map((row) => this.mapRowToEntity<T>(row, entityClass));
   }
 
   /** Fetch rows where a single column value is within a list (IN clause). */
-  public async findWhereIn<T>(
+  public async findWhereIn<T extends object>(
     entityClass: new () => T,
     column: string,
-    values: any[]
+    values: unknown[]
   ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) {
@@ -237,19 +245,20 @@ export class SQLiteProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
-    const results = await this.executeQuery<any>(sql, values);
-    return results.map((row) => this.mapRowToEntity(row, entityClass));
+    const coerced: SqlParameter[] = values.map((v) => this.coerceToSqlParameter(v));
+    const results = await this.executeQuery<Record<string, unknown>>(sql, coerced);
+    return results.map((row) => this.mapRowToEntity<T>(row, entityClass));
   }
 
   /** Execute a query and return raw rows. */
-  protected async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error('Database not connected'));
         return;
       }
 
-      this.db.all(sql, params, (err, rows) => {
+      this.db.all(sql, params as unknown as unknown[], (err, rows) => {
         if (err) {
           reject(mapSqliteError(err));
         } else {
@@ -260,14 +269,14 @@ export class SQLiteProvider extends DatabaseProvider {
   }
 
   /** Execute a non-query statement and return affected rows count. */
-  protected async doExecuteNonQuery(sql: string, params: any[] = []): Promise<number> {
+  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error('Database not connected'));
         return;
       }
 
-      this.db.run(sql, params, function (err) {
+      this.db.run(sql, params as unknown as unknown[], function (err) {
         if (err) {
           reject(mapSqliteError(err));
         } else {
@@ -317,11 +326,8 @@ export class SQLiteProvider extends DatabaseProvider {
     return new SQLiteDialect();
   }
 
-  /** Generate CREATE TABLE SQL for the entity. */
-  // DDL generation moved to SQLiteDdlStrategy
-
   /** Generate INSERT SQL and parameter list for the given entity. */
-  private generateInsertSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
+  private generateInsertSql(entity: Record<string, unknown>, metadata: EntityMetadata): { sql: string; params: SqlParameter[] } {
     const insertableColumns = metadata.columns.filter((col) => {
       // Exclude columns without provided value to allow DB defaults
       const value = entity[col.propertyName];
@@ -332,10 +338,7 @@ export class SQLiteProvider extends DatabaseProvider {
 
     const columnNames = insertableColumns.map((col) => col.columnName);
     const placeholders = insertableColumns.map(() => '?');
-    const params = insertableColumns.map((col) => {
-      const value = entity[col.propertyName];
-      return this.convertValueForDatabase(value, col.type);
-    });
+    const params: SqlParameter[] = insertableColumns.map((col) => this.coerceToSqlParameter(entity[col.propertyName]));
 
     const sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) VALUES (${placeholders.join(', ')})`;
     return { sql, params };
@@ -343,10 +346,10 @@ export class SQLiteProvider extends DatabaseProvider {
 
   /** Generate UPDATE SQL and params based on non-PK columns and PK WHERE clause. */
   private generateUpdateSql(
-    entity: any,
+    entity: Record<string, unknown>,
     metadata: EntityMetadata,
     versionCol?: ColumnMetadata
-  ): { sql: string; params: any[] } {
+  ): { sql: string; params: SqlParameter[] } {
     const updatableColumns = metadata.columns.filter(
       (col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated
     );
@@ -356,16 +359,13 @@ export class SQLiteProvider extends DatabaseProvider {
     }
 
     const setClauses: string[] = updatableColumns.map((col) => `${col.columnName} = ?`);
-    const setParams = updatableColumns.map((col) => {
-      const value = entity[col.propertyName];
-      return this.convertValueForDatabase(value, col.type);
-    });
+    const setParams: SqlParameter[] = updatableColumns.map((col) => this.coerceToSqlParameter(entity[col.propertyName]));
     if (versionCol) {
       setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
     }
 
     const primaryKeyConditions: string[] = [];
-    const whereParams: any[] = [];
+    const whereParams: SqlParameter[] = [];
 
     for (const pkProperty of metadata.primaryKeys) {
       const pkColumn = metadata.columns.find((col) => col.propertyName === pkProperty);
@@ -375,12 +375,12 @@ export class SQLiteProvider extends DatabaseProvider {
         );
       }
       primaryKeyConditions.push(`${pkColumn.columnName} = ?`);
-      whereParams.push(entity[pkProperty]);
+      whereParams.push(this.coerceToSqlParameter(entity[pkProperty]));
     }
 
     if (versionCol) {
       primaryKeyConditions.push(`${versionCol.columnName} = ?`);
-      whereParams.push(entity[versionCol.propertyName]);
+      whereParams.push(this.coerceToSqlParameter((entity as Record<string, unknown>)[versionCol.propertyName]));
     }
 
     if (primaryKeyConditions.length === 0) {
@@ -393,9 +393,9 @@ export class SQLiteProvider extends DatabaseProvider {
   }
 
   /** Generate DELETE SQL and params using primary key values. */
-  private generateDeleteSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
+  private generateDeleteSql(entity: Record<string, unknown>, metadata: EntityMetadata): { sql: string; params: SqlParameter[] } {
     const primaryKeyConditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParameter[] = [];
 
     for (const pkProperty of metadata.primaryKeys) {
       const pkColumn = metadata.columns.find((col) => col.propertyName === pkProperty);
@@ -405,7 +405,7 @@ export class SQLiteProvider extends DatabaseProvider {
         );
       }
       primaryKeyConditions.push(`${pkColumn.columnName} = ?`);
-      params.push(entity[pkProperty]);
+      params.push(this.coerceToSqlParameter((entity as Record<string, unknown>)[pkProperty]));
     }
 
     if (primaryKeyConditions.length === 0) {
@@ -424,22 +424,22 @@ export class SQLiteProvider extends DatabaseProvider {
   }
 
   /** Map a database row object to a new entity instance using metadata. */
-  private mapRowToEntity<T>(row: any, entityClass: new () => T): T {
+  private mapRowToEntity<T extends object>(row: unknown, entityClass: new () => T): T {
     const entity = new entityClass();
     const metadata = MetadataStorage.getEntity(entityClass);
 
     if (metadata) {
       for (const column of metadata.columns) {
-        if (row.hasOwnProperty(column.columnName)) {
-          (entity as any)[column.propertyName] = this.convertValueFromDatabase(
-            row[column.columnName],
+        if (Object.prototype.hasOwnProperty.call(row as object, column.columnName)) {
+          (entity as Record<string, unknown>)[column.propertyName] = this.convertValueFromDatabase(
+            (row as Record<string, unknown>)[column.columnName],
             column.type
           );
         }
       }
     } else {
       // Fallback: copy all properties
-      Object.assign(entity as any, row);
+      Object.assign(entity as object, row as object);
     }
     // notify middleware
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -447,15 +447,34 @@ export class SQLiteProvider extends DatabaseProvider {
     return entity;
   }
 
+  /** Coerce arbitrary value into SQL parameter type accepted by SQLite. */
+  private coerceToSqlParameter(value: unknown): SqlParameter {
+    if (
+      value === null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value instanceof Date ||
+      value instanceof Uint8Array
+    ) {
+      return value as SqlParameter;
+    }
+    try {
+      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+    } catch {
+      return String(value) as unknown as SqlParameter;
+    }
+  }
+
   /** Convert a JS value to a DB-storable value according to type. */
-  private convertValueForDatabase(value: any, type: string): any {
+  private convertValueForDatabase(value: unknown, type: string): unknown {
     if (value === null || value === undefined) {
       return null;
     }
 
     switch (type.toUpperCase()) {
       case 'BOOLEAN':
-        return value ? 1 : 0;
+        return (value as boolean) ? 1 : 0;
       case 'DATETIME':
       case 'DATE':
         if (value instanceof Date) {
@@ -473,7 +492,7 @@ export class SQLiteProvider extends DatabaseProvider {
   }
 
   /** Convert a DB value to a JS runtime value according to type. */
-  private convertValueFromDatabase(value: any, type: string): any {
+  private convertValueFromDatabase(value: unknown, type: string): unknown {
     if (value === null || value === undefined) {
       return value;
     }
@@ -483,10 +502,10 @@ export class SQLiteProvider extends DatabaseProvider {
         return Boolean(value);
       case 'INTEGER':
       case 'NUMBER':
-        return Number(value);
+        return Number(value as unknown as string);
       case 'DATETIME':
       case 'DATE':
-        return new Date(value);
+        return new Date(value as unknown as string);
       case 'TEXT':
         // Try to parse as JSON if it looks like JSON
         if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
@@ -504,9 +523,10 @@ export class SQLiteProvider extends DatabaseProvider {
 }
 
 /** Map sqlite3 error to typed DatabaseError. */
-function mapSqliteError(err: any): Error {
-  const code = err?.code as string | undefined;
-  const message = err?.message || String(err);
+function mapSqliteError(err: unknown): Error {
+  const anyErr = err as { code?: string; message?: string } | undefined;
+  const code = anyErr?.code as string | undefined;
+  const message = anyErr?.message || String(err);
   if (!code) return new DatabaseError(message);
   // sqlite codes: https://www.sqlite.org/rescode.html (library-dependent)
   // Prefer FK if message indicates it

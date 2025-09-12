@@ -5,20 +5,20 @@
 
 function debugEnabled(): boolean {
   try {
-    const v = (process as any)?.env?.TSL_METRICS_DEBUG;
+    const env = (process as unknown as { env?: Record<string, string | undefined> }).env;
+    const v = env?.TSL_METRICS_DEBUG;
     return v === '1' || v === 'true' || v === 'on';
   } catch {
     return false;
   }
 }
 
-export function safeMetric(
-  logger: any,
-  method: 'cache' | 'cacheSize' | 'cacheEvicted',
-  payload: any
-): void {
+function tryInvoke(logger: unknown, method: 'cache' | 'cacheSize' | 'cacheEvicted', payload: unknown): void {
   try {
-    logger?.[method]?.(payload);
+    const maybeFn = (logger as Record<string, unknown> | undefined)?.[method] as
+      | ((arg: unknown) => void)
+      | undefined;
+    maybeFn?.(payload);
   } catch (e) {
     if (debugEnabled()) {
       try {
@@ -31,16 +31,16 @@ export function safeMetric(
   }
 }
 
-export function safeCache(logger: any, payload: any): void {
-  safeMetric(logger, 'cache', payload);
+export function safeCache(logger: unknown, payload: { cache: 'sqlGen' | 'entityL2' | 'count'; hit: boolean; provider?: string; ttl?: boolean }): void {
+  tryInvoke(logger, 'cache', payload);
 }
 
-export function safeCacheSize(logger: any, payload: any): void {
-  safeMetric(logger, 'cacheSize', payload);
+export function safeCacheSize(logger: unknown, payload: { cache: 'sqlGen' | 'entityL2' | 'count'; size: number; provider?: string }): void {
+  tryInvoke(logger, 'cacheSize', payload);
 }
 
-export function safeCacheEvicted(logger: any, payload: any): void {
-  safeMetric(logger, 'cacheEvicted', payload);
+export function safeCacheEvicted(logger: unknown, payload: { cache: 'sqlGen' | 'entityL2' | 'count'; provider?: string }): void {
+  tryInvoke(logger, 'cacheEvicted', payload);
 }
 
 

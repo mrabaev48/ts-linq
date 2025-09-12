@@ -1,4 +1,4 @@
-import { SqlLogger } from '../types';
+import { SqlLogger, SqlParameter, QueryStartInfo, QueryEndInfo, RetryInfo, TransactionInfo, CacheInfo } from '../types';
 
 /**
  * Composite logger that fan-outs all SqlLogger calls to a list of delegates.
@@ -12,7 +12,7 @@ export class CompositeSqlLogger implements SqlLogger {
     this.delegates = delegates.filter(Boolean) as SqlLogger[];
   }
 
-  queryStart(info: { sql: string; params: any[]; traceId?: string; provider?: string }): void {
+  queryStart(info: QueryStartInfo): void {
     for (const d of this.delegates) {
       try {
         d.queryStart?.(info);
@@ -22,15 +22,7 @@ export class CompositeSqlLogger implements SqlLogger {
     }
   }
 
-  queryEnd(info: {
-    sql: string;
-    params: any[];
-    durationMs: number;
-    traceId?: string;
-    rows?: number;
-    error?: Error;
-    provider?: string;
-  }): void {
+  queryEnd(info: QueryEndInfo): void {
     for (const d of this.delegates) {
       try {
         d.queryEnd?.(info);
@@ -40,13 +32,7 @@ export class CompositeSqlLogger implements SqlLogger {
     }
   }
 
-  retry(info: {
-    sql: string;
-    params: any[];
-    attempt: number;
-    traceId?: string;
-    provider?: string;
-  }): void {
+  retry(info: RetryInfo): void {
     for (const d of this.delegates) {
       try {
         d.retry?.(info);
@@ -56,7 +42,7 @@ export class CompositeSqlLogger implements SqlLogger {
     }
   }
 
-  transactionStart(info: { traceId?: string; provider?: string }): void {
+  transactionStart(info: TransactionInfo): void {
     for (const d of this.delegates) {
       try {
         d.transactionStart?.(info);
@@ -66,7 +52,7 @@ export class CompositeSqlLogger implements SqlLogger {
     }
   }
 
-  transactionEnd(info: { traceId?: string; provider?: string }): void {
+  transactionEnd(info: TransactionInfo): void {
     for (const d of this.delegates) {
       try {
         d.transactionEnd?.(info);
@@ -76,7 +62,7 @@ export class CompositeSqlLogger implements SqlLogger {
     }
   }
 
-  cache(info: { cache: 'sqlGen' | 'entityL2' | 'count'; hit: boolean; provider?: string }): void {
+  cache(info: CacheInfo): void {
     for (const d of this.delegates) {
       try {
         d.cache?.(info);

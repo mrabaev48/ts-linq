@@ -9,6 +9,7 @@ import { MysqlDialect } from '../src/query/MysqlDialect';
 import { PostgresDialect } from '../src/query/PostgresDialect';
 import { MssqlDialect } from '../src/query/MssqlDialect';
 import { SqlDialect } from '../src/query/SqlDialect';
+import { QueryOptions, SqlParameter } from '../src/types';
 import { Queryable } from '../src/query/Queryable';
 
 class ProviderStub extends DatabaseProvider {
@@ -34,10 +35,10 @@ class ProviderStub extends DatabaseProvider {
   public async findWhereIn<T>(): Promise<T[]> {
     return [];
   }
-  protected async doExecuteQuery<T>(_sql: string, _params?: any[]): Promise<T[]> {
+  protected async doExecuteQuery<T>(_sql: string, _params?: readonly SqlParameter[]): Promise<T[]> {
     return [];
   }
-  protected async doExecuteNonQuery(_sql: string, _params?: any[]): Promise<number> {
+  protected async doExecuteNonQuery(_sql: string, _params?: readonly SqlParameter[]): Promise<number> {
     return 0;
   }
   public async beginTransaction(): Promise<void> {}
@@ -46,7 +47,7 @@ class ProviderStub extends DatabaseProvider {
 }
 
 class DummyDialect implements SqlDialect {
-  buildSelect(): { query: string; parameters: any[] } {
+  buildSelect(): { query: string; parameters: SqlParameter[] } {
     return { query: 'SELECT /*DUMMY DIALECT*/ 1', parameters: [] };
   }
 }
@@ -75,9 +76,9 @@ describe('DIP: provider → dialect wiring', () => {
       public getDialect(): SqlDialect {
         return new DummyDialect();
       }
-      protected async doExecuteQuery<T>(sql: string, _params?: any[]): Promise<T[]> {
+      protected async doExecuteQuery<T>(sql: string, _params?: readonly SqlParameter[]): Promise<T[]> {
         this.capturedSql = sql;
-        return [] as any;
+        return [] as unknown as T[];
       }
     }
 

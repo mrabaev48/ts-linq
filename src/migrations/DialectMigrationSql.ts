@@ -9,8 +9,8 @@ export function generateMigrationFromDiff(
   const up: string[] = [];
   const down: string[] = [];
   for (const td of diff.tables) {
-    if ((td as any).renameTo) {
-      const to = (td as any).renameTo as string;
+    if ((td as unknown as { renameTo?: string }).renameTo) {
+      const to = (td as unknown as { renameTo?: string }).renameTo as string;
       switch (dialect) {
         case 'postgresql':
           up.push(`ALTER TABLE ${q(dialect, td.table)} RENAME TO ${q(dialect, to)}`);
@@ -44,23 +44,23 @@ export function generateMigrationFromDiff(
       // Down неизвестен без snapshot, пропустим
       continue;
     }
-    if ((td as any).indexCreates && (td as any).indexCreates.length > 0) {
-      for (const idx of (td as any).indexCreates) {
+    if ((td as unknown as { indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }> }).indexCreates && (td as unknown as { indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }> }).indexCreates!.length > 0) {
+      for (const idx of (td as unknown as { indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }> }).indexCreates!) {
         const uniq = idx.unique ? 'UNIQUE ' : '';
         const cols = idx.columns.map((c: string) => q(dialect, c)).join(', ');
         const name = q(dialect, idx.name);
         up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, td.table)} (${cols})`);
       }
     }
-    if ((td as any).indexDrops && (td as any).indexDrops.length > 0) {
-      for (const nameRaw of (td as any).indexDrops) {
+    if ((td as unknown as { indexDrops?: string[] }).indexDrops && (td as unknown as { indexDrops?: string[] }).indexDrops!.length > 0) {
+      for (const nameRaw of (td as unknown as { indexDrops?: string[] }).indexDrops!) {
         const name = q(dialect, nameRaw);
         // Generic DROP INDEX form; some dialects require table qualifier or IF EXISTS, kept simple here
         up.push(`DROP INDEX ${name}`);
       }
     }
-    if ((td as any).fkCreates && (td as any).fkCreates.length > 0) {
-      for (const fk of (td as any).fkCreates) {
+    if ((td as unknown as { fkCreates?: Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }> }).fkCreates && (td as unknown as { fkCreates?: Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }> }).fkCreates!.length > 0) {
+      for (const fk of (td as unknown as { fkCreates?: Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }> }).fkCreates!) {
         const name = fk.name ? `CONSTRAINT ${q(dialect, fk.name)} ` : '';
         const cols = fk.columns.map((c: string) => q(dialect, c)).join(', ');
         const refCols = fk.refColumns.map((c: string) => q(dialect, c)).join(', ');
@@ -84,8 +84,8 @@ export function generateMigrationFromDiff(
         }
       }
     }
-    if ((td as any).fkDrops && (td as any).fkDrops.length > 0) {
-      for (const nameRaw of (td as any).fkDrops) {
+    if ((td as unknown as { fkDrops?: string[] }).fkDrops && (td as unknown as { fkDrops?: string[] }).fkDrops!.length > 0) {
+      for (const nameRaw of (td as unknown as { fkDrops?: string[] }).fkDrops!) {
         switch (dialect) {
           case 'postgresql':
             up.push(`ALTER TABLE ${q(dialect, td.table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`);
@@ -120,7 +120,7 @@ export function generateMigrationFromDiff(
           const alterType = ch.prev && norm(ch.prev.type) !== norm(ch.column.type);
           if (alterType)
             up.push(buildAlterTypeSql(dialect, td.table, ch.column.name, ch.column.type));
-          const prevNullable = (ch.prev as any)?.nullable;
+          const prevNullable = (ch.prev as { nullable?: boolean } | undefined)?.nullable;
           if (typeof prevNullable === 'boolean' && prevNullable !== ch.column.nullable) {
             up.push(buildAlterNullSql(dialect, td.table, ch.column.name, ch.column.nullable));
           }
@@ -130,8 +130,8 @@ export function generateMigrationFromDiff(
         }
       }
     }
-    if ((td as any).columnRenames && (td as any).columnRenames.length > 0) {
-      for (const rn of (td as any).columnRenames) {
+    if ((td as unknown as { columnRenames?: Array<{ from: string; to: string }> }).columnRenames && (td as unknown as { columnRenames?: Array<{ from: string; to: string }> }).columnRenames!.length > 0) {
+      for (const rn of (td as unknown as { columnRenames?: Array<{ from: string; to: string }> }).columnRenames!) {
         switch (dialect) {
           case 'postgresql':
             up.push(
@@ -183,7 +183,7 @@ function buildAddColumnSql(
   name: string,
   type: string,
   nullable: boolean,
-  def?: any
+  def?: unknown
 ): string {
   const table = q(dialect, td.table);
   const col = q(dialect, name);
@@ -283,7 +283,7 @@ function mapType(dialect: Dialect, t: string): string {
   }
 }
 
-function formatValue(dialect: Dialect, v: any): string {
+function formatValue(dialect: Dialect, v: unknown): string {
   if (v === null) return 'NULL';
   if (typeof v === 'number') return String(v);
   if (typeof v === 'boolean') {

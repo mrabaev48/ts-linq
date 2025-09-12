@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { SQLiteProvider, Entity, Column, PrimaryKey, MetadataStorage, OrmMiddleware } from '../src';
+import { SQLiteProvider, Entity, Column, PrimaryKey, MetadataStorage, OrmMiddleware, SqlParameter } from '../src';
 
 // Re-export convenience decorators to avoid path confusion in tests
 // Some tests import from '../src', but here we import directly to be explicit
@@ -19,8 +19,8 @@ function defineUserEntity() {
 describe('OrmMiddleware pipeline', () => {
   let provider: SQLiteProvider;
   let User: ReturnType<typeof defineUserEntity>;
-  const beforeCalls: Array<{ sql: string; params: any[] }> = [];
-  const afterCalls: Array<{ sql: string; params: any[]; durationMs: number; rows?: number }> = [];
+  const beforeCalls: Array<{ sql: string; params: readonly SqlParameter[] }> = [];
+  const afterCalls: Array<{ sql: string; params: readonly SqlParameter[]; durationMs: number; rows?: number }> = [];
   const materialized: Array<any> = [];
 
   const mw: OrmMiddleware = {

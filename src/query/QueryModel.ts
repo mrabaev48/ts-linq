@@ -13,7 +13,7 @@ export class QueryModel {
   public limit?: number;
   public offset?: number;
   public distinct?: boolean;
-  public unions?: Array<{ all: boolean; other: QueryModel; entity: Function }>;
+  public unions?: Array<{ all: boolean; other: QueryModel; entity: new () => unknown }>;
 
   /**
    * Create a deep copy of the query model to preserve immutability

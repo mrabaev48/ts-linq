@@ -1,9 +1,9 @@
-import type { SqlLogger } from '../types';
+import type { SqlLogger, SqlParameter } from '../types';
 
 /** Minimal subset of OpenTelemetry API we use dynamically. */
 interface OtelLike {
   trace: {
-    getTracer: (serviceName: string) => { startSpan: (name: string, opts?: any) => SpanLike };
+    getTracer: (serviceName: string) => { startSpan: (name: string, opts?: { attributes?: Record<string, unknown> }) => SpanLike };
   };
 }
 interface SpanLike {
@@ -29,7 +29,9 @@ function safeRequireOtel(): OtelLike | undefined {
  * Uses dynamic require to avoid hard dependency on @opentelemetry/api.
  */
 export class OpenTelemetrySqlLogger implements SqlLogger {
-  private tracer: { startSpan: (name: string, opts?: any) => SpanLike } | undefined;
+  private tracer:
+    | { startSpan: (name: string, opts?: { attributes?: Record<string, unknown> }) => SpanLike }
+    | undefined;
   private spanByTraceId: Map<string | undefined, SpanLike> = new Map();
 
   constructor(serviceName: string = 'ts-linq') {
@@ -37,11 +39,11 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
     this.tracer = otel?.trace.getTracer(serviceName);
   }
 
-  queryStart(info: { sql: string; params: unknown[]; traceId?: string }): void {
+  queryStart(info: { sql: string; params: readonly SqlParameter[]; traceId?: string; provider?: string }): void {
     if (!this.tracer) return;
     const span = this.tracer.startSpan('db.query', {
       attributes: {
-        'db.system': 'sql',
+        'db.system': info.provider || 'sql',
         'db.statement': info.sql,
         'db.parameters': JSON.stringify(info.params ?? [])
       }
@@ -51,11 +53,12 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
 
   queryEnd(info: {
     sql: string;
-    params: unknown[];
+    params: readonly SqlParameter[];
     durationMs: number;
     traceId?: string;
     rows?: number;
     error?: Error;
+    provider?: string;
   }): void {
     const span = this.spanByTraceId.get(info.traceId);
     if (!span) return;

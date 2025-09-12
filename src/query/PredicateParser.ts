@@ -63,7 +63,9 @@ export class PredicateParser<T> {
     for (const { re, op } of patterns) {
       const match = expr.match(re);
       if (match) {
-        const id: IdentifierNode = { type: 'Identifier', name: match[1] };
+        const idName = match[1];
+        if (!/^[_A-Za-z][_\w]*$/.test(idName)) return null;
+        const id: IdentifierNode = { type: 'Identifier', name: idName };
         const litRaw = match[2].trim();
         // If right side looks like an identifier (variable), bail out to fallback
         if (/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/.test(litRaw)) {
@@ -84,7 +86,7 @@ export class PredicateParser<T> {
   /**
    * Parse a literal token into a JS value understood by SqlVisitor.
    */
-  private parseLiteral(raw: string): any {
+  private parseLiteral(raw: string): string | number | boolean | null | undefined {
     if (
       (raw.startsWith('\"') && raw.endsWith('\"')) ||
       (raw.startsWith("'") && raw.endsWith("'"))
@@ -97,6 +99,6 @@ export class PredicateParser<T> {
     if (raw === 'false') return false;
     if (raw.toLowerCase() === 'null') return null;
     // Unknown token – indicate unparsed
-    return undefined as any;
+    return undefined;
   }
 }

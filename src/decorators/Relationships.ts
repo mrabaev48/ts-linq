@@ -26,7 +26,7 @@ export function OneToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
+  return function (target: object, propertyKey: string | symbol) {
     const propertyName = propertyKey.toString();
 
     const relationship: RelationshipMetadata = {
@@ -38,10 +38,10 @@ export function OneToMany(
       cascade: options?.cascade || false
     };
 
-    MetadataStorage.addRelationship(target.constructor, relationship);
+    MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
 
     // Persist relationship for rehydration
-    const ctor = target.constructor;
+    const ctor = (target as { constructor: Function }).constructor;
     const existing: RelationshipMetadata[] =
       Reflect.getOwnMetadata('orm:relationships', ctor) || [];
     existing.push(relationship);
@@ -60,7 +60,7 @@ export function ManyToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
+  return function (target: object, propertyKey: string | symbol) {
     const propertyName = propertyKey.toString();
 
     const relationship: RelationshipMetadata = {
@@ -72,9 +72,9 @@ export function ManyToOne(
       cascade: options?.cascade || false
     };
 
-    MetadataStorage.addRelationship(target.constructor, relationship);
+    MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
 
-    const ctor = target.constructor;
+    const ctor = (target as { constructor: Function }).constructor;
     const existing: RelationshipMetadata[] =
       Reflect.getOwnMetadata('orm:relationships', ctor) || [];
     existing.push(relationship);
@@ -93,7 +93,7 @@ export function OneToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
+  return function (target: object, propertyKey: string | symbol) {
     const propertyName = propertyKey.toString();
 
     const relationship: RelationshipMetadata = {
@@ -105,9 +105,9 @@ export function OneToOne(
       cascade: options?.cascade || false
     };
 
-    MetadataStorage.addRelationship(target.constructor, relationship);
+    MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
 
-    const ctor = target.constructor;
+    const ctor = (target as { constructor: Function }).constructor;
     const existing: RelationshipMetadata[] =
       Reflect.getOwnMetadata('orm:relationships', ctor) || [];
     existing.push(relationship);
@@ -126,7 +126,7 @@ export function ManyToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol) {
+  return function (target: object, propertyKey: string | symbol) {
     const propertyName = propertyKey.toString();
 
     const relationship: RelationshipMetadata = {
@@ -138,9 +138,9 @@ export function ManyToMany(
       cascade: options?.cascade || false
     };
 
-    MetadataStorage.addRelationship(target.constructor, relationship);
+    MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
 
-    const ctor = target.constructor;
+    const ctor = (target as { constructor: Function }).constructor;
     const existing: RelationshipMetadata[] =
       Reflect.getOwnMetadata('orm:relationships', ctor) || [];
     existing.push(relationship);

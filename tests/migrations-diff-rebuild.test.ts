@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { DiffMigrationGenerator } from '../src/migrations/DiffMigrationGenerator';
+import { DatabaseProvider } from '../src/providers/DatabaseProvider';
 
 function defineEntitiesV1() {
   @Entity({ name: 'RUsers' })
@@ -13,7 +14,7 @@ function defineEntitiesV1() {
 }
 
 class RCtx extends DbContext {
-  public rusers!: DbSet<any>;
+  public rusers!: DbSet<InstanceType<ReturnType<typeof defineEntitiesV1>['RUser']>>;
   constructor() {
     super({ provider: 'sqlite', connectionString: ':memory:' });
   }
@@ -29,9 +30,9 @@ describe('Schema diff rebuild (SQLite minimal)', () => {
     // change column type in metadata
     const meta = MetadataStorage.getEntity(RUser)!;
     const nameCol = meta.columns.find((c) => c.propertyName === 'name')!;
-    nameCol.type = 'INTEGER' as any;
+    nameCol.type = 'INTEGER';
 
-    const gen = new DiffMigrationGenerator((ctx as any).provider);
+    const gen = new DiffMigrationGenerator((ctx as unknown as { provider: DatabaseProvider }).provider);
     const steps = await gen.generate();
     const sqls = steps.map((s) => s.sql).join('\n');
     expect(sqls).toMatch(/CREATE TABLE IF NOT EXISTS __new_RUsers/i);

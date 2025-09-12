@@ -2,11 +2,12 @@ import 'reflect-metadata';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
 import { SqlDialect } from '../src/query/SqlDialect';
+import { SqlParameter } from '../src/types';
 import { CountCache, CountCacheEntry } from '../src/query/CountCache';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 class ProviderStub extends DatabaseProvider {
-  public rows: any[] = [];
+  public rows: Array<Record<string, unknown>> = [];
   public async connect(): Promise<void> {}
   public async disconnect(): Promise<void> {}
   public async createTable(): Promise<void> {}
@@ -29,13 +30,13 @@ class ProviderStub extends DatabaseProvider {
   public async findWhereIn<T>(): Promise<T[]> {
     return [] as any;
   }
-  protected async doExecuteQuery<T>(sql: string, _params?: any[]): Promise<T[]> {
+  protected async doExecuteQuery<T>(sql: string, _params?: readonly SqlParameter[]): Promise<T[]> {
     if (sql.startsWith('SELECT COUNT(')) {
       return [{ count: this.rows.length }] as any;
     }
-    return [] as any;
+    return [] as unknown as T[];
   }
-  protected async doExecuteNonQuery(_sql: string, _params?: any[]): Promise<number> {
+  protected async doExecuteNonQuery(_sql: string, _params?: readonly SqlParameter[]): Promise<number> {
     return 0;
   }
   public async beginTransaction(): Promise<void> {}
@@ -44,7 +45,7 @@ class ProviderStub extends DatabaseProvider {
 }
 
 class DummyDialect implements SqlDialect {
-  buildSelect(): { query: string; parameters: any[] } {
+  buildSelect(): { query: string; parameters: SqlParameter[] } {
     return { query: 'SELECT 1', parameters: [] };
   }
 }

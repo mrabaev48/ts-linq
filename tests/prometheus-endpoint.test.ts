@@ -7,11 +7,11 @@ class FakeRegister {
     return '# HELP test 1\n# TYPE test counter\ntest 1';
   }
 }
-const fakeClient = { register: new FakeRegister() } as any;
+const fakeClient = { register: new FakeRegister() } as { register: FakeRegister };
 
 describe('Prometheus endpoint helpers', () => {
   it('getPrometheusMetrics returns body and contentType even without prom-client', async () => {
-    const { contentType, body } = await getPrometheusMetrics(undefined as any);
+    const { contentType, body } = await getPrometheusMetrics(undefined);
     expect(typeof contentType).toBe('string');
     expect(typeof body).toBe('string');
   });

@@ -1,6 +1,6 @@
 import { SqlDialect } from './SqlDialect';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { QueryOptions } from '../types';
+import { QueryOptions, SqlParameter } from '../types';
 
 /**
  * MSSQL dialect for SELECT generation.
@@ -22,11 +22,11 @@ export class MssqlDialect implements SqlDialect {
   public buildSelect<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): { query: string; parameters: any[] } {
+  ): { query: string; parameters: readonly SqlParameter[] } {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
-    const parameters: any[] = [];
+    const parameters: SqlParameter[] = [];
     const selectList = options.select && options.select.length ? options.select.join(', ') : '*';
 
     // For MSSQL, TOP must appear right after SELECT (before DISTINCT)
@@ -40,13 +40,8 @@ export class MssqlDialect implements SqlDialect {
 
     let query = `${selectHead}${selectList} FROM [${metadata.tableName}]`;
 
-    if ((options as any).joins) {
-      for (const join of (options as any).joins as Array<{
-        type: string;
-        table: string;
-        on: string;
-        alias?: string;
-      }>) {
+    if (options.joins && options.joins.length > 0) {
+      for (const join of options.joins) {
         query += ` ${join.type} JOIN [${join.table}]`;
         if (join.alias) query += ` AS ${join.alias}`;
         query += ` ON ${join.on}`;
@@ -54,31 +49,30 @@ export class MssqlDialect implements SqlDialect {
     }
 
     if (options.where && options.where.length > 0) {
-      const whereClauses = options.where.map((w) => (w as any).condition);
+      const whereClauses = options.where.map((w) => w.condition);
       query += ` WHERE ${whereClauses.join(' AND ')}`;
-      for (const where of options.where) parameters.push(...(where as any).parameters);
+      for (const where of options.where) parameters.push(...where.parameters);
     }
 
     // GROUP BY / HAVING
-    if ((options as any).groupBy) {
-      const gb: any = (options as any).groupBy;
-      if (gb.columns && gb.columns.length > 0) {
-        query += ` GROUP BY ${gb.columns.join(', ')}`;
+    if (options.groupBy) {
+      if (options.groupBy.columns && options.groupBy.columns.length > 0) {
+        query += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
       }
-      if (gb.having) {
-        query += ` HAVING ${gb.having.condition}`;
-        if (gb.having.parameters) parameters.push(...gb.having.parameters);
+      if (options.groupBy.having) {
+        query += ` HAVING ${options.groupBy.having.condition}`;
+        if (options.groupBy.having.parameters) parameters.push(...options.groupBy.having.parameters);
       }
     }
 
-    if ((options as any).orderBy && (options as any).orderBy.length > 0) {
-      const orderByClauses = (options as any).orderBy.map((o: any) => `${o.column} ${o.direction}`);
+    if (options.orderBy && options.orderBy.length > 0) {
+      const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
       query += ` ORDER BY ${orderByClauses.join(', ')}`;
     }
 
     // OFFSET/FETCH requires ORDER BY in MSSQL
     if (hasOffset) {
-      if (!(options as any).orderBy || (options as any).orderBy.length === 0) {
+      if (!options.orderBy || options.orderBy.length === 0) {
         // Provide deterministic ordering fallback when missing ORDER BY
         query += ' ORDER BY (SELECT NULL)';
       }

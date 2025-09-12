@@ -10,16 +10,16 @@ describe('MigrationFileBuilder', () => {
           create: {
             name: 'users',
             columns: [
-              { name: 'id', type: 'INTEGER', nullable: false } as any,
-              { name: 'name', type: 'TEXT', nullable: false } as any
+              { name: 'id', type: 'INTEGER', nullable: false },
+              { name: 'name', type: 'TEXT', nullable: false }
             ],
             primaryKeys: ['id'],
             indexes: [{ name: 'idx_users_name', columns: ['name'], unique: false }],
             foreignKeys: []
-          } as any
+          }
         }
       ]
-    } as any;
+    };
 
     const { filename, source } = MigrationFileBuilder.build(diff, {
       className: 'CreateUsersTable',

@@ -2,7 +2,7 @@ export interface ColumnDef {
   name: string;
   type: string;
   nullable: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   isPrimaryKey?: boolean;
 }
 
@@ -83,11 +83,11 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
         changes.push({ kind: 'add', column: expectedColumn });
       } else {
         const typeChanged =
-          normalizeType(expectedColumn.type) !== normalizeType((actualColumn as any).type);
+          normalizeType(expectedColumn.type) !== normalizeType((actualColumn as { type?: string }).type ?? '');
         // Compare by nullable flag when available in snapshot
         const nullableChanged =
-          typeof (actualColumn as any).nullable === 'boolean'
-            ? expectedColumn.nullable !== (actualColumn as any).nullable
+          typeof (actualColumn as { nullable?: boolean }).nullable === 'boolean'
+            ? expectedColumn.nullable !== (actualColumn as { nullable?: boolean }).nullable!
             : false;
         const needsAlter = typeChanged || nullableChanged;
         if (needsAlter) {

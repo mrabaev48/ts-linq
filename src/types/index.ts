@@ -36,10 +36,10 @@ export enum JoinType {
  * Internal structure representing a tracked entity and its state.
  */
 export interface TrackedEntity {
-  entity: any;
+  entity: object;
   entityClass: Function;
   state: EntityState;
-  originalValues?: any;
+  originalValues?: object;
 }
 
 /**
@@ -89,17 +89,33 @@ export interface LoadingOptions {
 /**
  * Column configuration stored in entity metadata.
  */
+export type ColumnType =
+  | 'TEXT'
+  | 'STRING'
+  | 'INTEGER'
+  | 'NUMBER'
+  | 'REAL'
+  | 'FLOAT'
+  | 'DOUBLE'
+  | 'BOOLEAN'
+  | 'DATETIME'
+  | 'DATE'
+  | 'BLOB'
+  | 'UUID'
+  | 'JSON'
+  | 'JSONB';
+
 export interface ColumnMetadata {
   /** Entity property name. */
   propertyName: string;
   /** Database column name. */
   columnName: string;
-  /** Logical column type (TEXT/INTEGER/NUMBER/BOOLEAN/DATETIME/DATE/REAL/BLOB). */
-  type: string;
+  /** Logical column type. */
+  type: ColumnType | string;
   /** Whether NULL is allowed. */
   nullable: boolean;
   /** Default value applied on INSERT when undefined. */
-  defaultValue?: any;
+  defaultValue?: unknown;
   /** Max length for text columns. */
   length?: number;
   /** Numeric precision for decimals. */
@@ -117,7 +133,7 @@ export interface GlobalFilter {
   /** Target entity constructor. */
   entity: Function;
   /** WHERE clause to prepend for this entity. */
-  where: { condition: string; parameters: any[] };
+  where: { condition: string; parameters: readonly SqlParameter[] };
 }
 
 /** Soft delete feature options. */
@@ -139,7 +155,7 @@ export interface AuditOptions {
   /** Column names used for user id fields. */
   userColumns?: { createdBy?: string; updatedBy?: string };
   /** Function to resolve current user id for stamping. */
-  getCurrentUserId?: () => any;
+  getCurrentUserId?: () => string | number | null | undefined;
   /** Function to resolve current time (default: new Date()). */
   clock?: () => Date;
 }
@@ -210,7 +226,7 @@ export interface QueryResult<T> {
  * Generic key-value map for aggregate query results.
  */
 export interface AggregateResult {
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | Date | Uint8Array | undefined;
 }
 
 /**
@@ -234,8 +250,11 @@ export interface WhereClause {
   /** SQL condition fragment with placeholders (e.g., "price > ?"). */
   condition: string;
   /** Positional parameter values to bind. */
-  parameters: any[];
+  parameters: readonly SqlParameter[];
 }
+
+/** Supported SQL parameter types passed to providers. */
+export type SqlParameter = string | number | boolean | Date | Uint8Array | null;
 
 /**
  * ORDER BY clause element.
@@ -310,33 +329,51 @@ export interface LoadingDefaults {
 /**
  * Minimal SQL logger interface for centralized diagnostics.
  */
+export interface QueryStartInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  traceId?: string;
+  provider?: string;
+}
+export interface QueryEndInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  durationMs: number;
+  traceId?: string;
+  rows?: number;
+  error?: Error;
+  provider?: string;
+}
+export interface RetryInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  attempt: number;
+  traceId?: string;
+  provider?: string;
+}
+export interface TransactionInfo {
+  traceId?: string;
+  provider?: string;
+}
+export interface CacheInfo {
+  cache: 'sqlGen' | 'entityL2' | 'count';
+  hit: boolean;
+  provider?: string;
+}
+
 export interface SqlLogger {
   /** Called right before a query is executed. */
-  queryStart?(info: { sql: string; params: any[]; traceId?: string; provider?: string }): void;
+  queryStart?(info: QueryStartInfo): void;
   /** Called right after a query is executed. */
-  queryEnd?(info: {
-    sql: string;
-    params: any[];
-    durationMs: number;
-    traceId?: string;
-    rows?: number;
-    error?: Error;
-    provider?: string;
-  }): void;
+  queryEnd?(info: QueryEndInfo): void;
   /** Called when a retry attempt is scheduled/executed for a transient error. */
-  retry?(info: {
-    sql: string;
-    params: any[];
-    attempt: number;
-    traceId?: string;
-    provider?: string;
-  }): void;
+  retry?(info: RetryInfo): void;
   /** Called when a transaction begins (for gauges/metrics). */
-  transactionStart?(info: { traceId?: string; provider?: string }): void;
+  transactionStart?(info: TransactionInfo): void;
   /** Called when a transaction ends (commit or rollback). */
-  transactionEnd?(info: { traceId?: string; provider?: string }): void;
+  transactionEnd?(info: TransactionInfo): void;
   /** Cache metric hook: records hits/misses for specific caches. */
-  cache?(info: { cache: 'sqlGen' | 'entityL2' | 'count'; hit: boolean; provider?: string }): void;
+  cache?(info: CacheInfo): void;
 }
 
 /** Factory for creating SqlLogger per provider to satisfy DIP. */
@@ -350,20 +387,32 @@ export interface RetryPolicy {
   shouldRetry(error: unknown, attempt: number, inTransaction: boolean): boolean;
   /** Calculate delay before next retry attempt in milliseconds. */
   getDelayMs(attempt: number): number;
+  /** Extended decision hook with richer context (optional, non-breaking). */
+  shouldRetryEx?(info: RetryDecisionInfo): boolean;
+}
+
+/** Context passed to advanced retry decision hooks. */
+export interface RetryDecisionInfo {
+  error: unknown;
+  attempt: number; // 1-based
+  inTransaction: boolean;
+  sql?: string;
+  params?: readonly SqlParameter[];
+  provider?: string;
 }
 
 /** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */
 export interface OrmMiddleware {
-  beforeExecute?(info: { sql: string; params: any[]; traceId?: string }): void | Promise<void>;
+  beforeExecute?(info: { sql: string; params: readonly SqlParameter[]; traceId?: string }): void | Promise<void>;
   afterExecute?(info: {
     sql: string;
-    params: any[];
+    params: readonly SqlParameter[];
     durationMs: number;
     traceId?: string;
     rows?: number;
     error?: Error;
   }): void | Promise<void>;
-  entityMaterialized?(info: { entity: any; metadata?: EntityMetadata }): void | Promise<void>;
+  entityMaterialized?(info: { entity: object; metadata?: EntityMetadata }): void | Promise<void>;
 }
 
 /**
@@ -421,3 +470,14 @@ export class OptimisticConcurrencyError extends DatabaseError {
     this.name = 'OptimisticConcurrencyError';
   }
 }
+
+/** Known engine-specific error code aliases (best-effort). */
+export type SqliteErrorCode =
+  | 'SQLITE_CONSTRAINT'
+  | 'SQLITE_CONSTRAINT_UNIQUE'
+  | 'SQLITE_CONSTRAINT_FOREIGNKEY'
+  | 'SQLITE_CONSTRAINT_TRIGGER'
+  | string;
+export type PostgresErrorCode = '23505' | '23503' | string;
+export type MysqlErrorCode = 'ER_DUP_ENTRY' | string;
+export type MssqlErrorNumber = 2627 | 2601 | number;

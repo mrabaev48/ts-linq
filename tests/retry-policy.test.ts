@@ -13,19 +13,19 @@ class FlakyProvider extends SQLiteProvider {
   public async disconnect() {
     /* no-op */
   }
-  protected async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(sql: string, params: readonly unknown[] = []): Promise<T[]> {
     if (this.failCount > 0 && !this.inTransactionState) {
       this.failCount--;
-      const err: any = new Error('transient timeout');
+      const err: Error & { message: string } = new Error('transient timeout');
       err.message = 'Timeout occurred';
       throw err;
     }
-    return [] as any;
+    return [] as unknown as T[];
   }
-  protected async doExecuteNonQuery(sql: string, params: any[] = []): Promise<number> {
+  protected async doExecuteNonQuery(sql: string, params: readonly unknown[] = []): Promise<number> {
     if (this.failCount > 0 && !this.inTransactionState) {
       this.failCount--;
-      const err: any = new Error('connection lost');
+      const err: Error & { message: string } = new Error('connection lost');
       err.message = 'Connection lost';
       throw err;
     }
@@ -49,8 +49,9 @@ describe('Provider retry policy', () => {
     await p.connect();
     await p.beginTransaction();
     // В транзакции doExecuteNonQuery отдаст 1 без ретраев — поэтому симулируем ошибку через spy
-    const spy = jest.spyOn<any, any>(p as any, 'doExecuteNonQuery').mockImplementation(() => {
-      const err: any = new Error('deadlock');
+    const pobj = p as unknown as { doExecuteNonQuery: (...args: unknown[]) => unknown };
+    const spy = jest.spyOn(pobj, 'doExecuteNonQuery').mockImplementation(() => {
+      const err: Error & { message: string } = new Error('deadlock');
       err.message = 'deadlock';
       throw err;
     });

@@ -42,7 +42,7 @@ export class MigrationRunner {
   /** Read the list of applied migrations from the database. */
   public async getAppliedMigrations(): Promise<MigrationRecord[]> {
     try {
-      const results = await this._provider.executeQuery<any>(
+      const results = await this._provider.executeQuery<{ version: string; name: string; applied_at: string }>(
         'SELECT version, name, applied_at FROM __migrations ORDER BY version'
       );
 

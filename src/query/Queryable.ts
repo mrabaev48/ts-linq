@@ -1,14 +1,6 @@
 import { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import {
-  WhereClause,
-  OrderByClause,
-  PerformanceOptions,
-  Result,
-  ok,
-  err,
-  GlobalFilter
-} from '../types';
+import { WhereClause, OrderByClause, PerformanceOptions, Result, ok, err, GlobalFilter, SqlParameter } from '../types';
 import { QueryBuilder } from './QueryBuilder';
 import { PredicateParser } from './PredicateParser';
 import { SqlVisitor } from './ast/SqlVisitor';
@@ -88,7 +80,7 @@ export class Queryable<T> {
   /** Clear global count() cache (used on transaction rollback to avoid stale values). */
   public static clearCountCache(): void {
     Queryable._countCache.clear();
-    safeCacheSize((this as any)._lastProviderLogger, { cache: 'count', size: 0 });
+    // We don't have a global logger here; size metric is emitted by callers when appropriate.
   }
 
   /** Create a shallow clone sharing provider/loader but copying model. */
@@ -103,7 +95,7 @@ export class Queryable<T> {
     );
     clonedQueryable._model = this._model.clone();
     // preserve where signature for accurate count cache keys
-    (clonedQueryable as any)._whereSignature = (this as any)._whereSignature;
+    clonedQueryable._whereSignature = this._whereSignature;
     return clonedQueryable;
   }
 
@@ -151,15 +143,12 @@ export class Queryable<T> {
 
   /** Add EXISTS (subquery) predicate. */
   public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
-    const subqueryBuilder = (subquery as any)._sqlBuilder as QueryBuilder;
-    const subqueryModel = (subquery as any)._model as QueryModel;
-    const subqueryEntity = (subquery as any)._entityClass as Function;
-    const { query, parameters } = subqueryBuilder.generateFromModel(
-      subqueryEntity as any,
-      subqueryModel
-    );
+    const subqueryBuilder = subquery._sqlBuilder;
+    const subqueryModel = subquery._model;
+    const subqueryEntity = subquery._entityClass as unknown as new () => unknown;
+    const { query, parameters } = subqueryBuilder.generateFromModel(subqueryEntity, subqueryModel);
     this._model.where = this._model.where || [];
-    const clause = { condition: `EXISTS (${query})`, parameters } as any;
+    const clause: WhereClause = { condition: `EXISTS (${query})`, parameters };
     this._model.where.push(clause);
     this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
     return this;
@@ -170,15 +159,12 @@ export class Queryable<T> {
     column: keyof T & string,
     subquery: Queryable<TOther>
   ): Queryable<T> {
-    const subqueryBuilder = (subquery as any)._sqlBuilder as QueryBuilder;
-    const subqueryModel = (subquery as any)._model as QueryModel;
-    const subqueryEntity = (subquery as any)._entityClass as Function;
-    const { query, parameters } = subqueryBuilder.generateFromModel(
-      subqueryEntity as any,
-      subqueryModel
-    );
+    const subqueryBuilder = subquery._sqlBuilder;
+    const subqueryModel = subquery._model;
+    const subqueryEntity = subquery._entityClass as unknown as new () => unknown;
+    const { query, parameters } = subqueryBuilder.generateFromModel(subqueryEntity, subqueryModel);
     this._model.where = this._model.where || [];
-    const clause = { condition: `${column} IN (${query})`, parameters } as any;
+    const clause: WhereClause = { condition: `${column} IN (${query})`, parameters };
     this._model.where.push(clause);
     this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
     return this;
@@ -193,13 +179,13 @@ export class Queryable<T> {
    */
   public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
     const next = new Queryable<TResult>(
-      this._entityClass as any,
+      this._entityClass as unknown as new () => TResult,
       this._provider,
       this._entityLoader,
       this._entityCache,
       this._performance
     );
-    next._model = this._model.clone() as any;
+    next._model = this._model.clone();
     const selectorStr = selector.toString();
     const properties = this.extractPropertiesFromSelector(selectorStr);
     next._model.select = properties;
@@ -268,8 +254,8 @@ export class Queryable<T> {
     this._model.unions = this._model.unions || [];
     this._model.unions.push({
       all: false,
-      other: (other as any)._model.clone(),
-      entity: (other as any)._entityClass
+      other: other._model.clone(),
+      entity: other._entityClass
     });
     return this;
   }
@@ -278,8 +264,8 @@ export class Queryable<T> {
     this._model.unions = this._model.unions || [];
     this._model.unions.push({
       all: true,
-      other: (other as any)._model.clone(),
-      entity: (other as any)._entityClass
+      other: other._model.clone(),
+      entity: other._entityClass
     });
     return this;
   }
@@ -289,10 +275,10 @@ export class Queryable<T> {
    * @example
    * const q = context.books.groupBy(b => b.authorId);
    */
-  public groupBy(selector: (entity: T) => any): Queryable<T> {
+  public groupBy(selector: (entity: T) => unknown): Queryable<T> {
     const selectorStr = selector.toString();
     const columns = this.extractPropertiesFromSelector(selectorStr);
-    this._model.groupBy = { columns } as any;
+    this._model.groupBy = { columns };
     return this;
   }
 
@@ -310,10 +296,10 @@ export class Queryable<T> {
     if (ast) {
       const visitor = new SqlVisitor();
       const { condition, parameters } = visitor.toSql(ast);
-      (this._model.groupBy as any).having = { condition, parameters } as any;
+      this._model.groupBy.having = { condition, parameters };
     } else {
       // Fallback to a tautology if cannot parse; predicates on aggregates are not parsed yet
-      (this._model.groupBy as any).having = { condition: '1=1', parameters: [] } as any;
+      this._model.groupBy.having = { condition: '1=1', parameters: [] };
     }
     return this;
   }
@@ -351,19 +337,20 @@ export class Queryable<T> {
     if (size < 1) throw new Error('keysetPaginate requires size >= 1');
     const queryModel = this._model.clone();
     // Ensure order by key ASC (append if missing)
-    (queryModel as any).orderBy = (queryModel as any).orderBy || [];
-    const hasOrderByKey = (queryModel as any).orderBy.some((o: any) => o.column === String(key));
-    if (!hasOrderByKey) (queryModel as any).orderBy.push({ column: String(key), direction: 'ASC' });
+    queryModel.orderBy = queryModel.orderBy || [];
+    const hasOrderByKey = queryModel.orderBy.some((o) => o.column === String(key));
+    if (!hasOrderByKey) queryModel.orderBy.push({ column: String(key), direction: 'ASC' });
     queryModel.limit = size;
     if (after !== null && after !== undefined) {
       // Add where key > after
-      const whereClause: any = { condition: `${String(key)} > ?`, parameters: [after] };
+      const whereClause: WhereClause = { condition: `${String(key)} > ?`, parameters: [after as unknown as SqlParameter] };
       queryModel.where = queryModel.where || [];
-      queryModel.where.push(whereClause as any);
+      queryModel.where.push(whereClause);
     }
     this.applyGlobalFiltersToModel(queryModel);
     const items = await this.executeAndMaterialize(queryModel);
-    const nextAfter = items.length > 0 ? (items[items.length - 1] as any)[String(key)] : null;
+    const last = items.length > 0 ? (items[items.length - 1] as unknown as Record<string, unknown>) : null;
+    const nextAfter = last ? (last[String(key)] as T[TKey] | null) : null;
     return { items, pageSize: size, nextAfter };
   }
 
@@ -374,7 +361,7 @@ export class Queryable<T> {
    * @example
    * const authors = await context.authors.include(a => a.books).where(a => a.id === 1).toArray();
    */
-  public include(selector: (entity: T) => any): Queryable<T> {
+  public include(selector: (entity: T) => unknown): Queryable<T> {
     const prop = this.extractIncludeProperty(selector);
     const metadata = MetadataStorage.getEntity(this._entityClass);
     const valid = metadata?.relationships.some((r) => r.propertyName === prop);
@@ -416,8 +403,8 @@ export class Queryable<T> {
     try {
       const value = await this.first();
       return ok(value);
-    } catch (error: any) {
-      return err(error);
+    } catch (error) {
+      return err(error as Error);
     }
   }
   /** Returns the first entity or null.
@@ -447,8 +434,8 @@ export class Queryable<T> {
     try {
       const value = await this.single();
       return ok(value);
-    } catch (error: any) {
-      return err(error);
+    } catch (error) {
+      return err(error as Error);
     }
   }
   /** Returns one or null; throws if more than 1.
@@ -477,10 +464,10 @@ export class Queryable<T> {
           Queryable._countCache.delete(key);
           Queryable._countCache.set(key, hit);
         }
-        safeCache((this._provider as any).loggerRef, {
+        safeCache(this._provider.loggerRef, {
           cache: 'count',
           hit: true,
-          provider: (this._provider as any).providerLabel,
+          provider: this._provider.providerLabel,
           ttl: ttl > 0
         });
         return hit.value;
@@ -493,23 +480,23 @@ export class Queryable<T> {
           const firstKey = Queryable._countCache.keys().next().value as string | undefined;
           if (firstKey !== undefined) {
             Queryable._countCache.delete(firstKey);
-            safeCacheEvicted((this._provider as any).loggerRef, {
+            safeCacheEvicted(this._provider.loggerRef, {
               cache: 'count',
-              provider: (this._provider as any).providerLabel
+              provider: this._provider.providerLabel
             });
           }
         }
         Queryable._countCache.set(key, entry);
       }
-      safeCacheSize((this._provider as any).loggerRef, {
+      safeCacheSize(this._provider.loggerRef, {
         cache: 'count',
         size: this._externalCountCache ? -1 : Queryable._countCache.size,
-        provider: (this._provider as any).providerLabel
+        provider: this._provider.providerLabel
       });
-      safeCache((this._provider as any).loggerRef, {
+      safeCache(this._provider.loggerRef, {
         cache: 'count',
         hit: false,
-        provider: (this._provider as any).providerLabel
+        provider: this._provider.providerLabel
       });
       return value;
     }
@@ -522,18 +509,18 @@ export class Queryable<T> {
 
   private async executeCountQuery(table: string): Promise<number> {
     let query = `SELECT COUNT(*) as count FROM ${table}`;
-    const parameters: any[] = [];
+    const parameters: SqlParameter[] = [];
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
     if (queryModel.where && queryModel.where.length > 0) {
       // Build WHERE and parameters in a single pass to reduce allocations
       let first = true;
       query += ' WHERE ';
-      for (const w of queryModel.where as any[]) {
+      for (const w of queryModel.where) {
         if (!first) query += ' AND ';
         first = false;
         query += w.condition;
-        const p = w.parameters as any[];
+        const p = w.parameters as readonly SqlParameter[];
         for (let i = 0; i < p.length; i++) parameters.push(p[i]);
       }
     }
@@ -561,9 +548,9 @@ export class Queryable<T> {
     if (cached) {
       this._model.where = this._model.where || [];
       // clone parameters array to avoid accidental mutations across queries
-      this._model.where.push({ condition: cached.condition, parameters: [...(cached as any).parameters] } as any);
+      this._model.where.push({ condition: cached.condition, parameters: [...cached.parameters] });
       // update where signature on cache hit as well
-      this._whereSignature += `|${(cached as any).condition}:${JSON.stringify((cached as any).parameters)}`;
+      this._whereSignature += `|${cached.condition}:${JSON.stringify(cached.parameters)}`;
       return;
     }
     const parser = new PredicateParser<T>();
@@ -575,19 +562,19 @@ export class Queryable<T> {
     const visitor = new SqlVisitor();
     const { condition, parameters } = visitor.toSql(ast);
     const whereClause: WhereClause = {
-      condition: condition as any,
-      parameters: parameters as any
-    } as any;
+      condition,
+      parameters
+    };
     this._model.where = this._model.where || [];
     this._model.where.push(whereClause);
     // update where signature for faster count cache keys
-    this._whereSignature += `|${(whereClause as any).condition}:${JSON.stringify((whereClause as any).parameters)}`;
+    this._whereSignature += `|${whereClause.condition}:${JSON.stringify(whereClause.parameters)}`;
     // cache with simple FIFO eviction
     if (Queryable._predicateSqlCache.size >= Queryable.PREDICATE_CACHE_MAX) {
       const firstKey = Queryable._predicateSqlCache.keys().next().value as string | undefined;
       if (firstKey !== undefined) Queryable._predicateSqlCache.delete(firstKey);
     }
-    Queryable._predicateSqlCache.set(cacheKey, { condition: whereClause.condition, parameters: [...(whereClause as any).parameters] } as any);
+    Queryable._predicateSqlCache.set(cacheKey, { condition: whereClause.condition, parameters: [...whereClause.parameters] });
   }
 
   /** Applies all stored fallback predicates (runtime filters). */
@@ -609,10 +596,10 @@ export class Queryable<T> {
   /** Executes provided model, maps rows to entities and applies fallback predicates. */
   private async executeAndMaterialize(model: QueryModel): Promise<T[]> {
     const sql = this._sqlBuilder.generateFromModel(this._entityClass, model);
-    const rows = await this._provider.executeQuery<any>(sql.query, sql.parameters);
+    const rows = await this._provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters);
     let entities = rows.map((r) => this.mapRowToEntity(r));
     entities = this.applyFallbackPredicates(entities);
-    if (this._entityLoader && this._includes.length > 0 && (model as any).limit !== 1) {
+    if (this._entityLoader && this._includes.length > 0 && model.limit !== 1) {
       await this._entityLoader.populateRelationshipsMany(entities, this._entityClass, {
         strategy: LoadingStrategy.Eager,
         includes: this._includes,
@@ -623,7 +610,7 @@ export class Queryable<T> {
   }
 
   /** Extracts include property name from a lambda selector. */
-  private extractIncludeProperty(selector: (entity: T) => any): string {
+  private extractIncludeProperty(selector: (entity: T) => unknown): string {
     const selectorStr = selector.toString();
     const cached = Queryable._includePropCache.get(selectorStr);
     if (cached) return cached;
@@ -686,7 +673,7 @@ export class Queryable<T> {
    * Map a raw database row object to a new entity instance using metadata.
    * Falls back to shallow assign when no metadata is available.
    */
-  private mapRowToEntity(row: any): T {
+  private mapRowToEntity(row: unknown): T {
     const metadata = MetadataStorage.getEntity(this._entityClass);
     if (
       this._performance?.enableEntityCache &&
@@ -696,71 +683,71 @@ export class Queryable<T> {
     ) {
       const pkProp = metadata.primaryKeys[0];
       const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
-      const idValue = pkCol ? row[pkCol.columnName] : row[pkProp as any];
+      const idValue = pkCol
+        ? (row as Record<string, unknown>)[pkCol.columnName]
+        : (row as Record<string, unknown>)[pkProp as string];
       const cached = this._entityCache.get<T>(this._entityClass, idValue);
       if (cached) {
-        (this._provider as any).loggerRef?.cache?.({
+        this._provider.loggerRef?.cache?.({
           cache: 'entityL2',
           hit: true,
-          provider: (this._provider as any).providerLabel
+          provider: this._provider.providerLabel
         });
         return cached;
       }
       const entity = new this._entityClass();
       for (const column of metadata.columns) {
-        if (row.hasOwnProperty(column.columnName)) {
-          (entity as any)[column.propertyName] = this.convertValue(
-            row[column.columnName],
+        if ((row as Record<string, unknown>).hasOwnProperty(column.columnName)) {
+          (entity as unknown as Record<string, unknown>)[column.propertyName] = this.convertValue(
+            (row as Record<string, unknown>)[column.columnName],
             column.type
           );
         }
       }
       this._entityCache.set(this._entityClass, idValue, entity);
-      (this._provider as any).loggerRef?.cache?.({
+      this._provider.loggerRef?.cache?.({
         cache: 'entityL2',
         hit: false,
-        provider: (this._provider as any).providerLabel
+        provider: this._provider.providerLabel
       });
+      // optional size metric via duck-typed logger method if present
       try {
-        (this._provider as any).loggerRef?.cacheSize?.({
+        (this._provider.loggerRef as unknown as { cacheSize?: (p: { cache: 'entityL2'; size: number; provider?: string }) => void })?.cacheSize?.({
           cache: 'entityL2',
-          size: (this._entityCache as any).size?.() ?? -1,
-          provider: (this._provider as any).providerLabel
+          size: this._entityCache.size?.() ?? -1,
+          provider: this._provider.providerLabel
         });
       } catch {/* ignore */}
       // notify middleware via provider hook
       try {
-        (this._provider as any).notifyEntityMaterialized?.(entity, metadata);
-      } catch {
-        /* ignore */
-      }
+        (this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }).notifyEntityMaterialized?.(entity, metadata);
+      } catch {/* ignore */}
       return entity;
     }
     const entity = new this._entityClass();
     if (metadata) {
       for (const column of metadata.columns) {
-        if (row.hasOwnProperty(column.columnName)) {
-          (entity as any)[column.propertyName] = this.convertValue(
-            row[column.columnName],
+        if ((row as Record<string, unknown>).hasOwnProperty(column.columnName)) {
+          (entity as unknown as Record<string, unknown>)[column.propertyName] = this.convertValue(
+            (row as Record<string, unknown>)[column.columnName],
             column.type
           );
         }
       }
     } else {
-      Object.assign(entity as any, row);
+      Object.assign(entity as object, row as object);
     }
     // notify middleware via provider hook
     try {
-      if (metadata) (this._provider as any).notifyEntityMaterialized?.(entity, metadata);
-    } catch {
-      /* ignore */
-    }
+      if (metadata)
+        (this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }).notifyEntityMaterialized?.(entity, metadata);
+    } catch {/* ignore */}
     return entity;
   }
   /**
    * Convert a primitive DB value to a runtime value according to column type.
    */
-  private convertValue(value: any, type: string): any {
+  private convertValue(value: unknown, type: string): unknown {
     if (value == null) return value;
     switch (type.toUpperCase()) {
       case 'BOOLEAN':
@@ -770,7 +757,7 @@ export class Queryable<T> {
         return Number(value);
       case 'DATETIME':
       case 'DATE':
-        return new Date(value);
+        return new Date(value as string | number | Date);
       default:
         return value;
     }
@@ -799,8 +786,8 @@ export class Queryable<T> {
       leftMeta,
       rightMeta
     );
-    (this._model as any).joins = (this._model as any).joins || [];
-    (this._model as any).joins.push({ type, table: rightMeta.tableName, on: onStr, alias });
+    this._model.joins = this._model.joins || [];
+    this._model.joins.push({ type: type as unknown as import('../types').JoinType, table: rightMeta.tableName, on: onStr, alias });
   }
 
   /**
@@ -811,8 +798,8 @@ export class Queryable<T> {
     onStr: string,
     leftTable: string,
     rightTable: string,
-    leftMeta: any,
-    rightMeta: any
+    leftMeta: { columns: Array<{ propertyName: string; columnName: string }> },
+    rightMeta: { columns: Array<{ propertyName: string; columnName: string }> }
   ): string {
     return JoinPredicateParser.parse(onStr, leftTable, rightTable, leftMeta, rightMeta);
   }
@@ -822,7 +809,7 @@ export class Queryable<T> {
     this._globalFilterApplier.apply(
       this._entityClass,
       model,
-      (this._provider as any).softDeleteOptions,
+      this._provider.softDeleteOptions,
       this._globalFilters
     );
   }

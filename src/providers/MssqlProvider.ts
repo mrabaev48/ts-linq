@@ -4,13 +4,35 @@ import {
   ColumnMetadata,
   SqlLogger,
   OptimisticConcurrencyError,
-  RetryPolicy
+  RetryPolicy,
+  SqlParameter,
+  OrmMiddleware,
+  SoftDeleteOptions
 } from '../types';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SqlHelper } from '../utils/SqlHelper';
 import { MssqlDdlStrategy } from './mssql/MssqlDdlStrategy';
 import { SqlDialect } from '../query/SqlDialect';
 import { MssqlDialect } from '../query/MssqlDialect';
+
+interface MssqlRequestLike {
+  input(name: string, value: SqlParameter): MssqlRequestLike;
+  query(sql: string): Promise<{ recordset?: unknown[]; rowsAffected?: number[] }>;
+}
+interface MssqlConnectionPoolLike {
+  connect(): Promise<void>;
+  close(): Promise<void>;
+}
+interface MssqlTransactionLike {
+  begin(): Promise<void>;
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
+}
+interface MssqlLike {
+  ConnectionPool: new (connectionString: string) => MssqlConnectionPoolLike;
+  Request: new (parent: MssqlTransactionLike | MssqlConnectionPoolLike) => MssqlRequestLike;
+  Transaction: new (parent: MssqlConnectionPoolLike) => MssqlTransactionLike;
+}
 
 /**
  * Microsoft SQL Server provider based on the `mssql` package.
@@ -48,15 +70,15 @@ import { MssqlDialect } from '../query/MssqlDialect';
  * }
  */
 export class MssqlProvider extends DatabaseProvider {
-  private pool: any | null = null;
-  private tx: any | null = null;
+  private pool: MssqlConnectionPoolLike | null = null;
+  private tx: MssqlTransactionLike | null = null;
   private ddl = new MssqlDdlStrategy();
   /** Create provider with MSSQL connection string. */
   constructor(
     connectionString: string,
     logger?: SqlLogger,
-    middlewares?: any[],
-    softDelete?: any,
+    middlewares?: OrmMiddleware[],
+    softDelete?: SoftDeleteOptions,
     retryPolicy?: RetryPolicy
   ) {
     super(connectionString, logger, middlewares, softDelete, retryPolicy);
@@ -105,11 +127,11 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   /** Insert entity row; when PK is IDENTITY, sets generated value via SCOPE_IDENTITY(). */
-  public async insert<T>(entity: T, entityClass: Function): Promise<T> {
+  public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
-    const { sql, params, returningPk } = this.generateInsertSql(entity, metadata);
+    const { sql, params, returningPk } = this.generateInsertSql(entity as Record<string, unknown>, metadata);
     // For MSSQL, to retrieve identity we need a separate SELECT SCOPE_IDENTITY() or OUTPUT clause.
     const affected = await this.executeNonQuery(sql, params);
     if (affected > 0 && returningPk) {
@@ -118,40 +140,43 @@ export class MssqlProvider extends DatabaseProvider {
       );
       const id = rows && rows[0]?.id;
       if (id !== undefined) {
-        (entity as any)[returningPk] = id;
+        (entity as Record<string, unknown>)[returningPk] = id as unknown as SqlParameter;
       }
     }
     return entity;
   }
 
   /** Update entity row by primary key. Throws if no rows affected. */
-  public async update<T>(entity: T, entityClass: Function): Promise<T> {
+  public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const versionCol = metadata.columns.find((c) => (c as any).isVersion);
-    const { sql, params } = this.generateUpdateSql(entity as any, metadata, versionCol as any);
+    const versionCol = metadata.columns.find((c) => c.isVersion);
+    const { sql, params } = this.generateUpdateSql(entity as Record<string, unknown>, metadata, versionCol);
     const n = await this.executeNonQuery(sql, params);
     if (n === 0) {
       if (versionCol) throw new OptimisticConcurrencyError();
       throw new Error('No rows were updated.');
     }
-    if (versionCol)
-      (entity as any)[(versionCol as any).propertyName] =
-        ((entity as any)[(versionCol as any).propertyName] ?? 0) + 1;
+    if (versionCol) {
+      const prop = versionCol.propertyName;
+      const rec = entity as Record<string, unknown>;
+      const cur = typeof rec[prop] === 'number' ? (rec[prop] as number) : Number(rec[prop] ?? 0);
+      rec[prop] = cur + 1;
+    }
     return entity;
   }
 
   /** Delete entity row by primary key. Throws if no rows affected. */
-  public async delete<T>(entity: T, entityClass: Function): Promise<void> {
+  public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const { sql, params } = this.generateDeleteSql(entity as any, metadata);
+    const { sql, params } = this.generateDeleteSql(entity as Record<string, unknown>, metadata);
     const n = await this.executeNonQuery(sql, params);
     if (n === 0) throw new Error('No rows were deleted.');
   }
 
   /** Upsert using MERGE statement (simplified). */
-  public async upsert<T>(entity: T, entityClass: Function): Promise<T> {
+  public async upsert<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const pk = metadata.primaryKeys;
@@ -172,7 +197,7 @@ export class MssqlProvider extends DatabaseProvider {
     const setClause = updatable.map((c) => `t.${c.columnName} = s.${c.columnName}`).join(', ');
     const insertCols = sourceCols.map((c) => c.columnName).join(', ');
     const insertVals = sourceCols.map((c) => `s.${c.columnName}`).join(', ');
-    const params = sourceCols.map((c) => (entity as any)[c.propertyName]);
+    const params: SqlParameter[] = sourceCols.map((c) => this.coerceToSqlParameter((entity as Record<string, unknown>)[c.propertyName]));
 
     const sql =
       `MERGE ${metadata.tableName} AS t USING (SELECT ${sourceSelect}) AS s ON (${onClause}) ` +
@@ -183,7 +208,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   /** Find a single entity by its primary key value. */
-  public async findById<T>(id: any, entityClass: new () => T): Promise<T | null> {
+  public async findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const pk = metadata.primaryKeys[0];
@@ -195,13 +220,13 @@ export class MssqlProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
-    const rows = await this.executeQuery<any>(sql, [id]);
+    const rows = await this.executeQuery<Record<string, unknown>>(sql, [this.coerceToSqlParameter(id)]);
     if (rows.length === 0) return null;
     return this.mapRowToEntity(rows[0], entityClass);
   }
 
   /** Return all entities of the given type. */
-  public async findAll<T>(entityClass: new () => T): Promise<T[]> {
+  public async findAll<T extends object>(entityClass: new () => T): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     let sql = `SELECT * FROM ${metadata.tableName}`;
@@ -210,12 +235,12 @@ export class MssqlProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` WHERE ${flag} = 0`;
     }
-    const rows = await this.executeQuery<any>(sql);
+    const rows = await this.executeQuery<Record<string, unknown>>(sql);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
   /** Find entities by simple conditions object (column equals). */
-  public async findWhere<T>(entityClass: new () => T, conditions: any): Promise<T[]> {
+  public async findWhere<T extends object>(entityClass: new () => T, conditions: Record<string, unknown>): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
@@ -225,15 +250,15 @@ export class MssqlProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
-    const rows = await this.executeQuery<any>(sql, params);
+    const rows = await this.executeQuery<Record<string, unknown>>(sql, params);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
   /** Find entities where a column value is in the given array (IN clause). */
-  public async findWhereIn<T>(
+  public async findWhereIn<T extends object>(
     entityClass: new () => T,
     column: string,
-    values: any[]
+    values: unknown[]
   ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
@@ -249,37 +274,38 @@ export class MssqlProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
-    const rows = await this.executeQuery<any>(sql, values);
+    const coerced: SqlParameter[] = values.map((v) => this.coerceToSqlParameter(v));
+    const rows = await this.executeQuery<Record<string, unknown>>(sql, coerced);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
   /** Execute a SQL query and return the recordset rows. */
-  protected async doExecuteQuery<T>(_sql: string, _params?: any[]): Promise<T[]> {
+  protected async doExecuteQuery<T>(_sql: string, _params: readonly SqlParameter[] = []): Promise<T[]> {
     if (!this.isConnected) await this.connect();
     const mssql = safeRequireMssql();
     const { sql, params } = prepareMssqlSql(_sql, _params || []);
-    const request = new mssql.Request(this.tx || this.pool);
+    const request = new mssql.Request(this.tx || this.pool!);
     params.forEach((value, i) => request.input(`p${i + 1}`, value));
     try {
       const result = await request.query(sql);
       return (result.recordset || []) as T[];
-    } catch (e: any) {
+    } catch (e: unknown) {
       throw mapMssqlError(e);
     }
   }
 
   /** Execute a non-query SQL statement and return affected rows count. */
-  protected async doExecuteNonQuery(_sql: string, _params?: any[]): Promise<number> {
+  protected async doExecuteNonQuery(_sql: string, _params: readonly SqlParameter[] = []): Promise<number> {
     if (!this.isConnected) await this.connect();
     const mssql = safeRequireMssql();
     const { sql, params } = prepareMssqlSql(_sql, _params || []);
-    const request = new mssql.Request(this.tx || this.pool);
+    const request = new mssql.Request(this.tx || this.pool!);
     params.forEach((value, i) => request.input(`p${i + 1}`, value));
     try {
       const result = await request.query(sql);
       const rowsAffected: number[] = result.rowsAffected || [];
       return rowsAffected.reduce((sum, n) => sum + (n || 0), 0);
-    } catch (e: any) {
+    } catch (e: unknown) {
       throw mapMssqlError(e);
     }
   }
@@ -289,7 +315,7 @@ export class MssqlProvider extends DatabaseProvider {
     if (!this.isConnected) await this.connect();
     if (this.inTransaction) throw new Error('Transaction already in progress');
     const mssql = safeRequireMssql();
-    this.tx = new mssql.Transaction(this.pool);
+    this.tx = new mssql.Transaction(this.pool!);
     await this.tx.begin();
     this.inTransaction = true;
     this.logger?.transactionStart?.({ traceId: this.currentTraceId, provider: this.providerName });
@@ -322,15 +348,15 @@ export class MssqlProvider extends DatabaseProvider {
   // DDL generation moved to MssqlDdlStrategy
 
   private generateInsertSql(
-    entity: any,
+    entity: Record<string, unknown>,
     metadata: EntityMetadata
-  ): { sql: string; params: any[]; returningPk?: string } {
+  ): { sql: string; params: SqlParameter[]; returningPk?: string } {
     const insertable = metadata.columns.filter(
       (col) => !col.isGenerated || entity[col.propertyName] !== undefined
     );
     const columnNames = insertable.map((c) => c.columnName);
     const placeholders = insertable.map(() => '?');
-    const params = insertable.map((c) => entity[c.propertyName]);
+    const params: SqlParameter[] = insertable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
     const sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) VALUES (${placeholders.join(', ')})`;
     const firstPk = metadata.primaryKeys[0];
     const returningPk =
@@ -341,59 +367,77 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   private generateUpdateSql(
-    entity: any,
+    entity: Record<string, unknown>,
     metadata: EntityMetadata,
     versionCol?: ColumnMetadata
-  ): { sql: string; params: any[] } {
+  ): { sql: string; params: SqlParameter[] } {
     const updatable = metadata.columns.filter(
       (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated
     );
     if (updatable.length === 0) throw new Error(`No updatable columns for ${metadata.target.name}`);
     const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
-    const setParams = updatable.map((c) => entity[c.propertyName]);
+    const setParams: SqlParameter[] = updatable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
     if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
     const whereClauses: string[] = [];
-    const whereParams: any[] = [];
+    const whereParams: SqlParameter[] = [];
     for (const pk of metadata.primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${col.columnName} = ?`);
-      whereParams.push(entity[pk]);
+      whereParams.push(this.coerceToSqlParameter(entity[pk]));
     }
     if (versionCol) {
       whereClauses.push(`${versionCol.columnName} = ?`);
-      whereParams.push(entity[(versionCol as any).propertyName]);
+      whereParams.push(this.coerceToSqlParameter(entity[versionCol.propertyName]));
     }
     const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, params: [...setParams, ...whereParams] };
   }
 
-  private generateDeleteSql(entity: any, metadata: EntityMetadata): { sql: string; params: any[] } {
+  private generateDeleteSql(entity: Record<string, unknown>, metadata: EntityMetadata): { sql: string; params: SqlParameter[] } {
     const whereClauses: string[] = [];
-    const params: any[] = [];
+    const params: SqlParameter[] = [];
     for (const pk of metadata.primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${col.columnName} = ?`);
-      params.push(entity[pk]);
+      params.push(this.coerceToSqlParameter(entity[pk]));
     }
     const sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, params };
   }
 
-  private mapRowToEntity<T>(row: any, entityClass: new () => T): T {
+  private mapRowToEntity<T extends object>(row: unknown, entityClass: new () => T): T {
     const entity = new entityClass();
     const metadata = MetadataStorage.getEntity(entityClass);
     if (metadata) {
       for (const column of metadata.columns) {
-        if (Object.prototype.hasOwnProperty.call(row, column.columnName)) {
-          (entity as any)[column.propertyName] = row[column.columnName];
+        if (Object.prototype.hasOwnProperty.call(row as object, column.columnName)) {
+          (entity as Record<string, unknown>)[column.propertyName] = (row as Record<string, unknown>)[column.columnName];
         }
       }
     } else {
-      Object.assign(entity as any, row);
+      Object.assign(entity as object, row as object);
     }
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     this.notifyEntityMaterialized(entity, metadata);
     return entity;
+  }
+
+  private coerceToSqlParameter(value: unknown): SqlParameter {
+    if (
+      value === null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value instanceof Date ||
+      value instanceof Uint8Array
+    ) {
+      return value as SqlParameter;
+    }
+    try {
+      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+    } catch {
+      return String(value) as unknown as SqlParameter;
+    }
   }
 }
 
@@ -424,14 +468,14 @@ export function mapTypeToMssql(type: string): string {
   }
 }
 
-function prepareMssqlSql(sql: string, params: any[]): { sql: string; params: any[] } {
+function prepareMssqlSql(sql: string, params: readonly SqlParameter[]): { sql: string; params: SqlParameter[] } {
   if (!params || params.length === 0) return { sql, params: [] };
   let index = 0;
   const mapped = sql.replace(/\?/g, () => `@p${++index}`);
-  return { sql: mapped, params };
+  return { sql: mapped, params: [...params] };
 }
 
-function safeRequireMssql(): any {
+function safeRequireMssql(): MssqlLike {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('mssql');
@@ -442,9 +486,10 @@ function safeRequireMssql(): any {
   }
 }
 
-function mapMssqlError(err: any): Error {
-  const number = err?.number;
-  const message = err?.message || String(err);
+function mapMssqlError(err: unknown): Error {
+  const anyErr = err as { number?: number; message?: string } | undefined;
+  const number = anyErr?.number;
+  const message = anyErr?.message || String(err);
   if (number === 2627 || number === 2601) {
     return new (require('../types').UniqueConstraintError)(message, String(number));
   }

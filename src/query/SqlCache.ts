@@ -1,6 +1,8 @@
+import { SqlParameter } from '../types';
+
 export interface SqlCacheEntry {
   query: string;
-  parameters: any[];
+  parameters: SqlParameter[];
 }
 
 export interface SqlCache {

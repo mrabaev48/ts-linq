@@ -1,11 +1,11 @@
 import 'reflect-metadata';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
-import { SqlLogger } from '../src/types';
+import { SqlLogger, SqlParameter } from '../src/types';
 import { PredicateParser } from '../src/query/PredicateParser';
 
 describe('Reliability & Errors', () => {
   test('SqlLogger receives start/end with timings and optional error', async () => {
-    const events: any[] = [];
+    const events: Array<Record<string, unknown>> = [];
     const logger: SqlLogger = {
       queryStart: (i) => events.push({ t: 'start', ...i }),
       queryEnd: (i) => events.push({ t: 'end', ...i })
@@ -34,9 +34,9 @@ describe('Reliability & Errors', () => {
       public async findWhereIn<T>(): Promise<T[]> {
         return [];
       }
-      protected async doExecuteQuery<T>(sql: string, params: any[]): Promise<T[]> {
+      protected async doExecuteQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]> {
         if (sql.includes('FAIL')) throw new Error('boom');
-        return [{ ok: true }] as any;
+        return [{ ok: true }] as unknown as T[];
       }
       protected async doExecuteNonQuery(): Promise<number> {
         return 1;

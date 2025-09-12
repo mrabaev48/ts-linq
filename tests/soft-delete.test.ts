@@ -15,8 +15,8 @@ function defineSUser() {
   return SUser;
 }
 
-class SoftCtx<TUser> extends DbContext {
-  public susers!: DbSet<any>;
+class SoftCtx<TUser extends object> extends DbContext {
+  public susers!: DbSet<TUser>;
   constructor() {
     super({
       provider: 'sqlite',
@@ -28,7 +28,7 @@ class SoftCtx<TUser> extends DbContext {
 }
 
 describe('Soft delete & audit', () => {
-  let ctx: SoftCtx<any>;
+  let ctx: SoftCtx<InstanceType<ReturnType<typeof defineSUser>>>;
   let SUser: ReturnType<typeof defineSUser>;
   beforeEach(async () => {
     MetadataStorage.getInstance().clear();
