@@ -17,6 +17,9 @@ export function parseArgs(argv: string[]): { cmd?: string; rest: string[]; flags
         case 'json':
           flags.json = true;
           break;
+        case 'details':
+          flags.details = true;
+          break;
         case 'dry-run':
           flags.dryRun = true;
           break;
@@ -40,6 +43,9 @@ export function parseArgs(argv: string[]): { cmd?: string; rest: string[]; flags
           break;
         case 'create':
           flags.create = true;
+          break;
+        case 'name':
+          flags.name = v;
           break;
         case 'dir':
           flags.dir = v;

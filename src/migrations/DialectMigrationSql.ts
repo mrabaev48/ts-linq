@@ -72,9 +72,7 @@ export function generateMigrationFromDiff(
       (tableDiff as unknown as { indexDrops?: string[] }).indexDrops!.length > 0
     ) {
       for (const nameRaw of (tableDiff as unknown as { indexDrops?: string[] }).indexDrops!) {
-        const name = q(dialect, nameRaw);
-        // Generic DROP INDEX form; some dialects require table qualifier or IF EXISTS, kept simple here
-        up.push(`DROP INDEX ${name}`);
+        up.push(buildDropIndexSql(dialect, tableDiff.table, nameRaw));
       }
     }
     if (
@@ -179,15 +177,70 @@ export function generateMigrationFromDiff(
           );
           down.push(buildDropColumnSql(dialect, tableDiff.table, ch.column.name));
         } else if (ch.kind === 'alter') {
-          // Разделяем смену типа и nullability
-          const alterType = ch.prev && norm(ch.prev.type) !== norm(ch.column.type);
-          if (alterType)
-            up.push(buildAlterTypeSql(dialect, tableDiff.table, ch.column.name, ch.column.type));
+          // Разделяем смену типа и nullability (+ модификаторы длины/точности)
+          const prevTypeSql = mapTypeWithModifiers(dialect, (ch.prev as unknown as { type: string; length?: number; precision?: number; scale?: number }) || { type: ch.column.type });
+          const nextTypeSql = mapTypeWithModifiers(dialect, ch.column as unknown as { type: string; length?: number; precision?: number; scale?: number });
+          const alterTypeNeeded = prevTypeSql !== nextTypeSql;
+          if (alterTypeNeeded) {
+            switch (dialect) {
+              case 'postgresql':
+                up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ALTER COLUMN ${q(dialect, ch.column.name)} TYPE ${nextTypeSql}`);
+                break;
+              case 'mysql':
+                up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} MODIFY COLUMN ${q(dialect, ch.column.name)} ${nextTypeSql}`);
+                break;
+              case 'mssql':
+                up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ALTER COLUMN ${q(dialect, ch.column.name)} ${nextTypeSql}`);
+                break;
+              default:
+                up.push(`-- SQLite type alter requires rebuild: ${ch.column.name} ${nextTypeSql}`);
+            }
+          }
           const prevNullable = (ch.prev as { nullable?: boolean } | undefined)?.nullable;
           if (typeof prevNullable === 'boolean' && prevNullable !== ch.column.nullable) {
             up.push(
               buildAlterNullSql(dialect, tableDiff.table, ch.column.name, ch.column.nullable)
             );
+          }
+          // Default change
+          const prevDef = (ch.prev as { defaultValue?: unknown } | undefined)?.defaultValue;
+          const nextDef = ch.column.defaultValue;
+          if (prevDef !== nextDef) {
+            switch (dialect) {
+              case 'postgresql': {
+                const set = nextDef !== undefined ? `SET DEFAULT ${formatValue(dialect, nextDef)}` : 'DROP DEFAULT';
+                up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ALTER COLUMN ${q(dialect, ch.column.name)} ${set}`);
+                break;
+              }
+              case 'mysql': {
+                const set = nextDef !== undefined ? `SET DEFAULT ${formatValue(dialect, nextDef)}` : 'DROP DEFAULT';
+                up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ALTER COLUMN ${q(dialect, ch.column.name)} ${set}`);
+                break;
+              }
+              case 'mssql':
+                // MSSQL: drop existing default constraint then add a new one
+                up.push(
+                  `DECLARE @dc sysname; SELECT @dc = dc.name FROM sys.default_constraints dc JOIN sys.columns c ON c.default_object_id = dc.object_id WHERE dc.parent_object_id = OBJECT_ID('${tableDiff.table}') AND c.name = '${ch.column.name}'; IF @dc IS NOT NULL EXEC('ALTER TABLE ${q(
+                    dialect,
+                    tableDiff.table
+                  )} DROP CONSTRAINT ' + QUOTENAME(@dc))`
+                );
+                if (nextDef !== undefined) {
+                  const dfName = `DF_${tableDiff.table}_${ch.column.name}`;
+                  up.push(
+                    `ALTER TABLE ${q(
+                      dialect,
+                      tableDiff.table
+                    )} ADD CONSTRAINT ${q(dialect, dfName)} DEFAULT ${formatValue(
+                      dialect,
+                      nextDef
+                    )} FOR ${q(dialect, ch.column.name)}`
+                  );
+                }
+                break;
+              default:
+                up.push(`-- SQLite default change requires table rebuild for ${ch.column.name}`);
+            }
           }
         } else if (ch.kind === 'drop') {
           // Generate DROP COLUMN for dialects that support it
@@ -202,7 +255,7 @@ export function generateMigrationFromDiff(
         .columnRenames!.length > 0
     ) {
       for (const rn of (
-        tableDiff as unknown as { columnRenames?: Array<{ from: string; to: string }> }
+        tableDiff as unknown as { columnRenames?: Array<{ from: string; to: string; toDef?: { type: string; length?: number; precision?: number; scale?: number; nullable?: boolean; defaultValue?: unknown } }> }
       ).columnRenames!) {
         switch (dialect) {
           case 'postgresql':
@@ -211,8 +264,15 @@ export function generateMigrationFromDiff(
             );
             break;
           case 'mysql':
-            // MySQL требует полный тип в MODIFY/CHANGE COLUMN — оставим как комментарий
-            up.push(`-- MySQL requires full type for CHANGE COLUMN ${rn.from} -> ${rn.to}`);
+            {
+              const nextType = rn.toDef ? mapTypeWithModifiers(dialect, rn.toDef) : 'TEXT';
+              up.push(
+                `ALTER TABLE ${q(dialect, tableDiff.table)} CHANGE COLUMN ${q(
+                  dialect,
+                  rn.from
+                )} ${q(dialect, rn.to)} ${nextType}`
+              );
+            }
             break;
           case 'mssql':
             up.push(`EXEC sp_rename '${tableDiff.table}.${rn.from}', '${rn.to}', 'COLUMN'`);
@@ -321,6 +381,21 @@ function q(dialect: Dialect, id: string): string {
   }
 }
 
+function buildDropIndexSql(dialect: Dialect, table: string, name: string): string {
+  switch (dialect) {
+    case 'postgresql':
+      return `DROP INDEX ${q(dialect, name)}`;
+    case 'mysql':
+      // MySQL requires table qualifier for DROP INDEX
+      return `DROP INDEX ${q(dialect, name)} ON ${q(dialect, table)}`;
+    case 'mssql':
+      // SQL Server requires table qualifier
+      return `DROP INDEX ${q(dialect, table)}.${q(dialect, name)}`;
+    default:
+      return `DROP INDEX ${q(dialect, name)}`;
+  }
+}
+
 function mapType(dialect: Dialect, t: string): string {
   const up = String(t || '').toUpperCase();
   switch (dialect) {
@@ -353,6 +428,20 @@ function mapType(dialect: Dialect, t: string): string {
       if (up === 'REAL' || up === 'FLOAT' || up === 'DOUBLE') return 'REAL';
       return up;
   }
+}
+
+function mapTypeWithModifiers(
+  dialect: Dialect,
+  c: { type: string; length?: number; precision?: number; scale?: number }
+): string {
+  const base = mapType(dialect, c.type);
+  if (c.precision !== undefined && c.scale !== undefined && (base === 'REAL' || base === 'DECIMAL' || base === 'NUMERIC' || base === 'FLOAT' || base === 'DOUBLE')) {
+    return `${base}(${c.precision},${c.scale})`;
+  }
+  if (c.length !== undefined && (base === 'TEXT' || base === 'STRING' || base === 'VARCHAR' || base.startsWith('NVARCHAR'))) {
+    return `${base}(${c.length})`;
+  }
+  return base;
 }
 
 function formatValue(dialect: Dialect, v: unknown): string {

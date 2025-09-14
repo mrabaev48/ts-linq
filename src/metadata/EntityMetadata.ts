@@ -1,4 +1,4 @@
-import type { ColumnMetadata, RelationshipMetadata, IndexMetadata, EntityMetadata } from '../types';
+import type { ColumnMetadata, RelationshipMetadata, IndexMetadata, EntityMetadata, CheckConstraintMetadata } from '../types';
 
 /**
  * Builder for incrementally constructing `EntityMetadata` while decorators
@@ -19,7 +19,8 @@ export class EntityMetadataBuilder {
       columns: [],
       primaryKeys: [],
       relationships: [],
-      indexes: []
+      indexes: [],
+      checks: []
     };
   }
 
@@ -70,6 +71,16 @@ export class EntityMetadataBuilder {
   }
 
   /**
+   * Add a check constraint to the entity.
+   */
+  public addCheck(check: CheckConstraintMetadata): this {
+    (this.metadata as { checks?: CheckConstraintMetadata[] }).checks =
+      (this.metadata as { checks?: CheckConstraintMetadata[] }).checks || [];
+    (this.metadata as { checks: CheckConstraintMetadata[] }).checks.push(check);
+    return this;
+  }
+
+  /**
    * Finalize and return the constructed `EntityMetadata` object.
    */
   public build(): EntityMetadata {
@@ -83,7 +94,8 @@ export class EntityMetadataBuilder {
       columns: this.metadata.columns || [],
       primaryKeys: this.metadata.primaryKeys || [],
       relationships: this.metadata.relationships || [],
-      indexes: this.metadata.indexes || []
+      indexes: this.metadata.indexes || [],
+      checks: this.metadata.checks || []
     };
   }
 }

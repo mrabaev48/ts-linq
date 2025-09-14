@@ -26,6 +26,7 @@ import { MssqlProvider } from '../providers/MssqlProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SeedCommand } from '../cli/commands/seed';
 import { GenerateEntityCommand } from '../cli/commands/generateEntity';
+import { GenerateMigrationCommand } from '../cli/commands/generateMigration';
 
 type ProviderId = 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
 
@@ -77,7 +78,9 @@ Commands:
   version                           Show CLI version
   init                              Initialize config and directories
   status [--json]                   Show migrations status
-  diff [--json] [--out <file>]      Show schema diff (does not modify DB)
+  diff [--json] [--details]         Show schema diff (does not modify DB)
+       [--out <file>]               Write SQL plan to file
+       [--create] [--name <Class>]  Create migration scaffold (optional class name)
   generate migration <Name>         Create a migration file in migrations/
   generate entity <Name>            Create an entity class in src/entities/ (flags: --dir, --pk, --columns)
   migrate [--dry-run]               Apply schema diff (temporary shortcut)
@@ -91,9 +94,27 @@ Global options:
   --provider=<sqlite|postgresql|mysql|mssql>
   --conn=<connectionString>
   --json    Output JSON when supported
+  --details Include expected/actual/diff snapshots in JSON (for diff)
   --dry-run Do not execute, only print SQL where applicable
   --verbose Verbose logging
   --quiet   Suppress non-error output
+
+Command-specific options:
+  diff:
+    --out=<file>      Write generated SQL to a file
+    --create          Create a migration scaffold from the current diff
+    --name=<Class>    Custom class/file suffix for scaffolded migration
+  generate entity:
+    --dir=<path>      Target directory (default: src/entities)
+    --pk=<name>       Primary key property name (default: id)
+    --columns=a:TYPE,b:TYPE?  Extra columns (use ? for nullable)
+
+Examples:
+  ts-linq init
+  ts-linq diff --json --details --provider=sqlite --conn=:memory:
+  ts-linq diff --create --name=InitSchema
+  ts-linq migrate --dry-run
+  ts-linq verify --json --dry-run
 `;
   console.log(usage);
 }
@@ -193,17 +214,7 @@ async function cmdStatus(flags: Flags): Promise<number> {
   return 0;
 }
 
-async function cmdGenerateMigration(nameArg?: string): Promise<number> {
-  const name = (nameArg || 'Migration').replace(/\s+/g, '_');
-  const ts = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
-    const dir = path.resolve(process.cwd(), 'migrations');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const file = path.join(dir, `${ts}_${name}.ts`);
-    const template = `import { Migration } from '../src/migrations/Migration';\n\nexport class ${name} extends Migration {\n  protected get name() { return '${name}'; }\n  protected get version() { return '${ts}'; }\n  public async up(): Promise<void> {\n    // TODO: write your DDL here\n  }\n  public async down(): Promise<void> {\n    // TODO: write your rollback here\n  }\n}\n`;
-    fs.writeFileSync(file, template, 'utf8');
-    console.log(`Created ${file}`);
-  return 0;
-}
+// generate migration moved to command
 
 async function cmdSeed(fileArg?: string, flags?: Flags): Promise<number> {
   const effective = makeEffectiveConfig(flags || {});
@@ -492,6 +503,7 @@ async function main() {
   registry.register('init', new InitCommand());
   registry.register('seed', new SeedCommand());
   registry.register('generate:entity', new GenerateEntityCommand());
+  registry.register('generate:migration', new GenerateMigrationCommand());
 
   const run = async (name: string): Promise<void> => {
     const handler = registry.get(name);
@@ -531,10 +543,7 @@ async function main() {
       await run('status');
       return;
     case 'generate':
-      if (rest[0] === 'migration') {
-        process.exitCode = await cmdGenerateMigration(rest[1]);
-        return;
-      }
+      if (rest[0] === 'migration') { await run('generate:migration'); return; }
       if (rest[0] === 'entity') {
         const name = rest[1] || 'Entity';
         await run('generate:entity');

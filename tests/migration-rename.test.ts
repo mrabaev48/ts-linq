@@ -15,7 +15,7 @@ describe('Rename table/column', () => {
     const upPg = generateMigrationFromDiff(mb.toDiff(), 'postgresql').up;
     expect(upPg.some((s) => s.includes('RENAME COLUMN'))).toBeTruthy();
     const upMy = generateMigrationFromDiff(mb.toDiff(), 'mysql').up;
-    expect(upMy.some((s) => s.startsWith('-- MySQL requires full type'))).toBeTruthy();
+    expect(upMy.some((s) => s.includes('CHANGE COLUMN'))).toBeTruthy();
     const upSqlite = generateMigrationFromDiff(mb.toDiff(), 'sqlite').up;
     expect(upSqlite.some((s) => s.startsWith('-- SQLite column rename'))).toBeTruthy();
   });

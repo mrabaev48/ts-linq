@@ -118,6 +118,42 @@ MetadataStorage.addColumn(DiffUser, { propertyName: 'name', columnName: 'name', 
     expect(content).toMatch(/export class Diff_/);
     expect(content).toMatch(/CREATE TABLE IF NOT EXISTS DiffUser/);
   });
+
+  test('diff --create --name=MyCustomName sets class and file name accordingly', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tslinq-cli-'));
+    const dbPath = path.join(tmp, 'cli-diff.db');
+
+    const cfg = {
+      provider: 'sqlite',
+      connectionString: dbPath,
+      migrationsDir: 'migrations',
+      bootstrap: ['bootstrap.js']
+    };
+    fs.writeFileSync(path.join(tmp, 'tslinq.config.json'), JSON.stringify(cfg), 'utf8');
+
+    const metaCjs = path
+      .join(__dirname, '..', 'dist', 'cjs', 'metadata', 'MetadataStorage.js')
+      .replace(/\\/g, '/');
+    const bootstrapJs = `
+const { MetadataStorage } = require('${metaCjs}');
+class DiffUser {}
+MetadataStorage.addEntity(DiffUser, 'DiffUser');
+MetadataStorage.addColumn(DiffUser, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, defaultValue: undefined, isGenerated: true, length: undefined, precision: undefined, scale: undefined, isVersion: false });
+MetadataStorage.addPrimaryKey(DiffUser, 'id');
+MetadataStorage.addColumn(DiffUser, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false, defaultValue: undefined, isGenerated: false, length: undefined, precision: undefined, scale: undefined, isVersion: false });
+`;
+    fs.writeFileSync(path.join(tmp, 'bootstrap.js'), bootstrapJs, 'utf8');
+
+    const r = runCli(['diff', `--cwd=${tmp}`, '--create', '--name=MyCustomName']);
+    expect(r.code).toBe(0);
+    const migDir = path.join(tmp, 'migrations');
+    const files = fs.existsSync(migDir) ? fs.readdirSync(migDir) : [];
+    const file = files.find((f) => /_MyCustomName\.ts$/.test(f));
+    expect(file).toBeTruthy();
+    const content = fs.readFileSync(path.join(migDir, file as string), 'utf8');
+    expect(content).toContain('export class MyCustomName extends Migration');
+    expect(content).toContain("protected get name() { return 'MyCustomName'; }");
+  });
 });
 
 

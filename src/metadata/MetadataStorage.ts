@@ -1,4 +1,4 @@
-import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../types';
+import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, CheckConstraintMetadata } from '../types';
 import { EntityMetadataBuilder } from './EntityMetadata';
 
 /**
@@ -81,6 +81,11 @@ export class MetadataStorage {
     MetadataStorage.getInstance().addIndexMetadata(target, index);
   }
 
+  /** Add check constraint metadata for an entity. */
+  public static addCheck(target: Function, check: CheckConstraintMetadata): void {
+    MetadataStorage.getInstance().addCheckMetadata(target, check);
+  }
+
   /**
    * Get an existing metadata builder for a target or create a new one.
    */
@@ -126,6 +131,12 @@ export class MetadataStorage {
   private addIndexMetadata(target: Function, index: IndexMetadata): void {
     const builder = this.getOrCreateBuilder(target);
     builder.addIndex(index);
+  }
+
+  /** Add a check constraint definition to the target entity's builder. */
+  private addCheckMetadata(target: Function, check: CheckConstraintMetadata): void {
+    const builder = this.getOrCreateBuilder(target);
+    builder.addCheck(check);
   }
 
   /**

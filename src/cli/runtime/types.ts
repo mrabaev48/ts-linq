@@ -4,6 +4,7 @@ export interface Flags {
   provider?: ProviderId;
   conn?: string;
   json?: boolean;
+  details?: boolean;
   dryRun?: boolean;
   cwd?: string;
   toVersion?: string;
@@ -16,6 +17,8 @@ export interface Flags {
   dir?: string;
   pk?: string;
   columns?: string;
+  // diff scaffold options
+  name?: string;
 }
 
 export interface CliConfig {

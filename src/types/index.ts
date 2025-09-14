@@ -172,10 +172,20 @@ export interface RelationshipMetadata {
   targetEntity: Function | (() => Function);
   /** Foreign key column name on the dependent side (optional). */
   foreignKey?: string;
+  /** Composite foreign key column names on the dependent side (optional). */
+  foreignKeys?: string[];
+  /** Referenced column names on the principal side (optional, defaults to target PKs). */
+  referencedColumns?: string[];
   /** Inverse navigation property name on the target entity (optional). */
   inverseSide?: string;
   /** Cascade operations (insert/update/delete) when true. */
   cascade?: boolean;
+  /** FK constraint name hint (optional). */
+  constraintName?: string;
+  /** ON DELETE action (optional, overrides cascade). */
+  onDelete?: 'CASCADE' | 'RESTRICT' | 'NO ACTION' | 'SET NULL' | 'SET DEFAULT';
+  /** ON UPDATE action (optional). */
+  onUpdate?: 'CASCADE' | 'RESTRICT' | 'NO ACTION' | 'SET NULL' | 'SET DEFAULT';
 }
 
 /**
@@ -188,6 +198,17 @@ export interface IndexMetadata {
   columns: string[];
   /** Whether the index enforces uniqueness. */
   unique: boolean;
+  /** Optional expression for functional indexes (e.g., PostgreSQL). */
+  expression?: string;
+  /** Optional WHERE predicate for partial indexes (e.g., PostgreSQL). */
+  where?: string;
+}
+
+export interface CheckConstraintMetadata {
+  /** Optional check constraint name. */
+  name?: string;
+  /** SQL expression inside CHECK(...) */
+  expression: string;
 }
 
 /**
@@ -206,6 +227,8 @@ export interface EntityMetadata {
   relationships: RelationshipMetadata[];
   /** Index definitions. */
   indexes: IndexMetadata[];
+  /** Check constraints. */
+  checks?: CheckConstraintMetadata[];
 }
 
 /**

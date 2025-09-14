@@ -11,6 +11,9 @@ export * from './decorators/Entity';
 export * from './decorators/Column';
 export * from './decorators/PrimaryKey';
 export * from './decorators/Relationships';
+export * from './decorators/Check';
+export * from './decorators/Default';
+export * from './decorators/Index';
 
 // Metadata
 export * from './metadata/MetadataStorage';
