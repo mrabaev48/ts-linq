@@ -58,12 +58,21 @@ export class SeedCommand implements Command {
         try {
           await Promise.resolve((runner as (p: unknown) => Promise<void>)(provider));
           if (flags.transaction) await provider.commitTransaction();
+          if (flags.json) {
+            // eslint-disable-next-line no-console
+            console.log(JSON.stringify({ ok: true, file: sqlFile, script: true }, null, 2));
+          }
         } catch (e) {
           if (flags.transaction) await provider.rollbackTransaction();
           throw e;
         }
       } else if (!flags.quiet) {
-        logger.log('info', `Dry-run: would execute seed script ${sqlFile}`);
+        if (flags.json) {
+          // eslint-disable-next-line no-console
+          console.log(JSON.stringify({ ok: true, file: sqlFile, script: true, dryRun: true }, null, 2));
+        } else {
+          logger.log('info', `Dry-run: would execute seed script ${sqlFile}`);
+        }
       }
     } else {
       const text = fsp.readText(sqlFile);
