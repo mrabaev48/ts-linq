@@ -116,19 +116,28 @@ export class MigrateCommand implements Command {
       await provider.disconnect();
       return 0;
     }
-    for (const step of steps) {
-      if (!step.sql.trim().startsWith('--')) {
-        if (flags.verbose && !flags.quiet) {
-          logger.log('info', `EXEC: ${step.sql}`);
+    const useTx = !!flags.transaction;
+    if (useTx) await provider.beginTransaction();
+    try {
+      for (const step of steps) {
+        if (!step.sql.trim().startsWith('--')) {
+          if (flags.verbose && !flags.quiet) {
+            logger.log('info', `EXEC: ${step.sql}`);
+          }
+          // eslint-disable-next-line no-await-in-loop
+          await provider.executeNonQuery(step.sql);
         }
-        // eslint-disable-next-line no-await-in-loop
-        await provider.executeNonQuery(step.sql);
       }
+      if (!flags.quiet) {
+        logger.log('info', `Applied ${steps.length} step(s).`);
+      }
+      if (useTx) await provider.commitTransaction();
+    } catch (e) {
+      if (useTx) await provider.rollbackTransaction();
+      throw e;
+    } finally {
+      await provider.disconnect();
     }
-    if (!flags.quiet) {
-      logger.log('info', `Applied ${steps.length} step(s).`);
-    }
-    await provider.disconnect();
     return 0;
   }
 }
