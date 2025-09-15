@@ -1057,7 +1057,7 @@ npx ts-linq help
 - rollback [--to <version>] — откатить миграции (по явным классам)
 - generate migration <Name> — сгенерировать класс миграции в `migrations/`
 - generate entity <Name> [--dir src/entities] [--pk id|uuid] [--columns a:string,b:number?] — сгенерировать сущность
-- seed [--file seeds.sql|.ts] [--yes] [--dry-run] — выполнить сиды (`.ts` экспортирует `async run(provider)`)
+- seed [--file seeds.sql|.ts] [--yes] [--dry-run] [--transaction] — выполнить сиды атомарно (для .sql/.ts); для .sql поддерживается JSON-вывод `{ ok, file, statements }`
 - verify [--json] [--dry-run] [--db] — проверка контрольных сумм (файл‑базлайн или таблица `__migration_checksums`)
 
 Примеры:

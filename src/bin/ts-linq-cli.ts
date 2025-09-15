@@ -86,6 +86,7 @@ Commands:
   migrate [--dry-run]               Apply schema diff (temporary shortcut)
   apply-diff                        Same as migrate (temporary)
   seed [--file <path>]              Apply SQL/TS seed (TS: export async function run(provider))
+       [--transaction]              Wrap seed execution in a DB transaction
   config print                      Print effective configuration
   rollback [--to <version>]         Rollback applied migrations down to target version
   verify [--json] [--dry-run]       Verify migrations checksum baseline
@@ -116,6 +117,7 @@ Examples:
   ts-linq diff --json --details --provider=sqlite --conn=:memory:
   ts-linq diff --create --name=InitSchema
   ts-linq migrate --dry-run
+  ts-linq seed --file seeds.sql --transaction --json
   ts-linq verify --json --dry-run
 `;
   console.log(usage);
