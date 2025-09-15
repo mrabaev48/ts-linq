@@ -54,7 +54,14 @@ export class SeedCommand implements Command {
         return 2;
       }
       if (!flags.dryRun) {
-        await Promise.resolve((runner as (p: unknown) => Promise<void>)(provider));
+        if (flags.transaction) await provider.beginTransaction();
+        try {
+          await Promise.resolve((runner as (p: unknown) => Promise<void>)(provider));
+          if (flags.transaction) await provider.commitTransaction();
+        } catch (e) {
+          if (flags.transaction) await provider.rollbackTransaction();
+          throw e;
+        }
       } else if (!flags.quiet) {
         logger.log('info', `Dry-run: would execute seed script ${sqlFile}`);
       }
@@ -65,14 +72,26 @@ export class SeedCommand implements Command {
         .map((stmt) => stmt.trim())
         .filter(Boolean);
       if (!flags.dryRun) {
-        for (const statement of statements) {
-          // eslint-disable-next-line no-await-in-loop
-          await provider.executeNonQuery(statement);
+        if (flags.transaction) await provider.beginTransaction();
+        try {
+          for (const statement of statements) {
+            // eslint-disable-next-line no-await-in-loop
+            await provider.executeNonQuery(statement);
+          }
+          if (flags.transaction) await provider.commitTransaction();
+        } catch (e) {
+          if (flags.transaction) await provider.rollbackTransaction();
+          throw e;
         }
       } else if (!flags.quiet) {
         logger.log('info', `Dry-run: would execute ${statements.length} statements from ${sqlFile}`);
       }
-      if (!flags?.quiet) logger.log('info', `Applied ${statements.length} seed statements from ${sqlFile}`);
+      if (flags.json) {
+        // eslint-disable-next-line no-console
+        console.log(JSON.stringify({ ok: true, file: sqlFile, statements: statements.length }, null, 2));
+      } else if (!flags?.quiet) {
+        logger.log('info', `Applied ${statements.length} seed statements from ${sqlFile}`);
+      }
     }
     await provider.disconnect();
     return 0;

@@ -16,6 +16,7 @@ export interface Flags {
   yes?: boolean;
   db?: boolean;
   file?: string;
+  transaction?: boolean;
   // generator options
   dir?: string;
   pk?: string;
