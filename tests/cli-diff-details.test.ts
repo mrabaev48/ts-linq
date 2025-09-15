@@ -31,16 +31,19 @@ describe('CLI diff --details', () => {
     };
     fs.writeFileSync(path.join(tmp, 'tslinq.config.json'), JSON.stringify(cfg), 'utf8');
 
-    const metaCjs = path
-      .join(__dirname, '..', 'dist', 'cjs', 'metadata', 'MetadataStorage.js')
+    const metaSrc = path
+      .join(__dirname, '..', 'src', 'metadata', 'MetadataStorage.ts')
       .replace(/\\/g, '/');
     const bootstrapJs = `
-const { MetadataStorage } = require('${metaCjs}');
+const { MetadataStorage } = require('${metaSrc}');
 class DiffUser {}
 MetadataStorage.addEntity(DiffUser, 'DiffUser');
 MetadataStorage.addColumn(DiffUser, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, defaultValue: undefined, isGenerated: true, length: undefined, precision: undefined, scale: undefined, isVersion: false });
 MetadataStorage.addPrimaryKey(DiffUser, 'id');
 MetadataStorage.addColumn(DiffUser, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false, defaultValue: undefined, isGenerated: false, length: undefined, precision: undefined, scale: undefined, isVersion: false });
+// add unique and check
+MetadataStorage.addIndex(DiffUser, { name: 'UQ_DiffUser_name', columns: ['name'], unique: true });
+MetadataStorage.addCheck(DiffUser, { name: 'CK_name_len', expression: 'length(name) > 0' });
 `;
     fs.writeFileSync(path.join(tmp, 'bootstrap.js'), bootstrapJs, 'utf8');
 
@@ -48,6 +51,9 @@ MetadataStorage.addColumn(DiffUser, { propertyName: 'name', columnName: 'name', 
     expect(r.code).toBe(0);
     const out = JSON.parse(r.stdout);
     expect(Array.isArray(out.steps)).toBe(true);
+    // Ensure steps include UNIQUE or CHECK related entries
+    const stepsStr = out.steps.join('\n');
+    expect(stepsStr).toMatch(/UNIQUE|CHECK|CREATE UNIQUE INDEX/);
     expect(out).toHaveProperty('details');
     expect(out.details).toHaveProperty('expected');
     expect(Array.isArray(out.details.expected.tables)).toBe(true);
