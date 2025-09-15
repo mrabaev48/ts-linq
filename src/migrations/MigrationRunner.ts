@@ -38,6 +38,14 @@ export class MigrationRunner {
             )
         `;
     await this._provider.executeNonQuery(sql);
+    const sql2 = `
+            CREATE TABLE IF NOT EXISTS __migration_checksums (
+                file TEXT PRIMARY KEY,
+                checksum TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        `;
+    await this._provider.executeNonQuery(sql2);
   }
 
   /** Read the list of applied migrations from the database. */

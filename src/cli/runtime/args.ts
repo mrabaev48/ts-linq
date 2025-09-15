@@ -38,6 +38,9 @@ export function parseArgs(argv: string[]): { cmd?: string; rest: string[]; flags
         case 'quiet':
           flags.quiet = true;
           break;
+        case 'yes':
+          flags.yes = true;
+          break;
         case 'out':
           flags.out = v;
           break;
@@ -47,6 +50,9 @@ export function parseArgs(argv: string[]): { cmd?: string; rest: string[]; flags
         case 'name':
           flags.name = v;
           break;
+        case 'db':
+          flags.db = true;
+          break;
         case 'dir':
           flags.dir = v;
           break;
@@ -55,6 +61,9 @@ export function parseArgs(argv: string[]): { cmd?: string; rest: string[]; flags
           break;
         case 'columns':
           flags.columns = v;
+          break;
+        case 'file':
+          flags.file = v;
           break;
         case 'help':
           cmd = 'help';

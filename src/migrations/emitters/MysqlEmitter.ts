@@ -3,6 +3,10 @@ import { BaseEmitter } from './BaseEmitter';
 export class MysqlEmitter extends BaseEmitter {
   public override q(id: string): string { return '`' + id + '`'; }
   public override dropIndex(table: string, name: string): string { return `DROP INDEX ${this.q(name)} ON ${this.q(table)}`; }
+  public override createTable(td: import('../DiffTypes').TableDiff): string {
+    // MySQL: BaseEmitter's CREATE TABLE with CONSTRAINT clauses is valid
+    return super.createTable(td);
+  }
   public override mapType(t: string): string {
     const up = String(t || '').toUpperCase();
     if (up === 'INTEGER' || up === 'NUMBER') return 'INT';

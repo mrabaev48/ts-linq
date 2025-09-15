@@ -59,10 +59,7 @@ class MigrationSqlBuilder {
     this.up.push(this.emitter.createTable(tableDiff));
     if (tableDiff.create && tableDiff.create.indexes && tableDiff.create.indexes.length > 0) {
       for (const indexDef of tableDiff.create.indexes) {
-        const uniqueSql = indexDef.unique ? 'UNIQUE ' : '';
-        const columnsSql = indexDef.columns.map((columnName) => this.emitter.q(columnName)).join(', ');
-        const indexName = this.emitter.q(indexDef.name);
-        this.up.push(`CREATE ${uniqueSql}INDEX ${indexName} ON ${this.emitter.q(tableDiff.create.name)} (${columnsSql})`);
+        this.up.push(this.emitter.createIndex(tableDiff.create.name, indexDef));
       }
     }
     if (tableDiff.create)

@@ -1,7 +1,7 @@
 import type { DatabaseProvider } from '../providers/DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SQLiteSchemaInspector, PostgresSchemaInspector, MysqlSchemaInspector, MssqlSchemaInspector } from './SchemaInspector';
-import type { SchemaSnapshot, TableSnapshot, ColumnDef, ForeignKeyDef } from './DiffTypes';
+import type { SchemaSnapshot, TableSnapshot, ColumnDef, ForeignKeyDef, UniqueConstraintDef } from './DiffTypes';
 import { compareSchemas } from './DiffTypes';
 
 export interface MigrationStep {
@@ -154,8 +154,11 @@ export class DiffMigrationGenerator {
             (pk) =>
               entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
           );
-          const fks = expectedByName.get(tableDiff.table)?.foreignKeys || [];
-          steps.push({ sql: this.buildCreateTableSql(tempTable, cols, pkCols, providerId === 'sqlite' ? fks : undefined) });
+          const expected = expectedByName.get(tableDiff.table);
+          const fks = expected?.foreignKeys || [];
+          const checks = expected?.checkConstraints || [];
+          // For SQLite rebuild: inline FKs and CHECKs into CREATE TABLE; unique constraints will be emitted as indexes after rename
+          steps.push({ sql: this.buildCreateTableSql(tempTable, cols, pkCols, providerId === 'sqlite' ? fks : undefined, undefined, providerId === 'sqlite' ? checks : undefined) });
           const info2 = await sqliteInspector.getTableInfo(tableDiff.table);
           const commonColumns = info2.columns
             .map((c) => c.name)
@@ -170,6 +173,18 @@ export class DiffMigrationGenerator {
           }
           steps.push({ sql: `DROP TABLE ${tableDiff.table}` });
           steps.push({ sql: `ALTER TABLE ${tempTable} RENAME TO ${tableDiff.table}` });
+          // Recreate indexes and unique indexes for SQLite after rename
+          if (providerId === 'sqlite' && expected) {
+            for (const uq of expected.uniqueConstraints || []) {
+              const idxName = uq.name || `UQ_${expected.name}_${uq.columns.join('_')}`;
+              steps.push({ sql: `CREATE UNIQUE INDEX IF NOT EXISTS ${idxName} ON ${expected.name} (${uq.columns.join(', ')})` });
+            }
+            for (const idx of expected.indexes || []) {
+              const uniq = idx.unique ? 'UNIQUE ' : '';
+              const target = idx.expression ? idx.expression : `(${idx.columns.join(', ')})`;
+              steps.push({ sql: `CREATE ${uniq}INDEX IF NOT EXISTS ${idx.name} ON ${expected.name} ${target}` });
+            }
+          }
           continue;
         }
         // Only adds
@@ -355,7 +370,14 @@ export class DiffMigrationGenerator {
     return { expected, actual: { tables: actualTables } };
   }
 
-  private buildCreateTableSql(table: string, columns: ColumnDef[], primaryKeys: string[], inlineFks?: ForeignKeyDef[]): string {
+  private buildCreateTableSql(
+    table: string,
+    columns: ColumnDef[],
+    primaryKeys: string[],
+    inlineFks?: ForeignKeyDef[],
+    uniques?: UniqueConstraintDef[],
+    checks?: Array<{ name?: string; expression: string }>
+  ): string {
     const colDefs = columns.map((c) => {
       const type = this.decorateTypeWithModifiers(
         this.mapTypeByDialect(c.type, this.provider.providerLabel || 'unknown'),
@@ -369,6 +391,18 @@ export class DiffMigrationGenerator {
     });
     if (Array.isArray(primaryKeys) && primaryKeys.length > 0) {
       colDefs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`);
+    }
+    if (uniques && uniques.length > 0) {
+      for (const uq of uniques) {
+        const name = uq.name ? `CONSTRAINT ${uq.name} ` : '';
+        colDefs.push(`${name}UNIQUE (${uq.columns.join(', ')})`);
+      }
+    }
+    if (checks && checks.length > 0) {
+      for (const ck of checks) {
+        const name = ck.name ? `CONSTRAINT ${ck.name} ` : '';
+        colDefs.push(`${name}CHECK (${ck.expression})`);
+      }
     }
     if (inlineFks && inlineFks.length > 0) {
       for (const fk of inlineFks) {

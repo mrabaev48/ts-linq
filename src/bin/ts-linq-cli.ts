@@ -85,10 +85,11 @@ Commands:
   generate entity <Name>            Create an entity class in src/entities/ (flags: --dir, --pk, --columns)
   migrate [--dry-run]               Apply schema diff (temporary shortcut)
   apply-diff                        Same as migrate (temporary)
-  seed [--file <path>]              Apply SQL seed file
+  seed [--file <path>]              Apply SQL/TS seed (TS: export async function run(provider))
   config print                      Print effective configuration
   rollback [--to <version>]         Rollback applied migrations down to target version
   verify [--json] [--dry-run]       Verify migrations checksum baseline
+         [--db]                     Verify/store checksums in DB table (__migration_checksums)
 
 Global options:
   --provider=<sqlite|postgresql|mysql|mssql>
@@ -96,6 +97,7 @@ Global options:
   --json    Output JSON when supported
   --details Include expected/actual/diff snapshots in JSON (for diff)
   --dry-run Do not execute, only print SQL where applicable
+  --yes     Suppress confirmation/warnings for destructive operations (seed)
   --verbose Verbose logging
   --quiet   Suppress non-error output
 
@@ -529,7 +531,12 @@ async function main() {
         // eslint-disable-next-line no-console
         console.error(err);
       }
-      process.exitCode = 1;
+      const msg = ((err as Error)?.message || String(err)).toLowerCase();
+      if (msg.includes('failed to acquire migration lock')) {
+        process.exitCode = 4;
+      } else {
+        process.exitCode = 1;
+      }
     }
   };
   switch (command) {

@@ -28,10 +28,14 @@ export class SeedCommand implements Command {
     const fsp = new NodeFsPort();
     const logger = new ConsoleLogger();
     const effective = makeEffectiveConfig(flags || {});
+    if (!flags.yes && !flags.dryRun && !flags.quiet) {
+      // eslint-disable-next-line no-console
+      console.warn('Seeding may modify data. Pass --yes to suppress this warning.');
+    }
     const provider = createProvider(effective.provider, effective.connectionString);
     await provider.connect();
     const defaultSeed = path.resolve(effective.seedsDir, 'seeds.sql');
-    const fileArg = rest[0];
+    const fileArg = flags.file || rest[0];
     const sqlFile = fileArg ? path.resolve(process.cwd(), fileArg) : defaultSeed;
     if (!fsp.exists(sqlFile)) {
       // eslint-disable-next-line no-console
@@ -39,16 +43,37 @@ export class SeedCommand implements Command {
       await provider.disconnect();
       return 2;
     }
-    const text = fsp.readText(sqlFile);
-    const statements = text
-      .split(';')
-      .map((stmt) => stmt.trim())
-      .filter(Boolean);
-    for (const statement of statements) {
-      // eslint-disable-next-line no-await-in-loop
-      await provider.executeNonQuery(statement);
+    if (sqlFile.endsWith('.ts') || sqlFile.endsWith('.js')) {
+      // Dynamic import for TS/JS seed script
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const mod = require(sqlFile);
+      const runner: unknown = mod.run || mod.default;
+      if (typeof runner !== 'function') {
+        console.error(`Seed script must export async function run(provider): ${sqlFile}`);
+        await provider.disconnect();
+        return 2;
+      }
+      if (!flags.dryRun) {
+        await Promise.resolve((runner as (p: unknown) => Promise<void>)(provider));
+      } else if (!flags.quiet) {
+        logger.log('info', `Dry-run: would execute seed script ${sqlFile}`);
+      }
+    } else {
+      const text = fsp.readText(sqlFile);
+      const statements = text
+        .split(';')
+        .map((stmt) => stmt.trim())
+        .filter(Boolean);
+      if (!flags.dryRun) {
+        for (const statement of statements) {
+          // eslint-disable-next-line no-await-in-loop
+          await provider.executeNonQuery(statement);
+        }
+      } else if (!flags.quiet) {
+        logger.log('info', `Dry-run: would execute ${statements.length} statements from ${sqlFile}`);
+      }
+      if (!flags?.quiet) logger.log('info', `Applied ${statements.length} seed statements from ${sqlFile}`);
     }
-    if (!flags?.quiet) logger.log('info', `Applied ${statements.length} seed statements from ${sqlFile}`);
     await provider.disconnect();
     return 0;
   }

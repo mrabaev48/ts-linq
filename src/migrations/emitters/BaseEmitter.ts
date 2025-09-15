@@ -43,9 +43,25 @@ export class BaseEmitter implements DialectSqlEmitter {
   }
   public createTable(td: TableDiff): string {
     const create = td.create!;
-    const cols = create.columns.map((c) => `${this.q(c.name)} ${this.mapType(c.type)}${c.nullable ? '' : ' NOT NULL'}${c.defaultValue !== undefined ? ' DEFAULT ' + this.formatValue(c.defaultValue) : ''}`);
+    const defs: string[] = [];
+    defs.push(
+      ...create.columns.map((c) => `${this.q(c.name)} ${this.mapType(c.type)}${c.nullable ? '' : ' NOT NULL'}${c.defaultValue !== undefined ? ' DEFAULT ' + this.formatValue(c.defaultValue) : ''}`)
+    );
     if (create.primaryKeys && create.primaryKeys.length > 0)
-      cols.push(`PRIMARY KEY (${create.primaryKeys.map((pk) => this.q(pk)).join(', ')})`);
+      defs.push(`PRIMARY KEY (${create.primaryKeys.map((pk) => this.q(pk)).join(', ')})`);
+    if (create.uniqueConstraints && create.uniqueConstraints.length > 0) {
+      for (const uq of create.uniqueConstraints) {
+        const name = uq.name ? `CONSTRAINT ${this.q(uq.name)} ` : '';
+        const cols = uq.columns.map((c) => this.q(c)).join(', ');
+        defs.push(`${name}UNIQUE (${cols})`);
+      }
+    }
+    if (create.checkConstraints && create.checkConstraints.length > 0) {
+      for (const ck of create.checkConstraints) {
+        const name = ck.name ? `CONSTRAINT ${this.q(ck.name)} ` : '';
+        defs.push(`${name}CHECK (${ck.expression})`);
+      }
+    }
     if (create.foreignKeys && create.foreignKeys.length > 0) {
       for (const fk of create.foreignKeys) {
         const name = fk.name ? `CONSTRAINT ${this.q(fk.name)} ` : '';
@@ -53,10 +69,10 @@ export class BaseEmitter implements DialectSqlEmitter {
         const refCols = fk.refColumns.map((c) => this.q(c)).join(', ');
         const onDel = fk.onDelete ? ` ON DELETE ${fk.onDelete}` : '';
         const onUpd = fk.onUpdate ? ` ON UPDATE ${fk.onUpdate}` : '';
-        cols.push(`${name}FOREIGN KEY (${colsList}) REFERENCES ${this.q(fk.refTable)} (${refCols})${onDel}${onUpd}`);
+        defs.push(`${name}FOREIGN KEY (${colsList}) REFERENCES ${this.q(fk.refTable)} (${refCols})${onDel}${onUpd}`);
       }
     }
-    return `CREATE TABLE IF NOT EXISTS ${this.q(create.name)} (${cols.join(', ')})`;
+    return `CREATE TABLE IF NOT EXISTS ${this.q(create.name)} (${defs.join(', ')})`;
   }
   public dropTable(name: string): string {
     return `DROP TABLE ${this.q(name)}`;

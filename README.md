@@ -1031,25 +1031,62 @@ npm run docs
 - Advanced include & joins: `docs/guides/advanced-include-join.md`
 - Test matrix: `docs/guides/test-matrix.md`
 
-### CLI (experimental)
+### CLI
 
-Минимальная CLI-утилита для SQLite.
+Полноценная CLI-утилита для работы со схемой и миграциями (SQLite/PostgreSQL/MySQL/MSSQL).
+
+Запуск из исходников:
 
 ```bash
-# Печать SQL-диффа текущей схемы (по умолчанию :memory:)
-npx ts-node src/bin/ts-linq-cli.ts
-
-# Применить SQL-дифф к БД
-SQLITE_URL="file:./dev.sqlite" npx ts-node src/bin/ts-linq-cli.ts migrate
-
-# Сгенерировать файл миграции в ./migrations
-npx ts-node src/bin/ts-linq-cli.ts generate AddNewTable
-
-# Применить сиды из файла (по умолчанию ./seeds.sql)
-SQLITE_URL="file:./dev.sqlite" npx ts-node src/bin/ts-linq-cli.ts seed ./seeds.sql
+npx ts-node src/bin/ts-linq-cli.ts help
 ```
 
-Примечания:
+Или из пакета (после сборки):
 
-- Переменная окружения `SQLITE_URL` указывает строку подключения. По умолчанию `:memory:`.
-- Команда `rollback` для дифф-подхода не поддерживается: используйте сгенерированные миграции с явными `down()` шагами.
+```bash
+npx ts-linq help
+```
+
+Основные команды:
+
+- init — создаёт `tslinq.config.json` и папки `migrations/`, `seeds/`
+- config print — печатает effective‑config
+- status [--json] — история миграций
+- diff [--json] [--details] [--out file] [--create] [--name Class] — сравнение метадаты и БД, вывод SQL/скофолд
+- migrate [--to <version>] [--step N] [--dry-run] — применить миграции
+- rollback [--to <version>] — откатить миграции (по явным классам)
+- generate migration <Name> — сгенерировать класс миграции в `migrations/`
+- generate entity <Name> [--dir src/entities] [--pk id|uuid] [--columns a:string,b:number?] — сгенерировать сущность
+- seed [--file seeds.sql|.ts] [--yes] [--dry-run] — выполнить сиды (`.ts` экспортирует `async run(provider)`)
+- verify [--json] [--dry-run] [--db] — проверка контрольных сумм (файл‑базлайн или таблица `__migration_checksums`)
+
+Примеры:
+
+```bash
+# Инициализация проекта
+npx ts-node src/bin/ts-linq-cli.ts init
+
+# Дифф с подробностями (JSON: expected/actual/diff)
+npx ts-node src/bin/ts-linq-cli.ts diff --json --details --provider=sqlite --conn=:memory:
+
+# Скофолд миграции из диффа
+npx ts-node src/bin/ts-linq-cli.ts diff --create --name=InitSchema
+
+# Применить миграции (dry‑run)
+npx ts-node src/bin/ts-linq-cli.ts migrate --dry-run
+
+# Сиды из TS-скрипта
+npx ts-node src/bin/ts-linq-cli.ts seed ./seeds/seeds.ts --yes
+
+# Verify с базой checksum'ов
+npx ts-node src/bin/ts-linq-cli.ts verify --db --json
+```
+
+Флаги:
+
+- Глобальные: `--provider`, `--conn`, `--cwd`, `--json`, `--dry-run`, `--verbose`, `--quiet`, `--yes`
+- diff: `--details`, `--out`, `--create`, `--name`
+- verify: `--db`
+- generate entity: `--dir`, `--pk`, `--columns`
+
+Архитектура CLI: см. `CLI_ARCHITECTURE.md` (Command‑pattern, порты/адаптеры, DI, тестируемость).

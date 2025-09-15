@@ -13,6 +13,9 @@ export interface Flags {
   quiet?: boolean;
   out?: string;
   create?: boolean;
+  yes?: boolean;
+  db?: boolean;
+  file?: string;
   // generator options
   dir?: string;
   pk?: string;
