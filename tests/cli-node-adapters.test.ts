@@ -1,6 +1,11 @@
 import * as os from 'os';
 import * as path from 'path';
-import { ConsoleLogger, NodeChecksumPort, NodeFsPort, NodeProcessPort } from '../src/cli/runtime/nodeAdapters';
+import {
+  ConsoleLogger,
+  NodeChecksumPort,
+  NodeFsPort,
+  NodeProcessPort
+} from '../src/cli/runtime/nodeAdapters';
 
 describe('Node adapters', () => {
   test('FsPort read/write/mkdirp', () => {
@@ -37,5 +42,3 @@ describe('Node adapters', () => {
     logger.log('error', 'err');
   });
 });
-
-

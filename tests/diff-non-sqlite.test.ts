@@ -61,5 +61,3 @@ describe('Diff generator for non-SQLite providers', () => {
     expect(steps.some((s) => /CREATE TABLE IF NOT EXISTS T/.test(s.sql))).toBe(true);
   });
 });
-
-

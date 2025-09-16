@@ -25,7 +25,8 @@ export class VerifyCommand implements Command {
     const checks = new NodeChecksumPort();
     if (flags.db) {
       // DB-based checksum store: compute checksums for all files in migrationsDir
-      const files = fsp.list(effective.migrationsDir)
+      const files = fsp
+        .list(effective.migrationsDir)
         .filter((f) => /\.(ts|js|sql)$/i.test(f))
         .map((f) => path.resolve(effective.migrationsDir, f));
       const entries = files.map((file: string) => ({ file, checksum: checks.sha256(file) }));
@@ -46,18 +47,30 @@ export class VerifyCommand implements Command {
       })();
       await provider.connect();
       // ensure table
-      await provider.executeNonQuery(`CREATE TABLE IF NOT EXISTS __migration_checksums (file TEXT PRIMARY KEY, checksum TEXT NOT NULL, updated_at TEXT NOT NULL)`);
+      await provider.executeNonQuery(
+        `CREATE TABLE IF NOT EXISTS __migration_checksums (file TEXT PRIMARY KEY, checksum TEXT NOT NULL, updated_at TEXT NOT NULL)`
+      );
       // read existing
       const rows = await provider.executeQuery('SELECT file, checksum FROM __migration_checksums');
-      const existing = new Map<string, string>((rows as Array<{ file: string; checksum: string }>).map((r) => [r.file, r.checksum] as const));
+      const existing = new Map<string, string>(
+        (rows as Array<{ file: string; checksum: string }>).map(
+          (r) => [r.file, r.checksum] as const
+        )
+      );
       const diffs: Array<{ file: string; stored?: string; current: string }> = [];
       for (const e of entries) {
         const prev = existing.get(e.file);
         if (!prev) {
-          await provider.executeNonQuery('INSERT OR REPLACE INTO __migration_checksums(file, checksum, updated_at) VALUES (?, ?, ?)', [e.file, e.checksum, new Date().toISOString()]);
+          await provider.executeNonQuery(
+            'INSERT OR REPLACE INTO __migration_checksums(file, checksum, updated_at) VALUES (?, ?, ?)',
+            [e.file, e.checksum, new Date().toISOString()]
+          );
         } else if (prev !== e.checksum) {
           diffs.push({ file: e.file, stored: prev, current: e.checksum });
-          await provider.executeNonQuery('UPDATE __migration_checksums SET checksum=?, updated_at=? WHERE file=?', [e.checksum, new Date().toISOString(), e.file]);
+          await provider.executeNonQuery(
+            'UPDATE __migration_checksums SET checksum=?, updated_at=? WHERE file=?',
+            [e.checksum, new Date().toISOString(), e.file]
+          );
         }
       }
       await provider.disconnect();
@@ -87,7 +100,9 @@ export class VerifyCommand implements Command {
       if (flags.dryRun) {
         if (flags.json) {
           // eslint-disable-next-line no-console
-          console.log(JSON.stringify({ ok: true, action: 'would_create_baseline', checksum }, null, 2));
+          console.log(
+            JSON.stringify({ ok: true, action: 'would_create_baseline', checksum }, null, 2)
+          );
         } else if (!flags.quiet) {
           // eslint-disable-next-line no-console
           console.log('Baseline would be created');
@@ -125,5 +140,3 @@ export class VerifyCommand implements Command {
     return 3;
   }
 }
-
-

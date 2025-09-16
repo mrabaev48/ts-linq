@@ -42,11 +42,15 @@ async function tryLoadMigrations(
     }
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require(p) as
-      | { default?: unknown; loadMigrations?: (provider: unknown) => Promise<Migration[] | Migration[]> }
+      | {
+          default?: unknown;
+          loadMigrations?: (provider: unknown) => Promise<Migration[] | Migration[]>;
+        }
       | undefined;
     if (!mod) continue;
-    const loader = (mod as { loadMigrations?: (provider: unknown) => Promise<Migration[] | Migration[]> })
-      .loadMigrations;
+    const loader = (
+      mod as { loadMigrations?: (provider: unknown) => Promise<Migration[] | Migration[]> }
+    ).loadMigrations;
     if (typeof loader === 'function') {
       const res = await Promise.resolve(loader(provider));
       return Array.isArray(res) ? (res as Migration[]) : undefined;
@@ -141,5 +145,3 @@ export class MigrateCommand implements Command {
     return 0;
   }
 }
-
-

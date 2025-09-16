@@ -11,5 +11,3 @@ export class CommandRegistry {
     return this.commands[name];
   }
 }
-
-

@@ -8,9 +8,13 @@ describe('Dialect emitters', () => {
     expect(e.alterType('t', 'c', 'INTEGER')).toBe('ALTER TABLE "t" ALTER COLUMN "c" TYPE INTEGER');
     expect(e.alterNull('t', 'c', true)).toBe('ALTER TABLE "t" ALTER COLUMN "c" DROP NOT NULL');
     // unique/check
-    expect(e.createUniqueConstraint('t', { columns: ['c'] })).toBe('ALTER TABLE "t" ADD CONSTRAINT "UQ_t_c" UNIQUE ("c")');
+    expect(e.createUniqueConstraint('t', { columns: ['c'] })).toBe(
+      'ALTER TABLE "t" ADD CONSTRAINT "UQ_t_c" UNIQUE ("c")'
+    );
     expect(e.dropUniqueConstraint('t', 'UQ')).toBe('ALTER TABLE "t" DROP CONSTRAINT "UQ"');
-    expect(e.addCheckConstraint('t', { expression: 'c > 0' })).toBe('ALTER TABLE "t" ADD CHECK (c > 0)');
+    expect(e.addCheckConstraint('t', { expression: 'c > 0' })).toBe(
+      'ALTER TABLE "t" ADD CHECK (c > 0)'
+    );
     expect(e.dropCheckConstraint('t', 'CK')).toBe('ALTER TABLE "t" DROP CONSTRAINT "CK"');
   });
 
@@ -23,7 +27,9 @@ describe('Dialect emitters', () => {
     expect(add).toMatch('ALTER TABLE `t` ADD COLUMN `c` INT NOT NULL DEFAULT 1');
     expect(e.dropColumn('t', 'c')).toBe('ALTER TABLE `t` DROP COLUMN `c`');
     // unique/check
-    expect(e.createUniqueConstraint('t', { columns: ['c'] })).toBe('ALTER TABLE `t` ADD CONSTRAINT `UQ_t_c` UNIQUE (`c`)');
+    expect(e.createUniqueConstraint('t', { columns: ['c'] })).toBe(
+      'ALTER TABLE `t` ADD CONSTRAINT `UQ_t_c` UNIQUE (`c`)'
+    );
     expect(e.dropUniqueConstraint('t', 'UQ')).toBe('ALTER TABLE `t` DROP INDEX `UQ`');
   });
 
@@ -36,9 +42,13 @@ describe('Dialect emitters', () => {
     expect(add).toMatch('ALTER TABLE [t] ADD [c] INT NOT NULL DEFAULT 1');
     expect(e.dropColumn('t', 'c')).toBe('ALTER TABLE [t] DROP COLUMN [c]');
     // unique/check
-    expect(e.createUniqueConstraint('t', { columns: ['c'] })).toBe('ALTER TABLE [t] ADD CONSTRAINT [UQ_t_c] UNIQUE ([c])');
+    expect(e.createUniqueConstraint('t', { columns: ['c'] })).toBe(
+      'ALTER TABLE [t] ADD CONSTRAINT [UQ_t_c] UNIQUE ([c])'
+    );
     expect(e.dropUniqueConstraint('t', 'UQ')).toBe('ALTER TABLE [t] DROP CONSTRAINT [UQ]');
-    expect(e.addCheckConstraint('t', { expression: 'c > 0' })).toBe('ALTER TABLE [t] ADD CHECK (c > 0)');
+    expect(e.addCheckConstraint('t', { expression: 'c > 0' })).toBe(
+      'ALTER TABLE [t] ADD CHECK (c > 0)'
+    );
     expect(e.dropCheckConstraint('t', 'CK')).toBe('ALTER TABLE [t] DROP CONSTRAINT [CK]');
   });
 
@@ -48,5 +58,3 @@ describe('Dialect emitters', () => {
     expect(e.alterType('t', 'c', 'INTEGER')).toMatch('requires rebuild');
   });
 });
-
-

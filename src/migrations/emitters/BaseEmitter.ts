@@ -3,8 +3,12 @@ import type { DialectSqlEmitter } from './types';
 import type { IndexDef, ForeignKeyDef } from '../DiffTypes';
 
 export class BaseEmitter implements DialectSqlEmitter {
-  public q(id: string): string { return id; }
-  public dropIndex(_table: string, name: string): string { return `DROP INDEX ${this.q(name)}`; }
+  public q(id: string): string {
+    return id;
+  }
+  public dropIndex(_table: string, name: string): string {
+    return `DROP INDEX ${this.q(name)}`;
+  }
   public mapType(t: string): string {
     const up = String(t || '').toUpperCase();
     if (up === 'INTEGER' || up === 'NUMBER') return 'INTEGER';
@@ -14,12 +18,28 @@ export class BaseEmitter implements DialectSqlEmitter {
     if (up === 'REAL' || up === 'FLOAT' || up === 'DOUBLE') return 'REAL';
     return up;
   }
-  public mapTypeWithModifiers(c: { type: string; length?: number; precision?: number; scale?: number }): string {
+  public mapTypeWithModifiers(c: {
+    type: string;
+    length?: number;
+    precision?: number;
+    scale?: number;
+  }): string {
     const base = this.mapType(c.type);
-    if (c.precision !== undefined && c.scale !== undefined && (base === 'REAL' || base === 'DECIMAL' || base === 'NUMERIC' || base === 'FLOAT' || base === 'DOUBLE')) {
+    if (
+      c.precision !== undefined &&
+      c.scale !== undefined &&
+      (base === 'REAL' ||
+        base === 'DECIMAL' ||
+        base === 'NUMERIC' ||
+        base === 'FLOAT' ||
+        base === 'DOUBLE')
+    ) {
       return `${base}(${c.precision},${c.scale})`;
     }
-    if (c.length !== undefined && (base === 'TEXT' || base === 'STRING' || base === 'VARCHAR' || base.startsWith('NVARCHAR'))) {
+    if (
+      c.length !== undefined &&
+      (base === 'TEXT' || base === 'STRING' || base === 'VARCHAR' || base.startsWith('NVARCHAR'))
+    ) {
       return `${base}(${c.length})`;
     }
     return base;
@@ -45,7 +65,10 @@ export class BaseEmitter implements DialectSqlEmitter {
     const create = td.create!;
     const defs: string[] = [];
     defs.push(
-      ...create.columns.map((c) => `${this.q(c.name)} ${this.mapType(c.type)}${c.nullable ? '' : ' NOT NULL'}${c.defaultValue !== undefined ? ' DEFAULT ' + this.formatValue(c.defaultValue) : ''}`)
+      ...create.columns.map(
+        (c) =>
+          `${this.q(c.name)} ${this.mapType(c.type)}${c.nullable ? '' : ' NOT NULL'}${c.defaultValue !== undefined ? ' DEFAULT ' + this.formatValue(c.defaultValue) : ''}`
+      )
     );
     if (create.primaryKeys && create.primaryKeys.length > 0)
       defs.push(`PRIMARY KEY (${create.primaryKeys.map((pk) => this.q(pk)).join(', ')})`);
@@ -69,7 +92,9 @@ export class BaseEmitter implements DialectSqlEmitter {
         const refCols = fk.refColumns.map((c) => this.q(c)).join(', ');
         const onDel = fk.onDelete ? ` ON DELETE ${fk.onDelete}` : '';
         const onUpd = fk.onUpdate ? ` ON UPDATE ${fk.onUpdate}` : '';
-        defs.push(`${name}FOREIGN KEY (${colsList}) REFERENCES ${this.q(fk.refTable)} (${refCols})${onDel}${onUpd}`);
+        defs.push(
+          `${name}FOREIGN KEY (${colsList}) REFERENCES ${this.q(fk.refTable)} (${refCols})${onDel}${onUpd}`
+        );
       }
     }
     return `CREATE TABLE IF NOT EXISTS ${this.q(create.name)} (${defs.join(', ')})`;
@@ -80,7 +105,13 @@ export class BaseEmitter implements DialectSqlEmitter {
   public renameTable(oldName: string, newName: string): string {
     return `ALTER TABLE ${this.q(oldName)} RENAME TO ${this.q(newName)}`;
   }
-  public addColumn(table: string, name: string, type: string, nullable: boolean, def?: unknown): string {
+  public addColumn(
+    table: string,
+    name: string,
+    type: string,
+    nullable: boolean,
+    def?: unknown
+  ): string {
     const tableQ = this.q(table);
     const colQ = this.q(name);
     const typeSql = this.mapType(type);
@@ -123,5 +154,3 @@ export class BaseEmitter implements DialectSqlEmitter {
     return `-- SQLite does not support DROP CHECK ${name} post-create`;
   }
 }
-
-

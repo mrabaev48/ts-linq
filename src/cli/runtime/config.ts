@@ -52,9 +52,12 @@ export function loadUserConfig(cwd: string): { config?: CliConfig; path?: string
 export function makeEffectiveConfig(flags: Flags): EffectiveConfig {
   const cwd = flags.cwd || process.cwd();
   const { config: fileConfig } = loadUserConfig(cwd);
-  const envProvider = (process.env.PROVIDER as ProviderId | undefined);
+  const envProvider = process.env.PROVIDER as ProviderId | undefined;
   const envConn =
-    process.env.POSTGRES_URL || process.env.MYSQL_URL || process.env.MSSQL_URL || process.env.SQLITE_URL;
+    process.env.POSTGRES_URL ||
+    process.env.MYSQL_URL ||
+    process.env.MSSQL_URL ||
+    process.env.SQLITE_URL;
   const provider: ProviderId = flags.provider || fileConfig?.provider || envProvider || 'sqlite';
   const cfgConn = resolveConnectionString(fileConfig?.connectionString);
   const connectionString = flags.conn || cfgConn || envConn || ':memory:';
@@ -69,5 +72,3 @@ export function makeEffectiveConfig(flags: Flags): EffectiveConfig {
   const bootstrap = fileConfig?.bootstrap ?? [];
   return { provider, connectionString, migrationsDir, seedsDir, entitiesGlobs, metrics, bootstrap };
 }
-
-

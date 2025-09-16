@@ -1,8 +1,12 @@
 import { BaseEmitter } from './BaseEmitter';
 
 export class MysqlEmitter extends BaseEmitter {
-  public override q(id: string): string { return '`' + id + '`'; }
-  public override dropIndex(table: string, name: string): string { return `DROP INDEX ${this.q(name)} ON ${this.q(table)}`; }
+  public override q(id: string): string {
+    return '`' + id + '`';
+  }
+  public override dropIndex(table: string, name: string): string {
+    return `DROP INDEX ${this.q(name)} ON ${this.q(table)}`;
+  }
   public override createTable(td: import('../DiffTypes').TableDiff): string {
     // MySQL: BaseEmitter's CREATE TABLE with CONSTRAINT clauses is valid
     return super.createTable(td);
@@ -22,7 +26,13 @@ export class MysqlEmitter extends BaseEmitter {
   public override alterType(table: string, name: string, newTypeSql: string): string {
     return `ALTER TABLE ${this.q(table)} MODIFY COLUMN ${this.q(name)} ${newTypeSql}`;
   }
-  public override addColumn(table: string, name: string, type: string, nullable: boolean, def?: unknown): string {
+  public override addColumn(
+    table: string,
+    name: string,
+    type: string,
+    nullable: boolean,
+    def?: unknown
+  ): string {
     const tableQ = this.q(table);
     const colQ = this.q(name);
     const typeSql = this.mapType(type);
@@ -33,12 +43,19 @@ export class MysqlEmitter extends BaseEmitter {
   public override dropColumn(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP COLUMN ${this.q(name)}`;
   }
-  public override dropTable(name: string): string { return `DROP TABLE ${this.q(name)}`; }
+  public override dropTable(name: string): string {
+    return `DROP TABLE ${this.q(name)}`;
+  }
   public override renameTable(oldName: string, newName: string): string {
     return `RENAME TABLE ${this.q(oldName)} TO ${this.q(newName)}`;
   }
-  public override alterDefault(table: string, name: string, newDefault: unknown | undefined): string[] {
-    const set = newDefault !== undefined ? `SET DEFAULT ${this.formatValue(newDefault)}` : 'DROP DEFAULT';
+  public override alterDefault(
+    table: string,
+    name: string,
+    newDefault: unknown | undefined
+  ): string[] {
+    const set =
+      newDefault !== undefined ? `SET DEFAULT ${this.formatValue(newDefault)}` : 'DROP DEFAULT';
     return [`ALTER TABLE ${this.q(table)} ALTER COLUMN ${this.q(name)} ${set}`];
   }
   public override createIndex(table: string, def: import('../DiffTypes').IndexDef): string {
@@ -57,14 +74,20 @@ export class MysqlEmitter extends BaseEmitter {
   public override dropForeignKey(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP FOREIGN KEY ${this.q(name)}`;
   }
-  public override createUniqueConstraint(table: string, def: { name?: string; columns: string[] }): string {
+  public override createUniqueConstraint(
+    table: string,
+    def: { name?: string; columns: string[] }
+  ): string {
     const name = def.name || `UQ_${table}_${def.columns.join('_')}`;
-    return `ALTER TABLE ${this.q(table)} ADD CONSTRAINT ${this.q(name)} UNIQUE (${def.columns.map((c)=>this.q(c)).join(', ')})`;
+    return `ALTER TABLE ${this.q(table)} ADD CONSTRAINT ${this.q(name)} UNIQUE (${def.columns.map((c) => this.q(c)).join(', ')})`;
   }
   public override dropUniqueConstraint(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP INDEX ${this.q(name)}`;
   }
-  public override addCheckConstraint(_table: string, def: { name?: string; expression: string }): string {
+  public override addCheckConstraint(
+    _table: string,
+    def: { name?: string; expression: string }
+  ): string {
     // Best-effort: MySQL historically had limited CHECK support
     const nm = def.name ? `${def.name}: ` : '';
     return `-- MySQL CHECK support is limited: (${nm}${def.expression})`;
@@ -73,5 +96,3 @@ export class MysqlEmitter extends BaseEmitter {
     return `-- MySQL drop CHECK not standardized for older versions: ${name}`;
   }
 }
-
-

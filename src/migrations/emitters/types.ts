@@ -8,7 +8,12 @@ export interface DialectSqlEmitter {
   dropIndex(table: string, name: string): string;
   createIndex(table: string, def: IndexDef): string;
   mapType(t: string): string;
-  mapTypeWithModifiers(c: { type: string; length?: number; precision?: number; scale?: number }): string;
+  mapTypeWithModifiers(c: {
+    type: string;
+    length?: number;
+    precision?: number;
+    scale?: number;
+  }): string;
   alterNull(table: string, name: string, nullable: boolean): string;
   alterType(table: string, name: string, newTypeSql: string): string;
   formatValue(v: unknown): string;
@@ -25,5 +30,3 @@ export interface DialectSqlEmitter {
   addCheckConstraint(table: string, def: { name?: string; expression: string }): string;
   dropCheckConstraint(table: string, name: string): string;
 }
-
-

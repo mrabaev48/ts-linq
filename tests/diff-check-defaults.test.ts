@@ -8,8 +8,19 @@ describe('Diff generator: CHECK constraints and DEFAULTs', () => {
   test('PG: emits ADD CONSTRAINT CHECK and ALTER ADD COLUMN DEFAULT', async () => {
     class T {}
     MetadataStorage.addEntity(T, 'T');
-    MetadataStorage.addColumn(T, { propertyName: 'a', columnName: 'a', type: 'INTEGER', nullable: false, defaultValue: 0 } as any);
-    MetadataStorage.addColumn(T, { propertyName: 'b', columnName: 'b', type: 'INTEGER', nullable: false } as any);
+    MetadataStorage.addColumn(T, {
+      propertyName: 'a',
+      columnName: 'a',
+      type: 'INTEGER',
+      nullable: false,
+      defaultValue: 0
+    } as any);
+    MetadataStorage.addColumn(T, {
+      propertyName: 'b',
+      columnName: 'b',
+      type: 'INTEGER',
+      nullable: false
+    } as any);
 
     const provider = {
       providerLabel: 'postgresql',
@@ -22,5 +33,3 @@ describe('Diff generator: CHECK constraints and DEFAULTs', () => {
     expect(create).toMatch(/a INTEGER NOT NULL DEFAULT 0/);
   });
 });
-
-

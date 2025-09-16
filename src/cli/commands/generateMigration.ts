@@ -7,7 +7,10 @@ export class GenerateMigrationCommand implements Command {
   public async execute(rest: string[], flags: Flags): Promise<number> {
     const rawName = rest[0] === 'migration' ? rest[1] : rest[0];
     const name = (rawName || 'Migration').replace(/\s+/g, '_');
-    const ts = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+    const ts = new Date()
+      .toISOString()
+      .replace(/[-:TZ.]/g, '')
+      .slice(0, 14);
     const cwd = flags.cwd || process.cwd();
     const logger = new ConsoleLogger();
     const fsp = new NodeFsPort();
@@ -34,5 +37,3 @@ export class ${name} extends Migration {
     return 0;
   }
 }
-
-

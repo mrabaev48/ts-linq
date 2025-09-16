@@ -40,5 +40,3 @@ export async function loadEntitiesFromGlobs(globs: string[], cwd: string): Promi
   }
   MetadataStorage.getEntities();
 }
-
-

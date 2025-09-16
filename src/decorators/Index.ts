@@ -33,5 +33,3 @@ export function Index(options: IndexOptions): ClassDecorator {
 export function Unique(options: Omit<IndexOptions, 'unique'>): ClassDecorator {
   return Index({ ...options, unique: true });
 }
-
-

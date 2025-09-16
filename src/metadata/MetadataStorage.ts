@@ -1,4 +1,10 @@
-import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, CheckConstraintMetadata } from '../types';
+import type {
+  EntityMetadata,
+  ColumnMetadata,
+  RelationshipMetadata,
+  IndexMetadata,
+  CheckConstraintMetadata
+} from '../types';
 import { EntityMetadataBuilder } from './EntityMetadata';
 
 /**

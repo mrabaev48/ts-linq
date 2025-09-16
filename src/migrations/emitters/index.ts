@@ -22,5 +22,3 @@ export function createEmitter(dialect: import('./types').Dialect) {
       return new SQ();
   }
 }
-
-

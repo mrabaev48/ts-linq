@@ -1,4 +1,8 @@
-import { PostgresSchemaInspector, MysqlSchemaInspector, MssqlSchemaInspector } from '../src/migrations/SchemaInspector';
+import {
+  PostgresSchemaInspector,
+  MysqlSchemaInspector,
+  MssqlSchemaInspector
+} from '../src/migrations/SchemaInspector';
 import type { DatabaseProvider } from '../src/providers/DatabaseProvider';
 
 describe('Schema Inspectors (PG/MySQL/MSSQL)', () => {
@@ -42,7 +46,7 @@ describe('Schema Inspectors (PG/MySQL/MSSQL)', () => {
             { column_name: 'title', data_type: 'varchar', is_nullable: 'NO', column_default: '' }
           ] as unknown as T[];
         }
-        if (sql.includes('constraint_name=\'PRIMARY\'')) {
+        if (sql.includes("constraint_name='PRIMARY'")) {
           return [{ column_name: 'id' }] as unknown as T[];
         }
         return [] as unknown as T[];
@@ -64,7 +68,12 @@ describe('Schema Inspectors (PG/MySQL/MSSQL)', () => {
         if (sql.includes('INFORMATION_SCHEMA.COLUMNS')) {
           return [
             { COLUMN_NAME: 'id', DATA_TYPE: 'int', IS_NULLABLE: 'NO', COLUMN_DEFAULT: null },
-            { COLUMN_NAME: 'amount', DATA_TYPE: 'decimal', IS_NULLABLE: 'YES', COLUMN_DEFAULT: null }
+            {
+              COLUMN_NAME: 'amount',
+              DATA_TYPE: 'decimal',
+              IS_NULLABLE: 'YES',
+              COLUMN_DEFAULT: null
+            }
           ] as unknown as T[];
         }
         if (sql.includes("CONSTRAINT_TYPE='PRIMARY KEY'")) {
@@ -79,5 +88,3 @@ describe('Schema Inspectors (PG/MySQL/MSSQL)', () => {
     expect(info.columns.find((c) => c.name === 'amount')?.notnull).toBe(false);
   });
 });
-
-

@@ -9,5 +9,3 @@ export function Check(expression: string, name?: string): ClassDecorator {
     MetadataStorage.addCheck(target, { name, expression });
   };
 }
-
-

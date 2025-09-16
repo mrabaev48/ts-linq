@@ -18,7 +18,14 @@ describe('CLI migrate --transaction (diff mode)', () => {
     const cliPath = path.resolve(__dirname, '..', 'src', 'bin', 'ts-linq-cli.ts');
     const r = cp.spawnSync(
       node,
-      ['-r', 'ts-node/register/transpile-only', cliPath, 'migrate', '--transaction', `--cwd=${tmp}`],
+      [
+        '-r',
+        'ts-node/register/transpile-only',
+        cliPath,
+        'migrate',
+        '--transaction',
+        `--cwd=${tmp}`
+      ],
       { encoding: 'utf8', cwd: path.resolve(__dirname, '..') }
     );
     expect(r.status ?? 0).toBe(0);

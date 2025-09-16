@@ -1,8 +1,12 @@
 import { BaseEmitter } from './BaseEmitter';
 
 export class MssqlEmitter extends BaseEmitter {
-  public override q(id: string): string { return '[' + id + ']'; }
-  public override dropIndex(table: string, name: string): string { return `DROP INDEX ${this.q(table)}.${this.q(name)}`; }
+  public override q(id: string): string {
+    return '[' + id + ']';
+  }
+  public override dropIndex(table: string, name: string): string {
+    return `DROP INDEX ${this.q(table)}.${this.q(name)}`;
+  }
   public override mapType(t: string): string {
     const up = String(t || '').toUpperCase();
     if (up === 'INTEGER' || up === 'NUMBER') return 'INT';
@@ -18,7 +22,13 @@ export class MssqlEmitter extends BaseEmitter {
   public override alterType(table: string, name: string, newTypeSql: string): string {
     return `ALTER TABLE ${this.q(table)} ALTER COLUMN ${this.q(name)} ${newTypeSql}`;
   }
-  public override addColumn(table: string, name: string, type: string, nullable: boolean, def?: unknown): string {
+  public override addColumn(
+    table: string,
+    name: string,
+    type: string,
+    nullable: boolean,
+    def?: unknown
+  ): string {
     const tableQ = this.q(table);
     const colQ = this.q(name);
     const typeSql = this.mapType(type);
@@ -29,16 +39,24 @@ export class MssqlEmitter extends BaseEmitter {
   public override dropColumn(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP COLUMN ${this.q(name)}`;
   }
-  public override dropTable(name: string): string { return `DROP TABLE ${this.q(name)}`; }
+  public override dropTable(name: string): string {
+    return `DROP TABLE ${this.q(name)}`;
+  }
   public override renameTable(oldName: string, newName: string): string {
     return `EXEC sp_rename '${oldName}', '${newName}'`;
   }
-  public override alterDefault(table: string, name: string, newDefault: unknown | undefined): string[] {
+  public override alterDefault(
+    table: string,
+    name: string,
+    newDefault: unknown | undefined
+  ): string[] {
     const drop = `DECLARE @dc sysname; SELECT @dc = dc.name FROM sys.default_constraints dc JOIN sys.columns c ON c.default_object_id = dc.object_id WHERE dc.parent_object_id = OBJECT_ID('${table}') AND c.name = '${name}'; IF @dc IS NOT NULL EXEC('ALTER TABLE ${this.q(table)} DROP CONSTRAINT ' + QUOTENAME(@dc))`;
     const stmts = [drop];
     if (newDefault !== undefined) {
       const dfName = `DF_${table}_${name}`;
-      stmts.push(`ALTER TABLE ${this.q(table)} ADD CONSTRAINT ${this.q(dfName)} DEFAULT ${this.formatValue(newDefault)} FOR ${this.q(name)}`);
+      stmts.push(
+        `ALTER TABLE ${this.q(table)} ADD CONSTRAINT ${this.q(dfName)} DEFAULT ${this.formatValue(newDefault)} FOR ${this.q(name)}`
+      );
     }
     return stmts;
   }
@@ -58,7 +76,10 @@ export class MssqlEmitter extends BaseEmitter {
   public override dropForeignKey(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
   }
-  public override createUniqueConstraint(table: string, def: { name?: string; columns: string[] }): string {
+  public override createUniqueConstraint(
+    table: string,
+    def: { name?: string; columns: string[] }
+  ): string {
     const name = def.name || `UQ_${table}_${def.columns.join('_')}`;
     const cols = def.columns.map((c) => this.q(c)).join(', ');
     return `ALTER TABLE ${this.q(table)} ADD CONSTRAINT ${this.q(name)} UNIQUE (${cols})`;
@@ -66,7 +87,10 @@ export class MssqlEmitter extends BaseEmitter {
   public override dropUniqueConstraint(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
   }
-  public override addCheckConstraint(table: string, def: { name?: string; expression: string }): string {
+  public override addCheckConstraint(
+    table: string,
+    def: { name?: string; expression: string }
+  ): string {
     const name = def.name ? ` CONSTRAINT ${this.q(def.name)}` : '';
     return `ALTER TABLE ${this.q(table)} ADD${name} CHECK (${def.expression})`;
   }
@@ -74,5 +98,3 @@ export class MssqlEmitter extends BaseEmitter {
     return `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
   }
 }
-
-

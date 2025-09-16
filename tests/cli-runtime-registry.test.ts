@@ -2,7 +2,9 @@ import { CommandRegistry } from '../src/cli/runtime/registry';
 import type { Command } from '../src/cli/runtime/command';
 
 class DummyCommand implements Command {
-  public async execute(): Promise<number> { return 42; }
+  public async execute(): Promise<number> {
+    return 42;
+  }
 }
 
 describe('cli runtime CommandRegistry', () => {
@@ -21,5 +23,3 @@ describe('cli runtime CommandRegistry', () => {
     expect(reg.get('missing')).toBeUndefined();
   });
 });
-
-

@@ -12,17 +12,42 @@ describe('Diff generator: composite foreign keys', () => {
     class C {}
     // Parent with composite PK (id1, id2)
     MetadataStorage.addEntity(P, 'P');
-    MetadataStorage.addColumn(P, { propertyName: 'id1', columnName: 'id1', type: 'INTEGER', nullable: false } as any);
-    MetadataStorage.addColumn(P, { propertyName: 'id2', columnName: 'id2', type: 'INTEGER', nullable: false } as any);
+    MetadataStorage.addColumn(P, {
+      propertyName: 'id1',
+      columnName: 'id1',
+      type: 'INTEGER',
+      nullable: false
+    } as any);
+    MetadataStorage.addColumn(P, {
+      propertyName: 'id2',
+      columnName: 'id2',
+      type: 'INTEGER',
+      nullable: false
+    } as any);
     MetadataStorage.addPrimaryKey(P, 'id1');
     MetadataStorage.addPrimaryKey(P, 'id2');
 
     // Child with composite FK (p1, p2) -> P(id1, id2)
     MetadataStorage.addEntity(C, 'C');
-    MetadataStorage.addColumn(C, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false } as any);
+    MetadataStorage.addColumn(C, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    } as any);
     MetadataStorage.addPrimaryKey(C, 'id');
-    MetadataStorage.addColumn(C, { propertyName: 'p1', columnName: 'p1', type: 'INTEGER', nullable: true } as any);
-    MetadataStorage.addColumn(C, { propertyName: 'p2', columnName: 'p2', type: 'INTEGER', nullable: true } as any);
+    MetadataStorage.addColumn(C, {
+      propertyName: 'p1',
+      columnName: 'p1',
+      type: 'INTEGER',
+      nullable: true
+    } as any);
+    MetadataStorage.addColumn(C, {
+      propertyName: 'p2',
+      columnName: 'p2',
+      type: 'INTEGER',
+      nullable: true
+    } as any);
     MetadataStorage.addRelationship(C, {
       propertyName: 'p',
       type: 'many-to-one',
@@ -43,7 +68,13 @@ describe('Diff generator: composite foreign keys', () => {
     const gen = new DiffMigrationGenerator(provider);
     const steps = await gen.generate();
     expect(steps.some((s) => /CREATE TABLE IF NOT EXISTS C/.test(s.sql))).toBe(true);
-    expect(steps.some((s) => /FOREIGN KEY \(p1, p2\) REFERENCES P \(id1, id2\) ON DELETE CASCADE ON UPDATE CASCADE/.test(s.sql))).toBe(true);
+    expect(
+      steps.some((s) =>
+        /FOREIGN KEY \(p1, p2\) REFERENCES P \(id1, id2\) ON DELETE CASCADE ON UPDATE CASCADE/.test(
+          s.sql
+        )
+      )
+    ).toBe(true);
   });
 
   test('Postgres: ALTER TABLE ADD CONSTRAINT with composite columns', async () => {
@@ -60,5 +91,3 @@ describe('Diff generator: composite foreign keys', () => {
     expect(alter!.sql).toMatch(/FOREIGN KEY \(p1, p2\) REFERENCES P \(id1, id2\)/);
   });
 });
-
-

@@ -16,5 +16,3 @@ describe('@Default decorator', () => {
     expect(col?.defaultValue).toBe(0);
   });
 });
-
-

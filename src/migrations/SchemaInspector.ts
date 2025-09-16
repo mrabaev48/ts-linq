@@ -29,34 +29,51 @@ export class SQLiteSchemaInspector {
     return { name: table, columns: cols };
   }
 
-  public async listUniqueIndexes(table: string): Promise<Array<{ name: string; columns: string[] }>> {
+  public async listUniqueIndexes(
+    table: string
+  ): Promise<Array<{ name: string; columns: string[] }>> {
     const indexes = await this.provider.executeQuery<{ name: string; unique: number }>(
       `PRAGMA index_list(${table})`
     );
     const uniques = indexes.filter((i) => i.unique === 1);
     const result: Array<{ name: string; columns: string[] }> = [];
     for (const idx of uniques) {
-      const info = await this.provider.executeQuery<{ name: string }>(`PRAGMA index_info(${idx.name})`);
+      const info = await this.provider.executeQuery<{ name: string }>(
+        `PRAGMA index_info(${idx.name})`
+      );
       result.push({ name: idx.name, columns: info.map((c) => c.name) });
     }
     return result;
   }
 
-  public async listIndexes(table: string): Promise<Array<{ name: string; columns: string[]; unique: boolean }>> {
+  public async listIndexes(
+    table: string
+  ): Promise<Array<{ name: string; columns: string[]; unique: boolean }>> {
     const indexes = await this.provider.executeQuery<{ name: string; unique: number }>(
       `PRAGMA index_list(${table})`
     );
-    const result: Array<{ name: string; columns: string[]; unique: boolean }>= [];
+    const result: Array<{ name: string; columns: string[]; unique: boolean }> = [];
     for (const idx of indexes) {
       // Skip implicit primary key index names like sqlite_autoindex_*
       if (/^sqlite_autoindex_/i.test(idx.name)) continue;
-      const info = await this.provider.executeQuery<{ name: string }>(`PRAGMA index_info(${idx.name})`);
+      const info = await this.provider.executeQuery<{ name: string }>(
+        `PRAGMA index_info(${idx.name})`
+      );
       result.push({ name: idx.name, columns: info.map((c) => c.name), unique: idx.unique === 1 });
     }
     return result;
   }
 
-  public async listForeignKeys(table: string): Promise<Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }>> {
+  public async listForeignKeys(table: string): Promise<
+    Array<{
+      name?: string;
+      columns: string[];
+      refTable: string;
+      refColumns: string[];
+      onDelete?: string;
+      onUpdate?: string;
+    }>
+  > {
     const rows = await this.provider.executeQuery<{
       id: number;
       seq: number;
@@ -66,9 +83,24 @@ export class SQLiteSchemaInspector {
       on_update: string;
       on_delete: string;
     }>(`PRAGMA foreign_key_list(${table})`);
-    const map = new Map<number, { columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }>();
+    const map = new Map<
+      number,
+      {
+        columns: string[];
+        refTable: string;
+        refColumns: string[];
+        onDelete?: string;
+        onUpdate?: string;
+      }
+    >();
     for (const r of rows) {
-      const g = map.get(r.id) || { columns: [], refTable: r.table, refColumns: [], onDelete: r.on_delete || undefined, onUpdate: r.on_update || undefined };
+      const g = map.get(r.id) || {
+        columns: [],
+        refTable: r.table,
+        refColumns: [],
+        onDelete: r.on_delete || undefined,
+        onUpdate: r.on_update || undefined
+      };
       g.columns.push(r.from);
       g.refColumns.push(r.to);
       map.set(r.id, g);
@@ -113,7 +145,9 @@ export class PostgresSchemaInspector {
     };
   }
 
-  public async listUniqueConstraints(table: string): Promise<Array<{ name?: string; columns: string[] }>> {
+  public async listUniqueConstraints(
+    table: string
+  ): Promise<Array<{ name?: string; columns: string[] }>> {
     const rows = await this.provider.executeQuery<{ constraint_name: string; column_name: string }>(
       `SELECT tc.constraint_name, kcu.column_name
        FROM information_schema.table_constraints tc
@@ -130,22 +164,40 @@ export class PostgresSchemaInspector {
     return Array.from(map.entries()).map(([name, columns]) => ({ name, columns }));
   }
 
-  public async listCheckConstraints(table: string): Promise<Array<{ name?: string; expression: string }>> {
-    const rows = await this.provider.executeQuery<{ constraint_name: string; check_clause: string }>(
+  public async listCheckConstraints(
+    table: string
+  ): Promise<Array<{ name?: string; expression: string }>> {
+    const rows = await this.provider.executeQuery<{
+      constraint_name: string;
+      check_clause: string;
+    }>(
       `SELECT conname as constraint_name, pg_get_constraintdef(c.oid) as check_clause
        FROM pg_constraint c
        JOIN pg_class t ON t.oid = c.conrelid
        JOIN pg_namespace n ON n.oid = c.connamespace
        WHERE c.contype='c' AND n.nspname='public' AND t.relname='${table}'`
     );
-    return rows.map((r) => ({ name: r.constraint_name, expression: r.check_clause.replace(/^CHECK\s*\((.*)\)$/i, '$1') }));
+    return rows.map((r) => ({
+      name: r.constraint_name,
+      expression: r.check_clause.replace(/^CHECK\s*\((.*)\)$/i, '$1')
+    }));
   }
 
-  public async listIndexes(table: string): Promise<Array<{ name: string; columns: string[]; unique: boolean; expression?: string; where?: string }>> {
+  public async listIndexes(
+    table: string
+  ): Promise<
+    Array<{ name: string; columns: string[]; unique: boolean; expression?: string; where?: string }>
+  > {
     const rows = await this.provider.executeQuery<{ indexname: string; indexdef: string }>(
       `SELECT indexname, indexdef FROM pg_indexes WHERE schemaname='public' AND tablename='${table}'`
     );
-    const result: Array<{ name: string; columns: string[]; unique: boolean; expression?: string; where?: string }> = [];
+    const result: Array<{
+      name: string;
+      columns: string[];
+      unique: boolean;
+      expression?: string;
+      where?: string;
+    }> = [];
     for (const r of rows) {
       const def = r.indexdef;
       const unique = /^CREATE\s+UNIQUE\s+INDEX/i.test(def);
@@ -156,9 +208,7 @@ export class PostgresSchemaInspector {
       let columns: string[] = [];
       let expression: string | undefined = undefined;
       if (inside.includes(',')) {
-        columns = inside
-          .split(',')
-          .map((s) => s.trim().replace(/"/g, ''));
+        columns = inside.split(',').map((s) => s.trim().replace(/"/g, ''));
       } else if (inside) {
         // single element might be expression or column
         const plainCol = inside.replace(/"/g, '');
@@ -174,7 +224,16 @@ export class PostgresSchemaInspector {
     return result;
   }
 
-  public async listForeignKeys(table: string): Promise<Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }>> {
+  public async listForeignKeys(table: string): Promise<
+    Array<{
+      name?: string;
+      columns: string[];
+      refTable: string;
+      refColumns: string[];
+      onDelete?: string;
+      onUpdate?: string;
+    }>
+  > {
     const rows = await this.provider.executeQuery<{
       constraint_name: string;
       column_name: string;
@@ -201,7 +260,16 @@ export class PostgresSchemaInspector {
        WHERE con.contype='f' AND ns.nspname='public' AND cl2.relname='${table}'
        ORDER BY con.conname, k.n`
     );
-    const map = new Map<string, { columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }>();
+    const map = new Map<
+      string,
+      {
+        columns: string[];
+        refTable: string;
+        refColumns: string[];
+        onDelete?: string;
+        onUpdate?: string;
+      }
+    >();
     function mapAction(code: string | undefined): string | undefined {
       switch ((code || '').toLowerCase()) {
         case 'c':
@@ -220,7 +288,13 @@ export class PostgresSchemaInspector {
     }
     for (const r of rows) {
       const key = r.constraint_name;
-      const g = map.get(key) || { columns: [], refTable: r.referenced_table, refColumns: [], onDelete: mapAction(r.confdeltype), onUpdate: mapAction(r.confupdtype) };
+      const g = map.get(key) || {
+        columns: [],
+        refTable: r.referenced_table,
+        refColumns: [],
+        onDelete: mapAction(r.confdeltype),
+        onUpdate: mapAction(r.confupdtype)
+      };
       g.columns.push(r.column_name);
       g.refColumns.push(r.referenced_column);
       map.set(key, g);
@@ -265,8 +339,14 @@ export class MysqlSchemaInspector {
     };
   }
 
-  public async listUniqueConstraints(table: string): Promise<Array<{ name?: string; columns: string[] }>> {
-    const rows = await this.provider.executeQuery<{ constraint_name: string; column_name: string; ordinal_position: number }>(
+  public async listUniqueConstraints(
+    table: string
+  ): Promise<Array<{ name?: string; columns: string[] }>> {
+    const rows = await this.provider.executeQuery<{
+      constraint_name: string;
+      column_name: string;
+      ordinal_position: number;
+    }>(
       `SELECT constraint_name, column_name, ordinal_position
        FROM information_schema.key_column_usage
        WHERE table_schema = DATABASE() AND table_name='${table}' AND constraint_name <> 'PRIMARY'
@@ -281,13 +361,22 @@ export class MysqlSchemaInspector {
     return Array.from(map.entries()).map(([name, columns]) => ({ name, columns }));
   }
 
-  public async listCheckConstraints(_table: string): Promise<Array<{ name?: string; expression: string }>> {
+  public async listCheckConstraints(
+    _table: string
+  ): Promise<Array<{ name?: string; expression: string }>> {
     // MySQL historically lacks named CHECK constraints support pre-8.0; skip (best-effort)
     return [];
   }
 
-  public async listIndexes(table: string): Promise<Array<{ name: string; columns: string[]; unique: boolean }>> {
-    const rows = await this.provider.executeQuery<{ index_name: string; column_name: string; non_unique: number; seq_in_index: number }>(
+  public async listIndexes(
+    table: string
+  ): Promise<Array<{ name: string; columns: string[]; unique: boolean }>> {
+    const rows = await this.provider.executeQuery<{
+      index_name: string;
+      column_name: string;
+      non_unique: number;
+      seq_in_index: number;
+    }>(
       `SELECT index_name, column_name, non_unique, seq_in_index
        FROM information_schema.statistics
        WHERE table_schema = DATABASE() AND table_name='${table}'
@@ -303,7 +392,16 @@ export class MysqlSchemaInspector {
     return Array.from(map.values());
   }
 
-  public async listForeignKeys(table: string): Promise<Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }>> {
+  public async listForeignKeys(table: string): Promise<
+    Array<{
+      name?: string;
+      columns: string[];
+      refTable: string;
+      refColumns: string[];
+      onDelete?: string;
+      onUpdate?: string;
+    }>
+  > {
     const rows = await this.provider.executeQuery<{
       constraint_name: string;
       column_name: string;
@@ -319,10 +417,25 @@ export class MysqlSchemaInspector {
        WHERE k.table_schema = DATABASE() AND k.table_name='${table}' AND k.referenced_table_name IS NOT NULL
        ORDER BY k.constraint_name, k.ordinal_position`
     );
-    const map = new Map<string, { columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }>();
+    const map = new Map<
+      string,
+      {
+        columns: string[];
+        refTable: string;
+        refColumns: string[];
+        onDelete?: string;
+        onUpdate?: string;
+      }
+    >();
     for (const r of rows) {
       const key = r.constraint_name;
-      const g = map.get(key) || { columns: [], refTable: r.referenced_table_name, refColumns: [], onDelete: r.delete_rule?.toUpperCase(), onUpdate: r.update_rule?.toUpperCase() };
+      const g = map.get(key) || {
+        columns: [],
+        refTable: r.referenced_table_name,
+        refColumns: [],
+        onDelete: r.delete_rule?.toUpperCase(),
+        onUpdate: r.update_rule?.toUpperCase()
+      };
       g.columns.push(r.column_name);
       g.refColumns.push(r.referenced_column_name);
       map.set(key, g);
@@ -367,8 +480,14 @@ export class MssqlSchemaInspector {
     };
   }
 
-  public async listUniqueConstraints(table: string): Promise<Array<{ name?: string; columns: string[] }>> {
-    const rows = await this.provider.executeQuery<{ CONSTRAINT_NAME: string; COLUMN_NAME: string; ORDINAL_POSITION: number }>(
+  public async listUniqueConstraints(
+    table: string
+  ): Promise<Array<{ name?: string; columns: string[] }>> {
+    const rows = await this.provider.executeQuery<{
+      CONSTRAINT_NAME: string;
+      COLUMN_NAME: string;
+      ORDINAL_POSITION: number;
+    }>(
       `SELECT t.CONSTRAINT_NAME, k.COLUMN_NAME, k.ORDINAL_POSITION
        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS t
        JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k ON k.CONSTRAINT_NAME = t.CONSTRAINT_NAME AND k.TABLE_SCHEMA=t.TABLE_SCHEMA
@@ -384,8 +503,13 @@ export class MssqlSchemaInspector {
     return Array.from(map.entries()).map(([name, columns]) => ({ name, columns }));
   }
 
-  public async listCheckConstraints(table: string): Promise<Array<{ name?: string; expression: string }>> {
-    const rows = await this.provider.executeQuery<{ CONSTRAINT_NAME: string; CHECK_CLAUSE: string }>(
+  public async listCheckConstraints(
+    table: string
+  ): Promise<Array<{ name?: string; expression: string }>> {
+    const rows = await this.provider.executeQuery<{
+      CONSTRAINT_NAME: string;
+      CHECK_CLAUSE: string;
+    }>(
       `SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS
        WHERE CONSTRAINT_SCHEMA='dbo' AND CONSTRAINT_NAME IN (
          SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
@@ -395,7 +519,9 @@ export class MssqlSchemaInspector {
     return rows.map((r) => ({ name: r.CONSTRAINT_NAME, expression: r.CHECK_CLAUSE }));
   }
 
-  public async listIndexes(table: string): Promise<Array<{ name: string; columns: string[]; unique: boolean; where?: string }>> {
+  public async listIndexes(
+    table: string
+  ): Promise<Array<{ name: string; columns: string[]; unique: boolean; where?: string }>> {
     const rows = await this.provider.executeQuery<{
       name: string;
       is_unique: number;
@@ -412,16 +538,34 @@ export class MssqlSchemaInspector {
        WHERE t.schema_id = SCHEMA_ID('dbo') AND t.name='${table}' AND i.is_hypothetical = 0
        ORDER BY ic.key_ordinal`
     );
-    const map = new Map<number, { name: string; unique: boolean; where?: string; columns: string[] }>();
+    const map = new Map<
+      number,
+      { name: string; unique: boolean; where?: string; columns: string[] }
+    >();
     for (const r of rows) {
       const key = r.index_id;
-      if (!map.has(key)) map.set(key, { name: r.name, unique: r.is_unique === 1, where: r.filter_definition || undefined, columns: [] });
+      if (!map.has(key))
+        map.set(key, {
+          name: r.name,
+          unique: r.is_unique === 1,
+          where: r.filter_definition || undefined,
+          columns: []
+        });
       map.get(key)!.columns.push(r.column_name);
     }
     return Array.from(map.values());
   }
 
-  public async listForeignKeys(table: string): Promise<Array<{ name?: string; columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }>> {
+  public async listForeignKeys(table: string): Promise<
+    Array<{
+      name?: string;
+      columns: string[];
+      refTable: string;
+      refColumns: string[];
+      onDelete?: string;
+      onUpdate?: string;
+    }>
+  > {
     const rows = await this.provider.executeQuery<{
       constraint_name: string;
       column_name: string;
@@ -448,10 +592,25 @@ export class MssqlSchemaInspector {
        WHERE s1.name='dbo' AND t1.name='${table}'
        ORDER BY fk.name, fkc.constraint_column_id`
     );
-    const map = new Map<string, { columns: string[]; refTable: string; refColumns: string[]; onDelete?: string; onUpdate?: string }>();
+    const map = new Map<
+      string,
+      {
+        columns: string[];
+        refTable: string;
+        refColumns: string[];
+        onDelete?: string;
+        onUpdate?: string;
+      }
+    >();
     for (const r of rows) {
       const key = r.constraint_name;
-      const g = map.get(key) || { columns: [], refTable: r.referenced_table, refColumns: [], onDelete: (r.delete_rule || '').toUpperCase(), onUpdate: (r.update_rule || '').toUpperCase() };
+      const g = map.get(key) || {
+        columns: [],
+        refTable: r.referenced_table,
+        refColumns: [],
+        onDelete: (r.delete_rule || '').toUpperCase(),
+        onUpdate: (r.update_rule || '').toUpperCase()
+      };
       g.columns.push(r.column_name);
       g.refColumns.push(r.referenced_column);
       map.set(key, g);

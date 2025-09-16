@@ -40,18 +40,23 @@ function buildColumns(flags: Flags): { pkLine: string; columnLines: string } {
   const lines = cols
     .map((c) => {
       const typeMap: Record<string, string> = {
-        string: "TEXT",
-        number: "INTEGER",
-        boolean: "INTEGER"
+        string: 'TEXT',
+        number: 'INTEGER',
+        boolean: 'INTEGER'
       };
       const sqlType = typeMap[c.type] ?? 'TEXT';
       return `  @Column({ type: '${sqlType}', nullable: ${c.nullable ? 'true' : 'false'} })\n  public ${c.name}!: ${c.type};`;
     })
     .join('\n\n');
-  return { pkLine, columnLines: lines || `  @Column({ type: 'TEXT', nullable: false })\n  public name!: string;` };
+  return {
+    pkLine,
+    columnLines: lines || `  @Column({ type: 'TEXT', nullable: false })\n  public name!: string;`
+  };
 }
 
-function parseColumns(spec?: string): Array<{ name: string; type: 'string' | 'number' | 'boolean'; nullable: boolean }> {
+function parseColumns(
+  spec?: string
+): Array<{ name: string; type: 'string' | 'number' | 'boolean'; nullable: boolean }> {
   if (!spec || !spec.trim()) return [];
   return spec.split(',').map((raw) => {
     const [name, typeRaw] = raw.split(':');
@@ -61,5 +66,3 @@ function parseColumns(spec?: string): Array<{ name: string; type: 'string' | 'nu
     return { name: name.trim(), type: base, nullable };
   });
 }
-
-

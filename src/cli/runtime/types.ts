@@ -44,5 +44,3 @@ export interface EffectiveConfig {
   metrics: { enabled: boolean };
   bootstrap: string[];
 }
-
-

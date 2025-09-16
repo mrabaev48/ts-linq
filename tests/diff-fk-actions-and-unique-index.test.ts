@@ -11,13 +11,28 @@ describe('Diff generator: FK actions and composite unique index', () => {
     class P {}
     class C {}
     MetadataStorage.addEntity(P, 'Parent');
-    MetadataStorage.addColumn(P, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false } as any);
+    MetadataStorage.addColumn(P, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    } as any);
     MetadataStorage.addPrimaryKey(P, 'id');
 
     MetadataStorage.addEntity(C, 'Child');
-    MetadataStorage.addColumn(C, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false } as any);
+    MetadataStorage.addColumn(C, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    } as any);
     MetadataStorage.addPrimaryKey(C, 'id');
-    MetadataStorage.addColumn(C, { propertyName: 'pid', columnName: 'pid', type: 'INTEGER', nullable: true } as any);
+    MetadataStorage.addColumn(C, {
+      propertyName: 'pid',
+      columnName: 'pid',
+      type: 'INTEGER',
+      nullable: true
+    } as any);
     MetadataStorage.addRelationship(C, {
       propertyName: 'parent',
       type: 'many-to-one',
@@ -43,8 +58,18 @@ describe('Diff generator: FK actions and composite unique index', () => {
   test('SQLite: CREATE UNIQUE INDEX for composite unique index', async () => {
     class U {}
     MetadataStorage.addEntity(U, 'U');
-    MetadataStorage.addColumn(U, { propertyName: 'a', columnName: 'a', type: 'INTEGER', nullable: false } as any);
-    MetadataStorage.addColumn(U, { propertyName: 'b', columnName: 'b', type: 'INTEGER', nullable: false } as any);
+    MetadataStorage.addColumn(U, {
+      propertyName: 'a',
+      columnName: 'a',
+      type: 'INTEGER',
+      nullable: false
+    } as any);
+    MetadataStorage.addColumn(U, {
+      propertyName: 'b',
+      columnName: 'b',
+      type: 'INTEGER',
+      nullable: false
+    } as any);
     MetadataStorage.addPrimaryKey(U, 'a');
     MetadataStorage.addIndex(U, { name: 'ux_U_a_b', columns: ['a', 'b'], unique: true } as any);
 
@@ -56,8 +81,8 @@ describe('Diff generator: FK actions and composite unique index', () => {
     const gen = new DiffMigrationGenerator(provider);
     const steps = await gen.generate();
     expect(steps.some((s) => /CREATE TABLE IF NOT EXISTS U/.test(s.sql))).toBe(true);
-    expect(steps.some((s) => /CREATE UNIQUE INDEX IF NOT EXISTS ux_U_a_b ON U \(a, b\)/.test(s.sql))).toBe(true);
+    expect(
+      steps.some((s) => /CREATE UNIQUE INDEX IF NOT EXISTS ux_U_a_b ON U \(a, b\)/.test(s.sql))
+    ).toBe(true);
   });
 });
-
-

@@ -6,15 +6,11 @@ import * as path from 'path';
 function runCli(args: string[]) {
   const node = process.execPath;
   const cliPath = path.resolve(__dirname, '..', 'src', 'bin', 'ts-linq-cli.ts');
-  const result = cp.spawnSync(
-    node,
-    ['-r', 'ts-node/register/transpile-only', cliPath, ...args],
-    {
-      cwd: path.resolve(__dirname, '..'),
-      env: { ...process.env },
-      encoding: 'utf8'
-    }
-  );
+  const result = cp.spawnSync(node, ['-r', 'ts-node/register/transpile-only', cliPath, ...args], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env },
+    encoding: 'utf8'
+  });
   return { code: result.status ?? 0, stdout: result.stdout, stderr: result.stderr };
 }
 
@@ -40,8 +36,12 @@ describe('CLI verbosity flags', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tslinq-cli-'));
     const dbPath = path.join(tmp, 'cli-verbose.db');
     const repoRoot = path.resolve(__dirname, '..');
-    const migrationImport = path.join(repoRoot, 'src', 'migrations', 'Migration').replace(/\\/g, '/');
-    const sqliteImport = path.join(repoRoot, 'src', 'providers', 'SQLiteProvider').replace(/\\/g, '/');
+    const migrationImport = path
+      .join(repoRoot, 'src', 'migrations', 'Migration')
+      .replace(/\\/g, '/');
+    const sqliteImport = path
+      .join(repoRoot, 'src', 'providers', 'SQLiteProvider')
+      .replace(/\\/g, '/');
     fs.writeFileSync(
       path.join(tmp, 'tslinq.config.json'),
       JSON.stringify({ provider: 'sqlite', connectionString: dbPath, migrationsDir: 'migrations' }),
@@ -63,5 +63,3 @@ export async function loadMigrations(provider: SQLiteProvider) {
     expect(r.stdout).toMatch(/Applying 1 migration/);
   });
 });
-
-

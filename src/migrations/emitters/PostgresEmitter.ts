@@ -1,8 +1,12 @@
 import { BaseEmitter } from './BaseEmitter';
 
 export class PostgresEmitter extends BaseEmitter {
-  public override q(id: string): string { return '"' + id + '"'; }
-  public override dropIndex(_table: string, name: string): string { return `DROP INDEX ${this.q(name)}`; }
+  public override q(id: string): string {
+    return '"' + id + '"';
+  }
+  public override dropIndex(_table: string, name: string): string {
+    return `DROP INDEX ${this.q(name)}`;
+  }
   public override createTable(td: import('../DiffTypes').TableDiff): string {
     // PG: delegate to BaseEmitter which already emits CONSTRAINT for UNIQUE/CHECK/FK/PK
     return super.createTable(td);
@@ -32,12 +36,19 @@ export class PostgresEmitter extends BaseEmitter {
   public override dropColumn(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP COLUMN ${this.q(name)}`;
   }
-  public override dropTable(name: string): string { return `DROP TABLE ${this.q(name)}`; }
+  public override dropTable(name: string): string {
+    return `DROP TABLE ${this.q(name)}`;
+  }
   public override renameTable(oldName: string, newName: string): string {
     return `ALTER TABLE ${this.q(oldName)} RENAME TO ${this.q(newName)}`;
   }
-  public override alterDefault(table: string, name: string, newDefault: unknown | undefined): string[] {
-    const set = newDefault !== undefined ? `SET DEFAULT ${this.formatValue(newDefault)}` : 'DROP DEFAULT';
+  public override alterDefault(
+    table: string,
+    name: string,
+    newDefault: unknown | undefined
+  ): string[] {
+    const set =
+      newDefault !== undefined ? `SET DEFAULT ${this.formatValue(newDefault)}` : 'DROP DEFAULT';
     return [`ALTER TABLE ${this.q(table)} ALTER COLUMN ${this.q(name)} ${set}`];
   }
   public override createIndex(table: string, def: import('../DiffTypes').IndexDef): string {
@@ -56,14 +67,20 @@ export class PostgresEmitter extends BaseEmitter {
   public override dropForeignKey(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
   }
-  public override createUniqueConstraint(table: string, def: { name?: string; columns: string[] }): string {
+  public override createUniqueConstraint(
+    table: string,
+    def: { name?: string; columns: string[] }
+  ): string {
     const name = def.name || `UQ_${table}_${def.columns.join('_')}`;
-    return `ALTER TABLE ${this.q(table)} ADD CONSTRAINT ${this.q(name)} UNIQUE (${def.columns.map((c)=>this.q(c)).join(', ')})`;
+    return `ALTER TABLE ${this.q(table)} ADD CONSTRAINT ${this.q(name)} UNIQUE (${def.columns.map((c) => this.q(c)).join(', ')})`;
   }
   public override dropUniqueConstraint(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
   }
-  public override addCheckConstraint(table: string, def: { name?: string; expression: string }): string {
+  public override addCheckConstraint(
+    table: string,
+    def: { name?: string; expression: string }
+  ): string {
     const name = def.name ? ` CONSTRAINT ${this.q(def.name)}` : '';
     return `ALTER TABLE ${this.q(table)} ADD${name} CHECK (${def.expression})`;
   }
@@ -71,5 +88,3 @@ export class PostgresEmitter extends BaseEmitter {
     return `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
   }
 }
-
-

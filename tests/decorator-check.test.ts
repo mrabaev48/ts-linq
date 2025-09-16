@@ -9,8 +9,10 @@ describe('@Check decorator', () => {
     class User {}
     const meta = MetadataStorage.getEntity(User)!;
     expect(meta.checks).toBeDefined();
-    expect(meta.checks!.some((c) => c.name === 'ck_users_age_non_negative' && c.expression === 'age >= 0')).toBe(true);
+    expect(
+      meta.checks!.some(
+        (c) => c.name === 'ck_users_age_non_negative' && c.expression === 'age >= 0'
+      )
+    ).toBe(true);
   });
 });
-
-

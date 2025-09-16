@@ -23,5 +23,3 @@ export class ConfigPrintCommand implements Command {
     return 0;
   }
 }
-
-

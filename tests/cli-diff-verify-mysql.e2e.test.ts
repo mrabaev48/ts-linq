@@ -6,15 +6,11 @@ import * as path from 'path';
 function runCli(args: string[]) {
   const node = process.execPath;
   const cliPath = path.resolve(__dirname, '..', 'src', 'bin', 'ts-linq-cli.ts');
-  const result = cp.spawnSync(
-    node,
-    ['-r', 'ts-node/register/transpile-only', cliPath, ...args],
-    {
-      cwd: path.resolve(__dirname, '..'),
-      env: { ...process.env },
-      encoding: 'utf8'
-    }
-  );
+  const result = cp.spawnSync(node, ['-r', 'ts-node/register/transpile-only', cliPath, ...args], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env },
+    encoding: 'utf8'
+  });
   return { code: result.status ?? 0, stdout: result.stdout, stderr: result.stderr };
 }
 
@@ -34,7 +30,9 @@ describe('CLI diff/verify MySQL e2e (conditional)', () => {
       bootstrap: ['bootstrap.js']
     };
     fs.writeFileSync(path.join(tmp, 'tslinq.config.json'), JSON.stringify(cfg), 'utf8');
-    const metaSrc = path.join(__dirname, '..', 'src', 'metadata', 'MetadataStorage.ts').replace(/\\/g, '/');
+    const metaSrc = path
+      .join(__dirname, '..', 'src', 'metadata', 'MetadataStorage.ts')
+      .replace(/\\/g, '/');
     const bootstrapJs = `
 const { MetadataStorage } = require('${metaSrc}');
 class T {}
@@ -51,5 +49,3 @@ MetadataStorage.addIndex(T, { name: 'UQ_T_cli_my_name', columns: ['name'], uniqu
     expect(Array.isArray(out.steps)).toBe(true);
   });
 });
-
-

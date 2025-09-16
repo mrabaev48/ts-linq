@@ -181,11 +181,15 @@ async function tryLoadMigrations(
       tryRequire('ts-node/register/transpile-only');
     }
     const mod = tryRequire(p) as
-      | { default?: unknown; loadMigrations?: (provider: unknown) => Promise<Migration[] | Migration[]> }
+      | {
+          default?: unknown;
+          loadMigrations?: (provider: unknown) => Promise<Migration[] | Migration[]>;
+        }
       | undefined;
     if (!mod) continue;
-    const loader = (mod as { loadMigrations?: (provider: unknown) => Promise<Migration[] | Migration[]> })
-      .loadMigrations;
+    const loader = (
+      mod as { loadMigrations?: (provider: unknown) => Promise<Migration[] | Migration[]> }
+    ).loadMigrations;
     if (typeof loader === 'function') {
       const res = await Promise.resolve(loader(provider));
       return Array.isArray(res) ? (res as Migration[]) : undefined;
@@ -228,21 +232,21 @@ async function cmdSeed(fileArg?: string, flags?: Flags): Promise<number> {
   await provider.connect();
   const defaultSeed = path.resolve(effective.seedsDir, 'seeds.sql');
   const sqlFile = fileArg ? path.resolve(process.cwd(), fileArg) : defaultSeed;
-    if (!fs.existsSync(sqlFile)) {
-      console.error(`Seed file not found: ${sqlFile}`);
+  if (!fs.existsSync(sqlFile)) {
+    console.error(`Seed file not found: ${sqlFile}`);
     await provider.disconnect();
     return 2;
   }
-      const text = fs.readFileSync(sqlFile, 'utf8');
-      const statements = text
-        .split(';')
-        .map((stmt) => stmt.trim())
-        .filter(Boolean);
-      for (const statement of statements) {
-        // eslint-disable-next-line no-await-in-loop
-        await provider.executeNonQuery(statement);
-      }
-      if (!flags?.quiet) console.log(`Applied ${statements.length} seed statements from ${sqlFile}`);
+  const text = fs.readFileSync(sqlFile, 'utf8');
+  const statements = text
+    .split(';')
+    .map((stmt) => stmt.trim())
+    .filter(Boolean);
+  for (const statement of statements) {
+    // eslint-disable-next-line no-await-in-loop
+    await provider.executeNonQuery(statement);
+  }
+  if (!flags?.quiet) console.log(`Applied ${statements.length} seed statements from ${sqlFile}`);
   await provider.disconnect();
   return 0;
 }
@@ -284,8 +288,7 @@ async function cmdMigrate(flags: Flags): Promise<number> {
       );
     } else {
       for (const m of pending) runner.addMigration(m);
-      if (flags.verbose && !flags.quiet)
-        console.log(`Applying ${pending.length} migration(s)`);
+      if (flags.verbose && !flags.quiet) console.log(`Applying ${pending.length} migration(s)`);
       await runner.migrate();
     }
     await provider.disconnect();
@@ -357,7 +360,10 @@ async function cmdDiff(flags: Flags): Promise<number> {
   const steps = await gen.generate();
   await provider.disconnect();
   if (flags.create) {
-    const ts = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+    const ts = new Date()
+      .toISOString()
+      .replace(/[-:TZ.]/g, '')
+      .slice(0, 14);
     const dir = effective.migrationsDir;
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, `${ts}_Diff.ts`);
@@ -464,7 +470,9 @@ async function cmdVerify(flags: Flags): Promise<number> {
   if (!fs.existsSync(baselineFile)) {
     if (flags.dryRun) {
       if (flags.json) {
-        console.log(JSON.stringify({ ok: true, action: 'would_create_baseline', checksum }, null, 2));
+        console.log(
+          JSON.stringify({ ok: true, action: 'would_create_baseline', checksum }, null, 2)
+        );
       } else if (!flags.quiet) {
         console.log('Baseline would be created');
       }
@@ -525,11 +533,7 @@ async function main() {
       if (flags.json) {
         // eslint-disable-next-line no-console
         console.log(
-          JSON.stringify(
-            { ok: false, error: (err as Error)?.message ?? String(err) },
-            null,
-            2
-          )
+          JSON.stringify({ ok: false, error: (err as Error)?.message ?? String(err) }, null, 2)
         );
       } else {
         // eslint-disable-next-line no-console
@@ -554,13 +558,18 @@ async function main() {
       await run('status');
       return;
     case 'generate':
-      if (rest[0] === 'migration') { await run('generate:migration'); return; }
+      if (rest[0] === 'migration') {
+        await run('generate:migration');
+        return;
+      }
       if (rest[0] === 'entity') {
         const name = rest[1] || 'Entity';
         await run('generate:entity');
         return;
       }
-      console.error('Only "generate migration <Name>" or "generate entity <Name>" are supported at the moment');
+      console.error(
+        'Only "generate migration <Name>" or "generate entity <Name>" are supported at the moment'
+      );
       process.exitCode = 2;
       return;
     case 'config':

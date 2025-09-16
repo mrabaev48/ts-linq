@@ -46,9 +46,8 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
       | undefined;
 
     const decoratorDefault = (Reflect.getMetadata('orm:default', target, propertyKey) ??
-      (Reflect.getOwnMetadata('orm:defaults', (target as { constructor: Function }).constructor) || {})[
-        propertyName
-      ]) as unknown;
+      (Reflect.getOwnMetadata('orm:defaults', (target as { constructor: Function }).constructor) ||
+        {})[propertyName]) as unknown;
     const columnMetadata: ColumnMetadata = {
       propertyName,
       columnName: options?.name || propertyName,

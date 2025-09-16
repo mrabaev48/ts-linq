@@ -8,7 +8,12 @@ describe('cli runtime makeEffectiveConfig', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tslinq-cli-'));
     fs.writeFileSync(
       path.join(tmp, 'tslinq.config.json'),
-      JSON.stringify({ provider: 'sqlite', connectionString: ':memory:', migrationsDir: 'm', seedsDir: 's' }),
+      JSON.stringify({
+        provider: 'sqlite',
+        connectionString: ':memory:',
+        migrationsDir: 'm',
+        seedsDir: 's'
+      }),
       'utf8'
     );
     const effective = makeEffectiveConfig({ cwd: tmp });
@@ -18,5 +23,3 @@ describe('cli runtime makeEffectiveConfig', () => {
     expect(effective.seedsDir).toBe(path.resolve(tmp, 's'));
   });
 });
-
-

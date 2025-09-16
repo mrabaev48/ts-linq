@@ -33,5 +33,3 @@ describe('cli runtime parseArgs', () => {
     expect(cmd).toBe('help');
   });
 });
-
-

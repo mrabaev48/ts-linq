@@ -47,5 +47,3 @@ export class InitCommand implements Command {
     return 0;
   }
 }
-
-

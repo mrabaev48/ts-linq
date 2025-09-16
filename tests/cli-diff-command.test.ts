@@ -6,15 +6,11 @@ import * as path from 'path';
 function runCli(args: string[]) {
   const node = process.execPath;
   const cliPath = path.resolve(__dirname, '..', 'src', 'bin', 'ts-linq-cli.ts');
-  const result = cp.spawnSync(
-    node,
-    ['-r', 'ts-node/register/transpile-only', cliPath, ...args],
-    {
-      cwd: path.resolve(__dirname, '..'),
-      env: { ...process.env },
-      encoding: 'utf8'
-    }
-  );
+  const result = cp.spawnSync(node, ['-r', 'ts-node/register/transpile-only', cliPath, ...args], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env },
+    encoding: 'utf8'
+  });
   return { code: result.status ?? 0, stdout: result.stdout, stderr: result.stderr };
 }
 
@@ -112,7 +108,9 @@ MetadataStorage.addColumn(DiffUser, { propertyName: 'name', columnName: 'name', 
     const r = runCli(['diff', `--cwd=${tmp}`, '--create']);
     expect(r.code).toBe(0);
     const migDir = path.join(tmp, 'migrations');
-    const files = fs.existsSync(migDir) ? fs.readdirSync(migDir).filter((f) => f.endsWith('_Diff.ts')) : [];
+    const files = fs.existsSync(migDir)
+      ? fs.readdirSync(migDir).filter((f) => f.endsWith('_Diff.ts'))
+      : [];
     expect(files.length).toBe(1);
     const content = fs.readFileSync(path.join(migDir, files[0]), 'utf8');
     expect(content).toMatch(/export class Diff_/);
@@ -155,5 +153,3 @@ MetadataStorage.addColumn(DiffUser, { propertyName: 'name', columnName: 'name', 
     expect(content).toContain("protected get name() { return 'MyCustomName'; }");
   });
 });
-
-

@@ -61,7 +61,13 @@ export class SeedCommand implements Command {
           if (flags.transaction) await provider.commitTransaction();
           if (flags.json) {
             // eslint-disable-next-line no-console
-            console.log(JSON.stringify({ ok: true, file: sqlFile, script: true, durationMs: Date.now() - startedAt }, null, 2));
+            console.log(
+              JSON.stringify(
+                { ok: true, file: sqlFile, script: true, durationMs: Date.now() - startedAt },
+                null,
+                2
+              )
+            );
           }
         } catch (e) {
           if (flags.transaction) await provider.rollbackTransaction();
@@ -70,7 +76,13 @@ export class SeedCommand implements Command {
       } else if (!flags.quiet) {
         if (flags.json) {
           // eslint-disable-next-line no-console
-          console.log(JSON.stringify({ ok: true, file: sqlFile, script: true, dryRun: true, durationMs: 0 }, null, 2));
+          console.log(
+            JSON.stringify(
+              { ok: true, file: sqlFile, script: true, dryRun: true, durationMs: 0 },
+              null,
+              2
+            )
+          );
         } else {
           logger.log('info', `Dry-run: would execute seed script ${sqlFile}`);
         }
@@ -94,11 +106,25 @@ export class SeedCommand implements Command {
           throw e;
         }
       } else if (!flags.quiet) {
-        logger.log('info', `Dry-run: would execute ${statements.length} statements from ${sqlFile}`);
+        logger.log(
+          'info',
+          `Dry-run: would execute ${statements.length} statements from ${sqlFile}`
+        );
       }
       if (flags.json) {
         // eslint-disable-next-line no-console
-        console.log(JSON.stringify({ ok: true, file: sqlFile, statements: statements.length, durationMs: Date.now() - startedAt }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              ok: true,
+              file: sqlFile,
+              statements: statements.length,
+              durationMs: Date.now() - startedAt
+            },
+            null,
+            2
+          )
+        );
       } else if (!flags?.quiet) {
         logger.log('info', `Applied ${statements.length} seed statements from ${sqlFile}`);
       }
@@ -107,5 +133,3 @@ export class SeedCommand implements Command {
     return 0;
   }
 }
-
-

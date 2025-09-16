@@ -122,11 +122,20 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
             ? expectedColumn.nullable !== (actualColumn as { nullable?: boolean }).nullable!
             : false;
         // Compare default value conservatively (normalize strings; ignore complex engine wrappers)
-        const expectedDef = normalizeDefaultGeneric((expectedColumn as { defaultValue?: unknown }).defaultValue);
-        const actualDef = normalizeDefaultGeneric((actualColumn as { defaultValue?: unknown }).defaultValue);
+        const expectedDef = normalizeDefaultGeneric(
+          (expectedColumn as { defaultValue?: unknown }).defaultValue
+        );
+        const actualDef = normalizeDefaultGeneric(
+          (actualColumn as { defaultValue?: unknown }).defaultValue
+        );
         const defaultChanged = expectedDef !== actualDef;
         const needsAlter =
-          typeChanged || nullableChanged || defaultChanged || lengthChanged || precisionChanged || scaleChanged;
+          typeChanged ||
+          nullableChanged ||
+          defaultChanged ||
+          lengthChanged ||
+          precisionChanged ||
+          scaleChanged;
         if (needsAlter) {
           changes.push({ kind: 'alter', column: expectedColumn, prev: actualColumn });
         }
@@ -192,8 +201,10 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
         const changed =
           idx.unique !== (ai as { unique?: boolean }).unique ||
           normalizeWhere(idx.where) !== normalizeWhere((ai as { where?: string }).where) ||
-          normalizeExpr(idx.expression) !== normalizeExpr((ai as { expression?: string }).expression) ||
-          normalizeColumns(idx.columns) !== normalizeColumns((ai as { columns?: string[] }).columns);
+          normalizeExpr(idx.expression) !==
+            normalizeExpr((ai as { expression?: string }).expression) ||
+          normalizeColumns(idx.columns) !==
+            normalizeColumns((ai as { columns?: string[] }).columns);
         if (changed) {
           idxDrops.push(idx.name);
           idxCreates.push(idx);
@@ -207,7 +218,11 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
     if (idxDrops.length > 0) tableDiff.indexDrops = idxDrops;
 
     // FK diff (create, drop, and changes in actions/refs)
-    const actualFkByName = new Map((actualTable.foreignKeys || []).map((f) => [f.name || `${f.columns.join('_')}__${f.refTable}`, f] as const));
+    const actualFkByName = new Map(
+      (actualTable.foreignKeys || []).map(
+        (f) => [f.name || `${f.columns.join('_')}__${f.refTable}`, f] as const
+      )
+    );
     const fkCreates: ForeignKeyDef[] = [];
     const fkDropsSet = new Set<string>();
     for (const fk of expectedTable.foreignKeys || []) {
@@ -217,10 +232,15 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
         fkCreates.push(fk);
       } else {
         const actionsChanged =
-          (fk.onDelete || '').toUpperCase() !== ((af as { onDelete?: string }).onDelete || '').toUpperCase() ||
-          (fk.onUpdate || '').toUpperCase() !== ((af as { onUpdate?: string }).onUpdate || '').toUpperCase();
-        const refColsChanged = (fk.refColumns || []).join(',') !== ((af as { refColumns?: string[] }).refColumns || []).join(',');
-        const colsChanged = (fk.columns || []).join(',') !== ((af as { columns?: string[] }).columns || []).join(',');
+          (fk.onDelete || '').toUpperCase() !==
+            ((af as { onDelete?: string }).onDelete || '').toUpperCase() ||
+          (fk.onUpdate || '').toUpperCase() !==
+            ((af as { onUpdate?: string }).onUpdate || '').toUpperCase();
+        const refColsChanged =
+          (fk.refColumns || []).join(',') !==
+          ((af as { refColumns?: string[] }).refColumns || []).join(',');
+        const colsChanged =
+          (fk.columns || []).join(',') !== ((af as { columns?: string[] }).columns || []).join(',');
         if (actionsChanged || refColsChanged || colsChanged) {
           fkDropsSet.add((af as { name?: string }).name || key);
           fkCreates.push(fk);
@@ -229,8 +249,14 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
     }
     if (fkCreates.length > 0) tableDiff.fkCreates = fkCreates;
     // Unique constraints diff
-    const expectedUniqByName = new Map((expectedTable.uniqueConstraints || []).map((u) => [u.name || u.columns.join('__'), u] as const));
-    const actualUniqByName = new Map((actualTable.uniqueConstraints || []).map((u) => [u.name || u.columns.join('__'), u] as const));
+    const expectedUniqByName = new Map(
+      (expectedTable.uniqueConstraints || []).map(
+        (u) => [u.name || u.columns.join('__'), u] as const
+      )
+    );
+    const actualUniqByName = new Map(
+      (actualTable.uniqueConstraints || []).map((u) => [u.name || u.columns.join('__'), u] as const)
+    );
     const uniqueCreates: UniqueConstraintDef[] = [];
     for (const [key, u] of expectedUniqByName) {
       if (!actualUniqByName.has(key)) uniqueCreates.push(u);
@@ -251,9 +277,7 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
       name: c.name,
       expression: normalizeCheckExpr(c.expression)
     }));
-    const actualCheckByKey = new Map(
-      actualChecks.map((c) => [c.name || c.expression, c] as const)
-    );
+    const actualCheckByKey = new Map(actualChecks.map((c) => [c.name || c.expression, c] as const));
     const checkCreates: Array<{ name?: string; expression: string }> = [];
     for (const ec of expectedChecks) {
       const key = ec.name || ec.expression;
@@ -270,7 +294,11 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
     if (checkCreates.length > 0) tableDiff.checkCreates = checkCreates;
     if (checkDrops.length > 0) tableDiff.checkDrops = checkDrops;
     // FK drops (exist in actual but not in expected)
-    const expectedFkByName = new Map((expectedTable.foreignKeys || []).map((f) => [f.name || `${f.columns.join('_')}__${f.refTable}`, f] as const));
+    const expectedFkByName = new Map(
+      (expectedTable.foreignKeys || []).map(
+        (f) => [f.name || `${f.columns.join('_')}__${f.refTable}`, f] as const
+      )
+    );
     const fkDrops: string[] = [];
     for (const af of actualTable.foreignKeys || []) {
       const key = af.name || `${af.columns.join('_')}__${af.refTable}`;
@@ -318,7 +346,7 @@ function normalizeCheckExpr(expr: string): string {
     // strip quotes around identifiers
     .replace(/"([^"]+)"/g, '$1')
     // remove redundant parentheses
-    .replace(/^\((.*)\)$/,'$1')
+    .replace(/^\((.*)\)$/, '$1')
     .replace(/\s+/g, ' ')
     .replace(/\s*([=<>+\-*/(),])\s*/g, '$1')
     .toUpperCase()
@@ -340,7 +368,7 @@ function normalizeDefaultGeneric(v: unknown): string {
   const unq = s.replace(/^'+|'+$/g, '');
   // Remove PostgreSQL casts ::type and redundant parentheses
   const noCast = unq.replace(/::[A-Z0-9_]+/gi, '');
-  let noParens = noCast.replace(/^\((.*)\)$/,'$1').replace(/^\((.*)\)$/,'$1');
+  let noParens = noCast.replace(/^\((.*)\)$/, '$1').replace(/^\((.*)\)$/, '$1');
   let up = noParens.trim().toUpperCase();
   // Normalize common timestamp functions across dialects
   if (
@@ -388,13 +416,16 @@ function normalizeDefaultGeneric(v: unknown): string {
 function isSimilarColumn(a: ColumnDef, b: ColumnDef): boolean {
   const typeEq = normalizeType(a.type) === normalizeType((b as { type?: string }).type || '');
   const nullableEq = a.nullable === ((b as { nullable?: boolean }).nullable ?? a.nullable);
-  const defEq = normalizeDefaultGeneric(a.defaultValue) === normalizeDefaultGeneric(
-    (b as { defaultValue?: unknown }).defaultValue
-  );
-  const lenEq = (a as { length?: number }).length === ((b as { length?: number }).length ?? undefined);
+  const defEq =
+    normalizeDefaultGeneric(a.defaultValue) ===
+    normalizeDefaultGeneric((b as { defaultValue?: unknown }).defaultValue);
+  const lenEq =
+    (a as { length?: number }).length === ((b as { length?: number }).length ?? undefined);
   const precEq =
-    (a as { precision?: number }).precision === ((b as { precision?: number }).precision ?? undefined);
-  const scaleEq = (a as { scale?: number }).scale === ((b as { scale?: number }).scale ?? undefined);
+    (a as { precision?: number }).precision ===
+    ((b as { precision?: number }).precision ?? undefined);
+  const scaleEq =
+    (a as { scale?: number }).scale === ((b as { scale?: number }).scale ?? undefined);
   return typeEq && nullableEq && defEq && lenEq && precEq && scaleEq;
 }
 
@@ -414,8 +445,8 @@ function normalizeExpr(expr?: string): string {
     .trim()
     .replace(/"([^"]+)"/g, '$1')
     .replace(/::[A-Z0-9_]+/gi, '')
-    .replace(/^\((.*)\)$/,'$1')
-    .replace(/^\((.*)\)$/,'$1')
+    .replace(/^\((.*)\)$/, '$1')
+    .replace(/^\((.*)\)$/, '$1')
     .replace(/\s+/g, ' ')
     .replace(/\s*([=<>+\-*/(),])\s*/g, '$1')
     .toLowerCase();

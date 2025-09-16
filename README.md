@@ -1031,6 +1031,7 @@ npm run docs
 - Advanced include & joins: `docs/guides/advanced-include-join.md`
 - Test matrix: `docs/guides/test-matrix.md`
 - SQLite rebuild strategy: `docs/guides/sqlite-rebuild.md`
+- Constraints (UNIQUE/CHECK/FK): `docs/guides/constraints.md`
 
 ### CLI
 

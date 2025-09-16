@@ -15,5 +15,3 @@ describe('VerifyCommand unit', () => {
     expect(fs.existsSync(path.join(mig, '.tslinq.checksum'))).toBe(true);
   });
 });
-
-

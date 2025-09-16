@@ -12,7 +12,11 @@ describe('@Index and @Unique decorators', () => {
     class User {}
     MetadataStorage.addEntity(User, 'User');
     const meta = MetadataStorage.getEntity(User)!;
-    expect(meta.indexes.some((i) => i.name === 'IX_User_name' && i.columns.join(',') === 'name' && !i.unique)).toBe(true);
+    expect(
+      meta.indexes.some(
+        (i) => i.name === 'IX_User_name' && i.columns.join(',') === 'name' && !i.unique
+      )
+    ).toBe(true);
   });
 
   it('registers unique index', () => {
@@ -24,7 +28,11 @@ describe('@Index and @Unique decorators', () => {
   });
 
   it('registers expression index with where filter (PG)', () => {
-    @Index({ name: 'IX_Post_lower_title', expression: '(lower("title"))', where: 'published = true' })
+    @Index({
+      name: 'IX_Post_lower_title',
+      expression: '(lower("title"))',
+      where: 'published = true'
+    })
     class Post {}
     MetadataStorage.addEntity(Post, 'Post');
     const meta = MetadataStorage.getEntity(Post)!;
@@ -33,5 +41,3 @@ describe('@Index and @Unique decorators', () => {
     expect(idx?.where).toBe('published = true');
   });
 });
-
-

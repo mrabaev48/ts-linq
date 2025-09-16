@@ -85,5 +85,3 @@ export function parseArgs(argv: string[]): { cmd?: string; rest: string[]; flags
   }
   return { cmd, rest, flags };
 }
-
-

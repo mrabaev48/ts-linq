@@ -11,15 +11,25 @@ describe('Diff generator: column rename triggers rebuild (SQLite)', () => {
     class T {}
     // Expected metadata: id, new_name
     MetadataStorage.addEntity(T, 'T');
-    MetadataStorage.addColumn(T, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false } as any);
+    MetadataStorage.addColumn(T, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    } as any);
     MetadataStorage.addPrimaryKey(T, 'id');
-    MetadataStorage.addColumn(T, { propertyName: 'new_name', columnName: 'new_name', type: 'TEXT', nullable: true } as any);
+    MetadataStorage.addColumn(T, {
+      propertyName: 'new_name',
+      columnName: 'new_name',
+      type: 'TEXT',
+      nullable: true
+    } as any);
 
     // Actual DB snapshot (SQLite): id, old_name
     const provider = {
       providerLabel: 'sqlite',
       executeQuery: async <R>(sql: string): Promise<R[]> => {
-        if (sql.includes("sqlite_master")) {
+        if (sql.includes('sqlite_master')) {
           return [{ name: 'T' }] as unknown as R[];
         }
         if (sql.startsWith('PRAGMA table_info(T)')) {
@@ -42,5 +52,3 @@ describe('Diff generator: column rename triggers rebuild (SQLite)', () => {
     expect(steps.some((s) => /^ALTER TABLE __new_T RENAME TO T$/.test(s.sql))).toBe(true);
   });
 });
-
-

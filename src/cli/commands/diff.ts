@@ -39,7 +39,9 @@ export class DiffCommand implements Command {
     await provider.connect();
     const gen = new DiffMigrationGenerator(provider);
     const steps = await gen.generate();
-    let detailsObj: { expected?: SchemaSnapshot; actual?: SchemaSnapshot; diff?: SchemaDiff } | undefined;
+    let detailsObj:
+      | { expected?: SchemaSnapshot; actual?: SchemaSnapshot; diff?: SchemaDiff }
+      | undefined;
     if (flags.details) {
       // Recreate snapshots via same logic by temporarily instantiating inspectors again
       // For simplicity, reuse provider and MetadataStorage within generator through a helper method in future.
@@ -55,8 +57,12 @@ export class DiffCommand implements Command {
     }
     await provider.disconnect();
     if (flags.create) {
-      const ts = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
-      const providedName = flags.name && flags.name.trim() ? flags.name.trim().replace(/\s+/g, '_') : undefined;
+      const ts = new Date()
+        .toISOString()
+        .replace(/[-:TZ.]/g, '')
+        .slice(0, 14);
+      const providedName =
+        flags.name && flags.name.trim() ? flags.name.trim().replace(/\s+/g, '_') : undefined;
       const dir = effective.migrationsDir;
       if (!fsp.exists(dir)) fsp.mkdirp(dir);
       const file = providedName
@@ -69,7 +75,17 @@ export class DiffCommand implements Command {
       fsp.writeText(file, template);
       if (flags.json) {
         // eslint-disable-next-line no-console
-        console.log(JSON.stringify({ file, steps: steps.map((s) => s.sql), ...(flags.details && detailsObj ? { details: detailsObj } : {}) }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              file,
+              steps: steps.map((s) => s.sql),
+              ...(flags.details && detailsObj ? { details: detailsObj } : {})
+            },
+            null,
+            2
+          )
+        );
       } else if (!flags.quiet) {
         logger.log('info', `Created migration scaffold: ${file}`);
       }
@@ -77,7 +93,16 @@ export class DiffCommand implements Command {
     }
     if (flags.json) {
       // eslint-disable-next-line no-console
-      console.log(JSON.stringify({ steps: steps.map((s) => s.sql), ...(flags.details && detailsObj ? { details: detailsObj } : {}) }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            steps: steps.map((s) => s.sql),
+            ...(flags.details && detailsObj ? { details: detailsObj } : {})
+          },
+          null,
+          2
+        )
+      );
       return 0;
     }
     if (flags.out) {
@@ -93,5 +118,3 @@ export class DiffCommand implements Command {
     return 0;
   }
 }
-
-

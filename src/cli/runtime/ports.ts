@@ -21,5 +21,3 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 export interface CliLogger {
   log(level: LogLevel, message: string): void;
 }
-
-

@@ -15,5 +15,3 @@ describe('cli runtime bootstrap', () => {
     delete (global as unknown as { __tslinq_boot_called?: boolean }).__tslinq_boot_called;
   });
 });
-
-

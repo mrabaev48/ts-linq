@@ -48,5 +48,3 @@ export class StatusCommand implements Command {
     return 0;
   }
 }
-
-
