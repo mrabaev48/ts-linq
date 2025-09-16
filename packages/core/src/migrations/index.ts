@@ -4,3 +4,9 @@
  */
 export * from './Migration';
 export * from './MigrationRunner';
+export * from './DiffTypes';
+export * from './DialectMigrationSql';
+export * from './MigrationBuilder';
+export * from './DiffBasedMigration';
+export * from './MigrationFileBuilder';
+export * from './DiffMigrationGenerator';
