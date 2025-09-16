@@ -65,7 +65,10 @@ class TypedQueryable {
      * ```
      */
     orderBy(keySelector, direction = 'ASC') {
-        const resultQueryable = this._queryable.orderBy(keySelector);
+        // Delegate to correct underlying method based on direction
+        const resultQueryable = direction === 'DESC'
+            ? this._queryable.orderByDescending(keySelector)
+            : this._queryable.orderBy(keySelector);
         return new TypedQueryable(resultQueryable);
     }
     /**
@@ -109,6 +112,7 @@ class TypedQueryable {
     // Execution methods that return results
     /**
      * Type-safe first() with proper return type.
+     * Throws if no elements found, consistent with underlying Queryable.
      */
     async first() {
         return this._queryable.first();
@@ -116,22 +120,14 @@ class TypedQueryable {
     /**
      * Type-safe firstOrDefault() with proper return type.
      */
-    async firstOrDefault(defaultValue) {
-        const result = await this.first();
-        return result ?? defaultValue;
+    async firstOrDefault() {
+        return this._queryable.firstOrDefault();
     }
     /**
      * Type-safe single() - expects exactly one result.
      */
     async single() {
-        const results = await this.toArray();
-        if (results.length === 0) {
-            throw new Error('Sequence contains no elements');
-        }
-        if (results.length > 1) {
-            throw new Error('Sequence contains more than one element');
-        }
-        return results[0];
+        return this._queryable.single();
     }
     /**
      * Type-safe toArray() with proper return type.
@@ -149,56 +145,20 @@ class TypedQueryable {
      * Type-safe any() - check if any elements exist matching the query.
      */
     async any() {
-        const count = await this.count();
-        return count > 0;
+        return this._queryable.any();
     }
     /**
      * Check if all elements match a predicate (requires loading all data).
+     * WARNING: This loads all data into memory. Use with caution on large datasets.
      */
     async all(predicate) {
         const items = await this.toArray();
         return items.every(predicate);
     }
-    // Aggregation methods
-    /**
-     * Get minimum value for a numeric property.
-     */
-    async min(selector) {
-        const items = await this.toArray();
-        if (items.length === 0)
-            return null;
-        const values = items.map(selector);
-        return values.reduce((min, current) => current < min ? current : min);
-    }
-    /**
-     * Get maximum value for a numeric property.
-     */
-    async max(selector) {
-        const items = await this.toArray();
-        if (items.length === 0)
-            return null;
-        const values = items.map(selector);
-        return values.reduce((max, current) => current > max ? current : max);
-    }
-    /**
-     * Calculate average for a numeric property.
-     */
-    async average(selector) {
-        const items = await this.toArray();
-        if (items.length === 0)
-            return null;
-        const values = items.map(selector);
-        const sum = values.reduce((acc, val) => acc + val, 0);
-        return sum / values.length;
-    }
-    /**
-     * Calculate sum for a numeric property.
-     */
-    async sum(selector) {
-        const items = await this.toArray();
-        const values = items.map(selector);
-        return values.reduce((acc, val) => acc + val, 0);
-    }
+    // Note: Aggregation methods (min, max, average, sum) have been removed to prevent
+    // performance issues. These methods previously materialized all rows in memory.
+    // For aggregations, use the underlying queryable via .raw or implement proper
+    // SQL aggregation queries with your database provider.
     /**
      * Access the underlying Queryable for advanced operations.
      * Use with caution as this bypasses type safety.
