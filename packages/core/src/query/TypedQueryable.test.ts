@@ -13,8 +13,7 @@ type OrderId = EntityId<string, 'Order'>;
 
 @Entity({ name: 'users' })
 class User {
-  @PrimaryKey({ branded: true })
-  @Column({ type: 'INTEGER' })
+  @PrimaryKey({ branded: true, type: 'INTEGER' })
   id!: UserId;
 
   @Column({ type: 'TEXT' })
@@ -26,14 +25,12 @@ class User {
   @Column({ type: 'TEXT' })
   email!: string;
 
-  @OneToMany(() => Order, { inverseSide: 'user' })
   orders!: Order[];
 }
 
 @Entity({ name: 'orders' })
 class Order {
-  @PrimaryKey({ branded: true })
-  @Column({ type: 'TEXT' })
+  @PrimaryKey({ branded: true, type: 'TEXT' })
   id!: OrderId;
 
   @Column({ type: 'REAL' })

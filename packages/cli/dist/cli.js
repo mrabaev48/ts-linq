@@ -70,7 +70,7 @@ async function main() {
         if (!fs.existsSync(dir))
             fs.mkdirSync(dir, { recursive: true });
         const file = path.join(dir, `${ts}_${name}.ts`);
-        const template = `import { Migration } from '../src/migrations/Migration';\n\nexport class ${name} extends Migration {\n  protected get name() { return '${name}'; }\n  protected get version() { return '${ts}'; }\n  public async up(): Promise<void> {\n    // TODO: write your DDL here\n  }\n  public async down(): Promise<void> {\n    // TODO: write your rollback here\n  }\n}\n`;
+        const template = `import { Migration } from '@ts-linq/core';\n\nexport class ${name} extends Migration {\n  protected get name() { return '${name}'; }\n  protected get version() { return '${ts}'; }\n  public async up(): Promise<void> {\n    // TODO: write your DDL here\n  }\n  public async down(): Promise<void> {\n    // TODO: write your rollback here\n  }\n}\n`;
         fs.writeFileSync(file, template, 'utf8');
         console.log(`Created ${file}`);
     }

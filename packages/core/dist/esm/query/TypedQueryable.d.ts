@@ -12,6 +12,13 @@ type TypedPredicate<TEntity> = (entity: TEntity) => boolean;
  */
 type TypedOrderSelector<TEntity> = (entity: TEntity) => any;
 /**
+ * Extract only relationship properties from an entity.
+ * Relationship properties are arrays or objects (not primitives).
+ */
+type RelationshipProperties<T> = {
+    [K in keyof T]: T[K] extends Array<any> ? K : T[K] extends object ? (T[K] extends Date ? never : T[K] extends Function ? never : K) : never;
+}[keyof T];
+/**
  * Compile-time typed wrapper around Queryable that provides type safety
  * for select(), where(), include(), and other query operations.
  *
@@ -76,7 +83,7 @@ export declare class TypedQueryable<TEntity> {
      * users.include(u => u.name)
      * ```
      */
-    include<TProperty>(navigationSelector: (entity: TEntity) => TProperty): TypedQueryable<TEntity>;
+    include<TProperty extends TEntity[RelationshipProperties<TEntity>]>(navigationSelector: (entity: TEntity) => TProperty): TypedQueryable<TEntity>;
     /**
      * Type-safe limit with number validation.
      */
@@ -91,12 +98,13 @@ export declare class TypedQueryable<TEntity> {
     distinct(): TypedQueryable<TEntity>;
     /**
      * Type-safe first() with proper return type.
+     * Throws if no elements found, consistent with underlying Queryable.
      */
-    first(): Promise<TEntity | null>;
+    first(): Promise<TEntity>;
     /**
      * Type-safe firstOrDefault() with proper return type.
      */
-    firstOrDefault(defaultValue: TEntity): Promise<TEntity>;
+    firstOrDefault(): Promise<TEntity | null>;
     /**
      * Type-safe single() - expects exactly one result.
      */
@@ -115,24 +123,9 @@ export declare class TypedQueryable<TEntity> {
     any(): Promise<boolean>;
     /**
      * Check if all elements match a predicate (requires loading all data).
+     * WARNING: This loads all data into memory. Use with caution on large datasets.
      */
     all(predicate: TypedPredicate<TEntity>): Promise<boolean>;
-    /**
-     * Get minimum value for a numeric property.
-     */
-    min<TResult>(selector: (entity: TEntity) => TResult): Promise<TResult | null>;
-    /**
-     * Get maximum value for a numeric property.
-     */
-    max<TResult>(selector: (entity: TEntity) => TResult): Promise<TResult | null>;
-    /**
-     * Calculate average for a numeric property.
-     */
-    average(selector: (entity: TEntity) => number): Promise<number | null>;
-    /**
-     * Calculate sum for a numeric property.
-     */
-    sum(selector: (entity: TEntity) => number): Promise<number>;
     /**
      * Access the underlying Queryable for advanced operations.
      * Use with caution as this bypasses type safety.
