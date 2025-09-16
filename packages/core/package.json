@@ -10,6 +10,31 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.esm.js",
       "require": "./dist/index.js"
+    },
+    "./decorators": {
+      "types": "./dist/decorators/index.d.ts",
+      "import": "./dist/esm/decorators/index.js",
+      "require": "./dist/decorators/index.js"
+    },
+    "./query": {
+      "types": "./dist/query/index.d.ts",
+      "import": "./dist/esm/query/index.js",
+      "require": "./dist/query/index.js"
+    },
+    "./migrations": {
+      "types": "./dist/migrations/index.d.ts",
+      "import": "./dist/esm/migrations/index.js",
+      "require": "./dist/migrations/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/types/index.js",
+      "require": "./dist/types/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/esm/utils/index.js",
+      "require": "./dist/utils/index.js"
     }
   },
   "files": [
