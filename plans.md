@@ -160,6 +160,21 @@
 - [P3] CLI tooling: init, generate entity/migration, migrate/rollback, seed
 - Detailed plan: see `cli-plans.md`
 
+## Completed in v1.1.0
+
+- Migrations/Emitters:
+  - UNIQUE/CHECK handling moved into emitters (PG/MySQL/MSSQL/SQLite base)
+  - MigrationSqlBuilder: split add/alter/drop; SQLite rebuild flow via finalSnapshot
+  - Constraint rename detection (UNIQUE by columns, CHECK by expression) + emitter.renameConstraint()
+- CLI:
+  - migrate --transaction (diff mode)
+  - seed --transaction; JSON output for TS/JS seeds (+durationMs); SQL seeds include durationMs
+  - diff --details (expected/actual/diff)
+- Tests:
+  - Unit for emitters and rename detection; conditional e2e for PG/MySQL/MSSQL
+- Docs:
+  - sqlite-rebuild and constraints guides; CLI help updated
+
 ## Test matrix (deferred)
 
 - Testcontainers-based integration for all providers in CI
