@@ -38,6 +38,7 @@ __exportStar(require("./query/Queryable"), exports);
 __exportStar(require("./query/TypedQueryable"), exports);
 __exportStar(require("./query/QueryBuilder"), exports);
 __exportStar(require("./query/SqlCache"), exports);
+__exportStar(require("./query/EnhancedSqlCache"), exports);
 __exportStar(require("./query/SqlDialect"), exports);
 __exportStar(require("./query/CountCache"), exports);
 __exportStar(require("./query/GlobalFilterApplier"), exports);

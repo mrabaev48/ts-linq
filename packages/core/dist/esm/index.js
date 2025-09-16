@@ -22,6 +22,7 @@ export * from './query/Queryable';
 export * from './query/TypedQueryable';
 export * from './query/QueryBuilder';
 export * from './query/SqlCache';
+export * from './query/EnhancedSqlCache';
 export * from './query/SqlDialect';
 export * from './query/CountCache';
 export * from './query/GlobalFilterApplier';

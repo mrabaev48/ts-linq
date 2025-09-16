@@ -2,6 +2,7 @@ import type { LoadingOptions } from './LoadingStrategy';
 import { LoadingStrategy } from './LoadingStrategy';
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
+import { LazyLoadingProxy } from './LazyLoadingProxy';
 
 /**
  * Service responsible for loading entities with either lazy or eager strategy,
@@ -26,7 +27,7 @@ export class EntityLoader {
   }
 
   /**
-   * Load a single entity by id with optional eager includes.
+   * Load a single entity by id with optional eager includes or lazy loading.
    */
   public async loadEntity<T extends object>(
     entityClass: new () => T,
@@ -43,13 +44,17 @@ export class EntityLoader {
 
     if (loadingOptions.strategy === LoadingStrategy.Eager || loadingOptions.includes) {
       await this.loadRelationships(entity, entityClass, loadingOptions);
+      return entity;
+    } else if (loadingOptions.strategy === LoadingStrategy.Lazy) {
+      // Return a lazy loading proxy for Entity Framework style navigation
+      return LazyLoadingProxy.create(entity, entityClass, this._provider);
     }
 
     return entity;
   }
 
   /**
-   * Load all entities for a given type with optional eager includes.
+   * Load all entities for a given type with optional eager includes or lazy loading.
    */
   public async loadEntities<T extends object>(
     entityClass: new () => T,
@@ -64,6 +69,10 @@ export class EntityLoader {
 
     if (loadingOptions.strategy === LoadingStrategy.Eager || loadingOptions.includes) {
       await this.loadRelationshipsBatched(entities, entityClass, loadingOptions);
+      return entities;
+    } else if (loadingOptions.strategy === LoadingStrategy.Lazy) {
+      // Return lazy loading proxies for Entity Framework style navigation
+      return LazyLoadingProxy.createMany(entities, entityClass, this._provider);
     }
 
     return entities;

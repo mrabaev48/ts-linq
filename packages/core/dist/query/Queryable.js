@@ -151,6 +151,36 @@ class Queryable {
         this._model.orderBy.push(orderByClause);
         return this;
     }
+    /**
+     * Adds secondary ASC ordering. Must be used after orderBy() or orderByDescending().
+     * @param keySelector Sort key selector for secondary sort.
+     *
+     * @example
+     * const sorted = await context.users.orderBy(u => u.lastName).thenBy(u => u.firstName).toArray();
+     */
+    thenBy(keySelector) {
+        const keySelectorStr = keySelector.toString();
+        const column = this.extractPropertyFromKeySelector(keySelectorStr);
+        const orderByClause = { column, direction: 'ASC' };
+        this._model.orderBy = this._model.orderBy || [];
+        this._model.orderBy.push(orderByClause);
+        return this;
+    }
+    /**
+     * Adds secondary DESC ordering. Must be used after orderBy() or orderByDescending().
+     * @param keySelector Sort key selector for secondary sort.
+     *
+     * @example
+     * const sorted = await context.users.orderBy(u => u.lastName).thenByDescending(u => u.age).toArray();
+     */
+    thenByDescending(keySelector) {
+        const keySelectorStr = keySelector.toString();
+        const column = this.extractPropertyFromKeySelector(keySelectorStr);
+        const orderByClause = { column, direction: 'DESC' };
+        this._model.orderBy = this._model.orderBy || [];
+        this._model.orderBy.push(orderByClause);
+        return this;
+    }
     /** Limits the number of returned rows.
      * @example
      * const top10 = await context.products.take(10).toArray();
@@ -719,6 +749,134 @@ class Queryable {
     withAbort(signal) {
         this._abortSignal = signal;
         return this;
+    }
+    // Additional Entity Framework-style LINQ methods
+    /** Check if all elements satisfy a condition (EF-style) */
+    async all(predicate) {
+        if (this._abortSignal?.aborted)
+            throw new Error('Operation aborted');
+        // For efficiency, we'll check if any element does NOT satisfy the condition
+        // If none exist that violate it, then all satisfy it
+        const violatingElement = await this.where(entity => !predicate(entity)).firstOrDefault();
+        return violatingElement === null;
+    }
+    /** Calculate average of a numeric property (EF-style) */
+    async average(selector) {
+        if (this._abortSignal?.aborted)
+            throw new Error('Operation aborted');
+        const entities = await this.toArray();
+        if (entities.length === 0)
+            throw new Error('Sequence contains no elements');
+        const values = entities.map(e => {
+            const value = selector(e);
+            return typeof value === 'number' ? value : Number(value) || 0;
+        });
+        return values.reduce((sum, val) => sum + val, 0) / values.length;
+    }
+    /** Calculate sum of a numeric property (EF-style) */
+    async sum(selector) {
+        if (this._abortSignal?.aborted)
+            throw new Error('Operation aborted');
+        const entities = await this.toArray();
+        const values = entities.map(e => {
+            const value = selector(e);
+            return typeof value === 'number' ? value : Number(value) || 0;
+        });
+        return values.reduce((sum, val) => sum + val, 0);
+    }
+    /** Find minimum value of a property (EF-style) */
+    async min(selector) {
+        if (this._abortSignal?.aborted)
+            throw new Error('Operation aborted');
+        const entities = await this.toArray();
+        if (entities.length === 0)
+            throw new Error('Sequence contains no elements');
+        let minValue = selector(entities[0]);
+        for (let i = 1; i < entities.length; i++) {
+            const value = selector(entities[i]);
+            if (value < minValue)
+                minValue = value;
+        }
+        return minValue;
+    }
+    /** Find maximum value of a property (EF-style) */
+    async max(selector) {
+        if (this._abortSignal?.aborted)
+            throw new Error('Operation aborted');
+        const entities = await this.toArray();
+        if (entities.length === 0)
+            throw new Error('Sequence contains no elements');
+        let maxValue = selector(entities[0]);
+        for (let i = 1; i < entities.length; i++) {
+            const value = selector(entities[i]);
+            if (value > maxValue)
+                maxValue = value;
+        }
+        return maxValue;
+    }
+    /** Check if the sequence contains a specific element (EF-style) */
+    async contains(item) {
+        if (this._abortSignal?.aborted)
+            throw new Error('Operation aborted');
+        // For entities, use primary key comparison if available
+        const metadata = MetadataStorage_1.MetadataStorage.getEntity(this._entityClass);
+        if (metadata && metadata.primaryKeys.length > 0) {
+            const pk = metadata.primaryKeys[0];
+            const itemId = item[pk];
+            if (itemId !== undefined && itemId !== null) {
+                // Use primary key based comparison for efficiency
+                const entities = await this.toArray();
+                return entities.some(entity => entity[pk] === itemId);
+            }
+        }
+        // Fallback to deep equality comparison using JSON serialization
+        const entities = await this.toArray();
+        const itemJson = JSON.stringify(item);
+        return entities.some(entity => JSON.stringify(entity) === itemJson);
+    }
+    /** Get elements that are in this sequence but not in the other (EF-style) */
+    except(other) {
+        // Implement using client-side filtering since SQL EXCEPT support varies by provider
+        const cloned = this.clone();
+        // Add a custom filter to exclude elements that exist in the other sequence
+        const originalToArray = cloned.toArray;
+        cloned.toArray = async function () {
+            const thisResults = await originalToArray.call(this);
+            const otherResults = await other.toArray();
+            // Create a Set for O(1) lookup performance
+            const otherSet = new Set(otherResults.map(item => JSON.stringify(item)));
+            return thisResults.filter(item => !otherSet.has(JSON.stringify(item)));
+        }.bind(cloned);
+        return cloned;
+    }
+    /** Get elements that are in both sequences (EF-style) */
+    intersect(other) {
+        // Implement using client-side filtering since SQL INTERSECT support varies by provider
+        const cloned = this.clone();
+        // Add a custom filter to include only elements that exist in both sequences
+        const originalToArray = cloned.toArray;
+        cloned.toArray = async function () {
+            const thisResults = await originalToArray.call(this);
+            const otherResults = await other.toArray();
+            // Create a Set for O(1) lookup performance
+            const otherSet = new Set(otherResults.map(item => JSON.stringify(item)));
+            return thisResults.filter(item => otherSet.has(JSON.stringify(item)));
+        }.bind(cloned);
+        return cloned;
+    }
+    /** Concatenate with another sequence (EF-style) */
+    concat(other) {
+        // Implement proper concatenation by combining results in order
+        const cloned = this.clone();
+        // Override toArray to concatenate results while maintaining order
+        const originalToArray = cloned.toArray;
+        cloned.toArray = async function () {
+            const thisResults = await originalToArray.call(this);
+            const otherResults = await other.toArray();
+            // Concatenate maintaining order: this sequence first, then other
+            return [...thisResults, ...otherResults];
+        }.bind(cloned);
+        return cloned;
     }
     /** Add a JOIN clause into the model using simple predicate parsing. */
     addJoin(type, otherCtor, on, alias) {
