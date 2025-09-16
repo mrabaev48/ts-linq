@@ -6,9 +6,12 @@ export class EnhancedSqlCache {
     constructor(options = {}) {
         this.store = new Map();
         this.keyMap = new Map(); // original -> compressed key mapping
+        const isTestEnv = typeof process !== 'undefined' &&
+            (process.env.JEST_WORKER_ID !== undefined || process.env.NODE_ENV === 'test');
         this.options = {
             maxSize: options.maxSize ?? 2000,
-            defaultTtl: options.defaultTtl ?? 300000, // 5 minutes default
+            // In tests, disable periodic cleanup by default to avoid open handle leaks
+            defaultTtl: options.defaultTtl ?? (isTestEnv ? 0 : 300000), // 5 minutes default in non-test
             enableLru: options.enableLru ?? true,
             enableKeyCompression: options.enableKeyCompression ?? true,
             compressionThreshold: options.compressionThreshold ?? 200,
@@ -262,6 +265,9 @@ export class EnhancedSqlCache {
         this.cleanupInterval = setInterval(() => {
             this.expireEntries();
         }, cleanupInterval);
+        // Prevent the interval from keeping the event loop alive in tests/process exit
+        // NodeJS.Timeout supports unref() in Node environments
+        this.cleanupInterval?.unref?.();
     }
     chunkArray(array, size) {
         const chunks = [];
