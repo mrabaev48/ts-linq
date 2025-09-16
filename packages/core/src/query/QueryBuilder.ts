@@ -4,19 +4,19 @@ import type { SqlDialect } from './SqlDialect';
 import { safeCacheSize, safeCacheEvicted } from '../utils/MetricsSafe';
 import type { QueryModel } from './QueryModel';
 import type { SqlCache, SqlCacheEntry } from './SqlCache';
+import { EnhancedSqlCache } from './EnhancedSqlCache';
 
 /**
  * QueryBuilder is now focused solely on generating SQL
  * from an entity class and accumulated query options.
  */
 export class QueryBuilder {
-  /** Shared in-memory cache if external SqlCache is not provided. */
-  private static _sqlCache: Map<string, { query: string; parameters: SqlParameter[] }> = new Map();
-  private static readonly _MAX_CACHE_SIZE = 1000;
+  /** Default enhanced cache instance */
+  private static _defaultCache: EnhancedSqlCache = new EnhancedSqlCache();
   private _dialect: SqlDialect;
   private _logger?: SqlLogger;
   private _providerName?: string;
-  private _cache?: SqlCache;
+  private _cache: SqlCache;
   /**
    * Create a QueryBuilder that delegates SQL generation to a dialect.
    * @param dialect SqlDialect implementation (default: SQLiteDialect)
@@ -30,9 +30,9 @@ export class QueryBuilder {
     this._dialect = dialect;
     this._logger = logger;
     this._providerName = providerName;
-    this._cache = cache;
+    this._cache = cache ?? QueryBuilder._defaultCache;
   }
-  /** Generate SQL from QueryOptions (legacy path). */
+  /** Generate SQL from QueryOptions with enhanced caching. */
   public generateSql<T>(
     entityClass: new () => T,
     options: QueryOptions
@@ -80,7 +80,46 @@ export class QueryBuilder {
 
   /** Clears the global SQL cache. Useful for tests or after metadata changes. */
   public static clearCache(): void {
-    QueryBuilder._sqlCache.clear();
+    QueryBuilder._defaultCache.clear();
+  }
+
+  /** Dispose of the global cache resources. Useful for cleanup. */
+  public static disposeCache(): void {
+    QueryBuilder._defaultCache.dispose();
+    QueryBuilder._defaultCache = new EnhancedSqlCache();
+  }
+
+  /** Get cache metrics for performance monitoring (if using EnhancedSqlCache). */
+  public getCacheMetrics() {
+    if (this._cache instanceof EnhancedSqlCache) {
+      return this._cache.getMetrics();
+    }
+    // Fallback for basic cache interfaces
+    return {
+      currentSize: this._cache.size?.() ?? 0,
+      totalRequests: 0,
+      hits: 0,
+      misses: 0,
+      hitRatio: 0,
+      evictions: 0,
+      expirations: 0,
+      averageAccessCount: 0,
+      estimatedMemoryUsage: 0
+    };
+  }
+
+  /** Get optimization insights for cache tuning (if using EnhancedSqlCache). */
+  public getOptimizationInsights() {
+    if (this._cache instanceof EnhancedSqlCache) {
+      return this._cache.getOptimizationInsights();
+    }
+    // Fallback for basic cache interfaces
+    return {
+      shouldIncreaseSize: false,
+      shouldDecreaseTtl: false,
+      shouldIncreaseTtl: false,
+      topAccessedEntries: []
+    };
   }
 
   /** Create a stable, lightweight cache key. */
@@ -118,43 +157,20 @@ export class QueryBuilder {
     return key;
   }
 
-  /** Store an item in the cache with simple FIFO eviction. */
+  /** Store an item in the cache. */
   private remember(
     key: string,
     value: { query: string; parameters: readonly SqlParameter[] }
   ): void {
-    if (this._cache) {
-      this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
-      safeCacheSize(this._logger, {
-        cache: 'sqlGen',
-        size: this._cache.size?.() ?? -1,
-        provider: this._providerName
-      });
-      return;
-    }
-    if (QueryBuilder._sqlCache.size >= QueryBuilder._MAX_CACHE_SIZE) {
-      const firstKey = QueryBuilder._sqlCache.keys().next().value;
-      if (firstKey !== undefined) {
-        QueryBuilder._sqlCache.delete(firstKey);
-        safeCacheEvicted(this._logger, { cache: 'sqlGen', provider: this._providerName });
-      }
-    }
-    QueryBuilder._sqlCache.set(key, { query: value.query, parameters: [...value.parameters] });
+    this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
     safeCacheSize(this._logger, {
       cache: 'sqlGen',
-      size: QueryBuilder._sqlCache.size,
+      size: this._cache.size?.() ?? -1,
       provider: this._providerName
     });
   }
 
   private getFromCache(key: string): SqlCacheEntry | undefined {
-    if (this._cache) return this._cache.get(key);
-    const val = QueryBuilder._sqlCache.get(key);
-    if (val) {
-      // LRU touch: move to the most-recent position
-      QueryBuilder._sqlCache.delete(key);
-      QueryBuilder._sqlCache.set(key, val);
-    }
-    return val;
+    return this._cache.get(key);
   }
 }
