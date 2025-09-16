@@ -2,6 +2,7 @@ import { ChangeTracker } from '../change-tracking/ChangeTracker';
 import { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
+import { LazyLoadingProxy } from '../loading/LazyLoadingProxy';
 import { DbSet } from './DbSet';
 import { ok, err, ValidationError } from '../types';
 import { EntityCache } from '../utils/EntityCache';
@@ -299,12 +300,13 @@ export class DbContext {
         this._entityLoader.setDefaultStrategy(strategy);
     }
     /**
-     * Find an entity by ID with loading options
+     * Find an entity by ID with loading options.
+     * Entity Framework style method that returns lazy loading proxies by default.
      *
      * @param entityClass Constructor of the entity type.
      * @param id Primary key value.
      * @param options Loading options (strategy, includes, depth).
-     * @returns The found entity or null.
+     * @returns The found entity or null with lazy loading enabled by default.
      */
     async find(entityClass, id, options) {
         const loadingOptions = {
@@ -315,11 +317,12 @@ export class DbContext {
         return await this._entityLoader.loadEntity(entityClass, id, loadingOptions);
     }
     /**
-     * Find entities with loading options
+     * Find entities with loading options.
+     * Entity Framework style method that returns lazy loading proxies by default.
      *
      * @param entityClass Constructor of the entity type.
      * @param options Loading options (strategy, includes, depth).
-     * @returns Array of loaded entities.
+     * @returns Array of loaded entities with lazy loading enabled by default.
      */
     async findAll(entityClass, options) {
         const loadingOptions = {
@@ -328,6 +331,33 @@ export class DbContext {
             ...(options || {})
         };
         return await this._entityLoader.loadEntities(entityClass, loadingOptions);
+    }
+    /**
+     * Load navigation properties for an entity (Entity Framework style Include).
+     * Useful for explicitly loading relationships on already-loaded entities.
+     */
+    async include(entity, entityClass, ...propertyNames) {
+        if (LazyLoadingProxy.isLazyProxy(entity)) {
+            // Preload relationships for lazy proxy
+            await LazyLoadingProxy.preloadRelationships([entity], entityClass, propertyNames, this._provider);
+        }
+        else {
+            // Use entity loader for regular entities
+            await this._entityLoader.populateRelationships(entity, entityClass, {
+                strategy: LoadingStrategy.Eager,
+                includes: propertyNames
+            });
+        }
+    }
+    /**
+     * Check if navigation property is loaded (Entity Framework style IsLoaded).
+     */
+    isLoaded(entity, propertyName) {
+        if (LazyLoadingProxy.isLazyProxy(entity)) {
+            return LazyLoadingProxy.isRelationshipLoaded(entity, propertyName);
+        }
+        // For non-proxy entities, check if property exists and is not undefined/null
+        return entity[propertyName] !== undefined && entity[propertyName] !== null;
     }
     // Removed string-based include API in favor of predicate-based include on Queryable
     /**

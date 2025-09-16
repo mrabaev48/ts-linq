@@ -17,11 +17,11 @@ export declare class EntityLoader {
      */
     setDefaultStrategy(strategy: LoadingStrategy): void;
     /**
-     * Load a single entity by id with optional eager includes.
+     * Load a single entity by id with optional eager includes or lazy loading.
      */
     loadEntity<T extends object>(entityClass: new () => T, id: unknown, options?: LoadingOptions): Promise<T | null>;
     /**
-     * Load all entities for a given type with optional eager includes.
+     * Load all entities for a given type with optional eager includes or lazy loading.
      */
     loadEntities<T extends object>(entityClass: new () => T, options?: LoadingOptions): Promise<T[]>;
     /**

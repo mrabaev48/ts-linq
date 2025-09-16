@@ -4,6 +4,7 @@ import { EntityLoader } from '../loading/EntityLoader';
 import type { LoadingOptions } from '../loading/LoadingStrategy';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
+import { LazyLoadingProxy } from '../loading/LazyLoadingProxy';
 import { DbSet } from './DbSet';
 import type {
   DbContextOptions,
@@ -46,7 +47,7 @@ export abstract class DbContext {
   private _changeTracker: ChangeTracker;
   private _entityLoader: EntityLoader;
   private _dbSets: Map<Function, DbSet<object>> = new Map();
-  private _defaultLoadingStrategy: LoadingStrategy = LoadingStrategy.Lazy;
+  private _defaultLoadingStrategy: LoadingStrategy = LoadingStrategy.Eager;
   private _entityCache?: EntityCacheLike;
   private _performanceOptions?: PerformanceOptions;
   private _loadingDefaults: LoadingDefaults = {};
@@ -79,6 +80,15 @@ export abstract class DbContext {
     // Store performance options for downstream consumers
     this._performanceOptions = options.performance;
     this._loadingDefaults = options.loading || {};
+    
+    // Apply loading strategy from options or keep default
+    if (this._loadingDefaults.strategy) {
+      this._defaultLoadingStrategy = this._loadingDefaults.strategy;
+      this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
+    } else {
+      this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
+    }
+    
     this.initializeDbSets();
   }
 
@@ -375,12 +385,13 @@ export abstract class DbContext {
   }
 
   /**
-   * Find an entity by ID with loading options
+   * Find an entity by ID with loading options.
+   * Entity Framework style method that returns lazy loading proxies by default.
    *
    * @param entityClass Constructor of the entity type.
    * @param id Primary key value.
    * @param options Loading options (strategy, includes, depth).
-   * @returns The found entity or null.
+   * @returns The found entity or null with lazy loading enabled by default.
    */
   public async find<T extends object>(
     entityClass: new () => T,
@@ -396,11 +407,12 @@ export abstract class DbContext {
   }
 
   /**
-   * Find entities with loading options
+   * Find entities with loading options.
+   * Entity Framework style method that returns lazy loading proxies by default.
    *
    * @param entityClass Constructor of the entity type.
    * @param options Loading options (strategy, includes, depth).
-   * @returns Array of loaded entities.
+   * @returns Array of loaded entities with lazy loading enabled by default.
    */
   public async findAll<T extends object>(
     entityClass: new () => T,
@@ -412,6 +424,38 @@ export abstract class DbContext {
       ...(options || {})
     };
     return await this._entityLoader.loadEntities<T>(entityClass, loadingOptions);
+  }
+
+  /**
+   * Load navigation properties for an entity (Entity Framework style Include).
+   * Useful for explicitly loading relationships on already-loaded entities.
+   */
+  public async include<T extends object>(
+    entity: T,
+    entityClass: new () => T,
+    ...propertyNames: string[]
+  ): Promise<void> {
+    if (LazyLoadingProxy.isLazyProxy(entity)) {
+      // Preload relationships for lazy proxy
+      await LazyLoadingProxy.preloadRelationships([entity], entityClass, propertyNames, this._provider);
+    } else {
+      // Use entity loader for regular entities
+      await this._entityLoader.populateRelationships(entity, entityClass, {
+        strategy: LoadingStrategy.Eager,
+        includes: propertyNames
+      });
+    }
+  }
+
+  /**
+   * Check if navigation property is loaded (Entity Framework style IsLoaded).
+   */
+  public isLoaded<T extends object>(entity: T, propertyName: string): boolean {
+    if (LazyLoadingProxy.isLazyProxy(entity)) {
+      return LazyLoadingProxy.isRelationshipLoaded(entity, propertyName);
+    }
+    // For non-proxy entities, check if property exists and is not undefined/null
+    return (entity as any)[propertyName] !== undefined && (entity as any)[propertyName] !== null;
   }
 
   // Removed string-based include API in favor of predicate-based include on Queryable

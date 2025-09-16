@@ -95,6 +95,22 @@ export declare class Queryable<T> {
      * const latest = await context.books.orderByDescending(b => b.id).take(5).toArray();
      */
     orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T>;
+    /**
+     * Adds secondary ASC ordering. Must be used after orderBy() or orderByDescending().
+     * @param keySelector Sort key selector for secondary sort.
+     *
+     * @example
+     * const sorted = await context.users.orderBy(u => u.lastName).thenBy(u => u.firstName).toArray();
+     */
+    thenBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T>;
+    /**
+     * Adds secondary DESC ordering. Must be used after orderBy() or orderByDescending().
+     * @param keySelector Sort key selector for secondary sort.
+     *
+     * @example
+     * const sorted = await context.users.orderBy(u => u.lastName).thenByDescending(u => u.age).toArray();
+     */
+    thenByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T>;
     /** Limits the number of returned rows.
      * @example
      * const top10 = await context.products.take(10).toArray();
@@ -225,6 +241,24 @@ export declare class Queryable<T> {
     private convertValue;
     /** Attach an AbortSignal to cancel execution before hitting the provider. */
     withAbort(signal: AbortSignal): Queryable<T>;
+    /** Check if all elements satisfy a condition (EF-style) */
+    all(predicate: (entity: T) => boolean): Promise<boolean>;
+    /** Calculate average of a numeric property (EF-style) */
+    average<K extends keyof T>(selector: (entity: T) => T[K]): Promise<number>;
+    /** Calculate sum of a numeric property (EF-style) */
+    sum<K extends keyof T>(selector: (entity: T) => T[K]): Promise<number>;
+    /** Find minimum value of a property (EF-style) */
+    min<K extends keyof T>(selector: (entity: T) => T[K]): Promise<T[K]>;
+    /** Find maximum value of a property (EF-style) */
+    max<K extends keyof T>(selector: (entity: T) => T[K]): Promise<T[K]>;
+    /** Check if the sequence contains a specific element (EF-style) */
+    contains(item: T): Promise<boolean>;
+    /** Get elements that are in this sequence but not in the other (EF-style) */
+    except(other: Queryable<T>): Queryable<T>;
+    /** Get elements that are in both sequences (EF-style) */
+    intersect(other: Queryable<T>): Queryable<T>;
+    /** Concatenate with another sequence (EF-style) */
+    concat(other: Queryable<T>): Queryable<T>;
     /** Add a JOIN clause into the model using simple predicate parsing. */
     private addJoin;
     /**

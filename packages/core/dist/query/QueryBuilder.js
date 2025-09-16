@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.QueryBuilder = void 0;
 const MetricsSafe_1 = require("../utils/MetricsSafe");
+const EnhancedSqlCache_1 = require("./EnhancedSqlCache");
 /**
  * QueryBuilder is now focused solely on generating SQL
  * from an entity class and accumulated query options.
@@ -15,9 +16,9 @@ class QueryBuilder {
         this._dialect = dialect;
         this._logger = logger;
         this._providerName = providerName;
-        this._cache = cache;
+        this._cache = cache ?? QueryBuilder._defaultCache;
     }
-    /** Generate SQL from QueryOptions (legacy path). */
+    /** Generate SQL from QueryOptions with enhanced caching. */
     generateSql(entityClass, options) {
         const key = QueryBuilder.buildCacheKey(entityClass, options);
         const hit = this.getFromCache(key);
@@ -58,7 +59,43 @@ class QueryBuilder {
     }
     /** Clears the global SQL cache. Useful for tests or after metadata changes. */
     static clearCache() {
-        QueryBuilder._sqlCache.clear();
+        QueryBuilder._defaultCache.clear();
+    }
+    /** Dispose of the global cache resources. Useful for cleanup. */
+    static disposeCache() {
+        QueryBuilder._defaultCache.dispose();
+        QueryBuilder._defaultCache = new EnhancedSqlCache_1.EnhancedSqlCache();
+    }
+    /** Get cache metrics for performance monitoring (if using EnhancedSqlCache). */
+    getCacheMetrics() {
+        if (this._cache instanceof EnhancedSqlCache_1.EnhancedSqlCache) {
+            return this._cache.getMetrics();
+        }
+        // Fallback for basic cache interfaces
+        return {
+            currentSize: this._cache.size?.() ?? 0,
+            totalRequests: 0,
+            hits: 0,
+            misses: 0,
+            hitRatio: 0,
+            evictions: 0,
+            expirations: 0,
+            averageAccessCount: 0,
+            estimatedMemoryUsage: 0
+        };
+    }
+    /** Get optimization insights for cache tuning (if using EnhancedSqlCache). */
+    getOptimizationInsights() {
+        if (this._cache instanceof EnhancedSqlCache_1.EnhancedSqlCache) {
+            return this._cache.getOptimizationInsights();
+        }
+        // Fallback for basic cache interfaces
+        return {
+            shouldIncreaseSize: false,
+            shouldDecreaseTtl: false,
+            shouldIncreaseTtl: false,
+            topAccessedEntries: []
+        };
     }
     /** Create a stable, lightweight cache key. */
     static buildCacheKey(entityClass, options) {
@@ -98,45 +135,20 @@ class QueryBuilder {
             key += '|d:1';
         return key;
     }
-    /** Store an item in the cache with simple FIFO eviction. */
+    /** Store an item in the cache. */
     remember(key, value) {
-        if (this._cache) {
-            this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
-            (0, MetricsSafe_1.safeCacheSize)(this._logger, {
-                cache: 'sqlGen',
-                size: this._cache.size?.() ?? -1,
-                provider: this._providerName
-            });
-            return;
-        }
-        if (QueryBuilder._sqlCache.size >= QueryBuilder._MAX_CACHE_SIZE) {
-            const firstKey = QueryBuilder._sqlCache.keys().next().value;
-            if (firstKey !== undefined) {
-                QueryBuilder._sqlCache.delete(firstKey);
-                (0, MetricsSafe_1.safeCacheEvicted)(this._logger, { cache: 'sqlGen', provider: this._providerName });
-            }
-        }
-        QueryBuilder._sqlCache.set(key, { query: value.query, parameters: [...value.parameters] });
+        this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
         (0, MetricsSafe_1.safeCacheSize)(this._logger, {
             cache: 'sqlGen',
-            size: QueryBuilder._sqlCache.size,
+            size: this._cache.size?.() ?? -1,
             provider: this._providerName
         });
     }
     getFromCache(key) {
-        if (this._cache)
-            return this._cache.get(key);
-        const val = QueryBuilder._sqlCache.get(key);
-        if (val) {
-            // LRU touch: move to the most-recent position
-            QueryBuilder._sqlCache.delete(key);
-            QueryBuilder._sqlCache.set(key, val);
-        }
-        return val;
+        return this._cache.get(key);
     }
 }
 exports.QueryBuilder = QueryBuilder;
-/** Shared in-memory cache if external SqlCache is not provided. */
-QueryBuilder._sqlCache = new Map();
-QueryBuilder._MAX_CACHE_SIZE = 1000;
+/** Default enhanced cache instance */
+QueryBuilder._defaultCache = new EnhancedSqlCache_1.EnhancedSqlCache();
 //# sourceMappingURL=QueryBuilder.js.map

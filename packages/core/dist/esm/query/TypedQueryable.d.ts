@@ -97,6 +97,16 @@ export declare class TypedQueryable<TEntity> {
      */
     distinct(): TypedQueryable<TEntity>;
     /**
+     * Type-safe secondary ordering in ascending order.
+     * Must be used after orderBy() or orderByDescending().
+     */
+    thenBy<TKey>(keySelector: TypedOrderSelector<TEntity>): TypedQueryable<TEntity>;
+    /**
+     * Type-safe secondary ordering in descending order.
+     * Must be used after orderBy() or orderByDescending().
+     */
+    thenByDescending<TKey>(keySelector: TypedOrderSelector<TEntity>): TypedQueryable<TEntity>;
+    /**
      * Type-safe first() with proper return type.
      * Throws if no elements found, consistent with underlying Queryable.
      */
@@ -126,6 +136,38 @@ export declare class TypedQueryable<TEntity> {
      * WARNING: This loads all data into memory. Use with caution on large datasets.
      */
     all(predicate: TypedPredicate<TEntity>): Promise<boolean>;
+    /**
+     * Calculate average of a numeric property (EF-style with type safety)
+     */
+    average<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<number>;
+    /**
+     * Calculate sum of a numeric property (EF-style with type safety)
+     */
+    sum<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<number>;
+    /**
+     * Find minimum value of a property (EF-style with type safety)
+     */
+    min<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<TEntity[K]>;
+    /**
+     * Find maximum value of a property (EF-style with type safety)
+     */
+    max<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<TEntity[K]>;
+    /**
+     * Check if the sequence contains a specific element (EF-style)
+     */
+    contains(item: TEntity): Promise<boolean>;
+    /**
+     * Get elements that are in this sequence but not in the other (EF-style)
+     */
+    except(other: TypedQueryable<TEntity>): TypedQueryable<TEntity>;
+    /**
+     * Get elements that are in both sequences (EF-style)
+     */
+    intersect(other: TypedQueryable<TEntity>): TypedQueryable<TEntity>;
+    /**
+     * Concatenate with another sequence (EF-style)
+     */
+    concat(other: TypedQueryable<TEntity>): TypedQueryable<TEntity>;
     /**
      * Access the underlying Queryable for advanced operations.
      * Use with caution as this bypasses type safety.

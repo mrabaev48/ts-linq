@@ -98,22 +98,33 @@ export declare abstract class DbContext {
      */
     setLoadingStrategy(strategy: LoadingStrategy): void;
     /**
-     * Find an entity by ID with loading options
+     * Find an entity by ID with loading options.
+     * Entity Framework style method that returns lazy loading proxies by default.
      *
      * @param entityClass Constructor of the entity type.
      * @param id Primary key value.
      * @param options Loading options (strategy, includes, depth).
-     * @returns The found entity or null.
+     * @returns The found entity or null with lazy loading enabled by default.
      */
     find<T extends object>(entityClass: new () => T, id: unknown, options?: LoadingOptions): Promise<T | null>;
     /**
-     * Find entities with loading options
+     * Find entities with loading options.
+     * Entity Framework style method that returns lazy loading proxies by default.
      *
      * @param entityClass Constructor of the entity type.
      * @param options Loading options (strategy, includes, depth).
-     * @returns Array of loaded entities.
+     * @returns Array of loaded entities with lazy loading enabled by default.
      */
     findAll<T extends object>(entityClass: new () => T, options?: LoadingOptions): Promise<T[]>;
+    /**
+     * Load navigation properties for an entity (Entity Framework style Include).
+     * Useful for explicitly loading relationships on already-loaded entities.
+     */
+    include<T extends object>(entity: T, entityClass: new () => T, ...propertyNames: string[]): Promise<void>;
+    /**
+     * Check if navigation property is loaded (Entity Framework style IsLoaded).
+     */
+    isLoaded<T extends object>(entity: T, propertyName: string): boolean;
     /**
      * Initialize DbSets for all registered entities.
      *

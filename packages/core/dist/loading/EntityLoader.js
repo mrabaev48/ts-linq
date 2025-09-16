@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityLoader = void 0;
 const LoadingStrategy_1 = require("./LoadingStrategy");
 const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const LazyLoadingProxy_1 = require("./LazyLoadingProxy");
 /**
  * Service responsible for loading entities with either lazy or eager strategy,
  * including recursive loading of relationships based on provided options.
@@ -22,7 +23,7 @@ class EntityLoader {
         this._defaultStrategy = strategy;
     }
     /**
-     * Load a single entity by id with optional eager includes.
+     * Load a single entity by id with optional eager includes or lazy loading.
      */
     async loadEntity(entityClass, id, options) {
         const entity = await this._provider.findById(id, entityClass);
@@ -34,11 +35,16 @@ class EntityLoader {
         };
         if (loadingOptions.strategy === LoadingStrategy_1.LoadingStrategy.Eager || loadingOptions.includes) {
             await this.loadRelationships(entity, entityClass, loadingOptions);
+            return entity;
+        }
+        else if (loadingOptions.strategy === LoadingStrategy_1.LoadingStrategy.Lazy) {
+            // Return a lazy loading proxy for Entity Framework style navigation
+            return LazyLoadingProxy_1.LazyLoadingProxy.create(entity, entityClass, this._provider);
         }
         return entity;
     }
     /**
-     * Load all entities for a given type with optional eager includes.
+     * Load all entities for a given type with optional eager includes or lazy loading.
      */
     async loadEntities(entityClass, options) {
         const entities = await this._provider.findAll(entityClass);
@@ -48,6 +54,11 @@ class EntityLoader {
         };
         if (loadingOptions.strategy === LoadingStrategy_1.LoadingStrategy.Eager || loadingOptions.includes) {
             await this.loadRelationshipsBatched(entities, entityClass, loadingOptions);
+            return entities;
+        }
+        else if (loadingOptions.strategy === LoadingStrategy_1.LoadingStrategy.Lazy) {
+            // Return lazy loading proxies for Entity Framework style navigation
+            return LazyLoadingProxy_1.LazyLoadingProxy.createMany(entities, entityClass, this._provider);
         }
         return entities;
     }

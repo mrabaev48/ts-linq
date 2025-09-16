@@ -8,19 +8,18 @@ import type { SqlCache } from './SqlCache';
  * from an entity class and accumulated query options.
  */
 export declare class QueryBuilder {
-    /** Shared in-memory cache if external SqlCache is not provided. */
-    private static _sqlCache;
-    private static readonly _MAX_CACHE_SIZE;
+    /** Default enhanced cache instance */
+    private static _defaultCache;
     private _dialect;
     private _logger?;
     private _providerName?;
-    private _cache?;
+    private _cache;
     /**
      * Create a QueryBuilder that delegates SQL generation to a dialect.
      * @param dialect SqlDialect implementation (default: SQLiteDialect)
      */
     constructor(dialect: SqlDialect, logger?: SqlLogger, providerName?: string, cache?: SqlCache);
-    /** Generate SQL from QueryOptions (legacy path). */
+    /** Generate SQL from QueryOptions with enhanced caching. */
     generateSql<T>(entityClass: new () => T, options: QueryOptions): {
         query: string;
         parameters: readonly SqlParameter[];
@@ -32,9 +31,23 @@ export declare class QueryBuilder {
     };
     /** Clears the global SQL cache. Useful for tests or after metadata changes. */
     static clearCache(): void;
+    /** Dispose of the global cache resources. Useful for cleanup. */
+    static disposeCache(): void;
+    /** Get cache metrics for performance monitoring (if using EnhancedSqlCache). */
+    getCacheMetrics(): import("./EnhancedSqlCache").SqlCacheMetrics;
+    /** Get optimization insights for cache tuning (if using EnhancedSqlCache). */
+    getOptimizationInsights(): {
+        shouldIncreaseSize: boolean;
+        shouldDecreaseTtl: boolean;
+        shouldIncreaseTtl: boolean;
+        topAccessedEntries: Array<{
+            key: string;
+            accessCount: number;
+        }>;
+    };
     /** Create a stable, lightweight cache key. */
     private static buildCacheKey;
-    /** Store an item in the cache with simple FIFO eviction. */
+    /** Store an item in the cache. */
     private remember;
     private getFromCache;
 }
