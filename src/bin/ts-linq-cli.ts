@@ -84,6 +84,7 @@ Commands:
   generate migration <Name>         Create a migration file in migrations/
   generate entity <Name>            Create an entity class in src/entities/ (flags: --dir, --pk, --columns)
   migrate [--dry-run]               Apply schema diff (temporary shortcut)
+          [--transaction]           Wrap diff plan execution in a DB transaction
   apply-diff                        Same as migrate (temporary)
   seed [--file <path>]              Apply SQL/TS seed (TS: export async function run(provider))
        [--transaction]              Wrap seed execution in a DB transaction
@@ -117,6 +118,7 @@ Examples:
   ts-linq diff --json --details --provider=sqlite --conn=:memory:
   ts-linq diff --create --name=InitSchema
   ts-linq migrate --dry-run
+  ts-linq migrate --transaction --provider=sqlite --conn=:memory:
   ts-linq seed --file seeds.sql --transaction --json
   ts-linq verify --json --dry-run
 `;

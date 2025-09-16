@@ -1054,7 +1054,7 @@ npx ts-linq help
 - config print — печатает effective‑config
 - status [--json] — история миграций
 - diff [--json] [--details] [--out file] [--create] [--name Class] — сравнение метадаты и БД, вывод SQL/скофолд
-- migrate [--to <version>] [--step N] [--dry-run] — применить миграции
+- migrate [--to <version>] [--step N] [--dry-run] [--transaction] — применить миграции (diff‑режим можно обернуть в транзакцию)
 - rollback [--to <version>] — откатить миграции (по явным классам)
 - generate migration <Name> — сгенерировать класс миграции в `migrations/`
 - generate entity <Name> [--dir src/entities] [--pk id|uuid] [--columns a:string,b:number?] — сгенерировать сущность
@@ -1075,6 +1075,7 @@ npx ts-node src/bin/ts-linq-cli.ts diff --create --name=InitSchema
 
 # Применить миграции (dry‑run)
 npx ts-node src/bin/ts-linq-cli.ts migrate --dry-run
+npx ts-node src/bin/ts-linq-cli.ts migrate --transaction --provider=sqlite --conn=:memory:
 
 # Сиды из TS-скрипта
 npx ts-node src/bin/ts-linq-cli.ts seed ./seeds/seeds.ts --yes
