@@ -40,6 +40,16 @@ class MigrationSqlBuilder {
       this.up.push(this.emitter.dropTable(tableDiff.table));
       return;
     }
+    // SQLite: advise rebuild when destructive changes detected (ALTER/DROP/FK mutations/renames)
+    if (this.dialect === 'sqlite') {
+      const hasDestructiveColumnChange = (tableDiff.columnChanges || []).some((c) => c.kind !== 'add');
+      const hasRenames = (tableDiff.columnRenames || []).length > 0;
+      const hasFkMutations = (tableDiff.fkCreates && tableDiff.fkCreates.length > 0) || (tableDiff.fkDrops && tableDiff.fkDrops.length > 0);
+      if (hasDestructiveColumnChange || hasRenames || hasFkMutations) {
+        this.up.push(`-- SQLite: rebuild is required for table ${this.emitter.q(tableDiff.table)} (ALTER/DROP/FK/RENAME detected).`);
+        this.up.push(`-- Use CLI diff to generate a safe rebuild plan (create __new_, copy data, drop old, rename, recreate indexes).`);
+      }
+    }
     this.handleIndexCreates(tableDiff);
     this.handleIndexDrops(tableDiff);
     this.handleFkCreates(tableDiff);
