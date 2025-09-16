@@ -157,6 +157,28 @@ export class TypedQueryable<TEntity> {
     return new TypedQueryable(resultQueryable);
   }
 
+  /**
+   * Type-safe secondary ordering in ascending order.
+   * Must be used after orderBy() or orderByDescending().
+   */
+  thenBy<TKey>(
+    keySelector: TypedOrderSelector<TEntity>
+  ): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.thenBy(keySelector);
+    return new TypedQueryable(resultQueryable);
+  }
+
+  /**
+   * Type-safe secondary ordering in descending order.
+   * Must be used after orderBy() or orderByDescending().
+   */
+  thenByDescending<TKey>(
+    keySelector: TypedOrderSelector<TEntity>
+  ): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.thenByDescending(keySelector);
+    return new TypedQueryable(resultQueryable);
+  }
+
   // Execution methods that return results
 
   /**
@@ -211,10 +233,66 @@ export class TypedQueryable<TEntity> {
     return items.every(predicate as any);
   }
 
-  // Note: Aggregation methods (min, max, average, sum) have been removed to prevent
-  // performance issues. These methods previously materialized all rows in memory.
-  // For aggregations, use the underlying queryable via .raw or implement proper
-  // SQL aggregation queries with your database provider.
+  // Entity Framework-style aggregation methods (restored for EF compatibility)
+
+  /**
+   * Calculate average of a numeric property (EF-style with type safety)
+   */
+  async average<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<number> {
+    return await this._queryable.average(selector);
+  }
+
+  /**
+   * Calculate sum of a numeric property (EF-style with type safety)
+   */
+  async sum<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<number> {
+    return await this._queryable.sum(selector);
+  }
+
+  /**
+   * Find minimum value of a property (EF-style with type safety)
+   */
+  async min<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<TEntity[K]> {
+    return await this._queryable.min(selector);
+  }
+
+  /**
+   * Find maximum value of a property (EF-style with type safety)
+   */
+  async max<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<TEntity[K]> {
+    return await this._queryable.max(selector);
+  }
+
+  /**
+   * Check if the sequence contains a specific element (EF-style)
+   */
+  async contains(item: TEntity): Promise<boolean> {
+    return await this._queryable.contains(item);
+  }
+
+  /**
+   * Get elements that are in this sequence but not in the other (EF-style)
+   */
+  except(other: TypedQueryable<TEntity>): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.except(other._queryable);
+    return TypedQueryable.from(resultQueryable);
+  }
+
+  /**
+   * Get elements that are in both sequences (EF-style)
+   */
+  intersect(other: TypedQueryable<TEntity>): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.intersect(other._queryable);
+    return TypedQueryable.from(resultQueryable);
+  }
+
+  /**
+   * Concatenate with another sequence (EF-style)
+   */
+  concat(other: TypedQueryable<TEntity>): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.concat(other._queryable);
+    return TypedQueryable.from(resultQueryable);
+  }
 
   /**
    * Access the underlying Queryable for advanced operations.

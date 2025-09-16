@@ -3,6 +3,7 @@ import type { ChangeTracker } from '../change-tracking/ChangeTracker';
 import type { EntityLoader } from '../loading/EntityLoader';
 import type { LoadingOptions } from '../loading/LoadingStrategy';
 import { Queryable } from '../query/Queryable';
+import { TypedQueryable } from '../query/TypedQueryable';
 import type { EntityCacheLike } from '../utils/EntityCache';
 import type { PerformanceOptions, GlobalFilter } from '../types';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
@@ -111,9 +112,9 @@ export class DbSet<T extends object> {
     ).toArray();
   }
 
-  /** Create a fluent `Queryable` for LINQ-like operations. */
-  public where(predicate: (entity: T) => boolean): Queryable<T> {
-    return new Queryable<T>(
+  /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */
+  public where(predicate: (entity: T) => boolean): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -121,11 +122,14 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).where(predicate);
+    
+    return TypedQueryable.from(queryable);
   }
 
+
   /** Proxy: WHERE EXISTS (subquery). */
-  public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
-    return new Queryable<T>(
+  public whereExists<TOther>(subquery: Queryable<TOther>): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -133,13 +137,15 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).whereExists(subquery);
+    
+    return TypedQueryable.from(queryable);
   }
   /** Proxy: column IN (subquery). */
   public whereInSubquery<TOther>(
     column: keyof T & string,
     subquery: Queryable<TOther>
-  ): Queryable<T> {
-    return new Queryable<T>(
+  ): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -147,11 +153,13 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).whereInSubquery(column, subquery);
+    
+    return TypedQueryable.from(queryable);
   }
 
-  /** Select specific properties */
-  public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
-    return new Queryable<T>(
+  /** Select specific properties (EF-style with type safety) */
+  public select<TResult>(selector: (entity: T) => TResult): TypedQueryable<TResult> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -159,11 +167,13 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).select(selector);
+    
+    return TypedQueryable.from(queryable);
   }
 
-  /** Order by a property */
-  public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-    return new Queryable<T>(
+  /** Order by a property (EF-style with type safety) */
+  public orderBy<TKey>(keySelector: (entity: T) => TKey): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -171,11 +181,13 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).orderBy(keySelector);
+    
+    return TypedQueryable.from(queryable);
   }
 
-  /** Order by descending */
-  public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-    return new Queryable<T>(
+  /** Order by descending (EF-style with type safety) */
+  public orderByDescending<TKey>(keySelector: (entity: T) => TKey): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -183,11 +195,13 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).orderByDescending(keySelector);
+    
+    return TypedQueryable.from(queryable);
   }
 
-  /** Take a specific number of entities */
-  public take(count: number): Queryable<T> {
-    return new Queryable<T>(
+  /** Take a specific number of entities (EF-style) */
+  public take(count: number): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -195,11 +209,13 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).take(count);
+    
+    return TypedQueryable.from(queryable);
   }
 
-  /** Skip a specific number of entities */
-  public skip(count: number): Queryable<T> {
-    return new Queryable<T>(
+  /** Skip a specific number of entities (EF-style) */
+  public skip(count: number): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -207,11 +223,13 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).skip(count);
+    
+    return TypedQueryable.from(queryable);
   }
 
-  /** Get distinct entities */
-  public distinct(): Queryable<T> {
-    return new Queryable<T>(
+  /** Get distinct entities (EF-style) */
+  public distinct(): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -219,11 +237,13 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).distinct();
+    
+    return TypedQueryable.from(queryable);
   }
 
   /** Proxy: UNION of two queries of the same DbSet. */
-  public union(other: Queryable<T>): Queryable<T> {
-    return new Queryable<T>(
+  public union(other: Queryable<T>): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -231,10 +251,12 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).union(other);
+    
+    return TypedQueryable.from(queryable);
   }
   /** Proxy: UNION ALL of two queries of the same DbSet. */
-  public unionAll(other: Queryable<T>): Queryable<T> {
-    return new Queryable<T>(
+  public unionAll(other: Queryable<T>): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
@@ -242,6 +264,8 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).unionAll(other);
+    
+    return TypedQueryable.from(queryable);
   }
 
   /** Get the first entity or throw if none exists */
@@ -317,16 +341,18 @@ export class DbSet<T extends object> {
   }
 
   /** Start a query with eager includes using a property selector. */
-  public include(selector: (entity: T) => unknown): Queryable<T> {
-    const qb = new Queryable<T>(
+  /** Include related entities for eager loading (EF-style with type safety) */
+  public include(selector: (entity: T) => unknown): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
       this._entityLoader,
       this._entityCache,
       this._performance,
       this._globalFilters
-    );
-    return qb.include(selector);
+    ).include(selector);
+    
+    return TypedQueryable.from(queryable);
   }
 
   /** Provider-level bulk insert within a transaction. */
