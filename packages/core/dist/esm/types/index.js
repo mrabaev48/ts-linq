@@ -70,4 +70,25 @@ export class OptimisticConcurrencyError extends DatabaseError {
         this.name = 'OptimisticConcurrencyError';
     }
 }
+/**
+ * Extract the underlying value from a branded type.
+ * Useful when interfacing with external APIs that don't use branded types.
+ */
+export function unbrandId(id) {
+    return id;
+}
+/**
+ * Brand a raw ID value for type safety.
+ * Use this when receiving IDs from external sources.
+ */
+export function brandId(id) {
+    return id;
+}
+/**
+ * Type predicate to check if a value is a valid branded ID.
+ * Primarily for runtime validation and type narrowing.
+ */
+export function isBrandedId(value) {
+    return typeof value === 'string' || typeof value === 'number';
+}
 //# sourceMappingURL=index.js.map

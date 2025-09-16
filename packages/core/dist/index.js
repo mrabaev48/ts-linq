@@ -35,6 +35,7 @@ __exportStar(require("./context/DbContext"), exports);
 __exportStar(require("./context/DbSet"), exports);
 // Query building
 __exportStar(require("./query/Queryable"), exports);
+__exportStar(require("./query/TypedQueryable"), exports);
 __exportStar(require("./query/QueryBuilder"), exports);
 __exportStar(require("./query/SqlCache"), exports);
 __exportStar(require("./query/SqlDialect"), exports);

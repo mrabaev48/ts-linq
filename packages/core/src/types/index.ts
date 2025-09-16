@@ -472,3 +472,57 @@ export type SqliteErrorCode =
 export type PostgresErrorCode = '23505' | '23503' | string;
 export type MysqlErrorCode = 'ER_DUP_ENTRY' | string;
 export type MssqlErrorNumber = 2627 | 2601 | number;
+
+/**
+ * Branded type system for Entity IDs to prevent mixing IDs of different entities.
+ * This provides compile-time safety by making ID types nominally distinct.
+ */
+export type Brand<T, U> = T & { readonly __brand: U };
+
+/**
+ * Base branded ID type. Use with specific entity names:
+ * type UserId = EntityId<number, 'User'>;
+ * type OrderId = EntityId<string, 'Order'>;
+ */
+export type EntityId<T extends string | number, EntityName extends string> = Brand<T, EntityName>;
+
+/**
+ * Extract the underlying value from a branded type.
+ * Useful when interfacing with external APIs that don't use branded types.
+ */
+export function unbrandId<T extends string | number, EntityName extends string>(
+  id: EntityId<T, EntityName>
+): T {
+  return id as T;
+}
+
+/**
+ * Brand a raw ID value for type safety.
+ * Use this when receiving IDs from external sources.
+ */
+export function brandId<T extends string | number, EntityName extends string>(
+  id: T
+): EntityId<T, EntityName> {
+  return id as EntityId<T, EntityName>;
+}
+
+/**
+ * Type predicate to check if a value is a valid branded ID.
+ * Primarily for runtime validation and type narrowing.
+ */
+export function isBrandedId<T extends string | number, EntityName extends string>(
+  value: unknown
+): value is EntityId<T, EntityName> {
+  return typeof value === 'string' || typeof value === 'number';
+}
+
+/**
+ * Utility type to extract entity name from a branded ID type.
+ * Useful for generic operations and metadata handling.
+ */
+export type ExtractEntityName<T> = T extends EntityId<any, infer U> ? U : never;
+
+/**
+ * Utility type to extract the underlying ID type from a branded ID.
+ */
+export type ExtractIdType<T> = T extends EntityId<infer U, any> ? U : never;

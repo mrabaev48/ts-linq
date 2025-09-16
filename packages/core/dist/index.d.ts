@@ -13,6 +13,7 @@ export * from './change-tracking/ChangeTracker';
 export * from './context/DbContext';
 export * from './context/DbSet';
 export * from './query/Queryable';
+export * from './query/TypedQueryable';
 export * from './query/QueryBuilder';
 export * from './query/SqlCache';
 export * from './query/SqlDialect';

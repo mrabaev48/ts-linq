@@ -1,0 +1,234 @@
+import { Queryable } from './Queryable';
+import type { EntityMetadata } from '../types';
+import type { DbContext } from '../context/DbContext';
+
+/**
+ * Type-safe selector function that only allows selecting valid entity properties.
+ */
+type TypedSelector<TEntity, TResult> = (entity: TEntity) => TResult;
+
+/**
+ * Type-safe predicate function for WHERE clauses.
+ */
+type TypedPredicate<TEntity> = (entity: TEntity) => boolean;
+
+/**
+ * Type-safe ordering selector function.
+ */
+type TypedOrderSelector<TEntity> = (entity: TEntity) => any;
+
+/**
+ * Extract only relationship properties from an entity.
+ * Relationship properties are arrays or objects (not primitives).
+ */
+type RelationshipProperties<T> = {
+  [K in keyof T]: T[K] extends Array<any> ? K : 
+    T[K] extends object ? (T[K] extends Date ? never : 
+    T[K] extends Function ? never : K) : never;
+}[keyof T];
+
+/**
+ * Type-safe navigation selector that only allows relationship properties.
+ */
+type NavigationSelector<TEntity, TProperty> = TProperty extends TEntity[RelationshipProperties<TEntity>] 
+  ? (entity: TEntity) => TProperty
+  : never;
+
+/**
+ * Compile-time typed wrapper around Queryable that provides type safety
+ * for select(), where(), include(), and other query operations.
+ * 
+ * Uses composition instead of inheritance to avoid type signature conflicts.
+ */
+export class TypedQueryable<TEntity> {
+  private readonly _queryable: Queryable<TEntity>;
+
+  constructor(queryable: Queryable<TEntity>) {
+    this._queryable = queryable;
+  }
+
+  /**
+   * Create a typed queryable from a regular queryable.
+   */
+  static from<T>(queryable: Queryable<T>): TypedQueryable<T> {
+    return new TypedQueryable(queryable);
+  }
+
+  /**
+   * Type-safe SELECT with compile-time validation of selected properties.
+   * Only allows selecting properties that actually exist on the entity.
+   * 
+   * @example
+   * ```typescript
+   * // ✅ Valid - selecting existing properties
+   * users.select(u => ({ id: u.id, name: u.name }))
+   * 
+   * // ❌ Compile error - nonExistent property doesn't exist
+   * users.select(u => ({ invalid: u.nonExistent }))
+   * ```
+   */
+  select<TResult>(selector: TypedSelector<TEntity, TResult>): TypedQueryable<TResult> {
+    // For now, delegate to the underlying queryable with the selector function
+    // In a full implementation, we would parse the selector to extract field names
+    const resultQueryable = this._queryable.select(selector);
+    return new TypedQueryable(resultQueryable);
+  }
+
+  /**
+   * Type-safe WHERE clause with compile-time property validation.
+   * The predicate function receives a typed entity parameter.
+   * 
+   * @example
+   * ```typescript
+   * // ✅ Valid - using existing properties
+   * users.where(u => u.age > 18)
+   * users.where(u => u.name === 'John')
+   * 
+   * // ❌ Compile error - invalid property
+   * users.where(u => u.nonExistent === 'value')
+   * ```
+   */
+  where(predicate: TypedPredicate<TEntity>): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.where(predicate);
+    return new TypedQueryable(resultQueryable);
+  }
+
+  /**
+   * Type-safe ORDER BY with property validation.
+   * 
+   * @example
+   * ```typescript
+   * users.orderBy(u => u.createdAt, 'DESC')
+   * users.orderBy(u => u.name) // defaults to ASC
+   * ```
+   */
+  orderBy<TKey>(
+    keySelector: TypedOrderSelector<TEntity>,
+    direction: 'ASC' | 'DESC' = 'ASC'
+  ): TypedQueryable<TEntity> {
+    // Delegate to correct underlying method based on direction
+    const resultQueryable = direction === 'DESC' 
+      ? this._queryable.orderByDescending(keySelector)
+      : this._queryable.orderBy(keySelector);
+    return new TypedQueryable(resultQueryable);
+  }
+
+  /**
+   * Type-safe INCLUDE for relationships with compile-time validation.
+   * Only allows including properties that are actual relationships.
+   * 
+   * @example
+   * ```typescript
+   * // ✅ Valid - including existing relationship
+   * users.include(u => u.orders)
+   * 
+   * // ❌ Compile error - not a relationship property
+   * users.include(u => u.name)
+   * ```
+   */
+  include<TProperty extends TEntity[RelationshipProperties<TEntity>]>(
+    navigationSelector: (entity: TEntity) => TProperty
+  ): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.include(navigationSelector);
+    return new TypedQueryable(resultQueryable);
+  }
+
+  /**
+   * Type-safe limit with number validation.
+   */
+  take(count: number): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.take(count);
+    return new TypedQueryable(resultQueryable);
+  }
+
+  /**
+   * Type-safe skip/offset.
+   */
+  skip(count: number): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.skip(count);
+    return new TypedQueryable(resultQueryable);
+  }
+
+  /**
+   * Type-safe distinct operation.
+   */
+  distinct(): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.distinct();
+    return new TypedQueryable(resultQueryable);
+  }
+
+  // Execution methods that return results
+
+  /**
+   * Type-safe first() with proper return type.
+   * Throws if no elements found, consistent with underlying Queryable.
+   */
+  async first(): Promise<TEntity> {
+    return this._queryable.first();
+  }
+
+  /**
+   * Type-safe firstOrDefault() with proper return type.
+   */
+  async firstOrDefault(): Promise<TEntity | null> {
+    return this._queryable.firstOrDefault();
+  }
+
+  /**
+   * Type-safe single() - expects exactly one result.
+   */
+  async single(): Promise<TEntity> {
+    return this._queryable.single();
+  }
+
+  /**
+   * Type-safe toArray() with proper return type.
+   */
+  async toArray(): Promise<TEntity[]> {
+    return this._queryable.toArray();
+  }
+
+  /**
+   * Type-safe count() operation.
+   */
+  async count(): Promise<number> {
+    return this._queryable.count();
+  }
+
+  /**
+   * Type-safe any() - check if any elements exist matching the query.
+   */
+  async any(): Promise<boolean> {
+    return this._queryable.any();
+  }
+
+  /**
+   * Check if all elements match a predicate (requires loading all data).
+   * WARNING: This loads all data into memory. Use with caution on large datasets.
+   */
+  async all(predicate: TypedPredicate<TEntity>): Promise<boolean> {
+    const items = await this.toArray();
+    return items.every(predicate as any);
+  }
+
+  // Note: Aggregation methods (min, max, average, sum) have been removed to prevent
+  // performance issues. These methods previously materialized all rows in memory.
+  // For aggregations, use the underlying queryable via .raw or implement proper
+  // SQL aggregation queries with your database provider.
+
+  /**
+   * Access the underlying Queryable for advanced operations.
+   * Use with caution as this bypasses type safety.
+   */
+  get raw(): Queryable<TEntity> {
+    return this._queryable;
+  }
+}
+
+/**
+ * Helper function to create a typed queryable from any entity queryable.
+ * This provides a convenient way to "upgrade" an existing query to typed.
+ */
+export function typed<T>(queryable: Queryable<T>): TypedQueryable<T> {
+  return TypedQueryable.from(queryable);
+}

@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OptimisticConcurrencyError = exports.ValidationError = exports.ForeignKeyConstraintError = exports.UniqueConstraintError = exports.DatabaseError = exports.err = exports.ok = exports.JoinType = exports.LoadingStrategy = exports.EntityState = void 0;
+exports.unbrandId = unbrandId;
+exports.brandId = brandId;
+exports.isBrandedId = isBrandedId;
 require("reflect-metadata");
 /**
  * Core types and metadata contracts used across the ORM.
@@ -80,4 +83,25 @@ class OptimisticConcurrencyError extends DatabaseError {
     }
 }
 exports.OptimisticConcurrencyError = OptimisticConcurrencyError;
+/**
+ * Extract the underlying value from a branded type.
+ * Useful when interfacing with external APIs that don't use branded types.
+ */
+function unbrandId(id) {
+    return id;
+}
+/**
+ * Brand a raw ID value for type safety.
+ * Use this when receiving IDs from external sources.
+ */
+function brandId(id) {
+    return id;
+}
+/**
+ * Type predicate to check if a value is a valid branded ID.
+ * Primarily for runtime validation and type narrowing.
+ */
+function isBrandedId(value) {
+    return typeof value === 'string' || typeof value === 'number';
+}
 //# sourceMappingURL=index.js.map

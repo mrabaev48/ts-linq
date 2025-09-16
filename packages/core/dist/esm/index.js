@@ -19,6 +19,7 @@ export * from './context/DbContext';
 export * from './context/DbSet';
 // Query building
 export * from './query/Queryable';
+export * from './query/TypedQueryable';
 export * from './query/QueryBuilder';
 export * from './query/SqlCache';
 export * from './query/SqlDialect';
