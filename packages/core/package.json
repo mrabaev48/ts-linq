@@ -15,6 +15,7 @@
   "files": [
     "dist/**/*"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
     "build:cjs": "tsc -p tsconfig.json",
