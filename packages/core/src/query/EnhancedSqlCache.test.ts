@@ -6,13 +6,19 @@ import type { SqlCacheEntry } from './SqlCache';
 
 describe('EnhancedSqlCache', () => {
   let cache: EnhancedSqlCache;
+  const resetCache = (options?: EnhancedSqlCacheOptions) => {
+    if (cache) {
+      cache.dispose();
+    }
+    cache = new EnhancedSqlCache(options);
+  };
   const testEntry: SqlCacheEntry = {
     query: 'SELECT * FROM users WHERE id = ?',
     parameters: [1]
   };
 
   beforeEach(() => {
-    cache = new EnhancedSqlCache();
+    resetCache();
   });
 
   afterEach(() => {
@@ -53,7 +59,7 @@ describe('EnhancedSqlCache', () => {
         defaultTtl: 100, // 100ms TTL
         enableMetrics: true
       };
-      cache = new EnhancedSqlCache(options);
+      resetCache(options);
       
       cache.set('expiring_key', testEntry);
       expect(cache.get('expiring_key')).toBeDefined();
@@ -91,7 +97,7 @@ describe('EnhancedSqlCache', () => {
         defaultTtl: 50,
         enableMetrics: true
       };
-      cache = new EnhancedSqlCache(options);
+      resetCache(options);
       
       cache.set('key1', testEntry);
       cache.set('key2', testEntry);
@@ -112,7 +118,7 @@ describe('EnhancedSqlCache', () => {
         enableLru: true,
         enableMetrics: true
       };
-      cache = new EnhancedSqlCache(options);
+      resetCache(options);
 
       // Fill cache to capacity
       cache.set('key1', testEntry);
@@ -142,7 +148,7 @@ describe('EnhancedSqlCache', () => {
         enableLru: false,
         enableMetrics: true
       };
-      cache = new EnhancedSqlCache(options);
+      resetCache(options);
 
       cache.set('key1', testEntry);
       cache.set('key2', testEntry);
@@ -165,7 +171,7 @@ describe('EnhancedSqlCache', () => {
         enableKeyCompression: true,
         compressionThreshold: 50
       };
-      cache = new EnhancedSqlCache(options);
+      resetCache(options);
 
       const longKey = 'a'.repeat(100); // 100 character key
       const shortKey = 'short_key';
@@ -183,7 +189,7 @@ describe('EnhancedSqlCache', () => {
         enableKeyCompression: true,
         compressionThreshold: 100
       };
-      cache = new EnhancedSqlCache(options);
+      resetCache(options);
 
       const mediumKey = 'a'.repeat(50); // Below threshold
       cache.set(mediumKey, testEntry);
@@ -198,7 +204,7 @@ describe('EnhancedSqlCache', () => {
         enableMetrics: true,
         maxSize: 100
       };
-      cache = new EnhancedSqlCache(options);
+      resetCache(options);
     });
 
     test('should track hit and miss ratios', () => {
@@ -247,7 +253,7 @@ describe('EnhancedSqlCache', () => {
         defaultTtl: 50,
         enableMetrics: true
       };
-      cache = new EnhancedSqlCache(options);
+      resetCache(options);
 
       // Test evictions
       cache.set('key1', testEntry);
@@ -284,7 +290,7 @@ describe('EnhancedSqlCache', () => {
       const options: EnhancedSqlCacheOptions = {
         warmingBatchSize: 10
       };
-      cache = new EnhancedSqlCache(options);
+      resetCache(options);
 
       const warmingEntries = Array.from({ length: 50 }, (_, i) => ({
         key: `warm_${i}`,
@@ -454,7 +460,7 @@ describe('EnhancedSqlCache', () => {
     });
 
     test('should use default options when none provided', () => {
-      cache = new EnhancedSqlCache();
+      resetCache();
       
       // Should work with defaults
       cache.set('default_test', testEntry);
