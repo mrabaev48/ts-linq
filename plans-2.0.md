@@ -36,6 +36,7 @@
   - Настроить publishConfig для NPM
 
 - [ ] **Multi-Package Architecture** 
+ - [x] **Multi-Package Architecture** 
   ```bash
   packages/
   ├── core/           # Основной ORM
