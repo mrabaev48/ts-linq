@@ -1,0 +1,66 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Column = Column;
+require("reflect-metadata");
+const MetadataStorage_1 = require("../metadata/MetadataStorage");
+/**
+ * Property decorator that registers column metadata for the target entity property.
+ *
+ * If the `type` is not provided, it will be inferred from the TypeScript design type
+ * via `reflect-metadata` and mapped to a reasonable SQL type.
+ *
+ * @param options Column configuration options.
+ * @returns A property decorator that records column metadata.
+ */
+function Column(options = {}) {
+    return function (target, propertyKey) {
+        const propertyName = propertyKey.toString();
+        // Get the design type using reflect-metadata
+        const designType = Reflect.getMetadata('design:type', target, propertyKey);
+        const columnMetadata = {
+            propertyName,
+            columnName: options?.name || propertyName,
+            type: options?.type || getTypeString(designType),
+            nullable: options?.nullable !== false,
+            defaultValue: options?.defaultValue,
+            length: options?.length,
+            precision: options?.precision,
+            scale: options?.scale,
+            isGenerated: options?.generated || false,
+            isVersion: options?.version || false
+        };
+        MetadataStorage_1.MetadataStorage.addColumn(target.constructor, columnMetadata);
+        // Persist on constructor to support rehydration
+        const ctor = target.constructor;
+        const existing = Reflect.getOwnMetadata('orm:columns', ctor) || [];
+        existing.push(columnMetadata);
+        Reflect.defineMetadata('orm:columns', existing, ctor);
+    };
+}
+/**
+ * Map a JavaScript/TypeScript runtime constructor to a default SQL type.
+ *
+ * @param type The runtime constructor captured by `reflect-metadata` (e.g., String, Number).
+ * @returns A string representing the SQL type to use.
+ */
+function getTypeString(type) {
+    if (!type || !type.name)
+        return 'TEXT';
+    switch (type.name) {
+        case 'String':
+            return 'TEXT';
+        case 'Number':
+            return 'INTEGER';
+        case 'Boolean':
+            return 'BOOLEAN';
+        case 'Date':
+            return 'DATETIME';
+        case 'Array':
+            return 'TEXT'; // Store as JSON
+        case 'Object':
+            return 'TEXT'; // Store as JSON
+        default:
+            return 'TEXT';
+    }
+}
+//# sourceMappingURL=Column.js.map

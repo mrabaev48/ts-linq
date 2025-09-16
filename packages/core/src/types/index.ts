@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import type { SqlCache } from '../query/SqlCache';
 import type { CountCache } from '../query/CountCache';
+import type { DatabaseProvider } from '../DatabaseProvider';
 
 /**
  * Core types and metadata contracts used across the ORM.
@@ -46,26 +47,12 @@ export interface TrackedEntity {
  * Options for constructing a database context.
  */
 export interface DbContextOptions {
-  /** Provider-specific connection string (e.g., file path for SQLite). */
-  connectionString: string;
-  /** Database provider key; currently supported: 'sqlite', 'postgresql', 'mssql'. */
-  provider?: 'sqlite' | 'mysql' | 'postgresql' | 'mssql';
+  /** Database provider instance. */
+  provider: DatabaseProvider;
   /** Optional performance tuning options. */
   performance?: PerformanceOptions;
-  /** Optional SQL logger for diagnostics. */
-  logger?: SqlLogger;
-  /** Optional factory to create a SqlLogger per provider (overrides logger if set). */
-  loggerFactory?: SqlLoggerFactory;
-  /** Optional multiple logger factories to be composed. */
-  loggerFactories?: SqlLoggerFactory[];
-  /** Optional static loggers to be composed along with factories. */
-  loggers?: SqlLogger[];
-  /** Optional retry policy to override default provider retry behavior. */
-  retryPolicy?: RetryPolicy;
   /** Optional default loading behavior. */
   loading?: LoadingDefaults;
-  /** Optional middleware pipeline for cross-cutting concerns. */
-  middlewares?: OrmMiddleware[];
   /** Optional soft delete configuration. */
   softDelete?: SoftDeleteOptions;
   /** Optional audit configuration. */

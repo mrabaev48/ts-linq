@@ -1,4 +1,4 @@
-import type { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { DatabaseProvider } from '../DatabaseProvider';
 import type { ChangeTracker } from '../change-tracking/ChangeTracker';
 import type { EntityLoader } from '../loading/EntityLoader';
 import type { LoadingOptions } from '../loading/LoadingStrategy';

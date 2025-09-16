@@ -3,7 +3,7 @@
  */
 
 // Re-export core types for convenience
-export * from '@ts-linq/core';
+export * from '../../core/src';
 
 // MSSQL-specific exports
 export * from './MssqlProvider';

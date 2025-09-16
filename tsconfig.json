@@ -18,6 +18,13 @@
     "allowSyntheticDefaultImports": true,
     "moduleResolution": "node"
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/sqlite" },
+    { "path": "packages/postgres" },
+    { "path": "packages/mysql" },
+    { "path": "packages/mssql" },
+    { "path": "packages/cli" }
+  ]
 }

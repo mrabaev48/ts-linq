@@ -1,5 +1,5 @@
 import { Migration } from './Migration';
-import type { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { DatabaseProvider } from '../DatabaseProvider';
 import type { SchemaDiff } from './DiffTypes';
 import type { Dialect } from './DialectMigrationSql';
 import { generateMigrationFromDiff } from './DialectMigrationSql';

@@ -6,7 +6,7 @@ import type {
   LogicalExpressionNode
 } from './Nodes';
 import { LogicalOperator } from './Nodes';
-import type { SqlParameter } from '../../types';
+import type { SqlParameter } from '../types';
 
 /**
  * Visitor that turns a supported AST into a SQL WHERE fragment with parameters.

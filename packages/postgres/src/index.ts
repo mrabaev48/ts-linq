@@ -3,7 +3,7 @@
  */
 
 // Re-export core types for convenience
-export * from '@ts-linq/core';
+export * from '../../core/src';
 
 // PostgreSQL-specific exports
 export * from './PostgresProvider';

@@ -1,9 +1,5 @@
-import type { DatabaseProvider } from '../providers/DatabaseProvider';
-import { SQLiteProvider } from '../providers/SQLiteProvider';
-import { PostgresProvider } from '../providers/PostgresProvider';
-import { MySqlProvider } from '../providers/MySqlProvider';
+import type { DatabaseProvider } from '../DatabaseProvider';
 import { ChangeTracker } from '../change-tracking/ChangeTracker';
-import { MssqlProvider } from '../providers/MssqlProvider';
 import { EntityLoader } from '../loading/EntityLoader';
 import type { LoadingOptions } from '../loading/LoadingStrategy';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
@@ -21,7 +17,6 @@ import type {
 import { ok, err, ValidationError } from '../types';
 import type { EntityCacheLike } from '../utils/EntityCache';
 import { EntityCache } from '../utils/EntityCache';
-import { CompositeSqlLoggerFactory } from '../utils/CompositeSqlLoggerFactory';
 
 function getOriginal<T extends Function>(target: T): T {
   try {
@@ -65,62 +60,11 @@ export abstract class DbContext {
    * @param options Connection and provider configuration.
    */
   constructor(options: DbContextOptions) {
-    // Initialize database provider based on options
+    // Initialize database provider from options
+    this._provider = options.provider;
     this._softDelete = options.softDelete;
     this._audit = options.audit;
     this._globalFilters = options.globalFilters;
-    const providerKey = options.provider || 'sqlite';
-    const compositeFactory =
-      options.loggerFactories || options.loggers
-        ? new CompositeSqlLoggerFactory({
-            factories: [options.loggerFactory, ...(options.loggerFactories ?? [])],
-            loggers: options.loggers
-          })
-        : undefined;
-    const logger =
-      compositeFactory?.create(providerKey) ??
-      options.loggerFactory?.create(providerKey) ??
-      options.logger;
-    switch (providerKey) {
-      case 'sqlite':
-        this._provider = new SQLiteProvider(
-          options.connectionString,
-          logger,
-          options.middlewares,
-          this._softDelete,
-          options.retryPolicy
-        );
-        break;
-      case 'postgresql':
-        this._provider = new PostgresProvider(
-          options.connectionString,
-          logger,
-          options.middlewares,
-          this._softDelete,
-          options.retryPolicy
-        );
-        break;
-      case 'mssql':
-        this._provider = new MssqlProvider(
-          options.connectionString,
-          logger,
-          options.middlewares,
-          this._softDelete,
-          options.retryPolicy
-        );
-        break;
-      case 'mysql':
-        this._provider = new MySqlProvider(
-          options.connectionString,
-          logger,
-          options.middlewares,
-          this._softDelete,
-          options.retryPolicy
-        );
-        break;
-      default:
-        throw new Error(`Provider ${options.provider} is not supported`);
-    }
 
     this._changeTracker = new ChangeTracker();
     this._entityLoader = new EntityLoader(this._provider);

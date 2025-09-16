@@ -1,4 +1,4 @@
-import type { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { DatabaseProvider } from '../DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type {
   WhereClause,
