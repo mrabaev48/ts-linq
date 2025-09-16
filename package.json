@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "main": "./packages/core/dist/index.js",
-  "module": "./packages/core/dist/index.esm.js", 
+  "module": "./packages/core/dist/index.esm.js",
   "types": "./packages/core/dist/index.d.ts",
   "exports": {
     ".": {
@@ -26,7 +26,7 @@
     },
     "./mysql": {
       "types": "./packages/mysql/dist/index.d.ts",
-      "import": "./packages/mysql/dist/index.esm.js", 
+      "import": "./packages/mysql/dist/index.esm.js",
       "require": "./packages/mysql/dist/index.js"
     },
     "./mssql": {
@@ -68,7 +68,8 @@
     "bench:profile:cpu": "node --cpu-prof -r ts-node/register/transpile-only bench/multi.ts",
     "bench:profile:heap": "node --heap-prof -r ts-node/register/transpile-only bench/multi.ts",
     "size:core": "source-map-explorer packages/core/dist/index.js packages/core/dist/index.js.map || true",
-    "size:core:esm": "source-map-explorer packages/core/dist/esm/index.js packages/core/dist/esm/index.js.map || true"
+    "size:core:esm": "source-map-explorer packages/core/dist/esm/index.js packages/core/dist/esm/index.js.map || true",
+    "size:bundle": "rollup -c && node size-tests/print-sizes.mjs"
   },
   "keywords": [
     "orm",
@@ -89,7 +90,7 @@
     "@types/node": "^24.3.0",
     "jest": "^30.1.1",
     "reflect-metadata": "^0.2.2",
-    "ts-jest": "^30.0.0",
+    "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   },
@@ -102,8 +103,11 @@
     "fast-check": "^4.3.0",
     "husky": "^9.1.6",
     "prettier": "^3.3.3",
+    "source-map-explorer": "^2.5.3",
     "typedoc": "^0.28.12",
     "typedoc-plugin-markdown": "^4.8.1",
-    "source-map-explorer": "^2.5.3"
+    "rollup": "^2.79.1",
+    "rollup-plugin-terser": "^7.0.2",
+    "@rollup/plugin-node-resolve": "^13.3.0"
   }
 }
