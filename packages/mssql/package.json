@@ -1,0 +1,48 @@
+{
+  "name": "@ts-linq/mssql",
+  "version": "1.0.0",
+  "description": "Microsoft SQL Server database provider for ts-linq ORM",
+  "main": "./dist/index.js",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "orm",
+    "mssql",
+    "sql-server",
+    "database",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ts-linq/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  },
+  "peerDependencies": {
+    "mssql": ">=9.0.0",
+    "typescript": ">=4.9.0"
+  },
+  "optionalDependencies": {
+    "mssql": "^10.0.1"
+  }
+}

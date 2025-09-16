@@ -1,0 +1,44 @@
+{
+  "name": "@ts-linq/core",
+  "version": "1.0.0",
+  "description": "Core ORM functionality with decorators, context, query building, and metadata management",
+  "main": "./dist/index.js",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "orm",
+    "typescript",
+    "decorators",
+    "query-builder",
+    "entity-framework"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.9.0"
+  }
+}
