@@ -1,0 +1,27 @@
+modules = ["nodejs-20"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "TypeScript ORM Development"
+
+[[workflows.workflow]]
+name = "TypeScript ORM Development"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test:watch"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[agent]
+expertMode = true
