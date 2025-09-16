@@ -16,9 +16,10 @@
     "dist/**/*"
   ],
   "scripts": {
-    "build": "npm run build:cjs && npm run build:esm",
+    "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
     "build:cjs": "tsc -p tsconfig.json",
     "build:esm": "tsc -p tsconfig.esm.json",
+    "gen:esm-entry": "node scripts/gen-esm-entry.cjs",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build"
   },
