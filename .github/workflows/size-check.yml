@@ -1,0 +1,22 @@
+name: Size Check
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ feat/build-optimization ]
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build --workspaces
+      - run: npm run size:bundle
+      - name: Enforce thresholds
+        run: node size-tests/check-thresholds.mjs
