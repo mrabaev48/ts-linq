@@ -36,6 +36,7 @@ export * from './migrations/DialectMigrationSql';
 export * from './migrations/MigrationBuilder';
 export * from './migrations/DiffBasedMigration';
 export * from './migrations/MigrationFileBuilder';
+export * from './migrations/DiffMigrationGenerator';
 export * from './utils/SqlHelper';
 export * from './utils/OpenTelemetrySqlLogger';
 export * from './utils/PrometheusSqlLogger';

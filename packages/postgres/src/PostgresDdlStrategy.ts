@@ -1,6 +1,4 @@
-import type { EntityMetadata } from '../../types';
-import { ColumnMetadata } from '../../types';
-import { SqlHelper } from '../../utils/SqlHelper';
+import { EntityMetadata, ColumnMetadata, SqlHelper } from '@ts-linq/core';
 
 export class PostgresDdlStrategy {
   public generateCreateTableSql(entityMetadata: EntityMetadata): string {

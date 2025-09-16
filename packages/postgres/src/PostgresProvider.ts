@@ -1,23 +1,21 @@
-import { DatabaseProvider } from './DatabaseProvider';
-import type {
+import {
+  DatabaseProvider,
   EntityMetadata,
   RetryPolicy,
   SqlParameter,
   OrmMiddleware,
   SoftDeleteOptions,
-  SqlLogger
-} from '../types';
-import {
+  SqlLogger,
   OptimisticConcurrencyError,
   UniqueConstraintError,
   DatabaseError,
-  ForeignKeyConstraintError
-} from '../types';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import { PostgresDialect } from '../query/PostgresDialect';
-import { PostgresDdlStrategy } from './postgres/PostgresDdlStrategy';
-import { QueryBuilder } from '../query/QueryBuilder';
-import type { SqlDialect } from '../query/SqlDialect';
+  ForeignKeyConstraintError,
+  MetadataStorage,
+  QueryBuilder,
+  SqlDialect
+} from '@ts-linq/core';
+import { PostgresDialect } from './PostgresDialect';
+import { PostgresDdlStrategy } from './PostgresDdlStrategy';
 
 // Lazy require to avoid hard dependency if not installed
 let Pg: {

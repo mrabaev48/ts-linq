@@ -61,6 +61,7 @@ __exportStar(require("./migrations/DialectMigrationSql"), exports);
 __exportStar(require("./migrations/MigrationBuilder"), exports);
 __exportStar(require("./migrations/DiffBasedMigration"), exports);
 __exportStar(require("./migrations/MigrationFileBuilder"), exports);
+__exportStar(require("./migrations/DiffMigrationGenerator"), exports);
 // Utils
 __exportStar(require("./utils/SqlHelper"), exports);
 __exportStar(require("./utils/OpenTelemetrySqlLogger"), exports);

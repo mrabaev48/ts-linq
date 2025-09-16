@@ -1,6 +1,4 @@
-import type { SqlDialect } from './SqlDialect';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { QueryOptions, SqlParameter } from '../types';
+import { SqlDialect, MetadataStorage, QueryOptions, SqlParameter } from '@ts-linq/core';
 
 /**
  * MSSQL dialect for SELECT generation.

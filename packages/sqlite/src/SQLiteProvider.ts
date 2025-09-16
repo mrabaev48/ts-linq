@@ -1,25 +1,23 @@
 import * as sqlite3 from 'sqlite3';
-import { DatabaseProvider } from './DatabaseProvider';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type {
+import {
+  DatabaseProvider,
+  MetadataStorage,
   EntityMetadata,
   ColumnMetadata,
   RetryPolicy,
   SqlParameter,
   OrmMiddleware,
   SoftDeleteOptions,
-  SqlLogger
-} from '../types';
-import {
+  SqlLogger,
   DatabaseError,
   UniqueConstraintError,
   ForeignKeyConstraintError,
-  OptimisticConcurrencyError
-} from '../types';
-import { SqlHelper } from '../utils/SqlHelper';
-import type { SqlDialect } from '../query/SqlDialect';
-import { SQLiteDialect } from '../query/SQLiteDialect';
-import { SQLiteDdlStrategy } from './sqlite/SQLiteDdlStrategy';
+  OptimisticConcurrencyError,
+  SqlHelper,
+  SqlDialect
+} from '@ts-linq/core';
+import { SQLiteDialect } from './SQLiteDialect';
+import { SQLiteDdlStrategy } from './SQLiteDdlStrategy';
 
 /**
  * SQLite implementation of `DatabaseProvider` using the `sqlite3` package.

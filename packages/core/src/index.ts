@@ -54,6 +54,7 @@ export * from './migrations/DialectMigrationSql';
 export * from './migrations/MigrationBuilder';
 export * from './migrations/DiffBasedMigration';
 export * from './migrations/MigrationFileBuilder';
+export * from './migrations/DiffMigrationGenerator';
 
 // Utils
 export * from './utils/SqlHelper';
