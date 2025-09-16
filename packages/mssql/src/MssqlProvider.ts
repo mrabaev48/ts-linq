@@ -1,19 +1,19 @@
-import { DatabaseProvider } from './DatabaseProvider';
-import type {
+import {
+  DatabaseProvider,
   EntityMetadata,
   ColumnMetadata,
   SqlLogger,
   RetryPolicy,
   SqlParameter,
   OrmMiddleware,
-  SoftDeleteOptions
-} from '../types';
-import { OptimisticConcurrencyError } from '../types';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import { SqlHelper } from '../utils/SqlHelper';
-import { MssqlDdlStrategy } from './mssql/MssqlDdlStrategy';
-import type { SqlDialect } from '../query/SqlDialect';
-import { MssqlDialect } from '../query/MssqlDialect';
+  SoftDeleteOptions,
+  OptimisticConcurrencyError,
+  MetadataStorage,
+  SqlHelper,
+  SqlDialect
+} from '@ts-linq/core';
+import { MssqlDialect } from './MssqlDialect';
+import { MssqlDdlStrategy } from './MssqlDdlStrategy';
 
 interface MssqlRequestLike {
   input(name: string, value: SqlParameter): MssqlRequestLike;

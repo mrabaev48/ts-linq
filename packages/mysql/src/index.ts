@@ -3,7 +3,7 @@
  */
 
 // Re-export core types for convenience
-export * from '../../core/src';
+export * from '@ts-linq/core';
 
 // MySQL-specific exports
 export * from './MySqlProvider';

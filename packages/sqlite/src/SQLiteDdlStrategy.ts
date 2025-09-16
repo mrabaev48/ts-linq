@@ -1,5 +1,4 @@
-import type { EntityMetadata, ColumnMetadata } from '../../types';
-import { SqlHelper } from '../../utils/SqlHelper';
+import { EntityMetadata, ColumnMetadata, SqlHelper } from '@ts-linq/core';
 
 export class SQLiteDdlStrategy {
   public generateCreateTableSql(metadata: EntityMetadata): string {
