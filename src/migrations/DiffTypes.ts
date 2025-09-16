@@ -57,6 +57,8 @@ export interface TableDiff {
   drop?: boolean;
   /** Rename this table to a new name. */
   renameTo?: string;
+  /** Final expected snapshot for this table (used for advanced strategies like SQLite rebuild). */
+  finalSnapshot?: TableSnapshot;
   columnChanges?: ColumnChange[];
   /** Rename columns within an existing table. */
   columnRenames?: Array<{ from: string; to: string; toDef?: ColumnDef }>;
@@ -137,7 +139,7 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
         changes.push({ kind: 'drop', column: actualColumn });
       }
     }
-    const tableDiff: TableDiff = { table: expectedTable.name };
+    const tableDiff: TableDiff = { table: expectedTable.name, finalSnapshot: expectedTable };
     if (changes.length > 0) {
       // Detect potential renames: pair one drop with one add if shape matches
       const adds = changes.filter((c) => c.kind === 'add');

@@ -46,8 +46,29 @@ class MigrationSqlBuilder {
       const hasRenames = (tableDiff.columnRenames || []).length > 0;
       const hasFkMutations = (tableDiff.fkCreates && tableDiff.fkCreates.length > 0) || (tableDiff.fkDrops && tableDiff.fkDrops.length > 0);
       if (hasDestructiveColumnChange || hasRenames || hasFkMutations) {
-        this.up.push(`-- SQLite: rebuild is required for table ${this.emitter.q(tableDiff.table)} (ALTER/DROP/FK/RENAME detected).`);
-        this.up.push(`-- Use CLI diff to generate a safe rebuild plan (create __new_, copy data, drop old, rename, recreate indexes).`);
+        const target = tableDiff.finalSnapshot;
+        if (!target) {
+          this.up.push(`-- SQLite: rebuild is required for table ${this.emitter.q(tableDiff.table)}; missing finalSnapshot (use CLI diff).`);
+        } else {
+          const temp = `__new_${target.name}`;
+          // 1) CREATE TABLE __new_X with target schema; inline FK/CHECK supported by emitter (BaseEmitter handles generic)
+          const createTd = { table: temp, create: { ...target, name: temp } } as unknown as TableDiff;
+          this.up.push(this.emitter.createTable(createTd));
+          // 2) INSERT common columns
+          const commonCols = (target.columns || []).map((c) => c.name);
+          if (commonCols.length > 0) {
+            const cols = commonCols.join(', ');
+            this.up.push(`INSERT INTO ${this.emitter.q(temp)} (${cols}) SELECT ${cols} FROM ${this.emitter.q(tableDiff.table)}`);
+          }
+          // 3) DROP old and RENAME
+          this.up.push(this.emitter.dropTable(tableDiff.table));
+          this.up.push(this.emitter.renameTable(temp, target.name));
+          // 4) Recreate UNIQUE and indexes
+          for (const uq of target.uniqueConstraints || []) this.up.push(this.emitter.createUniqueConstraint(target.name, uq));
+          for (const idx of target.indexes || []) this.up.push(this.emitter.createIndex(target.name, idx));
+          // Skip normal handlers since rebuild supersedes them
+          return;
+        }
       }
     }
     this.handleIndexCreates(tableDiff);
