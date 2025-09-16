@@ -1,18 +1,42 @@
 {
   "name": "ts-linq",
   "version": "1.0.0",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/types/index.d.ts",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "main": "./packages/core/dist/index.js",
+  "module": "./packages/core/dist/index.esm.js", 
+  "types": "./packages/core/dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
+      "types": "./packages/core/dist/index.d.ts",
+      "import": "./packages/core/dist/index.esm.js",
+      "require": "./packages/core/dist/index.js"
+    },
+    "./sqlite": {
+      "types": "./packages/sqlite/dist/index.d.ts",
+      "import": "./packages/sqlite/dist/index.esm.js",
+      "require": "./packages/sqlite/dist/index.js"
+    },
+    "./postgres": {
+      "types": "./packages/postgres/dist/index.d.ts",
+      "import": "./packages/postgres/dist/index.esm.js",
+      "require": "./packages/postgres/dist/index.js"
+    },
+    "./mysql": {
+      "types": "./packages/mysql/dist/index.d.ts",
+      "import": "./packages/mysql/dist/index.esm.js", 
+      "require": "./packages/mysql/dist/index.js"
+    },
+    "./mssql": {
+      "types": "./packages/mssql/dist/index.d.ts",
+      "import": "./packages/mssql/dist/index.esm.js",
+      "require": "./packages/mssql/dist/index.js"
     }
   },
   "files": [
-    "dist/**/*",
+    "packages/*/dist/**/*",
     "README.md",
     "CHANGELOG.md"
   ],
@@ -21,12 +45,13 @@
     "test": "tests"
   },
   "scripts": {
+    "build": "npm run build --workspaces",
+    "build:core": "npm run build -w packages/core",
+    "build:providers": "npm run build -w packages/sqlite -w packages/postgres -w packages/mysql -w packages/mssql",
+    "build:cli": "npm run build -w packages/cli",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "build": "npm run build:cjs && npm run build:esm",
-    "build:cjs": "tsc -p tsconfig.cjs.json",
-    "build:esm": "tsc -p tsconfig.esm.json",
     "dev": "ts-node src/index.ts",
     "example:simple": "ts-node examples/simple-app.ts",
     "example:advanced": "ts-node examples/advanced-queries.ts",
@@ -43,17 +68,25 @@
     "bench:profile:cpu": "node --cpu-prof -r ts-node/register/transpile-only bench/multi.ts",
     "bench:profile:heap": "node --heap-prof -r ts-node/register/transpile-only bench/multi.ts"
   },
-  "keywords": [],
+  "keywords": [
+    "orm",
+    "typescript",
+    "database",
+    "entity-framework",
+    "linq",
+    "sqlite",
+    "postgresql",
+    "mysql",
+    "mssql"
+  ],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "A TypeScript ORM framework inspired by Entity Framework Core with decorator-based entities, LINQ-style querying, and multi-database support",
   "dependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^24.3.0",
-    "@types/sqlite3": "^3.1.11",
     "jest": "^30.1.1",
     "reflect-metadata": "^0.2.2",
-    "sqlite3": "^5.1.7",
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
