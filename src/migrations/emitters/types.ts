@@ -29,4 +29,5 @@ export interface DialectSqlEmitter {
   dropUniqueConstraint(table: string, name: string): string;
   addCheckConstraint(table: string, def: { name?: string; expression: string }): string;
   dropCheckConstraint(table: string, name: string): string;
+  renameConstraint(table: string, oldName: string, newName: string): string;
 }

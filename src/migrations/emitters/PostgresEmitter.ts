@@ -87,4 +87,7 @@ export class PostgresEmitter extends BaseEmitter {
   public override dropCheckConstraint(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
   }
+  public override renameConstraint(table: string, oldName: string, newName: string): string {
+    return `ALTER TABLE ${this.q(table)} RENAME CONSTRAINT ${this.q(oldName)} TO ${this.q(newName)}`;
+  }
 }

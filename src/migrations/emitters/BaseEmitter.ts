@@ -153,4 +153,7 @@ export class BaseEmitter implements DialectSqlEmitter {
   public dropCheckConstraint(_table: string, name: string): string {
     return `-- SQLite does not support DROP CHECK ${name} post-create`;
   }
+  public renameConstraint(table: string, oldName: string, newName: string): string {
+    return `-- RENAME CONSTRAINT not supported for this dialect (${table}.${oldName} -> ${newName})`;
+  }
 }

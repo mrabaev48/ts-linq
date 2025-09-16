@@ -95,4 +95,8 @@ export class MysqlEmitter extends BaseEmitter {
   public override dropCheckConstraint(_table: string, name: string): string {
     return `-- MySQL drop CHECK not standardized for older versions: ${name}`;
   }
+  public override renameConstraint(table: string, oldName: string, newName: string): string {
+    // MySQL: UNIQUE is an index; CHECK rename is not standardized → advise drop/create
+    return `-- MySQL does not support RENAME CONSTRAINT reliably; drop/create ${oldName} -> ${newName}`;
+  }
 }

@@ -144,8 +144,12 @@ class MigrationSqlBuilder {
   private handleUniqueAndChecks(tableDiff: TableDiff): void {
     for (const uq of tableDiff.uniqueCreates || [])
       this.up.push(this.emitter.createUniqueConstraint(tableDiff.table, uq));
+    for (const r of tableDiff.uniqueRenames || [])
+      this.up.push(this.emitter.renameConstraint(tableDiff.table, r.from, r.to));
     for (const uqName of tableDiff.uniqueDrops || [])
       this.up.push(this.emitter.dropUniqueConstraint(tableDiff.table, uqName));
+    for (const r of tableDiff.checkRenames || [])
+      this.up.push(this.emitter.renameConstraint(tableDiff.table, r.from, r.to));
     for (const ckName of tableDiff.checkDrops || [])
       this.up.push(this.emitter.dropCheckConstraint(tableDiff.table, ckName));
     for (const ck of tableDiff.checkCreates || [])

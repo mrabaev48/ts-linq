@@ -97,4 +97,7 @@ export class MssqlEmitter extends BaseEmitter {
   public override dropCheckConstraint(table: string, name: string): string {
     return `ALTER TABLE ${this.q(table)} DROP CONSTRAINT ${this.q(name)}`;
   }
+  public override renameConstraint(table: string, oldName: string, newName: string): string {
+    return `EXEC sp_rename '${table}.${oldName}', '${newName}', 'OBJECT'`;
+  }
 }

@@ -74,10 +74,14 @@ export interface TableDiff {
   uniqueCreates?: UniqueConstraintDef[];
   /** Drop these unique constraint names from the existing table. */
   uniqueDrops?: string[];
+  /** Rename unique constraints (by name) where columns match. */
+  uniqueRenames?: Array<{ from: string; to: string }>;
   /** Create these check constraints. */
   checkCreates?: Array<{ name?: string; expression: string }>;
   /** Drop these check constraint names. */
   checkDrops?: string[];
+  /** Rename check constraints (by name) where expression matches. */
+  checkRenames?: Array<{ from: string; to: string }>;
   // future: fkChanges
 }
 
@@ -258,15 +262,29 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
       (actualTable.uniqueConstraints || []).map((u) => [u.name || u.columns.join('__'), u] as const)
     );
     const uniqueCreates: UniqueConstraintDef[] = [];
+    const uniqueRenames: Array<{ from: string; to: string }> = [];
     for (const [key, u] of expectedUniqByName) {
-      if (!actualUniqByName.has(key)) uniqueCreates.push(u);
+      if (!actualUniqByName.has(key)) {
+        const match = (actualTable.uniqueConstraints || []).find(
+          (au) => (au.columns || []).join('__') === (u.columns || []).join('__')
+        );
+        if (match && match.name && u.name && match.name !== u.name) {
+          uniqueRenames.push({ from: match.name, to: u.name });
+        } else {
+          uniqueCreates.push(u);
+        }
+      }
     }
     const uniqueDrops: string[] = [];
+    const renamedFrom = new Set<string>((uniqueRenames || []).map((r) => r.from));
     for (const [key, u] of actualUniqByName) {
-      if (!expectedUniqByName.has(key)) uniqueDrops.push(u.name || key);
+      const name = u.name || key;
+      if (renamedFrom.has(name)) continue; // skip drop for renamed unique
+      if (!expectedUniqByName.has(key)) uniqueDrops.push(name);
     }
     if (uniqueCreates.length > 0) tableDiff.uniqueCreates = uniqueCreates;
     if (uniqueDrops.length > 0) tableDiff.uniqueDrops = uniqueDrops;
+    if (uniqueRenames.length > 0) tableDiff.uniqueRenames = uniqueRenames;
 
     // CHECK constraints diff (normalize expressions to reduce noise)
     const expectedChecks = (expectedTable.checkConstraints || []).map((c) => ({
@@ -279,20 +297,31 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
     }));
     const actualCheckByKey = new Map(actualChecks.map((c) => [c.name || c.expression, c] as const));
     const checkCreates: Array<{ name?: string; expression: string }> = [];
+    const checkRenames: Array<{ from: string; to: string }> = [];
     for (const ec of expectedChecks) {
       const key = ec.name || ec.expression;
-      if (!actualCheckByKey.has(key)) checkCreates.push(ec);
+      if (!actualCheckByKey.has(key)) {
+        const match = (actualChecks || []).find((ac) => ac.expression === ec.expression);
+        if (match && match.name && ec.name && match.name !== ec.name) {
+          checkRenames.push({ from: match.name, to: ec.name });
+        } else {
+          checkCreates.push(ec);
+        }
+      }
     }
     const expectedCheckByKey = new Map(
       expectedChecks.map((c) => [c.name || c.expression, c] as const)
     );
     const checkDrops: string[] = [];
+    const renamedCheckFrom = new Set<string>((checkRenames || []).map((r) => r.from));
     for (const ac of actualChecks) {
       const key = ac.name || ac.expression;
+      if (renamedCheckFrom.has(ac.name || '')) continue; // skip drop for renamed check
       if (!expectedCheckByKey.has(key)) checkDrops.push(ac.name || ac.expression);
     }
     if (checkCreates.length > 0) tableDiff.checkCreates = checkCreates;
     if (checkDrops.length > 0) tableDiff.checkDrops = checkDrops;
+    if (checkRenames.length > 0) tableDiff.checkRenames = checkRenames;
     // FK drops (exist in actual but not in expected)
     const expectedFkByName = new Map(
       (expectedTable.foreignKeys || []).map(
@@ -315,8 +344,10 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
       tableDiff.fkDrops ||
       tableDiff.uniqueCreates ||
       tableDiff.uniqueDrops ||
+      tableDiff.uniqueRenames ||
       tableDiff.checkCreates ||
-      tableDiff.checkDrops
+      tableDiff.checkDrops ||
+      tableDiff.checkRenames
     ) {
       diffs.push(tableDiff);
     }
