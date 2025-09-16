@@ -34,6 +34,7 @@ export class SeedCommand implements Command {
     }
     const provider = createProvider(effective.provider, effective.connectionString);
     await provider.connect();
+    const startedAt = Date.now();
     const defaultSeed = path.resolve(effective.seedsDir, 'seeds.sql');
     const fileArg = flags.file || rest[0];
     const sqlFile = fileArg ? path.resolve(process.cwd(), fileArg) : defaultSeed;
@@ -60,7 +61,7 @@ export class SeedCommand implements Command {
           if (flags.transaction) await provider.commitTransaction();
           if (flags.json) {
             // eslint-disable-next-line no-console
-            console.log(JSON.stringify({ ok: true, file: sqlFile, script: true }, null, 2));
+            console.log(JSON.stringify({ ok: true, file: sqlFile, script: true, durationMs: Date.now() - startedAt }, null, 2));
           }
         } catch (e) {
           if (flags.transaction) await provider.rollbackTransaction();
@@ -69,7 +70,7 @@ export class SeedCommand implements Command {
       } else if (!flags.quiet) {
         if (flags.json) {
           // eslint-disable-next-line no-console
-          console.log(JSON.stringify({ ok: true, file: sqlFile, script: true, dryRun: true }, null, 2));
+          console.log(JSON.stringify({ ok: true, file: sqlFile, script: true, dryRun: true, durationMs: 0 }, null, 2));
         } else {
           logger.log('info', `Dry-run: would execute seed script ${sqlFile}`);
         }
@@ -97,7 +98,7 @@ export class SeedCommand implements Command {
       }
       if (flags.json) {
         // eslint-disable-next-line no-console
-        console.log(JSON.stringify({ ok: true, file: sqlFile, statements: statements.length }, null, 2));
+        console.log(JSON.stringify({ ok: true, file: sqlFile, statements: statements.length, durationMs: Date.now() - startedAt }, null, 2));
       } else if (!flags?.quiet) {
         logger.log('info', `Applied ${statements.length} seed statements from ${sqlFile}`);
       }
