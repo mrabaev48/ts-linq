@@ -40,7 +40,7 @@ class DbContext {
      */
     constructor(options) {
         this._dbSets = new Map();
-        this._defaultLoadingStrategy = LoadingStrategy_1.LoadingStrategy.Lazy;
+        this._defaultLoadingStrategy = LoadingStrategy_1.LoadingStrategy.Eager;
         this._loadingDefaults = {};
         // Initialize database provider from options
         this._provider = options.provider;
@@ -56,6 +56,14 @@ class DbContext {
         // Store performance options for downstream consumers
         this._performanceOptions = options.performance;
         this._loadingDefaults = options.loading || {};
+        // Apply loading strategy from options or keep default
+        if (this._loadingDefaults.strategy) {
+            this._defaultLoadingStrategy = this._loadingDefaults.strategy;
+            this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
+        }
+        else {
+            this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
+        }
         this.initializeDbSets();
     }
     /**
