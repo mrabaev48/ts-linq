@@ -1,4 +1,4 @@
-import type { DatabaseProvider } from '../providers/DatabaseProvider';
+import type { DatabaseProvider } from '../DatabaseProvider';
 
 export interface TableColumnInfo {
   name: string;

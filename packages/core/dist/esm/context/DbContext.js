@@ -1,0 +1,397 @@
+import { ChangeTracker } from '../change-tracking/ChangeTracker';
+import { EntityLoader } from '../loading/EntityLoader';
+import { LoadingStrategy } from '../loading/LoadingStrategy';
+import { MetadataStorage } from '../metadata/MetadataStorage';
+import { DbSet } from './DbSet';
+import { ok, err, ValidationError } from '../types';
+import { EntityCache } from '../utils/EntityCache';
+function getOriginal(target) {
+    try {
+        const gm = Reflect
+            .getOwnMetadata;
+        const original = gm?.('orm:original', target) || target;
+        return original;
+    }
+    catch {
+        return target;
+    }
+}
+/**
+ * Base unit-of-work style context that orchestrates entity sets, change tracking
+ * and database provider interactions. Similar to Entity Framework's `DbContext`.
+ *
+ * Note about auto-generated DbSet properties:
+ * - For each registered entity class `User`, a property is created on the context instance
+ *   using a simple pluralization of the lowercased class name:
+ *   `<ClassName>.toLowerCase() + 's'`, with a basic `y → ies` rule.
+ *   Examples: `Author` → `authors`, `Book` → `books`, `Category` → `categories`.
+ * - If you want a different property name, either add your own getter that returns `set(YourEntity)`,
+ *   or use `set(YourEntity)` directly instead of the auto-generated property.
+ */
+export class DbContext {
+    /**
+     * Create a new database context instance.
+     *
+     * @param options Connection and provider configuration.
+     */
+    constructor(options) {
+        this._dbSets = new Map();
+        this._defaultLoadingStrategy = LoadingStrategy.Lazy;
+        this._loadingDefaults = {};
+        // Initialize database provider from options
+        this._provider = options.provider;
+        this._softDelete = options.softDelete;
+        this._audit = options.audit;
+        this._globalFilters = options.globalFilters;
+        this._changeTracker = new ChangeTracker();
+        this._entityLoader = new EntityLoader(this._provider);
+        // Initialize optional L2 entity cache
+        if (options.performance?.enableEntityCache) {
+            this._entityCache = new EntityCache(options.performance.entityCacheSize ?? 10000, this._provider.loggerRef, this._provider.providerLabel);
+        }
+        // Store performance options for downstream consumers
+        this._performanceOptions = options.performance;
+        this._loadingDefaults = options.loading || {};
+        this.initializeDbSets();
+    }
+    /**
+     * Get a DbSet for the specified entity type
+     *
+     * @param entityClass Constructor of the entity type.
+     * @returns Configured `DbSet` instance.
+     */
+    set(entityClass) {
+        const getOwn = Reflect
+            .getOwnMetadata;
+        const maybe = getOwn?.('orm:original', entityClass);
+        const normalized = typeof maybe === 'function' ? maybe : entityClass;
+        if (!this._dbSets.has(normalized)) {
+            throw new Error(`DbSet for ${entityClass.name} is not configured`);
+        }
+        const dbSet = this._dbSets.get(normalized);
+        // Ensure the DbSet reflects the exact (possibly decorated) class passed in
+        dbSet._entityClass = entityClass;
+        return dbSet;
+    }
+    /**
+     * Initialize the database and create tables
+     *
+     * Connects the provider and creates tables for all registered entities.
+     */
+    async ensureCreated() {
+        await this._provider.connect();
+        const entities = MetadataStorage.getEntities();
+        for (const entity of entities) {
+            await this._provider.createTable(entity);
+        }
+    }
+    /**
+     * Save all changes tracked by the change tracker
+     * Similar to Entity Framework's SaveChanges()
+     *
+     * @returns Number of affected rows.
+     */
+    async saveChanges() {
+        const changes = this._changeTracker.getChanges();
+        // Prefill DB defaults on Added entities to satisfy validation and keep entity consistent
+        for (const change of changes) {
+            if (change.state === 'added') {
+                const meta = MetadataStorage.getEntity(change.entityClass);
+                if (meta) {
+                    for (const col of meta.columns) {
+                        if (change.entity[col.propertyName] === undefined &&
+                            col.defaultValue !== undefined) {
+                            change.entity[col.propertyName] = col.defaultValue;
+                        }
+                    }
+                }
+            }
+        }
+        // Validate entities before persistence
+        this.validateChanges(changes);
+        let affectedRows = 0;
+        for (const change of changes) {
+            // Apply audit stamping before persistence
+            if (this._audit?.enabled) {
+                const meta = MetadataStorage.getEntity(change.entityClass);
+                if (meta) {
+                    const now = (this._audit.clock ?? (() => new Date()))();
+                    const createdAt = this._audit.timeColumns?.createdAt ?? 'createdAt';
+                    const updatedAt = this._audit.timeColumns?.updatedAt ?? 'updatedAt';
+                    const createdBy = this._audit.userColumns?.createdBy ?? 'createdBy';
+                    const updatedBy = this._audit.userColumns?.updatedBy ?? 'updatedBy';
+                    const currentUser = this._audit.getCurrentUserId?.();
+                    if (change.state === 'added') {
+                        if (meta.columns.some((c) => c.propertyName === createdAt))
+                            change.entity[createdAt] = now;
+                        if (meta.columns.some((c) => c.propertyName === createdBy) && currentUser !== undefined)
+                            change.entity[createdBy] =
+                                currentUser;
+                    }
+                    if (change.state === 'added' || change.state === 'modified') {
+                        if (meta.columns.some((c) => c.propertyName === updatedAt))
+                            change.entity[updatedAt] = now;
+                        if (meta.columns.some((c) => c.propertyName === updatedBy) && currentUser !== undefined)
+                            change.entity[updatedBy] =
+                                currentUser;
+                    }
+                }
+            }
+            switch (change.state) {
+                case 'added':
+                    await this._provider.insert(change.entity, change.entityClass);
+                    // update L2 cache
+                    if (this._entityCache) {
+                        const meta = MetadataStorage.getEntity(change.entityClass);
+                        const pk = meta?.primaryKeys[0];
+                        if (pk)
+                            this._entityCache.set(change.entityClass, change.entity[pk], change.entity);
+                    }
+                    affectedRows++;
+                    break;
+                case 'modified':
+                    await this._provider.update(change.entity, change.entityClass);
+                    if (this._entityCache) {
+                        const meta = MetadataStorage.getEntity(change.entityClass);
+                        const pk = meta?.primaryKeys[0];
+                        if (pk)
+                            this._entityCache.set(change.entityClass, change.entity[pk], change.entity);
+                    }
+                    affectedRows++;
+                    break;
+                case 'deleted':
+                    // Soft delete if enabled and entity has configured column, else hard delete
+                    if (this._softDelete?.enabled) {
+                        const meta = MetadataStorage.getEntity(change.entityClass);
+                        const flag = this._softDelete.column ?? 'isDeleted';
+                        const deletedAt = this._softDelete.deletedAtColumn ?? 'deletedAt';
+                        if (meta &&
+                            meta.columns.some((c) => c.propertyName === flag || c.columnName === flag)) {
+                            change.entity[flag] = true;
+                            if (meta.columns.some((c) => c.propertyName === deletedAt || c.columnName === deletedAt)) {
+                                change.entity[deletedAt] = new Date();
+                            }
+                            await this._provider.update(change.entity, change.entityClass);
+                            if (this._entityCache) {
+                                const pk = meta.primaryKeys[0];
+                                this._entityCache.set(change.entityClass, change.entity[pk], change.entity);
+                            }
+                            affectedRows++;
+                            break;
+                        }
+                    }
+                    await this._provider.delete(change.entity, change.entityClass);
+                    if (this._entityCache) {
+                        const meta = MetadataStorage.getEntity(change.entityClass);
+                        const pk = meta?.primaryKeys[0];
+                        if (pk)
+                            this._entityCache.remove(change.entityClass, change.entity[pk]);
+                    }
+                    affectedRows++;
+                    break;
+            }
+        }
+        this._changeTracker.acceptAllChanges();
+        return affectedRows;
+    }
+    /** Try-версия saveChanges без исключений. */
+    async trySaveChanges() {
+        try {
+            const affected = await this.saveChanges();
+            return ok(affected);
+        }
+        catch (e) {
+            return err(e);
+        }
+    }
+    /**
+     * Start a database transaction
+     */
+    async beginTransaction() {
+        await this._provider.beginTransaction();
+    }
+    /**
+     * Commit the current transaction
+     */
+    async commitTransaction() {
+        await this._provider.commitTransaction();
+        // Invalidate count cache after commit to avoid stale totals across contexts
+        // This is a coarse-grained approach since count cache is global
+        try {
+            require('../query/Queryable').Queryable.clearCountCache();
+            if (this._entityCache) {
+                const { safeCacheSize } = require('../utils/MetricsSafe');
+                safeCacheSize(this._provider.loggerRef, {
+                    cache: 'entityL2',
+                    size: this._entityCache.size?.() ?? -1,
+                    provider: this._provider.providerLabel
+                });
+            }
+        }
+        catch {
+            /* ignore */
+        }
+    }
+    /**
+     * Rollback the current transaction
+     */
+    async rollbackTransaction() {
+        await this._provider.rollbackTransaction();
+        // Invalidate L2 cache and count cache on rollback to ensure consistency
+        if (this._entityCache) {
+            try {
+                this._entityCache.clear();
+                const { safeCacheSize } = require('../utils/MetricsSafe');
+                safeCacheSize(this._provider.loggerRef, {
+                    cache: 'entityL2',
+                    size: this._entityCache.size?.() ?? 0,
+                    provider: this._provider.providerLabel
+                });
+            }
+            catch {
+                /* ignore */
+            }
+        }
+        try {
+            require('../query/Queryable').Queryable.clearCountCache();
+        }
+        catch {
+            /* ignore */
+        }
+    }
+    /**
+     * Dispose of the database connection
+     */
+    async dispose() {
+        await this._provider.disconnect();
+    }
+    /**
+     * Get the underlying database provider
+     *
+     * @returns The active `DatabaseProvider` implementation.
+     */
+    get provider() {
+        return this._provider;
+    }
+    /**
+     * Get the change tracker
+     *
+     * @returns The `ChangeTracker` handling entity states.
+     */
+    get changeTracker() {
+        return this._changeTracker;
+    }
+    /**
+     * Get the entity loader
+     *
+     * @returns The `EntityLoader` used for eager/lazy loading.
+     */
+    get entityLoader() {
+        return this._entityLoader;
+    }
+    /**
+     * Set the default loading strategy
+     *
+     * @param strategy Loading strategy to use by default.
+     */
+    setLoadingStrategy(strategy) {
+        this._defaultLoadingStrategy = strategy;
+        this._entityLoader.setDefaultStrategy(strategy);
+    }
+    /**
+     * Find an entity by ID with loading options
+     *
+     * @param entityClass Constructor of the entity type.
+     * @param id Primary key value.
+     * @param options Loading options (strategy, includes, depth).
+     * @returns The found entity or null.
+     */
+    async find(entityClass, id, options) {
+        const loadingOptions = {
+            strategy: this._loadingDefaults.strategy ?? this._defaultLoadingStrategy,
+            depth: this._loadingDefaults.depth ?? options?.depth,
+            ...(options || {})
+        };
+        return await this._entityLoader.loadEntity(entityClass, id, loadingOptions);
+    }
+    /**
+     * Find entities with loading options
+     *
+     * @param entityClass Constructor of the entity type.
+     * @param options Loading options (strategy, includes, depth).
+     * @returns Array of loaded entities.
+     */
+    async findAll(entityClass, options) {
+        const loadingOptions = {
+            strategy: this._loadingDefaults.strategy ?? this._defaultLoadingStrategy,
+            depth: this._loadingDefaults.depth ?? options?.depth,
+            ...(options || {})
+        };
+        return await this._entityLoader.loadEntities(entityClass, loadingOptions);
+    }
+    // Removed string-based include API in favor of predicate-based include on Queryable
+    /**
+     * Initialize DbSets for all registered entities.
+     *
+     * This method also defines auto-generated properties on the context instance
+     * for each entity using a simple naming convention (see class JSDoc). If your
+     * code expects different names, prefer `set(Entity)` or add your own proxy
+     * getters that delegate to `set(Entity)`.
+     */
+    initializeDbSets() {
+        const entities = MetadataStorage.getEntities();
+        for (const entity of entities) {
+            const original = getOriginal(entity.target);
+            const dbSet = new DbSet(original, this._provider, this._changeTracker, this._entityLoader, this._entityCache, this._performanceOptions, this._globalFilters);
+            this._dbSets.set(original, dbSet);
+            // Create property on context instance for easy access
+            const base = original.name.toLowerCase();
+            const propertyName = base.endsWith('y') ? base.slice(0, -1) + 'ies' : base + 's';
+            Object.defineProperty(this, propertyName, {
+                get: () => dbSet,
+                enumerable: true,
+                configurable: false
+            });
+        }
+    }
+    /** Basic model validation: not-null and length. */
+    validateChanges(changes) {
+        const errors = [];
+        for (const change of changes) {
+            if (change.state !== 'added' && change.state !== 'modified')
+                continue;
+            const meta = MetadataStorage.getEntity(change.entityClass);
+            if (!meta)
+                continue;
+            for (const col of meta.columns) {
+                const value = change.entity[col.propertyName];
+                // Skip validation for auto-generated primary keys on Added entities
+                const isGeneratedPk = meta.primaryKeys.includes(col.propertyName) &&
+                    col.isGenerated &&
+                    change.state === 'added';
+                // Allow DB-level defaultValue to satisfy non-null on Added when undefined in entity
+                const hasDbDefault = col.defaultValue !== undefined && change.state === 'added';
+                if (!col.nullable &&
+                    (value === null || value === undefined) &&
+                    !isGeneratedPk &&
+                    !hasDbDefault) {
+                    errors.push({
+                        entity: meta.tableName,
+                        property: col.propertyName,
+                        message: 'Value cannot be null'
+                    });
+                }
+                if (col.length && typeof value === 'string' && value.length > col.length) {
+                    errors.push({
+                        entity: meta.tableName,
+                        property: col.propertyName,
+                        message: `Length exceeds ${col.length}`
+                    });
+                }
+            }
+        }
+        if (errors.length > 0)
+            throw new ValidationError('Model validation failed', errors);
+    }
+}
+//# sourceMappingURL=DbContext.js.map

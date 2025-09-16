@@ -2,7 +2,6 @@ import type { QueryOptions, SqlParameter } from '../types';
 import type { SqlLogger } from '../types';
 import type { SqlDialect } from './SqlDialect';
 import { safeCacheSize, safeCacheEvicted } from '../utils/MetricsSafe';
-import { SQLiteDialect } from './SQLiteDialect';
 import type { QueryModel } from './QueryModel';
 import type { SqlCache, SqlCacheEntry } from './SqlCache';
 
@@ -23,7 +22,7 @@ export class QueryBuilder {
    * @param dialect SqlDialect implementation (default: SQLiteDialect)
    */
   constructor(
-    dialect: SqlDialect = new SQLiteDialect(),
+    dialect: SqlDialect,
     logger?: SqlLogger,
     providerName?: string,
     cache?: SqlCache

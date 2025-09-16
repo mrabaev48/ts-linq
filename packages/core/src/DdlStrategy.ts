@@ -1,4 +1,4 @@
-import type { EntityMetadata } from '../types';
+import type { EntityMetadata } from './types';
 
 export interface DdlStrategy {
   generateCreateTableSql(metadata: EntityMetadata): string;
