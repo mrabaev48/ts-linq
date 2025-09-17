@@ -2,7 +2,7 @@ import { QueryBuilder } from './QueryBuilder';
 import { EnhancedSqlCache } from './EnhancedSqlCache';
 import { SqlDialect } from './SqlDialect';
 import { sql } from './SqlFunctions';
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/core';
 import type { ColumnMetadata, SqlLogger } from '../types';
 
 // Test entity for QueryBuilder integration
@@ -243,6 +243,28 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       // At this layer we only collect parameters from top-level select expressions.
       // Since pgRank() receives stringified inner expressions, only MySQL match contributes a param.
       expect(res.parameters).toEqual(['node js']);
+    });
+
+    test('mysql: JSON and MATCH should be parameterized', () => {
+      const options = {
+        select: [
+          sql.jsonExtract('payload', '$.a.b').as('val'),
+          sql.mysqlMatchAgainst(['title', 'body'], 'golang', 'boolean').as('score')
+        ],
+        where: [] as any[]
+      };
+      // Use a MySQL-like stub dialect that respects selectParams
+      const mysqlLikeDialect: SqlDialect = {
+        buildSelect: (_ctor, opts) => ({
+          query: `SELECT ${opts.select!.join(', ')} FROM test_users`,
+          parameters: opts.selectParams ?? []
+        })
+      };
+      const local = new QueryBuilder(mysqlLikeDialect, mockLogger, 'mysql', enhancedCache);
+      const res = local.generateSql(TestUser as any, options as any);
+      expect(res.query).toContain('JSON_EXTRACT(payload, ?) AS val');
+      expect(res.query).toContain('MATCH(title, body) AGAINST (? IN BOOLEAN MODE) AS score');
+      expect(res.parameters).toEqual(['$.a.b', 'golang']);
     });
 
     test('should expire cached queries after TTL', async () => {
