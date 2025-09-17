@@ -8,9 +8,9 @@ type TypedSelector<TEntity, TResult> = (entity: TEntity) => TResult;
  */
 type TypedPredicate<TEntity> = (entity: TEntity) => boolean;
 /**
- * Type-safe ordering selector function.
+ * Type-safe ordering selector function restricted to entity keys.
  */
-type TypedOrderSelector<TEntity> = (entity: TEntity) => any;
+type TypedOrderSelector<TEntity, K extends keyof TEntity> = (entity: TEntity) => TEntity[K];
 /**
  * Extract only relationship properties from an entity.
  * Relationship properties are arrays or objects (not primitives).
@@ -69,7 +69,7 @@ export declare class TypedQueryable<TEntity> {
      * users.orderBy(u => u.name) // defaults to ASC
      * ```
      */
-    orderBy<TKey>(keySelector: TypedOrderSelector<TEntity>, direction?: 'ASC' | 'DESC'): TypedQueryable<TEntity>;
+    orderBy<K extends keyof TEntity>(keySelector: TypedOrderSelector<TEntity, K>, direction?: 'ASC' | 'DESC'): TypedQueryable<TEntity>;
     /**
      * Type-safe INCLUDE for relationships with compile-time validation.
      * Only allows including properties that are actual relationships.
@@ -100,12 +100,12 @@ export declare class TypedQueryable<TEntity> {
      * Type-safe secondary ordering in ascending order.
      * Must be used after orderBy() or orderByDescending().
      */
-    thenBy<TKey>(keySelector: TypedOrderSelector<TEntity>): TypedQueryable<TEntity>;
+    thenBy<K extends keyof TEntity>(keySelector: TypedOrderSelector<TEntity, K>): TypedQueryable<TEntity>;
     /**
      * Type-safe secondary ordering in descending order.
      * Must be used after orderBy() or orderByDescending().
      */
-    thenByDescending<TKey>(keySelector: TypedOrderSelector<TEntity>): TypedQueryable<TEntity>;
+    thenByDescending<K extends keyof TEntity>(keySelector: TypedOrderSelector<TEntity, K>): TypedQueryable<TEntity>;
     /**
      * Type-safe first() with proper return type.
      * Throws if no elements found, consistent with underlying Queryable.

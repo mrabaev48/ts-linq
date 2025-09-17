@@ -1,6 +1,6 @@
 /**** Basic Testcontainers setup for DB-backed tests ****/
 
-import { GenericContainer, StartedTestContainer } from 'testcontainers';
+import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
 
 let postgres: StartedTestContainer | null = null;
 let mysql: StartedTestContainer | null = null;
@@ -27,6 +27,8 @@ export async function startDbContainers() {
     .withEnv('MYSQL_ROOT_PASSWORD', 'test')
     .withEnv('MYSQL_DATABASE', 'testdb')
     .withExposedPorts(3306)
+    .withWaitStrategy(Wait.forLogMessage(/ready for connections/i))
+    .withStartupTimeout(180_000)
     .start();
     process.env.MYSQL_URL = `mysql://root:test@${mysql.getHost()}:${mysql.getMappedPort(3306)}/testdb`;
   }

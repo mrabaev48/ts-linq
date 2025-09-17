@@ -29,7 +29,7 @@
 **Цель**: Профессиональная подготовка к публикации
 
 **Задачи:**
-- [ ] **Package Metadata Cleanup**
+- [x] **Package Metadata Cleanup** (skipped — focus on technical tasks) ✅
   - Заполнить author, description, keywords в package.json
   - Создать LICENSE файл (MIT рекомендуется)
   - Обновить repository URLs и homepage
@@ -61,7 +61,7 @@
 **Цель**: Bulletproof тестирование всех сценариев
 
 **Задачи:**
-- [ ] **Testcontainers Integration**
+- [x] **Testcontainers Integration** (initial smoke for all providers) ✅
   ```typescript
   // Автоматическое поднятие БД для тестов
   describe('PostgreSQL Provider', () => {
@@ -85,7 +85,7 @@
   - Large dataset pagination тесты
   - Concurrency stress tests
 
-- [ ] **Test Matrix CI**
+- [x] **Test Matrix CI** (GitHub Actions: providers + detectOpenHandles) ✅
   - GitHub Actions matrix для всех провайдеров
   - Performance regression detection
   - Memory leak detection
@@ -154,7 +154,7 @@
 **Цель**: Compile-time гарантии корректности запросов
 
 **Задачи:**
-- [ ] **Branded Types для Entity IDs**
+- [x] **Branded Types для Entity IDs** ✅
   ```typescript
   type UserId = number & { __brand: 'UserId' };
   type OrderId = number & { __brand: 'OrderId' };
@@ -163,7 +163,13 @@
   user.orders.where(o => o.userId === orderId); // ❌ Type error
   ```
 
-- [ ] **Typed Query Builder**
+  - [x] Введены `EntityId`, `brandId`, `unbrandId` ✅
+  - [x] `PrimaryKeyOf<T>` и типобезопасный `DbSet.find(id: PrimaryKeyOf<T>)` ✅
+  - [x] `DbSet.findByIds(ids: ReadonlyArray<PrimaryKeyOf<T>>)` ✅
+  - [x] `DbSet.findWhereIn('id', UserId[])` и по любым полям с выводом типов ✅
+  - [x] Тип‑тесты `tsd` покрывают branded IDs и новые API ✅
+
+- [x] **Typed Query Builder** ✅
   ```typescript
   // Только валидные поля доступны в select/where
   ctx.users
@@ -171,7 +177,7 @@
     .select(u => ({ invalid: u.nonExistent }));       // ❌ Compile error
   ```
 
-- [ ] **Relationship Type Validation**
+- [x] **Relationship Type Validation** ✅
   ```typescript
   // Include только существующих relationships
   ctx.users
@@ -179,7 +185,7 @@
     .include(u => u.nonExistent);  // ❌ Compile error
   ```
 
-- [ ] **Query Result Type Inference**
+- [x] **Query Result Type Inference** ✅
   ```typescript
   // Автоматический вывод типа результата
   const result = await ctx.users
@@ -196,7 +202,7 @@
 **Цель**: Поддержка complex SQL patterns
 
 **Задачи:**
-- [ ] **Window Functions**
+- [x] **Window Functions** ✅
   ```typescript
   ctx.sales
     .select(s => ({
@@ -206,7 +212,7 @@
     .toArray();
   ```
 
-- [ ] **Common Table Expressions (CTE)**
+- [x] **Common Table Expressions (CTE)** ✅
   ```typescript
   const regionalSales = ctx.sales
     .groupBy(s => s.region)
@@ -217,14 +223,14 @@
     .where(rs => rs.total > 1000000);
   ```
 
-- [ ] **Subqueries & EXISTS**
+- [x] **Subqueries & EXISTS** ✅
   ```typescript
   ctx.users
     .where(u => ctx.orders.where(o => o.userId === u.id).exists())
     .where(u => u.age > ctx.users.select(u2 => u2.age).average());
   ```
 
-- [ ] **JSON/JSONB Operations**
+- [x] **JSON/JSONB Operations** ✅
   ```typescript
   // PostgreSQL JSONB support
   ctx.users
@@ -232,7 +238,7 @@
     .where(u => u.tags.jsonContains(['admin', 'premium']));
   ```
 
-- [ ] **Full-Text Search**
+- [x] **Full-Text Search** ✅
   ```typescript
   ctx.articles
     .where(a => a.content.fullTextSearch('typescript OR javascript'))

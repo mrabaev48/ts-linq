@@ -29,6 +29,7 @@ export class QueryModel {
         clonedModel.limit = this.limit;
         clonedModel.offset = this.offset;
         clonedModel.distinct = this.distinct;
+        clonedModel.from = this.from;
         clonedModel.unions = this.unions
             ? this.unions.map((unionItem) => ({
                 all: unionItem.all,

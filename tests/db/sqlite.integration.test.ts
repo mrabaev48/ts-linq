@@ -1,4 +1,4 @@
-import { SQLiteProvider } from '../packages/sqlite/dist/esm/SQLiteProvider.js';
+import { SQLiteProvider } from '@ts-linq/sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
 

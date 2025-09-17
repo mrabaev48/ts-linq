@@ -51,7 +51,7 @@ class DbSet {
             this._changeTracker.remove(entity, this._entityClass);
         return entities;
     }
-    /** Find an entity by its primary key */
+    /** Find an entity by its primary key (convention: property named `id`) */
     async find(id, options) {
         if (this._entityLoader && options) {
             return await this._entityLoader.loadEntity(this._entityClass, id, options);
@@ -72,6 +72,40 @@ class DbSet {
             return await this._entityLoader.loadEntities(this._entityClass, options);
         }
         return await new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).toArray();
+    }
+    /** Fetch multiple entities by their primary keys in one query when supported. */
+    async findByIds(ids) {
+        if (!ids || ids.length === 0)
+            return [];
+        const metadata = MetadataStorage_1.MetadataStorage.getEntity(this._entityClass);
+        if (!metadata || metadata.primaryKeys.length === 0) {
+            // Fallback: issue sequential finds (kept for completeness; generally not used)
+            const results = [];
+            for (const id of ids) {
+                const found = await this.find(id);
+                if (found)
+                    results.push(found);
+            }
+            return results;
+        }
+        const pk = metadata.primaryKeys[0];
+        const column = metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk;
+        // Delegate to provider for efficient IN query
+        return await this._provider.findWhereIn(this._entityClass, column, ids);
+    }
+    /**
+     * Type-safe IN query by entity property. Maps property to column via metadata.
+     * Example: users.findWhereIn('id', [userId]) or users.findWhereIn('name', ['Alice'])
+     */
+    async findWhereIn(property, values) {
+        if (!values || values.length === 0)
+            return [];
+        const metadata = MetadataStorage_1.MetadataStorage.getEntity(this._entityClass);
+        const columnName = metadata
+            ? metadata.columns.find((c) => c.propertyName === property || c.columnName === property)
+                ?.columnName || String(property)
+            : String(property);
+        return await this._provider.findWhereIn(this._entityClass, columnName, values);
     }
     /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */
     where(predicate) {
