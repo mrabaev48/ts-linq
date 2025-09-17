@@ -57,3 +57,12 @@ users.find(123);
 expectType<Promise<User[]>>(users.findByIds([uid]));
 // @ts-expect-error - raw numbers array should be rejected when PK is branded
 users.findByIds([1, 2, 3]);
+
+// DbSet.findWhereIn must be type-safe on property and values
+expectType<Promise<User[]>>(users.findWhereIn('id', [uid]));
+// @ts-expect-error - raw number array is invalid for branded id property
+users.findWhereIn('id', [1, 2, 3]);
+// Non-branded property accepts correct primitive values
+expectType<Promise<User[]>>(users.findWhereIn('name', ['Alice', 'Bob']));
+// @ts-expect-error - wrong value type for property
+users.findWhereIn('name', [uid]);
