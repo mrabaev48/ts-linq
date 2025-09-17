@@ -52,3 +52,8 @@ declare const users: DbSet<User>;
 expectType<Promise<User | null>>(users.find(uid));
 // @ts-expect-error - raw number should not be accepted if PK is branded
 users.find(123);
+
+// DbSet.findByIds must accept arrays of branded PK
+expectType<Promise<User[]>>(users.findByIds([uid]));
+// @ts-expect-error - raw numbers array should be rejected when PK is branded
+users.findByIds([1, 2, 3]);

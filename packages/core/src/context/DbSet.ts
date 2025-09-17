@@ -113,6 +113,29 @@ export class DbSet<T extends object> {
     ).toArray();
   }
 
+  /** Fetch multiple entities by their primary keys in one query when supported. */
+  public async findByIds(ids: ReadonlyArray<PrimaryKeyOf<T>>): Promise<T[]> {
+    if (!ids || ids.length === 0) return [];
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    if (!metadata || metadata.primaryKeys.length === 0) {
+      // Fallback: issue sequential finds (kept for completeness; generally not used)
+      const results: T[] = [];
+      for (const id of ids) {
+        const found = await this.find(id as PrimaryKeyOf<T>);
+        if (found) results.push(found);
+      }
+      return results;
+    }
+    const pk = metadata.primaryKeys[0];
+    const column = metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk;
+    // Delegate to provider for efficient IN query
+    return await this._provider.findWhereIn(
+      this._entityClass,
+      column,
+      ids as unknown as unknown[]
+    );
+  }
+
   /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */
   public where(predicate: (entity: T) => boolean): TypedQueryable<T> {
     const queryable = new Queryable<T>(
