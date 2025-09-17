@@ -6,7 +6,9 @@ describe('MssqlProvider CRUD (smoke)', () => {
     if (!url) return; // skip
     const p = new MssqlProvider(url);
     await p.connect();
-    await p.executeNonQuery('IF OBJECT_ID(''items'',''U'') IS NULL CREATE TABLE items(id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(50) NOT NULL)');
+    await p.executeNonQuery(
+      "IF OBJECT_ID('items','U') IS NULL CREATE TABLE items(id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(50) NOT NULL)"
+    );
     await p.executeNonQuery('INSERT INTO items(name) VALUES(@p1)', ['a']);
     let rows = await p.executeQuery<{ id: number; name: string }>('SELECT * FROM items');
     expect(rows.length).toBeGreaterThan(0);

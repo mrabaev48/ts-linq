@@ -120,7 +120,19 @@ export abstract class DbContext {
   public async ensureCreated(): Promise<void> {
     await this._provider.connect();
 
+    // Unconditionally pre-warm Stage-3 field decorators by instantiating each entity once
+    const prereg = MetadataStorage.getEntities();
+    for (const e of prereg) {
+      try {
+        const original = getOriginal(e.target);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _tmp = new (original as unknown as new () => unknown)();
+      } catch {
+        // ignore constructors with side-effects/args
+      }
+    }
     const entities = MetadataStorage.getEntities();
+
     for (const entity of entities) {
       await this._provider.createTable(entity);
     }

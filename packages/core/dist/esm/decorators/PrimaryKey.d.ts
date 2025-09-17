@@ -17,11 +17,7 @@ export interface PrimaryKeyOptions extends ColumnOptions {
 /**
  * Property decorator that marks a property as the primary key.
  *
- * This decorator first registers the property as a non-nullable column and optionally
- * marks it as generated (auto-increment), then records the primary key metadata.
- *
- * @param options Primary key configuration options.
- * @returns A property decorator.
+ * Supports both legacy (experimentalDecorators) and TS5 Stage-3 field decorators.
  */
 export declare function PrimaryKey(options?: PrimaryKeyOptions): PropertyDecorator;
 //# sourceMappingURL=PrimaryKey.d.ts.map

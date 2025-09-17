@@ -11,15 +11,54 @@ export interface EntityOptions {
   name?: string;
 }
 
+function isStage3ClassContext(
+  x: unknown
+): x is { kind: 'class'; name?: string; addInitializer?: (fn: (this: unknown) => void) => void } {
+  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'class';
+}
+
 /**
  * Class decorator that registers a class as a database entity (table).
- *
- * @param options Entity configuration options.
- * @returns A class decorator that records entity metadata.
+ * Supports TS5 Stage-3 decorators and legacy decorators.
  */
 export function Entity(options: EntityOptions = {}): ClassDecorator {
-  return function <TFunction extends Function>(target: TFunction): TFunction | void {
+  return function <TFunction extends Function>(target: TFunction, context?: unknown): TFunction | void {
     const tableName = options?.name || target.name;
+
+    // TS5 Stage-3 path
+    if (isStage3ClassContext(context)) {
+      // Register entity immediately
+      MetadataStorage.addEntity(target, tableName);
+      context.addInitializer?.(function (this: unknown) {
+        const ctor = target as unknown as Function;
+        // Sync any reflect-stored columns/primaryKeys/relationships into MetadataStorage
+        try {
+          const cols = (Reflect.getOwnMetadata('orm:columns', ctor) as ColumnMetadata[]) || [];
+          for (const col of cols) {
+            MetadataStorage.addColumn(ctor, col);
+          }
+          const pks = (Reflect.getOwnMetadata('orm:primaryKeys', ctor) as string[]) || [];
+          for (const pk of pks) {
+            MetadataStorage.addPrimaryKey(ctor, pk);
+          }
+          const rels =
+            (Reflect.getOwnMetadata('orm:relationships', ctor) as RelationshipMetadata[]) || [];
+          for (const rel of rels) {
+            const te = rel.targetEntity;
+            const resolvedTarget =
+              typeof te === 'function' && (te as { prototype?: unknown }).prototype
+                ? (te as Function)
+                : (te as () => Function)();
+            MetadataStorage.addRelationship(ctor, { ...rel, targetEntity: resolvedTarget });
+          }
+        } catch {
+          /* ignore */
+        }
+      });
+      return;
+    }
+
+    // Legacy decorators path: preserve previous behavior
     // Persist table name on the constructor for optional external rehydration
     Reflect.defineMetadata('orm:tableName', tableName, target);
     // Register entity metadata immediately

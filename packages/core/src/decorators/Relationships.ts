@@ -15,147 +15,92 @@ export interface RelationshipOptions {
   cascade?: boolean;
 }
 
+function isStage3FieldContext(
+  x: unknown
+): x is { kind: 'field'; name: string | symbol; addInitializer?: (fn: (this: unknown) => void) => void } {
+  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in (x as object);
+}
+
+function defineRelationship(
+  kind: RelationshipMetadata['type'],
+  targetEntity: () => Function,
+  options: RelationshipOptions,
+  targetOrValue: unknown,
+  propOrContext: unknown
+): void | PropertyDecorator {
+  // Stage-3 field decorator path
+  if (isStage3FieldContext(propOrContext)) {
+    const ctx = propOrContext;
+    const name = ctx.name.toString();
+    ctx.addInitializer?.(function (this: unknown) {
+      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      if (!ctor) return;
+      const relationship: RelationshipMetadata = {
+        propertyName: name,
+        type: kind,
+        targetEntity,
+        foreignKey: options?.foreignKey,
+        inverseSide: options?.inverseSide,
+        cascade: options?.cascade || false
+      };
+      MetadataStorage.addRelationship(ctor, relationship);
+      const existing: RelationshipMetadata[] = Reflect.getOwnMetadata('orm:relationships', ctor) || [];
+      existing.push(relationship);
+      Reflect.defineMetadata('orm:relationships', existing, ctor);
+    });
+    return;
+  }
+  // Legacy fallback
+  const target = targetOrValue as object;
+  const propertyKey = propOrContext as string | symbol;
+  const propertyName = propertyKey.toString();
+  const relationship: RelationshipMetadata = {
+    propertyName,
+    type: kind,
+    targetEntity,
+    foreignKey: options?.foreignKey,
+    inverseSide: options?.inverseSide,
+    cascade: options?.cascade || false
+  };
+  MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
+  const ctor = (target as { constructor: Function }).constructor;
+  const existing: RelationshipMetadata[] = Reflect.getOwnMetadata('orm:relationships', ctor) || [];
+  existing.push(relationship);
+  Reflect.defineMetadata('orm:relationships', existing, ctor);
+}
+
 /**
  * Declares a one-to-many relationship on a collection navigation property.
- *
- * @param targetEntity Function returning the target entity constructor.
- * @param options Relationship configuration options.
- * @returns Property decorator marking the relationship.
  */
-export function OneToMany(
-  targetEntity: () => Function,
-  options: RelationshipOptions = {}
-): PropertyDecorator {
-  return function (target: object, propertyKey: string | symbol) {
-    const propertyName = propertyKey.toString();
-
-    const relationship: RelationshipMetadata = {
-      propertyName,
-      type: 'one-to-many',
-      targetEntity: targetEntity,
-      foreignKey: options?.foreignKey,
-      inverseSide: options?.inverseSide,
-      cascade: options?.cascade || false
-    };
-
-    MetadataStorage.addRelationship(
-      (target as { constructor: Function }).constructor,
-      relationship
-    );
-
-    // Persist relationship for rehydration
-    const ctor = (target as { constructor: Function }).constructor;
-    const existing: RelationshipMetadata[] =
-      Reflect.getOwnMetadata('orm:relationships', ctor) || [];
-    existing.push(relationship);
-    Reflect.defineMetadata('orm:relationships', existing, ctor);
+export function OneToMany(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
+  return function (targetOrValue: unknown, propOrContext: unknown) {
+    return defineRelationship('one-to-many', targetEntity, options, targetOrValue, propOrContext) as any;
   };
 }
 
 /**
  * Declares a many-to-one relationship on a reference navigation property.
- *
- * @param targetEntity Function returning the target entity constructor.
- * @param options Relationship configuration options.
- * @returns Property decorator marking the relationship.
  */
-export function ManyToOne(
-  targetEntity: () => Function,
-  options: RelationshipOptions = {}
-): PropertyDecorator {
-  return function (target: object, propertyKey: string | symbol) {
-    const propertyName = propertyKey.toString();
-
-    const relationship: RelationshipMetadata = {
-      propertyName,
-      type: 'many-to-one',
-      targetEntity: targetEntity,
-      foreignKey: options?.foreignKey,
-      inverseSide: options?.inverseSide,
-      cascade: options?.cascade || false
-    };
-
-    MetadataStorage.addRelationship(
-      (target as { constructor: Function }).constructor,
-      relationship
-    );
-
-    const ctor = (target as { constructor: Function }).constructor;
-    const existing: RelationshipMetadata[] =
-      Reflect.getOwnMetadata('orm:relationships', ctor) || [];
-    existing.push(relationship);
-    Reflect.defineMetadata('orm:relationships', existing, ctor);
+export function ManyToOne(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
+  return function (targetOrValue: unknown, propOrContext: unknown) {
+    return defineRelationship('many-to-one', targetEntity, options, targetOrValue, propOrContext) as any;
   };
 }
 
 /**
  * Declares a one-to-one relationship on a reference navigation property.
- *
- * @param targetEntity Function returning the target entity constructor.
- * @param options Relationship configuration options.
- * @returns Property decorator marking the relationship.
  */
-export function OneToOne(
-  targetEntity: () => Function,
-  options: RelationshipOptions = {}
-): PropertyDecorator {
-  return function (target: object, propertyKey: string | symbol) {
-    const propertyName = propertyKey.toString();
-
-    const relationship: RelationshipMetadata = {
-      propertyName,
-      type: 'one-to-one',
-      targetEntity: targetEntity,
-      foreignKey: options?.foreignKey,
-      inverseSide: options?.inverseSide,
-      cascade: options?.cascade || false
-    };
-
-    MetadataStorage.addRelationship(
-      (target as { constructor: Function }).constructor,
-      relationship
-    );
-
-    const ctor = (target as { constructor: Function }).constructor;
-    const existing: RelationshipMetadata[] =
-      Reflect.getOwnMetadata('orm:relationships', ctor) || [];
-    existing.push(relationship);
-    Reflect.defineMetadata('orm:relationships', existing, ctor);
+export function OneToOne(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
+  return function (targetOrValue: unknown, propOrContext: unknown) {
+    return defineRelationship('one-to-one', targetEntity, options, targetOrValue, propOrContext) as any;
   };
 }
 
 /**
  * Declares a many-to-many relationship on a collection navigation property.
- *
- * @param targetEntity Function returning the target entity constructor.
- * @param options Relationship configuration options.
- * @returns Property decorator marking the relationship.
  */
-export function ManyToMany(
-  targetEntity: () => Function,
-  options: RelationshipOptions = {}
-): PropertyDecorator {
-  return function (target: object, propertyKey: string | symbol) {
-    const propertyName = propertyKey.toString();
-
-    const relationship: RelationshipMetadata = {
-      propertyName,
-      type: 'many-to-many',
-      targetEntity: targetEntity,
-      foreignKey: options?.foreignKey,
-      inverseSide: options?.inverseSide,
-      cascade: options?.cascade || false
-    };
-
-    MetadataStorage.addRelationship(
-      (target as { constructor: Function }).constructor,
-      relationship
-    );
-
-    const ctor = (target as { constructor: Function }).constructor;
-    const existing: RelationshipMetadata[] =
-      Reflect.getOwnMetadata('orm:relationships', ctor) || [];
-    existing.push(relationship);
-    Reflect.defineMetadata('orm:relationships', existing, ctor);
+export function ManyToMany(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
+  return function (targetOrValue: unknown, propOrContext: unknown) {
+    return defineRelationship('many-to-many', targetEntity, options, targetOrValue, propOrContext) as any;
   };
 }

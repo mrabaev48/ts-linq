@@ -1,5 +1,8 @@
 import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
+function isStage3FieldContext(x) {
+    return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
+}
 /**
  * Property decorator that registers column metadata for the target entity property.
  *
@@ -10,9 +13,39 @@ import { MetadataStorage } from '../metadata/MetadataStorage';
  * @returns A property decorator that records column metadata.
  */
 export function Column(options = {}) {
-    return function (target, propertyKey) {
+    return function ColumnDecorator(targetOrValue, propOrContext) {
+        // Stage-3 (TS5) field decorator
+        if (isStage3FieldContext(propOrContext)) {
+            const ctx = propOrContext;
+            const name = ctx.name.toString();
+            ctx.addInitializer?.(function () {
+                const ctor = this?.constructor;
+                if (!ctor)
+                    return;
+                const designType = Reflect.getMetadata('design:type', ctor.prototype, name);
+                const columnMetadata = {
+                    propertyName: name,
+                    columnName: options?.name || name,
+                    type: options?.type || getTypeString(designType),
+                    nullable: options?.nullable !== false,
+                    defaultValue: options?.defaultValue,
+                    length: options?.length,
+                    precision: options?.precision,
+                    scale: options?.scale,
+                    isGenerated: options?.generated || false,
+                    isVersion: options?.version || false
+                };
+                MetadataStorage.addColumn(ctor, columnMetadata);
+                const existing = Reflect.getOwnMetadata('orm:columns', ctor) || [];
+                existing.push(columnMetadata);
+                Reflect.defineMetadata('orm:columns', existing, ctor);
+            });
+            return;
+        }
+        // Legacy decorator
+        const target = targetOrValue;
+        const propertyKey = propOrContext;
         const propertyName = propertyKey.toString();
-        // Get the design type using reflect-metadata
         const designType = Reflect.getMetadata('design:type', target, propertyKey);
         const columnMetadata = {
             propertyName,
@@ -27,7 +60,6 @@ export function Column(options = {}) {
             isVersion: options?.version || false
         };
         MetadataStorage.addColumn(target.constructor, columnMetadata);
-        // Persist on constructor to support rehydration
         const ctor = target.constructor;
         const existing = Reflect.getOwnMetadata('orm:columns', ctor) || [];
         existing.push(columnMetadata);
