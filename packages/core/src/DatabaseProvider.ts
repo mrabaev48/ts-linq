@@ -1,11 +1,4 @@
-import type {
-  EntityMetadata,
-  OrmMiddleware,
-  RetryPolicy,
-  SqlLogger,
-  SoftDeleteOptions,
-  SqlParameter
-} from './types';
+import type { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions, SqlParameter } from './types';
 import type { SqlDialect } from './query/SqlDialect';
 
 /**
