@@ -1,6 +1,7 @@
 import { QueryBuilder } from './QueryBuilder';
 import { EnhancedSqlCache } from './EnhancedSqlCache';
 import { SqlDialect } from './SqlDialect';
+import { sql } from './SqlFunctions';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata, SqlLogger } from '../types';
 
@@ -137,6 +138,23 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       );
     });
 
+    test('should embed window function expressions in select list', () => {
+      const options = {
+        select: ['id', sql.rowNumber().over().partitionBy('name').orderBy('age', 'DESC').as('rn')],
+        where: [] as any[]
+      };
+      // Use a dialect that outputs the select list to validate expression rendering
+      const exprDialect: SqlDialect = {
+        buildSelect: () => ({
+          query: `SELECT ${options.select!.join(', ')} FROM test_users`,
+          parameters: []
+        })
+      };
+      const localBuilder = new QueryBuilder(exprDialect, mockLogger, 'test-provider', enhancedCache);
+      const result = localBuilder.generateSql(TestUser, options);
+      expect(result.query).toContain('ROW_NUMBER() OVER (PARTITION BY name ORDER BY age DESC) AS rn');
+    });
+
     test('should handle cache key compression for complex queries', () => {
       // Create a complex query that would generate a long cache key
       const complexOptions = {
@@ -165,6 +183,66 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       // Verify cache hit
       const metrics = queryBuilder.getCacheMetrics();
       expect(metrics.hits).toBeGreaterThan(0);
+    });
+
+    test('should allow CTE name override via options.from (dialect usage)', () => {
+      const options = { select: ['*'], where: [], } as const;
+      const exprDialect: SqlDialect = {
+        buildSelect: () => ({
+          query: `WITH sales AS (SELECT * FROM orders) SELECT * FROM sales`,
+          parameters: []
+        })
+      };
+      const local = new QueryBuilder(exprDialect, mockLogger, 'test', enhancedCache);
+      const res = local.generateSql(TestUser, options as any);
+      expect(res.query).toContain('WITH sales AS (SELECT * FROM orders) SELECT * FROM sales');
+    });
+
+    test('should render JSON helpers in select list (dialect responsibility)', () => {
+      const options = {
+        select: [
+          sql.jsonExtract('data', '$.user.name').as('u_name'),
+          sql.jsonContains('tags', 'admin').as('has_admin')
+        ],
+        where: [] as any[]
+      };
+      const jsonDialect: SqlDialect = {
+        buildSelect: (_ctor, opts) => ({
+          query: `SELECT ${opts.select!.join(', ')} FROM test_users`,
+          parameters: opts.selectParams ?? []
+        })
+      };
+      const local = new QueryBuilder(jsonDialect, mockLogger, 'test', enhancedCache);
+      const res = local.generateSql(TestUser, options as any);
+      expect(res.query).toContain("JSON_EXTRACT(data, ?) AS u_name");
+      expect(res.query).toContain("JSON_CONTAINS(tags, ?) AS has_admin");
+      expect(res.parameters).toEqual(['$.user.name', 'admin']);
+    });
+
+    test('should render basic full-text search expressions', () => {
+      const options = {
+        select: [
+          sql.mysqlMatchAgainst(['title', 'content'], 'node js', 'boolean').as('mscore'),
+          sql.pgRank(
+            sql.pgToTsVector(['title', 'content']).toString(),
+            sql.pgWebsearchToTsQuery('node js').toString()
+          ).as('pscore')
+        ],
+        where: [] as any[]
+      };
+      const ftsDialect: SqlDialect = {
+        buildSelect: (_ctor, opts) => ({
+          query: `SELECT ${opts.select!.join(', ')} FROM test_users`,
+          parameters: opts.selectParams ?? []
+        })
+      };
+      const local = new QueryBuilder(ftsDialect, mockLogger, 'test', enhancedCache);
+      const res = local.generateSql(TestUser, options as any);
+      expect(res.query).toContain('MATCH(title, content) AGAINST (? IN BOOLEAN MODE)');
+      expect(res.query).toContain("ts_rank(to_tsvector(?, COALESCE(title, '') || ' ' || COALESCE(content, '')), websearch_to_tsquery(?, ?)) AS pscore");
+      // At this layer we only collect parameters from top-level select expressions.
+      // Since pgRank() receives stringified inner expressions, only MySQL match contributes a param.
+      expect(res.parameters).toEqual(['node js']);
     });
 
     test('should expire cached queries after TTL', async () => {
