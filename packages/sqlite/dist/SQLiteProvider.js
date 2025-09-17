@@ -1,50 +1,18 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SQLiteProvider = void 0;
-const sqlite3 = __importStar(require("sqlite3"));
 const core_1 = require("@ts-linq/core");
 const SQLiteDialect_1 = require("./SQLiteDialect");
 const SQLiteDdlStrategy_1 = require("./SQLiteDdlStrategy");
-/**
- * SQLite implementation of `DatabaseProvider` using the `sqlite3` package.
- * Handles connection lifecycle, DDL/DML generation and execution, and
- * simple value conversions between JS and SQLite.
- *
- * Note: sqlite3 driver is callback-based; provider wraps calls into Promises.
- */
+function safeRequireSqlite3() {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require('sqlite3');
+    }
+    catch (e) {
+        throw new Error('Package "sqlite3" is required for SQLiteProvider. Install it with: npm install sqlite3');
+    }
+}
 class SQLiteProvider extends core_1.DatabaseProvider {
     constructor(connectionString, logger, middlewares, softDelete, retryPolicy) {
         super(connectionString, logger, middlewares, softDelete, retryPolicy);
@@ -55,6 +23,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     /** Open a connection to the SQLite database and enable foreign keys. */
     async connect() {
         return new Promise((resolve, reject) => {
+            const sqlite3 = safeRequireSqlite3();
             this.db = new sqlite3.Database(this.connectionString, (err) => {
                 if (err) {
                     reject(err);

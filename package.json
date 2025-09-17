@@ -46,6 +46,8 @@
   },
   "scripts": {
     "build": "npm run build --workspaces",
+    "build:tsc": "tsc -b",
+    "build:tsc:watch": "tsc -b -w",
     "build:core": "npm run build -w packages/core",
     "build:providers": "npm run build -w packages/sqlite -w packages/postgres -w packages/mysql -w packages/mssql",
     "build:cli": "npm run build -w packages/cli",

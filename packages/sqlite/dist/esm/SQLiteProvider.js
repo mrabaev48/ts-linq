@@ -1,14 +1,15 @@
-import * as sqlite3 from 'sqlite3';
 import { DatabaseProvider, MetadataStorage, DatabaseError, UniqueConstraintError, ForeignKeyConstraintError, OptimisticConcurrencyError, SqlHelper } from '@ts-linq/core';
 import { SQLiteDialect } from './SQLiteDialect';
 import { SQLiteDdlStrategy } from './SQLiteDdlStrategy';
-/**
- * SQLite implementation of `DatabaseProvider` using the `sqlite3` package.
- * Handles connection lifecycle, DDL/DML generation and execution, and
- * simple value conversions between JS and SQLite.
- *
- * Note: sqlite3 driver is callback-based; provider wraps calls into Promises.
- */
+function safeRequireSqlite3() {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require('sqlite3');
+    }
+    catch (e) {
+        throw new Error('Package "sqlite3" is required for SQLiteProvider. Install it with: npm install sqlite3');
+    }
+}
 export class SQLiteProvider extends DatabaseProvider {
     constructor(connectionString, logger, middlewares, softDelete, retryPolicy) {
         super(connectionString, logger, middlewares, softDelete, retryPolicy);
@@ -19,6 +20,7 @@ export class SQLiteProvider extends DatabaseProvider {
     /** Open a connection to the SQLite database and enable foreign keys. */
     async connect() {
         return new Promise((resolve, reject) => {
+            const sqlite3 = safeRequireSqlite3();
             this.db = new sqlite3.Database(this.connectionString, (err) => {
                 if (err) {
                     reject(err);
