@@ -223,7 +223,7 @@
     .where(rs => rs.total > 1000000);
   ```
 
-- [ ] **Subqueries & EXISTS**
+- [x] **Subqueries & EXISTS** ✅
   ```typescript
   ctx.users
     .where(u => ctx.orders.where(o => o.userId === u.id).exists())
