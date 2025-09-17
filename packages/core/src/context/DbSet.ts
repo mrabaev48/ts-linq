@@ -2,6 +2,7 @@ import type { DatabaseProvider } from '../DatabaseProvider';
 import type { ChangeTracker } from '../change-tracking/ChangeTracker';
 import type { EntityLoader } from '../loading/EntityLoader';
 import type { LoadingOptions } from '../loading/LoadingStrategy';
+import type { PrimaryKeyOf } from '../types';
 import { Queryable } from '../query/Queryable';
 import { TypedQueryable } from '../query/TypedQueryable';
 import type { EntityCacheLike } from '../utils/EntityCache';
@@ -74,8 +75,8 @@ export class DbSet<T extends object> {
     return entities;
   }
 
-  /** Find an entity by its primary key */
-  public async find(id: unknown, options?: LoadingOptions): Promise<T | null> {
+  /** Find an entity by its primary key (convention: property named `id`) */
+  public async find(id: PrimaryKeyOf<T>, options?: LoadingOptions): Promise<T | null> {
     if (this._entityLoader && options) {
       return await this._entityLoader.loadEntity(this._entityClass, id, options);
     }

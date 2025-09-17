@@ -1,5 +1,5 @@
 import {expectType} from 'tsd';
-import { type EntityId, brandId, unbrandId } from '..';
+import { type EntityId, brandId, unbrandId, type PrimaryKeyOf } from '..';
 
 // Define branded id aliases
 type UserId = EntityId<number, 'User'>;
@@ -40,3 +40,9 @@ getOrderById(uid);
 function identity<T extends string | number>(x: T): T { return x; }
 const uid2 = identity(uid);
 expectType<UserId>(uid2);
+
+// PrimaryKeyOf infers branded id type by convention `id`
+type UserPk = PrimaryKeyOf<User>;
+expectType<UserId>({} as UserPk);
+// @ts-expect-error - OrderId is not assignable to UserPk
+const wrongPk: UserPk = {} as OrderId;
