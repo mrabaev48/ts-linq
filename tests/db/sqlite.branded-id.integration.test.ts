@@ -1,13 +1,5 @@
 import 'reflect-metadata';
-import {
-  DbContext,
-  DbSet,
-  Entity,
-  Column,
-  PrimaryKey,
-  type EntityId,
-  MetadataStorage
-} from '@ts-linq/core';
+import { DbContext, DbSet, type EntityId, MetadataStorage } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -17,10 +9,9 @@ type UserId = EntityId<number, 'User'>;
 
 const dbPath = path.resolve(process.cwd(), 'tests/tmp/sqlite-branded.db');
 
-@Entity({ name: 'Users' })
 class User {
-  @PrimaryKey({ autoIncrement: true, branded: true }) id!: number;
-  @Column({ type: 'TEXT', nullable: false }) name!: string;
+  id!: number;
+  name!: string;
 }
 
 class AppCtx extends DbContext {
@@ -40,17 +31,12 @@ describe('SQLite branded ID integration', () => {
   });
 
   test('insert and find by branded id and findByIds', async () => {
-    // Trigger decorator initializers and finalize
-    new User();
-    MetadataStorage.getEntities();
-
-    // Bootstrap schema explicitly to avoid race conditions
-    const bootstrap = new SQLiteProvider(dbPath);
-    await bootstrap.connect();
-    await bootstrap.executeNonQuery(
-      "CREATE TABLE IF NOT EXISTS Users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)"
-    );
-    await bootstrap.disconnect();
+    // Register metadata manually instead of decorators
+    MetadataStorage.getInstance().clear();
+    MetadataStorage.addEntity(User, 'Users');
+    MetadataStorage.addColumn(User, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true, isBranded: true, brand: 'User' });
+    MetadataStorage.addColumn(User, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false });
+    MetadataStorage.addPrimaryKey(User, 'id');
 
     const ctx = new AppCtx(dbPath);
     await ctx.ensureCreated();

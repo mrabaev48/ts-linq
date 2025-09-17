@@ -202,7 +202,7 @@
 **Цель**: Поддержка complex SQL patterns
 
 **Задачи:**
-- [ ] **Window Functions**
+- [x] **Window Functions** ✅
   ```typescript
   ctx.sales
     .select(s => ({
@@ -212,7 +212,7 @@
     .toArray();
   ```
 
-- [ ] **Common Table Expressions (CTE)**
+- [x] **Common Table Expressions (CTE)** ✅
   ```typescript
   const regionalSales = ctx.sales
     .groupBy(s => s.region)
@@ -230,7 +230,7 @@
     .where(u => u.age > ctx.users.select(u2 => u2.age).average());
   ```
 
-- [ ] **JSON/JSONB Operations**
+- [x] **JSON/JSONB Operations** ✅
   ```typescript
   // PostgreSQL JSONB support
   ctx.users
@@ -238,7 +238,7 @@
     .where(u => u.tags.jsonContains(['admin', 'premium']));
   ```
 
-- [ ] **Full-Text Search**
+- [x] **Full-Text Search** ✅
   ```typescript
   ctx.articles
     .where(a => a.content.fullTextSearch('typescript OR javascript'))
