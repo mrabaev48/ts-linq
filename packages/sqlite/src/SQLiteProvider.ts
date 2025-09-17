@@ -1,4 +1,3 @@
-import * as sqlite3 from 'sqlite3';
 import {
   DatabaseProvider,
   MetadataStorage,
@@ -26,8 +25,29 @@ import { SQLiteDdlStrategy } from './SQLiteDdlStrategy';
  *
  * Note: sqlite3 driver is callback-based; provider wraps calls into Promises.
  */
+interface Sqlite3DatabaseLike {
+  run(sql: string, params?: unknown, cb?: (this: { changes: number }, err: Error | null) => void): void;
+  all(sql: string, params: unknown[], cb: (err: Error | null, rows: unknown[]) => void): void;
+  close(cb: (err?: Error | null) => void): void;
+}
+
+interface Sqlite3Like {
+  Database: new (connectionString: string, cb: (err?: Error | null) => void) => Sqlite3DatabaseLike;
+}
+
+function safeRequireSqlite3(): Sqlite3Like {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('sqlite3');
+  } catch (e) {
+    throw new Error(
+      'Package "sqlite3" is required for SQLiteProvider. Install it with: npm install sqlite3'
+    );
+  }
+}
+
 export class SQLiteProvider extends DatabaseProvider {
-  private db: sqlite3.Database | null = null;
+  private db: Sqlite3DatabaseLike | null = null;
   private ddl = new SQLiteDdlStrategy();
 
   constructor(
@@ -44,7 +64,8 @@ export class SQLiteProvider extends DatabaseProvider {
   /** Open a connection to the SQLite database and enable foreign keys. */
   public async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(this.connectionString, (err) => {
+      const sqlite3 = safeRequireSqlite3();
+      this.db = new sqlite3.Database(this.connectionString, (err?: Error | null) => {
         if (err) {
           reject(err);
         } else {
@@ -61,7 +82,7 @@ export class SQLiteProvider extends DatabaseProvider {
   public async disconnect(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.db) {
-        this.db.close((err) => {
+        this.db.close((err?: Error | null) => {
           if (err) {
             reject(err);
           } else {
@@ -273,7 +294,7 @@ export class SQLiteProvider extends DatabaseProvider {
         return;
       }
 
-      this.db.all(sql, params as unknown as unknown[], (err, rows) => {
+      this.db.all(sql, params as unknown as unknown[], (err: Error | null, rows: unknown[]) => {
         if (err) {
           reject(mapSqliteError(err));
         } else {
@@ -294,13 +315,17 @@ export class SQLiteProvider extends DatabaseProvider {
         return;
       }
 
-      this.db.run(sql, params as unknown as unknown[], function (err) {
-        if (err) {
-          reject(mapSqliteError(err));
-        } else {
-          resolve(this.changes);
+      this.db.run(
+        sql,
+        params as unknown as unknown[],
+        function (this: { changes: number }, err: Error | null) {
+          if (err) {
+            reject(mapSqliteError(err));
+          } else {
+            resolve(this.changes);
+          }
         }
-      });
+      );
     });
   }
 
