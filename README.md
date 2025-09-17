@@ -227,6 +227,28 @@ context.books.remove(found!);
 await context.saveChanges();
 ```
 
+### Type Safety for IDs (branded types)
+
+```ts
+import { EntityId, brandId } from './src';
+
+// Define branded aliases
+type UserId = EntityId<number, 'User'>;
+
+@Entity()
+class User {
+  @PrimaryKey({ autoIncrement: true }) id!: UserId; // branded PK
+  @Column({ nullable: false }) name!: string;
+}
+
+// Using DbSet.find with branded id
+const id = brandId<number, 'User'>(123);
+const user = await context.users.find(id);
+
+// Fetch many by ids efficiently (IN query under the hood)
+const many = await context.users.findByIds([id]);
+```
+
 ### LINQ-style Queries
 
 ```ts
