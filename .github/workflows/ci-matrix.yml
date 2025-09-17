@@ -1,0 +1,41 @@
+name: CI Matrix
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ feat/testing-infrastructure ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - db: postgres
+            image: postgres:14-alpine
+          - db: postgres
+            image: postgres:15-alpine
+          - db: mysql
+            image: mysql:8
+          - db: mssql
+            image: mcr.microsoft.com/mssql/server:2019-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build --workspaces
+      - name: Run tests (unit only)
+        run: npm test --silent
+      - name: Run DB tests (containers)
+        run: npm run test:db --silent
+        env:
+          RUN_DB_TESTS: '1'
+          DB: ${{ matrix.db }}
+          POSTGRES_IMAGE: ${{ startsWith(matrix.image, 'postgres') && matrix.image || '' }}
+          MYSQL_IMAGE: ${{ startsWith(matrix.image, 'mysql') && matrix.image || '' }}
+          MSSQL_IMAGE: ${{ startsWith(matrix.image, 'mcr.microsoft.com/mssql') && matrix.image || '' }}
+          TESTCONTAINERS_RYUK_DISABLED: 'true'
