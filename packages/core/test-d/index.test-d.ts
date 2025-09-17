@@ -1,5 +1,5 @@
 import {expectType} from 'tsd';
-import { type EntityId, brandId, unbrandId, type PrimaryKeyOf } from '..';
+import { type EntityId, brandId, unbrandId, type PrimaryKeyOf, DbSet } from '..';
 
 // Define branded id aliases
 type UserId = EntityId<number, 'User'>;
@@ -46,3 +46,9 @@ type UserPk = PrimaryKeyOf<User>;
 expectType<UserId>({} as UserPk);
 // @ts-expect-error - OrderId is not assignable to UserPk
 const wrongPk: UserPk = {} as OrderId;
+
+// DbSet.find must accept branded PK type
+declare const users: DbSet<User>;
+expectType<Promise<User | null>>(users.find(uid));
+// @ts-expect-error - raw number should not be accepted if PK is branded
+users.find(123);
