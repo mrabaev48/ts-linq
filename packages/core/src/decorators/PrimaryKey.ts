@@ -1,54 +1,53 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnOptions } from './Column';
-import { Column } from './Column';
 
-/**
- * Options for configuring a primary key property.
- * Extends `ColumnOptions` with `autoIncrement` to mark identity columns
- * and `branded` for compile-time type safety.
- */
+function isStage3FieldContext(
+  x: unknown
+): x is { kind: 'field'; name: string | symbol; addInitializer?: (fn: (this: unknown) => void) => void } {
+  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in (x as object);
+}
+
 export interface PrimaryKeyOptions extends ColumnOptions {
   autoIncrement?: boolean;
-  /** 
-   * Enable branded ID type for this primary key.
-   * When true, the property type should be EntityId<T, EntityName>.
-   * Provides compile-time safety to prevent mixing IDs of different entities.
-   * @default false
-   */
   branded?: boolean;
 }
 
-/**
- * Property decorator that marks a property as the primary key.
- *
- * This decorator first registers the property as a non-nullable column and optionally
- * marks it as generated (auto-increment), then records the primary key metadata.
- *
- * @param options Primary key configuration options.
- * @returns A property decorator.
- */
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
-  return function (target: object, propertyKey: string | symbol) {
-    const propertyName = propertyKey.toString();
-
-    // Add as column first
-    const columnOptions: ColumnOptions = {
-      ...options,
-      nullable: false,
-      generated: options?.autoIncrement
-    };
-
-    Column(columnOptions)(target, propertyKey);
-
-    // Then add as primary key
-    MetadataStorage.addPrimaryKey((target as { constructor: Function }).constructor, propertyName);
-
-    // Persist PK for rehydration
-    const ctor = (target as { constructor: Function }).constructor;
-    const existing: string[] = Reflect.getOwnMetadata('orm:primaryKeys', ctor) || [];
-    if (!existing.includes(propertyName)) {
-      existing.push(propertyName);
+  return function PrimaryKeyDecorator(_targetOrValue: unknown, propOrContext: unknown) {
+    if (!isStage3FieldContext(propOrContext)) {
+      throw new Error('@PrimaryKey requires TS5 Stage-3 decorators');
     }
-    Reflect.defineMetadata('orm:primaryKeys', existing, ctor);
+    const ctx = propOrContext;
+    const name = ctx.name.toString();
+    ctx.addInitializer?.(function (this: unknown) {
+      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      if (!ctor) return;
+      const columnMeta = {
+        propertyName: name,
+        columnName: options?.name || name,
+        type: options?.type || 'INTEGER',
+        nullable: false,
+        isGenerated: !!options?.autoIncrement,
+        isVersion: !!options?.version
+      } as const;
+      MetadataStorage.addColumn(ctor, columnMeta as any);
+      const existingCols: any[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
+      existingCols.push(columnMeta);
+      Reflect.defineMetadata('orm:columns', existingCols, ctor);
+
+      MetadataStorage.addPrimaryKey(ctor, name);
+      if (options.branded) {
+        const meta = MetadataStorage.getEntity(ctor);
+        const col = meta?.columns.find((c) => c.propertyName === name);
+        if (col) {
+          (col as any).isBranded = true;
+          (col as any).brand = ctor.name;
+        }
+      }
+      const existingPks: string[] = Reflect.getOwnMetadata('orm:primaryKeys', ctor) || [];
+      if (!existingPks.includes(name)) existingPks.push(name);
+      Reflect.defineMetadata('orm:primaryKeys', existingPks, ctor);
+    });
   };
 }
+

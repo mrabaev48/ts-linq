@@ -1,33 +1,36 @@
 import { QueryBuilder } from './QueryBuilder';
 import { EnhancedSqlCache } from './EnhancedSqlCache';
 import { SqlDialect } from './SqlDialect';
-import { Entity } from '../decorators/Entity';
-import { Column } from '../decorators/Column';
-import { PrimaryKey } from '../decorators/PrimaryKey';
+import { sql } from './SqlFunctions';
+import { MetadataStorage } from '@ts-linq/core';
+import type { ColumnMetadata, SqlLogger } from '../types';
 
 // Test entity for QueryBuilder integration
-@Entity()
 class TestUser {
-  @PrimaryKey()
-  @Column()
   id!: number;
-
-  @Column()
   name!: string;
-
-  @Column()
   email!: string;
-
-  @Column()
   age!: number;
 }
 
 describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
   let queryBuilder: QueryBuilder;
   let enhancedCache: EnhancedSqlCache;
-  let mockLogger: any;
+  let mockLogger: SqlLogger;
 
   beforeEach(() => {
+    // Register metadata without decorators
+    MetadataStorage.getInstance().clear();
+    MetadataStorage.addEntity(TestUser, 'test_users');
+    const cols: ColumnMetadata[] = [
+      { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true },
+      { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false },
+      { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false },
+      { propertyName: 'age', columnName: 'age', type: 'INTEGER', nullable: false }
+    ];
+    cols.forEach(c => MetadataStorage.addColumn(TestUser, c));
+    MetadataStorage.addPrimaryKey(TestUser, 'id');
+
     enhancedCache = new EnhancedSqlCache({
       maxSize: 100,
       defaultTtl: 60000,
@@ -80,7 +83,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       });
 
       // Second call should hit cache
-      mockLogger.cache.mockClear();
+      (mockLogger.cache as jest.Mock).mockClear();
       const result2 = queryBuilder.generateSql(TestUser, options);
       
       expect(result2.query).toBe(result1.query);
@@ -135,6 +138,23 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       );
     });
 
+    test('should embed window function expressions in select list', () => {
+      const options = {
+        select: ['id', sql.rowNumber().over().partitionBy('name').orderBy('age', 'DESC').as('rn')],
+        where: [] as any[]
+      };
+      // Use a dialect that outputs the select list to validate expression rendering
+      const exprDialect: SqlDialect = {
+        buildSelect: () => ({
+          query: `SELECT ${options.select!.join(', ')} FROM test_users`,
+          parameters: []
+        })
+      };
+      const localBuilder = new QueryBuilder(exprDialect, mockLogger, 'test-provider', enhancedCache);
+      const result = localBuilder.generateSql(TestUser, options);
+      expect(result.query).toContain('ROW_NUMBER() OVER (PARTITION BY name ORDER BY age DESC) AS rn');
+    });
+
     test('should handle cache key compression for complex queries', () => {
       // Create a complex query that would generate a long cache key
       const complexOptions = {
@@ -163,6 +183,88 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       // Verify cache hit
       const metrics = queryBuilder.getCacheMetrics();
       expect(metrics.hits).toBeGreaterThan(0);
+    });
+
+    test('should allow CTE name override via options.from (dialect usage)', () => {
+      const options = { select: ['*'], where: [], } as const;
+      const exprDialect: SqlDialect = {
+        buildSelect: () => ({
+          query: `WITH sales AS (SELECT * FROM orders) SELECT * FROM sales`,
+          parameters: []
+        })
+      };
+      const local = new QueryBuilder(exprDialect, mockLogger, 'test', enhancedCache);
+      const res = local.generateSql(TestUser, options as any);
+      expect(res.query).toContain('WITH sales AS (SELECT * FROM orders) SELECT * FROM sales');
+    });
+
+    test('should render JSON helpers in select list (dialect responsibility)', () => {
+      const options = {
+        select: [
+          sql.jsonExtract('data', '$.user.name').as('u_name'),
+          sql.jsonContains('tags', 'admin').as('has_admin')
+        ],
+        where: [] as any[]
+      };
+      const jsonDialect: SqlDialect = {
+        buildSelect: (_ctor, opts) => ({
+          query: `SELECT ${opts.select!.join(', ')} FROM test_users`,
+          parameters: opts.selectParams ?? []
+        })
+      };
+      const local = new QueryBuilder(jsonDialect, mockLogger, 'test', enhancedCache);
+      const res = local.generateSql(TestUser, options as any);
+      expect(res.query).toContain("JSON_EXTRACT(data, ?) AS u_name");
+      expect(res.query).toContain("JSON_CONTAINS(tags, ?) AS has_admin");
+      expect(res.parameters).toEqual(['$.user.name', 'admin']);
+    });
+
+    test('should render basic full-text search expressions', () => {
+      const options = {
+        select: [
+          sql.mysqlMatchAgainst(['title', 'content'], 'node js', 'boolean').as('mscore'),
+          sql.pgRank(
+            sql.pgToTsVector(['title', 'content']).toString(),
+            sql.pgWebsearchToTsQuery('node js').toString()
+          ).as('pscore')
+        ],
+        where: [] as any[]
+      };
+      const ftsDialect: SqlDialect = {
+        buildSelect: (_ctor, opts) => ({
+          query: `SELECT ${opts.select!.join(', ')} FROM test_users`,
+          parameters: opts.selectParams ?? []
+        })
+      };
+      const local = new QueryBuilder(ftsDialect, mockLogger, 'test', enhancedCache);
+      const res = local.generateSql(TestUser, options as any);
+      expect(res.query).toContain('MATCH(title, content) AGAINST (? IN BOOLEAN MODE)');
+      expect(res.query).toContain("ts_rank(to_tsvector(?, COALESCE(title, '') || ' ' || COALESCE(content, '')), websearch_to_tsquery(?, ?)) AS pscore");
+      // At this layer we only collect parameters from top-level select expressions.
+      // Since pgRank() receives stringified inner expressions, only MySQL match contributes a param.
+      expect(res.parameters).toEqual(['node js']);
+    });
+
+    test('mysql: JSON and MATCH should be parameterized', () => {
+      const options = {
+        select: [
+          sql.jsonExtract('payload', '$.a.b').as('val'),
+          sql.mysqlMatchAgainst(['title', 'body'], 'golang', 'boolean').as('score')
+        ],
+        where: [] as any[]
+      };
+      // Use a MySQL-like stub dialect that respects selectParams
+      const mysqlLikeDialect: SqlDialect = {
+        buildSelect: (_ctor, opts) => ({
+          query: `SELECT ${opts.select!.join(', ')} FROM test_users`,
+          parameters: opts.selectParams ?? []
+        })
+      };
+      const local = new QueryBuilder(mysqlLikeDialect, mockLogger, 'mysql', enhancedCache);
+      const res = local.generateSql(TestUser as any, options as any);
+      expect(res.query).toContain('JSON_EXTRACT(payload, ?) AS val');
+      expect(res.query).toContain('MATCH(title, body) AGAINST (? IN BOOLEAN MODE) AS score');
+      expect(res.parameters).toEqual(['$.a.b', 'golang']);
     });
 
     test('should expire cached queries after TTL', async () => {
@@ -199,10 +301,10 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       await new Promise(resolve => setTimeout(resolve, 60));
 
       // Should miss cache after expiration
-      mockLogger.cache.mockClear();
+      (mockLogger.cache as jest.Mock).mockClear();
       const result3 = shortTtlBuilder.generateSql(TestUser, options);
       
-      expect(mockLogger.cache).toHaveBeenCalledWith({
+      expect((mockLogger.cache as jest.Mock)).toHaveBeenCalledWith({
         cache: 'sqlGen',
         hit: false,
         provider: 'test-provider'

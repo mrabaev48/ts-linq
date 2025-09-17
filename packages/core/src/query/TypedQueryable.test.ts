@@ -1,46 +1,50 @@
 import { TypedQueryable, typed } from './TypedQueryable';
 import { Queryable } from './Queryable';
-import { EntityId, brandId } from '../types';
+import { EntityId, brandId, type ColumnMetadata } from '../types';
 import { DbContext } from '../context/DbContext';
-import { Entity } from '../decorators/Entity';
-import { Column } from '../decorators/Column';
-import { PrimaryKey } from '../decorators/PrimaryKey';
-import { OneToMany } from '../decorators/Relationships';
+import { MetadataStorage } from '../metadata/MetadataStorage';
 
 // Sample entity types for testing
 type UserId = EntityId<number, 'User'>;
 type OrderId = EntityId<string, 'Order'>;
 
-@Entity({ name: 'users' })
 class User {
-  @PrimaryKey({ branded: true, type: 'INTEGER' })
   id!: UserId;
-
-  @Column({ type: 'TEXT' })
   name!: string;
-
-  @Column({ type: 'INTEGER' })
   age!: number;
-
-  @Column({ type: 'TEXT' })
   email!: string;
-
   orders!: Order[];
 }
 
-@Entity({ name: 'orders' })
 class Order {
-  @PrimaryKey({ branded: true, type: 'TEXT' })
   id!: OrderId;
-
-  @Column({ type: 'REAL' })
   amount!: number;
-
-  @Column({ type: 'INTEGER' })
   userId!: UserId;
-
   user!: User;
 }
+
+// Manually register metadata for test entities (avoids decorator emit differences)
+(function registerTestMetadata() {
+  MetadataStorage.addEntity(User, 'users');
+  const userIdCol: ColumnMetadata = { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: false };
+  const userNameCol: ColumnMetadata = { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false };
+  const userAgeCol: ColumnMetadata = { propertyName: 'age', columnName: 'age', type: 'INTEGER', nullable: false };
+  const userEmailCol: ColumnMetadata = { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false };
+  MetadataStorage.addColumn(User, userIdCol);
+  MetadataStorage.addPrimaryKey(User, 'id');
+  MetadataStorage.addColumn(User, userNameCol);
+  MetadataStorage.addColumn(User, userAgeCol);
+  MetadataStorage.addColumn(User, userEmailCol);
+
+  MetadataStorage.addEntity(Order, 'orders');
+  const orderIdCol: ColumnMetadata = { propertyName: 'id', columnName: 'id', type: 'TEXT', nullable: false, isGenerated: false };
+  const orderAmountCol: ColumnMetadata = { propertyName: 'amount', columnName: 'amount', type: 'REAL', nullable: false };
+  const orderUserIdCol: ColumnMetadata = { propertyName: 'userId', columnName: 'userId', type: 'INTEGER', nullable: false };
+  MetadataStorage.addColumn(Order, orderIdCol);
+  MetadataStorage.addPrimaryKey(Order, 'id');
+  MetadataStorage.addColumn(Order, orderAmountCol);
+  MetadataStorage.addColumn(Order, orderUserIdCol);
+})();
 
 describe('TypedQueryable', () => {
   let mockQueryable: jest.Mocked<Queryable<User>>;
@@ -48,32 +52,29 @@ describe('TypedQueryable', () => {
 
   beforeEach(() => {
     // Create a mock queryable
-    mockQueryable = {
-      select: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      orderByDescending: jest.fn().mockReturnThis(),
-      include: jest.fn().mockReturnThis(),
-      take: jest.fn().mockReturnThis(),
-      skip: jest.fn().mockReturnThis(),
-      distinct: jest.fn().mockReturnThis(),
-      first: jest.fn().mockResolvedValue(null),
-      firstOrDefault: jest.fn().mockResolvedValue(null),
-      single: jest.fn().mockResolvedValue(null),
-      any: jest.fn().mockResolvedValue(true),
-      toArray: jest.fn().mockResolvedValue([]),
-      count: jest.fn().mockResolvedValue(0),
-    } as any;
+    const q: Partial<jest.Mocked<Queryable<User>>> = {
+      select: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
+      where: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
+      orderBy: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
+      orderByDescending: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
+      include: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
+      take: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
+      skip: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
+      distinct: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
+      first: jest.fn(async () => ({ id: brandId<number, 'User'>(0) as unknown as UserId, name: '', age: 0, email: '' } as User)),
+      firstOrDefault: jest.fn(async () => null as User | null),
+      single: jest.fn(async () => ({ id: brandId<number, 'User'>(1) as unknown as UserId, name: 's', age: 1, email: 'e' } as User)),
+      any: jest.fn(async () => true),
+      toArray: jest.fn(async () => [] as User[]),
+      count: jest.fn(async () => 0)
+    };
+    mockQueryable = q as unknown as jest.Mocked<Queryable<User>>;
 
     typedQueryable = new TypedQueryable(mockQueryable);
   });
 
   describe('Type Safety', () => {
     it('should provide compile-time type safety for select operations', () => {
-      // This test primarily validates TypeScript compilation
-      // In a real scenario, these would be compile-time errors:
-
-      // ✅ Valid selections should compile
       const validQuery = typedQueryable.select(u => ({
         id: u.id,
         name: u.name,
@@ -85,7 +86,6 @@ describe('TypedQueryable', () => {
     });
 
     it('should provide type safety for where clauses', () => {
-      // ✅ Valid where clauses should compile
       const query1 = typedQueryable.where(u => u.age > 18);
       const query2 = typedQueryable.where(u => u.name === 'John');
 
@@ -95,18 +95,16 @@ describe('TypedQueryable', () => {
     });
 
     it('should provide type safety for orderBy operations', () => {
-      // ✅ Valid order by operations should compile
       const query1 = typedQueryable.orderBy(u => u.name);
       const query2 = typedQueryable.orderBy(u => u.age, 'DESC');
 
       expect(query1).toBeInstanceOf(TypedQueryable);
       expect(query2).toBeInstanceOf(TypedQueryable);
-      expect(mockQueryable.orderBy).toHaveBeenCalledTimes(1); // ASC case
-      expect(mockQueryable.orderByDescending).toHaveBeenCalledTimes(1); // DESC case
+      expect(mockQueryable.orderBy).toHaveBeenCalledTimes(1);
+      expect(mockQueryable.orderByDescending).toHaveBeenCalledTimes(1);
     });
 
     it('should provide type safety for include operations', () => {
-      // ✅ Valid include operations should compile
       const query = typedQueryable.include(u => u.orders);
 
       expect(query).toBeInstanceOf(TypedQueryable);
@@ -131,7 +129,7 @@ describe('TypedQueryable', () => {
 
     it('should return proper types for result operations', async () => {
       mockQueryable.toArray.mockResolvedValue([
-        { id: brandId<number, 'User'>(1), name: 'John', age: 25, email: 'john@example.com' } as User
+        { id: brandId<number, 'User'>(1) as unknown as UserId, name: 'John', age: 25, email: 'john@example.com' } as User
       ]);
 
       const results = await typedQueryable.toArray();
@@ -143,9 +141,9 @@ describe('TypedQueryable', () => {
   describe('Execution Methods', () => {
     beforeEach(() => {
       const mockUsers = [
-        { id: brandId<number, 'User'>(1), name: 'John', age: 25, email: 'john@example.com' } as User,
-        { id: brandId<number, 'User'>(2), name: 'Jane', age: 30, email: 'jane@example.com' } as User,
-        { id: brandId<number, 'User'>(3), name: 'Bob', age: 20, email: 'bob@example.com' } as User
+        { id: brandId<number, 'User'>(1) as unknown as UserId, name: 'John', age: 25, email: 'john@example.com' } as User,
+        { id: brandId<number, 'User'>(2) as unknown as UserId, name: 'Jane', age: 30, email: 'jane@example.com' } as User,
+        { id: brandId<number, 'User'>(3) as unknown as UserId, name: 'Bob', age: 20, email: 'bob@example.com' } as User
       ];
       mockQueryable.toArray.mockResolvedValue(mockUsers);
       mockQueryable.first.mockResolvedValue(mockUsers[0]);
@@ -171,7 +169,7 @@ describe('TypedQueryable', () => {
     });
 
     it('should execute single() correctly', async () => {
-      const mockUser = { id: brandId<number, 'User'>(1), name: 'John', age: 25, email: 'john@example.com' } as User;
+      const mockUser = { id: brandId<number, 'User'>(1) as unknown as UserId, name: 'John', age: 25, email: 'john@example.com' } as User;
       mockQueryable.single.mockResolvedValue(mockUser);
 
       const result = await typedQueryable.single();
@@ -198,9 +196,6 @@ describe('TypedQueryable', () => {
     });
   });
 
-  // Aggregation methods have been removed to prevent performance issues.
-  // They previously materialized all rows in memory which is problematic for large datasets.
-
   describe('Utility Functions', () => {
     it('should create typed queryable from regular queryable using helper function', () => {
       const typedFromHelper = typed(mockQueryable);
@@ -215,15 +210,10 @@ describe('TypedQueryable', () => {
 
   describe('Branded ID Type Safety', () => {
     it('should work with branded ID types', () => {
-      // This test validates TypeScript compilation with branded types
       const userId: UserId = brandId<number, 'User'>(123);
       const orderId: OrderId = brandId<string, 'Order'>('order-456');
-
-      // These should compile without errors
       expect(typeof userId).toBe('number');
       expect(typeof orderId).toBe('string');
-
-      // At runtime, branded types are just their underlying types
       expect(userId).toBe(123);
       expect(orderId).toBe('order-456');
     });

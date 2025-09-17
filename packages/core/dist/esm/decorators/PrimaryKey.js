@@ -1,33 +1,44 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { Column } from './Column';
-/**
- * Property decorator that marks a property as the primary key.
- *
- * This decorator first registers the property as a non-nullable column and optionally
- * marks it as generated (auto-increment), then records the primary key metadata.
- *
- * @param options Primary key configuration options.
- * @returns A property decorator.
- */
+function isStage3FieldContext(x) {
+    return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
+}
 export function PrimaryKey(options = {}) {
-    return function (target, propertyKey) {
-        const propertyName = propertyKey.toString();
-        // Add as column first
-        const columnOptions = {
-            ...options,
-            nullable: false,
-            generated: options?.autoIncrement
-        };
-        Column(columnOptions)(target, propertyKey);
-        // Then add as primary key
-        MetadataStorage.addPrimaryKey(target.constructor, propertyName);
-        // Persist PK for rehydration
-        const ctor = target.constructor;
-        const existing = Reflect.getOwnMetadata('orm:primaryKeys', ctor) || [];
-        if (!existing.includes(propertyName)) {
-            existing.push(propertyName);
+    return function PrimaryKeyDecorator(_targetOrValue, propOrContext) {
+        if (!isStage3FieldContext(propOrContext)) {
+            throw new Error('@PrimaryKey requires TS5 Stage-3 decorators');
         }
-        Reflect.defineMetadata('orm:primaryKeys', existing, ctor);
+        const ctx = propOrContext;
+        const name = ctx.name.toString();
+        ctx.addInitializer?.(function () {
+            const ctor = this?.constructor;
+            if (!ctor)
+                return;
+            const columnMeta = {
+                propertyName: name,
+                columnName: options?.name || name,
+                type: options?.type || 'INTEGER',
+                nullable: false,
+                isGenerated: !!options?.autoIncrement,
+                isVersion: !!options?.version
+            };
+            MetadataStorage.addColumn(ctor, columnMeta);
+            const existingCols = Reflect.getOwnMetadata('orm:columns', ctor) || [];
+            existingCols.push(columnMeta);
+            Reflect.defineMetadata('orm:columns', existingCols, ctor);
+            MetadataStorage.addPrimaryKey(ctor, name);
+            if (options.branded) {
+                const meta = MetadataStorage.getEntity(ctor);
+                const col = meta?.columns.find((c) => c.propertyName === name);
+                if (col) {
+                    col.isBranded = true;
+                    col.brand = ctor.name;
+                }
+            }
+            const existingPks = Reflect.getOwnMetadata('orm:primaryKeys', ctor) || [];
+            if (!existingPks.includes(name))
+                existingPks.push(name);
+            Reflect.defineMetadata('orm:primaryKeys', existingPks, ctor);
+        });
     };
 }
 //# sourceMappingURL=PrimaryKey.js.map

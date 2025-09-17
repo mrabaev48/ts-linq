@@ -91,6 +91,10 @@ export interface ColumnMetadata {
     isGenerated?: boolean;
     /** True when column is an optimistic concurrency token (version). */
     isVersion?: boolean;
+    /** Whether this column is intended to be a branded identifier. */
+    isBranded?: boolean;
+    /** Optional brand marker (usually entity name) for diagnostics/docs. */
+    brand?: string;
 }
 /** Static global filter applied to all queries of a specific entity. */
 export interface GlobalFilter {
@@ -236,12 +240,24 @@ export interface GroupByClause {
     /** Optional HAVING predicate. */
     having?: WhereClause;
 }
+/** Expression node that can render SQL with parameters. */
+export interface SqlExpression {
+    /** String representation of the expression (dialect-agnostic or default). */
+    toString(): string;
+}
+/** Common Table Expression (CTE) definition. */
+export interface CteDefinition {
+    name: string;
+    sql: string;
+}
 /**
  * Accumulated options that define a SQL query to be generated.
  */
 export interface QueryOptions {
     /** Selected columns or expressions (defaults to *). */
-    select?: string[];
+    select?: Array<string | SqlExpression>;
+    /** Parameters produced by select expressions (order-sensitive). */
+    selectParams?: SqlParameter[];
     /** WHERE predicates with parameters. */
     where?: WhereClause[];
     /** ORDER BY items. */
@@ -256,6 +272,10 @@ export interface QueryOptions {
     offset?: number;
     /** DISTINCT selector. */
     distinct?: boolean;
+    /** FROM override (table, view or CTE name). */
+    from?: string;
+    /** Optional CTE definition to prepend. */
+    cte?: CteDefinition;
 }
 /**
  * Performance-related options to tune caching and counts.
@@ -459,4 +479,11 @@ export type ExtractEntityName<T> = T extends EntityId<any, infer U> ? U : never;
  * Utility type to extract the underlying ID type from a branded ID.
  */
 export type ExtractIdType<T> = T extends EntityId<infer U, any> ? U : never;
+/**
+ * Extract primary key type from an entity by convention. If the entity has an `id` property,
+ * this yields its type (supports branded IDs). Otherwise resolves to never.
+ */
+export type PrimaryKeyOf<T> = T extends {
+    id: infer P;
+} ? P : never;
 //# sourceMappingURL=index.d.ts.map

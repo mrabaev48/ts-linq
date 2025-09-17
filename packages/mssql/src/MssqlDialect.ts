@@ -25,6 +25,9 @@ export class MssqlDialect implements SqlDialect {
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
     const parameters: SqlParameter[] = [];
+    if (options.selectParams && options.selectParams.length) {
+      parameters.push(...(options.selectParams as SqlParameter[]));
+    }
     const selectList = options.select && options.select.length ? options.select.join(', ') : '*';
 
     // For MSSQL, TOP must appear right after SELECT (before DISTINCT)
@@ -36,7 +39,7 @@ export class MssqlDialect implements SqlDialect {
     if (options.distinct) selectHead += 'DISTINCT ';
     if (hasLimit && !hasOffset) selectHead += `TOP (${options.limit}) `;
 
-    let query = `${selectHead}${selectList} FROM [${metadata.tableName}]`;
+    let query = `${selectHead}${selectList} FROM [${options.from ?? metadata.tableName}]`;
 
     if (options.joins && options.joins.length > 0) {
       for (const join of options.joins) {

@@ -2,6 +2,7 @@ import type { DatabaseProvider } from '../DatabaseProvider';
 import type { ChangeTracker } from '../change-tracking/ChangeTracker';
 import type { EntityLoader } from '../loading/EntityLoader';
 import type { LoadingOptions } from '../loading/LoadingStrategy';
+import type { PrimaryKeyOf } from '../types';
 import { Queryable } from '../query/Queryable';
 import { TypedQueryable } from '../query/TypedQueryable';
 import type { EntityCacheLike } from '../utils/EntityCache';
@@ -31,10 +32,17 @@ export declare class DbSet<T extends object> {
     updateRange(entities: T[]): T[];
     /** Remove multiple entities at once to ChangeTracker. */
     removeRange(entities: T[]): T[];
-    /** Find an entity by its primary key */
-    find(id: unknown, options?: LoadingOptions): Promise<T | null>;
+    /** Find an entity by its primary key (convention: property named `id`) */
+    find(id: PrimaryKeyOf<T>, options?: LoadingOptions): Promise<T | null>;
     /** Get all entities */
     toArray(options?: LoadingOptions): Promise<T[]>;
+    /** Fetch multiple entities by their primary keys in one query when supported. */
+    findByIds(ids: ReadonlyArray<PrimaryKeyOf<T>>): Promise<T[]>;
+    /**
+     * Type-safe IN query by entity property. Maps property to column via metadata.
+     * Example: users.findWhereIn('id', [userId]) or users.findWhereIn('name', ['Alice'])
+     */
+    findWhereIn<K extends keyof T & string>(property: K, values: ReadonlyArray<T[K]>): Promise<T[]>;
     /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */
     where(predicate: (entity: T) => boolean): TypedQueryable<T>;
     /** Proxy: WHERE EXISTS (subquery). */

@@ -26,6 +26,7 @@ export * from './query/QueryModel';
 export * from './query/ast/Nodes';
 export * from './query/ast/SqlVisitor';
 export * from './query/spec/Specification';
+export * from './query/SqlFunctions';
 export * from './DatabaseProvider';
 export * from './DdlStrategy';
 export * from './DdlBuilder';

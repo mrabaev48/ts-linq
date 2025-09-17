@@ -26,7 +26,21 @@ class QueryBuilder {
             this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
             return { query: hit.query, parameters: [...hit.parameters] };
         }
-        const built = this._dialect.buildSelect(entityClass, options);
+        // Normalize expressions in select list to strings (dialect can still re-render)
+        const normalized = { ...options };
+        if (options.select) {
+            normalized.selectParams = [];
+            normalized.select = options.select.map((s) => {
+                if (typeof s === 'string')
+                    return s;
+                const expr = s;
+                const sqlStr = expr.toString();
+                const params = expr.getParameters?.() ?? [];
+                normalized.selectParams.push(...params);
+                return sqlStr;
+            });
+        }
+        const built = this._dialect.buildSelect(entityClass, normalized);
         this.remember(key, built);
         this._logger?.cache?.({ cache: 'sqlGen', hit: false, provider: this._providerName });
         return built;

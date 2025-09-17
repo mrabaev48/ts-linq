@@ -169,7 +169,7 @@ class TypedQueryable {
      */
     async all(predicate) {
         const items = await this.toArray();
-        return items.every(predicate);
+        return items.every((e) => predicate(e));
     }
     // Entity Framework-style aggregation methods (restored for EF compatibility)
     /**

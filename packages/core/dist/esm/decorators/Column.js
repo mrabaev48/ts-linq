@@ -1,45 +1,43 @@
 import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-/**
- * Property decorator that registers column metadata for the target entity property.
- *
- * If the `type` is not provided, it will be inferred from the TypeScript design type
- * via `reflect-metadata` and mapped to a reasonable SQL type.
- *
- * @param options Column configuration options.
- * @returns A property decorator that records column metadata.
- */
-export function Column(options = {}) {
-    return function (target, propertyKey) {
-        const propertyName = propertyKey.toString();
-        // Get the design type using reflect-metadata
-        const designType = Reflect.getMetadata('design:type', target, propertyKey);
-        const columnMetadata = {
-            propertyName,
-            columnName: options?.name || propertyName,
-            type: options?.type || getTypeString(designType),
-            nullable: options?.nullable !== false,
-            defaultValue: options?.defaultValue,
-            length: options?.length,
-            precision: options?.precision,
-            scale: options?.scale,
-            isGenerated: options?.generated || false,
-            isVersion: options?.version || false
-        };
-        MetadataStorage.addColumn(target.constructor, columnMetadata);
-        // Persist on constructor to support rehydration
-        const ctor = target.constructor;
-        const existing = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-        existing.push(columnMetadata);
-        Reflect.defineMetadata('orm:columns', existing, ctor);
-    };
+function isStage3FieldContext(x) {
+    return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
 }
 /**
- * Map a JavaScript/TypeScript runtime constructor to a default SQL type.
- *
- * @param type The runtime constructor captured by `reflect-metadata` (e.g., String, Number).
- * @returns A string representing the SQL type to use.
+ * Stage-3 property decorator that registers column metadata.
+ * If type is omitted and design:type is unavailable, defaults to TEXT.
  */
+export function Column(options = {}) {
+    return function ColumnDecorator(_targetOrValue, propOrContext) {
+        if (!isStage3FieldContext(propOrContext)) {
+            throw new Error('@Column requires TS5 Stage-3 decorators');
+        }
+        const ctx = propOrContext;
+        const name = ctx.name.toString();
+        ctx.addInitializer?.(function () {
+            const ctor = this?.constructor;
+            if (!ctor)
+                return;
+            const designType = Reflect.getMetadata('design:type', ctor.prototype, name);
+            const columnMetadata = {
+                propertyName: name,
+                columnName: options?.name || name,
+                type: options?.type || getTypeString(designType),
+                nullable: options?.nullable !== false,
+                defaultValue: options?.defaultValue,
+                length: options?.length,
+                precision: options?.precision,
+                scale: options?.scale,
+                isGenerated: options?.generated || false,
+                isVersion: options?.version || false
+            };
+            MetadataStorage.addColumn(ctor, columnMetadata);
+            const existing = Reflect.getOwnMetadata('orm:columns', ctor) || [];
+            existing.push(columnMetadata);
+            Reflect.defineMetadata('orm:columns', existing, ctor);
+        });
+    };
+}
 function getTypeString(type) {
     if (!type || !type.name)
         return 'TEXT';
@@ -53,9 +51,9 @@ function getTypeString(type) {
         case 'Date':
             return 'DATETIME';
         case 'Array':
-            return 'TEXT'; // Store as JSON
+            return 'TEXT';
         case 'Object':
-            return 'TEXT'; // Store as JSON
+            return 'TEXT';
         default:
             return 'TEXT';
     }

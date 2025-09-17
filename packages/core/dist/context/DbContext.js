@@ -92,6 +92,18 @@ class DbContext {
      */
     async ensureCreated() {
         await this._provider.connect();
+        // Unconditionally pre-warm Stage-3 field decorators by instantiating each entity once
+        const prereg = MetadataStorage_1.MetadataStorage.getEntities();
+        for (const e of prereg) {
+            try {
+                const original = getOriginal(e.target);
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const _tmp = new original();
+            }
+            catch {
+                // ignore constructors with side-effects/args
+            }
+        }
         const entities = MetadataStorage_1.MetadataStorage.getEntities();
         for (const entity of entities) {
             await this._provider.createTable(entity);

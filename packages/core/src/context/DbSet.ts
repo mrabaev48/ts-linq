@@ -2,6 +2,7 @@ import type { DatabaseProvider } from '../DatabaseProvider';
 import type { ChangeTracker } from '../change-tracking/ChangeTracker';
 import type { EntityLoader } from '../loading/EntityLoader';
 import type { LoadingOptions } from '../loading/LoadingStrategy';
+import type { PrimaryKeyOf } from '../types';
 import { Queryable } from '../query/Queryable';
 import { TypedQueryable } from '../query/TypedQueryable';
 import type { EntityCacheLike } from '../utils/EntityCache';
@@ -74,8 +75,8 @@ export class DbSet<T extends object> {
     return entities;
   }
 
-  /** Find an entity by its primary key */
-  public async find(id: unknown, options?: LoadingOptions): Promise<T | null> {
+  /** Find an entity by its primary key (convention: property named `id`) */
+  public async find(id: PrimaryKeyOf<T>, options?: LoadingOptions): Promise<T | null> {
     if (this._entityLoader && options) {
       return await this._entityLoader.loadEntity(this._entityClass, id, options);
     }
@@ -110,6 +111,50 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).toArray();
+  }
+
+  /** Fetch multiple entities by their primary keys in one query when supported. */
+  public async findByIds(ids: ReadonlyArray<PrimaryKeyOf<T>>): Promise<T[]> {
+    if (!ids || ids.length === 0) return [];
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    if (!metadata || metadata.primaryKeys.length === 0) {
+      // Fallback: issue sequential finds (kept for completeness; generally not used)
+      const results: T[] = [];
+      for (const id of ids) {
+        const found = await this.find(id as PrimaryKeyOf<T>);
+        if (found) results.push(found);
+      }
+      return results;
+    }
+    const pk = metadata.primaryKeys[0];
+    const column = metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk;
+    // Delegate to provider for efficient IN query
+    return await this._provider.findWhereIn(
+      this._entityClass,
+      column,
+      ids as unknown as unknown[]
+    );
+  }
+
+  /**
+   * Type-safe IN query by entity property. Maps property to column via metadata.
+   * Example: users.findWhereIn('id', [userId]) or users.findWhereIn('name', ['Alice'])
+   */
+  public async findWhereIn<K extends keyof T & string>(
+    property: K,
+    values: ReadonlyArray<T[K]>
+  ): Promise<T[]> {
+    if (!values || values.length === 0) return [];
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    const columnName = metadata
+      ? metadata.columns.find((c) => c.propertyName === property || c.columnName === property)
+          ?.columnName || String(property)
+      : String(property);
+    return await this._provider.findWhereIn(
+      this._entityClass as unknown as new () => T,
+      columnName,
+      values as unknown as unknown[]
+    );
   }
 
   /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */

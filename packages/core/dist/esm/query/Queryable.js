@@ -103,6 +103,17 @@ export class Queryable {
         this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
         return this;
     }
+    /** With CTE support: define a named subquery and return a Queryable bound to that CTE. */
+    withCte(name, subquery) {
+        // Build subquery SQL once and stash into model via FROM override
+        const { query } = subquery._sqlBuilder.generateFromModel(subquery._entityClass, subquery._model);
+        const cloned = this.clone();
+        // naive: store CTE name; real provider should prepend WITH clause at execution time
+        cloned._model.from = name;
+        // store CTE definition also in options-compatible form for dialects
+        cloned._cte = { name, sql: query };
+        return cloned;
+    }
     /**
      * Projects selected properties. Returns a new Queryable of the projected type.
      * @param selector Projection selector.
@@ -554,6 +565,11 @@ export class Queryable {
     }
     /** Executes provided model, maps rows to entities and applies fallback predicates. */
     async executeAndMaterialize(model) {
+        // propagate CTE to options via from field when present
+        if (this._cte) {
+            // monkey-attach for dialects that look into QueryOptions
+            model.cte = this._cte;
+        }
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, model);
         const rows = await this._provider.executeQuery(sql.query, sql.parameters);
         let entities = rows.map((row) => this.mapRowToEntity(row));
