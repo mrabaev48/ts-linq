@@ -18,6 +18,8 @@ jobs:
             image: postgres:15-alpine
           - db: mysql
             image: mysql:8
+          - db: mssql
+            image: mcr.microsoft.com/mssql/server:2019-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,4 +37,5 @@ jobs:
           DB: ${{ matrix.db }}
           POSTGRES_IMAGE: ${{ startsWith(matrix.image, 'postgres') && matrix.image || '' }}
           MYSQL_IMAGE: ${{ startsWith(matrix.image, 'mysql') && matrix.image || '' }}
+          MSSQL_IMAGE: ${{ startsWith(matrix.image, 'mcr.microsoft.com/mssql') && matrix.image || '' }}
           TESTCONTAINERS_RYUK_DISABLED: 'true'
