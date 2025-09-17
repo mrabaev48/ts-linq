@@ -24,6 +24,10 @@ export class MySqlDdlStrategy {
   }
 
   public generateColumnDefinition(column: ColumnMetadata): string {
+    if (column.isComputed && column.computedExpression) {
+      // MySQL 5.7+: generated columns; use VIRTUAL by default
+      return `${column.columnName} ${this.mapTypeToMySql(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) VIRTUAL`;
+    }
     let def = `${column.columnName} ${this.mapTypeToMySql(column.type)}`;
     if (column.length) def += `(${column.length})`;
     if (!column.nullable) def += ' NOT NULL';

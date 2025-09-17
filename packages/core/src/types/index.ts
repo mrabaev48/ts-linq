@@ -117,6 +117,10 @@ export interface ColumnMetadata {
   isBranded?: boolean;
   /** Optional brand marker (usually entity name) for diagnostics/docs. */
   brand?: string;
+  /** Whether this column is a computed/generated column (expression-based). */
+  isComputed?: boolean;
+  /** Provider-agnostic SQL expression for computed value (dialect adapts as needed). */
+  computedExpression?: string;
 }
 
 /** Static global filter applied to all queries of a specific entity. */
@@ -197,6 +201,8 @@ export interface EntityMetadata {
   relationships: RelationshipMetadata[];
   /** Index definitions. */
   indexes: IndexMetadata[];
+  /** Conditional validation rules. */
+  validations?: ValidationRule[];
 }
 
 /**
@@ -277,6 +283,16 @@ export interface SqlExpression {
 export interface CteDefinition {
   name: string;
   sql: string;
+}
+
+/** Conditional validation rule stored in metadata. */
+export interface ValidationRule {
+  /** Property to which rule applies (for diagnostics). */
+  propertyName: string;
+  /** Predicate evaluated on entity; must return true for valid state. */
+  predicate: (entity: unknown) => boolean;
+  /** Optional error message. */
+  message?: string;
 }
 
 /**

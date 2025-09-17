@@ -95,6 +95,10 @@ export interface ColumnMetadata {
     isBranded?: boolean;
     /** Optional brand marker (usually entity name) for diagnostics/docs. */
     brand?: string;
+    /** Whether this column is a computed/generated column (expression-based). */
+    isComputed?: boolean;
+    /** Provider-agnostic SQL expression for computed value (dialect adapts as needed). */
+    computedExpression?: string;
 }
 /** Static global filter applied to all queries of a specific entity. */
 export interface GlobalFilter {
