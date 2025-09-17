@@ -66,3 +66,18 @@ users.findWhereIn('id', [1, 2, 3]);
 expectType<Promise<User[]>>(users.findWhereIn('name', ['Alice', 'Bob']));
 // @ts-expect-error - wrong value type for property
 users.findWhereIn('name', [uid]);
+
+// TypedQueryable: orderBy/thenBy only accept entity keys and value types
+{
+  type U = { id: number; name: string; age: number; createdAt: Date };
+  declare const q: import('../src/query/Queryable').Queryable<U>;
+  const tq = new import('../src/query/TypedQueryable').TypedQueryable(q);
+  // valid
+  tq.orderBy(u => u.name);
+  tq.orderBy(u => u.age, 'DESC');
+  tq.thenBy(u => u.createdAt);
+  tq.thenByDescending(u => u.id);
+  // invalid: non-existent key
+  // @ts-expect-error
+  tq.orderBy((u) => (u as any).nope);
+}
