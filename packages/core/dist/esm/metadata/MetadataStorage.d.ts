@@ -34,9 +34,9 @@ export declare class MetadataStorage {
      * Finalization is deferred until metadata is consumed.
      */
     private registerEntity;
-    /** Add a column definition to the target entity's builder. */
+    /** Add a column definition to the target entity's builder or directly to finalized metadata. */
     private addColumnMetadata;
-    /** Add a primary key property to the target entity's builder. */
+    /** Add a primary key property to the target entity's builder or into finalized metadata. */
     private addPrimaryKeyMetadata;
     /** Add a relationship definition to the target entity's builder. */
     private addRelationshipMetadata;

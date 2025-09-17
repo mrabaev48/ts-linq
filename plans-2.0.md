@@ -169,7 +169,7 @@
   - [x] `DbSet.findWhereIn('id', UserId[])` и по любым полям с выводом типов ✅
   - [x] Тип‑тесты `tsd` покрывают branded IDs и новые API ✅
 
-- [ ] **Typed Query Builder**
+- [x] **Typed Query Builder** ✅
   ```typescript
   // Только валидные поля доступны в select/where
   ctx.users
@@ -177,7 +177,7 @@
     .select(u => ({ invalid: u.nonExistent }));       // ❌ Compile error
   ```
 
-- [ ] **Relationship Type Validation**
+- [x] **Relationship Type Validation** ✅
   ```typescript
   // Include только существующих relationships
   ctx.users
@@ -185,7 +185,7 @@
     .include(u => u.nonExistent);  // ❌ Compile error
   ```
 
-- [ ] **Query Result Type Inference**
+- [x] **Query Result Type Inference** ✅
   ```typescript
   // Автоматический вывод типа результата
   const result = await ctx.users

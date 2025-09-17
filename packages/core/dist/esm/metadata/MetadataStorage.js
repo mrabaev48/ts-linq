@@ -83,13 +83,30 @@ export class MetadataStorage {
         }
         // Do not finalize here; allow subsequent decorators to contribute
     }
-    /** Add a column definition to the target entity's builder. */
+    /** Add a column definition to the target entity's builder or directly to finalized metadata. */
     addColumnMetadata(target, column) {
+        const key = this.normalizeTarget(target);
+        const finalized = this.entities.get(key);
+        if (finalized) {
+            // Merge into existing finalized metadata
+            if (!finalized.columns.some((c) => c.propertyName === column.propertyName)) {
+                finalized.columns = [...finalized.columns, column];
+            }
+            return;
+        }
         const builder = this.getOrCreateBuilder(target);
         builder.addColumn(column);
     }
-    /** Add a primary key property to the target entity's builder. */
+    /** Add a primary key property to the target entity's builder or into finalized metadata. */
     addPrimaryKeyMetadata(target, propertyName) {
+        const key = this.normalizeTarget(target);
+        const finalized = this.entities.get(key);
+        if (finalized) {
+            if (!finalized.primaryKeys.includes(propertyName)) {
+                finalized.primaryKeys = [...finalized.primaryKeys, propertyName];
+            }
+            return;
+        }
         const builder = this.getOrCreateBuilder(target);
         builder.addPrimaryKey(propertyName);
     }

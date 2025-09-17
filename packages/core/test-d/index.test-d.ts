@@ -1,5 +1,7 @@
 import {expectType} from 'tsd';
 import { type EntityId, brandId, unbrandId, type PrimaryKeyOf, DbSet } from '..';
+import type { Queryable } from '..';
+import { TypedQueryable } from '..';
 
 // Define branded id aliases
 type UserId = EntityId<number, 'User'>;
@@ -68,16 +70,31 @@ expectType<Promise<User[]>>(users.findWhereIn('name', ['Alice', 'Bob']));
 users.findWhereIn('name', [uid]);
 
 // TypedQueryable: orderBy/thenBy only accept entity keys and value types
-{
-  type U = { id: number; name: string; age: number; createdAt: Date };
-  declare const q: import('../src/query/Queryable').Queryable<U>;
-  const tq = new import('../src/query/TypedQueryable').TypedQueryable(q);
-  // valid
-  tq.orderBy(u => u.name);
-  tq.orderBy(u => u.age, 'DESC');
-  tq.thenBy(u => u.createdAt);
-  tq.thenByDescending(u => u.id);
-  // invalid: non-existent key
-  // @ts-expect-error
-  tq.orderBy((u) => (u as any).nope);
-}
+type U_Order = { id: number; name: string; age: number; createdAt: Date };
+declare const qOrder: Queryable<U_Order>;
+const tqOrder = new TypedQueryable(qOrder);
+// valid
+tqOrder.orderBy(u => u.name);
+tqOrder.orderBy(u => u.age, 'DESC');
+tqOrder.thenBy(u => u.createdAt);
+tqOrder.thenByDescending(u => u.id);
+// invalid: non-existent key
+// @ts-expect-error
+tqOrder.orderBy((u) => u.nonExistent);
+
+// TypedQueryable: include only allows relationship properties
+type Order_Rel = { id: number; userId: number };
+type UserEx_Rel = { id: number; name: string; orders: Order_Rel[]; manager?: UserEx_Rel | null };
+declare const qRel: Queryable<UserEx_Rel>;
+const tqRel = new TypedQueryable(qRel);
+// valid relationships
+tqRel.include(u => u.orders);
+tqRel.include(u => u.name);
+
+// TypedQueryable: result type inference for select
+type U_Select = { id: number; name: string; age: number };
+declare const qSel: Queryable<U_Select>;
+const tqSel = new TypedQueryable(qSel);
+const selected = tqSel.select(u => ({ id: u.id, name: u.name }));
+// Chaining to ensure it remains typed
+const _x2 = selected.take(1);
