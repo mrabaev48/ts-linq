@@ -136,6 +136,27 @@ export class DbSet<T extends object> {
     );
   }
 
+  /**
+   * Type-safe IN query by entity property. Maps property to column via metadata.
+   * Example: users.findWhereIn('id', [userId]) or users.findWhereIn('name', ['Alice'])
+   */
+  public async findWhereIn<K extends keyof T & string>(
+    property: K,
+    values: ReadonlyArray<T[K]>
+  ): Promise<T[]> {
+    if (!values || values.length === 0) return [];
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    const columnName = metadata
+      ? metadata.columns.find((c) => c.propertyName === property || c.columnName === property)
+          ?.columnName || String(property)
+      : String(property);
+    return await this._provider.findWhereIn(
+      this._entityClass as unknown as new () => T,
+      columnName,
+      values as unknown as unknown[]
+    );
+  }
+
   /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */
   public where(predicate: (entity: T) => boolean): TypedQueryable<T> {
     const queryable = new Queryable<T>(
