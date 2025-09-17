@@ -14,6 +14,7 @@ export class QueryModel {
   public offset?: number;
   public distinct?: boolean;
   public unions?: Array<{ all: boolean; other: QueryModel; entity: new () => unknown }>;
+  public from?: string;
 
   /**
    * Create a deep copy of the query model to preserve immutability
@@ -41,6 +42,7 @@ export class QueryModel {
     clonedModel.limit = this.limit;
     clonedModel.offset = this.offset;
     clonedModel.distinct = this.distinct;
+    clonedModel.from = this.from;
     clonedModel.unions = this.unions
       ? this.unions.map((unionItem) => ({
           all: unionItem.all,

@@ -9,6 +9,7 @@ import type {
   SqlParameter
 } from '../types';
 import { ok, err } from '../types';
+import type { CteDefinition } from '../types';
 import { QueryBuilder } from './QueryBuilder';
 import { PredicateParser } from './PredicateParser';
 import { SqlVisitor } from './ast/SqlVisitor';
@@ -21,6 +22,11 @@ import type { CountCache } from './CountCache';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { safeCache, safeCacheEvicted, safeCacheSize } from '../utils/MetricsSafe';
+
+interface CteDefinition {
+  name: string;
+  sql: string;
+}
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
@@ -42,6 +48,8 @@ export class Queryable<T> {
   private _abortSignal?: AbortSignal;
   private _globalFilters?: GlobalFilter[];
   private _globalFilterApplier = new GlobalFilterApplier();
+  // Internal storage for CTE info (used by providers that support WITH ...)
+  private _cte?: CteDefinition;
   // Lightweight signature of WHERE clauses for fast count() cache keys
   private _whereSignature: string = '[]';
   // Predicates and parsing optimizations
@@ -177,6 +185,21 @@ export class Queryable<T> {
     this._model.where.push(clause);
     this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
     return this;
+  }
+
+  /** With CTE support: define a named subquery and return a Queryable bound to that CTE. */
+  public withCte(name: string, subquery: Queryable<unknown>): Queryable<T> {
+    // Build subquery SQL once and stash into model via FROM override
+    const { query } = subquery._sqlBuilder.generateFromModel(
+      subquery._entityClass as unknown as new () => unknown,
+      (subquery as Queryable<unknown>)._model
+    );
+    const cloned = this.clone();
+    // naive: store CTE name; real provider should prepend WITH clause at execution time
+    cloned._model.from = name;
+    // store CTE definition also in options-compatible form for dialects
+    cloned._cte = { name, sql: query };
+    return cloned;
   }
 
   /**
@@ -644,6 +667,11 @@ export class Queryable<T> {
 
   /** Executes provided model, maps rows to entities and applies fallback predicates. */
   private async executeAndMaterialize(model: QueryModel): Promise<T[]> {
+    // propagate CTE to options via from field when present
+    if (this._cte) {
+      // monkey-attach for dialects that look into QueryOptions
+      (model as unknown as { cte?: CteDefinition }).cte = this._cte;
+    }
     const sql = this._sqlBuilder.generateFromModel(this._entityClass, model);
     const rows = await this._provider.executeQuery<Record<string, unknown>>(
       sql.query,

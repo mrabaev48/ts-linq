@@ -43,7 +43,20 @@ export class QueryBuilder {
       this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
       return { query: hit.query, parameters: [...hit.parameters] } as const;
     }
-    const built = this._dialect.buildSelect(entityClass, options);
+    // Normalize expressions in select list to strings (dialect can still re-render)
+    const normalized: QueryOptions = { ...options };
+    if (options.select) {
+      normalized.selectParams = [];
+      normalized.select = options.select.map((s) => {
+        if (typeof s === 'string') return s;
+        const expr = s as unknown as { toString(): string; getParameters?: () => readonly unknown[] };
+        const sqlStr = expr.toString();
+        const params = expr.getParameters?.() ?? [];
+        (normalized.selectParams as unknown[]).push(...params);
+        return sqlStr;
+      });
+    }
+    const built = this._dialect.buildSelect(entityClass, normalized);
     this.remember(key, built);
     this._logger?.cache?.({ cache: 'sqlGen', hit: false, provider: this._providerName });
     return built;

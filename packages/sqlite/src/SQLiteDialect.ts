@@ -22,7 +22,7 @@ export class SQLiteDialect implements SqlDialect {
     let query = 'SELECT ';
     if (options.distinct) query += 'DISTINCT ';
     query += options.select && options.select.length ? options.select.join(', ') : '*';
-    query += ` FROM ${metadata.tableName}`;
+    query += ` FROM ${options.from ?? metadata.tableName}`;
 
     // JOINs
     if (options.joins && options.joins.length > 0) {
@@ -34,6 +34,9 @@ export class SQLiteDialect implements SqlDialect {
     }
 
     const parameters: SqlParameter[] = [];
+    if (options.selectParams && options.selectParams.length) {
+      parameters.push(...(options.selectParams as SqlParameter[]));
+    }
 
     // WHERE
     if (options.where && options.where.length > 0) {
