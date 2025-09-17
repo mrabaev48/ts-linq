@@ -1,0 +1,6 @@
+{
+  "directory": "tsd",
+  "compilerOptions": {
+    "strict": true
+  }
+}
