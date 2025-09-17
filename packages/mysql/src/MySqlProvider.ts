@@ -10,7 +10,9 @@ import {
   MetadataStorage,
   SqlParameter,
   SqlHelper,
-  SqlDialect
+  SqlDialect,
+  UniqueConstraintError,
+  DatabaseError
 } from '@ts-linq/core';
 import { MysqlDialect } from './MysqlDialect';
 import { MySqlDdlStrategy } from './MySqlDdlStrategy';
@@ -404,8 +406,7 @@ function mapMySqlError(err: unknown): Error {
   const code = anyErr?.code;
   const message = anyErr?.message || String(err);
   if (code === 'ER_DUP_ENTRY')
-    return new (require('../types').UniqueConstraintError)(message, code);
-  const DatabaseError = require('../types').DatabaseError;
+    return new UniqueConstraintError(message, code);
   return new DatabaseError(message, code);
 }
 

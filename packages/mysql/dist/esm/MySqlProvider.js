@@ -1,4 +1,4 @@
-import { DatabaseProvider, OptimisticConcurrencyError, MetadataStorage, SqlHelper } from '@ts-linq/core';
+import { DatabaseProvider, OptimisticConcurrencyError, MetadataStorage, SqlHelper, UniqueConstraintError, DatabaseError } from '@ts-linq/core';
 import { MysqlDialect } from './MysqlDialect';
 import { MySqlDdlStrategy } from './MySqlDdlStrategy';
 export class MySqlProvider extends DatabaseProvider {
@@ -306,8 +306,7 @@ function mapMySqlError(err) {
     const code = anyErr?.code;
     const message = anyErr?.message || String(err);
     if (code === 'ER_DUP_ENTRY')
-        return new (require('../types').UniqueConstraintError)(message, code);
-    const DatabaseError = require('../types').DatabaseError;
+        return new UniqueConstraintError(message, code);
     return new DatabaseError(message, code);
 }
 function safeRequireMysql2() {

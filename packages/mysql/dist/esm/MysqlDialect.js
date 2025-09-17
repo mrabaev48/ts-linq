@@ -22,7 +22,7 @@ export class MysqlDialect {
         if (options.distinct)
             query += 'DISTINCT ';
         query += options.select && options.select.length ? options.select.join(', ') : '*';
-        query += ` FROM \`${metadata.tableName}\``;
+        query += ` FROM \`${options.from ?? metadata.tableName}\``;
         if (options.joins && options.joins.length) {
             for (const join of options.joins) {
                 query += ` ${join.type} JOIN \`${join.table}\``;
@@ -32,6 +32,9 @@ export class MysqlDialect {
             }
         }
         const parameters = [];
+        if (options.selectParams && options.selectParams.length) {
+            parameters.push(...options.selectParams);
+        }
         if (options.where && options.where.length > 0) {
             const whereClauses = options.where.map((w) => w.condition);
             query += ` WHERE ${whereClauses.join(' AND ')}`;
