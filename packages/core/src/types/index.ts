@@ -113,6 +113,10 @@ export interface ColumnMetadata {
   isGenerated?: boolean;
   /** True when column is an optimistic concurrency token (version). */
   isVersion?: boolean;
+  /** Whether this column is intended to be a branded identifier. */
+  isBranded?: boolean;
+  /** Optional brand marker (usually entity name) for diagnostics/docs. */
+  brand?: string;
 }
 
 /** Static global filter applied to all queries of a specific entity. */

@@ -1,33 +1,35 @@
 import { QueryBuilder } from './QueryBuilder';
 import { EnhancedSqlCache } from './EnhancedSqlCache';
 import { SqlDialect } from './SqlDialect';
-import { Entity } from '../decorators/Entity';
-import { Column } from '../decorators/Column';
-import { PrimaryKey } from '../decorators/PrimaryKey';
+import { MetadataStorage } from '../metadata/MetadataStorage';
+import type { ColumnMetadata, SqlLogger } from '../types';
 
 // Test entity for QueryBuilder integration
-@Entity()
 class TestUser {
-  @PrimaryKey()
-  @Column()
   id!: number;
-
-  @Column()
   name!: string;
-
-  @Column()
   email!: string;
-
-  @Column()
   age!: number;
 }
 
 describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
   let queryBuilder: QueryBuilder;
   let enhancedCache: EnhancedSqlCache;
-  let mockLogger: any;
+  let mockLogger: SqlLogger;
 
   beforeEach(() => {
+    // Register metadata without decorators
+    MetadataStorage.getInstance().clear();
+    MetadataStorage.addEntity(TestUser, 'test_users');
+    const cols: ColumnMetadata[] = [
+      { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true },
+      { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false },
+      { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false },
+      { propertyName: 'age', columnName: 'age', type: 'INTEGER', nullable: false }
+    ];
+    cols.forEach(c => MetadataStorage.addColumn(TestUser, c));
+    MetadataStorage.addPrimaryKey(TestUser, 'id');
+
     enhancedCache = new EnhancedSqlCache({
       maxSize: 100,
       defaultTtl: 60000,
@@ -80,7 +82,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       });
 
       // Second call should hit cache
-      mockLogger.cache.mockClear();
+      (mockLogger.cache as jest.Mock).mockClear();
       const result2 = queryBuilder.generateSql(TestUser, options);
       
       expect(result2.query).toBe(result1.query);
@@ -199,10 +201,10 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       await new Promise(resolve => setTimeout(resolve, 60));
 
       // Should miss cache after expiration
-      mockLogger.cache.mockClear();
+      (mockLogger.cache as jest.Mock).mockClear();
       const result3 = shortTtlBuilder.generateSql(TestUser, options);
       
-      expect(mockLogger.cache).toHaveBeenCalledWith({
+      expect((mockLogger.cache as jest.Mock)).toHaveBeenCalledWith({
         cache: 'sqlGen',
         hit: false,
         provider: 'test-provider'

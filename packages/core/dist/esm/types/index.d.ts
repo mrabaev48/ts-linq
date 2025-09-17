@@ -91,6 +91,10 @@ export interface ColumnMetadata {
     isGenerated?: boolean;
     /** True when column is an optimistic concurrency token (version). */
     isVersion?: boolean;
+    /** Whether this column is intended to be a branded identifier. */
+    isBranded?: boolean;
+    /** Optional brand marker (usually entity name) for diagnostics/docs. */
+    brand?: string;
 }
 /** Static global filter applied to all queries of a specific entity. */
 export interface GlobalFilter {
@@ -459,4 +463,11 @@ export type ExtractEntityName<T> = T extends EntityId<any, infer U> ? U : never;
  * Utility type to extract the underlying ID type from a branded ID.
  */
 export type ExtractIdType<T> = T extends EntityId<infer U, any> ? U : never;
+/**
+ * Extract primary key type from an entity by convention. If the entity has an `id` property,
+ * this yields its type (supports branded IDs). Otherwise resolves to never.
+ */
+export type PrimaryKeyOf<T> = T extends {
+    id: infer P;
+} ? P : never;
 //# sourceMappingURL=index.d.ts.map
