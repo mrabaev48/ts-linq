@@ -240,12 +240,24 @@ export interface GroupByClause {
     /** Optional HAVING predicate. */
     having?: WhereClause;
 }
+/** Expression node that can render SQL with parameters. */
+export interface SqlExpression {
+    /** String representation of the expression (dialect-agnostic or default). */
+    toString(): string;
+}
+/** Common Table Expression (CTE) definition. */
+export interface CteDefinition {
+    name: string;
+    sql: string;
+}
 /**
  * Accumulated options that define a SQL query to be generated.
  */
 export interface QueryOptions {
     /** Selected columns or expressions (defaults to *). */
-    select?: string[];
+    select?: Array<string | SqlExpression>;
+    /** Parameters produced by select expressions (order-sensitive). */
+    selectParams?: SqlParameter[];
     /** WHERE predicates with parameters. */
     where?: WhereClause[];
     /** ORDER BY items. */
@@ -260,6 +272,10 @@ export interface QueryOptions {
     offset?: number;
     /** DISTINCT selector. */
     distinct?: boolean;
+    /** FROM override (table, view or CTE name). */
+    from?: string;
+    /** Optional CTE definition to prepend. */
+    cte?: CteDefinition;
 }
 /**
  * Performance-related options to tune caching and counts.

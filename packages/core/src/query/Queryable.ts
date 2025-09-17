@@ -23,10 +23,7 @@ import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { safeCache, safeCacheEvicted, safeCacheSize } from '../utils/MetricsSafe';
 
-interface CteDefinition {
-  name: string;
-  sql: string;
-}
+ 
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent

@@ -17,6 +17,7 @@ export declare class QueryModel {
         other: QueryModel;
         entity: new () => unknown;
     }>;
+    from?: string;
     /**
      * Create a deep copy of the query model to preserve immutability
      * when applying read-only operations (e.g., first/any).

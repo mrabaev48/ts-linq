@@ -48,6 +48,7 @@ __exportStar(require("./query/QueryModel"), exports);
 __exportStar(require("./query/ast/Nodes"), exports);
 __exportStar(require("./query/ast/SqlVisitor"), exports);
 __exportStar(require("./query/spec/Specification"), exports);
+__exportStar(require("./query/SqlFunctions"), exports);
 // Base provider abstractions
 __exportStar(require("./DatabaseProvider"), exports);
 __exportStar(require("./DdlStrategy"), exports);
