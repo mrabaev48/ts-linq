@@ -20,4 +20,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
  */
 __exportStar(require("./Migration"), exports);
 __exportStar(require("./MigrationRunner"), exports);
+__exportStar(require("./DiffTypes"), exports);
+__exportStar(require("./DialectMigrationSql"), exports);
+__exportStar(require("./MigrationBuilder"), exports);
+__exportStar(require("./DiffBasedMigration"), exports);
+__exportStar(require("./MigrationFileBuilder"), exports);
+__exportStar(require("./DiffMigrationGenerator"), exports);
 //# sourceMappingURL=index.js.map
