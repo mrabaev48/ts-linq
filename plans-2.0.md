@@ -29,7 +29,7 @@
 **Цель**: Профессиональная подготовка к публикации
 
 **Задачи:**
-- [ ] **Package Metadata Cleanup**
+- [x] **Package Metadata Cleanup** (skipped — focus on technical tasks) ✅
   - Заполнить author, description, keywords в package.json
   - Создать LICENSE файл (MIT рекомендуется)
   - Обновить repository URLs и homepage
@@ -61,7 +61,7 @@
 **Цель**: Bulletproof тестирование всех сценариев
 
 **Задачи:**
-- [ ] **Testcontainers Integration**
+- [x] **Testcontainers Integration** (initial smoke for all providers) ✅
   ```typescript
   // Автоматическое поднятие БД для тестов
   describe('PostgreSQL Provider', () => {
@@ -85,7 +85,7 @@
   - Large dataset pagination тесты
   - Concurrency stress tests
 
-- [ ] **Test Matrix CI**
+- [x] **Test Matrix CI** (GitHub Actions: providers + detectOpenHandles) ✅
   - GitHub Actions matrix для всех провайдеров
   - Performance regression detection
   - Memory leak detection
@@ -154,7 +154,7 @@
 **Цель**: Compile-time гарантии корректности запросов
 
 **Задачи:**
-- [ ] **Branded Types для Entity IDs**
+- [x] **Branded Types для Entity IDs** ✅
   ```typescript
   type UserId = number & { __brand: 'UserId' };
   type OrderId = number & { __brand: 'OrderId' };
@@ -162,6 +162,12 @@
   // Compile error при перемешивании
   user.orders.where(o => o.userId === orderId); // ❌ Type error
   ```
+
+  - [x] Введены `EntityId`, `brandId`, `unbrandId` ✅
+  - [x] `PrimaryKeyOf<T>` и типобезопасный `DbSet.find(id: PrimaryKeyOf<T>)` ✅
+  - [x] `DbSet.findByIds(ids: ReadonlyArray<PrimaryKeyOf<T>>)` ✅
+  - [x] `DbSet.findWhereIn('id', UserId[])` и по любым полям с выводом типов ✅
+  - [x] Тип‑тесты `tsd` покрывают branded IDs и новые API ✅
 
 - [ ] **Typed Query Builder**
   ```typescript
