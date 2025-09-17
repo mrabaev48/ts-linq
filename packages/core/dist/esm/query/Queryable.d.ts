@@ -22,6 +22,7 @@ export declare class Queryable<T> {
     private _abortSignal?;
     private _globalFilters?;
     private _globalFilterApplier;
+    private _cte?;
     private _whereSignature;
     private static readonly REGEX_SINGLE_PROP;
     private static readonly REGEX_OBJECT;
@@ -71,6 +72,8 @@ export declare class Queryable<T> {
     whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T>;
     /** Add IN (subquery) predicate for a column. */
     whereInSubquery<TOther>(column: keyof T & string, subquery: Queryable<TOther>): Queryable<T>;
+    /** With CTE support: define a named subquery and return a Queryable bound to that CTE. */
+    withCte(name: string, subquery: Queryable<unknown>): Queryable<T>;
     /**
      * Projects selected properties. Returns a new Queryable of the projected type.
      * @param selector Projection selector.
