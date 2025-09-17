@@ -19,6 +19,10 @@ export class MssqlDdlStrategy {
   }
 
   public generateColumnDefinition(column: ColumnMetadata): string {
+    if (column.isComputed && column.computedExpression) {
+      // MSSQL computed column
+      return `${column.columnName} AS (${column.computedExpression})`;
+    }
     let definition = `${column.columnName} ${this.mapTypeToMssql(column.type)}`;
     if (column.length) {
       definition += `(${column.length})`;

@@ -1,5 +1,6 @@
 import { MysqlDialect } from './MysqlDialect';
 import { MetadataStorage } from '@ts-linq/core';
+import { MySqlDdlStrategy } from './MySqlDdlStrategy';
 
 class TestUser { id!: number; title!: string; body!: string; payload!: string; }
 
@@ -26,6 +27,13 @@ describe('MysqlDialect buildSelect parameterization', () => {
     } as any);
     expect(res.query).toContain('SELECT JSON_EXTRACT(payload, ?) AS val, MATCH(title, body) AGAINST (? IN BOOLEAN MODE) AS score FROM `test_users`');
     expect(res.parameters).toEqual(['$.a.b', 'golang']);
+  });
+
+  test('DDL: computed column rendered', () => {
+    MetadataStorage.addColumn(TestUser, { propertyName: 'nameLength', columnName: 'name_len', type: 'INTEGER', nullable: true, isComputed: true, computedExpression: 'length(title)' } as any);
+    const meta = MetadataStorage.getEntity(TestUser) as any;
+    const ddl = new MySqlDdlStrategy().generateCreateTableSql(meta);
+    expect(ddl).toContain('name_len INT GENERATED ALWAYS AS (length(title)) VIRTUAL');
   });
 });
 
