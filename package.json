@@ -114,6 +114,7 @@
     "@rollup/plugin-node-resolve": "^13.3.0",
     "testcontainers": "^10.9.0",
     "pg": "^8.11.3",
-    "mysql2": "^3.6.0"
+    "mysql2": "^3.6.0",
+    "sqlite3": "^5.1.7"
   }
 }
