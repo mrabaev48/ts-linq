@@ -224,6 +224,7 @@ describe('LazyLoadingProxy', () => {
     });
 
     test('should handle loading errors gracefully', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const user = { id: 1, name: 'John' };
       mockProvider.findWhere.mockRejectedValueOnce(new Error('Database error'));
 
@@ -233,6 +234,11 @@ describe('LazyLoadingProxy', () => {
       const loadedPosts = await postsPromise;
       
       expect(loadedPosts).toEqual([]); // Should return empty array for one-to-many
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to lazy load'),
+        expect.any(Error)
+      );
+      warnSpy.mockRestore();
     });
 
     test('should not lazy load already loaded properties', () => {

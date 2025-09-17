@@ -9,24 +9,20 @@ beforeEach(() => {
   MetadataStorage.getInstance().clear();
 });
 
-afterAll(async () => {
-  // Flush pending microtasks
-  await new Promise((r) => setImmediate(r));
-  // Debug active handles if any remain
-  const getActive = (process as any)._getActiveHandles?.bind(process);
-  const getReqs = (process as any)._getActiveRequests?.bind(process);
-  if (getActive) {
-    const handles = getActive();
-    if (handles && handles.length > 0) {
-      // eslint-disable-next-line no-console
-      console.warn('Active handles after tests:', handles.map((h: any) => h?.constructor?.name ?? typeof h));
-    }
+beforeAll(async () => {
+  try {
+    const mod = await import('./db/setup-containers');
+    await mod.startDbContainers();
+  } catch {
+    // ignore if testcontainers not installed or RUN_DB_TESTS != 1
   }
-  if (getReqs) {
-    const reqs = getReqs();
-    if (reqs && reqs.length > 0) {
-      // eslint-disable-next-line no-console
-      console.warn('Active requests after tests:', reqs.map((r: any) => r?.constructor?.name ?? typeof r));
-    }
+});
+
+afterAll(async () => {
+  try {
+    const mod = await import('./db/setup-containers');
+    await mod.stopDbContainers();
+  } catch {
+    // ignore
   }
 });

@@ -1,11 +1,4 @@
 import { DatabaseProvider, EntityMetadata, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlLogger, SqlDialect } from '@ts-linq/core';
-/**
- * SQLite implementation of `DatabaseProvider` using the `sqlite3` package.
- * Handles connection lifecycle, DDL/DML generation and execution, and
- * simple value conversions between JS and SQLite.
- *
- * Note: sqlite3 driver is callback-based; provider wraps calls into Promises.
- */
 export declare class SQLiteProvider extends DatabaseProvider {
     private db;
     private ddl;
