@@ -59,14 +59,55 @@ export function generateMigrationFromDiff(
     ) {
       for (const idx of (
         tableDiff as unknown as {
-          indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean; where?: string }>;
+          indexCreates?: Array<{
+            name: string;
+            columns: string[];
+            unique?: boolean;
+            where?: string;
+            orders?: { [column: string]: 'ASC' | 'DESC' };
+            collations?: { [column: string]: string };
+            nulls?: { [column: string]: 'FIRST' | 'LAST' };
+            expressions?: string[];
+            using?: 'btree' | 'hash' | 'gin' | 'gist';
+            concurrently?: boolean;
+            withParams?: Record<string, string | number | boolean>;
+            mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
+            include?: string[];
+          }>;
         }
       ).indexCreates!) {
         const uniq = idx.unique ? 'UNIQUE ' : '';
-        const cols = idx.columns.map((column: string) => q(dialect, column)).join(', ');
         const name = q(dialect, idx.name);
+        const parts: string[] = [];
+        for (const c of idx.columns) {
+          const ord = idx.orders?.[c] ? ` ${idx.orders![c]}` : '';
+          const collation = idx.collations?.[c] ? (dialect === 'postgresql' || dialect === 'sqlite' ? ` COLLATE ${idx.collations![c]}` : '') : '';
+          const nulls = dialect === 'postgresql' && idx.nulls?.[c] ? ` NULLS ${idx.nulls![c]}` : '';
+          parts.push(`${q(dialect, c)}${ord}${collation}${nulls}`);
+        }
+        for (const e of idx.expressions || []) parts.push(`(${e})`);
+        const cols = parts.join(', ');
         const where = idx.where && dialect !== 'mysql' ? ` WHERE ${idx.where}` : '';
-        up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})${where}`);
+        const using = dialect === 'postgresql' && idx.using ? ` USING ${idx.using.toUpperCase()}` : '';
+        const concurrently = dialect === 'postgresql' && idx.concurrently ? ' CONCURRENTLY' : '';
+        const withSql = dialect === 'postgresql' && idx.withParams && Object.keys(idx.withParams).length > 0
+          ? ` WITH (${Object.entries(idx.withParams).map(([k,v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`).join(', ')})`
+          : '';
+        const visibility = dialect === 'mysql' && idx.mysqlVisibility ? ` ${idx.mysqlVisibility}` : '';
+        const include = dialect === 'mssql' && idx.include && idx.include.length > 0 ? ` INCLUDE (${idx.include.map(c => q(dialect, c)).join(', ')})` : '';
+        switch (dialect) {
+          case 'postgresql':
+            up.push(`CREATE ${uniq}INDEX${concurrently} ${name} ON ${q(dialect, tableDiff.table)}${using} (${cols})${withSql}${where}`);
+            break;
+          case 'mysql':
+            up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})${visibility}`);
+            break;
+          case 'mssql':
+            up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})${include}${where}`);
+            break;
+          default:
+            up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})${where}`);
+        }
       }
     }
     if (

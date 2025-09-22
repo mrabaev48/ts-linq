@@ -96,6 +96,29 @@ Notes:
 - Expressions support depends on engine/version; ensure compatibility for your target DB.
 - When index shape changes, generator emits DROP + CREATE with dialect‑specific DROP syntax.
 
+IndexOptionsBuilder (fluent):
+
+```ts
+// Import рядом с декораторами
+import { Index, IndexOptionsBuilder } from '@ts-linq/core/decorators';
+
+@Entity()
+@Index(
+  new IndexOptionsBuilder('idx_users_email_created')
+    .onColumns(['email', 'createdAt'])
+    .unique()
+    .orderBy({ email: 'ASC', createdAt: 'DESC' })
+)
+class User {
+  @PrimaryKey() id!: number;
+  @Column() email!: string;
+  @Column() createdAt!: Date;
+}
+
+// Также доступен импорт из utils:
+// import { IndexOptionsBuilder } from '@ts-linq/core/utils';
+```
+
 ### Migration Framework
 
 Code-first database evolution support:

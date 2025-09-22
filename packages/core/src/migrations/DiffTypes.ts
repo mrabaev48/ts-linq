@@ -15,6 +15,11 @@ export interface IndexDef {
   collations?: { [column: string]: string };
   nulls?: { [column: string]: 'FIRST' | 'LAST' };
   expressions?: string[];
+  using?: 'btree' | 'hash' | 'gin' | 'gist';
+  concurrently?: boolean;
+  withParams?: Record<string, string | number | boolean>;
+  mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
+  include?: string[];
 }
 
 export interface ForeignKeyDef {
