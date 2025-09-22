@@ -329,10 +329,21 @@
   - [x] Поддержка выражений в индексах (functional/expressions) ✅
   - [x] Колляция и NULLS ordering (ASC/DESC NULLS FIRST/LAST) ✅
   - [ ] Диалекты DDL
-    - [ ] Postgres: CONCURRENTLY, USING (btree/hash/gin/gist), WHERE, WITH(...)
-    - [ ] MySQL: UNIQUE/FULLTEXT/SPATIAL, VISIBLE/INVISIBLE (8.0)
-    - [ ] SQLite: UNIQUE, partial (WHERE) (>= 3.8.0)
-    - [ ] MSSQL: UNIQUE/NONCLUSTERED, INCLUDE(...), filtered (WHERE)
+    - Postgres:
+      - [x] CONCURRENTLY ✅
+      - [x] USING (btree/hash/gin/gist) ✅
+      - [x] WHERE (partial) ✅
+      - [ ] WITH(...)
+    - MySQL:
+      - [x] FULLTEXT ✅
+      - [x] SPATIAL ✅
+      - [ ] VISIBLE/INVISIBLE (8.0)
+    - SQLite:
+      - [x] UNIQUE ✅
+      - [x] partial (WHERE) (>= 3.8.0) ✅
+    - MSSQL:
+      - [x] filtered (WHERE) ✅
+      - [ ] INCLUDE(...)
   - [ ] Валидация: варнинги для неподдерживаемых опций по диалектам
   - [ ] Миграции: diff/create/drop/alter индексов
   - [ ] Тесты: DDL по провайдерам (compound/partial/expression/unique)
