@@ -323,6 +323,9 @@
   - [x] Тесты: DDL partial/filtered indexes (PG/SQLite/MSSQL) ✅
   - [x] Валидация: уникальность имени индекса и существование колонок ✅
   - [x] Порядок столбцов в индексе (ASC/DESC) ✅
+  - [x] DDL: функциональные/выражения в индексах (PG/MySQL/SQLite) ✅
+  - [x] Инспекторы индексов: PG/MySQL/MSSQL (inventory: name/columns/unique/where) ✅
+  - [x] Тесты: инспекторы и использование в diff‑генераторе ✅
   - [ ] Поддержка выражений в индексах (functional/expressions)
   - [ ] Колляция и NULLS ordering (ASC/DESC NULLS FIRST/LAST)
   - [ ] Диалекты DDL
