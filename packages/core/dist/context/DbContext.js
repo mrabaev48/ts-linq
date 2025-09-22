@@ -442,6 +442,23 @@ class DbContext {
                     });
                 }
             }
+            // Conditional Validations (Stage-3 ValidIf)
+            try {
+                const rules = Reflect.getOwnMetadata('orm:validations', change.entityClass) || [];
+                for (const rule of rules) {
+                    const ok = !!rule.predicate(change.entity);
+                    if (!ok) {
+                        errors.push({
+                            entity: meta.tableName,
+                            property: rule.propertyName,
+                            message: rule.message || 'Validation rule failed'
+                        });
+                    }
+                }
+            }
+            catch {
+                /* ignore */
+            }
         }
         if (errors.length > 0)
             throw new types_1.ValidationError('Model validation failed', errors);

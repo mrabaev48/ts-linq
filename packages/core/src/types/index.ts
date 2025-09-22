@@ -103,6 +103,8 @@ export interface ColumnMetadata {
   nullable: boolean;
   /** Default value applied on INSERT when undefined. */
   defaultValue?: unknown;
+  /** Raw SQL default expression (e.g., CURRENT_TIMESTAMP). Takes precedence over defaultValue. */
+  defaultExpression?: string;
   /** Max length for text columns. */
   length?: number;
   /** Numeric precision for decimals. */

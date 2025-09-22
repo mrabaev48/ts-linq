@@ -27,10 +27,10 @@ export class MssqlDdlStrategy {
     if (column.length) {
       definition += `(${column.length})`;
     }
-    if (!column.nullable) {
-      definition += ' NOT NULL';
-    }
-    if (column.defaultValue !== undefined) {
+    if (!column.nullable) definition += ' NOT NULL';
+    if ((column as { defaultExpression?: string }).defaultExpression) {
+      definition += ` DEFAULT ${(column as { defaultExpression?: string }).defaultExpression}`;
+    } else if (column.defaultValue !== undefined) {
       definition += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
     }
     return definition;

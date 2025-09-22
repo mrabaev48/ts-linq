@@ -9,7 +9,8 @@ export class PostgresDdlStrategy {
       }
       const mappedType = this.mapTypeToPg(column.type);
       const notNullSql = column.nullable ? '' : ' NOT NULL';
-      return `"${column.columnName}" ${mappedType}${notNullSql}`;
+      const defaultSql = column.defaultExpression ? ` DEFAULT ${column.defaultExpression}` : '';
+      return `"${column.columnName}" ${mappedType}${notNullSql}${defaultSql}`;
     });
     if (entityMetadata.primaryKeys.length > 0) {
       const primaryKeySql = entityMetadata.primaryKeys
