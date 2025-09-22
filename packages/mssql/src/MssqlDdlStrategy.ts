@@ -40,6 +40,15 @@ export class MssqlDdlStrategy {
     tableName: string,
     index: { name: string; columns: string[]; unique: boolean; where?: string; orders?: { [column: string]: 'ASC' | 'DESC' }; include?: string[] }
   ): string {
+    // MSSQL does not support expression-based columns in simple CREATE INDEX list
+    // Warn if caller passed unexpected props via type erasure
+    const unexpected: string[] = [];
+    if ((index as unknown as { expressions?: string[] }).expressions) unexpected.push('expressions');
+    if ((index as unknown as { collations?: Record<string, string> }).collations) unexpected.push('collations');
+    if ((index as unknown as { nulls?: Record<string, 'FIRST' | 'LAST'> }).nulls) unexpected.push('nulls');
+    if (unexpected.length > 0) {
+      console.warn(`MSSQL: unsupported index options ignored for ${index.name}: ${unexpected.join(', ')}`);
+    }
     const unique = index.unique ? 'UNIQUE ' : '';
     const whereSql = index.where ? ` WHERE ${index.where}` : '';
     const cols = index.columns.map(c => index.orders?.[c] ? `${c} ${index.orders![c]}` : c).join(', ');

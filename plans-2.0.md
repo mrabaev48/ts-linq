@@ -345,10 +345,13 @@
       - [x] filtered (WHERE) ✅
       - [x] INCLUDE(...) ✅
   - [ ] Валидация: варнинги для неподдерживаемых опций по диалектам
+  - [x] Валидация: варнинги для неподдерживаемых опций по диалектам ✅
   - [ ] Миграции: diff/create/drop/alter индексов
   - [ ] Тесты: DDL по провайдерам (compound/partial/expression/unique)
   - [ ] Документация: матрица совместимости и примеры
-  - [ ] DX: типы `IndexOptions`, (опц.) builder‑API для сложных индексов
+  - [x] DX: `IndexOptions` и `IndexOptionsBuilder`; экспорт из `@ts-linq/core/decorators` и `@ts-linq/core/utils` ✅
+  - [x] Тесты: декоратор `@Index` принимает `IndexOptionsBuilder` ✅
+  - [x] Инициализация: `@Entity` синхронизирует индексы из Reflect (Stage‑3) ✅
   ```typescript
   @Entity()
   @Index('idx_user_email_active', ['email'], { where: 'active = true' })

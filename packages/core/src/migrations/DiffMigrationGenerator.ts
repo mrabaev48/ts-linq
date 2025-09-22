@@ -39,7 +39,16 @@ export class DiffMigrationGenerator {
           name: indexDef.name,
           columns: indexDef.columns,
           unique: !!indexDef.unique,
-          where: indexDef.where
+          where: indexDef.where,
+          orders: indexDef.orders,
+          collations: indexDef.collations,
+          nulls: indexDef.nulls,
+          expressions: indexDef.expressions,
+          using: (indexDef as { using?: 'btree' | 'hash' | 'gin' | 'gist' }).using,
+          concurrently: (indexDef as { concurrently?: boolean }).concurrently,
+          withParams: (indexDef as { withParams?: Record<string, string | number | boolean> }).withParams,
+          mysqlVisibility: (indexDef as { mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' }).mysqlVisibility,
+          include: (indexDef as { include?: string[] }).include
         }));
         return {
           name: entityMeta.tableName,

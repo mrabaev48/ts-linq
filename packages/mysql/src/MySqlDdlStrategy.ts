@@ -17,8 +17,25 @@ export class MySqlDdlStrategy {
 
   public generateCreateIndexSql(
     table: string,
-    index: { name: string; columns: string[]; unique: boolean; orders?: { [column: string]: 'ASC' | 'DESC' }; expressions?: string[]; mysqlType?: 'FULLTEXT' | 'SPATIAL'; mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' }
+    index: {
+      name: string;
+      columns: string[];
+      unique: boolean;
+      where?: string;
+      orders?: { [column: string]: 'ASC' | 'DESC' };
+      expressions?: string[];
+      nulls?: { [column: string]: 'FIRST' | 'LAST' };
+      mysqlType?: 'FULLTEXT' | 'SPATIAL';
+      mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
+    }
   ): string {
+    if (index.where) {
+      // MySQL ignores partial WHERE in CREATE INDEX (requires functional equivalent)
+      console.warn(`MySQL: partial index WHERE is not supported and will be ignored for ${index.name}`);
+    }
+    if (index.nulls && Object.keys(index.nulls).length > 0) {
+      console.warn(`MySQL: NULLS FIRST/LAST is not supported and will be ignored for ${index.name}`);
+    }
     const parts: string[] = [];
     for (const c of index.columns) parts.push(index.orders?.[c] ? `${c} ${index.orders![c]}` : c);
     for (const e of index.expressions || []) parts.push(`(${e})`);

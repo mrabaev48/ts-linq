@@ -28,6 +28,15 @@ export class PostgresDdlStrategy {
     table: string,
     index: { name: string; columns: string[]; unique: boolean; where?: string; orders?: { [column: string]: 'ASC' | 'DESC' }; expressions?: string[]; collations?: { [column: string]: string }; nulls?: { [column: string]: 'FIRST' | 'LAST' }; using?: 'btree' | 'hash' | 'gin' | 'gist'; concurrently?: boolean; withParams?: Record<string, string | number | boolean> }
   ): string {
+    if (index.collations) {
+      for (const k of Object.keys(index.collations)) {
+        const method = index.using || 'btree';
+        if (method !== 'btree') {
+          console.warn(`Postgres: COLLATE is only meaningful with BTREE; using=${method} for index ${index.name}`);
+          break;
+        }
+      }
+    }
     const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
     const concurrently = index.concurrently ? ' CONCURRENTLY' : '';
     const using = index.using ? ` USING ${index.using.toUpperCase()}` : '';
