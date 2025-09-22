@@ -322,7 +322,9 @@
   - [x] Тесты: миграции индексов (diff + SQL, диалектные DROP) ✅
   - [x] Тесты: DDL partial/filtered indexes (PG/SQLite/MSSQL) ✅
   - [x] Валидация: уникальность имени индекса и существование колонок ✅
-  - [ ] Поддержка compound/expressions, порядок и колляция (ASC/DESC, NULLS)
+  - [x] Порядок столбцов в индексе (ASC/DESC) ✅
+  - [ ] Поддержка выражений в индексах (functional/expressions)
+  - [ ] Колляция и NULLS ordering (ASC/DESC NULLS FIRST/LAST)
   - [ ] Диалекты DDL
     - [ ] Postgres: CONCURRENTLY, USING (btree/hash/gin/gist), WHERE, WITH(...)
     - [ ] MySQL: UNIQUE/FULLTEXT/SPATIAL, VISIBLE/INVISIBLE (8.0)

@@ -17,10 +17,11 @@ export class MySqlDdlStrategy {
 
   public generateCreateIndexSql(
     table: string,
-    index: { name: string; columns: string[]; unique: boolean }
+    index: { name: string; columns: string[]; unique: boolean; orders?: { [column: string]: 'ASC' | 'DESC' } }
   ): string {
     const uniq = index.unique ? 'UNIQUE ' : '';
-    return `CREATE ${uniq}INDEX IF NOT EXISTS ${index.name} ON ${table} (${index.columns.join(', ')})`;
+    const cols = index.columns.map(c => index.orders?.[c] ? `${c} ${index.orders![c]}` : c).join(', ');
+    return `CREATE ${uniq}INDEX IF NOT EXISTS ${index.name} ON ${table} (${cols})`;
   }
 
   public generateColumnDefinition(column: ColumnMetadata): string {
