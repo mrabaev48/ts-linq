@@ -254,7 +254,7 @@
 **Цель**: Расширенные возможности entity definition
 
 **Задачи:**
-- [ ] **Computed Columns**
+- [x] **Computed Columns** ✅
   ```typescript
   @Entity()
   class User {
@@ -266,14 +266,14 @@
   }
   ```
 
-- [ ] **Conditional Validation**
+- [x] **Conditional Validation** ✅
   ```typescript
   @Entity()
   class Order {
     @Column() status!: 'pending' | 'paid' | 'shipped';
     
-    @ValidIf(order => order.status === 'pending')
-    @Column() paymentDue?: Date;
+    @ValidIf(order => order.status !== 'pending' || order.amount > 0, 'Pending requires positive amount')
+    @Column() amount!: number;
   }
   ```
 

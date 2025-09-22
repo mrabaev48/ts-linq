@@ -81,6 +81,8 @@ export interface ColumnMetadata {
     nullable: boolean;
     /** Default value applied on INSERT when undefined. */
     defaultValue?: unknown;
+    /** Raw SQL default expression (e.g., CURRENT_TIMESTAMP). Takes precedence over defaultValue. */
+    defaultExpression?: string;
     /** Max length for text columns. */
     length?: number;
     /** Numeric precision for decimals. */
@@ -182,6 +184,8 @@ export interface EntityMetadata {
     relationships: RelationshipMetadata[];
     /** Index definitions. */
     indexes: IndexMetadata[];
+    /** Conditional validation rules. */
+    validations?: ValidationRule[];
 }
 /**
  * Standardized structure for returning query results with optional paging info.
@@ -253,6 +257,15 @@ export interface SqlExpression {
 export interface CteDefinition {
     name: string;
     sql: string;
+}
+/** Conditional validation rule stored in metadata. */
+export interface ValidationRule {
+    /** Property to which rule applies (for diagnostics). */
+    propertyName: string;
+    /** Predicate evaluated on entity; must return true for valid state. */
+    predicate: (entity: unknown) => boolean;
+    /** Optional error message. */
+    message?: string;
 }
 /**
  * Accumulated options that define a SQL query to be generated.
