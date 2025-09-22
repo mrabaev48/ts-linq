@@ -33,7 +33,8 @@ export function generateMigrationFromDiff(
           const uniq = idx.unique ? 'UNIQUE ' : '';
           const cols = idx.columns.map((column) => q(dialect, column)).join(', ');
           const name = q(dialect, idx.name);
-          up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.create.name)} (${cols})`);
+          const where = idx.where && dialect !== 'mysql' ? ` WHERE ${idx.where}` : '';
+          up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.create.name)} (${cols})${where}`);
         }
       }
       down.push(`DROP TABLE ${q(dialect, tableDiff.create.name)}`);
@@ -58,13 +59,14 @@ export function generateMigrationFromDiff(
     ) {
       for (const idx of (
         tableDiff as unknown as {
-          indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean }>;
+          indexCreates?: Array<{ name: string; columns: string[]; unique?: boolean; where?: string }>;
         }
       ).indexCreates!) {
         const uniq = idx.unique ? 'UNIQUE ' : '';
         const cols = idx.columns.map((column: string) => q(dialect, column)).join(', ');
         const name = q(dialect, idx.name);
-        up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})`);
+        const where = idx.where && dialect !== 'mysql' ? ` WHERE ${idx.where}` : '';
+        up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})${where}`);
       }
     }
     if (
@@ -72,9 +74,19 @@ export function generateMigrationFromDiff(
       (tableDiff as unknown as { indexDrops?: string[] }).indexDrops!.length > 0
     ) {
       for (const nameRaw of (tableDiff as unknown as { indexDrops?: string[] }).indexDrops!) {
-        const name = q(dialect, nameRaw);
-        // Generic DROP INDEX form; some dialects require table qualifier or IF EXISTS, kept simple here
-        up.push(`DROP INDEX ${name}`);
+        switch (dialect) {
+          case 'postgresql':
+            up.push(`DROP INDEX IF EXISTS ${q(dialect, nameRaw)}`);
+            break;
+          case 'mysql':
+            up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} DROP INDEX ${q(dialect, nameRaw)}`);
+            break;
+          case 'mssql':
+            up.push(`DROP INDEX ${q(dialect, nameRaw)} ON ${q(dialect, tableDiff.table)}`);
+            break;
+          default:
+            up.push(`DROP INDEX IF EXISTS ${q(dialect, nameRaw)}`);
+        }
       }
     }
     if (

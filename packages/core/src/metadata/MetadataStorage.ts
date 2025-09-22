@@ -141,7 +141,49 @@ export class MetadataStorage {
 
   /** Add an index definition to the target entity's builder. */
   private addIndexMetadata(target: Function, index: IndexMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      // Validate duplicate name
+      if (finalized.indexes.some((i) => i.name === index.name)) {
+        throw new ValidationError(
+          `Duplicate index name '${index.name}' on entity '${finalized.tableName}'`
+        );
+      }
+      // Validate columns exist
+      const existingCols = new Set(
+        finalized.columns.map((c) => [c.columnName, c.propertyName]).flat()
+      );
+      const missing = index.columns.filter((c) => !existingCols.has(c));
+      if (missing.length > 0) {
+        throw new ValidationError(
+          `Index '${index.name}' on entity '${finalized.tableName}' references unknown columns: ${missing.join(
+            ', '
+          )}`
+        );
+      }
+      finalized.indexes = [...finalized.indexes, index];
+      return;
+    }
+    // Builder path
     const builder = this.getOrCreateBuilder(target);
+    const snapshot = builder.build();
+    if ((snapshot.indexes || []).some((i) => i.name === index.name)) {
+      throw new ValidationError(
+        `Duplicate index name '${index.name}' on entity '${snapshot.tableName}'`
+      );
+    }
+    const existingCols = new Set(
+      (snapshot.columns || []).map((c) => [c.columnName, c.propertyName]).flat()
+    );
+    const missing = index.columns.filter((c) => !existingCols.has(c));
+    if (missing.length > 0) {
+      throw new ValidationError(
+        `Index '${index.name}' on entity '${snapshot.tableName}' references unknown columns: ${missing.join(
+          ', '
+        )}`
+      );
+    }
     builder.addIndex(index);
   }
 
