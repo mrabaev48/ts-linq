@@ -38,7 +38,8 @@ export class DiffMigrationGenerator {
         const indexes = (entityMeta.indexes || []).map((indexDef) => ({
           name: indexDef.name,
           columns: indexDef.columns,
-          unique: !!indexDef.unique
+          unique: !!indexDef.unique,
+          where: indexDef.where
         }));
         return {
           name: entityMeta.tableName,
@@ -54,6 +55,7 @@ export class DiffMigrationGenerator {
     const actualTables: TableSnapshot[] = [];
     for (const tableName of tableNames) {
       const info = await inspector.getTableInfo(tableName);
+      const indexes = await inspector.getIndexes(tableName);
       actualTables.push({
         name: tableName,
         columns: info.columns.map((col) => ({
@@ -62,7 +64,7 @@ export class DiffMigrationGenerator {
           nullable: !col.notnull
         })),
         primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
-        indexes: [],
+        indexes: indexes.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where })),
         foreignKeys: []
       });
     }

@@ -1,0 +1,38 @@
+import { generateMigrationFromDiff } from './DialectMigrationSql';
+
+test('Index WHERE is rendered for PG/SQLite/MSSQL and ignored for MySQL', () => {
+  const diff = {
+    tables: [
+      {
+        table: 'Users',
+        create: {
+          name: 'Users',
+          columns: [
+            { name: 'id', type: 'INTEGER', nullable: false },
+            { name: 'active', type: 'INTEGER', nullable: false }
+          ],
+          primaryKeys: ['id'],
+          indexes: [
+            { name: 'idx_users_active', columns: ['active'], unique: false, where: 'active = 1' }
+          ],
+          foreignKeys: []
+        }
+      }
+    ]
+  } as const;
+
+  const pg = generateMigrationFromDiff(diff as any, 'postgresql').up.join('\n');
+  expect(pg).toContain('CREATE INDEX "idx_users_active" ON "Users" ("active") WHERE active = 1');
+
+  const sqlite = generateMigrationFromDiff(diff as any, 'sqlite').up.join('\n');
+  expect(sqlite).toContain('CREATE INDEX idx_users_active ON Users (active) WHERE active = 1');
+
+  const mssql = generateMigrationFromDiff(diff as any, 'mssql').up.join('\n');
+  expect(mssql).toContain('CREATE INDEX [idx_users_active] ON [Users] ([active]) WHERE active = 1');
+
+  const mysql = generateMigrationFromDiff(diff as any, 'mysql').up.join('\n');
+  expect(mysql).toContain('CREATE INDEX `idx_users_active` ON `Users` (`active`)');
+  expect(mysql).not.toContain('WHERE active = 1');
+});
+
+
