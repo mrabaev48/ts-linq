@@ -53,6 +53,49 @@ LINQ-style query building with method chaining is provided by `Queryable`, while
 
 This separation improves testability and extensibility. The AST + visitor pipeline enables SQL generation where possible, while keeping runtime semantics correct via safe fallbacks.
 
+### Advanced Indexes
+
+Indexes can be declared via the `@Index` decorator (Stage‑3) or registered programmatically via `MetadataStorage.addIndex(...)`.
+
+Options supported (provider‑agnostic metadata):
+
+- `columns: string[]` — columns participating in the index
+- `unique: boolean` — uniqueness
+- `where?: string` — partial/filtered predicate (PG/SQLite/MSSQL; ignored on MySQL)
+- `orders?: { [column]: 'ASC' | 'DESC' }` — per‑column order
+- `expressions?: string[]` — raw SQL expressions as key parts (PG/MySQL/SQLite)
+- `collations?: { [column]: string }` — per‑column collation (PG/SQLite)
+- `nulls?: { [column]: 'FIRST' | 'LAST' }` — NULLS ordering (PG)
+
+Example:
+
+```ts
+@Entity()
+@Index('idx_users_active', ['active'], { where: 'active = true' })
+@Index('idx_users_email_ci', ['email'], { collations: { email: 'NOCASE' } })
+@Index('idx_users_created_ord', ['createdAt'], { orders: { createdAt: 'DESC' }, nulls: { createdAt: 'LAST' } })
+@Index('idx_users_email_expr', [], { expressions: ['LOWER(email)'] })
+class User {
+  @PrimaryKey() id!: number;
+  @Column() email!: string;
+  @Column() active!: boolean;
+  @Column() createdAt!: Date;
+}
+```
+
+Migration diff detects new/changed/dropped indexes and emits dialect‑specific SQL:
+
+- Postgres: `CREATE [UNIQUE] INDEX IF NOT EXISTS ... (col [ASC|DESC] [COLLATE ...] [NULLS ...], (expr)) [WHERE ...]`
+- SQLite: `CREATE [UNIQUE] INDEX IF NOT EXISTS ... (col [ASC|DESC] [COLLATE ...], (expr)) [WHERE ...]`
+- MySQL: `CREATE [UNIQUE] INDEX IF NOT EXISTS ... (col [ASC|DESC], (expr))` (partial ignored)
+- MSSQL: `CREATE [UNIQUE] INDEX ... ON ... (col [ASC|DESC]) [WHERE ...]`
+
+Notes:
+
+- MySQL ignores partial `WHERE` in index options.
+- Expressions support depends on engine/version; ensure compatibility for your target DB.
+- When index shape changes, generator emits DROP + CREATE with dialect‑specific DROP syntax.
+
 ### Migration Framework
 
 Code-first database evolution support:
