@@ -285,8 +285,8 @@
     @Column() amount!: number;
   }
   ```
-  - [ ] API: `@ValidIf(predicate, message?)` (Stage‑3) и `ValidationRule { propertyName, predicate, message? }`
-  - [ ] Исполнение: `DbContext.validateChanges()` (Added/Modified), агрегирование ошибок (класс/поле/сообщение)
+  - [x] API: `@ValidIf(predicate, message?)` (Stage‑3) и `ValidationRule { propertyName, predicate, message? }` ✅
+  - [x] Исполнение: `DbContext.validateChanges()` (Added/Modified), агрегирование ошибок (класс/поле/сообщение) ✅
   - [ ] Порядок: сначала базовые (NotNull/length), затем ValidIf; совместимость с soft delete/audit
   - [ ] Типобезопасность/DX: строго типизированные предикаты; хелперы для частых паттернов
   - [ ] Тесты: unit (регистрация, множественные правила, ошибки), интеграционные сценарии
@@ -317,7 +317,7 @@
   ```
 
 - [ ] **Advanced Indexes**
-  - [ ] Декоратор `@Index` (Stage‑3): name, columns, unique, where/partial
+  - [x] Декоратор `@Index` (Stage‑3): name, columns, unique, where/partial ✅
   - [ ] Поддержка compound/expressions, порядок и колляция (ASC/DESC, NULLS)
   - [ ] Диалекты DDL
     - [ ] Postgres: CONCURRENTLY, USING (btree/hash/gin/gist), WHERE, WITH(...)
