@@ -26,11 +26,12 @@ export class PostgresDdlStrategy {
 
   public generateCreateIndexSql(
     table: string,
-    index: { name: string; columns: string[]; unique: boolean }
+    index: { name: string; columns: string[]; unique: boolean; where?: string }
   ): string {
     const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
     const columnsListSql = index.columns.map((column) => `"${column}"`).join(', ');
-    return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS "${index.name}" ON "${table}" (${columnsListSql})`;
+    const whereSql = index.where ? ` WHERE ${index.where}` : '';
+    return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS "${index.name}" ON "${table}" (${columnsListSql})${whereSql}`;
   }
 
   public mapTypeToPg(type: string): string {

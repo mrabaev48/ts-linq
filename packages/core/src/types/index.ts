@@ -185,6 +185,8 @@ export interface IndexMetadata {
   columns: string[];
   /** Whether the index enforces uniqueness. */
   unique: boolean;
+  /** Optional WHERE predicate for partial/filtered indexes. */
+  where?: string;
 }
 
 /**

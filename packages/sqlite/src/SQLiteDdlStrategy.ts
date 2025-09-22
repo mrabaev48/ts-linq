@@ -34,10 +34,11 @@ export class SQLiteDdlStrategy {
 
   public generateCreateIndexSql(
     tableName: string,
-    index: { name: string; columns: string[]; unique: boolean }
+    index: { name: string; columns: string[]; unique: boolean; where?: string }
   ): string {
     const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-    return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS ${index.name} ON ${tableName} (${index.columns.join(', ')})`;
+    const whereSql = index.where ? ` WHERE ${index.where}` : '';
+    return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS ${index.name} ON ${tableName} (${index.columns.join(', ')})${whereSql}`;
   }
 
   public generateColumnDefinition(column: ColumnMetadata): string {
