@@ -187,6 +187,8 @@ export interface IndexMetadata {
   unique: boolean;
   /** Optional WHERE predicate for partial/filtered indexes. */
   where?: string;
+  /** Optional per-column ordering (ASC/DESC). */
+  orders?: { [column: string]: 'ASC' | 'DESC' };
 }
 
 /**

@@ -26,10 +26,15 @@ export class PostgresDdlStrategy {
 
   public generateCreateIndexSql(
     table: string,
-    index: { name: string; columns: string[]; unique: boolean; where?: string }
+    index: { name: string; columns: string[]; unique: boolean; where?: string; orders?: { [column: string]: 'ASC' | 'DESC' } }
   ): string {
     const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-    const columnsListSql = index.columns.map((column) => `"${column}"`).join(', ');
+    const columnsListSql = index.columns
+      .map((column) => {
+        const ord = index.orders?.[column];
+        return ord ? `"${column}" ${ord}` : `"${column}"`;
+      })
+      .join(', ');
     const whereSql = index.where ? ` WHERE ${index.where}` : '';
     return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS "${index.name}" ON "${table}" (${columnsListSql})${whereSql}`;
   }
