@@ -26,17 +26,27 @@ export class PostgresDdlStrategy {
 
   public generateCreateIndexSql(
     table: string,
-    index: { name: string; columns: string[]; unique: boolean; where?: string; orders?: { [column: string]: 'ASC' | 'DESC' } }
+    index: { name: string; columns: string[]; unique: boolean; where?: string; orders?: { [column: string]: 'ASC' | 'DESC' }; expressions?: string[]; collations?: { [column: string]: string }; nulls?: { [column: string]: 'FIRST' | 'LAST' }; using?: 'btree' | 'hash' | 'gin' | 'gist'; concurrently?: boolean; withParams?: Record<string, string | number | boolean> }
   ): string {
     const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-    const columnsListSql = index.columns
-      .map((column) => {
-        const ord = index.orders?.[column];
-        return ord ? `"${column}" ${ord}` : `"${column}"`;
-      })
-      .join(', ');
+    const concurrently = index.concurrently ? ' CONCURRENTLY' : '';
+    const using = index.using ? ` USING ${index.using.toUpperCase()}` : '';
+    const parts: string[] = [];
+    for (const col of index.columns) {
+      const ord = index.orders?.[col];
+      const collation = index.collations?.[col] ? ` COLLATE ${index.collations![col]}` : '';
+      const nulls = index.nulls?.[col] ? ` NULLS ${index.nulls![col]}` : '';
+      parts.push(ord ? `"${col}" ${ord}${collation}${nulls}` : `"${col}"${collation}${nulls}`);
+    }
+    for (const expr of index.expressions || []) {
+      parts.push(`(${expr})`);
+    }
+    const columnsListSql = parts.join(', ');
     const whereSql = index.where ? ` WHERE ${index.where}` : '';
-    return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS "${index.name}" ON "${table}" (${columnsListSql})${whereSql}`;
+    const withSql = index.withParams && Object.keys(index.withParams).length > 0
+      ? ` WITH (${Object.entries(index.withParams).map(([k,v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`).join(', ')})`
+      : '';
+    return `CREATE ${uniqueKeyword}INDEX${concurrently} IF NOT EXISTS "${index.name}" ON "${table}"${using} (${columnsListSql})${withSql}${whereSql}`;
   }
 
   public mapTypeToPg(type: string): string {

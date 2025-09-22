@@ -189,6 +189,22 @@ export interface IndexMetadata {
   where?: string;
   /** Optional per-column ordering (ASC/DESC). */
   orders?: { [column: string]: 'ASC' | 'DESC' };
+  /** Optional raw SQL expressions to include as index key parts (dialect renders as-is). */
+  expressions?: string[];
+  /** Optional per-column collation (by name). */
+  collations?: { [column: string]: string };
+  /** Optional per-column NULLS ordering (PG): FIRST|LAST. */
+  nulls?: { [column: string]: 'FIRST' | 'LAST' };
+  /** Postgres: index method (btree/hash/gin/gist) */
+  using?: 'btree' | 'hash' | 'gin' | 'gist';
+  /** Postgres: build concurrently */
+  concurrently?: boolean;
+  /** Postgres: storage parameters (WITH (...)) */
+  withParams?: Record<string, string | number | boolean>;
+  /** MySQL 8.0+: index visibility */
+  mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
+  /** MSSQL: included non-key columns */
+  include?: string[];
 }
 
 /**

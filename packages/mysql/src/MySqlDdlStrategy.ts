@@ -17,11 +17,15 @@ export class MySqlDdlStrategy {
 
   public generateCreateIndexSql(
     table: string,
-    index: { name: string; columns: string[]; unique: boolean; orders?: { [column: string]: 'ASC' | 'DESC' } }
+    index: { name: string; columns: string[]; unique: boolean; orders?: { [column: string]: 'ASC' | 'DESC' }; expressions?: string[]; mysqlType?: 'FULLTEXT' | 'SPATIAL'; mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' }
   ): string {
-    const uniq = index.unique ? 'UNIQUE ' : '';
-    const cols = index.columns.map(c => index.orders?.[c] ? `${c} ${index.orders![c]}` : c).join(', ');
-    return `CREATE ${uniq}INDEX IF NOT EXISTS ${index.name} ON ${table} (${cols})`;
+    const parts: string[] = [];
+    for (const c of index.columns) parts.push(index.orders?.[c] ? `${c} ${index.orders![c]}` : c);
+    for (const e of index.expressions || []) parts.push(`(${e})`);
+    const cols = parts.join(', ');
+    const kind = index.mysqlType ? `${index.mysqlType} ` : index.unique ? 'UNIQUE ' : '';
+    const vis = index.mysqlVisibility ? ` ${index.mysqlVisibility}` : '';
+    return `CREATE ${kind}INDEX IF NOT EXISTS ${index.name} ON ${table} (${cols})${vis}`;
   }
 
   public generateColumnDefinition(column: ColumnMetadata): string {

@@ -11,6 +11,10 @@ export interface IndexDef {
   columns: string[];
   unique: boolean;
   where?: string;
+  orders?: { [column: string]: 'ASC' | 'DESC' };
+  collations?: { [column: string]: string };
+  nulls?: { [column: string]: 'FIRST' | 'LAST' };
+  expressions?: string[];
 }
 
 export interface ForeignKeyDef {
@@ -112,7 +116,13 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
     for (const [name, expIdx] of expIdxByName) {
       const actIdx = actIdxByName.get(name);
       const equal = actIdx
-        ? arraysEqual(expIdx.columns, actIdx.columns) && !!expIdx.unique === !!actIdx.unique && (expIdx.where || '') === ((actIdx as { where?: string }).where || '')
+        ? arraysEqual(expIdx.columns, actIdx.columns) &&
+          !!expIdx.unique === !!actIdx.unique &&
+          (expIdx.where || '') === ((actIdx as { where?: string }).where || '') &&
+          shallowObjEqual(expIdx.orders, (actIdx as { orders?: Record<string, 'ASC'|'DESC'> }).orders) &&
+          shallowObjEqual(expIdx.collations, (actIdx as { collations?: Record<string, string> }).collations) &&
+          shallowObjEqual(expIdx.nulls, (actIdx as { nulls?: Record<string, 'FIRST'|'LAST'> }).nulls) &&
+          arraysEqual(expIdx.expressions || [], (actIdx as { expressions?: string[] }).expressions || [])
         : false;
       if (!actIdx || !equal) {
         if (actIdx && !equal) indexDrops.push(name);
@@ -145,5 +155,17 @@ function normalizeType(typeName: string): string {
 function arraysEqual(a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+function shallowObjEqual<T extends Record<string, unknown> | undefined>(a: T, b: T): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  const ak = Object.keys(a as Record<string, unknown>);
+  const bk = Object.keys(b as Record<string, unknown>);
+  if (ak.length !== bk.length) return false;
+  for (const k of ak) {
+    if ((a as Record<string, unknown>)[k] !== (b as Record<string, unknown>)[k]) return false;
+  }
   return true;
 }
