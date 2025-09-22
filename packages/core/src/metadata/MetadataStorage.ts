@@ -1,4 +1,5 @@
 import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../types';
+import { ValidationError } from '../types';
 import { EntityMetadataBuilder } from './EntityMetadata';
 
 /**
@@ -99,6 +100,12 @@ export class MetadataStorage {
 
   /** Add a column definition to the target entity's builder or directly to finalized metadata. */
   private addColumnMetadata(target: Function, column: ColumnMetadata): void {
+    // Guard: conflicting defaults are not allowed
+    if (column.defaultExpression !== undefined && column.defaultValue !== undefined) {
+      throw new ValidationError(
+        `Column ${column.columnName} cannot have both defaultExpression and defaultValue`
+      );
+    }
     const key = this.normalizeTarget(target);
     const finalized = this.entities.get(key);
     if (finalized) {

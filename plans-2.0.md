@@ -265,6 +265,15 @@
     fullName!: string;
   }
   ```
+  - [ ] Исключить computed из INSERT/UPDATE; ValidationError при попытке записи
+  - [ ] Persisted/Virtual флаги и фичедетекция (PG/MSSQL: STORED; MySQL: VIRTUAL/STORED; SQLite: VIRTUAL ≥ 3.31)
+  - [ ] Миграции: diff/DDL для добавления/изменения/удаления computed
+  - [ ] Интеграционные тесты (per provider): вычисление значения и отсутствие записи в computed
+  - [ ] Документация: гайд по computed vs defaultExpression; переносимость и ограничения
+  - [ ] Валидация схемы: запрет сочетаний computed + defaultValue/defaultExpression; улучшенные сообщения
+  - [ ] DX/типизация: пометить computed как read‑only в метаданных/маппинге; (опц.) утилиты типов
+  - [ ] CLI/миграции (опц.): генерация и экспорт/импорт схем с computed
+
 
 - [x] **Conditional Validation** ✅
   ```typescript
@@ -276,8 +285,26 @@
     @Column() amount!: number;
   }
   ```
+  - [ ] API: `@ValidIf(predicate, message?)` (Stage‑3) и `ValidationRule { propertyName, predicate, message? }`
+  - [ ] Исполнение: `DbContext.validateChanges()` (Added/Modified), агрегирование ошибок (класс/поле/сообщение)
+  - [ ] Порядок: сначала базовые (NotNull/length), затем ValidIf; совместимость с soft delete/audit
+  - [ ] Типобезопасность/DX: строго типизированные предикаты; хелперы для частых паттернов
+  - [ ] Тесты: unit (регистрация, множественные правила, ошибки), интеграционные сценарии
+  - [ ] Документация: гайд/ограничения; рекомендация дублировать критичные правила в БД
+  - [ ] Перфоманс/безопасность: кеш правил по классу; гайдлайны против тяжёлых предикатов
+  - [ ] Расширения (опц.): группы правил (onCreate/onUpdate), локализация сообщений
 
 - [ ] **Database Functions**
+  - [x] Базовый декоратор `@DatabaseFunction` (Stage‑3) ✅
+  - [x] `defaultExpression` в `ColumnMetadata` и поддержка в DDL ✅
+  - [ ] Диалектные алиасы функций (PG/MySQL/SQLite/MSSQL)
+  - [ ] Поведение computed vs default (документация и ограничения)
+  - [ ] Миграции: diff/DDL для defaultExpression и computed
+  - [ ] DDL: STORED/VIRTUAL/PERSISTED + feature‑детекция (версии/возможности)
+  - [ ] Интеграционные тесты: дефолты применяются; computed вычисляется
+  - [ ] ORM‑контракты: исключить computed из INSERT/UPDATE
+  - [ ] Документация: гайд и таблица совместимости по СУБД
+  - [ ] Линтер/валидация схемы: улучшить сообщения (класс/поле)
   ```typescript
   @Entity()
   class AuditLog {
@@ -290,6 +317,18 @@
   ```
 
 - [ ] **Advanced Indexes**
+  - [ ] Декоратор `@Index` (Stage‑3): name, columns, unique, where/partial
+  - [ ] Поддержка compound/expressions, порядок и колляция (ASC/DESC, NULLS)
+  - [ ] Диалекты DDL
+    - [ ] Postgres: CONCURRENTLY, USING (btree/hash/gin/gist), WHERE, WITH(...)
+    - [ ] MySQL: UNIQUE/FULLTEXT/SPATIAL, VISIBLE/INVISIBLE (8.0)
+    - [ ] SQLite: UNIQUE, partial (WHERE) (>= 3.8.0)
+    - [ ] MSSQL: UNIQUE/NONCLUSTERED, INCLUDE(...), filtered (WHERE)
+  - [ ] Валидация: уникальность имени, существование колонок, варнинги для неподдерживаемых опций
+  - [ ] Миграции: diff/create/drop/alter индексов
+  - [ ] Тесты: DDL по провайдерам (compound/partial/expression/unique)
+  - [ ] Документация: матрица совместимости и примеры
+  - [ ] DX: типы `IndexOptions`, (опц.) builder‑API для сложных индексов
   ```typescript
   @Entity()
   @Index('idx_user_email_active', ['email'], { where: 'active = true' })

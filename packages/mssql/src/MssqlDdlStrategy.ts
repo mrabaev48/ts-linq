@@ -38,10 +38,11 @@ export class MssqlDdlStrategy {
 
   public generateCreateIndexSql(
     tableName: string,
-    index: { name: string; columns: string[]; unique: boolean }
+    index: { name: string; columns: string[]; unique: boolean; where?: string }
   ): string {
     const unique = index.unique ? 'UNIQUE ' : '';
-    return `IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='${index.name}' AND object_id=OBJECT_ID('${tableName}')) CREATE ${unique}INDEX ${index.name} ON ${tableName} (${index.columns.join(', ')})`;
+    const whereSql = index.where ? ` WHERE ${index.where}` : '';
+    return `IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='${index.name}' AND object_id=OBJECT_ID('${tableName}')) CREATE ${unique}INDEX ${index.name} ON ${tableName} (${index.columns.join(', ')})${whereSql}`;
   }
 
   public mapTypeToMssql(type: string): string {
