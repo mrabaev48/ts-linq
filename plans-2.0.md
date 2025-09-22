@@ -318,13 +318,17 @@
 
 - [ ] **Advanced Indexes**
   - [x] Декоратор `@Index` (Stage‑3): name, columns, unique, where/partial ✅
+  - [x] Миграции: базовая поддержка индексов (diff/create/drop + WHERE) ✅
+  - [x] Тесты: миграции индексов (diff + SQL, диалектные DROP) ✅
+  - [x] Тесты: DDL partial/filtered indexes (PG/SQLite/MSSQL) ✅
+  - [x] Валидация: уникальность имени индекса и существование колонок ✅
   - [ ] Поддержка compound/expressions, порядок и колляция (ASC/DESC, NULLS)
   - [ ] Диалекты DDL
     - [ ] Postgres: CONCURRENTLY, USING (btree/hash/gin/gist), WHERE, WITH(...)
     - [ ] MySQL: UNIQUE/FULLTEXT/SPATIAL, VISIBLE/INVISIBLE (8.0)
     - [ ] SQLite: UNIQUE, partial (WHERE) (>= 3.8.0)
     - [ ] MSSQL: UNIQUE/NONCLUSTERED, INCLUDE(...), filtered (WHERE)
-  - [ ] Валидация: уникальность имени, существование колонок, варнинги для неподдерживаемых опций
+  - [ ] Валидация: варнинги для неподдерживаемых опций по диалектам
   - [ ] Миграции: diff/create/drop/alter индексов
   - [ ] Тесты: DDL по провайдерам (compound/partial/expression/unique)
   - [ ] Документация: матрица совместимости и примеры
