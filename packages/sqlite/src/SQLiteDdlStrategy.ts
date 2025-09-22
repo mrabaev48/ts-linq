@@ -34,11 +34,18 @@ export class SQLiteDdlStrategy {
 
   public generateCreateIndexSql(
     tableName: string,
-    index: { name: string; columns: string[]; unique: boolean; where?: string; orders?: { [column: string]: 'ASC' | 'DESC' } }
+    index: { name: string; columns: string[]; unique: boolean; where?: string; orders?: { [column: string]: 'ASC' | 'DESC' }; expressions?: string[]; collations?: { [column: string]: string } }
   ): string {
     const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
     const whereSql = index.where ? ` WHERE ${index.where}` : '';
-    const cols = index.columns.map(c => index.orders?.[c] ? `${c} ${index.orders![c]}` : c).join(', ');
+    const parts: string[] = [];
+    for (const c of index.columns) {
+      const ord = index.orders?.[c] ? ` ${index.orders![c]}` : '';
+      const collate = index.collations?.[c] ? ` COLLATE ${index.collations![c]}` : '';
+      parts.push(`${c}${ord}${collate}`);
+    }
+    for (const e of index.expressions || []) parts.push(`(${e})`);
+    const cols = parts.join(', ');
     return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS ${index.name} ON ${tableName} (${cols})${whereSql}`;
   }
 
