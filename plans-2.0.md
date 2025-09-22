@@ -326,8 +326,8 @@
   - [x] DDL: функциональные/выражения в индексах (PG/MySQL/SQLite) ✅
   - [x] Инспекторы индексов: PG/MySQL/MSSQL (inventory: name/columns/unique/where) ✅
   - [x] Тесты: инспекторы и использование в diff‑генераторе ✅
-  - [ ] Поддержка выражений в индексах (functional/expressions)
-  - [ ] Колляция и NULLS ordering (ASC/DESC NULLS FIRST/LAST)
+  - [x] Поддержка выражений в индексах (functional/expressions) ✅
+  - [x] Колляция и NULLS ordering (ASC/DESC NULLS FIRST/LAST) ✅
   - [ ] Диалекты DDL
     - [ ] Postgres: CONCURRENTLY, USING (btree/hash/gin/gist), WHERE, WITH(...)
     - [ ] MySQL: UNIQUE/FULLTEXT/SPATIAL, VISIBLE/INVISIBLE (8.0)
