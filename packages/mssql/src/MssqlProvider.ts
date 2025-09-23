@@ -190,7 +190,7 @@ export class MssqlProvider extends DatabaseProvider {
     if (!pk.length) return this.insert(entity, entityClass);
 
     const updatable = metadata.columns.filter(
-      (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated
+      (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
     );
     const sourceCols = metadata.columns.filter((c) => !c.isGenerated);
 

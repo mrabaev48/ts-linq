@@ -23,7 +23,7 @@ module.exports = {
     {
       displayName: 'core',
       testMatch: ['<rootDir>/packages/core/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] },
     },
     ...(includeIntegration ? [{
       displayName: 'integration',

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { ColumnMetadata, RelationshipMetadata } from '../types';
+import type { ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../types';
 
 /**
  * Options for configuring an entity/table.
@@ -50,6 +50,10 @@ export function Entity(options: EntityOptions = {}): ClassDecorator {
                 ? (te as Function)
                 : (te as () => Function)();
             MetadataStorage.addRelationship(ctor, { ...rel, targetEntity: resolvedTarget });
+          }
+          const idxs = (Reflect.getOwnMetadata('orm:indexes', ctor) as IndexMetadata[]) || [];
+          for (const idx of idxs) {
+            MetadataStorage.addIndex(ctor, idx);
           }
         } catch {
           /* ignore */

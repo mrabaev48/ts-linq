@@ -53,6 +53,101 @@ LINQ-style query building with method chaining is provided by `Queryable`, while
 
 This separation improves testability and extensibility. The AST + visitor pipeline enables SQL generation where possible, while keeping runtime semantics correct via safe fallbacks.
 
+### Advanced Indexes
+
+Indexes can be declared via the `@Index` decorator (Stage‑3) or registered programmatically via `MetadataStorage.addIndex(...)`.
+
+Options supported (provider‑agnostic metadata):
+
+- `columns: string[]` — columns participating in the index
+- `unique: boolean` — uniqueness
+- `where?: string` — partial/filtered predicate (PG/SQLite/MSSQL; ignored on MySQL)
+- `orders?: { [column]: 'ASC' | 'DESC' }` — per‑column order
+- `expressions?: string[]` — raw SQL expressions as key parts (PG/MySQL/SQLite)
+- `collations?: { [column]: string }` — per‑column collation (PG/SQLite)
+- `nulls?: { [column]: 'FIRST' | 'LAST' }` — NULLS ordering (PG)
+
+Example:
+
+```ts
+@Entity()
+@Index('idx_users_active', ['active'], { where: 'active = true' })
+@Index('idx_users_email_ci', ['email'], { collations: { email: 'NOCASE' } })
+@Index('idx_users_created_ord', ['createdAt'], { orders: { createdAt: 'DESC' }, nulls: { createdAt: 'LAST' } })
+@Index('idx_users_email_expr', [], { expressions: ['LOWER(email)'] })
+class User {
+  @PrimaryKey() id!: number;
+  @Column() email!: string;
+  @Column() active!: boolean;
+  @Column() createdAt!: Date;
+}
+```
+
+Migration diff detects new/changed/dropped indexes and emits dialect‑specific SQL:
+
+- Postgres: `CREATE [UNIQUE] INDEX IF NOT EXISTS ... (col [ASC|DESC] [COLLATE ...] [NULLS ...], (expr)) [WHERE ...]`
+- SQLite: `CREATE [UNIQUE] INDEX IF NOT EXISTS ... (col [ASC|DESC] [COLLATE ...], (expr)) [WHERE ...]`
+- MySQL: `CREATE [UNIQUE] INDEX IF NOT EXISTS ... (col [ASC|DESC], (expr))` (partial ignored)
+- MSSQL: `CREATE [UNIQUE] INDEX ... ON ... (col [ASC|DESC]) [WHERE ...]`
+
+Notes:
+
+- MySQL ignores partial `WHERE` in index options.
+- Expressions support depends on engine/version; ensure compatibility for your target DB.
+- When index shape changes, generator emits DROP + CREATE with dialect‑specific DROP syntax.
+
+IndexOptionsBuilder (fluent):
+
+```ts
+// Import рядом с декораторами
+import { Index, IndexOptionsBuilder } from '@ts-linq/core/decorators';
+
+@Entity()
+@Index(
+  new IndexOptionsBuilder('idx_users_email_created')
+    .onColumns(['email', 'createdAt'])
+    .unique()
+    .orderBy({ email: 'ASC', createdAt: 'DESC' })
+)
+class User {
+  @PrimaryKey() id!: number;
+  @Column() email!: string;
+  @Column() createdAt!: Date;
+}
+
+// Также доступен импорт из utils:
+// import { IndexOptionsBuilder } from '@ts-linq/core/utils';
+```
+
+### Computed Columns vs Default Expressions
+
+Computed (generated) columns вычисляются базой по выражению и считаются read‑only в ORM. В отличие от `defaultExpression`, которое подставляет значение только при INSERT, computed пересчитывается на стороне БД при изменении зависимых столбцов.
+
+Правила и ограничения:
+- Computed колонки исключены из INSERT/UPDATE; попытка записи вызывает ValidationError.
+- Нельзя сочетать `isComputed` с `defaultValue`/`defaultExpression`/`isGenerated`/`isVersion`.
+- Миграции: изменение computed выполняется как drop+add (для SQLite прямой DROP COLUMN недоступен; требуется перестройка таблицы вне scope минимального диффа).
+
+Поддержка диалектов (storage):
+- PostgreSQL: только STORED (`GENERATED ALWAYS AS (...) STORED`).
+- MySQL ≥ 5.7: `VIRTUAL` и `STORED`.
+- SQLite ≥ 3.31: `VIRTUAL`/`STORED` (в проекте по умолчанию VIRTUAL; при старых версиях выводится предупреждение и/или тесты пропускаются).
+- MSSQL: `AS (...)` c опцией `PERSISTED` при необходимости материализации.
+
+Пример регистрации без декораторов:
+```ts
+MetadataStorage.addEntity(Order, 'orders');
+MetadataStorage.addColumn(Order, {
+  propertyName: 'totalWithVat',
+  columnName: 'total_with_vat',
+  type: 'INTEGER',
+  nullable: true,
+  isComputed: true,
+  computedExpression: 'amount * 1.2'
+});
+MetadataStorage.addPrimaryKey(Order, 'id');
+```
+
 ### Migration Framework
 
 Code-first database evolution support:

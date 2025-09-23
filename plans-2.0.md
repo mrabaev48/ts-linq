@@ -78,6 +78,7 @@
   expect(queryBuilder.buildSelect()).toMatchSnapshot();
   expect(migration.generateSQL()).toMatchSnapshot();
   ```
+  - [x] Базовые снапшоты DDL для computed‑колонок по диалектам (CREATE TABLE) ✅
 
 - [ ] **Property-Based Testing расширение**
   - Complex JOIN scenarios с fast-check
@@ -254,7 +255,7 @@
 **Цель**: Расширенные возможности entity definition
 
 **Задачи:**
-- [ ] **Computed Columns**
+- [x] **Computed Columns** ✅
   ```typescript
   @Entity()
   class User {
@@ -265,19 +266,51 @@
     fullName!: string;
   }
   ```
+  - [x] Исключить computed из INSERT/UPDATE; ValidationError при попытке записи ✅
+  - [x] Persisted/Virtual флаги в типах и DDL (PG: STORED; MySQL: VIRTUAL/STORED; SQLite: VIRTUAL; MSSQL: PERSISTED) — базовые варнинги/фичедетекция частично ✅
+  - [x] Валидация схемы: запрет сочетаний computed с defaultValue/defaultExpression/isGenerated/isVersion; улучшенные сообщения ✅
+  - [x] Миграции: diff/DDL для добавления/изменения/удаления computed (ALTER реализован как drop+add, SQLite drop недоступен) ✅
+  - [x] Интеграционные тесты (per provider): вычисление значения и отсутствие записи в computed ✅
+    - [x] SQLite ✅ (с фичедетекцией/скип при отсутствии поддержки)
+    - [x] PostgreSQL ✅
+    - [x] MySQL ✅
+    - [x] MSSQL ✅
+  - [x] Документация: гайд по computed vs defaultExpression; переносимость и ограничения (README + docs/guides/computed-columns.md) ✅
+  - [x] Валидация схемы: запрет сочетаний computed + defaultValue/defaultExpression; улучшенные сообщения ✅
+  - [x] DX/типизация: пометить computed как read‑only в метаданных/маппинге; утилиты типов (`InsertShape`/`UpdateShape`) ✅
+  - [ ] CLI/миграции (опц.): генерация и экспорт/импорт схем с computed
 
-- [ ] **Conditional Validation**
+
+- [x] **Conditional Validation** ✅
   ```typescript
   @Entity()
   class Order {
     @Column() status!: 'pending' | 'paid' | 'shipped';
     
-    @ValidIf(order => order.status === 'pending')
-    @Column() paymentDue?: Date;
+    @ValidIf(order => order.status !== 'pending' || order.amount > 0, 'Pending requires positive amount')
+    @Column() amount!: number;
   }
   ```
+  - [x] API: `@ValidIf(predicate, message?)` (Stage‑3) и `ValidationRule { propertyName, predicate, message? }` ✅
+  - [x] Исполнение: `DbContext.validateChanges()` (Added/Modified), агрегирование ошибок (класс/поле/сообщение) ✅
+  - [ ] Порядок: сначала базовые (NotNull/length), затем ValidIf; совместимость с soft delete/audit
+  - [ ] Типобезопасность/DX: строго типизированные предикаты; хелперы для частых паттернов
+  - [ ] Тесты: unit (регистрация, множественные правила, ошибки), интеграционные сценарии
+  - [ ] Документация: гайд/ограничения; рекомендация дублировать критичные правила в БД
+  - [ ] Перфоманс/безопасность: кеш правил по классу; гайдлайны против тяжёлых предикатов
+  - [ ] Расширения (опц.): группы правил (onCreate/onUpdate), локализация сообщений
 
 - [ ] **Database Functions**
+  - [x] Базовый декоратор `@DatabaseFunction` (Stage‑3) ✅
+  - [x] `defaultExpression` в `ColumnMetadata` и поддержка в DDL ✅
+  - [x] Диалектные алиасы функций (PG/MySQL/SQLite/MSSQL) — через `defaultExpressionDialect` и декоратор ✅
+  - [ ] Поведение computed vs default (документация и ограничения)
+  - [x] Миграции: diff/DDL для defaultExpression и computed (ALTER add, CREATE) ✅
+  - [x] DDL: STORED/VIRTUAL/PERSISTED + feature‑детекция/варнинги (версии/возможности) ✅
+  - [x] Интеграционные тесты: дефолты применяются; computed вычисляется (где поддерживается) ✅
+  - [x] ORM‑контракты: исключить computed из INSERT/UPDATE (валидация + DX) ✅
+  - [ ] Документация: гайд и таблица совместимости по СУБД
+  - [ ] Линтер/валидация схемы: улучшить сообщения (класс/поле)
   ```typescript
   @Entity()
   class AuditLog {
@@ -290,6 +323,41 @@
   ```
 
 - [ ] **Advanced Indexes**
+  - [x] Декоратор `@Index` (Stage‑3): name, columns, unique, where/partial ✅
+  - [x] Миграции: базовая поддержка индексов (diff/create/drop + WHERE) ✅
+  - [x] Тесты: миграции индексов (diff + SQL, диалектные DROP) ✅
+  - [x] Тесты: DDL partial/filtered indexes (PG/SQLite/MSSQL) ✅
+  - [x] Валидация: уникальность имени индекса и существование колонок ✅
+  - [x] Порядок столбцов в индексе (ASC/DESC) ✅
+  - [x] DDL: функциональные/выражения в индексах (PG/MySQL/SQLite) ✅
+  - [x] Инспекторы индексов: PG/MySQL/MSSQL (inventory: name/columns/unique/where) ✅
+  - [x] Тесты: инспекторы и использование в diff‑генераторе ✅
+  - [x] Поддержка выражений в индексах (functional/expressions) ✅
+  - [x] Колляция и NULLS ordering (ASC/DESC NULLS FIRST/LAST) ✅
+  - [ ] Диалекты DDL
+    - Postgres:
+      - [x] CONCURRENTLY ✅
+      - [x] USING (btree/hash/gin/gist) ✅
+      - [x] WHERE (partial) ✅
+      - [x] WITH(...) ✅
+    - MySQL:
+      - [x] FULLTEXT ✅
+      - [x] SPATIAL ✅
+      - [x] VISIBLE/INVISIBLE (8.0) ✅
+    - SQLite:
+      - [x] UNIQUE ✅
+      - [x] partial (WHERE) (>= 3.8.0) ✅
+    - MSSQL:
+      - [x] filtered (WHERE) ✅
+      - [x] INCLUDE(...) ✅
+  - [x] Валидация: варнинги для неподдерживаемых опций по диалектам ✅
+  - [x] Миграции: diff/create/drop индексов (расширенные свойства) ✅
+  - [x] Миграции: alter индексов (drop+create при изменении свойств) ✅
+  - [x] Тесты: DDL/миграции по провайдерам (partial/expressions/orders/unique; PG USING/CONCURRENTLY/WITH; MySQL FULLTEXT/SPATIAL/VISIBLE; MSSQL INCLUDE; PG/SQLite COLLATE/NULLS) ✅
+  - [x] Документация: пример с IndexOptionsBuilder и заметки по диалектам (README) ✅
+  - [x] DX: `IndexOptions` и `IndexOptionsBuilder`; экспорт из `@ts-linq/core/decorators` и `@ts-linq/core/utils` ✅
+  - [x] Тесты: декоратор `@Index` принимает `IndexOptionsBuilder` ✅
+  - [x] Инициализация: `@Entity` синхронизирует индексы из Reflect (Stage‑3) ✅
   ```typescript
   @Entity()
   @Index('idx_user_email_active', ['email'], { where: 'active = true' })

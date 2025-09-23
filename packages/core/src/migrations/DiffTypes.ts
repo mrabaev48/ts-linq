@@ -3,13 +3,27 @@ export interface ColumnDef {
   type: string;
   nullable: boolean;
   defaultValue?: unknown;
+  defaultExpression?: string;
   isPrimaryKey?: boolean;
+  isComputed?: boolean;
+  computedExpression?: string;
+  computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED';
 }
 
 export interface IndexDef {
   name: string;
   columns: string[];
   unique: boolean;
+  where?: string;
+  orders?: { [column: string]: 'ASC' | 'DESC' };
+  collations?: { [column: string]: string };
+  nulls?: { [column: string]: 'FIRST' | 'LAST' };
+  expressions?: string[];
+  using?: 'btree' | 'hash' | 'gin' | 'gist';
+  concurrently?: boolean;
+  withParams?: Record<string, string | number | boolean>;
+  mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
+  include?: string[];
 }
 
 export interface ForeignKeyDef {
@@ -57,6 +71,10 @@ export interface TableDiff {
   /** Drop these foreign key constraint names from the existing table. */
   fkDrops?: string[];
   // future: fkChanges
+  /** Optional snapshot of expected columns after changes (used for SQLite rebuild). */
+  columnsAfter?: ColumnDef[];
+  /** Optional snapshot of expected primary keys after changes (used for SQLite rebuild). */
+  primaryKeysAfter?: string[];
 }
 
 export interface SchemaDiff {
@@ -90,7 +108,21 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
           typeof (actualColumn as { nullable?: boolean }).nullable === 'boolean'
             ? expectedColumn.nullable !== (actualColumn as { nullable?: boolean }).nullable!
             : false;
-        const needsAlter = typeChanged || nullableChanged;
+        // Computed changes: detect when expected vs actual differ by flags/expression/storage
+        const expectedIsComputed = !!(expectedColumn as { isComputed?: boolean }).isComputed;
+        const actualIsComputed = !!(actualColumn as { isComputed?: boolean }).isComputed;
+        const expectedExpr = (expectedColumn as { computedExpression?: string }).computedExpression;
+        const actualExpr = (actualColumn as { computedExpression?: string }).computedExpression;
+        const expectedStorage = (expectedColumn as { computedStorage?: string }).computedStorage;
+        const actualStorage = (actualColumn as { computedStorage?: string }).computedStorage;
+        const computedChanged =
+          expectedIsComputed !== actualIsComputed ||
+          (expectedExpr || '') !== (actualExpr || '') ||
+          (expectedStorage || '') !== (actualStorage || '');
+        const defaultExprChanged =
+          ((expectedColumn as { defaultExpression?: string }).defaultExpression || '') !==
+          (((actualColumn as unknown as ColumnDef).defaultExpression) || '');
+        const needsAlter = typeChanged || nullableChanged || computedChanged || defaultExprChanged;
         if (needsAlter) {
           changes.push({ kind: 'alter', column: expectedColumn, prev: actualColumn });
         }
@@ -103,7 +135,33 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
         changes.push({ kind: 'drop', column: actualColumn });
       }
     }
-    if (changes.length > 0) diffs.push({ table: expectedTable.name, columnChanges: changes });
+    // Index diffs
+    const indexCreates: IndexDef[] = [];
+    const indexDrops: string[] = [];
+    const expIdxByName = new Map(expectedTable.indexes.map((i) => [i.name, i] as const));
+    const actIdxByName = new Map(actualTable.indexes.map((i) => [i.name, i] as const));
+    for (const [name, expIdx] of expIdxByName) {
+      const actIdx = actIdxByName.get(name);
+      const equal = actIdx
+        ? arraysEqual(expIdx.columns, actIdx.columns) &&
+          !!expIdx.unique === !!actIdx.unique &&
+          (expIdx.where || '') === ((actIdx as { where?: string }).where || '') &&
+          shallowObjEqual(expIdx.orders, (actIdx as { orders?: Record<string, 'ASC'|'DESC'> }).orders) &&
+          shallowObjEqual(expIdx.collations, (actIdx as { collations?: Record<string, string> }).collations) &&
+          shallowObjEqual(expIdx.nulls, (actIdx as { nulls?: Record<string, 'FIRST'|'LAST'> }).nulls) &&
+          arraysEqual(expIdx.expressions || [], (actIdx as { expressions?: string[] }).expressions || [])
+        : false;
+      if (!actIdx || !equal) {
+        if (actIdx && !equal) indexDrops.push(name);
+        indexCreates.push(expIdx);
+      }
+    }
+    for (const [name] of actIdxByName) {
+      if (!expIdxByName.has(name)) indexDrops.push(name);
+    }
+    if (changes.length > 0 || indexCreates.length > 0 || indexDrops.length > 0) {
+      diffs.push({ table: expectedTable.name, columnChanges: changes.length ? changes : undefined, indexCreates: indexCreates.length ? indexCreates : undefined, indexDrops: indexDrops.length ? indexDrops : undefined });
+    }
   }
   // Dropped tables
   const expectedByName = new Map(expected.tables.map((table) => [table.name, table] as const));
@@ -119,4 +177,22 @@ function normalizeType(typeName: string): string {
   return String(typeName || '')
     .trim()
     .toUpperCase();
+}
+
+function arraysEqual(a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+function shallowObjEqual<T extends Record<string, unknown> | undefined>(a: T, b: T): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  const ak = Object.keys(a as Record<string, unknown>);
+  const bk = Object.keys(b as Record<string, unknown>);
+  if (ak.length !== bk.length) return false;
+  for (const k of ak) {
+    if ((a as Record<string, unknown>)[k] !== (b as Record<string, unknown>)[k]) return false;
+  }
+  return true;
 }

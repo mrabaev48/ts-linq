@@ -304,7 +304,7 @@ export class MySqlProvider extends DatabaseProvider {
     metadata: EntityMetadata
   ): { sql: string; params: SqlParameter[] } {
     const insertable = metadata.columns.filter(
-      (c) => !c.isGenerated || entity[c.propertyName] !== undefined
+      (c) => (!c.isGenerated || entity[c.propertyName] !== undefined) && !c.isComputed
     );
     const names = insertable.map((c) => c.columnName);
     const placeholders = insertable.map(() => '?');
@@ -322,7 +322,7 @@ export class MySqlProvider extends DatabaseProvider {
     versionCol?: ColumnMetadata
   ): { sql: string; params: SqlParameter[] } {
     const updatable = metadata.columns.filter(
-      (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated
+      (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
     );
     const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
     const setParams: SqlParameter[] = updatable.map((c) =>

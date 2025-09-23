@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "experimentalDecorators": false,
+    "emitDecoratorMetadata": false,
+    "target": "ES2022",
+    "useDefineForClassFields": true
+  }
+}
+
+
