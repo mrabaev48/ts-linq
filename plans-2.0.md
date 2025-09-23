@@ -271,10 +271,10 @@
   - [x] Миграции: diff/DDL для добавления/изменения/удаления computed (ALTER реализован как drop+add, SQLite drop недоступен) ✅
   - [ ] Интеграционные тесты (per provider): вычисление значения и отсутствие записи в computed
     - [x] SQLite ✅ (с фичедетекцией/скип при отсутствии поддержки)
-    - [ ] PostgreSQL
-    - [ ] MySQL
-    - [ ] MSSQL
-  - [ ] Документация: гайд по computed vs defaultExpression; переносимость и ограничения
+    - [x] PostgreSQL ✅
+    - [x] MySQL ✅
+    - [x] MSSQL ✅
+  - [x] Документация: гайд по computed vs defaultExpression; переносимость и ограничения (README + docs/guides/computed-columns.md) ✅
   - [ ] Валидация схемы: запрет сочетаний computed + defaultValue/defaultExpression; улучшенные сообщения
   - [ ] DX/типизация: пометить computed как read‑only в метаданных/маппинге; (опц.) утилиты типов
   - [ ] CLI/миграции (опц.): генерация и экспорт/импорт схем с computed
