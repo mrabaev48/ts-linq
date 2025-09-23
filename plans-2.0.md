@@ -277,7 +277,7 @@
     - [x] MSSQL ✅
   - [x] Документация: гайд по computed vs defaultExpression; переносимость и ограничения (README + docs/guides/computed-columns.md) ✅
   - [x] Валидация схемы: запрет сочетаний computed + defaultValue/defaultExpression; улучшенные сообщения ✅
-  - [ ] DX/типизация: пометить computed как read‑only в метаданных/маппинге; (опц.) утилиты типов
+  - [x] DX/типизация: пометить computed как read‑only в метаданных/маппинге; утилиты типов (`InsertShape`/`UpdateShape`) ✅
   - [ ] CLI/миграции (опц.): генерация и экспорт/импорт схем с computed
 
 

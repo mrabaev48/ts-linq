@@ -125,6 +125,8 @@ export interface ColumnMetadata {
   computedExpression?: string;
   /** Storage hint for computed column: VIRTUAL/STORED (MySQL/SQLite) or PERSISTED (MSSQL). */
   computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED';
+  /** Read-only column flag for DX: values are not persisted by ORM. Implied by isComputed. */
+  isReadOnly?: boolean;
 }
 
 /** Static global filter applied to all queries of a specific entity. */
@@ -588,6 +590,23 @@ export type ExtractEntityName<T> = T extends EntityId<any, infer U> ? U : never;
  * Utility type to extract the underlying ID type from a branded ID.
  */
 export type ExtractIdType<T> = T extends EntityId<infer U, any> ? U : never;
+
+/**
+ * Make specified properties of T readonly (DX helper).
+ */
+export type MakeReadonly<T, K extends keyof T> = Omit<T, K> & { readonly [P in K]: T[P] };
+
+/**
+ * Shape for INSERT operations excluding computed/read-only keys.
+ * Provide K as a union of keys you consider computed/read-only in your entity.
+ */
+export type InsertShape<T, K extends keyof T = never> = Omit<T, K>;
+
+/**
+ * Shape for UPDATE operations excluding computed/read-only keys (all other fields optional).
+ * Provide K as a union of keys you consider computed/read-only in your entity.
+ */
+export type UpdateShape<T, K extends keyof T = never> = Partial<Omit<T, K>>;
 
 /**
  * Extract primary key type from an entity by convention. If the entity has an `id` property,
