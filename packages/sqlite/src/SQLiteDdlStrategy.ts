@@ -73,8 +73,9 @@ export class SQLiteDdlStrategy {
         definition += ' NOT NULL';
       }
 
-      if ((column as { defaultExpression?: string }).defaultExpression) {
-        definition += ` DEFAULT ${(column as { defaultExpression?: string }).defaultExpression}`;
+      const defExpr = (column as { defaultExpression?: string }).defaultExpression;
+      if (defExpr) {
+        definition += ` DEFAULT ${defExpr}`;
       } else if (column.defaultValue !== undefined) {
         definition += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
       }
