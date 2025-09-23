@@ -64,15 +64,17 @@ export class SQLiteDdlStrategy {
       definition += `(${column.length})`;
     }
 
-    if (column.isGenerated && this.mapTypeToSQLite(column.type) === 'INTEGER') {
-      // Skip extra constraints; PRIMARY KEY AUTOINCREMENT handled at table level
-    } else {
+    const isIntegerAutoincPk = column.isGenerated && this.mapTypeToSQLite(column.type) === 'INTEGER';
+    if (!isIntegerAutoincPk) {
       if (!column.nullable) {
         definition += ' NOT NULL';
       }
 
-      if ((column as { defaultExpression?: string }).defaultExpression) definition += ` DEFAULT ${(column as { defaultExpression?: string }).defaultExpression}`;
-      else if (column.defaultValue !== undefined) definition += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
+      if ((column as { defaultExpression?: string }).defaultExpression) {
+        definition += ` DEFAULT ${(column as { defaultExpression?: string }).defaultExpression}`;
+      } else if (column.defaultValue !== undefined) {
+        definition += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
+      }
     }
 
     return definition;
