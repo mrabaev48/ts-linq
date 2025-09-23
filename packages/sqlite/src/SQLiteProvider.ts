@@ -378,7 +378,7 @@ export class SQLiteProvider extends DatabaseProvider {
       // Exclude columns without provided value to allow DB defaults
       const value = entity[col.propertyName];
       // include when value is defined (can be null intentionally)
-      if (value !== undefined) return !col.isGenerated || value !== null;
+      if (value !== undefined) return (!col.isGenerated || value !== null) && !col.isComputed;
       return false;
     });
 
@@ -399,7 +399,7 @@ export class SQLiteProvider extends DatabaseProvider {
     versionCol?: ColumnMetadata
   ): { sql: string; params: SqlParameter[] } {
     const updatableColumns = metadata.columns.filter(
-      (col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated
+      (col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated && !col.isComputed
     );
 
     if (updatableColumns.length === 0) {

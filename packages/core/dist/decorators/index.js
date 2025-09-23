@@ -18,4 +18,6 @@ __exportStar(require("./Entity"), exports);
 __exportStar(require("./Column"), exports);
 __exportStar(require("./PrimaryKey"), exports);
 __exportStar(require("./Relationships"), exports);
+__exportStar(require("./ComputedColumn"), exports);
+__exportStar(require("./ValidIf"), exports);
 //# sourceMappingURL=index.js.map

@@ -103,6 +103,10 @@ export interface ColumnMetadata {
   nullable: boolean;
   /** Default value applied on INSERT when undefined. */
   defaultValue?: unknown;
+  /** Raw SQL default expression (e.g., CURRENT_TIMESTAMP). Takes precedence over defaultValue. */
+  defaultExpression?: string;
+  /** Dialect-specific default expressions mapping; takes precedence over defaultExpression when rendering for that dialect. */
+  defaultExpressionDialect?: Partial<Record<'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string, string>>;
   /** Max length for text columns. */
   length?: number;
   /** Numeric precision for decimals. */
@@ -117,6 +121,14 @@ export interface ColumnMetadata {
   isBranded?: boolean;
   /** Optional brand marker (usually entity name) for diagnostics/docs. */
   brand?: string;
+  /** Whether this column is a computed/generated column (expression-based). */
+  isComputed?: boolean;
+  /** Provider-agnostic SQL expression for computed value (dialect adapts as needed). */
+  computedExpression?: string;
+  /** Storage hint for computed column: VIRTUAL/STORED (MySQL/SQLite) or PERSISTED (MSSQL). */
+  computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED';
+  /** Read-only column flag for DX: values are not persisted by ORM. Implied by isComputed. */
+  isReadOnly?: boolean;
 }
 
 /** Static global filter applied to all queries of a specific entity. */
@@ -179,6 +191,26 @@ export interface IndexMetadata {
   columns: string[];
   /** Whether the index enforces uniqueness. */
   unique: boolean;
+  /** Optional WHERE predicate for partial/filtered indexes. */
+  where?: string;
+  /** Optional per-column ordering (ASC/DESC). */
+  orders?: { [column: string]: 'ASC' | 'DESC' };
+  /** Optional raw SQL expressions to include as index key parts (dialect renders as-is). */
+  expressions?: string[];
+  /** Optional per-column collation (by name). */
+  collations?: { [column: string]: string };
+  /** Optional per-column NULLS ordering (PG): FIRST|LAST. */
+  nulls?: { [column: string]: 'FIRST' | 'LAST' };
+  /** Postgres: index method (btree/hash/gin/gist) */
+  using?: 'btree' | 'hash' | 'gin' | 'gist';
+  /** Postgres: build concurrently */
+  concurrently?: boolean;
+  /** Postgres: storage parameters (WITH (...)) */
+  withParams?: Record<string, string | number | boolean>;
+  /** MySQL 8.0+: index visibility */
+  mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
+  /** MSSQL: included non-key columns */
+  include?: string[];
 }
 
 /**
@@ -197,6 +229,8 @@ export interface EntityMetadata {
   relationships: RelationshipMetadata[];
   /** Index definitions. */
   indexes: IndexMetadata[];
+  /** Conditional validation rules. */
+  validations?: ValidationRule[];
 }
 
 /**
@@ -277,6 +311,16 @@ export interface SqlExpression {
 export interface CteDefinition {
   name: string;
   sql: string;
+}
+
+/** Conditional validation rule stored in metadata. */
+export interface ValidationRule {
+  /** Property to which rule applies (for diagnostics). */
+  propertyName: string;
+  /** Predicate evaluated on entity; must return true for valid state. */
+  predicate: (entity: unknown) => boolean;
+  /** Optional error message. */
+  message?: string;
 }
 
 /**
@@ -548,6 +592,23 @@ export type ExtractEntityName<T> = T extends EntityId<any, infer U> ? U : never;
  * Utility type to extract the underlying ID type from a branded ID.
  */
 export type ExtractIdType<T> = T extends EntityId<infer U, any> ? U : never;
+
+/**
+ * Make specified properties of T readonly (DX helper).
+ */
+export type MakeReadonly<T, K extends keyof T> = Omit<T, K> & { readonly [P in K]: T[P] };
+
+/**
+ * Shape for INSERT operations excluding computed/read-only keys.
+ * Provide K as a union of keys you consider computed/read-only in your entity.
+ */
+export type InsertShape<T, K extends keyof T = never> = Omit<T, K>;
+
+/**
+ * Shape for UPDATE operations excluding computed/read-only keys (all other fields optional).
+ * Provide K as a union of keys you consider computed/read-only in your entity.
+ */
+export type UpdateShape<T, K extends keyof T = never> = Partial<Omit<T, K>>;
 
 /**
  * Extract primary key type from an entity by convention. If the entity has an `id` property,
