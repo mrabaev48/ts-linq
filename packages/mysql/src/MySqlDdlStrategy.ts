@@ -36,6 +36,7 @@ export class MySqlDdlStrategy {
     if (index.nulls && Object.keys(index.nulls).length > 0) {
       console.warn(`MySQL: NULLS FIRST/LAST is not supported and will be ignored for ${index.name}`);
     }
+    // Warn on unsupported computed storage if encountered via DDL (rendering handled in column gen)
     const parts: string[] = [];
     for (const c of index.columns) parts.push(index.orders?.[c] ? `${c} ${index.orders![c]}` : c);
     for (const e of index.expressions || []) parts.push(`(${e})`);

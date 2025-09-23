@@ -53,6 +53,9 @@ export class SQLiteDdlStrategy {
     if (column.isComputed && column.computedExpression) {
       const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage;
       const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
+      if (kind === 'STORED') {
+        console.warn(`SQLite: STORED generated columns require SQLite >= 3.31; falling back to VIRTUAL for ${column.columnName}`);
+      }
       return `${column.columnName} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
     }
     let definition = `${column.columnName} ${this.mapTypeToSQLite(column.type)}`;

@@ -4,6 +4,9 @@ export interface ColumnDef {
   nullable: boolean;
   defaultValue?: unknown;
   isPrimaryKey?: boolean;
+  isComputed?: boolean;
+  computedExpression?: string;
+  computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED';
 }
 
 export interface IndexDef {

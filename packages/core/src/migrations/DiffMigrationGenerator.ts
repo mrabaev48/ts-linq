@@ -30,7 +30,10 @@ export class DiffMigrationGenerator {
           type: this.mapType(column.type),
           nullable: column.nullable,
           defaultValue: column.defaultValue,
-          isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName)
+          isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName),
+          isComputed: column.isComputed,
+          computedExpression: column.computedExpression,
+          computedStorage: (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage
         }));
         const primaryKeys = entityMeta.primaryKeys.map(
           (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
