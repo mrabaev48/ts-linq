@@ -220,20 +220,38 @@ export function generateMigrationFromDiff(
     if (tableDiff.columnChanges && tableDiff.columnChanges.length > 0) {
       for (const ch of tableDiff.columnChanges) {
         if (ch.kind === 'add') {
-          up.push(
-            buildAddColumnSql(
-              dialect,
-              tableDiff,
-              ch.column.name,
-              ch.column.type,
-              ch.column.nullable,
-              ch.column.defaultValue
-            )
-          );
+          if ((ch.column as { isComputed?: boolean }).isComputed && (ch.column as { computedExpression?: string }).computedExpression) {
+            // Use full column rendering for computed columns
+            const colSql = renderColumn(dialect, ch.column as ColumnDef);
+            const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
+            up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${colSql}`);
+          } else {
+            up.push(
+              buildAddColumnSql(
+                dialect,
+                tableDiff,
+                ch.column.name,
+                ch.column.type,
+                ch.column.nullable,
+                ch.column.defaultValue
+              )
+            );
+          }
           down.push(buildDropColumnSql(dialect, tableDiff.table, ch.column.name));
         } else if (ch.kind === 'alter') {
           // Разделяем смену типа и nullability
           const alterType = ch.prev && norm(ch.prev.type) !== norm(ch.column.type);
+          // For computed changes, prefer drop + add (dialect-safe baseline)
+          const computedChanged = ((ch.prev as { isComputed?: boolean; computedExpression?: string; computedStorage?: string } | undefined)?.isComputed !== (ch.column as { isComputed?: boolean }).isComputed) ||
+            ((ch.prev as { computedExpression?: string } | undefined)?.computedExpression !== (ch.column as { computedExpression?: string }).computedExpression) ||
+            ((ch.prev as { computedStorage?: string } | undefined)?.computedStorage !== (ch.column as { computedStorage?: string }).computedStorage);
+          if (computedChanged) {
+            // baseline: drop then add
+            up.push(buildDropColumnSql(dialect, tableDiff.table, ch.column.name));
+            const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
+            up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${renderColumn(dialect, ch.column as ColumnDef)}`);
+            continue;
+          }
           if (alterType)
             up.push(buildAlterTypeSql(dialect, tableDiff.table, ch.column.name, ch.column.type));
           const prevNullable = (ch.prev as { nullable?: boolean } | undefined)?.nullable;

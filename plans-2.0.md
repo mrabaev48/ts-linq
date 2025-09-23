@@ -266,10 +266,14 @@
   }
   ```
   - [x] Исключить computed из INSERT/UPDATE; ValidationError при попытке записи ✅
-  - [x] Persisted/Virtual флаги в типах и DDL (PG: STORED; MySQL: VIRTUAL/STORED; SQLite: VIRTUAL; MSSQL: PERSISTED) — фичедетекция позже ✅
+  - [x] Persisted/Virtual флаги в типах и DDL (PG: STORED; MySQL: VIRTUAL/STORED; SQLite: VIRTUAL; MSSQL: PERSISTED) — базовые варнинги/фичедетекция частично ✅
   - [x] Валидация схемы: запрет сочетаний computed с defaultValue/defaultExpression/isGenerated/isVersion; улучшенные сообщения ✅
-  - [ ] Миграции: diff/DDL для добавления/изменения/удаления computed
+  - [x] Миграции: diff/DDL для добавления/изменения/удаления computed (ALTER реализован как drop+add, SQLite drop недоступен) ✅
   - [ ] Интеграционные тесты (per provider): вычисление значения и отсутствие записи в computed
+    - [x] SQLite ✅ (с фичедетекцией/скип при отсутствии поддержки)
+    - [ ] PostgreSQL
+    - [ ] MySQL
+    - [ ] MSSQL
   - [ ] Документация: гайд по computed vs defaultExpression; переносимость и ограничения
   - [ ] Валидация схемы: запрет сочетаний computed + defaultValue/defaultExpression; улучшенные сообщения
   - [ ] DX/типизация: пометить computed как read‑only в метаданных/маппинге; (опц.) утилиты типов
