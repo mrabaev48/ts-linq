@@ -78,6 +78,7 @@
   expect(queryBuilder.buildSelect()).toMatchSnapshot();
   expect(migration.generateSQL()).toMatchSnapshot();
   ```
+  - [x] Базовые снапшоты DDL для computed‑колонок по диалектам (CREATE TABLE) ✅
 
 - [ ] **Property-Based Testing расширение**
   - Complex JOIN scenarios с fast-check
@@ -269,13 +270,13 @@
   - [x] Persisted/Virtual флаги в типах и DDL (PG: STORED; MySQL: VIRTUAL/STORED; SQLite: VIRTUAL; MSSQL: PERSISTED) — базовые варнинги/фичедетекция частично ✅
   - [x] Валидация схемы: запрет сочетаний computed с defaultValue/defaultExpression/isGenerated/isVersion; улучшенные сообщения ✅
   - [x] Миграции: diff/DDL для добавления/изменения/удаления computed (ALTER реализован как drop+add, SQLite drop недоступен) ✅
-  - [ ] Интеграционные тесты (per provider): вычисление значения и отсутствие записи в computed
+  - [x] Интеграционные тесты (per provider): вычисление значения и отсутствие записи в computed ✅
     - [x] SQLite ✅ (с фичедетекцией/скип при отсутствии поддержки)
     - [x] PostgreSQL ✅
     - [x] MySQL ✅
     - [x] MSSQL ✅
   - [x] Документация: гайд по computed vs defaultExpression; переносимость и ограничения (README + docs/guides/computed-columns.md) ✅
-  - [ ] Валидация схемы: запрет сочетаний computed + defaultValue/defaultExpression; улучшенные сообщения
+  - [x] Валидация схемы: запрет сочетаний computed + defaultValue/defaultExpression; улучшенные сообщения ✅
   - [ ] DX/типизация: пометить computed как read‑only в метаданных/маппинге; (опц.) утилиты типов
   - [ ] CLI/миграции (опц.): генерация и экспорт/импорт схем с computed
 

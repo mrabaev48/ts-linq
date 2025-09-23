@@ -5,6 +5,10 @@ export class PostgresDdlStrategy {
     const columnSqls = entityMetadata.columns.map((column) => {
       if (column.isComputed && column.computedExpression) {
         // PostgreSQL supports only STORED
+        const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage;
+        if (storage && storage !== 'STORED') {
+          console.warn(`Postgres: computedStorage='${storage}' is not supported; coercing to STORED for ${column.columnName}`);
+        }
         return `"${column.columnName}" ${this.mapTypeToPg(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) STORED`;
       }
       const mappedType = this.mapTypeToPg(column.type);
