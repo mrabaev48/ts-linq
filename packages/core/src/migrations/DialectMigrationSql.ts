@@ -1,4 +1,4 @@
-import type { SchemaDiff, TableDiff } from './DiffTypes';
+import type { SchemaDiff, TableDiff, ColumnDef } from './DiffTypes';
 
 export type Dialect = 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
 
@@ -283,7 +283,7 @@ function buildCreateTableSql(td: TableDiff, dialect: Dialect): string {
   const create = td.create!;
   const cols = create.columns.map(
     (c) =>
-      `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${c.defaultValue !== undefined ? ' DEFAULT ' + formatValue(dialect, c.defaultValue) : ''}`
+      renderColumn(dialect, c)
   );
   if (create.primaryKeys && create.primaryKeys.length > 0)
     cols.push(`PRIMARY KEY (${create.primaryKeys.map((pk) => q(dialect, pk)).join(', ')})`);
@@ -300,6 +300,28 @@ function buildCreateTableSql(td: TableDiff, dialect: Dialect): string {
     }
   }
   return `CREATE TABLE IF NOT EXISTS ${q(dialect, create.name)} (${cols.join(', ')})`;
+}
+
+function renderColumn(dialect: Dialect, c: ColumnDef): string {
+  if (c.isComputed && c.computedExpression) {
+    switch (dialect) {
+      case 'postgresql':
+        return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${c.computedExpression}) STORED`;
+      case 'mysql': {
+        const kind = c.computedStorage === 'STORED' ? 'STORED' : 'VIRTUAL';
+        return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${c.computedExpression}) ${kind}`;
+      }
+      case 'mssql': {
+        const persisted = c.computedStorage === 'PERSISTED' ? ' PERSISTED' : '';
+        return `${q(dialect, c.name)} AS (${c.computedExpression})${persisted}`;
+      }
+      default: {
+        const kind = c.computedStorage === 'STORED' ? 'STORED' : 'VIRTUAL';
+        return `${q(dialect, c.name)} GENERATED ALWAYS AS (${c.computedExpression}) ${kind}`;
+      }
+    }
+  }
+  return `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${c.defaultValue !== undefined ? ' DEFAULT ' + formatValue(dialect, c.defaultValue) : ''}`;
 }
 
 function buildAddColumnSql(

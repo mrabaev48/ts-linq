@@ -106,6 +106,24 @@ export class MetadataStorage {
         `Column ${column.columnName} cannot have both defaultExpression and defaultValue`
       );
     }
+    // Guard: computed columns cannot have defaults, be generated or versioned
+    if (column.isComputed) {
+      if (column.defaultValue !== undefined || column.defaultExpression !== undefined) {
+        throw new ValidationError(
+          `Computed column ${column.columnName} cannot have defaultValue/defaultExpression`
+        );
+      }
+      if (column.isGenerated) {
+        throw new ValidationError(
+          `Computed column ${column.columnName} cannot be marked as isGenerated`
+        );
+      }
+      if (column.isVersion) {
+        throw new ValidationError(
+          `Computed column ${column.columnName} cannot be a version column`
+        );
+      }
+    }
     const key = this.normalizeTarget(target);
     const finalized = this.entities.get(key);
     if (finalized) {
