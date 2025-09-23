@@ -123,6 +123,8 @@ export class MetadataStorage {
           `Computed column ${column.columnName} cannot be a version column`
         );
       }
+      // DX: computed columns are read-only by definition
+      (column as { isReadOnly?: boolean }).isReadOnly = true;
     }
     const key = this.normalizeTarget(target);
     const finalized = this.entities.get(key);
