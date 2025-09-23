@@ -509,7 +509,12 @@ export abstract class DbContext {
 
   /** Basic model validation: not-null and length. */
   private validateChanges(
-    changes: Array<{ entity: Record<string, unknown>; entityClass: Function; state: string }>
+    changes: Array<{
+      entity: Record<string, unknown>;
+      entityClass: Function;
+      state: string;
+      originalValues?: object;
+    }>
   ): void {
     const errors: Array<{ entity: string; property: string; message: string }> = [];
     for (const change of changes) {
@@ -518,6 +523,27 @@ export abstract class DbContext {
       if (!meta) continue;
       for (const col of meta.columns) {
         const value = change.entity[col.propertyName];
+        // Computed columns are read-only: disallow assignment on insert and modification of value
+        if (col.isComputed) {
+          if (change.state === 'added') {
+            if (value !== undefined) {
+              errors.push({
+                entity: meta.tableName,
+                property: col.propertyName,
+                message: 'Computed column is read-only and cannot be set on insert'
+              });
+            }
+          } else if (change.state === 'modified' && change.originalValues) {
+            const prev = (change.originalValues as Record<string, unknown>)[col.propertyName];
+            if (value !== prev) {
+              errors.push({
+                entity: meta.tableName,
+                property: col.propertyName,
+                message: 'Computed column is read-only and cannot be updated'
+              });
+            }
+          }
+        }
         // Skip validation for auto-generated primary keys on Added entities
         const isGeneratedPk =
           meta.primaryKeys.includes(col.propertyName) &&

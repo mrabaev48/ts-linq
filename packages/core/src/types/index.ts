@@ -123,6 +123,8 @@ export interface ColumnMetadata {
   isComputed?: boolean;
   /** Provider-agnostic SQL expression for computed value (dialect adapts as needed). */
   computedExpression?: string;
+  /** Storage hint for computed column: VIRTUAL/STORED (MySQL/SQLite) or PERSISTED (MSSQL). */
+  computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED';
 }
 
 /** Static global filter applied to all queries of a specific entity. */

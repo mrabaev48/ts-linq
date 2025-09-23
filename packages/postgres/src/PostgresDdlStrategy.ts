@@ -4,7 +4,7 @@ export class PostgresDdlStrategy {
   public generateCreateTableSql(entityMetadata: EntityMetadata): string {
     const columnSqls = entityMetadata.columns.map((column) => {
       if (column.isComputed && column.computedExpression) {
-        // PostgreSQL: GENERATED ALWAYS AS (...) STORED
+        // PostgreSQL supports only STORED
         return `"${column.columnName}" ${this.mapTypeToPg(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) STORED`;
       }
       const mappedType = this.mapTypeToPg(column.type);
