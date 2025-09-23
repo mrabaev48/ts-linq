@@ -225,6 +225,11 @@ export function generateMigrationFromDiff(
             const colSql = renderColumn(dialect, ch.column as ColumnDef);
             const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
             up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${colSql}`);
+          } else if ((ch.column as { defaultExpression?: string }).defaultExpression) {
+            // Use full column rendering to include defaultExpression
+            const colSql = renderColumn(dialect, ch.column as ColumnDef);
+            const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
+            up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${colSql}`);
           } else {
             up.push(
               buildAddColumnSql(
@@ -339,7 +344,10 @@ function renderColumn(dialect: Dialect, c: ColumnDef): string {
       }
     }
   }
-  return `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${c.defaultValue !== undefined ? ' DEFAULT ' + formatValue(dialect, c.defaultValue) : ''}`;
+  const dialectMap = (c as { defaultExpressionDialect?: Record<string, string> }).defaultExpressionDialect || {};
+  const defExpr = dialectMap[dialect] || (c as { defaultExpression?: string }).defaultExpression;
+  const defSql = defExpr ? ` DEFAULT ${defExpr}` : c.defaultValue !== undefined ? ' DEFAULT ' + formatValue(dialect, c.defaultValue) : '';
+  return `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${defSql}`;
 }
 
 function buildAddColumnSql(

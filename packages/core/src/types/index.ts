@@ -105,6 +105,8 @@ export interface ColumnMetadata {
   defaultValue?: unknown;
   /** Raw SQL default expression (e.g., CURRENT_TIMESTAMP). Takes precedence over defaultValue. */
   defaultExpression?: string;
+  /** Dialect-specific default expressions mapping; takes precedence over defaultExpression when rendering for that dialect. */
+  defaultExpressionDialect?: Partial<Record<'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string, string>>;
   /** Max length for text columns. */
   length?: number;
   /** Numeric precision for decimals. */

@@ -3,6 +3,7 @@ export interface ColumnDef {
   type: string;
   nullable: boolean;
   defaultValue?: unknown;
+  defaultExpression?: string;
   isPrimaryKey?: boolean;
   isComputed?: boolean;
   computedExpression?: string;
@@ -118,7 +119,10 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
           expectedIsComputed !== actualIsComputed ||
           (expectedExpr || '') !== (actualExpr || '') ||
           (expectedStorage || '') !== (actualStorage || '');
-        const needsAlter = typeChanged || nullableChanged || computedChanged;
+        const defaultExprChanged =
+          ((expectedColumn as { defaultExpression?: string }).defaultExpression || '') !==
+          (((actualColumn as unknown as ColumnDef).defaultExpression) || '');
+        const needsAlter = typeChanged || nullableChanged || computedChanged || defaultExprChanged;
         if (needsAlter) {
           changes.push({ kind: 'alter', column: expectedColumn, prev: actualColumn });
         }

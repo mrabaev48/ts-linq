@@ -30,6 +30,7 @@ export class DiffMigrationGenerator {
           type: this.mapType(column.type),
           nullable: column.nullable,
           defaultValue: column.defaultValue,
+          defaultExpression: (column as { defaultExpression?: string; defaultExpressionDialect?: Record<string, string> }).defaultExpression,
           isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName),
           isComputed: column.isComputed,
           computedExpression: column.computedExpression,

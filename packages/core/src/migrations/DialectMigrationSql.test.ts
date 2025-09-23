@@ -54,3 +54,18 @@ test('Index drop+create for altered options (orders) on Postgres', () => {
 });
 
 
+test('Add column with defaultExpression in Postgres', () => {
+  const diff = {
+    tables: [
+      {
+        table: 'Users',
+        columnChanges: [
+          { kind: 'add', column: { name: 'createdAt', type: 'DATETIME', nullable: false, defaultExpression: 'CURRENT_TIMESTAMP' } }
+        ]
+      }
+    ]
+  } as const;
+  const res = generateMigrationFromDiff(diff as any, 'postgresql').up.join('\n');
+  expect(res).toContain('ALTER TABLE "Users" ADD COLUMN "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP');
+});
+
