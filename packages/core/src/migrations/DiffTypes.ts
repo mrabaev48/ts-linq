@@ -70,6 +70,10 @@ export interface TableDiff {
   /** Drop these foreign key constraint names from the existing table. */
   fkDrops?: string[];
   // future: fkChanges
+  /** Optional snapshot of expected columns after changes (used for SQLite rebuild). */
+  columnsAfter?: ColumnDef[];
+  /** Optional snapshot of expected primary keys after changes (used for SQLite rebuild). */
+  primaryKeysAfter?: string[];
 }
 
 export interface SchemaDiff {
@@ -103,7 +107,18 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
           typeof (actualColumn as { nullable?: boolean }).nullable === 'boolean'
             ? expectedColumn.nullable !== (actualColumn as { nullable?: boolean }).nullable!
             : false;
-        const needsAlter = typeChanged || nullableChanged;
+        // Computed changes: detect when expected vs actual differ by flags/expression/storage
+        const expectedIsComputed = !!(expectedColumn as { isComputed?: boolean }).isComputed;
+        const actualIsComputed = !!(actualColumn as { isComputed?: boolean }).isComputed;
+        const expectedExpr = (expectedColumn as { computedExpression?: string }).computedExpression;
+        const actualExpr = (actualColumn as { computedExpression?: string }).computedExpression;
+        const expectedStorage = (expectedColumn as { computedStorage?: string }).computedStorage;
+        const actualStorage = (actualColumn as { computedStorage?: string }).computedStorage;
+        const computedChanged =
+          expectedIsComputed !== actualIsComputed ||
+          (expectedExpr || '') !== (actualExpr || '') ||
+          (expectedStorage || '') !== (actualStorage || '');
+        const needsAlter = typeChanged || nullableChanged || computedChanged;
         if (needsAlter) {
           changes.push({ kind: 'alter', column: expectedColumn, prev: actualColumn });
         }

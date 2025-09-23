@@ -21,6 +21,9 @@ export class MssqlDdlStrategy {
   public generateColumnDefinition(column: ColumnMetadata): string {
     if (column.isComputed && column.computedExpression) {
       const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage;
+      if (storage && storage !== 'PERSISTED') {
+        console.warn(`MSSQL: computedStorage='${storage}' is not supported; use 'PERSISTED' or omit. Applying non-persisted computed for ${column.columnName}`);
+      }
       const persisted = storage === 'PERSISTED' ? ' PERSISTED' : '';
       return `${column.columnName} AS (${column.computedExpression})${persisted}`;
     }
