@@ -20,8 +20,9 @@ export class MssqlDdlStrategy {
 
   public generateColumnDefinition(column: ColumnMetadata): string {
     if (column.isComputed && column.computedExpression) {
-      // MSSQL computed column
-      return `${column.columnName} AS (${column.computedExpression})`;
+      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage;
+      const persisted = storage === 'PERSISTED' ? ' PERSISTED' : '';
+      return `${column.columnName} AS (${column.computedExpression})${persisted}`;
     }
     let definition = `${column.columnName} ${this.mapTypeToMssql(column.type)}`;
     if (column.length) {

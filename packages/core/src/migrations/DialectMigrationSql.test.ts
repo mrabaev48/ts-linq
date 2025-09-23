@@ -36,3 +36,21 @@ test('Index WHERE is rendered for PG/SQLite/MSSQL and ignored for MySQL', () => 
 });
 
 
+test('Index drop+create for altered options (orders) on Postgres', () => {
+  const diff = {
+    tables: [
+      {
+        table: 'Users',
+        indexDrops: ['idx_users_email'],
+        indexCreates: [
+          { name: 'idx_users_email', columns: ['email'], unique: false, orders: { email: 'DESC' } }
+        ]
+      }
+    ]
+  } as const;
+  const res = generateMigrationFromDiff(diff as any, 'postgresql').up.join('\n');
+  expect(res).toContain('DROP INDEX IF EXISTS "idx_users_email"');
+  expect(res).toContain('CREATE INDEX "idx_users_email" ON "Users" ("email" DESC)');
+});
+
+

@@ -265,8 +265,8 @@
     fullName!: string;
   }
   ```
-  - [ ] Исключить computed из INSERT/UPDATE; ValidationError при попытке записи
-  - [ ] Persisted/Virtual флаги и фичедетекция (PG/MSSQL: STORED; MySQL: VIRTUAL/STORED; SQLite: VIRTUAL ≥ 3.31)
+  - [x] Исключить computed из INSERT/UPDATE; ValidationError при попытке записи ✅
+  - [x] Persisted/Virtual флаги в типах и DDL (PG: STORED; MySQL: VIRTUAL/STORED; SQLite: VIRTUAL; MSSQL: PERSISTED) — фичедетекция позже ✅
   - [ ] Миграции: diff/DDL для добавления/изменения/удаления computed
   - [ ] Интеграционные тесты (per provider): вычисление значения и отсутствие записи в computed
   - [ ] Документация: гайд по computed vs defaultExpression; переносимость и ограничения
@@ -344,11 +344,11 @@
     - MSSQL:
       - [x] filtered (WHERE) ✅
       - [x] INCLUDE(...) ✅
-  - [ ] Валидация: варнинги для неподдерживаемых опций по диалектам
   - [x] Валидация: варнинги для неподдерживаемых опций по диалектам ✅
-  - [ ] Миграции: diff/create/drop/alter индексов
-  - [ ] Тесты: DDL по провайдерам (compound/partial/expression/unique)
-  - [ ] Документация: матрица совместимости и примеры
+  - [x] Миграции: diff/create/drop индексов (расширенные свойства) ✅
+  - [x] Миграции: alter индексов (drop+create при изменении свойств) ✅
+  - [x] Тесты: DDL/миграции по провайдерам (partial/expressions/orders/unique; PG USING/CONCURRENTLY/WITH; MySQL FULLTEXT/SPATIAL/VISIBLE; MSSQL INCLUDE; PG/SQLite COLLATE/NULLS) ✅
+  - [x] Документация: пример с IndexOptionsBuilder и заметки по диалектам (README) ✅
   - [x] DX: `IndexOptions` и `IndexOptionsBuilder`; экспорт из `@ts-linq/core/decorators` и `@ts-linq/core/utils` ✅
   - [x] Тесты: декоратор `@Index` принимает `IndexOptionsBuilder` ✅
   - [x] Инициализация: `@Entity` синхронизирует индексы из Reflect (Stage‑3) ✅

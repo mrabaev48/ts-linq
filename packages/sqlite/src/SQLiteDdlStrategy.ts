@@ -51,8 +51,9 @@ export class SQLiteDdlStrategy {
 
   public generateColumnDefinition(column: ColumnMetadata): string {
     if (column.isComputed && column.computedExpression) {
-      // SQLite generated column (VIRTUAL by default)
-      return `${column.columnName} GENERATED ALWAYS AS (${column.computedExpression}) VIRTUAL`;
+      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage;
+      const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
+      return `${column.columnName} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
     }
     let definition = `${column.columnName} ${this.mapTypeToSQLite(column.type)}`;
 

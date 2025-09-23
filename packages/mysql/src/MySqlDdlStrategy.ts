@@ -47,8 +47,9 @@ export class MySqlDdlStrategy {
 
   public generateColumnDefinition(column: ColumnMetadata): string {
     if (column.isComputed && column.computedExpression) {
-      // MySQL 5.7+: generated columns; use VIRTUAL by default
-      return `${column.columnName} ${this.mapTypeToMySql(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) VIRTUAL`;
+      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage;
+      const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
+      return `${column.columnName} ${this.mapTypeToMySql(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
     }
     let def = `${column.columnName} ${this.mapTypeToMySql(column.type)}`;
     if (column.length) def += `(${column.length})`;
