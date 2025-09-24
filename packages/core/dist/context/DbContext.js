@@ -434,21 +434,13 @@ class DbContext {
                 if (col.isComputed) {
                     if (change.state === 'added') {
                         if (value !== undefined) {
-                            errors.push({
-                                entity: meta.tableName,
-                                property: col.propertyName,
-                                message: 'Computed column is read-only and cannot be set on insert'
-                            });
+                            errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be set on insert'));
                         }
                     }
                     else if (change.state === 'modified' && change.originalValues) {
                         const prev = change.originalValues[col.propertyName];
                         if (value !== prev) {
-                            errors.push({
-                                entity: meta.tableName,
-                                property: col.propertyName,
-                                message: 'Computed column is read-only and cannot be updated'
-                            });
+                            errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be updated'));
                         }
                     }
                 }
@@ -461,23 +453,11 @@ class DbContext {
                 // Allow audit stamping to satisfy non-null constraints (compat with audit)
                 const satisfiableByAudit = !!audit && ((change.state === 'added' && (col.propertyName === auditNames.createdAt || col.propertyName === auditNames.createdBy) && (col.propertyName === auditNames.createdAt || audit.getCurrentUserId !== undefined)) ||
                     ((change.state === 'added' || change.state === 'modified') && (col.propertyName === auditNames.updatedAt || col.propertyName === auditNames.updatedBy) && (col.propertyName === auditNames.updatedAt || audit.getCurrentUserId !== undefined)));
-                if (!col.nullable &&
-                    (value === null || value === undefined) &&
-                    !isGeneratedPk &&
-                    !hasDbDefault &&
-                    !satisfiableByAudit) {
-                    errors.push({
-                        entity: meta.tableName,
-                        property: col.propertyName,
-                        message: 'Value cannot be null'
-                    });
+                if (!col.nullable && (value === null || value === undefined) && !isGeneratedPk && !hasDbDefault && !satisfiableByAudit) {
+                    errors.push(this.buildValidationDetail(meta, col.propertyName, 'Value cannot be null'));
                 }
                 if (col.length && typeof value === 'string' && value.length > col.length) {
-                    errors.push({
-                        entity: meta.tableName,
-                        property: col.propertyName,
-                        message: `Length exceeds ${col.length}`
-                    });
+                    errors.push(this.buildValidationDetail(meta, col.propertyName, `Length exceeds ${col.length}`));
                 }
             }
             // Conditional Validations (Stage-3 ValidIf) — run AFTER base checks
@@ -497,11 +477,8 @@ class DbContext {
                         const translated = msgKey && this._validationOptions?.translate
                             ? this._validationOptions.translate(msgKey, msgParams)
                             : undefined;
-                        errors.push({
-                            entity: meta.tableName,
-                            property: rule.propertyName,
-                            message: translated || rule.message || 'Validation rule failed'
-                        });
+                        const baseMsg = translated || rule.message || 'Validation rule failed';
+                        errors.push(this.buildValidationDetail(meta, rule.propertyName, baseMsg));
                     }
                 }
             }
@@ -523,6 +500,13 @@ class DbContext {
             .slice();
         this._validationRulesCache.set(entityClass, rules);
         return rules;
+    }
+    buildValidationDetail(meta, property, message) {
+        const table = meta?.tableName || 'unknown_table';
+        const typeName = meta?.target?.name || 'UnknownEntity';
+        const col = meta?.columns.find((c) => c.propertyName === property)?.columnName || property;
+        const fullMessage = `${typeName}.${property} (${table}.${col}): ${message}`;
+        return { entity: table, property, message, entityClass: typeName, table, column: col, fullMessage };
     }
 }
 exports.DbContext = DbContext;

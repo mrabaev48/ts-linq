@@ -143,5 +143,6 @@ export declare abstract class DbContext {
      * Retrieve cached validation rules for an entity class (Reflect metadata → cache).
      */
     private getValidationRules;
+    private buildValidationDetail;
 }
 //# sourceMappingURL=DbContext.d.ts.map
