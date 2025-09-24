@@ -6,7 +6,11 @@ function isStage3FieldContext(x: unknown): x is { kind: 'field'; name: string | 
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in (x as object);
 }
 
-export function ValidIf(predicate: (entity: unknown) => boolean, message?: string): PropertyDecorator {
+export function ValidIf(
+  predicate: (entity: unknown) => boolean,
+  message?: string,
+  options?: { phase?: 'onCreate' | 'onUpdate' | 'always'; messageKey?: string; messageParams?: Record<string, unknown> }
+): PropertyDecorator {
   return function ValidIfDecorator(_targetOrValue: unknown, propOrContext: unknown) {
     if (!isStage3FieldContext(propOrContext)) {
       throw new Error('@ValidIf requires TS5 Stage-3 decorators');
@@ -17,7 +21,7 @@ export function ValidIf(predicate: (entity: unknown) => boolean, message?: strin
       const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
       if (!ctor) return;
       const existing: ValidationRule[] = (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
-      existing.push({ propertyName: name, predicate, message });
+      existing.push({ propertyName: name, predicate, message, phase: options?.phase, messageKey: options?.messageKey, messageParams: options?.messageParams });
       Reflect.defineMetadata('orm:validations', existing, ctor);
     });
   };

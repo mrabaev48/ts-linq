@@ -54,6 +54,7 @@ export abstract class DbContext {
   private _softDelete?: SoftDeleteOptions;
   private _audit?: AuditOptions;
   private _globalFilters?: GlobalFilter[];
+  private _validationOptions?: { translate?: (key: string, params?: Record<string, unknown>) => string };
   /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
   private _validationRulesCache: WeakMap<
     Function,
@@ -71,6 +72,7 @@ export abstract class DbContext {
     this._softDelete = options.softDelete;
     this._audit = options.audit;
     this._globalFilters = options.globalFilters;
+    this._validationOptions = options.validation;
 
     this._changeTracker = new ChangeTracker();
     this._entityLoader = new EntityLoader(this._provider);
@@ -599,12 +601,21 @@ export abstract class DbContext {
       try {
         const rules = this.getValidationRules(change.entityClass);
         for (const rule of rules) {
+          // Phase gating (onCreate / onUpdate / always)
+          const phase = (rule as { phase?: 'onCreate' | 'onUpdate' | 'always' }).phase || 'always';
+          if (phase === 'onCreate' && change.state !== 'added') continue;
+          if (phase === 'onUpdate' && change.state !== 'modified') continue;
           const ok = !!rule.predicate(change.entity);
           if (!ok) {
+            const msgKey = (rule as { messageKey?: string }).messageKey;
+            const msgParams = (rule as { messageParams?: Record<string, unknown> }).messageParams;
+            const translated = msgKey && this._validationOptions?.translate
+              ? this._validationOptions.translate(msgKey, msgParams)
+              : undefined;
             errors.push({
               entity: meta.tableName,
               property: rule.propertyName,
-              message: rule.message || 'Validation rule failed'
+              message: translated || rule.message || 'Validation rule failed'
             });
           }
         }
