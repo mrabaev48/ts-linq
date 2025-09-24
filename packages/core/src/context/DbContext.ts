@@ -54,6 +54,11 @@ export abstract class DbContext {
   private _softDelete?: SoftDeleteOptions;
   private _audit?: AuditOptions;
   private _globalFilters?: GlobalFilter[];
+  /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
+  private _validationRulesCache: WeakMap<
+    Function,
+    Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }>
+  > = new WeakMap();
 
   /**
    * Create a new database context instance.
@@ -592,7 +597,7 @@ export abstract class DbContext {
       }
       // Conditional Validations (Stage-3 ValidIf) — run AFTER base checks
       try {
-        const rules = (Reflect.getOwnMetadata('orm:validations', change.entityClass) as Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }> | undefined) || [];
+        const rules = this.getValidationRules(change.entityClass);
         for (const rule of rules) {
           const ok = !!rule.predicate(change.entity);
           if (!ok) {
@@ -608,5 +613,23 @@ export abstract class DbContext {
       }
     }
     if (errors.length > 0) throw new ValidationError('Model validation failed', errors);
+  }
+  
+  /**
+   * Retrieve cached validation rules for an entity class (Reflect metadata → cache).
+   */
+  private getValidationRules(
+    entityClass: Function
+  ): Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }> {
+    const cached = this._validationRulesCache.get(entityClass);
+    if (cached) return cached;
+    const rules =
+      ((Reflect.getOwnMetadata(
+        'orm:validations',
+        entityClass
+      ) as Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }> | undefined) || [])
+        .slice();
+    this._validationRulesCache.set(entityClass, rules);
+    return rules;
   }
 }
