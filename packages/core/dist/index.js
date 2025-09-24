@@ -65,6 +65,7 @@ __exportStar(require("./migrations/MigrationBuilder"), exports);
 __exportStar(require("./migrations/DiffBasedMigration"), exports);
 __exportStar(require("./migrations/MigrationFileBuilder"), exports);
 __exportStar(require("./migrations/DiffMigrationGenerator"), exports);
+__exportStar(require("./migrations/SchemaSnapshot"), exports);
 // Utils
 __exportStar(require("./utils/SqlHelper"), exports);
 __exportStar(require("./utils/OpenTelemetrySqlLogger"), exports);

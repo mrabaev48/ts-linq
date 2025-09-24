@@ -7,4 +7,5 @@ export * from './CompositeSqlLoggerFactory';
 export * from './RetryPolicies';
 export * from './EntityCache';
 export * from './MetricsSafe';
+export * from './IndexOptionsBuilder';
 //# sourceMappingURL=index.js.map
