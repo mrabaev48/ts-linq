@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Minimal CLI: prints SQLite diff SQL using current metadata. */
 import 'reflect-metadata';
-import { DiffMigrationGenerator, buildExpectedSchemaFromMetadata, buildActualSchemaFromProvider, serializeSchemaSnapshot, deserializeSchemaSnapshot, compareSchemas, generateMigrationFromDiff } from '@ts-linq/core';
+import { DiffMigrationGenerator, SchemaSnapshotBuilder, SchemaSnapshotSerializer, compareSchemas, generateMigrationFromDiff } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -57,8 +57,9 @@ async function main() {
     }
   } else if (cmd === 'schema:export') {
     const out = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
-    const snapshot = buildExpectedSchemaFromMetadata();
-    fs.writeFileSync(out, serializeSchemaSnapshot(snapshot), 'utf8');
+    const snapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
+    const json = new SchemaSnapshotSerializer().serialize(snapshot);
+    fs.writeFileSync(out, json, 'utf8');
     console.log(`Schema snapshot saved to ${out}`);
   } else if (cmd === 'schema:diff') {
     const file = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
@@ -66,8 +67,8 @@ async function main() {
       console.error(`Snapshot file not found: ${file}`);
       process.exitCode = 2;
     } else {
-      const target = deserializeSchemaSnapshot(fs.readFileSync(file, 'utf8'));
-      const actual = await buildActualSchemaFromProvider(provider, target);
+      const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+      const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
       const diff = compareSchemas(target, actual);
       const dialect = (provider as any).providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
       const rendered = generateMigrationFromDiff(diff, dialect);
@@ -79,8 +80,8 @@ async function main() {
       console.error(`Snapshot file not found: ${file}`);
       process.exitCode = 2;
     } else {
-      const target = deserializeSchemaSnapshot(fs.readFileSync(file, 'utf8'));
-      const actual = await buildActualSchemaFromProvider(provider, target);
+      const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+      const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
       const diff = compareSchemas(target, actual);
       const dialect = (provider as any).providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
       const rendered = generateMigrationFromDiff(diff, dialect);

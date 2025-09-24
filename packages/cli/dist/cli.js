@@ -95,8 +95,9 @@ async function main() {
     }
     else if (cmd === 'schema:export') {
         const out = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
-        const snapshot = (0, core_1.buildExpectedSchemaFromMetadata)();
-        fs.writeFileSync(out, (0, core_1.serializeSchemaSnapshot)(snapshot), 'utf8');
+        const snapshot = new core_1.SchemaSnapshotBuilder().buildExpectedFromMetadata();
+        const json = new core_1.SchemaSnapshotSerializer().serialize(snapshot);
+        fs.writeFileSync(out, json, 'utf8');
         console.log(`Schema snapshot saved to ${out}`);
     }
     else if (cmd === 'schema:diff') {
@@ -106,8 +107,8 @@ async function main() {
             process.exitCode = 2;
         }
         else {
-            const target = (0, core_1.deserializeSchemaSnapshot)(fs.readFileSync(file, 'utf8'));
-            const actual = await (0, core_1.buildActualSchemaFromProvider)(provider, target);
+            const target = new core_1.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+            const actual = await new core_1.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
             const diff = (0, core_1.compareSchemas)(target, actual);
             const dialect = provider.providerLabel;
             const rendered = (0, core_1.generateMigrationFromDiff)(diff, dialect);
@@ -122,8 +123,8 @@ async function main() {
             process.exitCode = 2;
         }
         else {
-            const target = (0, core_1.deserializeSchemaSnapshot)(fs.readFileSync(file, 'utf8'));
-            const actual = await (0, core_1.buildActualSchemaFromProvider)(provider, target);
+            const target = new core_1.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+            const actual = await new core_1.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
             const diff = (0, core_1.compareSchemas)(target, actual);
             const dialect = provider.providerLabel;
             const rendered = (0, core_1.generateMigrationFromDiff)(diff, dialect);

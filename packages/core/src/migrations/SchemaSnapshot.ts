@@ -158,24 +158,6 @@ export class SchemaSnapshotSerializer {
   }
 }
 
-// Thin wrappers for back-compat
-export function buildExpectedSchemaFromMetadata(): SchemaSnapshot {
-  return new SchemaSnapshotBuilder().buildExpectedFromMetadata();
-}
-
-export async function buildActualSchemaFromProvider(
-  provider: DatabaseProvider,
-  expected?: SchemaSnapshot
-): Promise<SchemaSnapshot> {
-  return new SchemaSnapshotBuilder(provider).buildActualFromProvider(expected);
-}
-
-export function serializeSchemaSnapshot(snapshot: SchemaSnapshot): string {
-  return new SchemaSnapshotSerializer().serialize(snapshot);
-}
-
-export function deserializeSchemaSnapshot(jsonText: string): SchemaSnapshot {
-  return new SchemaSnapshotSerializer().deserialize(jsonText);
-}
+// (compat wrappers removed — use SchemaSnapshotBuilder/SchemaSnapshotSerializer)
 
 

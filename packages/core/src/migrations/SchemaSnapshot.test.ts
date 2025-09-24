@@ -1,6 +1,6 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata } from '../types';
-import { buildExpectedSchemaFromMetadata, serializeSchemaSnapshot, deserializeSchemaSnapshot } from './SchemaSnapshot';
+import { SchemaSnapshotBuilder, SchemaSnapshotSerializer } from './SchemaSnapshot';
 import { compareSchemas } from './DiffTypes';
 import { generateMigrationFromDiff } from './DialectMigrationSql';
 
@@ -29,7 +29,7 @@ describe('SchemaSnapshot helpers', () => {
     cols.forEach(c => MetadataStorage.addColumn(User, c));
     MetadataStorage.addPrimaryKey(User, 'id');
 
-    const snapshot = buildExpectedSchemaFromMetadata();
+    const snapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
     expect(snapshot.tables.length).toBe(1);
     const table = snapshot.tables[0];
     const cc = table.columns.find(c => c.name === 'name_len');
@@ -38,8 +38,8 @@ describe('SchemaSnapshot helpers', () => {
     const createdAt = table.columns.find(c => c.name === 'created_at');
     expect(createdAt?.defaultExpression).toBe('CURRENT_TIMESTAMP');
 
-    const json = serializeSchemaSnapshot(snapshot);
-    const back = deserializeSchemaSnapshot(json);
+    const json = new SchemaSnapshotSerializer().serialize(snapshot);
+    const back = new SchemaSnapshotSerializer().deserialize(json);
     expect(back.tables[0].columns.find(c => c.name === 'name_len')?.computedExpression).toBe('length(name)');
   });
 
@@ -61,7 +61,7 @@ describe('SchemaSnapshot helpers', () => {
     cols.forEach(c => MetadataStorage.addColumn(User, c));
     MetadataStorage.addPrimaryKey(User, 'id');
 
-    const expected = buildExpectedSchemaFromMetadata();
+    const expected = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
     const diff = compareSchemas(expected, { tables: [] });
 
     const pg = generateMigrationFromDiff(diff, 'postgresql').up.join('\n');

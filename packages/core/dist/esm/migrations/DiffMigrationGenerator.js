@@ -1,4 +1,4 @@
-import { buildExpectedSchemaFromMetadata } from './SchemaSnapshot';
+import { SchemaSnapshotBuilder } from './SchemaSnapshot';
 import { SQLiteSchemaInspector, PostgresSchemaInspector, MySqlSchemaInspector, MssqlSchemaInspector } from './SchemaInspector';
 import { compareSchemas } from './DiffTypes';
 import { generateMigrationFromDiff } from './DialectMigrationSql';
@@ -15,7 +15,7 @@ export class DiffMigrationGenerator {
     }
     async generate() {
         const steps = [];
-        const expected = buildExpectedSchemaFromMetadata();
+        const expected = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
         // Build actual snapshot depending on provider
         const label = this.provider.providerLabel;
         let actual;

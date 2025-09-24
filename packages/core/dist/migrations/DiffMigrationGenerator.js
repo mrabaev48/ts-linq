@@ -18,7 +18,7 @@ class DiffMigrationGenerator {
     }
     async generate() {
         const steps = [];
-        const expected = (0, SchemaSnapshot_1.buildExpectedSchemaFromMetadata)();
+        const expected = new SchemaSnapshot_1.SchemaSnapshotBuilder().buildExpectedFromMetadata();
         // Build actual snapshot depending on provider
         const label = this.provider.providerLabel;
         let actual;
