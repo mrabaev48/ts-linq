@@ -1,10 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SchemaSnapshotSerializer = exports.SchemaSnapshotBuilder = void 0;
-exports.buildExpectedSchemaFromMetadata = buildExpectedSchemaFromMetadata;
-exports.buildActualSchemaFromProvider = buildActualSchemaFromProvider;
-exports.serializeSchemaSnapshot = serializeSchemaSnapshot;
-exports.deserializeSchemaSnapshot = deserializeSchemaSnapshot;
 const MetadataStorage_1 = require("../metadata/MetadataStorage");
 const SchemaInspector_1 = require("./SchemaInspector");
 /**
@@ -153,17 +149,5 @@ class SchemaSnapshotSerializer {
     }
 }
 exports.SchemaSnapshotSerializer = SchemaSnapshotSerializer;
-// Thin wrappers for back-compat
-function buildExpectedSchemaFromMetadata() {
-    return new SchemaSnapshotBuilder().buildExpectedFromMetadata();
-}
-async function buildActualSchemaFromProvider(provider, expected) {
-    return new SchemaSnapshotBuilder(provider).buildActualFromProvider(expected);
-}
-function serializeSchemaSnapshot(snapshot) {
-    return new SchemaSnapshotSerializer().serialize(snapshot);
-}
-function deserializeSchemaSnapshot(jsonText) {
-    return new SchemaSnapshotSerializer().deserialize(jsonText);
-}
+// (compat wrappers removed — use SchemaSnapshotBuilder/SchemaSnapshotSerializer)
 //# sourceMappingURL=SchemaSnapshot.js.map

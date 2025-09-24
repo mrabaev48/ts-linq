@@ -144,17 +144,5 @@ export class SchemaSnapshotSerializer {
         }
     }
 }
-// Thin wrappers for back-compat
-export function buildExpectedSchemaFromMetadata() {
-    return new SchemaSnapshotBuilder().buildExpectedFromMetadata();
-}
-export async function buildActualSchemaFromProvider(provider, expected) {
-    return new SchemaSnapshotBuilder(provider).buildActualFromProvider(expected);
-}
-export function serializeSchemaSnapshot(snapshot) {
-    return new SchemaSnapshotSerializer().serialize(snapshot);
-}
-export function deserializeSchemaSnapshot(jsonText) {
-    return new SchemaSnapshotSerializer().deserialize(jsonText);
-}
+// (compat wrappers removed — use SchemaSnapshotBuilder/SchemaSnapshotSerializer)
 //# sourceMappingURL=SchemaSnapshot.js.map

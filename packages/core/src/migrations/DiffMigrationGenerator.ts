@@ -1,6 +1,6 @@
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { buildExpectedSchemaFromMetadata } from './SchemaSnapshot';
+import { SchemaSnapshotBuilder } from './SchemaSnapshot';
 import { SQLiteSchemaInspector, PostgresSchemaInspector, MySqlSchemaInspector, MssqlSchemaInspector } from './SchemaInspector';
 import type { SchemaSnapshot, TableSnapshot, ColumnDef, IndexDef } from './DiffTypes';
 import { compareSchemas } from './DiffTypes';
@@ -22,7 +22,7 @@ export class DiffMigrationGenerator {
 
   public async generate(): Promise<MigrationStep[]> {
     const steps: MigrationStep[] = [];
-    const expected: SchemaSnapshot = buildExpectedSchemaFromMetadata();
+    const expected: SchemaSnapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
     // Build actual snapshot depending on provider
     const label = this.provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string;
     let actual: SchemaSnapshot;
