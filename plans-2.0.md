@@ -45,9 +45,9 @@
   ├── mssql/          # MSSQL provider
   ├── cli/            # CLI инструменты
   ├── testing/        # Testing utilities
-  ├── otel-logger/    # OpenTelemetrySqlLogger (optional, peer otel)
-  ├── prom-logger/    # PrometheusSqlLogger (optional, peer prom-client)
-  ├── logging-composite/ # CompositeSqlLogger(+Factory)
+  ├── open-telemetry-sql-logger/    # OpenTelemetrySqlLogger (optional, peer otel)
+  ├── prometheus-sql-logger/    # PrometheusSqlLogger (optional, peer prom-client)
+  ├── composite-sql-logger/ # CompositeSqlLogger(+Factory)
   └── metrics-safe/   # MetricsSafe helpers
   ```
 
