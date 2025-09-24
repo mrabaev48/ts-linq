@@ -44,7 +44,11 @@
   ├── mysql/          # MySQL provider
   ├── mssql/          # MSSQL provider
   ├── cli/            # CLI инструменты
-  └── testing/        # Testing utilities
+  ├── testing/        # Testing utilities
+  ├── otel-logger/    # OpenTelemetrySqlLogger (optional, peer otel)
+  ├── prom-logger/    # PrometheusSqlLogger (optional, peer prom-client)
+  ├── logging-composite/ # CompositeSqlLogger(+Factory)
+  └── metrics-safe/   # MetricsSafe helpers
   ```
 
 - [x] **Build Optimization** ✅
@@ -52,6 +56,7 @@
   - [x] Bundle size analysis ✅
   - [x] ESM/CJS dual build с правильными exports ✅
   - [x] TypeScript project references для multi-package ✅
+  - [x] Опциональные heavy-utils вынесены из core index (разделение на пакеты) ✅
 
 **Приоритет**: P0 (Критично)
 **Временные затраты**: 1.5 недели
