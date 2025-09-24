@@ -415,6 +415,28 @@ export class DbContext {
                 continue;
             for (const col of meta.columns) {
                 const value = change.entity[col.propertyName];
+                // Computed columns are read-only: disallow assignment on insert and modification of value
+                if (col.isComputed) {
+                    if (change.state === 'added') {
+                        if (value !== undefined) {
+                            errors.push({
+                                entity: meta.tableName,
+                                property: col.propertyName,
+                                message: 'Computed column is read-only and cannot be set on insert'
+                            });
+                        }
+                    }
+                    else if (change.state === 'modified' && change.originalValues) {
+                        const prev = change.originalValues[col.propertyName];
+                        if (value !== prev) {
+                            errors.push({
+                                entity: meta.tableName,
+                                property: col.propertyName,
+                                message: 'Computed column is read-only and cannot be updated'
+                            });
+                        }
+                    }
+                }
                 // Skip validation for auto-generated primary keys on Added entities
                 const isGeneratedPk = meta.primaryKeys.includes(col.propertyName) &&
                     col.isGenerated &&

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MetadataStorage = void 0;
+const types_1 = require("../types");
 const EntityMetadata_1 = require("./EntityMetadata");
 /**
  * Global singleton storage that collects metadata produced by decorators
@@ -88,6 +89,24 @@ class MetadataStorage {
     }
     /** Add a column definition to the target entity's builder or directly to finalized metadata. */
     addColumnMetadata(target, column) {
+        // Guard: conflicting defaults are not allowed
+        if (column.defaultExpression !== undefined && column.defaultValue !== undefined) {
+            throw new types_1.ValidationError(`Column ${column.columnName} cannot have both defaultExpression and defaultValue`);
+        }
+        // Guard: computed columns cannot have defaults, be generated or versioned
+        if (column.isComputed) {
+            if (column.defaultValue !== undefined || column.defaultExpression !== undefined) {
+                throw new types_1.ValidationError(`Computed column ${column.columnName} cannot have defaultValue/defaultExpression`);
+            }
+            if (column.isGenerated) {
+                throw new types_1.ValidationError(`Computed column ${column.columnName} cannot be marked as isGenerated`);
+            }
+            if (column.isVersion) {
+                throw new types_1.ValidationError(`Computed column ${column.columnName} cannot be a version column`);
+            }
+            // DX: computed columns are read-only by definition
+            column.isReadOnly = true;
+        }
         const key = this.normalizeTarget(target);
         const finalized = this.entities.get(key);
         if (finalized) {
@@ -120,7 +139,33 @@ class MetadataStorage {
     }
     /** Add an index definition to the target entity's builder. */
     addIndexMetadata(target, index) {
+        const key = this.normalizeTarget(target);
+        const finalized = this.entities.get(key);
+        if (finalized) {
+            // Validate duplicate name
+            if (finalized.indexes.some((i) => i.name === index.name)) {
+                throw new types_1.ValidationError(`Duplicate index name '${index.name}' on entity '${finalized.tableName}'`);
+            }
+            // Validate columns exist
+            const existingCols = new Set(finalized.columns.map((c) => [c.columnName, c.propertyName]).flat());
+            const missing = index.columns.filter((c) => !existingCols.has(c));
+            if (missing.length > 0) {
+                throw new types_1.ValidationError(`Index '${index.name}' on entity '${finalized.tableName}' references unknown columns: ${missing.join(', ')}`);
+            }
+            finalized.indexes = [...finalized.indexes, index];
+            return;
+        }
+        // Builder path
         const builder = this.getOrCreateBuilder(target);
+        const snapshot = builder.build();
+        if ((snapshot.indexes || []).some((i) => i.name === index.name)) {
+            throw new types_1.ValidationError(`Duplicate index name '${index.name}' on entity '${snapshot.tableName}'`);
+        }
+        const existingCols = new Set((snapshot.columns || []).map((c) => [c.columnName, c.propertyName]).flat());
+        const missing = index.columns.filter((c) => !existingCols.has(c));
+        if (missing.length > 0) {
+            throw new types_1.ValidationError(`Index '${index.name}' on entity '${snapshot.tableName}' references unknown columns: ${missing.join(', ')}`);
+        }
         builder.addIndex(index);
     }
     /**
