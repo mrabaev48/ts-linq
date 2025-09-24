@@ -1149,6 +1149,7 @@ npm run docs
 - Test matrix: `docs/guides/test-matrix.md`
 - Conditional validation: `docs/guides/conditional-validation.md`
 - Database functions (defaults): `docs/guides/database-functions.md`
+- NestJS integration: `docs/guides/nestjs-integration.md`
 
 ### CLI (experimental)
 
