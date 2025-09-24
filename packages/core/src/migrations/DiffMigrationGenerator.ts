@@ -1,5 +1,6 @@
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
+import { SchemaSnapshotBuilder } from './SchemaSnapshot';
 import { SQLiteSchemaInspector, PostgresSchemaInspector, MySqlSchemaInspector, MssqlSchemaInspector } from './SchemaInspector';
 import type { SchemaSnapshot, TableSnapshot, ColumnDef, IndexDef } from './DiffTypes';
 import { compareSchemas } from './DiffTypes';
@@ -21,48 +22,7 @@ export class DiffMigrationGenerator {
 
   public async generate(): Promise<MigrationStep[]> {
     const steps: MigrationStep[] = [];
-    const entities = MetadataStorage.getEntities();
-    // Build expected snapshot from metadata
-    const expected: SchemaSnapshot = {
-      tables: entities.map((entityMeta) => {
-        const columns: ColumnDef[] = entityMeta.columns.map((column) => ({
-          name: column.columnName,
-          type: this.mapType(column.type),
-          nullable: column.nullable,
-          defaultValue: column.defaultValue,
-          defaultExpression: (column as { defaultExpression?: string; defaultExpressionDialect?: Record<string, string> }).defaultExpression,
-          isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName),
-          isComputed: column.isComputed,
-          computedExpression: column.computedExpression,
-          computedStorage: (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage
-        }));
-        const primaryKeys = entityMeta.primaryKeys.map(
-          (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
-        );
-        const indexes = (entityMeta.indexes || []).map((indexDef) => ({
-          name: indexDef.name,
-          columns: indexDef.columns,
-          unique: !!indexDef.unique,
-          where: indexDef.where,
-          orders: indexDef.orders,
-          collations: indexDef.collations,
-          nulls: indexDef.nulls,
-          expressions: indexDef.expressions,
-          using: (indexDef as { using?: 'btree' | 'hash' | 'gin' | 'gist' }).using,
-          concurrently: (indexDef as { concurrently?: boolean }).concurrently,
-          withParams: (indexDef as { withParams?: Record<string, string | number | boolean> }).withParams,
-          mysqlVisibility: (indexDef as { mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' }).mysqlVisibility,
-          include: (indexDef as { include?: string[] }).include
-        }));
-        return {
-          name: entityMeta.tableName,
-          columns,
-          primaryKeys,
-          indexes,
-          foreignKeys: []
-        } as TableSnapshot;
-      })
-    };
+    const expected: SchemaSnapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
     // Build actual snapshot depending on provider
     const label = this.provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string;
     let actual: SchemaSnapshot;

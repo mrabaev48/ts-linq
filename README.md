@@ -792,7 +792,9 @@ const ctx = new AppDbContext({ connectionString: ':memory:', provider: 'sqlite',
 Composite логгеры (композиция Prometheus + OTEL или других):
 
 ```ts
-import { CompositeSqlLoggerFactory, OpenTelemetrySqlLogger, PrometheusSqlLogger } from './src';
+import { CompositeSqlLoggerFactory } from 'composite-sql-logger';
+import { OpenTelemetrySqlLogger } from 'open-telemetry-sql-logger';
+import { PrometheusSqlLogger } from 'prometheus-sql-logger';
 
 const factory = new CompositeSqlLoggerFactory({
   loggers: [
@@ -811,7 +813,7 @@ const ctx = new AppDbContext({
 OpenTelemetry (optional):
 
 ```ts
-import { OpenTelemetrySqlLogger } from './src/utils/OpenTelemetrySqlLogger';
+import { OpenTelemetrySqlLogger } from 'open-telemetry-sql-logger';
 
 const ctx = new AppDbContext({
   connectionString: process.env.POSTGRES_URL!,
@@ -824,7 +826,7 @@ const ctx = new AppDbContext({
 Prometheus (optional):
 
 ```ts
-import { PrometheusSqlLogger } from './src/utils/PrometheusSqlLogger';
+import { PrometheusSqlLogger } from 'prometheus-sql-logger';
 
 // If prom-client is installed, metrics will be recorded; otherwise this is a no-op
 const promLogger = new PrometheusSqlLogger('orders-service', { prefix: 'tsl_' });
@@ -1147,6 +1149,9 @@ npm run docs
 - Upsert & batch: `docs/guides/upsert-batch.md`
 - Advanced include & joins: `docs/guides/advanced-include-join.md`
 - Test matrix: `docs/guides/test-matrix.md`
+- Conditional validation: `docs/guides/conditional-validation.md`
+- Database functions (defaults): `docs/guides/database-functions.md`
+- NestJS integration: `docs/guides/nestjs-integration.md`
 
 ### CLI (experimental)
 

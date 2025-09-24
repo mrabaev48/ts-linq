@@ -5,6 +5,7 @@ interface ColumnDef {
     type: string;
     nullable: boolean;
     defaultValue?: unknown;
+    defaultExpression?: string;
 }
 interface IndexDef {
     name: string;
@@ -29,6 +30,7 @@ declare class TableBuilder {
     column(name: string, type: string, opts?: {
         nullable?: boolean;
         defaultValue?: unknown;
+        defaultExpression?: string;
     }): this;
     primaryKey(...cols: string[]): this;
     index(name: string, columns: string[], unique?: boolean): this;

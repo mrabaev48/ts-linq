@@ -9,6 +9,7 @@ export * from './decorators/Entity';
 export * from './decorators/Column';
 export * from './decorators/PrimaryKey';
 export * from './decorators/Relationships';
+export * from './decorators/ValidIf';
 // Metadata
 export * from './metadata/MetadataStorage';
 export * from './metadata/EntityMetadata';
@@ -49,6 +50,7 @@ export * from './migrations/MigrationBuilder';
 export * from './migrations/DiffBasedMigration';
 export * from './migrations/MigrationFileBuilder';
 export * from './migrations/DiffMigrationGenerator';
+export * from './migrations/SchemaSnapshot';
 // Utils
 export * from './utils/SqlHelper';
 export * from './utils/OpenTelemetrySqlLogger';

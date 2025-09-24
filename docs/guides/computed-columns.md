@@ -90,6 +90,57 @@ MetadataStorage.addColumn(Product, {
 - Use `defaultExpression` for values set once at insert time (e.g., `CURRENT_TIMESTAMP`). Field remains writable.
 - Use computed columns for values derived from other columns that must always remain consistent and non-editable by the app.
 
+### Side‑by‑side comparison
+
+| Aspect | computed column | defaultExpression |
+| --- | --- | --- |
+| Evaluation time | On read; DB engine evaluates expression (STORED may precompute) | On INSERT only |
+| Mutability (ORM) | Read‑only (excluded from INSERT/UPDATE) | Read/write (after insert) |
+| Source of truth | Derived from other columns | Literal/default at insert |
+| DDL portability | Dialect‑specific keywords/storage | Usually portable (`DEFAULT <expr>`) |
+| Migrations (ALTER) | Rendered as DROP+ADD for safety | Regular ADD/ALTER DEFAULT when supported |
+| Indexing | Via functional/expressional indexes | Regular indexes on the physical column |
+| Conflicts | Cannot coexist with defaultValue/defaultExpression/isGenerated/isVersion | Can coexist with most options |
+
+Examples:
+
+- Timestamps: prefer `defaultExpression: CURRENT_TIMESTAMP` (writable, set once).
+- Denormalized display fields (e.g., `full_name`): prefer computed (always consistent with parts).
+
+### Limitations & edge cases
+
+- SQLite DROP COLUMN is not used by minimal diff strategy; computed changes are emitted as rebuild comments or DROP+ADD where supported.
+- Changing computed expression/storage is treated as a destructive change (drop+add). Consider data backfill strategies if needed.
+- Expressions are engine‑specific (string concat, JSON functions). Keep them simple or use dialect‑specific branches.
+- Some engines require `STORED` for indexing computed values (e.g., Postgres only supports STORED).
+
+### Compatibility matrix (DDL)
+
+| Dialect | computed syntax | storage | defaultExpression |
+| --- | --- | --- | --- |
+| PostgreSQL | `GENERATED ALWAYS AS (<expr>) STORED` | STORED only | `DEFAULT <expr>` |
+| MySQL (≥5.7) | `GENERATED ALWAYS AS (<expr>) VIRTUAL/STORED` | VIRTUAL, STORED | `DEFAULT <expr>` |
+| SQLite (≥3.31) | `GENERATED ALWAYS AS (<expr>) VIRTUAL/STORED` | VIRTUAL, STORED | `DEFAULT <expr>` (SQL literal) |
+| MSSQL | `<name> AS (<expr>) [PERSISTED]` | PERSISTED (optional) | `DEFAULT <expr>` (constraints) |
+
+### Migration behavior
+
+- CREATE TABLE: computed/defaultExpression are rendered inline per dialect.
+- ADD COLUMN: computed supported; `defaultExpression` emitted as `DEFAULT <expr>` when applicable.
+- ALTER COLUMN (computed): emitted as DROP+ADD (baseline safety across engines).
+- ALTER DEFAULT: supported where applicable (e.g., Postgres `ALTER COLUMN SET DEFAULT`). Current minimal diff focuses on add/create; refine as needed.
+
+### Validation rules enforced by the ORM
+
+- Computed columns are read‑only: attempts to set/update produce `ValidationError`.
+- Conflicting options are rejected at metadata registration time: `isComputed` must not be combined with `defaultValue`, `defaultExpression`, `isGenerated`, `isVersion`.
+
+### Recommendations
+
+- Prefer `defaultExpression` for one‑time defaults (timestamps, UUIDs where appropriate).
+- Prefer computed for invariant derived values (display strings, totals, JSON projections), and keep expressions portable.
+- For critical invariants, duplicate constraints in the DB (CHECK/NOT NULL/UNIQUE). Computed improves consistency but does not replace DB‑level validations.
+
 ## Caveats
 
 - Expression portability varies between dialects (string concatenation, JSON ops, etc.). Keep expressions simple or dialect-specific when necessary.

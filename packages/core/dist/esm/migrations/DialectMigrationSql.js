@@ -26,7 +26,8 @@ export function generateMigrationFromDiff(diff, dialect) {
                     const uniq = idx.unique ? 'UNIQUE ' : '';
                     const cols = idx.columns.map((column) => q(dialect, column)).join(', ');
                     const name = q(dialect, idx.name);
-                    up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.create.name)} (${cols})`);
+                    const where = idx.where && dialect !== 'mysql' ? ` WHERE ${idx.where}` : '';
+                    up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.create.name)} (${cols})${where}`);
                 }
             }
             down.push(`DROP TABLE ${q(dialect, tableDiff.create.name)}`);
@@ -34,24 +35,63 @@ export function generateMigrationFromDiff(diff, dialect) {
         }
         if (tableDiff.drop) {
             up.push(`DROP TABLE ${q(dialect, tableDiff.table)}`);
-            // Down неизвестен без snapshot, пропустим
+            // Down is unknown without a snapshot; omitted
             continue;
         }
         if (tableDiff.indexCreates &&
             tableDiff.indexCreates.length > 0) {
             for (const idx of tableDiff.indexCreates) {
                 const uniq = idx.unique ? 'UNIQUE ' : '';
-                const cols = idx.columns.map((column) => q(dialect, column)).join(', ');
                 const name = q(dialect, idx.name);
-                up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})`);
+                const parts = [];
+                for (const c of idx.columns) {
+                    const ord = idx.orders?.[c] ? ` ${idx.orders[c]}` : '';
+                    const collation = idx.collations?.[c] ? (dialect === 'postgresql' || dialect === 'sqlite' ? ` COLLATE ${idx.collations[c]}` : '') : '';
+                    const nulls = dialect === 'postgresql' && idx.nulls?.[c] ? ` NULLS ${idx.nulls[c]}` : '';
+                    parts.push(`${q(dialect, c)}${ord}${collation}${nulls}`);
+                }
+                for (const e of idx.expressions || [])
+                    parts.push(`(${e})`);
+                const cols = parts.join(', ');
+                const where = idx.where && dialect !== 'mysql' ? ` WHERE ${idx.where}` : '';
+                const using = dialect === 'postgresql' && idx.using ? ` USING ${idx.using.toUpperCase()}` : '';
+                const concurrently = dialect === 'postgresql' && idx.concurrently ? ' CONCURRENTLY' : '';
+                const withSql = dialect === 'postgresql' && idx.withParams && Object.keys(idx.withParams).length > 0
+                    ? ` WITH (${Object.entries(idx.withParams).map(([k, v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`).join(', ')})`
+                    : '';
+                const visibility = dialect === 'mysql' && idx.mysqlVisibility ? ` ${idx.mysqlVisibility}` : '';
+                const include = dialect === 'mssql' && idx.include && idx.include.length > 0 ? ` INCLUDE (${idx.include.map(c => q(dialect, c)).join(', ')})` : '';
+                switch (dialect) {
+                    case 'postgresql':
+                        up.push(`CREATE ${uniq}INDEX${concurrently} ${name} ON ${q(dialect, tableDiff.table)}${using} (${cols})${withSql}${where}`);
+                        break;
+                    case 'mysql':
+                        up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})${visibility}`);
+                        break;
+                    case 'mssql':
+                        up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})${include}${where}`);
+                        break;
+                    default:
+                        up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, tableDiff.table)} (${cols})${where}`);
+                }
             }
         }
         if (tableDiff.indexDrops &&
             tableDiff.indexDrops.length > 0) {
             for (const nameRaw of tableDiff.indexDrops) {
-                const name = q(dialect, nameRaw);
-                // Generic DROP INDEX form; some dialects require table qualifier or IF EXISTS, kept simple here
-                up.push(`DROP INDEX ${name}`);
+                switch (dialect) {
+                    case 'postgresql':
+                        up.push(`DROP INDEX IF EXISTS ${q(dialect, nameRaw)}`);
+                        break;
+                    case 'mysql':
+                        up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} DROP INDEX ${q(dialect, nameRaw)}`);
+                        break;
+                    case 'mssql':
+                        up.push(`DROP INDEX ${q(dialect, nameRaw)} ON ${q(dialect, tableDiff.table)}`);
+                        break;
+                    default:
+                        up.push(`DROP INDEX IF EXISTS ${q(dialect, nameRaw)}`);
+                }
             }
         }
         if (tableDiff.fkCreates &&
@@ -94,12 +134,37 @@ export function generateMigrationFromDiff(diff, dialect) {
         if (tableDiff.columnChanges && tableDiff.columnChanges.length > 0) {
             for (const ch of tableDiff.columnChanges) {
                 if (ch.kind === 'add') {
-                    up.push(buildAddColumnSql(dialect, tableDiff, ch.column.name, ch.column.type, ch.column.nullable, ch.column.defaultValue));
+                    if (ch.column.isComputed && ch.column.computedExpression) {
+                        // Use full column rendering for computed columns
+                        const colSql = renderColumn(dialect, ch.column);
+                        const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
+                        up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${colSql}`);
+                    }
+                    else if (ch.column.defaultExpression) {
+                        // Use full column rendering to include defaultExpression
+                        const colSql = renderColumn(dialect, ch.column);
+                        const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
+                        up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${colSql}`);
+                    }
+                    else {
+                        up.push(buildAddColumnSql(dialect, tableDiff, ch.column.name, ch.column.type, ch.column.nullable, ch.column.defaultValue));
+                    }
                     down.push(buildDropColumnSql(dialect, tableDiff.table, ch.column.name));
                 }
                 else if (ch.kind === 'alter') {
-                    // Разделяем смену типа и nullability
+                    // Separate type and nullability handling
                     const alterType = ch.prev && norm(ch.prev.type) !== norm(ch.column.type);
+                    // For computed changes, prefer drop + add (dialect-safe baseline)
+                    const computedChanged = (ch.prev?.isComputed !== ch.column.isComputed) ||
+                        (ch.prev?.computedExpression !== ch.column.computedExpression) ||
+                        (ch.prev?.computedStorage !== ch.column.computedStorage);
+                    if (computedChanged) {
+                        // baseline: drop then add
+                        up.push(buildDropColumnSql(dialect, tableDiff.table, ch.column.name));
+                        const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
+                        up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${renderColumn(dialect, ch.column)}`);
+                        continue;
+                    }
                     if (alterType)
                         up.push(buildAlterTypeSql(dialect, tableDiff.table, ch.column.name, ch.column.type));
                     const prevNullable = ch.prev?.nullable;
@@ -123,7 +188,7 @@ export function generateMigrationFromDiff(diff, dialect) {
                         up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} RENAME COLUMN ${q(dialect, rn.from)} TO ${q(dialect, rn.to)}`);
                         break;
                     case 'mysql':
-                        // MySQL требует полный тип в MODIFY/CHANGE COLUMN — оставим как комментарий
+                        // MySQL requires full type in MODIFY/CHANGE COLUMN — leave as comment
                         up.push(`-- MySQL requires full type for CHANGE COLUMN ${rn.from} -> ${rn.to}`);
                         break;
                     case 'mssql':
@@ -139,7 +204,7 @@ export function generateMigrationFromDiff(diff, dialect) {
 }
 function buildCreateTableSql(td, dialect) {
     const create = td.create;
-    const cols = create.columns.map((c) => `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${c.defaultValue !== undefined ? ' DEFAULT ' + formatValue(dialect, c.defaultValue) : ''}`);
+    const cols = create.columns.map((c) => renderColumn(dialect, c));
     if (create.primaryKeys && create.primaryKeys.length > 0)
         cols.push(`PRIMARY KEY (${create.primaryKeys.map((pk) => q(dialect, pk)).join(', ')})`);
     if (create.foreignKeys && create.foreignKeys.length > 0) {
@@ -153,6 +218,30 @@ function buildCreateTableSql(td, dialect) {
         }
     }
     return `CREATE TABLE IF NOT EXISTS ${q(dialect, create.name)} (${cols.join(', ')})`;
+}
+function renderColumn(dialect, c) {
+    if (c.isComputed && c.computedExpression) {
+        switch (dialect) {
+            case 'postgresql':
+                return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${c.computedExpression}) STORED`;
+            case 'mysql': {
+                const kind = c.computedStorage === 'STORED' ? 'STORED' : 'VIRTUAL';
+                return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${c.computedExpression}) ${kind}`;
+            }
+            case 'mssql': {
+                const persisted = c.computedStorage === 'PERSISTED' ? ' PERSISTED' : '';
+                return `${q(dialect, c.name)} AS (${c.computedExpression})${persisted}`;
+            }
+            default: {
+                const kind = c.computedStorage === 'STORED' ? 'STORED' : 'VIRTUAL';
+                return `${q(dialect, c.name)} GENERATED ALWAYS AS (${c.computedExpression}) ${kind}`;
+            }
+        }
+    }
+    const dialectMap = c.defaultExpressionDialect || {};
+    const defExpr = dialectMap[dialect] || c.defaultExpression;
+    const defSql = defExpr ? ` DEFAULT ${defExpr}` : c.defaultValue !== undefined ? ' DEFAULT ' + formatValue(dialect, c.defaultValue) : '';
+    return `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${defSql}`;
 }
 function buildAddColumnSql(dialect, td, name, type, nullable, def) {
     const table = q(dialect, td.table);
@@ -190,7 +279,7 @@ function buildAlterNullSql(dialect, table, name, nullable) {
         case 'postgresql':
             return `ALTER TABLE ${tableName} ALTER COLUMN ${columnName} ${nullable ? 'DROP NOT NULL' : 'SET NOT NULL'}`;
         case 'mysql':
-            // Для MySQL требуется полный тип, здесь используется общий тип TEXT как упрощение
+            // MySQL requires full type; use a generic comment placeholder here
             return `-- MySQL requires full type in MODIFY for nullability; include in type alter`;
         case 'mssql':
             return `-- MSSQL requires full type in ALTER COLUMN for nullability; include in type alter`;

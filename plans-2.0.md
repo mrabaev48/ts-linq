@@ -44,7 +44,11 @@
   ├── mysql/          # MySQL provider
   ├── mssql/          # MSSQL provider
   ├── cli/            # CLI инструменты
-  └── testing/        # Testing utilities
+  ├── testing/        # Testing utilities
+  ├── otel-logger/    # OpenTelemetrySqlLogger (optional, peer otel)
+  ├── prom-logger/    # PrometheusSqlLogger (optional, peer prom-client)
+  ├── logging-composite/ # CompositeSqlLogger(+Factory)
+  └── metrics-safe/   # MetricsSafe helpers
   ```
 
 - [x] **Build Optimization** ✅
@@ -52,6 +56,7 @@
   - [x] Bundle size analysis ✅
   - [x] ESM/CJS dual build с правильными exports ✅
   - [x] TypeScript project references для multi-package ✅
+  - [x] Опциональные heavy-utils вынесены из core index (разделение на пакеты) ✅
 
 **Приоритет**: P0 (Критично)
 **Временные затраты**: 1.5 недели
@@ -278,7 +283,7 @@
   - [x] Документация: гайд по computed vs defaultExpression; переносимость и ограничения (README + docs/guides/computed-columns.md) ✅
   - [x] Валидация схемы: запрет сочетаний computed + defaultValue/defaultExpression; улучшенные сообщения ✅
   - [x] DX/типизация: пометить computed как read‑only в метаданных/маппинге; утилиты типов (`InsertShape`/`UpdateShape`) ✅
-  - [ ] CLI/миграции (опц.): генерация и экспорт/импорт схем с computed
+  - [x] CLI/миграции (опц.): генерация и экспорт/импорт схем с computed ✅
 
 
 - [x] **Conditional Validation** ✅
@@ -293,24 +298,36 @@
   ```
   - [x] API: `@ValidIf(predicate, message?)` (Stage‑3) и `ValidationRule { propertyName, predicate, message? }` ✅
   - [x] Исполнение: `DbContext.validateChanges()` (Added/Modified), агрегирование ошибок (класс/поле/сообщение) ✅
-  - [ ] Порядок: сначала базовые (NotNull/length), затем ValidIf; совместимость с soft delete/audit
-  - [ ] Типобезопасность/DX: строго типизированные предикаты; хелперы для частых паттернов
-  - [ ] Тесты: unit (регистрация, множественные правила, ошибки), интеграционные сценарии
-  - [ ] Документация: гайд/ограничения; рекомендация дублировать критичные правила в БД
-  - [ ] Перфоманс/безопасность: кеш правил по классу; гайдлайны против тяжёлых предикатов
-  - [ ] Расширения (опц.): группы правил (onCreate/onUpdate), локализация сообщений
+  - [x] Порядок: сначала базовые (NotNull/length), затем ValidIf; совместимость с soft delete/audit ✅
+  - [x] Типобезопасность/DX: строго типизированные предикаты; хелперы для частых паттернов ✅
+    - `ValidIfOf<T>` (typed), `RequiredIfOf<T>`
+    - Хелперы: `MinLengthOf`, `MaxLengthOf`, `PatternOf`, `RangeOf`
+  - [x] Тесты: unit (регистрация, множественные правила, ошибки), интеграционные сценарии ✅
+    - Unit: регистрация правил, множественные ошибки/агрегация, порядок базовых vs ValidIf
+    - Integration: SQLite — валидация до SQL; PG/MySQL/MSSQL — сценарии с skip при отсутствии URL
+  - [x] Документация: гайд/ограничения; рекомендация дублировать критичные правила в БД ✅
+    - README: ссылка на гайд
+    - docs/guides/conditional-validation.md: порядок выполнения, типовые хелперы, CHECK/UNIQUE/NOT NULL рекомендации
+  - [x] Перфоманс/безопасность: кеш правил по классу; гайдлайны против тяжёлых предикатов ✅
+    - Кеширование Reflect‑правил в DbContext (WeakMap per class)
+    - Гайдлайны: избегать IO/тяжёлых операций в предикатах; опираться на DB‑constraints для критичных инвариантов
+  - [x] Расширения (опц.): группы правил (onCreate/onUpdate), локализация сообщений ✅
+    - `ValidationRule.phase`: onCreate/onUpdate/always; фильтрация в `validateChanges`
+    - I18n: `DbContextOptions.validation.translate`, `messageKey`/`messageParams` в правилах
 
 - [ ] **Database Functions**
   - [x] Базовый декоратор `@DatabaseFunction` (Stage‑3) ✅
   - [x] `defaultExpression` в `ColumnMetadata` и поддержка в DDL ✅
   - [x] Диалектные алиасы функций (PG/MySQL/SQLite/MSSQL) — через `defaultExpressionDialect` и декоратор ✅
-  - [ ] Поведение computed vs default (документация и ограничения)
+  - [x] Поведение computed vs default (документация и ограничения) ✅
   - [x] Миграции: diff/DDL для defaultExpression и computed (ALTER add, CREATE) ✅
   - [x] DDL: STORED/VIRTUAL/PERSISTED + feature‑детекция/варнинги (версии/возможности) ✅
   - [x] Интеграционные тесты: дефолты применяются; computed вычисляется (где поддерживается) ✅
   - [x] ORM‑контракты: исключить computed из INSERT/UPDATE (валидация + DX) ✅
-  - [ ] Документация: гайд и таблица совместимости по СУБД
-  - [ ] Линтер/валидация схемы: улучшить сообщения (класс/поле)
+  - [x] Документация: гайд и таблица совместимости по СУБД ✅
+    - docs/guides/database-functions.md: алиасы функций и матрица совместимости
+  - [x] Линтер/валидация схемы: улучшить сообщения (класс/поле) ✅
+    - Обогащённые `ValidationError.details`: класс, таблица, колонка, fullMessage
   ```typescript
   @Entity()
   class AuditLog {
@@ -786,6 +803,21 @@
   class UserService {
     constructor(@InjectDbContext() private ctx: AppDbContext) {}
   }
+  
+  // NestJS module & provider
+  @Module({
+    providers: [
+      {
+        provide: 'DB_CONTEXT',
+        useFactory: () => new AppDbContext({ provider: 'postgresql', connectionString: process.env.POSTGRES_URL! })
+      },
+      UserService
+    ],
+    exports: ['DB_CONTEXT', UserService]
+  })
+  export class DatabaseModule {}
+  
+  export const InjectDbContext = () => Inject('DB_CONTEXT');
   
   // Express middleware
   app.use(tsLinqMiddleware({

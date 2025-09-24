@@ -26,7 +26,19 @@ function compareSchemas(expected, actual) {
                 const nullableChanged = typeof actualColumn.nullable === 'boolean'
                     ? expectedColumn.nullable !== actualColumn.nullable
                     : false;
-                const needsAlter = typeChanged || nullableChanged;
+                // Computed changes: detect when expected vs actual differ by flags/expression/storage
+                const expectedIsComputed = !!expectedColumn.isComputed;
+                const actualIsComputed = !!actualColumn.isComputed;
+                const expectedExpr = expectedColumn.computedExpression;
+                const actualExpr = actualColumn.computedExpression;
+                const expectedStorage = expectedColumn.computedStorage;
+                const actualStorage = actualColumn.computedStorage;
+                const computedChanged = expectedIsComputed !== actualIsComputed ||
+                    (expectedExpr || '') !== (actualExpr || '') ||
+                    (expectedStorage || '') !== (actualStorage || '');
+                const defaultExprChanged = (expectedColumn.defaultExpression || '') !==
+                    ((actualColumn.defaultExpression) || '');
+                const needsAlter = typeChanged || nullableChanged || computedChanged || defaultExprChanged;
                 if (needsAlter) {
                     changes.push({ kind: 'alter', column: expectedColumn, prev: actualColumn });
                 }
@@ -39,8 +51,35 @@ function compareSchemas(expected, actual) {
                 changes.push({ kind: 'drop', column: actualColumn });
             }
         }
-        if (changes.length > 0)
-            diffs.push({ table: expectedTable.name, columnChanges: changes });
+        // Index diffs
+        const indexCreates = [];
+        const indexDrops = [];
+        const expIdxByName = new Map(expectedTable.indexes.map((i) => [i.name, i]));
+        const actIdxByName = new Map(actualTable.indexes.map((i) => [i.name, i]));
+        for (const [name, expIdx] of expIdxByName) {
+            const actIdx = actIdxByName.get(name);
+            const equal = actIdx
+                ? arraysEqual(expIdx.columns, actIdx.columns) &&
+                    !!expIdx.unique === !!actIdx.unique &&
+                    (expIdx.where || '') === (actIdx.where || '') &&
+                    shallowObjEqual(expIdx.orders, actIdx.orders) &&
+                    shallowObjEqual(expIdx.collations, actIdx.collations) &&
+                    shallowObjEqual(expIdx.nulls, actIdx.nulls) &&
+                    arraysEqual(expIdx.expressions || [], actIdx.expressions || [])
+                : false;
+            if (!actIdx || !equal) {
+                if (actIdx && !equal)
+                    indexDrops.push(name);
+                indexCreates.push(expIdx);
+            }
+        }
+        for (const [name] of actIdxByName) {
+            if (!expIdxByName.has(name))
+                indexDrops.push(name);
+        }
+        if (changes.length > 0 || indexCreates.length > 0 || indexDrops.length > 0) {
+            diffs.push({ table: expectedTable.name, columnChanges: changes.length ? changes : undefined, indexCreates: indexCreates.length ? indexCreates : undefined, indexDrops: indexDrops.length ? indexDrops : undefined });
+        }
     }
     // Dropped tables
     const expectedByName = new Map(expected.tables.map((table) => [table.name, table]));
@@ -55,5 +94,28 @@ function normalizeType(typeName) {
     return String(typeName || '')
         .trim()
         .toUpperCase();
+}
+function arraysEqual(a, b) {
+    if (a.length !== b.length)
+        return false;
+    for (let i = 0; i < a.length; i++)
+        if (a[i] !== b[i])
+            return false;
+    return true;
+}
+function shallowObjEqual(a, b) {
+    if (!a && !b)
+        return true;
+    if (!a || !b)
+        return false;
+    const ak = Object.keys(a);
+    const bk = Object.keys(b);
+    if (ak.length !== bk.length)
+        return false;
+    for (const k of ak) {
+        if (a[k] !== b[k])
+            return false;
+    }
+    return true;
 }
 //# sourceMappingURL=DiffTypes.js.map

@@ -25,6 +25,7 @@ __exportStar(require("./decorators/Entity"), exports);
 __exportStar(require("./decorators/Column"), exports);
 __exportStar(require("./decorators/PrimaryKey"), exports);
 __exportStar(require("./decorators/Relationships"), exports);
+__exportStar(require("./decorators/ValidIf"), exports);
 // Metadata
 __exportStar(require("./metadata/MetadataStorage"), exports);
 __exportStar(require("./metadata/EntityMetadata"), exports);
@@ -65,6 +66,7 @@ __exportStar(require("./migrations/MigrationBuilder"), exports);
 __exportStar(require("./migrations/DiffBasedMigration"), exports);
 __exportStar(require("./migrations/MigrationFileBuilder"), exports);
 __exportStar(require("./migrations/DiffMigrationGenerator"), exports);
+__exportStar(require("./migrations/SchemaSnapshot"), exports);
 // Utils
 __exportStar(require("./utils/SqlHelper"), exports);
 __exportStar(require("./utils/OpenTelemetrySqlLogger"), exports);

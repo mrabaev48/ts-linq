@@ -23,4 +23,5 @@ __exportStar(require("./CompositeSqlLoggerFactory"), exports);
 __exportStar(require("./RetryPolicies"), exports);
 __exportStar(require("./EntityCache"), exports);
 __exportStar(require("./MetricsSafe"), exports);
+__exportStar(require("./IndexOptionsBuilder"), exports);
 //# sourceMappingURL=index.js.map

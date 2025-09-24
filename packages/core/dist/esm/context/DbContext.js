@@ -39,11 +39,14 @@ export class DbContext {
         this._dbSets = new Map();
         this._defaultLoadingStrategy = LoadingStrategy.Eager;
         this._loadingDefaults = {};
+        /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
+        this._validationRulesCache = new WeakMap();
         // Initialize database provider from options
         this._provider = options.provider;
         this._softDelete = options.softDelete;
         this._audit = options.audit;
         this._globalFilters = options.globalFilters;
+        this._validationOptions = options.validation;
         this._changeTracker = new ChangeTracker();
         this._entityLoader = new EntityLoader(this._provider);
         // Initialize optional L2 entity cache
@@ -215,7 +218,7 @@ export class DbContext {
         this._changeTracker.acceptAllChanges();
         return affectedRows;
     }
-    /** Try-версия saveChanges без исключений. */
+    /** Try-version of saveChanges without throwing exceptions. */
     async trySaveChanges() {
         try {
             const affected = await this.saveChanges();
@@ -413,43 +416,66 @@ export class DbContext {
             const meta = MetadataStorage.getEntity(change.entityClass);
             if (!meta)
                 continue;
+            const audit = this._audit?.enabled ? this._audit : undefined;
+            const auditNames = audit
+                ? {
+                    createdAt: audit.timeColumns?.createdAt ?? 'createdAt',
+                    updatedAt: audit.timeColumns?.updatedAt ?? 'updatedAt',
+                    createdBy: audit.userColumns?.createdBy ?? 'createdBy',
+                    updatedBy: audit.userColumns?.updatedBy ?? 'updatedBy'
+                }
+                : undefined;
             for (const col of meta.columns) {
                 const value = change.entity[col.propertyName];
+                // Computed columns are read-only: disallow assignment on insert and modification of value
+                if (col.isComputed) {
+                    if (change.state === 'added') {
+                        if (value !== undefined) {
+                            errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be set on insert'));
+                        }
+                    }
+                    else if (change.state === 'modified' && change.originalValues) {
+                        const prev = change.originalValues[col.propertyName];
+                        if (value !== prev) {
+                            errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be updated'));
+                        }
+                    }
+                }
                 // Skip validation for auto-generated primary keys on Added entities
                 const isGeneratedPk = meta.primaryKeys.includes(col.propertyName) &&
                     col.isGenerated &&
                     change.state === 'added';
                 // Allow DB-level defaultValue to satisfy non-null on Added when undefined in entity
                 const hasDbDefault = col.defaultValue !== undefined && change.state === 'added';
-                if (!col.nullable &&
-                    (value === null || value === undefined) &&
-                    !isGeneratedPk &&
-                    !hasDbDefault) {
-                    errors.push({
-                        entity: meta.tableName,
-                        property: col.propertyName,
-                        message: 'Value cannot be null'
-                    });
+                // Allow audit stamping to satisfy non-null constraints (compat with audit)
+                const satisfiableByAudit = !!audit && ((change.state === 'added' && (col.propertyName === auditNames.createdAt || col.propertyName === auditNames.createdBy) && (col.propertyName === auditNames.createdAt || audit.getCurrentUserId !== undefined)) ||
+                    ((change.state === 'added' || change.state === 'modified') && (col.propertyName === auditNames.updatedAt || col.propertyName === auditNames.updatedBy) && (col.propertyName === auditNames.updatedAt || audit.getCurrentUserId !== undefined)));
+                if (!col.nullable && (value === null || value === undefined) && !isGeneratedPk && !hasDbDefault && !satisfiableByAudit) {
+                    errors.push(this.buildValidationDetail(meta, col.propertyName, 'Value cannot be null'));
                 }
                 if (col.length && typeof value === 'string' && value.length > col.length) {
-                    errors.push({
-                        entity: meta.tableName,
-                        property: col.propertyName,
-                        message: `Length exceeds ${col.length}`
-                    });
+                    errors.push(this.buildValidationDetail(meta, col.propertyName, `Length exceeds ${col.length}`));
                 }
             }
-            // Conditional Validations (Stage-3 ValidIf)
+            // Conditional Validations (Stage-3 ValidIf) — run AFTER base checks
             try {
-                const rules = Reflect.getOwnMetadata('orm:validations', change.entityClass) || [];
+                const rules = this.getValidationRules(change.entityClass);
                 for (const rule of rules) {
+                    // Phase gating (onCreate / onUpdate / always)
+                    const phase = rule.phase || 'always';
+                    if (phase === 'onCreate' && change.state !== 'added')
+                        continue;
+                    if (phase === 'onUpdate' && change.state !== 'modified')
+                        continue;
                     const ok = !!rule.predicate(change.entity);
                     if (!ok) {
-                        errors.push({
-                            entity: meta.tableName,
-                            property: rule.propertyName,
-                            message: rule.message || 'Validation rule failed'
-                        });
+                        const msgKey = rule.messageKey;
+                        const msgParams = rule.messageParams;
+                        const translated = msgKey && this._validationOptions?.translate
+                            ? this._validationOptions.translate(msgKey, msgParams)
+                            : undefined;
+                        const baseMsg = translated || rule.message || 'Validation rule failed';
+                        errors.push(this.buildValidationDetail(meta, rule.propertyName, baseMsg));
                     }
                 }
             }
@@ -459,6 +485,25 @@ export class DbContext {
         }
         if (errors.length > 0)
             throw new ValidationError('Model validation failed', errors);
+    }
+    /**
+     * Retrieve cached validation rules for an entity class (Reflect metadata → cache).
+     */
+    getValidationRules(entityClass) {
+        const cached = this._validationRulesCache.get(entityClass);
+        if (cached)
+            return cached;
+        const rules = (Reflect.getOwnMetadata('orm:validations', entityClass) || [])
+            .slice();
+        this._validationRulesCache.set(entityClass, rules);
+        return rules;
+    }
+    buildValidationDetail(meta, property, message) {
+        const table = meta?.tableName || 'unknown_table';
+        const typeName = meta?.target?.name || 'UnknownEntity';
+        const col = meta?.columns.find((c) => c.propertyName === property)?.columnName || property;
+        const fullMessage = `${typeName}.${property} (${table}.${col}): ${message}`;
+        return { entity: table, property, message, entityClass: typeName, table, column: col, fullMessage };
     }
 }
 //# sourceMappingURL=DbContext.js.map

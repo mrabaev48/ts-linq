@@ -10,3 +10,4 @@ export * from './MigrationBuilder';
 export * from './DiffBasedMigration';
 export * from './MigrationFileBuilder';
 export * from './DiffMigrationGenerator';
+export * from './SchemaSnapshot';

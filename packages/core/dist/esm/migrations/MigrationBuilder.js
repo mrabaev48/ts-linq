@@ -12,7 +12,8 @@ class TableBuilder {
             name,
             type,
             nullable: opts?.nullable ?? true,
-            defaultValue: opts?.defaultValue
+            defaultValue: opts?.defaultValue,
+            defaultExpression: opts?.defaultExpression
         });
         return this;
     }
@@ -62,7 +63,8 @@ export class MigrationBuilder {
                         name: colName,
                         type,
                         nullable: opts?.nullable ?? true,
-                        defaultValue: opts?.defaultValue
+                        defaultValue: opts?.defaultValue,
+                        defaultExpression: opts?.defaultExpression
                     }
                 });
             },
@@ -71,14 +73,16 @@ export class MigrationBuilder {
                     name: colName,
                     type: type ?? 'TEXT',
                     nullable: opts?.nullable ?? true,
-                    defaultValue: opts?.defaultValue
+                    defaultValue: opts?.defaultValue,
+                    defaultExpression: opts?.defaultExpression
                 };
                 // Provide a synthetic prev to force emission of ALTER statements when prior state is unknown
                 const prev = {
                     name: colName,
                     type: type ? '__DIFF_FORCE__' : target.type,
                     // Flip nullable if provided to ensure difference is detected; otherwise leave undefined
-                    nullable: typeof opts?.nullable === 'boolean' ? !opts.nullable : target.nullable
+                    nullable: typeof opts?.nullable === 'boolean' ? !opts.nullable : target.nullable,
+                    defaultExpression: target.defaultExpression ? '__DIFF_FORCE__' : undefined
                 };
                 this.columnAlters.push({ table: name, col: target, prev });
             },

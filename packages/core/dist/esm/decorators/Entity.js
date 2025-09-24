@@ -34,6 +34,10 @@ export function Entity(options = {}) {
                             : te();
                         MetadataStorage.addRelationship(ctor, { ...rel, targetEntity: resolvedTarget });
                     }
+                    const idxs = Reflect.getOwnMetadata('orm:indexes', ctor) || [];
+                    for (const idx of idxs) {
+                        MetadataStorage.addIndex(ctor, idx);
+                    }
                 }
                 catch {
                     /* ignore */
