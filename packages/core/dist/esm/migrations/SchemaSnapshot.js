@@ -144,5 +144,4 @@ export class SchemaSnapshotSerializer {
         }
     }
 }
-// (compat wrappers removed — use SchemaSnapshotBuilder/SchemaSnapshotSerializer)
 //# sourceMappingURL=SchemaSnapshot.js.map

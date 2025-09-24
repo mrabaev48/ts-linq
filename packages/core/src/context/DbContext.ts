@@ -273,7 +273,7 @@ export abstract class DbContext {
     return affectedRows;
   }
 
-  /** Try-версия saveChanges без исключений. */
+  /** Try-version of saveChanges without throwing exceptions. */
   public async trySaveChanges(): Promise<Result<number, Error>> {
     try {
       const affected = await this.saveChanges();
@@ -521,6 +521,15 @@ export abstract class DbContext {
       if (change.state !== 'added' && change.state !== 'modified') continue;
       const meta = MetadataStorage.getEntity(change.entityClass);
       if (!meta) continue;
+      const audit = this._audit?.enabled ? this._audit : undefined;
+      const auditNames = audit
+        ? {
+            createdAt: audit.timeColumns?.createdAt ?? 'createdAt',
+            updatedAt: audit.timeColumns?.updatedAt ?? 'updatedAt',
+            createdBy: audit.userColumns?.createdBy ?? 'createdBy',
+            updatedBy: audit.userColumns?.updatedBy ?? 'updatedBy'
+          }
+        : undefined;
       for (const col of meta.columns) {
         const value = change.entity[col.propertyName];
         // Computed columns are read-only: disallow assignment on insert and modification of value
@@ -551,11 +560,21 @@ export abstract class DbContext {
           change.state === 'added';
         // Allow DB-level defaultValue to satisfy non-null on Added when undefined in entity
         const hasDbDefault = col.defaultValue !== undefined && change.state === 'added';
+        // Allow audit stamping to satisfy non-null constraints (compat with audit)
+        const satisfiableByAudit = !!audit && (
+          (change.state === 'added' && (col.propertyName === auditNames!.createdAt || col.propertyName === auditNames!.createdBy) && (
+            col.propertyName === auditNames!.createdAt || audit.getCurrentUserId !== undefined
+          )) ||
+          ((change.state === 'added' || change.state === 'modified') && (col.propertyName === auditNames!.updatedAt || col.propertyName === auditNames!.updatedBy) && (
+            col.propertyName === auditNames!.updatedAt || audit.getCurrentUserId !== undefined
+          ))
+        );
         if (
           !col.nullable &&
           (value === null || value === undefined) &&
           !isGeneratedPk &&
-          !hasDbDefault
+          !hasDbDefault &&
+          !satisfiableByAudit
         ) {
           errors.push({
             entity: meta.tableName,
@@ -571,7 +590,7 @@ export abstract class DbContext {
           });
         }
       }
-      // Conditional Validations (Stage-3 ValidIf)
+      // Conditional Validations (Stage-3 ValidIf) — run AFTER base checks
       try {
         const rules = (Reflect.getOwnMetadata('orm:validations', change.entityClass) as Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }> | undefined) || [];
         for (const rule of rules) {

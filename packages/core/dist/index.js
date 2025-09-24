@@ -25,6 +25,7 @@ __exportStar(require("./decorators/Entity"), exports);
 __exportStar(require("./decorators/Column"), exports);
 __exportStar(require("./decorators/PrimaryKey"), exports);
 __exportStar(require("./decorators/Relationships"), exports);
+__exportStar(require("./decorators/ValidIf"), exports);
 // Metadata
 __exportStar(require("./metadata/MetadataStorage"), exports);
 __exportStar(require("./metadata/EntityMetadata"), exports);

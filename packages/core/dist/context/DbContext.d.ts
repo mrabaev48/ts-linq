@@ -55,7 +55,7 @@ export declare abstract class DbContext {
      * @returns Number of affected rows.
      */
     saveChanges(): Promise<number>;
-    /** Try-версия saveChanges без исключений. */
+    /** Try-version of saveChanges without throwing exceptions. */
     trySaveChanges(): Promise<Result<number, Error>>;
     /**
      * Start a database transaction
