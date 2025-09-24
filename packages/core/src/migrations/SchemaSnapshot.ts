@@ -3,143 +3,179 @@ import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { SQLiteSchemaInspector, PostgresSchemaInspector, MySqlSchemaInspector, MssqlSchemaInspector } from './SchemaInspector';
 
+/**
+ * OOP builders/serializers for SchemaSnapshot with thin functional wrappers for back-compat.
+ */
+export class SchemaSnapshotBuilder {
+  private readonly provider?: DatabaseProvider;
+
+  constructor(provider?: DatabaseProvider) {
+    this.provider = provider;
+  }
+
+  public buildExpectedFromMetadata(): SchemaSnapshot {
+    const entities = MetadataStorage.getEntities();
+    const tables: TableSnapshot[] = entities.map((entityMeta) => {
+      const columns: ColumnDef[] = entityMeta.columns.map((column) => ({
+        name: column.columnName,
+        type: this.mapPortableType(column.type),
+        nullable: column.nullable,
+        defaultValue: column.defaultValue,
+        defaultExpression: (column as { defaultExpression?: string; defaultExpressionDialect?: Record<string, string> }).defaultExpression,
+        isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName),
+        isComputed: (column as { isComputed?: boolean }).isComputed,
+        computedExpression: (column as { computedExpression?: string }).computedExpression,
+        computedStorage: (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage
+      }));
+      const primaryKeys = entityMeta.primaryKeys.map(
+        (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
+      );
+      const indexes = (entityMeta.indexes || []).map((indexDef) => ({
+        name: indexDef.name,
+        columns: indexDef.columns,
+        unique: !!indexDef.unique,
+        where: indexDef.where,
+        orders: indexDef.orders,
+        collations: indexDef.collations,
+        nulls: indexDef.nulls,
+        expressions: indexDef.expressions,
+        using: (indexDef as { using?: 'btree' | 'hash' | 'gin' | 'gist' }).using,
+        concurrently: (indexDef as { concurrently?: boolean }).concurrently,
+        withParams: (indexDef as { withParams?: Record<string, string | number | boolean> }).withParams,
+        mysqlVisibility: (indexDef as { mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' }).mysqlVisibility,
+        include: (indexDef as { include?: string[] }).include
+      }));
+      return {
+        name: entityMeta.tableName,
+        columns,
+        primaryKeys,
+        indexes,
+        foreignKeys: []
+      } as TableSnapshot;
+    });
+    return { tables };
+  }
+
+  public async buildActualFromProvider(expected?: SchemaSnapshot): Promise<SchemaSnapshot> {
+    if (!this.provider) throw new Error('SchemaSnapshotBuilder requires a provider for actual schema');
+    const label = (this.provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string) || 'sqlite';
+    if (label === 'sqlite') {
+      const inspector = new SQLiteSchemaInspector(this.provider);
+      const tableNames = await inspector.listTables();
+      const actualTables: TableSnapshot[] = [];
+      for (const tableName of tableNames) {
+        const info = await inspector.getTableInfo(tableName);
+        const indexes = await inspector.getIndexes(tableName);
+        actualTables.push({
+          name: tableName,
+          columns: info.columns.map((col) => ({
+            name: col.name,
+            type: this.normalizePortableType(col.type),
+            nullable: !col.notnull
+          })),
+          primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
+          indexes: indexes.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where })),
+          foreignKeys: []
+        });
+      }
+      return { tables: actualTables };
+    }
+    // For non-SQLite: mirror expected columns/PKs if provided, and fetch actual indexes.
+    const idxFetch = async (table: string): Promise<IndexDef[]> => {
+      if (label === 'postgresql') {
+        const ins = new PostgresSchemaInspector(this.provider!);
+        const list = await ins.getIndexes(table);
+        return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+      }
+      if (label === 'mysql') {
+        const ins = new MySqlSchemaInspector(this.provider!);
+        const list = await ins.getIndexes(table);
+        return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique }));
+      }
+      if (label === 'mssql') {
+        const ins = new MssqlSchemaInspector(this.provider!);
+        const list = await ins.getIndexes(table);
+        return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+      }
+      return [];
+    };
+    const tables: TableSnapshot[] = [];
+    const source = expected?.tables || [];
+    for (const t of source) {
+      const indexes = await idxFetch(t.name);
+      tables.push({
+        name: t.name,
+        columns: t.columns.map((c) => ({ name: c.name, type: c.type, nullable: c.nullable })),
+        primaryKeys: t.primaryKeys.slice(),
+        indexes,
+        foreignKeys: []
+      });
+    }
+    return { tables };
+  }
+
+  private mapPortableType(type: string): string {
+    switch (String(type || '').toUpperCase()) {
+      case 'INTEGER':
+      case 'NUMBER':
+        return 'INTEGER';
+      case 'REAL':
+      case 'FLOAT':
+      case 'DOUBLE':
+        return 'REAL';
+      case 'BOOLEAN':
+        return 'INTEGER';
+      case 'DATETIME':
+      case 'DATE':
+        return 'TEXT';
+      case 'BLOB':
+        return 'BLOB';
+      default:
+        return 'TEXT';
+    }
+  }
+
+  private normalizePortableType(type: string): string {
+    return this.mapPortableType(type);
+  }
+}
+
+export class SchemaSnapshotSerializer {
+  public serialize(snapshot: SchemaSnapshot): string {
+    return JSON.stringify(snapshot, null, 2);
+  }
+
+  public deserialize(jsonText: string): SchemaSnapshot {
+    const obj = JSON.parse(jsonText);
+    this.assertValid(obj);
+    return obj as SchemaSnapshot;
+  }
+
+  private assertValid(obj: unknown): asserts obj is SchemaSnapshot {
+    if (!obj || typeof obj !== 'object' || !Array.isArray((obj as any).tables)) {
+      throw new Error('Invalid SchemaSnapshot JSON');
+    }
+  }
+}
+
+// Thin wrappers for back-compat
 export function buildExpectedSchemaFromMetadata(): SchemaSnapshot {
-  const entities = MetadataStorage.getEntities();
-  const tables: TableSnapshot[] = entities.map((entityMeta) => {
-    const columns: ColumnDef[] = entityMeta.columns.map((column) => ({
-      name: column.columnName,
-      type: mapType(column.type),
-      nullable: column.nullable,
-      defaultValue: column.defaultValue,
-      defaultExpression: (column as { defaultExpression?: string; defaultExpressionDialect?: Record<string, string> }).defaultExpression,
-      isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName),
-      isComputed: (column as { isComputed?: boolean }).isComputed,
-      computedExpression: (column as { computedExpression?: string }).computedExpression,
-      computedStorage: (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage
-    }));
-    const primaryKeys = entityMeta.primaryKeys.map(
-      (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
-    );
-    const indexes = (entityMeta.indexes || []).map((indexDef) => ({
-      name: indexDef.name,
-      columns: indexDef.columns,
-      unique: !!indexDef.unique,
-      where: indexDef.where,
-      orders: indexDef.orders,
-      collations: indexDef.collations,
-      nulls: indexDef.nulls,
-      expressions: indexDef.expressions,
-      using: (indexDef as { using?: 'btree' | 'hash' | 'gin' | 'gist' }).using,
-      concurrently: (indexDef as { concurrently?: boolean }).concurrently,
-      withParams: (indexDef as { withParams?: Record<string, string | number | boolean> }).withParams,
-      mysqlVisibility: (indexDef as { mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' }).mysqlVisibility,
-      include: (indexDef as { include?: string[] }).include
-    }));
-    return {
-      name: entityMeta.tableName,
-      columns,
-      primaryKeys,
-      indexes,
-      foreignKeys: []
-    } as TableSnapshot;
-  });
-  return { tables };
+  return new SchemaSnapshotBuilder().buildExpectedFromMetadata();
 }
 
 export async function buildActualSchemaFromProvider(
   provider: DatabaseProvider,
   expected?: SchemaSnapshot
 ): Promise<SchemaSnapshot> {
-  const label = (provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string) || 'sqlite';
-  if (label === 'sqlite') {
-    const inspector = new SQLiteSchemaInspector(provider);
-    const tableNames = await inspector.listTables();
-    const actualTables: TableSnapshot[] = [];
-    for (const tableName of tableNames) {
-      const info = await inspector.getTableInfo(tableName);
-      const indexes = await inspector.getIndexes(tableName);
-      actualTables.push({
-        name: tableName,
-        columns: info.columns.map((col) => ({
-          name: col.name,
-          type: normalizeType(col.type),
-          nullable: !col.notnull
-        })),
-        primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
-        indexes: indexes.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where })),
-        foreignKeys: []
-      });
-    }
-    return { tables: actualTables };
-  }
-  // For non-SQLite: mirror expected columns/PKs if provided, and fetch actual indexes.
-  const idxFetch = async (table: string): Promise<IndexDef[]> => {
-    if (label === 'postgresql') {
-      const ins = new PostgresSchemaInspector(provider);
-      const list = await ins.getIndexes(table);
-      return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
-    }
-    if (label === 'mysql') {
-      const ins = new MySqlSchemaInspector(provider);
-      const list = await ins.getIndexes(table);
-      return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique }));
-    }
-    if (label === 'mssql') {
-      const ins = new MssqlSchemaInspector(provider);
-      const list = await ins.getIndexes(table);
-      return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
-    }
-    return [];
-  };
-  const tables: TableSnapshot[] = [];
-  const source = expected?.tables || [];
-  for (const t of source) {
-    const indexes = await idxFetch(t.name);
-    tables.push({
-      name: t.name,
-      columns: t.columns.map((c) => ({ name: c.name, type: c.type, nullable: c.nullable })),
-      primaryKeys: t.primaryKeys.slice(),
-      indexes,
-      foreignKeys: []
-    });
-  }
-  return { tables };
+  return new SchemaSnapshotBuilder(provider).buildActualFromProvider(expected);
 }
 
 export function serializeSchemaSnapshot(snapshot: SchemaSnapshot): string {
-  return JSON.stringify(snapshot, null, 2);
+  return new SchemaSnapshotSerializer().serialize(snapshot);
 }
 
 export function deserializeSchemaSnapshot(jsonText: string): SchemaSnapshot {
-  const obj = JSON.parse(jsonText);
-  // naive validation
-  if (!obj || !Array.isArray(obj.tables)) throw new Error('Invalid SchemaSnapshot JSON');
-  return obj as SchemaSnapshot;
-}
-
-function mapType(type: string): string {
-  switch (String(type || '').toUpperCase()) {
-    case 'INTEGER':
-    case 'NUMBER':
-      return 'INTEGER';
-    case 'REAL':
-    case 'FLOAT':
-    case 'DOUBLE':
-      return 'REAL';
-    case 'BOOLEAN':
-      return 'INTEGER';
-    case 'DATETIME':
-    case 'DATE':
-      return 'TEXT';
-    case 'BLOB':
-      return 'BLOB';
-    default:
-      return 'TEXT';
-  }
-}
-
-function normalizeType(type: string): string {
-  return mapType(type);
+  return new SchemaSnapshotSerializer().deserialize(jsonText);
 }
 
 
