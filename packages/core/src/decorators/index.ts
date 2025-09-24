@@ -3,6 +3,7 @@ import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { IndexMetadata } from '../types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
+export { ValidIf, ValidIfOf, RequiredIfOf, MinLengthOf, MaxLengthOf, PatternOf, RangeOf } from './ValidIf';
 
 function isStage3ClassContext(x: unknown): x is ClassDecoratorContext {
   return !!x && typeof x === 'object';

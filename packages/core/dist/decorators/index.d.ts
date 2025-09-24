@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import type { IndexMetadata } from '../types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
+export { ValidIf, ValidIfOf, RequiredIfOf, MinLengthOf, MaxLengthOf, PatternOf, RangeOf } from './ValidIf';
 export interface IndexOptions {
     name: string;
     columns: string[];

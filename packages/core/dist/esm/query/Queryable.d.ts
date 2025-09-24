@@ -184,7 +184,7 @@ export declare class Queryable<T> {
      * const first = await context.books.orderBy(b => b.id).first();
      */
     first(): Promise<T>;
-    /** Try-версия first без исключений. */
+    /** Try-version of first without throwing exceptions. */
     tryFirst(): Promise<Result<T, Error>>;
     /** Returns the first entity or null.
      * @example
@@ -196,7 +196,7 @@ export declare class Queryable<T> {
      * const book = await context.books.where(b => b.id === 1).single();
      */
     single(): Promise<T>;
-    /** Try-версия single без исключений. */
+    /** Try-version of single without throwing exceptions. */
     trySingle(): Promise<Result<T, Error>>;
     /** Returns one or null; throws if more than 1.
      * @example
