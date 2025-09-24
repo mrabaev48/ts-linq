@@ -1147,6 +1147,7 @@ npm run docs
 - Upsert & batch: `docs/guides/upsert-batch.md`
 - Advanced include & joins: `docs/guides/advanced-include-join.md`
 - Test matrix: `docs/guides/test-matrix.md`
+- Conditional validation: `docs/guides/conditional-validation.md`
 
 ### CLI (experimental)
 
