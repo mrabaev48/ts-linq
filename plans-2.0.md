@@ -293,7 +293,7 @@
   ```
   - [x] API: `@ValidIf(predicate, message?)` (Stage‑3) и `ValidationRule { propertyName, predicate, message? }` ✅
   - [x] Исполнение: `DbContext.validateChanges()` (Added/Modified), агрегирование ошибок (класс/поле/сообщение) ✅
-  - [ ] Порядок: сначала базовые (NotNull/length), затем ValidIf; совместимость с soft delete/audit
+  - [x] Порядок: сначала базовые (NotNull/length), затем ValidIf; совместимость с soft delete/audit ✅
   - [ ] Типобезопасность/DX: строго типизированные предикаты; хелперы для частых паттернов
   - [ ] Тесты: unit (регистрация, множественные правила, ошибки), интеграционные сценарии
   - [ ] Документация: гайд/ограничения; рекомендация дублировать критичные правила в БД
