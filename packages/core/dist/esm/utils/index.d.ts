@@ -1,6 +1,5 @@
 export * from './SqlHelper';
 export * from './OpenTelemetrySqlLogger';
-export * from './PrometheusSqlLogger';
 export * from './PrometheusEndpoint';
 export * from './CompositeSqlLogger';
 export * from './CompositeSqlLoggerFactory';
