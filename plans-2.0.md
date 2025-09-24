@@ -799,6 +799,21 @@
     constructor(@InjectDbContext() private ctx: AppDbContext) {}
   }
   
+  // NestJS module & provider
+  @Module({
+    providers: [
+      {
+        provide: 'DB_CONTEXT',
+        useFactory: () => new AppDbContext({ provider: 'postgresql', connectionString: process.env.POSTGRES_URL! })
+      },
+      UserService
+    ],
+    exports: ['DB_CONTEXT', UserService]
+  })
+  export class DatabaseModule {}
+  
+  export const InjectDbContext = () => Inject('DB_CONTEXT');
+  
   // Express middleware
   app.use(tsLinqMiddleware({
     context: AppDbContext,
