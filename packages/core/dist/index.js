@@ -69,12 +69,6 @@ __exportStar(require("./migrations/DiffMigrationGenerator"), exports);
 __exportStar(require("./migrations/SchemaSnapshot"), exports);
 // Utils
 __exportStar(require("./utils/SqlHelper"), exports);
-__exportStar(require("./utils/OpenTelemetrySqlLogger"), exports);
-__exportStar(require("./utils/PrometheusSqlLogger"), exports);
-__exportStar(require("./utils/PrometheusEndpoint"), exports);
-__exportStar(require("./utils/CompositeSqlLogger"), exports);
-__exportStar(require("./utils/CompositeSqlLoggerFactory"), exports);
 __exportStar(require("./utils/RetryPolicies"), exports);
 __exportStar(require("./utils/EntityCache"), exports);
-__exportStar(require("./utils/MetricsSafe"), exports);
 //# sourceMappingURL=index.js.map

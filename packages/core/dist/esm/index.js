@@ -53,12 +53,6 @@ export * from './migrations/DiffMigrationGenerator';
 export * from './migrations/SchemaSnapshot';
 // Utils
 export * from './utils/SqlHelper';
-export * from './utils/OpenTelemetrySqlLogger';
-export * from './utils/PrometheusSqlLogger';
-export * from './utils/PrometheusEndpoint';
-export * from './utils/CompositeSqlLogger';
-export * from './utils/CompositeSqlLoggerFactory';
 export * from './utils/RetryPolicies';
 export * from './utils/EntityCache';
-export * from './utils/MetricsSafe';
 //# sourceMappingURL=index.js.map
