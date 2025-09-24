@@ -306,8 +306,9 @@
   - [x] Перфоманс/безопасность: кеш правил по классу; гайдлайны против тяжёлых предикатов ✅
     - Кеширование Reflect‑правил в DbContext (WeakMap per class)
     - Гайдлайны: избегать IO/тяжёлых операций в предикатах; опираться на DB‑constraints для критичных инвариантов
-  - [ ] Перфоманс/безопасность: кеш правил по классу; гайдлайны против тяжёлых предикатов
-  - [ ] Расширения (опц.): группы правил (onCreate/onUpdate), локализация сообщений
+  - [x] Расширения (опц.): группы правил (onCreate/onUpdate), локализация сообщений ✅
+    - `ValidationRule.phase`: onCreate/onUpdate/always; фильтрация в `validateChanges`
+    - I18n: `DbContextOptions.validation.translate`, `messageKey`/`messageParams` в правилах
 
 - [ ] **Database Functions**
   - [x] Базовый декоратор `@DatabaseFunction` (Stage‑3) ✅
