@@ -1,5 +1,9 @@
 import 'reflect-metadata';
-export declare function ValidIf(predicate: (entity: unknown) => boolean, message?: string): PropertyDecorator;
+export declare function ValidIf(predicate: (entity: unknown) => boolean, message?: string, options?: {
+    phase?: 'onCreate' | 'onUpdate' | 'always';
+    messageKey?: string;
+    messageParams?: Record<string, unknown>;
+}): PropertyDecorator;
 export type EntityPredicate<T> = (entity: Readonly<T>) => boolean;
 /** Type-safe form: requires explicit entity type. */
 export declare function ValidIfOf<T>(predicate: EntityPredicate<T>, message?: string): PropertyDecorator;

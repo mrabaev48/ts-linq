@@ -54,6 +54,11 @@ export interface DbContextOptions {
     audit?: AuditOptions;
     /** Optional global query filters applied to matching entities. */
     globalFilters?: GlobalFilter[];
+    /** Optional validation/i18n options. */
+    validation?: {
+        /** Translate a message key with optional parameters into a localized message. */
+        translate?: (key: string, params?: Record<string, unknown>) => string;
+    };
 }
 /**
  * Options for controlling entity loading behavior.
@@ -298,6 +303,12 @@ export interface ValidationRule {
     predicate: (entity: unknown) => boolean;
     /** Optional error message. */
     message?: string;
+    /** Optional message key used for i18n. */
+    messageKey?: string;
+    /** Optional message parameters used with messageKey. */
+    messageParams?: Record<string, unknown>;
+    /** Optional execution phase: onCreate (Added), onUpdate (Modified), or always. */
+    phase?: 'onCreate' | 'onUpdate' | 'always';
 }
 /**
  * Accumulated options that define a SQL query to be generated.

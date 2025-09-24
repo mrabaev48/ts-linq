@@ -29,6 +29,9 @@ export declare abstract class DbContext {
     private _softDelete?;
     private _audit?;
     private _globalFilters?;
+    private _validationOptions?;
+    /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
+    private _validationRulesCache;
     /**
      * Create a new database context instance.
      *
@@ -136,5 +139,9 @@ export declare abstract class DbContext {
     private initializeDbSets;
     /** Basic model validation: not-null and length. */
     private validateChanges;
+    /**
+     * Retrieve cached validation rules for an entity class (Reflect metadata → cache).
+     */
+    private getValidationRules;
 }
 //# sourceMappingURL=DbContext.d.ts.map
