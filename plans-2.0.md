@@ -314,12 +314,13 @@
   - [x] Базовый декоратор `@DatabaseFunction` (Stage‑3) ✅
   - [x] `defaultExpression` в `ColumnMetadata` и поддержка в DDL ✅
   - [x] Диалектные алиасы функций (PG/MySQL/SQLite/MSSQL) — через `defaultExpressionDialect` и декоратор ✅
-  - [ ] Поведение computed vs default (документация и ограничения)
+  - [x] Поведение computed vs default (документация и ограничения) ✅
   - [x] Миграции: diff/DDL для defaultExpression и computed (ALTER add, CREATE) ✅
   - [x] DDL: STORED/VIRTUAL/PERSISTED + feature‑детекция/варнинги (версии/возможности) ✅
   - [x] Интеграционные тесты: дефолты применяются; computed вычисляется (где поддерживается) ✅
   - [x] ORM‑контракты: исключить computed из INSERT/UPDATE (валидация + DX) ✅
-  - [ ] Документация: гайд и таблица совместимости по СУБД
+  - [x] Документация: гайд и таблица совместимости по СУБД ✅
+    - docs/guides/database-functions.md: алиасы функций и матрица совместимости
   - [ ] Линтер/валидация схемы: улучшить сообщения (класс/поле)
   ```typescript
   @Entity()
