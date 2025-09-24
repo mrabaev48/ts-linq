@@ -1148,6 +1148,7 @@ npm run docs
 - Advanced include & joins: `docs/guides/advanced-include-join.md`
 - Test matrix: `docs/guides/test-matrix.md`
 - Conditional validation: `docs/guides/conditional-validation.md`
+- Database functions (defaults): `docs/guides/database-functions.md`
 
 ### CLI (experimental)
 
