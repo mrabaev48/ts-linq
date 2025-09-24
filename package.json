@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/open-telemetry-sql-logger"
   ],
   "main": "./packages/core/dist/index.js",
   "module": "./packages/core/dist/index.esm.js",
