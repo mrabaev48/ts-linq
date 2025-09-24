@@ -33,10 +33,11 @@ Limitations
 
 Best Practices
 
-- Keep predicates pure and fast; avoid side‑effects and external calls.
+- Keep predicates pure and fast; avoid side‑effects and external calls. Do not call databases, HTTP services, or perform heavy computations inside predicates.
 - Co‑locate common rules using helpers; prefer typed version ValidIfOf<T>.
 - Prefer base constraints in metadata (nullable/length) where possible.
 - Use meaningful messages to aggregate and display multiple errors.
+- Use the built‑in per‑class rules cache (DbContext) to avoid repeated metadata lookups.
 
 Strong Recommendation: Duplicate Critical Rules in the Database
 
