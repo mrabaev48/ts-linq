@@ -26,4 +26,5 @@ __exportStar(require("./MigrationBuilder"), exports);
 __exportStar(require("./DiffBasedMigration"), exports);
 __exportStar(require("./MigrationFileBuilder"), exports);
 __exportStar(require("./DiffMigrationGenerator"), exports);
+__exportStar(require("./SchemaSnapshot"), exports);
 //# sourceMappingURL=index.js.map

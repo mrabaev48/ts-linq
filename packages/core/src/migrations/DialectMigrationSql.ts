@@ -42,7 +42,7 @@ export function generateMigrationFromDiff(
     }
     if (tableDiff.drop) {
       up.push(`DROP TABLE ${q(dialect, tableDiff.table)}`);
-      // Down неизвестен без snapshot, пропустим
+      // Down is unknown without a snapshot; omitted
       continue;
     }
     if (
@@ -244,7 +244,7 @@ export function generateMigrationFromDiff(
           }
           down.push(buildDropColumnSql(dialect, tableDiff.table, ch.column.name));
         } else if (ch.kind === 'alter') {
-          // Разделяем смену типа и nullability
+          // Separate type and nullability handling
           const alterType = ch.prev && norm(ch.prev.type) !== norm(ch.column.type);
           // For computed changes, prefer drop + add (dialect-safe baseline)
           const computedChanged = ((ch.prev as { isComputed?: boolean; computedExpression?: string; computedStorage?: string } | undefined)?.isComputed !== (ch.column as { isComputed?: boolean }).isComputed) ||
@@ -287,7 +287,7 @@ export function generateMigrationFromDiff(
             );
             break;
           case 'mysql':
-            // MySQL требует полный тип в MODIFY/CHANGE COLUMN — оставим как комментарий
+            // MySQL requires full type in MODIFY/CHANGE COLUMN — leave as comment
             up.push(`-- MySQL requires full type for CHANGE COLUMN ${rn.from} -> ${rn.to}`);
             break;
           case 'mssql':
@@ -400,7 +400,7 @@ function buildAlterNullSql(
     case 'postgresql':
       return `ALTER TABLE ${tableName} ALTER COLUMN ${columnName} ${nullable ? 'DROP NOT NULL' : 'SET NOT NULL'}`;
     case 'mysql':
-      // Для MySQL требуется полный тип, здесь используется общий тип TEXT как упрощение
+      // MySQL requires full type; use a generic comment placeholder here
       return `-- MySQL requires full type in MODIFY for nullability; include in type alter`;
     case 'mssql':
       return `-- MSSQL requires full type in ALTER COLUMN for nullability; include in type alter`;

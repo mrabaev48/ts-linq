@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DiffMigrationGenerator = void 0;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const SchemaSnapshot_1 = require("./SchemaSnapshot");
 const SchemaInspector_1 = require("./SchemaInspector");
 const DiffTypes_1 = require("./DiffTypes");
+const DialectMigrationSql_1 = require("./DialectMigrationSql");
 /**
  * Minimal diff generator (SQLite):
  * - Create table if missing
@@ -17,122 +18,67 @@ class DiffMigrationGenerator {
     }
     async generate() {
         const steps = [];
-        const inspector = new SchemaInspector_1.SQLiteSchemaInspector(this.provider);
-        const entities = MetadataStorage_1.MetadataStorage.getEntities();
-        // Build expected snapshot from metadata
-        const expected = {
-            tables: entities.map((entityMeta) => {
-                const columns = entityMeta.columns.map((column) => ({
-                    name: column.columnName,
-                    type: this.mapType(column.type),
-                    nullable: column.nullable,
-                    defaultValue: column.defaultValue,
-                    isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName)
-                }));
-                const primaryKeys = entityMeta.primaryKeys.map((pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk);
-                const indexes = (entityMeta.indexes || []).map((indexDef) => ({
-                    name: indexDef.name,
-                    columns: indexDef.columns,
-                    unique: !!indexDef.unique
-                }));
-                return {
-                    name: entityMeta.tableName,
-                    columns,
-                    primaryKeys,
+        const expected = new SchemaSnapshot_1.SchemaSnapshotBuilder().buildExpectedFromMetadata();
+        // Build actual snapshot depending on provider
+        const label = this.provider.providerLabel;
+        let actual;
+        if (label === 'sqlite') {
+            const inspector = new SchemaInspector_1.SQLiteSchemaInspector(this.provider);
+            const tableNames = await inspector.listTables();
+            const actualTables = [];
+            for (const tableName of tableNames) {
+                const info = await inspector.getTableInfo(tableName);
+                const indexes = await inspector.getIndexes(tableName);
+                actualTables.push({
+                    name: tableName,
+                    columns: info.columns.map((col) => ({
+                        name: col.name,
+                        type: this.normalizeType(col.type),
+                        nullable: !col.notnull
+                    })),
+                    primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
+                    indexes: indexes.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where })),
+                    foreignKeys: []
+                });
+            }
+            actual = { tables: actualTables };
+        }
+        else {
+            // For non-SQLite: mirror expected columns/PKs, but fetch actual indexes via inspectors
+            const idxFetch = async (table) => {
+                if (label === 'postgresql') {
+                    const ins = new SchemaInspector_1.PostgresSchemaInspector(this.provider);
+                    const list = await ins.getIndexes(table);
+                    return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+                }
+                if (label === 'mysql') {
+                    const ins = new SchemaInspector_1.MySqlSchemaInspector(this.provider);
+                    const list = await ins.getIndexes(table);
+                    return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique }));
+                }
+                if (label === 'mssql') {
+                    const ins = new SchemaInspector_1.MssqlSchemaInspector(this.provider);
+                    const list = await ins.getIndexes(table);
+                    return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+                }
+                return [];
+            };
+            const actualTables = [];
+            for (const t of expected.tables) {
+                const indexes = await idxFetch(t.name);
+                actualTables.push({
+                    name: t.name,
+                    columns: t.columns.map((c) => ({ name: c.name, type: c.type, nullable: c.nullable })),
+                    primaryKeys: t.primaryKeys.slice(),
                     indexes,
                     foreignKeys: []
-                };
-            })
-        };
-        // Build actual snapshot from SQLite
-        const tableNames = await inspector.listTables();
-        const actualTables = [];
-        for (const tableName of tableNames) {
-            const info = await inspector.getTableInfo(tableName);
-            actualTables.push({
-                name: tableName,
-                columns: info.columns.map((col) => ({
-                    name: col.name,
-                    type: this.normalizeType(col.type),
-                    nullable: !col.notnull
-                })),
-                primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
-                indexes: [],
-                foreignKeys: []
-            });
-        }
-        const actual = { tables: actualTables };
-        const diff = (0, DiffTypes_1.compareSchemas)(expected, actual);
-        // Translate diff into SQL steps for SQLite
-        for (const tableDiff of diff.tables) {
-            if (tableDiff.create) {
-                steps.push({
-                    sql: this.buildCreateTableSql(tableDiff.create.name, tableDiff.create.columns, tableDiff.create.primaryKeys)
                 });
-                continue;
             }
-            if (tableDiff.drop) {
-                steps.push({ sql: `DROP TABLE ${tableDiff.table}` });
-                continue;
-            }
-            if (tableDiff.columnChanges && tableDiff.columnChanges.length > 0) {
-                // If any alter/drop detected, rebuild table
-                const hasDestructive = tableDiff.columnChanges.some((change) => change.kind !== 'add');
-                if (hasDestructive) {
-                    const entityMeta = entities.find((e) => e.tableName === tableDiff.table);
-                    const tempTable = `__new_${tableDiff.table}`;
-                    const cols = entityMeta.columns.map((column) => ({
-                        name: column.columnName,
-                        type: column.type,
-                        nullable: column.nullable,
-                        defaultValue: column.defaultValue
-                    }));
-                    const pkCols = entityMeta.primaryKeys.map((pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk);
-                    steps.push({ sql: this.buildCreateTableSql(tempTable, cols, pkCols) });
-                    const info = await inspector.getTableInfo(tableDiff.table);
-                    const commonColumns = info.columns
-                        .map((col) => col.name)
-                        .filter((columnName) => entityMeta.columns.some((col) => col.columnName === columnName));
-                    if (commonColumns.length > 0) {
-                        const columnList = commonColumns.join(', ');
-                        steps.push({
-                            sql: `INSERT INTO ${tempTable} (${columnList}) SELECT ${columnList} FROM ${tableDiff.table}`
-                        });
-                    }
-                    steps.push({ sql: `DROP TABLE ${tableDiff.table}` });
-                    steps.push({ sql: `ALTER TABLE ${tempTable} RENAME TO ${tableDiff.table}` });
-                    continue;
-                }
-                // Only adds
-                for (const columnChange of tableDiff.columnChanges) {
-                    if (columnChange.kind === 'add') {
-                        const nn = columnChange.column.nullable ? '' : ' NOT NULL';
-                        const def = columnChange.column.defaultValue !== undefined
-                            ? ` DEFAULT ${this.formatValue(columnChange.column.defaultValue)}`
-                            : '';
-                        steps.push({
-                            sql: `ALTER TABLE ${tableDiff.table} ADD COLUMN ${columnChange.column.name} ${this.mapType(columnChange.column.type)}${nn}${def}`
-                        });
-                    }
-                }
-            }
+            actual = { tables: actualTables };
         }
-        // Safety pass for SQLite: ensure simple ADD COLUMNs are emitted for newly added nullable columns
-        for (const entity of entities) {
-            const info = await inspector.getTableInfo(entity.tableName);
-            const existing = new Set(info.columns.map((col) => col.name));
-            for (const col of entity.columns) {
-                if (!existing.has(col.columnName)) {
-                    const nn = col.nullable ? '' : ' NOT NULL';
-                    const def = col.defaultValue !== undefined ? ` DEFAULT ${this.formatValue(col.defaultValue)}` : '';
-                    const sql = `ALTER TABLE ${entity.tableName} ADD COLUMN ${col.columnName} ${this.mapType(col.type)}${nn}${def}`;
-                    if (!steps.some((s) => s.sql.toUpperCase() === sql.toUpperCase())) {
-                        steps.push({ sql });
-                    }
-                }
-            }
-        }
-        return steps;
+        const diff = (0, DiffTypes_1.compareSchemas)(expected, actual);
+        const rendered = (0, DialectMigrationSql_1.generateMigrationFromDiff)(diff, label);
+        return rendered.up.map((sql) => ({ sql }));
     }
     buildCreateTableSql(table, columns, primaryKeys) {
         const colDefs = columns.map((c) => {

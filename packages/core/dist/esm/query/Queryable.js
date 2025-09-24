@@ -356,7 +356,7 @@ export class Queryable {
             throw new Error('Sequence contains no elements');
         return entities[0];
     }
-    /** Try-версия first без исключений. */
+    /** Try-version of first without throwing exceptions. */
     async tryFirst() {
         try {
             const value = await this.first();
@@ -391,7 +391,7 @@ export class Queryable {
             throw new Error('Sequence contains more than one element');
         return results[0];
     }
-    /** Try-версия single без исключений. */
+    /** Try-version of single without throwing exceptions. */
     async trySingle() {
         try {
             const value = await this.single();

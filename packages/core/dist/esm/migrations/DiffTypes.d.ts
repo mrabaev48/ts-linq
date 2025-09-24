@@ -3,12 +3,32 @@ export interface ColumnDef {
     type: string;
     nullable: boolean;
     defaultValue?: unknown;
+    defaultExpression?: string;
     isPrimaryKey?: boolean;
+    isComputed?: boolean;
+    computedExpression?: string;
+    computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED';
 }
 export interface IndexDef {
     name: string;
     columns: string[];
     unique: boolean;
+    where?: string;
+    orders?: {
+        [column: string]: 'ASC' | 'DESC';
+    };
+    collations?: {
+        [column: string]: string;
+    };
+    nulls?: {
+        [column: string]: 'FIRST' | 'LAST';
+    };
+    expressions?: string[];
+    using?: 'btree' | 'hash' | 'gin' | 'gist';
+    concurrently?: boolean;
+    withParams?: Record<string, string | number | boolean>;
+    mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
+    include?: string[];
 }
 export interface ForeignKeyDef {
     name?: string;
@@ -53,6 +73,10 @@ export interface TableDiff {
     fkCreates?: ForeignKeyDef[];
     /** Drop these foreign key constraint names from the existing table. */
     fkDrops?: string[];
+    /** Optional snapshot of expected columns after changes (used for SQLite rebuild). */
+    columnsAfter?: ColumnDef[];
+    /** Optional snapshot of expected primary keys after changes (used for SQLite rebuild). */
+    primaryKeysAfter?: string[];
 }
 export interface SchemaDiff {
     tables: TableDiff[];

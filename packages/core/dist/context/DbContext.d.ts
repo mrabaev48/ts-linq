@@ -29,6 +29,9 @@ export declare abstract class DbContext {
     private _softDelete?;
     private _audit?;
     private _globalFilters?;
+    private _validationOptions?;
+    /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
+    private _validationRulesCache;
     /**
      * Create a new database context instance.
      *
@@ -55,7 +58,7 @@ export declare abstract class DbContext {
      * @returns Number of affected rows.
      */
     saveChanges(): Promise<number>;
-    /** Try-версия saveChanges без исключений. */
+    /** Try-version of saveChanges without throwing exceptions. */
     trySaveChanges(): Promise<Result<number, Error>>;
     /**
      * Start a database transaction
@@ -136,5 +139,10 @@ export declare abstract class DbContext {
     private initializeDbSets;
     /** Basic model validation: not-null and length. */
     private validateChanges;
+    /**
+     * Retrieve cached validation rules for an entity class (Reflect metadata → cache).
+     */
+    private getValidationRules;
+    private buildValidationDetail;
 }
 //# sourceMappingURL=DbContext.d.ts.map
