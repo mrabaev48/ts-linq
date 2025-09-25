@@ -247,7 +247,7 @@ class DbContext {
         try {
             require('../query/Queryable').Queryable.clearCountCache();
             if (this._entityCache) {
-                const { safeCacheSize } = require('../utils/MetricsSafe');
+                const { safeCacheSize } = require('metrics-safe');
                 safeCacheSize(this._provider.loggerRef, {
                     cache: 'entityL2',
                     size: this._entityCache.size?.() ?? -1,
@@ -268,7 +268,7 @@ class DbContext {
         if (this._entityCache) {
             try {
                 this._entityCache.clear();
-                const { safeCacheSize } = require('../utils/MetricsSafe');
+                const { safeCacheSize } = require('metrics-safe');
                 safeCacheSize(this._provider.loggerRef, {
                     cache: 'entityL2',
                     size: this._entityCache.size?.() ?? 0,

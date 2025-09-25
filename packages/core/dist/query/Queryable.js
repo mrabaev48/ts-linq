@@ -10,7 +10,7 @@ const QueryModel_1 = require("./QueryModel");
 const LoadingStrategy_1 = require("../loading/LoadingStrategy");
 const JoinPredicateParser_1 = require("./JoinPredicateParser");
 const GlobalFilterApplier_1 = require("./GlobalFilterApplier");
-const MetricsSafe_1 = require("../utils/MetricsSafe");
+const metrics_safe_1 = require("metrics-safe");
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
  * in a QueryModel and delegates SQL generation to QueryBuilder.
@@ -432,7 +432,7 @@ class Queryable {
                     Queryable._countCache.delete(key);
                     Queryable._countCache.set(key, hit);
                 }
-                (0, MetricsSafe_1.safeCache)(this._provider.loggerRef, {
+                (0, metrics_safe_1.safeCache)(this._provider.loggerRef, {
                     cache: 'count',
                     hit: true,
                     provider: this._provider.providerLabel,
@@ -449,7 +449,7 @@ class Queryable {
                     const firstKey = Queryable._countCache.keys().next().value;
                     if (firstKey !== undefined) {
                         Queryable._countCache.delete(firstKey);
-                        (0, MetricsSafe_1.safeCacheEvicted)(this._provider.loggerRef, {
+                        (0, metrics_safe_1.safeCacheEvicted)(this._provider.loggerRef, {
                             cache: 'count',
                             provider: this._provider.providerLabel
                         });
@@ -457,12 +457,12 @@ class Queryable {
                 }
                 Queryable._countCache.set(key, entry);
             }
-            (0, MetricsSafe_1.safeCacheSize)(this._provider.loggerRef, {
+            (0, metrics_safe_1.safeCacheSize)(this._provider.loggerRef, {
                 cache: 'count',
                 size: this._externalCountCache ? -1 : Queryable._countCache.size,
                 provider: this._provider.providerLabel
             });
-            (0, MetricsSafe_1.safeCache)(this._provider.loggerRef, {
+            (0, metrics_safe_1.safeCache)(this._provider.loggerRef, {
                 cache: 'count',
                 hit: false,
                 provider: this._provider.providerLabel
@@ -693,12 +693,10 @@ class Queryable {
             }
             catch (e) {
                 try {
-                    const { warnIfLoggerDebug } = require('../utils/MetricsSafe');
+                    const { warnIfLoggerDebug } = require('metrics-safe');
                     warnIfLoggerDebug('notify:entityMaterialized', e);
                 }
-                catch {
-                    /* ignore */
-                }
+                catch { /* ignore */ }
             }
             // notify middleware via provider hook
             try {
@@ -706,12 +704,10 @@ class Queryable {
             }
             catch (e) {
                 try {
-                    const { warnIfLoggerDebug } = require('../utils/MetricsSafe');
+                    const { warnIfLoggerDebug } = require('metrics-safe');
                     warnIfLoggerDebug('notify:entityMaterialized', e);
                 }
-                catch {
-                    /* ignore */
-                }
+                catch { /* ignore */ }
             }
             return entity;
         }
@@ -733,12 +729,10 @@ class Queryable {
         }
         catch (e) {
             try {
-                const { warnIfLoggerDebug } = require('../utils/MetricsSafe');
+                const { warnIfLoggerDebug } = require('metrics-safe');
                 warnIfLoggerDebug('notify:entityMaterialized', e);
             }
-            catch {
-                /* ignore */
-            }
+            catch { /* ignore */ }
         }
         return entity;
     }

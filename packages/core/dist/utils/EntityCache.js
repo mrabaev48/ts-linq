@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityCache = void 0;
-const MetricsSafe_1 = require("./MetricsSafe");
+const metrics_safe_1 = require("metrics-safe");
 class EntityCache {
     /**
      * @param maxSize Maximum number of cached items before FIFO eviction.
@@ -32,7 +32,7 @@ class EntityCache {
             if (firstKey !== undefined) {
                 this._store.delete(firstKey);
                 try {
-                    (0, MetricsSafe_1.safeCacheEvicted)(this._logger, { cache: 'entityL2', provider: this._providerLabel });
+                    (0, metrics_safe_1.safeCacheEvicted)(this._logger, { cache: 'entityL2', provider: this._providerLabel });
                 }
                 catch {
                     /* ignore */
