@@ -1,4 +1,4 @@
-import { safeCacheSize } from '../utils/MetricsSafe';
+import { safeCacheSize } from 'metrics-safe';
 import { EnhancedSqlCache } from './EnhancedSqlCache';
 /**
  * QueryBuilder is now focused solely on generating SQL

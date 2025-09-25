@@ -1,4 +1,4 @@
-import { safeCacheEvicted } from './MetricsSafe';
+import { safeCacheEvicted } from 'metrics-safe';
 export class EntityCache {
     /**
      * @param maxSize Maximum number of cached items before FIFO eviction.
