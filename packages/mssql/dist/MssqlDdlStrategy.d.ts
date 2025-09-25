@@ -6,6 +6,11 @@ export declare class MssqlDdlStrategy {
         name: string;
         columns: string[];
         unique: boolean;
+        where?: string;
+        orders?: {
+            [column: string]: 'ASC' | 'DESC';
+        };
+        include?: string[];
     }): string;
     mapTypeToMssql(type: string): string;
 }

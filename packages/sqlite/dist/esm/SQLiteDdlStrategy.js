@@ -29,21 +29,44 @@ export class SQLiteDdlStrategy {
     }
     generateCreateIndexSql(tableName, index) {
         const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-        return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS ${index.name} ON ${tableName} (${index.columns.join(', ')})`;
+        const whereSql = index.where ? ` WHERE ${index.where}` : '';
+        const parts = [];
+        for (const c of index.columns) {
+            const ord = index.orders?.[c] ? ` ${index.orders[c]}` : '';
+            const collate = index.collations?.[c] ? ` COLLATE ${index.collations[c]}` : '';
+            parts.push(`${c}${ord}${collate}`);
+        }
+        for (const e of index.expressions || [])
+            parts.push(`(${e})`);
+        const cols = parts.join(', ');
+        return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS ${index.name} ON ${tableName} (${cols})${whereSql}`;
     }
     generateColumnDefinition(column) {
+        if (column.isComputed && column.computedExpression) {
+            const storage = column.computedStorage;
+            const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
+            if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
+                console.warn(`SQLite: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); using ${kind} for ${column.columnName}`);
+            }
+            if (kind === 'STORED') {
+                console.warn(`SQLite: STORED generated columns require SQLite >= 3.31; falling back to VIRTUAL for ${column.columnName}`);
+            }
+            return `${column.columnName} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
+        }
         let definition = `${column.columnName} ${this.mapTypeToSQLite(column.type)}`;
         if (column.length) {
             definition += `(${column.length})`;
         }
-        if (column.isGenerated && this.mapTypeToSQLite(column.type) === 'INTEGER') {
-            // Skip extra constraints; PRIMARY KEY AUTOINCREMENT handled at table level
-        }
-        else {
+        const isIntegerAutoincPk = column.isGenerated && this.mapTypeToSQLite(column.type) === 'INTEGER';
+        if (!isIntegerAutoincPk) {
             if (!column.nullable) {
                 definition += ' NOT NULL';
             }
-            if (column.defaultValue !== undefined) {
+            const defExpr = column.defaultExpression;
+            if (defExpr) {
+                definition += ` DEFAULT ${defExpr}`;
+            }
+            else if (column.defaultValue !== undefined) {
                 definition += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
             }
         }

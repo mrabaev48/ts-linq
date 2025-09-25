@@ -21,6 +21,9 @@ export class MssqlDialect {
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const parameters = [];
+        if (options.selectParams && options.selectParams.length) {
+            parameters.push(...options.selectParams);
+        }
         const selectList = options.select && options.select.length ? options.select.join(', ') : '*';
         // For MSSQL, TOP must appear right after SELECT (before DISTINCT)
         // If both DISTINCT and LIMIT are used, MSSQL supports SELECT DISTINCT TOP (n)
@@ -31,7 +34,7 @@ export class MssqlDialect {
             selectHead += 'DISTINCT ';
         if (hasLimit && !hasOffset)
             selectHead += `TOP (${options.limit}) `;
-        let query = `${selectHead}${selectList} FROM [${metadata.tableName}]`;
+        let query = `${selectHead}${selectList} FROM [${options.from ?? metadata.tableName}]`;
         if (options.joins && options.joins.length > 0) {
             for (const join of options.joins) {
                 query += ` ${join.type} JOIN [${join.table}]`;

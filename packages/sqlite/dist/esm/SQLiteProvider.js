@@ -281,7 +281,7 @@ export class SQLiteProvider extends DatabaseProvider {
             const value = entity[col.propertyName];
             // include when value is defined (can be null intentionally)
             if (value !== undefined)
-                return !col.isGenerated || value !== null;
+                return (!col.isGenerated || value !== null) && !col.isComputed;
             return false;
         });
         const columnNames = insertableColumns.map((col) => col.columnName);
@@ -292,7 +292,7 @@ export class SQLiteProvider extends DatabaseProvider {
     }
     /** Generate UPDATE SQL and params based on non-PK columns and PK WHERE clause. */
     generateUpdateSql(entity, metadata, versionCol) {
-        const updatableColumns = metadata.columns.filter((col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated);
+        const updatableColumns = metadata.columns.filter((col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated && !col.isComputed);
         if (updatableColumns.length === 0) {
             throw new Error(`No updatable columns found for entity ${metadata.target.name}`);
         }

@@ -5,6 +5,20 @@ export declare class PostgresDdlStrategy {
         name: string;
         columns: string[];
         unique: boolean;
+        where?: string;
+        orders?: {
+            [column: string]: 'ASC' | 'DESC';
+        };
+        expressions?: string[];
+        collations?: {
+            [column: string]: string;
+        };
+        nulls?: {
+            [column: string]: 'FIRST' | 'LAST';
+        };
+        using?: 'btree' | 'hash' | 'gin' | 'gist';
+        concurrently?: boolean;
+        withParams?: Record<string, string | number | boolean>;
     }): string;
     mapTypeToPg(type: string): string;
 }

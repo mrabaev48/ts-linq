@@ -5,6 +5,14 @@ export declare class SQLiteDdlStrategy {
         name: string;
         columns: string[];
         unique: boolean;
+        where?: string;
+        orders?: {
+            [column: string]: 'ASC' | 'DESC';
+        };
+        expressions?: string[];
+        collations?: {
+            [column: string]: string;
+        };
     }): string;
     generateColumnDefinition(column: ColumnMetadata): string;
     mapTypeToSQLite(type: string): string;
