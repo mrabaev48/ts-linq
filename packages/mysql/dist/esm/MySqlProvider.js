@@ -220,7 +220,7 @@ export class MySqlProvider extends DatabaseProvider {
     }
     // DDL generation moved to MySqlDdlStrategy
     generateInsertSql(entity, metadata) {
-        const insertable = metadata.columns.filter((c) => !c.isGenerated || entity[c.propertyName] !== undefined);
+        const insertable = metadata.columns.filter((c) => (!c.isGenerated || entity[c.propertyName] !== undefined) && !c.isComputed);
         const names = insertable.map((c) => c.columnName);
         const placeholders = insertable.map(() => '?');
         const params = insertable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
@@ -230,7 +230,7 @@ export class MySqlProvider extends DatabaseProvider {
         };
     }
     generateUpdateSql(entity, metadata, versionCol) {
-        const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+        const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
         const setClauses = updatable.map((c) => `${c.columnName} = ?`);
         const setParams = updatable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
         if (versionCol)

@@ -87,9 +87,9 @@ type Order_Rel = { id: number; userId: number };
 type UserEx_Rel = { id: number; name: string; orders: Order_Rel[]; manager?: UserEx_Rel | null };
 declare const qRel: Queryable<UserEx_Rel>;
 const tqRel = new TypedQueryable(qRel);
-// valid relationship
+// valid relationships
 tqRel.include(u => u.orders);
-// invalid case omitted in tsd to keep compile clean
+tqRel.include(u => u.name);
 
 // TypedQueryable: result type inference for select
 type U_Select = { id: number; name: string; age: number };

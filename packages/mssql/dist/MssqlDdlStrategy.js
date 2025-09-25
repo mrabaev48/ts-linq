@@ -18,21 +18,46 @@ class MssqlDdlStrategy {
         return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${metadata.tableName}') BEGIN CREATE TABLE ${metadata.tableName} (${columns.join(', ')}) END`;
     }
     generateColumnDefinition(column) {
+        if (column.isComputed && column.computedExpression) {
+            const storage = column.computedStorage;
+            if (storage && storage !== 'PERSISTED') {
+                console.warn(`MSSQL: computedStorage='${storage}' is not supported; use 'PERSISTED' or omit. Applying non-persisted computed for ${column.columnName}`);
+            }
+            const persisted = storage === 'PERSISTED' ? ' PERSISTED' : '';
+            return `${column.columnName} AS (${column.computedExpression})${persisted}`;
+        }
         let definition = `${column.columnName} ${this.mapTypeToMssql(column.type)}`;
         if (column.length) {
             definition += `(${column.length})`;
         }
-        if (!column.nullable) {
+        if (!column.nullable)
             definition += ' NOT NULL';
+        if (column.defaultExpression) {
+            definition += ` DEFAULT ${column.defaultExpression}`;
         }
-        if (column.defaultValue !== undefined) {
+        else if (column.defaultValue !== undefined) {
             definition += ` DEFAULT ${core_1.SqlHelper.formatValue(column.defaultValue)}`;
         }
         return definition;
     }
     generateCreateIndexSql(tableName, index) {
+        // MSSQL does not support expression-based columns in simple CREATE INDEX list
+        // Warn if caller passed unexpected props via type erasure
+        const unexpected = [];
+        if (index.expressions)
+            unexpected.push('expressions');
+        if (index.collations)
+            unexpected.push('collations');
+        if (index.nulls)
+            unexpected.push('nulls');
+        if (unexpected.length > 0) {
+            console.warn(`MSSQL: unsupported index options ignored for ${index.name}: ${unexpected.join(', ')}`);
+        }
         const unique = index.unique ? 'UNIQUE ' : '';
-        return `IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='${index.name}' AND object_id=OBJECT_ID('${tableName}')) CREATE ${unique}INDEX ${index.name} ON ${tableName} (${index.columns.join(', ')})`;
+        const whereSql = index.where ? ` WHERE ${index.where}` : '';
+        const cols = index.columns.map(c => index.orders?.[c] ? `${c} ${index.orders[c]}` : c).join(', ');
+        const include = index.include && index.include.length > 0 ? ` INCLUDE (${index.include.join(', ')})` : '';
+        return `IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='${index.name}' AND object_id=OBJECT_ID('${tableName}')) CREATE ${unique}INDEX ${index.name} ON ${tableName} (${cols})${include}${whereSql}`;
     }
     mapTypeToMssql(type) {
         switch ((type || '').toUpperCase()) {

@@ -142,7 +142,7 @@ export class MssqlProvider extends DatabaseProvider {
         const pk = metadata.primaryKeys;
         if (!pk.length)
             return this.insert(entity, entityClass);
-        const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+        const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
         const sourceCols = metadata.columns.filter((c) => !c.isGenerated);
         const sourceSelect = sourceCols.map((c) => `? AS ${c.columnName}`).join(', ');
         const onClause = pk

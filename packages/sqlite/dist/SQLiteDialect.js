@@ -23,7 +23,7 @@ class SQLiteDialect {
         if (options.distinct)
             query += 'DISTINCT ';
         query += options.select && options.select.length ? options.select.join(', ') : '*';
-        query += ` FROM ${metadata.tableName}`;
+        query += ` FROM ${options.from ?? metadata.tableName}`;
         // JOINs
         if (options.joins && options.joins.length > 0) {
             for (const join of options.joins) {
@@ -34,6 +34,9 @@ class SQLiteDialect {
             }
         }
         const parameters = [];
+        if (options.selectParams && options.selectParams.length) {
+            parameters.push(...options.selectParams);
+        }
         // WHERE
         if (options.where && options.where.length > 0) {
             const whereClauses = options.where.map((whereClause) => whereClause.condition);

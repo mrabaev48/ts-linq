@@ -99,7 +99,7 @@ export class PostgresProvider extends DatabaseProvider {
         const meta = MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
-        const cols = meta.columns.filter((c) => !c.isGenerated);
+        const cols = meta.columns.filter((c) => !c.isGenerated && !c.isComputed);
         const names = cols.map((c) => `"${c.columnName}"`);
         const placeholders = cols.map((_, i) => `$${i + 1}`);
         const values = cols.map((c) => this.coerceToSqlParameter(convertValueForPg(entity[c.propertyName], c.type)));
@@ -117,7 +117,7 @@ export class PostgresProvider extends DatabaseProvider {
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const versionCol = meta.columns.find((c) => c.isVersion);
-        const setCols = meta.columns.filter((c) => !meta.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+        const setCols = meta.columns.filter((c) => !meta.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
         if (setCols.length === 0)
             return entity;
         const sets = setCols.map((c, i) => `"${c.columnName}" = $${i + 1}`);
@@ -154,14 +154,14 @@ export class PostgresProvider extends DatabaseProvider {
         if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
             return this.insert(entity, entityClass);
         }
-        const insertCols = meta.columns.filter((c) => !c.isGenerated);
+        const insertCols = meta.columns.filter((c) => !c.isGenerated && !c.isComputed);
         const names = insertCols.map((c) => `"${c.columnName}"`);
         const placeholders = insertCols.map((_, i) => `$${i + 1}`);
         const values = insertCols.map((c) => this.coerceToSqlParameter(convertValueForPg(entity[c.propertyName], c.type)));
         const conflictTargets = meta.primaryKeys
             .map((pk) => `"${meta.columns.find((c) => c.propertyName === pk)?.columnName || pk}"`)
             .join(', ');
-        const setCols = meta.columns.filter((c) => !meta.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+        const setCols = meta.columns.filter((c) => !meta.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
         const setClause = setCols
             .map((c) => `"${c.columnName}" = EXCLUDED."${c.columnName}"`)
             .join(', ');

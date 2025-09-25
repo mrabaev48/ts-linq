@@ -26,7 +26,11 @@ class PostgresDialect {
         if (options.distinct)
             query += 'DISTINCT ';
         query += options.select && options.select.length ? options.select.join(', ') : '*';
-        query += ` FROM "${metadata.tableName}"`;
+        // Support CTE
+        if (options.cte) {
+            query = `WITH ${options.cte.name} AS (${options.cte.sql}) ` + query;
+        }
+        query += ` FROM "${options.from ?? metadata.tableName}"`;
         if (options.joins && options.joins.length) {
             for (const join of options.joins) {
                 query += ` ${join.type} JOIN "${join.table}"`;
@@ -36,6 +40,9 @@ class PostgresDialect {
             }
         }
         const parameters = [];
+        if (options.selectParams && options.selectParams.length) {
+            parameters.push(...options.selectParams);
+        }
         if (options.where && options.where.length > 0) {
             const whereClauses = options.where.map((whereClause) => whereClause.condition);
             query += ` WHERE ${whereClauses.join(' AND ')}`;
