@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { PrometheusSqlLogger } from '../src/utils/PrometheusSqlLogger';
+import { PrometheusSqlLogger } from 'prometheus-sql-logger';
 
 type LabelValues = Record<string, string>;
 const hits: Array<{ lbl: LabelValues; v: number }> = [];

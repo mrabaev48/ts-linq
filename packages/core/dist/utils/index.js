@@ -15,13 +15,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./SqlHelper"), exports);
-__exportStar(require("./OpenTelemetrySqlLogger"), exports);
-__exportStar(require("./PrometheusSqlLogger"), exports);
-__exportStar(require("./PrometheusEndpoint"), exports);
-__exportStar(require("./CompositeSqlLogger"), exports);
-__exportStar(require("./CompositeSqlLoggerFactory"), exports);
 __exportStar(require("./RetryPolicies"), exports);
 __exportStar(require("./EntityCache"), exports);
-__exportStar(require("./MetricsSafe"), exports);
 __exportStar(require("./IndexOptionsBuilder"), exports);
 //# sourceMappingURL=index.js.map
