@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { OpenTelemetrySqlLogger } from '../src/utils/OpenTelemetrySqlLogger';
+import { OpenTelemetrySqlLogger } from 'open-telemetry-sql-logger';
 
 describe('OpenTelemetrySqlLogger', () => {
   it('does not throw when @opentelemetry/api is not installed', () => {
