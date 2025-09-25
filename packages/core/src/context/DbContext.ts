@@ -309,7 +309,7 @@ export abstract class DbContext {
         require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }
       ).Queryable.clearCountCache();
       if (this._entityCache) {
-        const { safeCacheSize } = require('../utils/MetricsSafe') as {
+        const { safeCacheSize } = require('metrics-safe') as {
           safeCacheSize: (
             logger: unknown,
             payload: { cache: 'entityL2'; size: number; provider?: string }
@@ -335,7 +335,7 @@ export abstract class DbContext {
     if (this._entityCache) {
       try {
         this._entityCache.clear();
-        const { safeCacheSize } = require('../utils/MetricsSafe') as {
+        const { safeCacheSize } = require('metrics-safe') as {
           safeCacheSize: (
             logger: unknown,
             payload: { cache: 'entityL2'; size: number; provider?: string }

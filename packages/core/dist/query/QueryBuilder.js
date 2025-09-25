@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.QueryBuilder = void 0;
-const MetricsSafe_1 = require("../utils/MetricsSafe");
+const metrics_safe_1 = require("metrics-safe");
 const EnhancedSqlCache_1 = require("./EnhancedSqlCache");
 /**
  * QueryBuilder is now focused solely on generating SQL
@@ -152,7 +152,7 @@ class QueryBuilder {
     /** Store an item in the cache. */
     remember(key, value) {
         this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
-        (0, MetricsSafe_1.safeCacheSize)(this._logger, {
+        (0, metrics_safe_1.safeCacheSize)(this._logger, {
             cache: 'sqlGen',
             size: this._cache.size?.() ?? -1,
             provider: this._providerName

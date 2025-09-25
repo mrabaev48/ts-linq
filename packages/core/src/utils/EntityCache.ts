@@ -1,4 +1,4 @@
-import { safeCacheEvicted } from './MetricsSafe';
+import { safeCacheEvicted } from 'metrics-safe';
 
 /**
  * Simple in-memory FIFO cache for entities keyed by `<EntityName>|<id>`.

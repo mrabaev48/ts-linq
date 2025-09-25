@@ -7,7 +7,7 @@ import { QueryModel } from './QueryModel';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
-import { safeCache, safeCacheEvicted, safeCacheSize } from '../utils/MetricsSafe';
+import { safeCache, safeCacheEvicted, safeCacheSize } from 'metrics-safe';
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
  * in a QueryModel and delegates SQL generation to QueryBuilder.
@@ -690,12 +690,10 @@ export class Queryable {
             }
             catch (e) {
                 try {
-                    const { warnIfLoggerDebug } = require('../utils/MetricsSafe');
+                    const { warnIfLoggerDebug } = require('metrics-safe');
                     warnIfLoggerDebug('notify:entityMaterialized', e);
                 }
-                catch {
-                    /* ignore */
-                }
+                catch { /* ignore */ }
             }
             // notify middleware via provider hook
             try {
@@ -703,12 +701,10 @@ export class Queryable {
             }
             catch (e) {
                 try {
-                    const { warnIfLoggerDebug } = require('../utils/MetricsSafe');
+                    const { warnIfLoggerDebug } = require('metrics-safe');
                     warnIfLoggerDebug('notify:entityMaterialized', e);
                 }
-                catch {
-                    /* ignore */
-                }
+                catch { /* ignore */ }
             }
             return entity;
         }
@@ -730,12 +726,10 @@ export class Queryable {
         }
         catch (e) {
             try {
-                const { warnIfLoggerDebug } = require('../utils/MetricsSafe');
+                const { warnIfLoggerDebug } = require('metrics-safe');
                 warnIfLoggerDebug('notify:entityMaterialized', e);
             }
-            catch {
-                /* ignore */
-            }
+            catch { /* ignore */ }
         }
         return entity;
     }
