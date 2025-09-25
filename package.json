@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/open-telemetry-sql-logger",
+    "packages/prometheus-sql-logger",
+    "packages/composite-sql-logger",
+    "packages/metrics-safe"
   ],
   "main": "./packages/core/dist/index.js",
   "module": "./packages/core/dist/index.esm.js",

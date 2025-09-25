@@ -21,7 +21,7 @@ import { EntityCache } from '../utils/EntityCache';
 import type { CountCache } from './CountCache';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
-import { safeCache, safeCacheEvicted, safeCacheSize } from '../utils/MetricsSafe';
+import { safeCache, safeCacheEvicted, safeCacheSize } from 'metrics-safe';
 
  
 
@@ -800,14 +800,7 @@ export class Queryable<T> {
           provider: this._provider.providerLabel
         });
       } catch (e) {
-        try {
-          const { warnIfLoggerDebug } = require('../utils/MetricsSafe') as {
-            warnIfLoggerDebug: (method: string, error: unknown) => void;
-          };
-          warnIfLoggerDebug('notify:entityMaterialized', e);
-        } catch {
-          /* ignore */
-        }
+        try { const { warnIfLoggerDebug } = require('metrics-safe') as { warnIfLoggerDebug: (m: string, e: unknown) => void; }; warnIfLoggerDebug('notify:entityMaterialized', e); } catch { /* ignore */ }
       }
       // notify middleware via provider hook
       try {
@@ -815,14 +808,7 @@ export class Queryable<T> {
           this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }
         ).notifyEntityMaterialized?.(entity, metadata);
       } catch (e) {
-        try {
-          const { warnIfLoggerDebug } = require('../utils/MetricsSafe') as {
-            warnIfLoggerDebug: (method: string, error: unknown) => void;
-          };
-          warnIfLoggerDebug('notify:entityMaterialized', e);
-        } catch {
-          /* ignore */
-        }
+        try { const { warnIfLoggerDebug } = require('metrics-safe') as { warnIfLoggerDebug: (m: string, e: unknown) => void; }; warnIfLoggerDebug('notify:entityMaterialized', e); } catch { /* ignore */ }
       }
       return entity;
     }
@@ -846,14 +832,7 @@ export class Queryable<T> {
           this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }
         ).notifyEntityMaterialized?.(entity, metadata);
     } catch (e) {
-      try {
-        const { warnIfLoggerDebug } = require('../utils/MetricsSafe') as {
-          warnIfLoggerDebug: (method: string, error: unknown) => void;
-        };
-        warnIfLoggerDebug('notify:entityMaterialized', e);
-      } catch {
-        /* ignore */
-      }
+    try { const { warnIfLoggerDebug } = require('metrics-safe') as { warnIfLoggerDebug: (m: string, e: unknown) => void; }; warnIfLoggerDebug('notify:entityMaterialized', e); } catch { /* ignore */ }
     }
     return entity;
   }
