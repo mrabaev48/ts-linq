@@ -4,7 +4,9 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "packages/open-telemetry-sql-logger"
+    "packages/open-telemetry-sql-logger",
+    "packages/prometheus-sql-logger",
+    "packages/composite-sql-logger"
   ],
   "main": "./packages/core/dist/index.js",
   "module": "./packages/core/dist/index.esm.js",

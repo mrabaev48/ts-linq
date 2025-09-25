@@ -1,5 +1,4 @@
-import { CompositeSqlLogger } from '../src/utils/CompositeSqlLogger';
-import { CompositeSqlLoggerFactory } from '../src/utils/CompositeSqlLoggerFactory';
+import { CompositeSqlLogger, CompositeSqlLoggerFactory } from 'composite-sql-logger';
 import type { SqlLogger, SqlLoggerFactory } from '../src/types';
 
 describe('CompositeSqlLogger', () => {
