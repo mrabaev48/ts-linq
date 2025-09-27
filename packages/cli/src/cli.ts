@@ -55,6 +55,15 @@ async function main() {
       }
       console.log(`Applied ${statements.length} seed statements from ${sqlFile}`);
     }
+  } else if (cmd === 'validate:env') {
+    const required = ['NODE_ENV'];
+    const missing = required.filter((k) => !process.env[k]);
+    if (missing.length) {
+      console.error(`Missing required environment variables: ${missing.join(', ')}`);
+      process.exitCode = 2;
+    } else {
+      console.log('Environment validation: OK');
+    }
   } else if (cmd === 'schema:export') {
     const out = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
     const snapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
