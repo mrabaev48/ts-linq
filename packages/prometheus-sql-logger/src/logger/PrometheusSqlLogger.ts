@@ -23,6 +23,10 @@ export interface PrometheusLoggerOptions {
   prefix?: string;
   bucketsMs?: number[];
   client?: PromClientLike;
+  /** When true, redact string literals and sensitive patterns from SQL before parsing labels */
+  maskSql?: boolean;
+  /** Custom patterns to redact from SQL text (replaced by [REDACTED]) */
+  maskPatterns?: ReadonlyArray<RegExp>;
 }
 
 export class PrometheusSqlLogger implements SqlLogger {
@@ -40,10 +44,14 @@ export class PrometheusSqlLogger implements SqlLogger {
   private countCacheTtlHits?: PromCounter;
   private countCacheHardHits?: PromCounter;
   private cacheEvictions?: PromCounter;
+  private maskSql: boolean = false;
+  private maskPatterns: ReadonlyArray<RegExp> = [];
 
   constructor(namespace: string, options?: PrometheusLoggerOptions) {
     this.prefix = options?.prefix ?? '';
     this.client = options?.client ?? this.safeRequirePromClient();
+    this.maskSql = !!options?.maskSql;
+    this.maskPatterns = options?.maskPatterns ?? [];
     if (!this.client) return;
     this.enabled = true;
     const buckets = options?.bucketsMs ?? [5, 10, 20, 50, 100, 200, 500, 1000, 2000];
@@ -70,8 +78,9 @@ export class PrometheusSqlLogger implements SqlLogger {
 
   public queryEnd(info: { sql: string; params: readonly SqlParameter[]; durationMs: number; traceId?: string; rows?: number; error?: Error; provider?: string }): void {
     if (!this.enabled || !this.client || !this.queryTotal || !this.queryDuration) return;
-    const op = this.parseOperation(info.sql);
-    const entity = this.parseEntity(info.sql) || 'unknown';
+    const sql = this.maskIfNeeded(info.sql);
+    const op = this.parseOperation(sql);
+    const entity = this.parseEntity(sql) || 'unknown';
     const provider = info.provider || 'unknown';
     const success = info.error ? 'false' : 'true';
     const labels = { provider, operation: op, entity, success } as LabelValues;
@@ -88,8 +97,9 @@ export class PrometheusSqlLogger implements SqlLogger {
 
   public retry?(info: { sql: string; params: readonly SqlParameter[]; attempt: number; traceId?: string; provider?: string }): void {
     if (!this.enabled || !this.client || !this.retryTotal) return;
-    const op = this.parseOperation(info.sql);
-    const entity = this.parseEntity(info.sql) || 'unknown';
+    const sql = this.maskIfNeeded(info.sql);
+    const op = this.parseOperation(sql);
+    const entity = this.parseEntity(sql) || 'unknown';
     const provider = info.provider || 'unknown';
     try { this.retryTotal.labels({ provider, operation: op, entity }).inc(1); } catch {}
   }
@@ -119,6 +129,16 @@ export class PrometheusSqlLogger implements SqlLogger {
   private safeRequirePromClient(): PromClientLike | undefined {
     try { const pc = require('prom-client'); if (pc && pc.Counter && pc.Histogram) return pc as PromClientLike; } catch {}
     return undefined;
+  }
+  private maskIfNeeded(sql: string): string {
+    if (!this.maskSql) return sql;
+    let s = sql;
+    // redact single-quoted string literals
+    s = s.replace(/'([^']|''))*'/g, `'[REDACTED]'`).replace(/"([^"\\]|\\.)*"/g, '"[REDACTED]"');
+    for (const re of this.maskPatterns) {
+      try { s = s.replace(re, '[REDACTED]'); } catch {}
+    }
+    return s;
   }
   private parseOperation(sql: string): string { const m = sql.trim().match(/^(SELECT|INSERT|UPDATE|DELETE)\b/i); return m ? m[1].toUpperCase() : 'OTHER'; }
   private parseEntity(sql: string): string | undefined {
