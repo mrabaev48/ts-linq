@@ -61,6 +61,12 @@
 **Приоритет**: P0 (Критично)
 **Временные затраты**: 1.5 недели
 
+#### Production‑Ready дополнения
+- Подпись релизов (npm provenance/2FA), воспроизводимые сборки
+- Поддержка Node LTS и матрица CI; SemVer‑политика совместимости
+- Release workflow: авто‑CHANGELOG, GitHub Releases, provenance
+- Проверки: sideEffects/tree‑shaking, size budgets, smoke‑инсталляция tarball
+
 ### 1.2 Testing Infrastructure Overhaul
 
 **Цель**: Bulletproof тестирование всех сценариев
