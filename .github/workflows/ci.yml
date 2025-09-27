@@ -27,4 +27,6 @@ jobs:
         run: npm run test:db:all
       - name: Size budgets
         run: npm run size:bundle
+      - name: Enforce bundle size thresholds
+        run: node size-tests/check-thresholds.mjs
 
