@@ -84,12 +84,20 @@
   expect(migration.generateSQL()).toMatchSnapshot();
   ```
   - [x] Базовые снапшоты DDL для computed‑колонок по диалектам (CREATE TABLE) ✅
+  - [x] SELECT/DDL снапшоты по диалектам (PG/MySQL/MSSQL/SQLite) ✅
+    - PG: EXISTS/CTE/окна (row_number), OFFSET без LIMIT ✅
+    - MySQL: JSON_EXTRACT, MATCH AGAINST ✅
+    - MSSQL: OFFSET/FETCH + ORDER fallback ✅
+    - SQLite: LIMIT -1 при OFFSET ✅
 
 - [ ] **Property-Based Testing расширение**
-  - Complex JOIN scenarios с fast-check
-  - Edge cases для predicate parsing
-  - Large dataset pagination тесты
-  - Concurrency stress tests
+  - [x] Плейсхолдеры/параметры для всех диалектов (fast-check) ✅
+  - [x] JOIN/GROUP BY/HAVING/ORDER корректность (fast-check) ✅
+  - [x] CTE и нумерация параметров в PG (fast-check) ✅
+  - [x] Безопасность от SQL‑инъекций: только параметры, без литералов ✅
+  - [ ] Edge cases для predicate parsing
+  - [ ] Large dataset pagination тесты
+  - [ ] Concurrency stress tests
 
 - [x] **Test Matrix CI** (GitHub Actions: providers + detectOpenHandles) ✅
   - GitHub Actions matrix для всех провайдеров
@@ -98,6 +106,17 @@
 
 **Приоритет**: P0 (Критично)  
 **Временные затраты**: 2 недели
+
+#### Итог покрытия тестов (добавлено)
+
+- [x] Интеграции транзакций (begin/commit/rollback) для всех провайдеров ✅
+- [x] PG: RETURNING (INSERT/UPDATE) ✅
+- [x] PG: JSONB операции (jsonb_path_query_first, @>) ✅
+- [x] PG: блокировки (FOR UPDATE NOWAIT/SKIP LOCKED), дедлок, statement_timeout ✅
+- [x] MySQL: upsert (ON DUPLICATE KEY UPDATE), изоляция REPEATABLE READ vs READ COMMITTED ✅
+- [x] MSSQL: UPDLOCK/HOLDLOCK конфликт, квазиснапшот через HOLDLOCK ✅
+- [x] Round‑trip миграции (diff → apply → нет diff) для PG/MySQL/MSSQL/SQLite ✅
+- [x] Маппинг ошибок UNIQUE/FK (PG/MySQL/MSSQL) ✅
 
 ### 1.3 Enhanced CLI Development
 
