@@ -1,6 +1,6 @@
 import { QueryBuilder } from './QueryBuilder';
 import { EnhancedSqlCache } from './EnhancedSqlCache';
-import { SqlDialect } from './SqlDialect';
+import type { SqlDialect } from './SqlDialect';
 import { sql } from './SqlFunctions';
 import { MetadataStorage } from '@ts-linq/core';
 import type { ColumnMetadata, SqlLogger } from '../types';
@@ -141,7 +141,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       // Use a dialect that outputs the select list to validate expression rendering
       const exprDialect: SqlDialect = {
         buildSelect: () => ({
-          query: `SELECT ${options.select!.join(', ')} FROM test_users`,
+          query: `SELECT ${options.select.join(', ')} FROM test_users`,
           parameters: []
         })
       };
