@@ -6,12 +6,12 @@ function normalizeSql(lines: string[]): string {
 
 test('MigrationBuilder: create + add/alter/drop column SQL snapshot (postgresql)', () => {
   const mb = new MigrationBuilder();
-  mb.createTable('users', t => {
+  mb.createTable('users', (t) => {
     t.column('id', 'INTEGER', { nullable: false });
     t.column('name', 'TEXT');
     t.primaryKey('id');
   });
-  mb.alterTable('users', t => {
+  mb.alterTable('users', (t) => {
     t.addColumn('email', 'TEXT', { nullable: true });
     t.alterColumn('name', 'TEXT', { nullable: false });
     t.dropColumn('email');

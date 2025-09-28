@@ -11,5 +11,3 @@ test('Postgres: expression-based index', () => {
   });
   expect(sql).toContain('("id", (LOWER(email)))');
 });
-
-

@@ -1,4 +1,4 @@
-import {expectType} from 'tsd';
+import { expectType } from 'tsd';
 import { type EntityId, brandId, unbrandId, type PrimaryKeyOf, DbSet } from '..';
 import type { Queryable } from '..';
 import { TypedQueryable } from '..';
@@ -28,8 +28,12 @@ const badUserId: UserId = oid;
 const badOrderId: OrderId = uid;
 
 // Function signatures should enforce correct branded ids
-function getUserById(id: UserId): User | null { return null; }
-function getOrderById(id: OrderId): Order | null { return null; }
+function getUserById(id: UserId): User | null {
+  return null;
+}
+function getOrderById(id: OrderId): Order | null {
+  return null;
+}
 
 getUserById(uid);
 getOrderById(oid);
@@ -39,7 +43,9 @@ getUserById(oid);
 getOrderById(uid);
 
 // Branded ids remain compatible with primitive constraints in generics
-function identity<T extends string | number>(x: T): T { return x; }
+function identity<T extends string | number>(x: T): T {
+  return x;
+}
 const uid2 = identity(uid);
 expectType<UserId>(uid2);
 
@@ -74,10 +80,10 @@ type U_Order = { id: number; name: string; age: number; createdAt: Date };
 declare const qOrder: Queryable<U_Order>;
 const tqOrder = new TypedQueryable(qOrder);
 // valid
-tqOrder.orderBy(u => u.name);
-tqOrder.orderBy(u => u.age, 'DESC');
-tqOrder.thenBy(u => u.createdAt);
-tqOrder.thenByDescending(u => u.id);
+tqOrder.orderBy((u) => u.name);
+tqOrder.orderBy((u) => u.age, 'DESC');
+tqOrder.thenBy((u) => u.createdAt);
+tqOrder.thenByDescending((u) => u.id);
 // invalid: non-existent key
 // @ts-expect-error
 tqOrder.orderBy((u) => u.nonExistent);
@@ -88,13 +94,13 @@ type UserEx_Rel = { id: number; name: string; orders: Order_Rel[]; manager?: Use
 declare const qRel: Queryable<UserEx_Rel>;
 const tqRel = new TypedQueryable(qRel);
 // valid relationship
-tqRel.include(u => u.orders);
+tqRel.include((u) => u.orders);
 // invalid case omitted in tsd to keep compile clean
 
 // TypedQueryable: result type inference for select
 type U_Select = { id: number; name: string; age: number };
 declare const qSel: Queryable<U_Select>;
 const tqSel = new TypedQueryable(qSel);
-const selected = tqSel.select(u => ({ id: u.id, name: u.name }));
+const selected = tqSel.select((u) => ({ id: u.id, name: u.name }));
 // Chaining to ensure it remains typed
 const _x2 = selected.take(1);

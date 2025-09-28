@@ -1,7 +1,4 @@
-import { 
-  EnhancedSqlCache, 
-  type EnhancedSqlCacheOptions 
-} from './EnhancedSqlCache';
+import { EnhancedSqlCache, type EnhancedSqlCacheOptions } from './EnhancedSqlCache';
 import type { SqlCacheEntry } from './SqlCache';
 
 describe('EnhancedSqlCache', () => {
@@ -29,7 +26,7 @@ describe('EnhancedSqlCache', () => {
     test('should store and retrieve entries', () => {
       const key = 'test_key';
       cache.set(key, testEntry);
-      
+
       const retrieved = cache.get(key);
       expect(retrieved).toBeDefined();
       expect(retrieved?.query).toBe(testEntry.query);
@@ -46,7 +43,7 @@ describe('EnhancedSqlCache', () => {
       cache.set('key1', testEntry);
       cache.set('key2', testEntry);
       expect(cache.size()).toBe(2);
-      
+
       cache.clear();
       expect(cache.size()).toBe(0);
       expect(cache.get('key1')).toBeUndefined();
@@ -60,15 +57,15 @@ describe('EnhancedSqlCache', () => {
         enableMetrics: true
       };
       resetCache(options);
-      
+
       cache.set('expiring_key', testEntry);
       expect(cache.get('expiring_key')).toBeDefined();
-      
+
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
       expect(cache.get('expiring_key')).toBeUndefined();
-      
+
       const metrics = cache.getMetrics();
       expect(metrics.expirations).toBe(1);
       expect(metrics.misses).toBe(1);
@@ -77,18 +74,18 @@ describe('EnhancedSqlCache', () => {
     test('should support custom TTL per entry', async () => {
       cache.set('short_ttl', testEntry, 50); // 50ms TTL
       cache.set('long_ttl', testEntry, 200); // 200ms TTL
-      
-      await new Promise(resolve => setTimeout(resolve, 75));
-      
+
+      await new Promise((resolve) => setTimeout(resolve, 75));
+
       expect(cache.get('short_ttl')).toBeUndefined();
       expect(cache.get('long_ttl')).toBeDefined();
     });
 
     test('should not expire entries with TTL = 0', async () => {
       cache.set('no_expiry', testEntry, 0);
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       expect(cache.get('no_expiry')).toBeDefined();
     });
 
@@ -98,13 +95,13 @@ describe('EnhancedSqlCache', () => {
         enableMetrics: true
       };
       resetCache(options);
-      
+
       cache.set('key1', testEntry);
       cache.set('key2', testEntry);
-      
+
       // Wait for expiration time
-      await new Promise(resolve => setTimeout(resolve, 60));
-      
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
       const expiredCount = cache.expireEntries();
       expect(expiredCount).toBe(2);
       expect(cache.size()).toBe(0);
@@ -128,11 +125,11 @@ describe('EnhancedSqlCache', () => {
 
       // Access key1 to make it more recently used
       cache.get('key1');
-      
+
       // Add another entry - should evict key2 (least recently used)
       cache.set('key4', testEntry);
       expect(cache.size()).toBe(3);
-      
+
       expect(cache.get('key1')).toBeDefined(); // Still exists (was accessed)
       expect(cache.get('key2')).toBeUndefined(); // Evicted
       expect(cache.get('key3')).toBeDefined(); // Still exists
@@ -152,13 +149,13 @@ describe('EnhancedSqlCache', () => {
 
       cache.set('key1', testEntry);
       cache.set('key2', testEntry);
-      
+
       // Access key1 (in LRU this would make it safe from eviction)
       cache.get('key1');
-      
+
       // Add key3 - should evict key1 (first in, first out)
       cache.set('key3', testEntry);
-      
+
       expect(cache.get('key1')).toBeUndefined(); // Evicted (FIFO)
       expect(cache.get('key2')).toBeDefined();
       expect(cache.get('key3')).toBeDefined();
@@ -193,7 +190,7 @@ describe('EnhancedSqlCache', () => {
 
       const mediumKey = 'a'.repeat(50); // Below threshold
       cache.set(mediumKey, testEntry);
-      
+
       expect(cache.get(mediumKey)).toBeDefined();
     });
   });
@@ -209,27 +206,27 @@ describe('EnhancedSqlCache', () => {
 
     test('should track hit and miss ratios', () => {
       cache.set('key1', testEntry);
-      
+
       // Generate hits and misses
       cache.get('key1'); // hit
       cache.get('key1'); // hit
       cache.get('nonexistent'); // miss
-      
+
       const metrics = cache.getMetrics();
       expect(metrics.totalRequests).toBe(3);
       expect(metrics.hits).toBe(2);
       expect(metrics.misses).toBe(1);
-      expect(metrics.hitRatio).toBeCloseTo(2/3, 2);
+      expect(metrics.hitRatio).toBeCloseTo(2 / 3, 2);
     });
 
     test('should track access counts', () => {
       cache.set('popular_key', testEntry);
-      
+
       // Access multiple times (excluding the initial set() access)
       for (let i = 0; i < 5; i++) {
         cache.get('popular_key');
       }
-      
+
       const metrics = cache.getMetrics();
       expect(metrics.averageAccessCount).toBe(6); // 1 from set() + 5 from get() calls
     });
@@ -239,9 +236,9 @@ describe('EnhancedSqlCache', () => {
         query: 'SELECT * FROM large_table WHERE condition = ?'.repeat(10),
         parameters: Array(20).fill('test')
       };
-      
+
       cache.set('large_entry', largeEntry);
-      
+
       const metrics = cache.getMetrics();
       expect(metrics.estimatedMemoryUsage).toBeGreaterThan(0);
       expect(metrics.currentSize).toBe(1);
@@ -261,7 +258,7 @@ describe('EnhancedSqlCache', () => {
       cache.set('key3', testEntry); // Should cause eviction
 
       // Test expirations
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
       cache.get('key2'); // Should be expired
 
       const metrics = cache.getMetrics();
@@ -317,7 +314,7 @@ describe('EnhancedSqlCache', () => {
     test('should provide optimization recommendations', () => {
       // Create scenario with low hit ratio
       cache.set('key1', testEntry);
-      
+
       // Generate more misses than hits
       cache.get('nonexistent1');
       cache.get('nonexistent2');
@@ -325,7 +322,7 @@ describe('EnhancedSqlCache', () => {
       cache.get('key1'); // Single hit
 
       const insights = cache.getOptimizationInsights();
-      
+
       expect(insights.shouldIncreaseSize).toBeDefined();
       expect(insights.shouldDecreaseTtl).toBeDefined();
       expect(insights.shouldIncreaseTtl).toBeDefined();
@@ -336,7 +333,7 @@ describe('EnhancedSqlCache', () => {
     test('should identify top accessed entries', () => {
       cache.set('popular', testEntry);
       cache.set('unpopular', testEntry);
-      
+
       // Make 'popular' accessed more frequently
       for (let i = 0; i < 10; i++) {
         cache.get('popular');
@@ -345,7 +342,7 @@ describe('EnhancedSqlCache', () => {
 
       const insights = cache.getOptimizationInsights();
       const topEntries = insights.topAccessedEntries;
-      
+
       expect(topEntries.length).toBeGreaterThan(0);
       expect(topEntries[0].accessCount).toBe(11); // 1 from set() + 10 from get() calls
       expect(topEntries[1]?.accessCount).toBe(2); // 1 from set() + 1 from get() call
@@ -356,7 +353,7 @@ describe('EnhancedSqlCache', () => {
     test('should handle empty cache operations', () => {
       expect(cache.size()).toBe(0);
       expect(cache.get('anything')).toBeUndefined();
-      
+
       const metrics = cache.getMetrics();
       expect(metrics.currentSize).toBe(0);
       expect(metrics.totalRequests).toBe(1); // From the get call
@@ -368,7 +365,7 @@ describe('EnhancedSqlCache', () => {
 
       cache.set('duplicate', entry1);
       expect(cache.get('duplicate')?.query).toBe('SELECT 1');
-      
+
       cache.set('duplicate', entry2);
       expect(cache.get('duplicate')?.query).toBe('SELECT 2');
       expect(cache.size()).toBe(1); // Still only one entry
@@ -382,7 +379,7 @@ describe('EnhancedSqlCache', () => {
 
       cache.set('huge', hugeEntry);
       const retrieved = cache.get('huge');
-      
+
       expect(retrieved).toBeDefined();
       expect(retrieved?.parameters.length).toBe(1000);
     });
@@ -392,8 +389,8 @@ describe('EnhancedSqlCache', () => {
       cache.set('negative_ttl', testEntry, -100);
 
       // Both should not expire after time passes
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
       expect(cache.get('zero_ttl')).toBeDefined();
       expect(cache.get('negative_ttl')).toBeDefined();
     });
@@ -406,14 +403,14 @@ describe('EnhancedSqlCache', () => {
         enableMetrics: true
       };
       const testCache = new EnhancedSqlCache(options);
-      
+
       testCache.set('test', testEntry);
       expect(testCache.size()).toBe(1);
-      
+
       // Dispose should clear cache and cleanup intervals
       testCache.dispose();
       expect(testCache.size()).toBe(0);
-      
+
       // Should be safe to dispose multiple times
       testCache.dispose();
       expect(testCache.size()).toBe(0);
@@ -421,13 +418,13 @@ describe('EnhancedSqlCache', () => {
 
     test('should handle dispose on cache without periodic cleanup', () => {
       const options: EnhancedSqlCacheOptions = {
-        defaultTtl: 0, // No periodic cleanup
+        defaultTtl: 0 // No periodic cleanup
       };
       const testCache = new EnhancedSqlCache(options);
-      
+
       testCache.set('test', testEntry);
       expect(testCache.size()).toBe(1);
-      
+
       // Should still work even when no interval was created
       testCache.dispose();
       expect(testCache.size()).toBe(0);
@@ -450,18 +447,18 @@ describe('EnhancedSqlCache', () => {
 
       // Verify options are applied
       expect(cache).toBeDefined();
-      
+
       // Fill beyond max size to test capacity
       for (let i = 0; i < 7; i++) {
         cache.set(`key_${i}`, testEntry);
       }
-      
+
       expect(cache.size()).toBeLessThanOrEqual(5);
     });
 
     test('should use default options when none provided', () => {
       resetCache();
-      
+
       // Should work with defaults
       cache.set('default_test', testEntry);
       expect(cache.get('default_test')).toBeDefined();

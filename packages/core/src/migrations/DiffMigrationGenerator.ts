@@ -1,7 +1,12 @@
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SchemaSnapshotBuilder } from './SchemaSnapshot';
-import { SQLiteSchemaInspector, PostgresSchemaInspector, MySqlSchemaInspector, MssqlSchemaInspector } from './SchemaInspector';
+import {
+  SQLiteSchemaInspector,
+  PostgresSchemaInspector,
+  MySqlSchemaInspector,
+  MssqlSchemaInspector
+} from './SchemaInspector';
 import type { SchemaSnapshot, TableSnapshot, ColumnDef, IndexDef } from './DiffTypes';
 import { compareSchemas } from './DiffTypes';
 import { generateMigrationFromDiff } from './DialectMigrationSql';
@@ -24,7 +29,12 @@ export class DiffMigrationGenerator {
     const steps: MigrationStep[] = [];
     const expected: SchemaSnapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
     // Build actual snapshot depending on provider
-    const label = this.provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string;
+    const label = this.provider.providerLabel as
+      | 'sqlite'
+      | 'postgresql'
+      | 'mysql'
+      | 'mssql'
+      | string;
     let actual: SchemaSnapshot;
     if (label === 'sqlite') {
       const inspector = new SQLiteSchemaInspector(this.provider);
@@ -41,7 +51,12 @@ export class DiffMigrationGenerator {
             nullable: !col.notnull
           })),
           primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
-          indexes: indexes.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where })),
+          indexes: indexes.map((i) => ({
+            name: i.name,
+            columns: i.columns,
+            unique: i.unique,
+            where: i.where
+          })),
           foreignKeys: []
         });
       }
@@ -52,7 +67,12 @@ export class DiffMigrationGenerator {
         if (label === 'postgresql') {
           const ins = new PostgresSchemaInspector(this.provider);
           const list = await ins.getIndexes(table);
-          return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+          return list.map((i) => ({
+            name: i.name,
+            columns: i.columns,
+            unique: i.unique,
+            where: i.where
+          }));
         }
         if (label === 'mysql') {
           const ins = new MySqlSchemaInspector(this.provider);
@@ -62,7 +82,12 @@ export class DiffMigrationGenerator {
         if (label === 'mssql') {
           const ins = new MssqlSchemaInspector(this.provider);
           const list = await ins.getIndexes(table);
-          return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+          return list.map((i) => ({
+            name: i.name,
+            columns: i.columns,
+            unique: i.unique,
+            where: i.where
+          }));
         }
         return [];
       };

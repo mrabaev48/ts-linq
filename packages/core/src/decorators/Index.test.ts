@@ -1,7 +1,10 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata, IndexMetadata } from '../types';
 
-class User { id!: number; active!: number; }
+class User {
+  id!: number;
+  active!: number;
+}
 
 test('Index metadata registration (prod-ready, without relying on decorator timing)', () => {
   MetadataStorage.getInstance().clear();
@@ -11,11 +14,16 @@ test('Index metadata registration (prod-ready, without relying on decorator timi
     { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false },
     { propertyName: 'active', columnName: 'active', type: 'INTEGER', nullable: false }
   ];
-  cols.forEach(c => MetadataStorage.addColumn(User, c));
+  cols.forEach((c) => MetadataStorage.addColumn(User, c));
   MetadataStorage.addPrimaryKey(User, 'id');
 
   // Register index explicitly
-  const idx: IndexMetadata = { name: 'idx_users_active', columns: ['active'], unique: false, where: 'active = 1' };
+  const idx: IndexMetadata = {
+    name: 'idx_users_active',
+    columns: ['active'],
+    unique: false,
+    where: 'active = 1'
+  };
   MetadataStorage.addIndex(User, idx);
 
   const meta = MetadataStorage.getEntity(User)!;
@@ -23,5 +31,3 @@ test('Index metadata registration (prod-ready, without relying on decorator timi
   expect(meta.indexes[0].name).toBe('idx_users_active');
   expect(meta.indexes[0].where).toBe('active = 1');
 });
-
-

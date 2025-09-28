@@ -1,7 +1,10 @@
 import { DiffMigrationGenerator, MetadataStorage } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
 
-class RUserSq { id!: number; email!: string }
+class RUserSq {
+  id!: number;
+  email!: string;
+}
 
 describe('[integration][sqlite] migration round-trip (diff → apply → no diff)', () => {
   test('DiffMigrationGenerator produces empty diff after applying SQL (baseline features)', async () => {
@@ -10,8 +13,18 @@ describe('[integration][sqlite] migration round-trip (diff → apply → no diff
     // Expected schema via MetadataStorage
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(RUserSq, 'rt_users');
-    MetadataStorage.addColumn(RUserSq, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false });
-    MetadataStorage.addColumn(RUserSq, { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false });
+    MetadataStorage.addColumn(RUserSq, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(RUserSq, {
+      propertyName: 'email',
+      columnName: 'email',
+      type: 'TEXT',
+      nullable: false
+    });
     MetadataStorage.addPrimaryKey(RUserSq, 'id');
 
     const gen1 = new DiffMigrationGenerator(p as any);
@@ -24,5 +37,3 @@ describe('[integration][sqlite] migration round-trip (diff → apply → no diff
     expect(steps2.length).toBe(0);
   });
 });
-
-

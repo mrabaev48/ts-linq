@@ -11,5 +11,3 @@ test('SQLite: expression-based index', () => {
   });
   expect(sql).toContain('(id, (LOWER(email)))');
 });
-
-

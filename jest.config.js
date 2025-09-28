@@ -11,8 +11,8 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest'
   },
   collectCoverageFrom: [
-    'packages/**/src/**/*.ts', 
-    '!packages/**/src/**/*.d.ts', 
+    'packages/**/src/**/*.ts',
+    '!packages/**/src/**/*.d.ts',
     '!packages/**/src/index.ts'
   ],
   coverageDirectory: 'coverage',
@@ -23,32 +23,36 @@ module.exports = {
     {
       displayName: 'core',
       testMatch: ['<rootDir>/packages/core/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] },
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
-    ...(includeIntegration ? [{
-      displayName: 'integration',
-      testMatch: ['<rootDir>/tests/db/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.tests.json' }] },
-    }] : []),
+    ...(includeIntegration
+      ? [
+          {
+            displayName: 'integration',
+            testMatch: ['<rootDir>/tests/db/**/*.test.ts'],
+            transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.tests.json' }] }
+          }
+        ]
+      : []),
     {
       displayName: 'sqlite',
       testMatch: ['<rootDir>/packages/sqlite/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
     },
     {
       displayName: 'postgres',
       testMatch: ['<rootDir>/packages/postgres/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
     },
     {
       displayName: 'mysql',
       testMatch: ['<rootDir>/packages/mysql/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
     },
     {
       displayName: 'mssql',
       testMatch: ['<rootDir>/packages/mssql/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
     }
   ]
 };

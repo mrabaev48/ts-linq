@@ -5,10 +5,11 @@ import { DbContext } from '@ts-linq/core';
 const run = !!process.env.RUN_DB_TESTS;
 const runJson = process.env.MYSQL_JSON === '1';
 
-
 (run ? describe : describe.skip)('MySQL JSON integration', () => {
   class Ctx extends DbContext {
-    constructor(conn: string) { super({ provider: new MySqlProvider(conn) }); }
+    constructor(conn: string) {
+      super({ provider: new MySqlProvider(conn) });
+    }
   }
 
   (runJson ? test : test.skip)('JSON_EXTRACT parameterized select (path param only)', async () => {
@@ -17,7 +18,7 @@ const runJson = process.env.MYSQL_JSON === '1';
     await ctx.ensureCreated();
     try {
       const res = await (ctx as any).provider.executeQuery(
-        "SELECT JSON_EXTRACT('{\"a\":{\"b\":1}}', ?) as v",
+        'SELECT JSON_EXTRACT(\'{"a":{"b":1}}\', ?) as v',
         ['$.a.b']
       );
       expect(res).toBeDefined();
@@ -33,10 +34,9 @@ const runJson = process.env.MYSQL_JSON === '1';
     try {
       let ok = false;
       try {
-        const res = await (ctx as any).provider.executeQuery(
-          'SELECT JSON_VALID(?) as ok',
-          ['{"a":1}']
-        );
+        const res = await (ctx as any).provider.executeQuery('SELECT JSON_VALID(?) as ok', [
+          '{"a":1}'
+        ]);
         ok = Array.isArray(res) ? Boolean((res as any)[0]?.ok ?? 0) : true;
       } catch {
         ok = false;
@@ -50,5 +50,3 @@ const runJson = process.env.MYSQL_JSON === '1';
     }
   });
 });
-
-

@@ -17,8 +17,17 @@ export interface RelationshipOptions {
 
 function isStage3FieldContext(
   x: unknown
-): x is { kind: 'field'; name: string | symbol; addInitializer?: (fn: (this: unknown) => void) => void } {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in (x as object);
+): x is {
+  kind: 'field';
+  name: string | symbol;
+  addInitializer?: (fn: (this: unknown) => void) => void;
+} {
+  return (
+    !!x &&
+    typeof x === 'object' &&
+    (x as { kind?: unknown }).kind === 'field' &&
+    'name' in (x as object)
+  );
 }
 
 function defineRelationship(
@@ -44,7 +53,8 @@ function defineRelationship(
         cascade: options?.cascade || false
       };
       MetadataStorage.addRelationship(ctor, relationship);
-      const existing: RelationshipMetadata[] = Reflect.getOwnMetadata('orm:relationships', ctor) || [];
+      const existing: RelationshipMetadata[] =
+        Reflect.getOwnMetadata('orm:relationships', ctor) || [];
       existing.push(relationship);
       Reflect.defineMetadata('orm:relationships', existing, ctor);
     });
@@ -72,35 +82,71 @@ function defineRelationship(
 /**
  * Declares a one-to-many relationship on a collection navigation property.
  */
-export function OneToMany(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
+export function OneToMany(
+  targetEntity: () => Function,
+  options: RelationshipOptions = {}
+): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship('one-to-many', targetEntity, options, targetOrValue, propOrContext) as any;
+    return defineRelationship(
+      'one-to-many',
+      targetEntity,
+      options,
+      targetOrValue,
+      propOrContext
+    ) as any;
   };
 }
 
 /**
  * Declares a many-to-one relationship on a reference navigation property.
  */
-export function ManyToOne(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
+export function ManyToOne(
+  targetEntity: () => Function,
+  options: RelationshipOptions = {}
+): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship('many-to-one', targetEntity, options, targetOrValue, propOrContext) as any;
+    return defineRelationship(
+      'many-to-one',
+      targetEntity,
+      options,
+      targetOrValue,
+      propOrContext
+    ) as any;
   };
 }
 
 /**
  * Declares a one-to-one relationship on a reference navigation property.
  */
-export function OneToOne(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
+export function OneToOne(
+  targetEntity: () => Function,
+  options: RelationshipOptions = {}
+): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship('one-to-one', targetEntity, options, targetOrValue, propOrContext) as any;
+    return defineRelationship(
+      'one-to-one',
+      targetEntity,
+      options,
+      targetOrValue,
+      propOrContext
+    ) as any;
   };
 }
 
 /**
  * Declares a many-to-many relationship on a collection navigation property.
  */
-export function ManyToMany(targetEntity: () => Function, options: RelationshipOptions = {}): PropertyDecorator {
+export function ManyToMany(
+  targetEntity: () => Function,
+  options: RelationshipOptions = {}
+): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship('many-to-many', targetEntity, options, targetOrValue, propOrContext) as any;
+    return defineRelationship(
+      'many-to-many',
+      targetEntity,
+      options,
+      targetOrValue,
+      propOrContext
+    ) as any;
   };
 }

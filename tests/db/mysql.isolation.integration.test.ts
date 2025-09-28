@@ -38,9 +38,9 @@ d('[integration][mysql] isolation (REPEATABLE READ vs READ COMMITTED)', () => {
       expect(a3[0].v).toBe(1);
       await p1.commitTransaction();
     } finally {
-      try { await p1.executeNonQuery('DROP TABLE IF EXISTS `iso_items`'); } catch {}
+      try {
+        await p1.executeNonQuery('DROP TABLE IF EXISTS `iso_items`');
+      } catch {}
     }
   });
 });
-
-

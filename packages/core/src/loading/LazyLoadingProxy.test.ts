@@ -1,4 +1,10 @@
-import { LazyLoadingProxy, isLazyProxy, getLazyTarget, awaitLazyLoad, LAZY_LOADING_PROXY } from './LazyLoadingProxy';
+import {
+  LazyLoadingProxy,
+  isLazyProxy,
+  getLazyTarget,
+  awaitLazyLoad,
+  LAZY_LOADING_PROXY
+} from './LazyLoadingProxy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { DatabaseProvider } from '../DatabaseProvider';
 import type { ColumnMetadata, RelationshipMetadata } from '../types';
@@ -23,11 +29,21 @@ describe('LazyLoadingProxy', () => {
   beforeEach(() => {
     // Clear metadata before each test
     MetadataStorage.getInstance().clear();
-    
+
     // Re-register entities manually
     MetadataStorage.addEntity(User, 'users');
-    const userIdCol: ColumnMetadata = { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false };
-    const userNameCol: ColumnMetadata = { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false };
+    const userIdCol: ColumnMetadata = {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    };
+    const userNameCol: ColumnMetadata = {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    };
     MetadataStorage.addColumn(User, userIdCol);
     MetadataStorage.addColumn(User, userNameCol);
     MetadataStorage.addPrimaryKey(User, 'id');
@@ -41,9 +57,24 @@ describe('LazyLoadingProxy', () => {
     MetadataStorage.addRelationship(User, userPostsRel);
 
     MetadataStorage.addEntity(Post, 'posts');
-    const postIdCol: ColumnMetadata = { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false };
-    const postTitleCol: ColumnMetadata = { propertyName: 'title', columnName: 'title', type: 'TEXT', nullable: false };
-    const postUserIdCol: ColumnMetadata = { propertyName: 'userId', columnName: 'user_id', type: 'INTEGER', nullable: true };
+    const postIdCol: ColumnMetadata = {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    };
+    const postTitleCol: ColumnMetadata = {
+      propertyName: 'title',
+      columnName: 'title',
+      type: 'TEXT',
+      nullable: false
+    };
+    const postUserIdCol: ColumnMetadata = {
+      propertyName: 'userId',
+      columnName: 'user_id',
+      type: 'INTEGER',
+      nullable: true
+    };
     MetadataStorage.addColumn(Post, postIdCol);
     MetadataStorage.addColumn(Post, postTitleCol);
     MetadataStorage.addColumn(Post, postUserIdCol);
@@ -88,9 +119,9 @@ describe('LazyLoadingProxy', () => {
     // Clear all mocks to prevent resource leaks
     jest.clearAllMocks();
     jest.clearAllTimers();
-    
+
     // Wait for any pending promises to resolve
-    await new Promise(resolve => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
   });
 
   afterAll(() => {
@@ -110,9 +141,16 @@ describe('LazyLoadingProxy', () => {
 
     test('should not create proxy for entity without relationships', () => {
       // Create entity without relationships
-      class SimpleEntity { id!: number; }
+      class SimpleEntity {
+        id!: number;
+      }
       MetadataStorage.addEntity(SimpleEntity, 'simple');
-      const idCol: ColumnMetadata = { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false };
+      const idCol: ColumnMetadata = {
+        propertyName: 'id',
+        columnName: 'id',
+        type: 'INTEGER',
+        nullable: false
+      };
       MetadataStorage.addColumn(SimpleEntity, idCol);
       MetadataStorage.addPrimaryKey(SimpleEntity, 'id');
 
@@ -136,7 +174,7 @@ describe('LazyLoadingProxy', () => {
         { id: 1, name: 'John' },
         { id: 2, name: 'Jane' }
       ];
-      
+
       const proxies = LazyLoadingProxy.createMany(users, User, mockProvider);
 
       expect(proxies).toHaveLength(2);
@@ -170,7 +208,7 @@ describe('LazyLoadingProxy', () => {
 
       // Verify provider was called correctly
       expect(mockProvider.findWhere).toHaveBeenCalledWith(Post, { userId: 1 });
-      
+
       // Second access should return cached result
       const cachedPosts = proxy.posts;
       expect(cachedPosts).toBe(loadedPosts); // Same reference
@@ -195,7 +233,7 @@ describe('LazyLoadingProxy', () => {
 
       // Verify provider was called correctly
       expect(mockProvider.findById).toHaveBeenCalledWith(1, User);
-      
+
       // Second access should return cached result
       const cachedUser = proxy.user;
       expect(cachedUser).toBe(loadedUser);
@@ -208,7 +246,7 @@ describe('LazyLoadingProxy', () => {
 
       const userPromise = proxy.user;
       const loadedUser = await userPromise;
-      
+
       expect(loadedUser).toBeNull();
       expect(mockProvider.findById).not.toHaveBeenCalled();
     });
@@ -221,7 +259,7 @@ describe('LazyLoadingProxy', () => {
 
       const postsPromise = proxy.posts;
       const loadedPosts = await postsPromise;
-      
+
       expect(loadedPosts).toEqual([]);
       expect(mockProvider.findWhere).toHaveBeenCalledWith(Post, { userId: 1 });
     });
@@ -235,7 +273,7 @@ describe('LazyLoadingProxy', () => {
 
       const postsPromise = proxy.posts;
       const loadedPosts = await postsPromise;
-      
+
       expect(loadedPosts).toEqual([]); // Should return empty array for one-to-many
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Failed to lazy load'),
@@ -275,18 +313,18 @@ describe('LazyLoadingProxy', () => {
       mockProvider.findWhereIn.mockResolvedValueOnce(posts as unknown as Post[]);
 
       const proxies = LazyLoadingProxy.createMany(users, User, mockProvider) as User[];
-      
+
       // Preload posts for all users
       await LazyLoadingProxy.preloadRelationships(proxies, User, ['posts'], mockProvider);
 
       // Verify all posts were loaded in batch
       expect(mockProvider.findWhereIn).toHaveBeenCalledWith(Post, 'userId', [1, 2]);
-      
+
       // Check that each user has their posts
-      expect((proxies[0].posts as unknown as Post[])).toHaveLength(2);
-      expect((proxies[1].posts as unknown as Post[])).toHaveLength(1);
-      expect(((proxies[0].posts as unknown as Post[])[0]).title).toBe('Post 1');
-      expect(((proxies[1].posts as unknown as Post[])[0]).title).toBe('Post 3');
+      expect(proxies[0].posts as unknown as Post[]).toHaveLength(2);
+      expect(proxies[1].posts as unknown as Post[]).toHaveLength(1);
+      expect((proxies[0].posts as unknown as Post[])[0].title).toBe('Post 1');
+      expect((proxies[1].posts as unknown as Post[])[0].title).toBe('Post 3');
     });
 
     test('should handle mixed proxied and non-proxied entities', async () => {
@@ -294,7 +332,7 @@ describe('LazyLoadingProxy', () => {
         { id: 1, name: 'John' },
         { id: 2, name: 'Jane' }
       ];
-      
+
       const proxy1 = LazyLoadingProxy.create(users[0], User, mockProvider);
       const mixedEntities = [proxy1, users[1]]; // One proxy, one regular
 
@@ -336,8 +374,8 @@ describe('LazyLoadingProxy', () => {
       const postsPromise = proxy.posts;
 
       const result = await awaitLazyLoad(postsPromise);
-      expect((result as unknown as Post[])).toHaveLength(1);
-      expect(((result as unknown as Post[])[0]).title).toBe('Post 1');
+      expect(result as unknown as Post[]).toHaveLength(1);
+      expect((result as unknown as Post[])[0].title).toBe('Post 1');
     });
 
     test('should handle non-promise values in awaitLazyLoad', async () => {
@@ -362,7 +400,7 @@ describe('LazyLoadingProxy', () => {
       const proxy = LazyLoadingProxy.create(user, User, mockProvider) as User;
 
       expect(LazyLoadingProxy.isRelationshipLoaded(proxy, 'posts')).toBe(false);
-      
+
       // Manually set posts
       proxy.posts = [] as unknown as Post[];
       expect(LazyLoadingProxy.isRelationshipLoaded(proxy, 'posts')).toBe(true);

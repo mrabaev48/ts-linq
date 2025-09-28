@@ -21,12 +21,7 @@ export class QueryBuilder {
    * Create a QueryBuilder that delegates SQL generation to a dialect.
    * @param dialect SqlDialect implementation (default: SQLiteDialect)
    */
-  constructor(
-    dialect: SqlDialect,
-    logger?: SqlLogger,
-    providerName?: string,
-    cache?: SqlCache
-  ) {
+  constructor(dialect: SqlDialect, logger?: SqlLogger, providerName?: string, cache?: SqlCache) {
     this._dialect = dialect;
     this._logger = logger;
     this._providerName = providerName;
@@ -49,7 +44,10 @@ export class QueryBuilder {
       normalized.selectParams = [];
       normalized.select = options.select.map((s) => {
         if (typeof s === 'string') return s;
-        const expr = s as unknown as { toString(): string; getParameters?: () => readonly unknown[] };
+        const expr = s as unknown as {
+          toString(): string;
+          getParameters?: () => readonly unknown[];
+        };
         const sqlStr = expr.toString();
         const params = expr.getParameters?.() ?? [];
         (normalized.selectParams as unknown[]).push(...params);

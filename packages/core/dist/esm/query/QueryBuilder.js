@@ -5,159 +5,154 @@ import { EnhancedSqlCache } from './EnhancedSqlCache';
  * from an entity class and accumulated query options.
  */
 export class QueryBuilder {
-    /**
-     * Create a QueryBuilder that delegates SQL generation to a dialect.
-     * @param dialect SqlDialect implementation (default: SQLiteDialect)
-     */
-    constructor(dialect, logger, providerName, cache) {
-        this._dialect = dialect;
-        this._logger = logger;
-        this._providerName = providerName;
-        this._cache = cache ?? QueryBuilder._defaultCache;
+  /**
+   * Create a QueryBuilder that delegates SQL generation to a dialect.
+   * @param dialect SqlDialect implementation (default: SQLiteDialect)
+   */
+  constructor(dialect, logger, providerName, cache) {
+    this._dialect = dialect;
+    this._logger = logger;
+    this._providerName = providerName;
+    this._cache = cache ?? QueryBuilder._defaultCache;
+  }
+  /** Generate SQL from QueryOptions with enhanced caching. */
+  generateSql(entityClass, options) {
+    const key = QueryBuilder.buildCacheKey(entityClass, options);
+    const hit = this.getFromCache(key);
+    if (hit) {
+      this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
+      return { query: hit.query, parameters: [...hit.parameters] };
     }
-    /** Generate SQL from QueryOptions with enhanced caching. */
-    generateSql(entityClass, options) {
-        const key = QueryBuilder.buildCacheKey(entityClass, options);
-        const hit = this.getFromCache(key);
-        if (hit) {
-            this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
-            return { query: hit.query, parameters: [...hit.parameters] };
-        }
-        // Normalize expressions in select list to strings (dialect can still re-render)
-        const normalized = { ...options };
-        if (options.select) {
-            normalized.selectParams = [];
-            normalized.select = options.select.map((s) => {
-                if (typeof s === 'string')
-                    return s;
-                const expr = s;
-                const sqlStr = expr.toString();
-                const params = expr.getParameters?.() ?? [];
-                normalized.selectParams.push(...params);
-                return sqlStr;
-            });
-        }
-        const built = this._dialect.buildSelect(entityClass, normalized);
-        this.remember(key, built);
-        this._logger?.cache?.({ cache: 'sqlGen', hit: false, provider: this._providerName });
-        return built;
+    // Normalize expressions in select list to strings (dialect can still re-render)
+    const normalized = { ...options };
+    if (options.select) {
+      normalized.selectParams = [];
+      normalized.select = options.select.map((s) => {
+        if (typeof s === 'string') return s;
+        const expr = s;
+        const sqlStr = expr.toString();
+        const params = expr.getParameters?.() ?? [];
+        normalized.selectParams.push(...params);
+        return sqlStr;
+      });
     }
-    /** Generate SQL from a QueryModel (preferred path). */
-    generateFromModel(entityClass, model) {
-        const opts = {
-            select: model.select,
-            where: model.where,
-            orderBy: model.orderBy,
-            groupBy: model.groupBy,
-            joins: model.joins,
-            limit: model.limit,
-            offset: model.offset,
-            distinct: model.distinct
-        };
-        const base = this.generateSql(entityClass, opts);
-        // Handle UNION/UNION ALL chains
-        if (model.unions && model.unions.length > 0) {
-            let sql = `${base.query}`;
-            const params = [...base.parameters];
-            for (const unionEntry of model.unions) {
-                const next = this.generateFromModel(unionEntry.entity, unionEntry.other);
-                sql += unionEntry.all ? ` UNION ALL ${next.query}` : ` UNION ${next.query}`;
-                params.push(...next.parameters);
-            }
-            return { query: sql, parameters: params };
-        }
-        return base;
+    const built = this._dialect.buildSelect(entityClass, normalized);
+    this.remember(key, built);
+    this._logger?.cache?.({ cache: 'sqlGen', hit: false, provider: this._providerName });
+    return built;
+  }
+  /** Generate SQL from a QueryModel (preferred path). */
+  generateFromModel(entityClass, model) {
+    const opts = {
+      select: model.select,
+      where: model.where,
+      orderBy: model.orderBy,
+      groupBy: model.groupBy,
+      joins: model.joins,
+      limit: model.limit,
+      offset: model.offset,
+      distinct: model.distinct
+    };
+    const base = this.generateSql(entityClass, opts);
+    // Handle UNION/UNION ALL chains
+    if (model.unions && model.unions.length > 0) {
+      let sql = `${base.query}`;
+      const params = [...base.parameters];
+      for (const unionEntry of model.unions) {
+        const next = this.generateFromModel(unionEntry.entity, unionEntry.other);
+        sql += unionEntry.all ? ` UNION ALL ${next.query}` : ` UNION ${next.query}`;
+        params.push(...next.parameters);
+      }
+      return { query: sql, parameters: params };
     }
-    /** Clears the global SQL cache. Useful for tests or after metadata changes. */
-    static clearCache() {
-        QueryBuilder._defaultCache.clear();
+    return base;
+  }
+  /** Clears the global SQL cache. Useful for tests or after metadata changes. */
+  static clearCache() {
+    QueryBuilder._defaultCache.clear();
+  }
+  /** Dispose of the global cache resources. Useful for cleanup. */
+  static disposeCache() {
+    QueryBuilder._defaultCache.dispose();
+    QueryBuilder._defaultCache = new EnhancedSqlCache();
+  }
+  /** Get cache metrics for performance monitoring (if using EnhancedSqlCache). */
+  getCacheMetrics() {
+    if (this._cache instanceof EnhancedSqlCache) {
+      return this._cache.getMetrics();
     }
-    /** Dispose of the global cache resources. Useful for cleanup. */
-    static disposeCache() {
-        QueryBuilder._defaultCache.dispose();
-        QueryBuilder._defaultCache = new EnhancedSqlCache();
+    // Fallback for basic cache interfaces
+    return {
+      currentSize: this._cache.size?.() ?? 0,
+      totalRequests: 0,
+      hits: 0,
+      misses: 0,
+      hitRatio: 0,
+      evictions: 0,
+      expirations: 0,
+      averageAccessCount: 0,
+      estimatedMemoryUsage: 0
+    };
+  }
+  /** Get optimization insights for cache tuning (if using EnhancedSqlCache). */
+  getOptimizationInsights() {
+    if (this._cache instanceof EnhancedSqlCache) {
+      return this._cache.getOptimizationInsights();
     }
-    /** Get cache metrics for performance monitoring (if using EnhancedSqlCache). */
-    getCacheMetrics() {
-        if (this._cache instanceof EnhancedSqlCache) {
-            return this._cache.getMetrics();
-        }
-        // Fallback for basic cache interfaces
-        return {
-            currentSize: this._cache.size?.() ?? 0,
-            totalRequests: 0,
-            hits: 0,
-            misses: 0,
-            hitRatio: 0,
-            evictions: 0,
-            expirations: 0,
-            averageAccessCount: 0,
-            estimatedMemoryUsage: 0
-        };
+    // Fallback for basic cache interfaces
+    return {
+      shouldIncreaseSize: false,
+      shouldDecreaseTtl: false,
+      shouldIncreaseTtl: false,
+      topAccessedEntries: []
+    };
+  }
+  /** Create a stable, lightweight cache key. */
+  static buildCacheKey(entityClass, options) {
+    let key = entityClass.name;
+    key += '|s:' + (options.select ? options.select.join(',') : '');
+    if (options.where && options.where.length) {
+      key += '|w:';
+      for (const whereClause of options.where) {
+        key += whereClause.condition + '(' + (whereClause.parameters?.join('|') ?? '') + ')';
+      }
     }
-    /** Get optimization insights for cache tuning (if using EnhancedSqlCache). */
-    getOptimizationInsights() {
-        if (this._cache instanceof EnhancedSqlCache) {
-            return this._cache.getOptimizationInsights();
-        }
-        // Fallback for basic cache interfaces
-        return {
-            shouldIncreaseSize: false,
-            shouldDecreaseTtl: false,
-            shouldIncreaseTtl: false,
-            topAccessedEntries: []
-        };
+    if (options.orderBy && options.orderBy.length) {
+      key += '|o:';
+      for (const orderBy of options.orderBy) key += orderBy.column + ':' + orderBy.direction + ';';
     }
-    /** Create a stable, lightweight cache key. */
-    static buildCacheKey(entityClass, options) {
-        let key = entityClass.name;
-        key += '|s:' + (options.select ? options.select.join(',') : '');
-        if (options.where && options.where.length) {
-            key += '|w:';
-            for (const whereClause of options.where) {
-                key += whereClause.condition + '(' + (whereClause.parameters?.join('|') ?? '') + ')';
-            }
-        }
-        if (options.orderBy && options.orderBy.length) {
-            key += '|o:';
-            for (const orderBy of options.orderBy)
-                key += orderBy.column + ':' + orderBy.direction + ';';
-        }
-        if (options.groupBy) {
-            key += '|g:' + options.groupBy.columns.join(',');
-            if (options.groupBy.having)
-                key +=
-                    '{' +
-                        options.groupBy.having.condition +
-                        '(' +
-                        (options.groupBy.having.parameters?.join('|') ?? '') +
-                        ')}';
-        }
-        if (options.joins && options.joins.length) {
-            key += '|j:';
-            for (const joinClause of options.joins)
-                key += joinClause.type + ':' + joinClause.table + ':' + joinClause.on + ';';
-        }
-        if (options.limit !== undefined)
-            key += '|l:' + options.limit;
-        if (options.offset !== undefined)
-            key += '|f:' + options.offset;
-        if (options.distinct)
-            key += '|d:1';
-        return key;
+    if (options.groupBy) {
+      key += '|g:' + options.groupBy.columns.join(',');
+      if (options.groupBy.having)
+        key +=
+          '{' +
+          options.groupBy.having.condition +
+          '(' +
+          (options.groupBy.having.parameters?.join('|') ?? '') +
+          ')}';
     }
-    /** Store an item in the cache. */
-    remember(key, value) {
-        this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
-        safeCacheSize(this._logger, {
-            cache: 'sqlGen',
-            size: this._cache.size?.() ?? -1,
-            provider: this._providerName
-        });
+    if (options.joins && options.joins.length) {
+      key += '|j:';
+      for (const joinClause of options.joins)
+        key += joinClause.type + ':' + joinClause.table + ':' + joinClause.on + ';';
     }
-    getFromCache(key) {
-        return this._cache.get(key);
-    }
+    if (options.limit !== undefined) key += '|l:' + options.limit;
+    if (options.offset !== undefined) key += '|f:' + options.offset;
+    if (options.distinct) key += '|d:1';
+    return key;
+  }
+  /** Store an item in the cache. */
+  remember(key, value) {
+    this._cache.set(key, { query: value.query, parameters: [...value.parameters] });
+    safeCacheSize(this._logger, {
+      cache: 'sqlGen',
+      size: this._cache.size?.() ?? -1,
+      provider: this._providerName
+    });
+  }
+  getFromCache(key) {
+    return this._cache.get(key);
+  }
 }
 /** Default enhanced cache instance */
 QueryBuilder._defaultCache = new EnhancedSqlCache();

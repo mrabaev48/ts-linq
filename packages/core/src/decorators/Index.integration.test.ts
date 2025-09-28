@@ -8,7 +8,11 @@ import { Index, IndexOptionsBuilder } from './index';
     .unique()
     .orderBy({ email: 'ASC', createdAt: 'DESC' })
 )
-class User { id!: number; email!: string; createdAt!: string; }
+class User {
+  id!: number;
+  email!: string;
+  createdAt!: string;
+}
 
 test('Index decorator accepts IndexOptionsBuilder and registers metadata', () => {
   MetadataStorage.getInstance().clear();
@@ -16,9 +20,9 @@ test('Index decorator accepts IndexOptionsBuilder and registers metadata', () =>
   const cols: ColumnMetadata[] = [
     { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false },
     { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false },
-    { propertyName: 'createdAt', columnName: 'createdAt', type: 'TEXT', nullable: false },
+    { propertyName: 'createdAt', columnName: 'createdAt', type: 'TEXT', nullable: false }
   ];
-  cols.forEach(c => MetadataStorage.addColumn(User, c));
+  cols.forEach((c) => MetadataStorage.addColumn(User, c));
   MetadataStorage.addPrimaryKey(User, 'id');
 
   // Trigger class initializer by instantiation (for Stage-3 addInitializer)
@@ -32,11 +36,9 @@ test('Index decorator accepts IndexOptionsBuilder and registers metadata', () =>
   }
   const meta = MetadataStorage.getEntity(User)!;
   expect(meta.indexes.length).toBeGreaterThan(0);
-  const idx = meta.indexes.find(i => i.name === 'idx_users_email_created');
+  const idx = meta.indexes.find((i) => i.name === 'idx_users_email_created');
   expect(idx).toBeDefined();
   expect(idx!.columns).toEqual(['email', 'createdAt']);
   expect(idx!.unique).toBe(true);
   expect(idx!.orders).toEqual({ email: 'ASC', createdAt: 'DESC' });
 });
-
-

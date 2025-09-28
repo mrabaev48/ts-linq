@@ -8,7 +8,9 @@ describe('SQLiteProvider integration (smoke)', () => {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   });
   afterAll(() => {
-    try { fs.unlinkSync(dbPath); } catch {}
+    try {
+      fs.unlinkSync(dbPath);
+    } catch {}
   });
   it('connects and runs simple query', async () => {
     const provider = new SQLiteProvider(dbPath);

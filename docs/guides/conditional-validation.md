@@ -80,5 +80,3 @@ Testing
 
 - Unit: registration, multiple rules aggregation, order (base → ValidIf), typed helpers.
 - Integration: SQLite executed by default; PostgreSQL/MySQL/MSSQL scenarios enabled when URLs are provided.
-
-

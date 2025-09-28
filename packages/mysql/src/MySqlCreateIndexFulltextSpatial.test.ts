@@ -7,7 +7,9 @@ test('MySQL: FULLTEXT index', () => {
     unique: false,
     mysqlType: 'FULLTEXT'
   });
-  expect(sql).toContain('CREATE FULLTEXT INDEX IF NOT EXISTS idx_articles_ft_body ON Articles (body)');
+  expect(sql).toContain(
+    'CREATE FULLTEXT INDEX IF NOT EXISTS idx_articles_ft_body ON Articles (body)'
+  );
 });
 
 test('MySQL: SPATIAL index', () => {
@@ -19,5 +21,3 @@ test('MySQL: SPATIAL index', () => {
   });
   expect(sql).toContain('CREATE SPATIAL INDEX IF NOT EXISTS idx_places_geom ON Places (geom)');
 });
-
-

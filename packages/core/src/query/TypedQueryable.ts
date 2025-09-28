@@ -22,22 +22,29 @@ type TypedOrderSelector<TEntity, K extends keyof TEntity> = (entity: TEntity) =>
  * Relationship properties are arrays or objects (not primitives).
  */
 type RelationshipProperties<T> = {
-  [K in keyof T]: T[K] extends Array<any> ? K : 
-    T[K] extends object ? (T[K] extends Date ? never : 
-    T[K] extends Function ? never : K) : never;
+  [K in keyof T]: T[K] extends Array<any>
+    ? K
+    : T[K] extends object
+      ? T[K] extends Date
+        ? never
+        : T[K] extends Function
+          ? never
+          : K
+      : never;
 }[keyof T];
 
 /**
  * Type-safe navigation selector that only allows relationship properties.
  */
-type NavigationSelector<TEntity, TProperty> = TProperty extends TEntity[RelationshipProperties<TEntity>] 
-  ? (entity: TEntity) => TProperty
-  : never;
+type NavigationSelector<TEntity, TProperty> =
+  TProperty extends TEntity[RelationshipProperties<TEntity>]
+    ? (entity: TEntity) => TProperty
+    : never;
 
 /**
  * Compile-time typed wrapper around Queryable that provides type safety
  * for select(), where(), include(), and other query operations.
- * 
+ *
  * Uses composition instead of inheritance to avoid type signature conflicts.
  */
 export class TypedQueryable<TEntity> {
@@ -57,12 +64,12 @@ export class TypedQueryable<TEntity> {
   /**
    * Type-safe SELECT with compile-time validation of selected properties.
    * Only allows selecting properties that actually exist on the entity.
-   * 
+   *
    * @example
    * ```typescript
    * // ✅ Valid - selecting existing properties
    * users.select(u => ({ id: u.id, name: u.name }))
-   * 
+   *
    * // ❌ Compile error - nonExistent property doesn't exist
    * users.select(u => ({ invalid: u.nonExistent }))
    * ```
@@ -77,13 +84,13 @@ export class TypedQueryable<TEntity> {
   /**
    * Type-safe WHERE clause with compile-time property validation.
    * The predicate function receives a typed entity parameter.
-   * 
+   *
    * @example
    * ```typescript
    * // ✅ Valid - using existing properties
    * users.where(u => u.age > 18)
    * users.where(u => u.name === 'John')
-   * 
+   *
    * // ❌ Compile error - invalid property
    * users.where(u => u.nonExistent === 'value')
    * ```
@@ -95,7 +102,7 @@ export class TypedQueryable<TEntity> {
 
   /**
    * Type-safe ORDER BY with property validation.
-   * 
+   *
    * @example
    * ```typescript
    * users.orderBy(u => u.createdAt, 'DESC')
@@ -107,21 +114,22 @@ export class TypedQueryable<TEntity> {
     direction: 'ASC' | 'DESC' = 'ASC'
   ): TypedQueryable<TEntity> {
     // Delegate to correct underlying method based on direction
-    const resultQueryable = direction === 'DESC' 
-      ? this._queryable.orderByDescending(keySelector)
-      : this._queryable.orderBy(keySelector);
+    const resultQueryable =
+      direction === 'DESC'
+        ? this._queryable.orderByDescending(keySelector)
+        : this._queryable.orderBy(keySelector);
     return new TypedQueryable(resultQueryable);
   }
 
   /**
    * Type-safe INCLUDE for relationships with compile-time validation.
    * Only allows including properties that are actual relationships.
-   * 
+   *
    * @example
    * ```typescript
    * // ✅ Valid - including existing relationship
    * users.include(u => u.orders)
-   * 
+   *
    * // ❌ Compile error - not a relationship property
    * users.include(u => u.name)
    * ```
@@ -238,7 +246,9 @@ export class TypedQueryable<TEntity> {
   /**
    * Calculate average of a numeric property (EF-style with type safety)
    */
-  async average<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<number> {
+  async average<K extends keyof TEntity>(
+    selector: (entity: TEntity) => TEntity[K]
+  ): Promise<number> {
     return await this._queryable.average(selector);
   }
 
@@ -252,14 +262,18 @@ export class TypedQueryable<TEntity> {
   /**
    * Find minimum value of a property (EF-style with type safety)
    */
-  async min<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<TEntity[K]> {
+  async min<K extends keyof TEntity>(
+    selector: (entity: TEntity) => TEntity[K]
+  ): Promise<TEntity[K]> {
     return await this._queryable.min(selector);
   }
 
   /**
    * Find maximum value of a property (EF-style with type safety)
    */
-  async max<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<TEntity[K]> {
+  async max<K extends keyof TEntity>(
+    selector: (entity: TEntity) => TEntity[K]
+  ): Promise<TEntity[K]> {
     return await this._queryable.max(selector);
   }
 

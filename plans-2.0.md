@@ -7,7 +7,7 @@
 ## Принципы версии 2.0
 
 - **Production-First**: все решения принимаются с учетом production использования
-- **Type Safety**: максимальная типизация на compile-time  
+- **Type Safety**: максимальная типизация на compile-time
 - **Performance**: focus на высокую производительность и масштабируемость
 - **Enterprise Ready**: поддержка корпоративных требований (безопасность, мониторинг, аудит)
 - **Developer Experience**: улучшение DX через лучшие инструменты и API
@@ -29,6 +29,7 @@
 **Цель**: Профессиональная подготовка к публикации
 
 **Задачи:**
+
 - [x] **Package Metadata Cleanup** (skipped — focus on technical tasks) ✅
   - Заполнить author, description, keywords в package.json
   - Создать LICENSE файл (MIT рекомендуется)
@@ -36,10 +37,11 @@
   - Настроить publishConfig для NPM
 
 - [x] **Multi-Package Architecture** ✅
+
   ```bash
   packages/
   ├── core/           # Основной ORM
-  ├── sqlite/         # SQLite provider  
+  ├── sqlite/         # SQLite provider
   ├── postgres/       # PostgreSQL provider
   ├── mysql/          # MySQL provider
   ├── mssql/          # MSSQL provider
@@ -62,6 +64,7 @@
 **Временные затраты**: 1.5 недели
 
 #### Production‑Ready дополнения
+
 - Подпись релизов (npm provenance/2FA), воспроизводимые сборки
 - Поддержка Node LTS и матрица CI; SemVer‑политика совместимости
 - Release workflow: авто‑CHANGELOG, GitHub Releases, provenance
@@ -72,7 +75,9 @@
 **Цель**: Bulletproof тестирование всех сценариев
 
 **Задачи:**
+
 - [x] **Testcontainers Integration** (initial smoke for all providers) ✅
+
   ```typescript
   // Автоматическое поднятие БД для тестов
   describe('PostgreSQL Provider', () => {
@@ -84,11 +89,13 @@
   ```
 
 - [ ] **Snapshot Testing для SQL**
+
   ```typescript
   // Фиксация SQL вывода для regression testing
   expect(queryBuilder.buildSelect()).toMatchSnapshot();
   expect(migration.generateSQL()).toMatchSnapshot();
   ```
+
   - [x] Базовые снапшоты DDL для computed‑колонок по диалектам (CREATE TABLE) ✅
   - [x] SELECT/DDL снапшоты по диалектам (PG/MySQL/MSSQL/SQLite) ✅
     - PG: EXISTS/CTE/окна (row_number), OFFSET без LIMIT ✅
@@ -129,13 +136,16 @@
 **Цель**: Полнофункциональный CLI для production workflows
 
 **Задачи:**
+
 - [ ] **Project Initialization**
+
   ```bash
   npx ts-linq init my-project
   # Создает: tsconfig, DbContext, первую миграцию
   ```
 
 - [ ] **Entity Generation**
+
   ```bash
   ts-linq generate entity User
   # Создает entity class с decorators
@@ -144,6 +154,7 @@
   ```
 
 - [ ] **Advanced Migration Commands**
+
   ```bash
   ts-linq migration status           # Показать pending migrations
   ts-linq migration rollback --steps=2   # Rollback N migrations
@@ -152,9 +163,10 @@
   ```
 
 - [ ] **Schema Inspection**
+
   ```bash
   ts-linq schema diff              # Показать diff между моделями и БД
-  ts-linq schema validate          # Validate schema consistency  
+  ts-linq schema validate          # Validate schema consistency
   ts-linq schema export --format=sql   # Export current schema
   ```
 
@@ -185,13 +197,15 @@
 **Цель**: Compile-time гарантии корректности запросов
 
 **Задачи:**
+
 - [x] **Branded Types для Entity IDs** ✅
+
   ```typescript
   type UserId = number & { __brand: 'UserId' };
   type OrderId = number & { __brand: 'OrderId' };
-  
+
   // Compile error при перемешивании
-  user.orders.where(o => o.userId === orderId); // ❌ Type error
+  user.orders.where((o) => o.userId === orderId); // ❌ Type error
   ```
 
   - [x] Введены `EntityId`, `brandId`, `unbrandId` ✅
@@ -201,27 +215,27 @@
   - [x] Тип‑тесты `tsd` покрывают branded IDs и новые API ✅
 
 - [x] **Typed Query Builder** ✅
+
   ```typescript
   // Только валидные поля доступны в select/where
   ctx.users
-    .select(u => ({ name: u.name, age: u.age }))      // ✅ Valid
-    .select(u => ({ invalid: u.nonExistent }));       // ❌ Compile error
+    .select((u) => ({ name: u.name, age: u.age })) // ✅ Valid
+    .select((u) => ({ invalid: u.nonExistent })); // ❌ Compile error
   ```
 
 - [x] **Relationship Type Validation** ✅
+
   ```typescript
   // Include только существующих relationships
   ctx.users
-    .include(u => u.orders)        // ✅ Valid relationship  
-    .include(u => u.nonExistent);  // ❌ Compile error
+    .include((u) => u.orders) // ✅ Valid relationship
+    .include((u) => u.nonExistent); // ❌ Compile error
   ```
 
 - [x] **Query Result Type Inference** ✅
   ```typescript
   // Автоматический вывод типа результата
-  const result = await ctx.users
-    .select(u => ({ id: u.id, name: u.name }))
-    .toArray();
+  const result = await ctx.users.select((u) => ({ id: u.id, name: u.name })).toArray();
   // result: { id: number, name: string }[]
   ```
 
@@ -233,10 +247,12 @@
 **Цель**: Поддержка complex SQL patterns
 
 **Задачи:**
+
 - [x] **Window Functions** ✅
+
   ```typescript
   ctx.sales
-    .select(s => ({
+    .select((s) => ({
       ...s,
       rank: sql.rank().over().partitionBy(s.region).orderBy(s.amount)
     }))
@@ -244,36 +260,40 @@
   ```
 
 - [x] **Common Table Expressions (CTE)** ✅
+
   ```typescript
   const regionalSales = ctx.sales
-    .groupBy(s => s.region)
-    .select(g => ({ region: g.key, total: g.sum(s => s.amount) }));
-  
-  const query = ctx.withCTE('regional_sales', regionalSales)
+    .groupBy((s) => s.region)
+    .select((g) => ({ region: g.key, total: g.sum((s) => s.amount) }));
+
+  const query = ctx
+    .withCTE('regional_sales', regionalSales)
     .from('regional_sales')
-    .where(rs => rs.total > 1000000);
+    .where((rs) => rs.total > 1000000);
   ```
 
 - [x] **Subqueries & EXISTS** ✅
+
   ```typescript
   ctx.users
-    .where(u => ctx.orders.where(o => o.userId === u.id).exists())
-    .where(u => u.age > ctx.users.select(u2 => u2.age).average());
+    .where((u) => ctx.orders.where((o) => o.userId === u.id).exists())
+    .where((u) => u.age > ctx.users.select((u2) => u2.age).average());
   ```
 
 - [x] **JSON/JSONB Operations** ✅
+
   ```typescript
   // PostgreSQL JSONB support
   ctx.users
-    .where(u => u.metadata.jsonPath('$.settings.theme') === 'dark')
-    .where(u => u.tags.jsonContains(['admin', 'premium']));
+    .where((u) => u.metadata.jsonPath('$.settings.theme') === 'dark')
+    .where((u) => u.tags.jsonContains(['admin', 'premium']));
   ```
 
 - [x] **Full-Text Search** ✅
   ```typescript
   ctx.articles
-    .where(a => a.content.fullTextSearch('typescript OR javascript'))
-    .orderBy(a => a.content.fullTextRank('typescript'))
+    .where((a) => a.content.fullTextSearch('typescript OR javascript'))
+    .orderBy((a) => a.content.fullTextRank('typescript'))
     .toArray();
   ```
 
@@ -285,17 +305,20 @@
 **Цель**: Расширенные возможности entity definition
 
 **Задачи:**
+
 - [x] **Computed Columns** ✅
+
   ```typescript
   @Entity()
   class User {
     @Column() firstName!: string;
     @Column() lastName!: string;
-    
-    @ComputedColumn(user => `${user.firstName} ${user.lastName}`)
+
+    @ComputedColumn((user) => `${user.firstName} ${user.lastName}`)
     fullName!: string;
   }
   ```
+
   - [x] Исключить computed из INSERT/UPDATE; ValidationError при попытке записи ✅
   - [x] Persisted/Virtual флаги в типах и DDL (PG: STORED; MySQL: VIRTUAL/STORED; SQLite: VIRTUAL; MSSQL: PERSISTED) — базовые варнинги/фичедетекция частично ✅
   - [x] Валидация схемы: запрет сочетаний computed с defaultValue/defaultExpression/isGenerated/isVersion; улучшенные сообщения ✅
@@ -310,17 +333,22 @@
   - [x] DX/типизация: пометить computed как read‑only в метаданных/маппинге; утилиты типов (`InsertShape`/`UpdateShape`) ✅
   - [x] CLI/миграции (опц.): генерация и экспорт/импорт схем с computed ✅
 
-
 - [x] **Conditional Validation** ✅
+
   ```typescript
   @Entity()
   class Order {
     @Column() status!: 'pending' | 'paid' | 'shipped';
-    
-    @ValidIf(order => order.status !== 'pending' || order.amount > 0, 'Pending requires positive amount')
-    @Column() amount!: number;
+
+    @ValidIf(
+      (order) => order.status !== 'pending' || order.amount > 0,
+      'Pending requires positive amount'
+    )
+    @Column()
+    amount!: number;
   }
   ```
+
   - [x] API: `@ValidIf(predicate, message?)` (Stage‑3) и `ValidationRule { propertyName, predicate, message? }` ✅
   - [x] Исполнение: `DbContext.validateChanges()` (Added/Modified), агрегирование ошибок (класс/поле/сообщение) ✅
   - [x] Порядок: сначала базовые (NotNull/length), затем ValidIf; совместимость с soft delete/audit ✅
@@ -353,14 +381,17 @@
     - docs/guides/database-functions.md: алиасы функций и матрица совместимости
   - [x] Линтер/валидация схемы: улучшить сообщения (класс/поле) ✅
     - Обогащённые `ValidationError.details`: класс, таблица, колонка, fullMessage
+
   ```typescript
   @Entity()
   class AuditLog {
     @DatabaseFunction('CURRENT_TIMESTAMP')
-    @Column() createdAt!: Date;
-    
+    @Column()
+    createdAt!: Date;
+
     @DatabaseFunction('uuid_generate_v4()')
-    @PrimaryKey() id!: string;
+    @PrimaryKey()
+    id!: string;
   }
   ```
 
@@ -421,10 +452,12 @@
 
 ### 3.1 Advanced Caching System
 
-**Цель**: Enterprise-grade кэширование 
+**Цель**: Enterprise-grade кэширование
 
 **Задачи:**
+
 - [ ] **Distributed Cache Support**
+
   ```typescript
   // Redis/Memcached adapters
   const redisCache = new RedisCacheAdapter({
@@ -432,7 +465,7 @@
     port: 6379,
     ttl: 3600
   });
-  
+
   const ctx = new DbContext({
     provider: 'postgresql',
     cache: {
@@ -444,6 +477,7 @@
   ```
 
 - [ ] **Smart Cache Invalidation**
+
   ```typescript
   // Автоматическая инвалидация по зависимостям
   @Entity()
@@ -455,13 +489,14 @@
   ```
 
 - [ ] **Cache Warming Strategies**
+
   ```typescript
   // Предзагрузка популярных данных
   await ctx.cache.warmUp({
     entities: [User, Product],
     queries: [
-      () => ctx.users.where(u => u.active).toArray(),
-      () => ctx.products.where(p => p.featured).toArray()
+      () => ctx.users.where((u) => u.active).toArray(),
+      () => ctx.products.where((p) => p.featured).toArray()
     ]
   });
   ```
@@ -471,7 +506,7 @@
   // Batch optimization для N+1 queries
   const users = await ctx.users.toArray();
   const orders = await ctx.orders
-    .where(o => o.userId.in(users.map(u => u.id))) // Автоматическая оптимизация
+    .where((o) => o.userId.in(users.map((u) => u.id))) // Автоматическая оптимизация
     .toArray();
   ```
 
@@ -483,7 +518,9 @@
 **Цель**: Production-ready connection handling
 
 **Задачи:**
+
 - [ ] **Advanced Connection Pooling**
+
   ```typescript
   const pool = new ConnectionPool({
     min: 2,
@@ -498,6 +535,7 @@
   ```
 
 - [ ] **Circuit Breaker Pattern**
+
   ```typescript
   const circuitBreaker = new CircuitBreaker({
     failureThreshold: 5,
@@ -509,12 +547,10 @@
   ```
 
 - [ ] **Graceful Degradation**
+
   ```typescript
   // Fallback стратегии при недоступности БД
-  const users = await ctx.users
-    .fallbackTo(memoryCache)
-    .fallbackTo(readOnlyReplica)
-    .toArray();
+  const users = await ctx.users.fallbackTo(memoryCache).fallbackTo(readOnlyReplica).toArray();
   ```
 
 - [ ] **Connection Health Monitoring**
@@ -534,7 +570,9 @@
 **Цель**: Comprehensive performance observability
 
 **Задачи:**
+
 - [ ] **Enhanced Metrics Collection**
+
   ```typescript
   // Детальные метрики производительности
   interface QueryMetrics {
@@ -547,6 +585,7 @@
   ```
 
 - [ ] **Query Performance Analysis**
+
   ```typescript
   // Автоматический анализ медленных запросов
   const analyzer = new QueryAnalyzer({
@@ -557,6 +596,7 @@
   ```
 
 - [ ] **Memory Profiling**
+
   ```typescript
   // Отслеживание memory leaks
   const profiler = new MemoryProfiler({
@@ -586,12 +626,12 @@
 **Цель**: Enterprise-grade безопасность
 
 **Задачи:**
+
 - [ ] **Row-Level Security**
+
   ```typescript
   @Entity()
-  @RowLevelSecurity((user, ctx) => 
-    ctx.where(entity => entity.tenantId === user.tenantId)
-  )
+  @RowLevelSecurity((user, ctx) => ctx.where((entity) => entity.tenantId === user.tenantId))
   class Document {
     @Column() tenantId!: string;
     @Column() content!: string;
@@ -599,6 +639,7 @@
   ```
 
 - [ ] **Field-Level Encryption**
+
   ```typescript
   @Entity()
   class User {
@@ -609,13 +650,14 @@
   ```
 
 - [ ] **Audit Logging**
+
   ```typescript
   @Entity()
   @AuditTable() // Автоматическое создание audit trail
   class BankAccount {
     @Column() balance!: number;
   }
-  
+
   // Автоматически создается audit_bank_accounts таблица
   ```
 
@@ -636,7 +678,9 @@
 **Цель**: Нативная поддержка multi-tenant архитектур
 
 **Задачи:**
+
 - [ ] **Tenant Isolation Strategies**
+
   ```typescript
   // Database per tenant
   const ctx = new MultiTenantDbContext({
@@ -644,13 +688,13 @@
     tenantResolver: (request) => request.headers['x-tenant-id'],
     connectionFactory: (tenantId) => `postgres://.../${tenantId}`
   });
-  
-  // Schema per tenant  
+
+  // Schema per tenant
   const ctx = new MultiTenantDbContext({
     strategy: 'schema-per-tenant',
     schemaResolver: (tenantId) => `tenant_${tenantId}`
   });
-  
+
   // Shared database with tenant column
   const ctx = new MultiTenantDbContext({
     strategy: 'shared-database',
@@ -659,6 +703,7 @@
   ```
 
 - [ ] **Automatic Tenant Filtering**
+
   ```typescript
   // Автоматическое добавление tenant filter ко всем запросам
   @Entity()
@@ -667,22 +712,25 @@
     @Column() tenantId!: string;
     @Column() amount!: number;
   }
-  
+
   // Все запросы автоматически фильтруются по текущему tenant
   const orders = await ctx.orders.toArray(); // WHERE tenant_id = ?
   ```
 
 - [ ] **Cross-Tenant Operations**
+
   ```typescript
   // Контролируемые cross-tenant операции
   const adminCtx = ctx.asAdmin(); // Bypass tenant filtering
   const allTenants = await adminCtx.tenants.toArray();
-  
+
   const crossTenantReport = await ctx.withoutTenantFilter(() =>
-    ctx.orders.groupBy(o => o.tenantId).select(g => ({
-      tenantId: g.key,
-      totalOrders: g.count()
-    }))
+    ctx.orders
+      .groupBy((o) => o.tenantId)
+      .select((g) => ({
+        tenantId: g.key,
+        totalOrders: g.count()
+      }))
   );
   ```
 
@@ -694,31 +742,34 @@
 **Цель**: Production-ready schema evolution
 
 **Задачи:**
+
 - [ ] **Safe Migration Analysis**
+
   ```typescript
   // Анализ безопасности миграций
   const analyzer = new MigrationSafetyAnalyzer();
   const analysis = await analyzer.analyze(migration);
-  
+
   if (analysis.risks.includes('DATA_LOSS')) {
     throw new Error('Migration may cause data loss');
   }
   ```
 
 - [ ] **Zero-Downtime Migrations**
+
   ```typescript
   // Migrations с минимальным downtime
   class AddColumnMigration extends ZeroDowntimeMigration {
     async up() {
       // 1. Add column as nullable
       await this.addColumn('users', 'new_field', 'TEXT NULL');
-      
+
       // 2. Populate data in batches
       await this.populateInBatches('users', {
         batchSize: 1000,
         updateSql: 'UPDATE users SET new_field = old_field WHERE id BETWEEN ? AND ?'
       });
-      
+
       // 3. Make column non-nullable
       await this.alterColumn('users', 'new_field', 'TEXT NOT NULL');
     }
@@ -726,6 +777,7 @@
   ```
 
 - [ ] **Migration Dependencies**
+
   ```typescript
   @Migration('202412011200_add_user_roles')
   @DependsOn(['202412011100_create_roles_table'])
@@ -756,6 +808,7 @@
 **Цель**: Максимальная productivity для разработчиков
 
 **Задачи:**
+
 - [ ] **VS Code Extension**
   - Syntax highlighting для query builders
   - IntelliSense для entity properties
@@ -763,6 +816,7 @@
   - Database schema visualization
 
 - [ ] **Entity Designer GUI**
+
   ```typescript
   // Web-based entity designer
   npm run ts-linq:designer
@@ -770,11 +824,10 @@
   ```
 
 - [ ] **Query Debugger**
+
   ```typescript
   // Visual query debugging
-  const debug = ctx.users
-    .where(u => u.age > 25)
-    .debug(); // Открывает debugger UI
+  const debug = ctx.users.where((u) => u.age > 25).debug(); // Открывает debugger UI
   ```
 
 - [ ] **Schema Diff Visualization**
@@ -791,6 +844,7 @@
 **Цель**: Comprehensive documentation ecosystem
 
 **Задачи:**
+
 - [ ] **Interactive Documentation**
   - Executable code examples
   - Live playground в браузере
@@ -803,7 +857,7 @@
 
 - [ ] **Best Practices Guide**
   - Performance optimization patterns
-  - Security best practices  
+  - Security best practices
   - Testing strategies
   - Production deployment guide
 
@@ -821,40 +875,46 @@
 **Цель**: Seamless integration с популярными frameworks
 
 **Задачи:**
+
 - [ ] **Framework Integrations**
+
   ```typescript
   // NestJS integration
   @Injectable()
   class UserService {
     constructor(@InjectDbContext() private ctx: AppDbContext) {}
   }
-  
+
   // NestJS module & provider
   @Module({
     providers: [
       {
         provide: 'DB_CONTEXT',
-        useFactory: () => new AppDbContext({ provider: 'postgresql', connectionString: process.env.POSTGRES_URL! })
+        useFactory: () =>
+          new AppDbContext({ provider: 'postgresql', connectionString: process.env.POSTGRES_URL! })
       },
       UserService
     ],
     exports: ['DB_CONTEXT', UserService]
   })
   export class DatabaseModule {}
-  
+
   export const InjectDbContext = () => Inject('DB_CONTEXT');
-  
+
   // Express middleware
-  app.use(tsLinqMiddleware({
-    context: AppDbContext,
-    connection: process.env.DATABASE_URL
-  }));
-  
+  app.use(
+    tsLinqMiddleware({
+      context: AppDbContext,
+      connection: process.env.DATABASE_URL
+    })
+  );
+
   // Next.js integration
   export default withDatabase(AppDbContext)(handler);
   ```
 
 - [ ] **ORM Adapters**
+
   ```typescript
   // Adapter для постепенной миграции с TypeORM
   const adapter = new TypeOrmAdapter(typeOrmConnection);
@@ -877,6 +937,7 @@
 ### 6.1 Final Testing & Validation
 
 **Задачи:**
+
 - [ ] **Load Testing**
   - Stress tests с высокой нагрузкой
   - Memory leak detection
@@ -898,6 +959,7 @@
 ### 6.2 Release Preparation
 
 **Задачи:**
+
 - [ ] **Documentation Finalization**
 - [ ] **Migration Guide от 1.0 к 2.0**
 - [ ] **Breaking Changes Documentation**
@@ -910,6 +972,7 @@
 ### 6.3 Post-Release Support
 
 **Задачи:**
+
 - [ ] **Community Support Setup**
 - [ ] **Issue Templates**
 - [ ] **Contributing Guidelines Update**
@@ -926,7 +989,7 @@
 
 ```
 Фаза 1: Foundation          ████████ (4-6 недель)
-Фаза 2: Advanced API        ████████████ (6-8 недель)  
+Фаза 2: Advanced API        ████████████ (6-8 недель)
 Фаза 3: Performance         ████████ (4-6 недель)
 Фаза 4: Enterprise          ████████████ (6-8 недель)
 Фаза 5: DX & Tooling        ████████ (4-6 недель)
@@ -936,25 +999,29 @@
 ## Risk Management
 
 **Высокие риски:**
+
 - Breaking changes compatibility
 - Performance regression
 - Complex type system bugs
 
 **Mitigation strategies:**
+
 - Parallel branch development
-- Comprehensive regression testing  
+- Comprehensive regression testing
 - Early alpha/beta releases
 - Community feedback integration
 
 ## Success Metrics
 
 **Технические:**
+
 - 95%+ test coverage
 - <100ms p95 для basic queries
 - 0 critical security vulnerabilities
 - Semver-compliant releases
 
 **Adoption:**
+
 - Migration guides для top 3 ORM
 - Community contributions
 - Production usage examples
@@ -962,4 +1029,4 @@
 
 ---
 
-*План подлежит корректировке на основе feedback и изменения приоритетов*
+_План подлежит корректировке на основе feedback и изменения приоритетов_

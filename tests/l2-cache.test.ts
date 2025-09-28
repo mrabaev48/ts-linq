@@ -58,7 +58,7 @@ describe('L2 Entity Cache', () => {
 
     // update
     first!.name = 'B';
-    ctx.cusers.update(first!);
+    ctx.cusers.update(first);
     await ctx.saveChanges();
 
     const afterUpdate = await ctx.set(CUser).find(u.id);
@@ -66,7 +66,7 @@ describe('L2 Entity Cache', () => {
     expect(afterUpdate).toBe(first); // same instance updated in cache
 
     // delete
-    ctx.cusers.remove(afterUpdate!);
+    ctx.cusers.remove(afterUpdate);
     await ctx.saveChanges();
 
     const afterDelete = await ctx.set(CUser).find(u.id);

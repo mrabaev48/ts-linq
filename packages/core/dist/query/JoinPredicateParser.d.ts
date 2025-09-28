@@ -5,16 +5,22 @@
  *   (left,right)=>left.id==right.userId
  */
 export declare class JoinPredicateParser {
-    static parse(predicateSource: string, leftTable: string, rightTable: string, leftMeta: {
-        columns: Array<{
-            propertyName: string;
-            columnName: string;
-        }>;
-    }, rightMeta: {
-        columns: Array<{
-            propertyName: string;
-            columnName: string;
-        }>;
-    }): string;
+  static parse(
+    predicateSource: string,
+    leftTable: string,
+    rightTable: string,
+    leftMeta: {
+      columns: Array<{
+        propertyName: string;
+        columnName: string;
+      }>;
+    },
+    rightMeta: {
+      columns: Array<{
+        propertyName: string;
+        columnName: string;
+      }>;
+    }
+  ): string;
 }
 //# sourceMappingURL=JoinPredicateParser.d.ts.map

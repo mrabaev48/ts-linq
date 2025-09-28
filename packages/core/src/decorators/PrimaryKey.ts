@@ -3,8 +3,17 @@ import type { ColumnOptions } from './Column';
 
 function isStage3FieldContext(
   x: unknown
-): x is { kind: 'field'; name: string | symbol; addInitializer?: (fn: (this: unknown) => void) => void } {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in (x as object);
+): x is {
+  kind: 'field';
+  name: string | symbol;
+  addInitializer?: (fn: (this: unknown) => void) => void;
+} {
+  return (
+    !!x &&
+    typeof x === 'object' &&
+    (x as { kind?: unknown }).kind === 'field' &&
+    'name' in (x as object)
+  );
 }
 
 export interface PrimaryKeyOptions extends ColumnOptions {
@@ -50,4 +59,3 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
     });
   };
 }
-

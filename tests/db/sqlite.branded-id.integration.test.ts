@@ -1,5 +1,6 @@
 import 'reflect-metadata';
-import { DbContext, DbSet, type EntityId, MetadataStorage } from '@ts-linq/core';
+import type { DbSet } from '@ts-linq/core';
+import { DbContext, type EntityId, MetadataStorage } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -24,18 +25,35 @@ class AppCtx extends DbContext {
 describe('SQLite branded ID integration', () => {
   beforeAll(() => {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-    try { fs.unlinkSync(dbPath); } catch {}
+    try {
+      fs.unlinkSync(dbPath);
+    } catch {}
   });
   afterAll(() => {
-    try { fs.unlinkSync(dbPath); } catch {}
+    try {
+      fs.unlinkSync(dbPath);
+    } catch {}
   });
 
   test('insert and find by branded id and findByIds', async () => {
     // Register metadata manually instead of decorators
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(User, 'Users');
-    MetadataStorage.addColumn(User, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true, isBranded: true, brand: 'User' });
-    MetadataStorage.addColumn(User, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false });
+    MetadataStorage.addColumn(User, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false,
+      isGenerated: true,
+      isBranded: true,
+      brand: 'User'
+    });
+    MetadataStorage.addColumn(User, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    });
     MetadataStorage.addPrimaryKey(User, 'id');
 
     const ctx = new AppCtx(dbPath);

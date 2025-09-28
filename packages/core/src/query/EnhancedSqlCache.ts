@@ -71,7 +71,8 @@ export class EnhancedSqlCache implements SqlCache {
   private cleanupInterval?: NodeJS.Timeout;
 
   constructor(options: EnhancedSqlCacheOptions = {}) {
-    const isTestEnv = typeof process !== 'undefined' &&
+    const isTestEnv =
+      typeof process !== 'undefined' &&
       (process.env.JEST_WORKER_ID !== undefined || process.env.NODE_ENV === 'test');
 
     this.options = {
@@ -82,7 +83,7 @@ export class EnhancedSqlCache implements SqlCache {
       enableKeyCompression: options.enableKeyCompression ?? true,
       compressionThreshold: options.compressionThreshold ?? 200,
       enableMetrics: options.enableMetrics ?? true,
-      warmingBatchSize: options.warmingBatchSize ?? 50,
+      warmingBatchSize: options.warmingBatchSize ?? 50
     };
 
     this.metrics = this.initializeMetrics();
@@ -184,7 +185,7 @@ export class EnhancedSqlCache implements SqlCache {
   clear(): void {
     this.store.clear();
     this.keyMap.clear();
-    
+
     if (this.options.enableMetrics) {
       this.metrics = this.initializeMetrics();
     }
@@ -240,7 +241,7 @@ export class EnhancedSqlCache implements SqlCache {
    */
   warm(entries: Array<{ key: string; value: SqlCacheEntry; ttl?: number }>): void {
     const batches = this.chunkArray(entries, this.options.warmingBatchSize);
-    
+
     for (const batch of batches) {
       for (const entry of batch) {
         this.set(entry.key, entry.value, entry.ttl);
@@ -258,11 +259,13 @@ export class EnhancedSqlCache implements SqlCache {
     topAccessedEntries: Array<{ key: string; accessCount: number }>;
   } {
     const metrics = this.getMetrics();
-    
+
     // Analyze patterns
-    const shouldIncreaseSize = metrics.hitRatio < 0.7 && metrics.evictions > metrics.currentSize * 0.1;
+    const shouldIncreaseSize =
+      metrics.hitRatio < 0.7 && metrics.evictions > metrics.currentSize * 0.1;
     const shouldDecreaseTtl = metrics.expirations > metrics.totalRequests * 0.2;
-    const shouldIncreaseTtl = metrics.hitRatio > 0.95 && metrics.expirations < metrics.totalRequests * 0.05;
+    const shouldIncreaseTtl =
+      metrics.hitRatio > 0.95 && metrics.expirations < metrics.totalRequests * 0.05;
 
     // Get top accessed entries
     const topAccessed = Array.from(this.store.entries())
@@ -281,7 +284,10 @@ export class EnhancedSqlCache implements SqlCache {
   // Private helper methods
 
   private getCompressedKey(originalKey: string): string {
-    if (!this.options.enableKeyCompression || originalKey.length <= this.options.compressionThreshold) {
+    if (
+      !this.options.enableKeyCompression ||
+      originalKey.length <= this.options.compressionThreshold
+    ) {
       return originalKey;
     }
 
@@ -316,7 +322,7 @@ export class EnhancedSqlCache implements SqlCache {
         evictedCount++;
         if (evictedCount >= entriesToEvict) break;
       }
-      keysToDelete.forEach(key => this.store.delete(key));
+      keysToDelete.forEach((key) => this.store.delete(key));
     } else {
       // FIFO: evict oldest entries
       const keysToDelete: string[] = [];
@@ -325,7 +331,7 @@ export class EnhancedSqlCache implements SqlCache {
         evictedCount++;
         if (evictedCount >= entriesToEvict) break;
       }
-      keysToDelete.forEach(key => this.store.delete(key));
+      keysToDelete.forEach((key) => this.store.delete(key));
     }
 
     if (this.options.enableMetrics) {
@@ -355,13 +361,13 @@ export class EnhancedSqlCache implements SqlCache {
 
   private updateMemoryUsage(): void {
     let totalSize = 0;
-    
+
     for (const entry of this.store.values()) {
       totalSize += entry.query.length * 2; // Rough estimate: 2 bytes per char
       totalSize += entry.parameters.length * 20; // Rough estimate: 20 bytes per parameter
       totalSize += 64; // Overhead for entry metadata
     }
-    
+
     this.metrics.estimatedMemoryUsage = totalSize;
   }
 
@@ -371,15 +377,17 @@ export class EnhancedSqlCache implements SqlCache {
       return;
     }
 
-    const totalAccess = Array.from(this.store.values())
-      .reduce((sum, entry) => sum + entry.accessCount, 0);
-    
+    const totalAccess = Array.from(this.store.values()).reduce(
+      (sum, entry) => sum + entry.accessCount,
+      0
+    );
+
     this.metrics.averageAccessCount = totalAccess / this.store.size;
   }
 
   private startPeriodicCleanup(): void {
     const cleanupInterval = Math.max(this.options.defaultTtl / 4, 60000); // Cleanup every TTL/4 or 1 minute minimum
-    
+
     this.cleanupInterval = setInterval(() => {
       this.expireEntries();
     }, cleanupInterval);

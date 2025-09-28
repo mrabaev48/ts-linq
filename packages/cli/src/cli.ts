@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 /* Minimal CLI: prints SQLite diff SQL using current metadata. */
 import 'reflect-metadata';
-import { DiffMigrationGenerator, SchemaSnapshotBuilder, SchemaSnapshotSerializer, compareSchemas, generateMigrationFromDiff, DatabaseProvider } from '@ts-linq/core';
+import {
+  DiffMigrationGenerator,
+  SchemaSnapshotBuilder,
+  SchemaSnapshotSerializer,
+  compareSchemas,
+  generateMigrationFromDiff,
+  DatabaseProvider
+} from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
 import { PostgresProvider } from '@ts-linq/postgres';
 import { MySqlProvider } from '@ts-linq/mysql';
@@ -125,7 +132,11 @@ async function main() {
       const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
       const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
       const diff = compareSchemas(target, actual);
-      const dialect = (provider as any).providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
+      const dialect = (provider as any).providerLabel as
+        | 'sqlite'
+        | 'postgresql'
+        | 'mysql'
+        | 'mssql';
       const rendered = generateMigrationFromDiff(diff, dialect);
       for (const sql of rendered.up) console.log(sql);
     }
@@ -138,7 +149,11 @@ async function main() {
       const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
       const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
       const diff = compareSchemas(target, actual);
-      const dialect = (provider as any).providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
+      const dialect = (provider as any).providerLabel as
+        | 'sqlite'
+        | 'postgresql'
+        | 'mysql'
+        | 'mssql';
       const rendered = generateMigrationFromDiff(diff, dialect);
       let applied = 0;
       for (const sql of rendered.up) {
@@ -174,7 +189,12 @@ async function main() {
       console.error('Config not found or invalid. Looked for ts-linq.config.{ts,cjs,js,json}');
       process.exitCode = 2;
     } else {
-      const c = cfg as { provider?: unknown; connection?: unknown; migrations?: unknown; entities?: unknown };
+      const c = cfg as {
+        provider?: unknown;
+        connection?: unknown;
+        migrations?: unknown;
+        entities?: unknown;
+      };
       const missing: string[] = [];
       if (!c.provider || typeof c.provider !== 'string') missing.push('provider');
       if (!c.connection || typeof c.connection !== 'string') missing.push('connection');

@@ -26,17 +26,16 @@ test('compareSchemas: detects index creates/drops and where/unique/columns chang
           { name: 'active', type: 'INTEGER', nullable: false }
         ],
         primaryKeys: ['id'],
-        indexes: [
-          { name: 'idx_users_active', columns: ['active'], unique: false }
-        ],
+        indexes: [{ name: 'idx_users_active', columns: ['active'], unique: false }],
         foreignKeys: []
       }
     ]
   };
   const diff = compareSchemas(expected, actual);
-  const td = diff.tables.find(t => t.table === 'Users')! as { indexCreates?: unknown; indexDrops?: unknown };
+  const td = diff.tables.find((t) => t.table === 'Users')! as {
+    indexCreates?: unknown;
+    indexDrops?: unknown;
+  };
   expect(td.indexCreates).toBeDefined();
   expect((td.indexCreates as Array<{ name: string }>)[0].name).toBe('idx_users_active');
 });
-
-

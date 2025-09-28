@@ -12,5 +12,3 @@ test('Postgres: index with COLLATE and NULLS', () => {
   });
   expect(sql).toContain('("email" COLLATE "en_US", "createdAt" DESC NULLS LAST)');
 });
-
-

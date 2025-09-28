@@ -26,10 +26,31 @@ class Order {
 // Manually register metadata for test entities (avoids decorator emit differences)
 (function registerTestMetadata() {
   MetadataStorage.addEntity(User, 'users');
-  const userIdCol: ColumnMetadata = { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: false };
-  const userNameCol: ColumnMetadata = { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false };
-  const userAgeCol: ColumnMetadata = { propertyName: 'age', columnName: 'age', type: 'INTEGER', nullable: false };
-  const userEmailCol: ColumnMetadata = { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false };
+  const userIdCol: ColumnMetadata = {
+    propertyName: 'id',
+    columnName: 'id',
+    type: 'INTEGER',
+    nullable: false,
+    isGenerated: false
+  };
+  const userNameCol: ColumnMetadata = {
+    propertyName: 'name',
+    columnName: 'name',
+    type: 'TEXT',
+    nullable: false
+  };
+  const userAgeCol: ColumnMetadata = {
+    propertyName: 'age',
+    columnName: 'age',
+    type: 'INTEGER',
+    nullable: false
+  };
+  const userEmailCol: ColumnMetadata = {
+    propertyName: 'email',
+    columnName: 'email',
+    type: 'TEXT',
+    nullable: false
+  };
   MetadataStorage.addColumn(User, userIdCol);
   MetadataStorage.addPrimaryKey(User, 'id');
   MetadataStorage.addColumn(User, userNameCol);
@@ -37,9 +58,25 @@ class Order {
   MetadataStorage.addColumn(User, userEmailCol);
 
   MetadataStorage.addEntity(Order, 'orders');
-  const orderIdCol: ColumnMetadata = { propertyName: 'id', columnName: 'id', type: 'TEXT', nullable: false, isGenerated: false };
-  const orderAmountCol: ColumnMetadata = { propertyName: 'amount', columnName: 'amount', type: 'REAL', nullable: false };
-  const orderUserIdCol: ColumnMetadata = { propertyName: 'userId', columnName: 'userId', type: 'INTEGER', nullable: false };
+  const orderIdCol: ColumnMetadata = {
+    propertyName: 'id',
+    columnName: 'id',
+    type: 'TEXT',
+    nullable: false,
+    isGenerated: false
+  };
+  const orderAmountCol: ColumnMetadata = {
+    propertyName: 'amount',
+    columnName: 'amount',
+    type: 'REAL',
+    nullable: false
+  };
+  const orderUserIdCol: ColumnMetadata = {
+    propertyName: 'userId',
+    columnName: 'userId',
+    type: 'INTEGER',
+    nullable: false
+  };
   MetadataStorage.addColumn(Order, orderIdCol);
   MetadataStorage.addPrimaryKey(Order, 'id');
   MetadataStorage.addColumn(Order, orderAmountCol);
@@ -53,17 +90,49 @@ describe('TypedQueryable', () => {
   beforeEach(() => {
     // Create a mock queryable
     const q: Partial<jest.Mocked<Queryable<User>>> = {
-      select: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
-      where: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
-      orderBy: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
-      orderByDescending: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
-      include: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
-      take: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
-      skip: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
-      distinct: jest.fn(function(this: Queryable<User>) { return this; }) as unknown as jest.Mock,
-      first: jest.fn(async () => ({ id: brandId<number, 'User'>(0) as unknown as UserId, name: '', age: 0, email: '' } as User)),
+      select: jest.fn(function (this: Queryable<User>) {
+        return this;
+      }) as unknown as jest.Mock,
+      where: jest.fn(function (this: Queryable<User>) {
+        return this;
+      }) as unknown as jest.Mock,
+      orderBy: jest.fn(function (this: Queryable<User>) {
+        return this;
+      }) as unknown as jest.Mock,
+      orderByDescending: jest.fn(function (this: Queryable<User>) {
+        return this;
+      }) as unknown as jest.Mock,
+      include: jest.fn(function (this: Queryable<User>) {
+        return this;
+      }) as unknown as jest.Mock,
+      take: jest.fn(function (this: Queryable<User>) {
+        return this;
+      }) as unknown as jest.Mock,
+      skip: jest.fn(function (this: Queryable<User>) {
+        return this;
+      }) as unknown as jest.Mock,
+      distinct: jest.fn(function (this: Queryable<User>) {
+        return this;
+      }) as unknown as jest.Mock,
+      first: jest.fn(
+        async () =>
+          ({
+            id: brandId<number, 'User'>(0) as unknown as UserId,
+            name: '',
+            age: 0,
+            email: ''
+          }) as User
+      ),
       firstOrDefault: jest.fn(async () => null as User | null),
-      single: jest.fn(async () => ({ id: brandId<number, 'User'>(1) as unknown as UserId, name: 's', age: 1, email: 'e' } as User)),
+      single: jest.fn(
+        async () =>
+          ({
+            id: brandId<number, 'User'>(1) as unknown as UserId,
+            name: 's',
+            age: 1,
+            email: 'e'
+          }) as User
+      ),
       any: jest.fn(async () => true),
       toArray: jest.fn(async () => [] as User[]),
       count: jest.fn(async () => 0)
@@ -75,7 +144,7 @@ describe('TypedQueryable', () => {
 
   describe('Type Safety', () => {
     it('should provide compile-time type safety for select operations', () => {
-      const validQuery = typedQueryable.select(u => ({
+      const validQuery = typedQueryable.select((u) => ({
         id: u.id,
         name: u.name,
         age: u.age
@@ -86,8 +155,8 @@ describe('TypedQueryable', () => {
     });
 
     it('should provide type safety for where clauses', () => {
-      const query1 = typedQueryable.where(u => u.age > 18);
-      const query2 = typedQueryable.where(u => u.name === 'John');
+      const query1 = typedQueryable.where((u) => u.age > 18);
+      const query2 = typedQueryable.where((u) => u.name === 'John');
 
       expect(query1).toBeInstanceOf(TypedQueryable);
       expect(query2).toBeInstanceOf(TypedQueryable);
@@ -95,8 +164,8 @@ describe('TypedQueryable', () => {
     });
 
     it('should provide type safety for orderBy operations', () => {
-      const query1 = typedQueryable.orderBy(u => u.name);
-      const query2 = typedQueryable.orderBy(u => u.age, 'DESC');
+      const query1 = typedQueryable.orderBy((u) => u.name);
+      const query2 = typedQueryable.orderBy((u) => u.age, 'DESC');
 
       expect(query1).toBeInstanceOf(TypedQueryable);
       expect(query2).toBeInstanceOf(TypedQueryable);
@@ -105,7 +174,7 @@ describe('TypedQueryable', () => {
     });
 
     it('should provide type safety for include operations', () => {
-      const query = typedQueryable.include(u => u.orders);
+      const query = typedQueryable.include((u) => u.orders);
 
       expect(query).toBeInstanceOf(TypedQueryable);
       expect(mockQueryable.include).toHaveBeenCalledTimes(1);
@@ -115,8 +184,8 @@ describe('TypedQueryable', () => {
   describe('Method Chaining', () => {
     it('should support fluent method chaining', () => {
       const query = typedQueryable
-        .where(u => u.age > 18)
-        .orderBy(u => u.name)
+        .where((u) => u.age > 18)
+        .orderBy((u) => u.name)
         .take(10)
         .skip(5);
 
@@ -129,7 +198,12 @@ describe('TypedQueryable', () => {
 
     it('should return proper types for result operations', async () => {
       mockQueryable.toArray.mockResolvedValue([
-        { id: brandId<number, 'User'>(1) as unknown as UserId, name: 'John', age: 25, email: 'john@example.com' } as User
+        {
+          id: brandId<number, 'User'>(1) as unknown as UserId,
+          name: 'John',
+          age: 25,
+          email: 'john@example.com'
+        } as User
       ]);
 
       const results = await typedQueryable.toArray();
@@ -141,9 +215,24 @@ describe('TypedQueryable', () => {
   describe('Execution Methods', () => {
     beforeEach(() => {
       const mockUsers = [
-        { id: brandId<number, 'User'>(1) as unknown as UserId, name: 'John', age: 25, email: 'john@example.com' } as User,
-        { id: brandId<number, 'User'>(2) as unknown as UserId, name: 'Jane', age: 30, email: 'jane@example.com' } as User,
-        { id: brandId<number, 'User'>(3) as unknown as UserId, name: 'Bob', age: 20, email: 'bob@example.com' } as User
+        {
+          id: brandId<number, 'User'>(1) as unknown as UserId,
+          name: 'John',
+          age: 25,
+          email: 'john@example.com'
+        } as User,
+        {
+          id: brandId<number, 'User'>(2) as unknown as UserId,
+          name: 'Jane',
+          age: 30,
+          email: 'jane@example.com'
+        } as User,
+        {
+          id: brandId<number, 'User'>(3) as unknown as UserId,
+          name: 'Bob',
+          age: 20,
+          email: 'bob@example.com'
+        } as User
       ];
       mockQueryable.toArray.mockResolvedValue(mockUsers);
       mockQueryable.first.mockResolvedValue(mockUsers[0]);
@@ -169,7 +258,12 @@ describe('TypedQueryable', () => {
     });
 
     it('should execute single() correctly', async () => {
-      const mockUser = { id: brandId<number, 'User'>(1) as unknown as UserId, name: 'John', age: 25, email: 'john@example.com' } as User;
+      const mockUser = {
+        id: brandId<number, 'User'>(1) as unknown as UserId,
+        name: 'John',
+        age: 25,
+        email: 'john@example.com'
+      } as User;
       mockQueryable.single.mockResolvedValue(mockUser);
 
       const result = await typedQueryable.single();
@@ -186,7 +280,9 @@ describe('TypedQueryable', () => {
     it('should throw error in single() when multiple elements', async () => {
       mockQueryable.single.mockRejectedValue(new Error('Sequence contains more than one element'));
 
-      await expect(typedQueryable.single()).rejects.toThrow('Sequence contains more than one element');
+      await expect(typedQueryable.single()).rejects.toThrow(
+        'Sequence contains more than one element'
+      );
     });
 
     it('should execute any() correctly', async () => {

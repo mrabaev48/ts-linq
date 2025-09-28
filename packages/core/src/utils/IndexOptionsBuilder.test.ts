@@ -2,9 +2,7 @@ import { IndexOptionsBuilder } from './IndexOptionsBuilder';
 
 describe('IndexOptionsBuilder', () => {
   test('builds minimal index with columns', () => {
-    const opts = new IndexOptionsBuilder('idx_min')
-      .onColumns(['id'])
-      .build();
+    const opts = new IndexOptionsBuilder('idx_min').onColumns(['id']).build();
     expect(opts).toEqual({ name: 'idx_min', columns: ['id'], unique: false });
   });
 
@@ -12,7 +10,7 @@ describe('IndexOptionsBuilder', () => {
     const opts = new IndexOptionsBuilder('idx_unique_where')
       .onColumns(['email'])
       .unique()
-      .where("email IS NOT NULL")
+      .where('email IS NOT NULL')
       .build();
     expect(opts.unique).toBe(true);
     expect(opts.where).toBe('email IS NOT NULL');
@@ -62,12 +60,14 @@ describe('IndexOptionsBuilder', () => {
   });
 
   test('throws when name is empty', () => {
-    expect(() => new IndexOptionsBuilder(' ').onColumns(['a']).build()).toThrow('Index name must be provided');
+    expect(() => new IndexOptionsBuilder(' ').onColumns(['a']).build()).toThrow(
+      'Index name must be provided'
+    );
   });
 
   test('throws when no columns provided', () => {
-    expect(() => new IndexOptionsBuilder('idx').build()).toThrow('Index must reference at least one column');
+    expect(() => new IndexOptionsBuilder('idx').build()).toThrow(
+      'Index must reference at least one column'
+    );
   });
 });
-
-

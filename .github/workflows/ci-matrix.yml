@@ -2,9 +2,9 @@ name: CI Matrix
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
   push:
-    branches: [ feat/testing-infrastructure ]
+    branches: [feat/testing-infrastructure]
 
 jobs:
   test:

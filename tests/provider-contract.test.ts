@@ -22,7 +22,7 @@ describe('Provider contract (SQLite)', () => {
     await provider.connect();
     const meta = MetadataStorage.getEntity(CUser);
     expect(meta).toBeDefined();
-    await provider.createTable(meta!);
+    await provider.createTable(meta);
   });
 
   afterEach(async () => {

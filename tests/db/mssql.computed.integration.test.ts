@@ -24,23 +24,26 @@ describe('MSSQL computed column (integration)', () => {
         type: 'INTEGER',
         nullable: true,
         isComputed: true,
-        computedExpression: 'a * 2',
+        computedExpression: 'a * 2'
         // computedStorage respected in DDL strategy
-      } as ColumnMetadata,
+      } as ColumnMetadata
     ];
     cols.forEach((c) => MetadataStorage.addColumn(User, c));
     MetadataStorage.addPrimaryKey(User, 'id');
 
     const provider = new MssqlProvider(url);
     await provider.connect();
-    await provider.executeNonQuery('IF OBJECT_ID(N"users_cc", N"U") IS NOT NULL DROP TABLE users_cc');
+    await provider.executeNonQuery(
+      'IF OBJECT_ID(N"users_cc", N"U") IS NOT NULL DROP TABLE users_cc'
+    );
     const meta = MetadataStorage.getEntity(User)!;
     await provider.createTable(meta);
     await provider.executeNonQuery('INSERT INTO users_cc (id, a) VALUES (@p1, @p2)', [1, 11]);
-    const rows = await provider.executeQuery<{ doubleA: number }>('SELECT doubleA FROM users_cc WHERE id = @p1', [1]);
+    const rows = await provider.executeQuery<{ doubleA: number }>(
+      'SELECT doubleA FROM users_cc WHERE id = @p1',
+      [1]
+    );
     expect(rows[0]?.doubleA).toBe(22);
     await provider.disconnect();
   });
 });
-
-

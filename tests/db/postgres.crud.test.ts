@@ -6,7 +6,9 @@ describe('PostgresProvider CRUD (smoke)', () => {
     if (!url) return; // skip
     const p = new PostgresProvider(url);
     await p.connect();
-    await p.executeNonQuery('CREATE TABLE IF NOT EXISTS items(id SERIAL PRIMARY KEY, name TEXT NOT NULL)');
+    await p.executeNonQuery(
+      'CREATE TABLE IF NOT EXISTS items(id SERIAL PRIMARY KEY, name TEXT NOT NULL)'
+    );
     await p.executeNonQuery('INSERT INTO items(name) VALUES($1)', ['a']);
     let rows = await p.executeQuery<{ id: number; name: string }>('SELECT * FROM items');
     expect(rows.length).toBeGreaterThan(0);

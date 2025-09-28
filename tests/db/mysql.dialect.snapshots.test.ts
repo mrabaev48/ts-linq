@@ -1,16 +1,42 @@
 import { MysqlDialect } from '@ts-linq/mysql';
 import { MetadataStorage, type QueryOptions } from '@ts-linq/core';
 
-class MUser { id!: number; title!: string; content!: string; payload!: string }
+class MUser {
+  id!: number;
+  title!: string;
+  content!: string;
+  payload!: string;
+}
 
 describe('MySQL dialect snapshots', () => {
   beforeEach(() => {
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(MUser, 'm_users');
-    MetadataStorage.addColumn(MUser, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true });
-    MetadataStorage.addColumn(MUser, { propertyName: 'title', columnName: 'title', type: 'TEXT', nullable: false });
-    MetadataStorage.addColumn(MUser, { propertyName: 'content', columnName: 'content', type: 'TEXT', nullable: false });
-    MetadataStorage.addColumn(MUser, { propertyName: 'payload', columnName: 'payload', type: 'JSON', nullable: true });
+    MetadataStorage.addColumn(MUser, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false,
+      isGenerated: true
+    });
+    MetadataStorage.addColumn(MUser, {
+      propertyName: 'title',
+      columnName: 'title',
+      type: 'TEXT',
+      nullable: false
+    });
+    MetadataStorage.addColumn(MUser, {
+      propertyName: 'content',
+      columnName: 'content',
+      type: 'TEXT',
+      nullable: false
+    });
+    MetadataStorage.addColumn(MUser, {
+      propertyName: 'payload',
+      columnName: 'payload',
+      type: 'JSON',
+      nullable: true
+    });
     MetadataStorage.addPrimaryKey(MUser, 'id');
   });
 
@@ -19,7 +45,7 @@ describe('MySQL dialect snapshots', () => {
     const opts: QueryOptions = {
       select: [
         'JSON_EXTRACT(payload, ?) AS val',
-        "MATCH(title, content) AGAINST(? IN NATURAL LANGUAGE MODE) AS score"
+        'MATCH(title, content) AGAINST(? IN NATURAL LANGUAGE MODE) AS score'
       ],
       selectParams: ['$.a.b', 'mysql search']
     } as any;
@@ -35,5 +61,3 @@ describe('MySQL dialect snapshots', () => {
     `);
   });
 });
-
-

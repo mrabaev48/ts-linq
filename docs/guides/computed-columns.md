@@ -7,7 +7,8 @@ This guide explains how to define, use, migrate, and reason about computed (gene
 A computed column is a database column whose value is produced by an expression evaluated by the database engine. It is inherently read-only from the ORM perspective.
 
 Examples:
-- total_with_vat = amount * 1.2
+
+- total_with_vat = amount \* 1.2
 - full_name = first_name || ' ' || last_name
 
 ## ORM rules and constraints
@@ -92,15 +93,15 @@ MetadataStorage.addColumn(Product, {
 
 ### Side‑by‑side comparison
 
-| Aspect | computed column | defaultExpression |
-| --- | --- | --- |
-| Evaluation time | On read; DB engine evaluates expression (STORED may precompute) | On INSERT only |
-| Mutability (ORM) | Read‑only (excluded from INSERT/UPDATE) | Read/write (after insert) |
-| Source of truth | Derived from other columns | Literal/default at insert |
-| DDL portability | Dialect‑specific keywords/storage | Usually portable (`DEFAULT <expr>`) |
-| Migrations (ALTER) | Rendered as DROP+ADD for safety | Regular ADD/ALTER DEFAULT when supported |
-| Indexing | Via functional/expressional indexes | Regular indexes on the physical column |
-| Conflicts | Cannot coexist with defaultValue/defaultExpression/isGenerated/isVersion | Can coexist with most options |
+| Aspect             | computed column                                                          | defaultExpression                        |
+| ------------------ | ------------------------------------------------------------------------ | ---------------------------------------- |
+| Evaluation time    | On read; DB engine evaluates expression (STORED may precompute)          | On INSERT only                           |
+| Mutability (ORM)   | Read‑only (excluded from INSERT/UPDATE)                                  | Read/write (after insert)                |
+| Source of truth    | Derived from other columns                                               | Literal/default at insert                |
+| DDL portability    | Dialect‑specific keywords/storage                                        | Usually portable (`DEFAULT <expr>`)      |
+| Migrations (ALTER) | Rendered as DROP+ADD for safety                                          | Regular ADD/ALTER DEFAULT when supported |
+| Indexing           | Via functional/expressional indexes                                      | Regular indexes on the physical column   |
+| Conflicts          | Cannot coexist with defaultValue/defaultExpression/isGenerated/isVersion | Can coexist with most options            |
 
 Examples:
 
@@ -116,12 +117,12 @@ Examples:
 
 ### Compatibility matrix (DDL)
 
-| Dialect | computed syntax | storage | defaultExpression |
-| --- | --- | --- | --- |
-| PostgreSQL | `GENERATED ALWAYS AS (<expr>) STORED` | STORED only | `DEFAULT <expr>` |
-| MySQL (≥5.7) | `GENERATED ALWAYS AS (<expr>) VIRTUAL/STORED` | VIRTUAL, STORED | `DEFAULT <expr>` |
-| SQLite (≥3.31) | `GENERATED ALWAYS AS (<expr>) VIRTUAL/STORED` | VIRTUAL, STORED | `DEFAULT <expr>` (SQL literal) |
-| MSSQL | `<name> AS (<expr>) [PERSISTED]` | PERSISTED (optional) | `DEFAULT <expr>` (constraints) |
+| Dialect        | computed syntax                               | storage              | defaultExpression              |
+| -------------- | --------------------------------------------- | -------------------- | ------------------------------ |
+| PostgreSQL     | `GENERATED ALWAYS AS (<expr>) STORED`         | STORED only          | `DEFAULT <expr>`               |
+| MySQL (≥5.7)   | `GENERATED ALWAYS AS (<expr>) VIRTUAL/STORED` | VIRTUAL, STORED      | `DEFAULT <expr>`               |
+| SQLite (≥3.31) | `GENERATED ALWAYS AS (<expr>) VIRTUAL/STORED` | VIRTUAL, STORED      | `DEFAULT <expr>` (SQL literal) |
+| MSSQL          | `<name> AS (<expr>) [PERSISTED]`              | PERSISTED (optional) | `DEFAULT <expr>` (constraints) |
 
 ### Migration behavior
 

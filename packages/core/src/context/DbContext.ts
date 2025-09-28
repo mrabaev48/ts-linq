@@ -54,7 +54,9 @@ export abstract class DbContext {
   private _softDelete?: SoftDeleteOptions;
   private _audit?: AuditOptions;
   private _globalFilters?: GlobalFilter[];
-  private _validationOptions?: { translate?: (key: string, params?: Record<string, unknown>) => string };
+  private _validationOptions?: {
+    translate?: (key: string, params?: Record<string, unknown>) => string;
+  };
   /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
   private _validationRulesCache: WeakMap<
     Function,
@@ -87,7 +89,7 @@ export abstract class DbContext {
     // Store performance options for downstream consumers
     this._performanceOptions = options.performance;
     this._loadingDefaults = options.loading || {};
-    
+
     // Apply loading strategy from options or keep default
     if (this._loadingDefaults.strategy) {
       this._defaultLoadingStrategy = this._loadingDefaults.strategy;
@@ -95,7 +97,7 @@ export abstract class DbContext {
     } else {
       this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
     }
-    
+
     this.initializeDbSets();
   }
 
@@ -456,7 +458,12 @@ export abstract class DbContext {
   ): Promise<void> {
     if (LazyLoadingProxy.isLazyProxy(entity)) {
       // Preload relationships for lazy proxy
-      await LazyLoadingProxy.preloadRelationships([entity], entityClass, propertyNames, this._provider);
+      await LazyLoadingProxy.preloadRelationships(
+        [entity],
+        entityClass,
+        propertyNames,
+        this._provider
+      );
     } else {
       // Use entity loader for regular entities
       await this._entityLoader.populateRelationships(entity, entityClass, {
@@ -523,7 +530,15 @@ export abstract class DbContext {
       originalValues?: object;
     }>
   ): void {
-    const errors: Array<{ entity: string; property: string; message: string; entityClass?: string; table?: string; column?: string; fullMessage?: string }> = [];
+    const errors: Array<{
+      entity: string;
+      property: string;
+      message: string;
+      entityClass?: string;
+      table?: string;
+      column?: string;
+      fullMessage?: string;
+    }> = [];
     for (const change of changes) {
       if (change.state !== 'added' && change.state !== 'modified') continue;
       const meta = MetadataStorage.getEntity(change.entityClass);
@@ -543,12 +558,24 @@ export abstract class DbContext {
         if (col.isComputed) {
           if (change.state === 'added') {
             if (value !== undefined) {
-              errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be set on insert'));
+              errors.push(
+                this.buildValidationDetail(
+                  meta,
+                  col.propertyName,
+                  'Computed column is read-only and cannot be set on insert'
+                )
+              );
             }
           } else if (change.state === 'modified' && change.originalValues) {
             const prev = (change.originalValues as Record<string, unknown>)[col.propertyName];
             if (value !== prev) {
-              errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be updated'));
+              errors.push(
+                this.buildValidationDetail(
+                  meta,
+                  col.propertyName,
+                  'Computed column is read-only and cannot be updated'
+                )
+              );
             }
           }
         }
@@ -560,19 +587,30 @@ export abstract class DbContext {
         // Allow DB-level defaultValue to satisfy non-null on Added when undefined in entity
         const hasDbDefault = col.defaultValue !== undefined && change.state === 'added';
         // Allow audit stamping to satisfy non-null constraints (compat with audit)
-        const satisfiableByAudit = !!audit && (
-          (change.state === 'added' && (col.propertyName === auditNames!.createdAt || col.propertyName === auditNames!.createdBy) && (
-            col.propertyName === auditNames!.createdAt || audit.getCurrentUserId !== undefined
-          )) ||
-          ((change.state === 'added' || change.state === 'modified') && (col.propertyName === auditNames!.updatedAt || col.propertyName === auditNames!.updatedBy) && (
-            col.propertyName === auditNames!.updatedAt || audit.getCurrentUserId !== undefined
-          ))
-        );
-        if (!col.nullable && (value === null || value === undefined) && !isGeneratedPk && !hasDbDefault && !satisfiableByAudit) {
+        const satisfiableByAudit =
+          !!audit &&
+          ((change.state === 'added' &&
+            (col.propertyName === auditNames!.createdAt ||
+              col.propertyName === auditNames!.createdBy) &&
+            (col.propertyName === auditNames!.createdAt || audit.getCurrentUserId !== undefined)) ||
+            ((change.state === 'added' || change.state === 'modified') &&
+              (col.propertyName === auditNames!.updatedAt ||
+                col.propertyName === auditNames!.updatedBy) &&
+              (col.propertyName === auditNames!.updatedAt ||
+                audit.getCurrentUserId !== undefined)));
+        if (
+          !col.nullable &&
+          (value === null || value === undefined) &&
+          !isGeneratedPk &&
+          !hasDbDefault &&
+          !satisfiableByAudit
+        ) {
           errors.push(this.buildValidationDetail(meta, col.propertyName, 'Value cannot be null'));
         }
         if (col.length && typeof value === 'string' && value.length > col.length) {
-          errors.push(this.buildValidationDetail(meta, col.propertyName, `Length exceeds ${col.length}`));
+          errors.push(
+            this.buildValidationDetail(meta, col.propertyName, `Length exceeds ${col.length}`)
+          );
         }
       }
       // Conditional Validations (Stage-3 ValidIf) — run AFTER base checks
@@ -587,9 +625,10 @@ export abstract class DbContext {
           if (!ok) {
             const msgKey = (rule as { messageKey?: string }).messageKey;
             const msgParams = (rule as { messageParams?: Record<string, unknown> }).messageParams;
-            const translated = msgKey && this._validationOptions?.translate
-              ? this._validationOptions.translate(msgKey, msgParams)
-              : undefined;
+            const translated =
+              msgKey && this._validationOptions?.translate
+                ? this._validationOptions.translate(msgKey, msgParams)
+                : undefined;
             const baseMsg = translated || rule.message || 'Validation rule failed';
             errors.push(this.buildValidationDetail(meta, rule.propertyName, baseMsg));
           }
@@ -600,7 +639,7 @@ export abstract class DbContext {
     }
     if (errors.length > 0) throw new ValidationError('Model validation failed', errors);
   }
-  
+
   /**
    * Retrieve cached validation rules for an entity class (Reflect metadata → cache).
    */
@@ -609,12 +648,11 @@ export abstract class DbContext {
   ): Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }> {
     const cached = this._validationRulesCache.get(entityClass);
     if (cached) return cached;
-    const rules =
-      ((Reflect.getOwnMetadata(
-        'orm:validations',
-        entityClass
-      ) as Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }> | undefined) || [])
-        .slice();
+    const rules = (
+      (Reflect.getOwnMetadata('orm:validations', entityClass) as
+        | Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }>
+        | undefined) || []
+    ).slice();
     this._validationRulesCache.set(entityClass, rules);
     return rules;
   }
@@ -623,11 +661,27 @@ export abstract class DbContext {
     meta: ReturnType<typeof MetadataStorage.getEntity>,
     property: string,
     message: string
-  ): { entity: string; property: string; message: string; entityClass?: string; table?: string; column?: string; fullMessage?: string } {
+  ): {
+    entity: string;
+    property: string;
+    message: string;
+    entityClass?: string;
+    table?: string;
+    column?: string;
+    fullMessage?: string;
+  } {
     const table = meta?.tableName || 'unknown_table';
     const typeName = meta?.target?.name || 'UnknownEntity';
     const col = meta?.columns.find((c) => c.propertyName === property)?.columnName || property;
     const fullMessage = `${typeName}.${property} (${table}.${col}): ${message}`;
-    return { entity: table, property, message, entityClass: typeName, table, column: col, fullMessage };
+    return {
+      entity: table,
+      property,
+      message,
+      entityClass: typeName,
+      table,
+      column: col,
+      fullMessage
+    };
   }
 }
