@@ -5,7 +5,7 @@ import type { ColumnMetadata } from '../types';
 import type { ValidationError } from '../types';
 import { DatabaseProvider } from '../DatabaseProvider';
 import type { SqlDialect } from '../query/SqlDialect';
-import { ValidIfOf, MinLengthOf } from './ValidIf';
+import { ValidIfOf, MinLengthOf } from '../src/decorators/ValidIf';
 
 class ProviderStub extends DatabaseProvider {
   constructor() {

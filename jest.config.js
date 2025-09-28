@@ -10,6 +10,23 @@ module.exports = {
   transform: {
     '^.+\\.ts$': 'ts-jest'
   },
+  moduleNameMapper: {
+    '^\\.\\.\\/src\\/providers\\/SQLiteProvider$': '<rootDir>/packages/sqlite/src/SQLiteProvider',
+    '^\\.\\.\\/src\\/providers\\/PostgresProvider$': '<rootDir>/packages/postgres/src/PostgresProvider',
+    '^\\.\\.\\/src\\/providers\\/MySqlProvider$': '<rootDir>/packages/mysql/src/MySqlProvider',
+    '^\\.\\.\\/src\\/providers\\/MssqlProvider$': '<rootDir>/packages/mssql/src/MssqlProvider',
+    '^\\.\\.\\/src\\/providers\\/DatabaseProvider$': '<rootDir>/packages/core/src/DatabaseProvider',
+    '^\\.\\.\\/src\\/providers\\/DdlBuilder$': '<rootDir>/packages/core/src/DdlBuilder',
+    '^\\.\\.\\/src\\/providers\\/sqlite\\/SQLiteDdlStrategy$': '<rootDir>/packages/sqlite/src/SQLiteDdlStrategy',
+    '^\\.\\.\\/src\\/providers\\/mysql\\/MySqlDdlStrategy$': '<rootDir>/packages/mysql/src/MySqlDdlStrategy',
+    '^\\.\\.\\/src\\/providers\\/mssql\\/MssqlDdlStrategy$': '<rootDir>/packages/mssql/src/MssqlDdlStrategy',
+    '^\\.\\.\\/src\\/providers\\/postgres\\/PostgresDdlStrategy$': '<rootDir>/packages/postgres/src/PostgresDdlStrategy',
+    '^\\.\\.\\/src\\/query\\/SQLiteDialect$': '<rootDir>/packages/sqlite/src/SQLiteDialect',
+    '^\\.\\.\\/src\\/query\\/MysqlDialect$': '<rootDir>/packages/mysql/src/MysqlDialect',
+    '^\\.\\.\\/src\\/query\\/PostgresDialect$': '<rootDir>/packages/postgres/src/PostgresDialect',
+    '^\\.\\.\\/src\\/query\\/MssqlDialect$': '<rootDir>/packages/mssql/src/MssqlDialect',
+    '^\\.\\.\\/src\\/utils\\/PrometheusSqlLogger$': '<rootDir>/packages/prometheus-sql-logger/src/logger/PrometheusSqlLogger'
+  },
   collectCoverageFrom: [
     'packages/**/src/**/*.ts',
     '!packages/**/src/**/*.d.ts',
@@ -23,7 +40,7 @@ module.exports = {
     {
       displayName: 'core',
       testMatch: ['<rootDir>/packages/core/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
     },
     ...(includeIntegration
       ? [

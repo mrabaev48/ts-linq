@@ -1,4 +1,5 @@
-import { EntityMetadata, ColumnMetadata, SqlHelper } from '@ts-linq/core';
+import type { EntityMetadata } from '@ts-linq/core';
+import { ColumnMetadata, SqlHelper } from '@ts-linq/core';
 
 export class PostgresDdlStrategy {
   public generateCreateTableSql(entityMetadata: EntityMetadata): string {
@@ -64,8 +65,8 @@ export class PostgresDdlStrategy {
     const parts: string[] = [];
     for (const col of index.columns) {
       const ord = index.orders?.[col];
-      const collation = index.collations?.[col] ? ` COLLATE ${index.collations![col]}` : '';
-      const nulls = index.nulls?.[col] ? ` NULLS ${index.nulls![col]}` : '';
+      const collation = index.collations?.[col] ? ` COLLATE ${index.collations[col]}` : '';
+      const nulls = index.nulls?.[col] ? ` NULLS ${index.nulls[col]}` : '';
       parts.push(ord ? `"${col}" ${ord}${collation}${nulls}` : `"${col}"${collation}${nulls}`);
     }
     for (const expr of index.expressions || []) {

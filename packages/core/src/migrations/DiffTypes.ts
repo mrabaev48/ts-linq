@@ -205,11 +205,11 @@ function arraysEqual(a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolea
 function shallowObjEqual<T extends Record<string, unknown> | undefined>(a: T, b: T): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;
-  const ak = Object.keys(a as Record<string, unknown>);
-  const bk = Object.keys(b as Record<string, unknown>);
+  const ak = Object.keys(a);
+  const bk = Object.keys(b);
   if (ak.length !== bk.length) return false;
   for (const k of ak) {
-    if ((a as Record<string, unknown>)[k] !== (b as Record<string, unknown>)[k]) return false;
+    if (a[k] !== b[k]) return false;
   }
   return true;
 }

@@ -1,6 +1,6 @@
-import { QueryBuilder } from './QueryBuilder';
+import { QueryBuilder } from '../src/query/QueryBuilder';
 import { EnhancedSqlCache } from './EnhancedSqlCache';
-import type { SqlDialect } from './SqlDialect';
+import type { SqlDialect } from '../src/query/SqlDialect';
 import { sql } from './SqlFunctions';
 import { MetadataStorage } from '@ts-linq/core';
 import type { ColumnMetadata, SqlLogger } from '../types';

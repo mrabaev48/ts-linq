@@ -1,4 +1,5 @@
-import { EntityMetadata, ColumnMetadata, SqlHelper } from '@ts-linq/core';
+import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+import { SqlHelper } from '@ts-linq/core';
 
 export class MssqlDdlStrategy {
   public generateCreateTableSql(metadata: EntityMetadata): string {
@@ -71,7 +72,7 @@ export class MssqlDdlStrategy {
     const unique = index.unique ? 'UNIQUE ' : '';
     const whereSql = index.where ? ` WHERE ${index.where}` : '';
     const cols = index.columns
-      .map((c) => (index.orders?.[c] ? `${c} ${index.orders![c]}` : c))
+      .map((c) => (index.orders?.[c] ? `${c} ${index.orders[c]}` : c))
       .join(', ');
     const include =
       index.include && index.include.length > 0 ? ` INCLUDE (${index.include.join(', ')})` : '';

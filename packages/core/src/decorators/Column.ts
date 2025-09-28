@@ -2,19 +2,12 @@ import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata, ColumnType } from '../types';
 
-function isStage3FieldContext(
-  x: unknown
-): x is {
+function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
   addInitializer?: (fn: (this: unknown) => void) => void;
 } {
-  return (
-    !!x &&
-    typeof x === 'object' &&
-    (x as { kind?: unknown }).kind === 'field' &&
-    'name' in (x as object)
-  );
+  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
 
 /**
@@ -45,7 +38,7 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
     const ctx = propOrContext;
     const name = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
       const designType = Reflect.getMetadata('design:type', (ctor as any).prototype, name) as
         | { name?: string }

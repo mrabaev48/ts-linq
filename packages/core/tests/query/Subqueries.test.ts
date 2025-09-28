@@ -1,6 +1,6 @@
 import { Queryable } from './Queryable';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { SqlDialect } from './SqlDialect';
+import type { SqlDialect } from '../src/query/SqlDialect';
 import type { SqlParameter } from '../types';
 import { DatabaseProvider } from '../DatabaseProvider';
 

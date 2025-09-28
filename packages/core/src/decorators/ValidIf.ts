@@ -2,19 +2,12 @@ import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ValidationRule } from '../types';
 
-function isStage3FieldContext(
-  x: unknown
-): x is {
+function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
   addInitializer?(fn: (this: unknown) => void): void;
 } {
-  return (
-    !!x &&
-    typeof x === 'object' &&
-    (x as { kind?: unknown }).kind === 'field' &&
-    'name' in (x as object)
-  );
+  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
 
 export function ValidIf(
@@ -33,7 +26,7 @@ export function ValidIf(
     const ctx = propOrContext;
     const name = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
       const existing: ValidationRule[] =
         (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
@@ -72,7 +65,7 @@ export function RequiredIfOf<T>(
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
       const existing: ValidationRule[] =
         (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
@@ -103,7 +96,7 @@ export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
       const existing: ValidationRule[] =
         (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
@@ -131,7 +124,7 @@ export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
       const existing: ValidationRule[] =
         (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
@@ -159,7 +152,7 @@ export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
       const existing: ValidationRule[] =
         (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
@@ -183,7 +176,7 @@ export function RangeOf<T>(min?: number, max?: number, message?: string): Proper
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
       const existing: ValidationRule[] =
         (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];

@@ -1,6 +1,4 @@
-import {
-  DatabaseProvider,
-  MetadataStorage,
+import type {
   EntityMetadata,
   ColumnMetadata,
   RetryPolicy,
@@ -8,12 +6,16 @@ import {
   OrmMiddleware,
   SoftDeleteOptions,
   SqlLogger,
+  SqlDialect
+} from '@ts-linq/core';
+import {
+  DatabaseProvider,
+  MetadataStorage,
   DatabaseError,
   UniqueConstraintError,
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
-  SqlHelper,
-  SqlDialect
+  SqlHelper
 } from '@ts-linq/core';
 import { SQLiteDialect } from './SQLiteDialect';
 import { SQLiteDdlStrategy } from './SQLiteDdlStrategy';

@@ -1,4 +1,4 @@
-import { IndexOptionsBuilder } from './IndexOptionsBuilder';
+import { IndexOptionsBuilder } from '../src/utils/IndexOptionsBuilder';
 
 describe('IndexOptionsBuilder', () => {
   test('builds minimal index with columns', () => {

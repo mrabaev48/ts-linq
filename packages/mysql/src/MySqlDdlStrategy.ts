@@ -1,4 +1,5 @@
-import { EntityMetadata, ColumnMetadata, SqlHelper } from '@ts-linq/core';
+import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+import { SqlHelper } from '@ts-linq/core';
 
 export class MySqlDdlStrategy {
   public generateCreateTableSql(metadata: EntityMetadata): string {
@@ -42,7 +43,7 @@ export class MySqlDdlStrategy {
     }
     // Warn on unsupported computed storage if encountered via DDL (rendering handled in column gen)
     const parts: string[] = [];
-    for (const c of index.columns) parts.push(index.orders?.[c] ? `${c} ${index.orders![c]}` : c);
+    for (const c of index.columns) parts.push(index.orders?.[c] ? `${c} ${index.orders[c]}` : c);
     for (const e of index.expressions || []) parts.push(`(${e})`);
     const cols = parts.join(', ');
     const kind = index.mysqlType ? `${index.mysqlType} ` : index.unique ? 'UNIQUE ' : '';

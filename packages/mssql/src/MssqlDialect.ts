@@ -1,4 +1,5 @@
-import { SqlDialect, MetadataStorage, QueryOptions, SqlParameter } from '@ts-linq/core';
+import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/core';
 
 /**
  * MSSQL dialect for SELECT generation.
@@ -26,7 +27,7 @@ export class MssqlDialect implements SqlDialect {
 
     const parameters: SqlParameter[] = [];
     if (options.selectParams && options.selectParams.length) {
-      parameters.push(...(options.selectParams as SqlParameter[]));
+      parameters.push(...options.selectParams);
     }
     const selectList = options.select && options.select.length ? options.select.join(', ') : '*';
 
