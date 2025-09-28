@@ -1,7 +1,7 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata } from '../types';
 import { SchemaSnapshotBuilder, SchemaSnapshotSerializer } from './SchemaSnapshot';
-import { compareSchemas } from './DiffTypes';
+import { compareSchemas } from '../src/migrations/DiffTypes';
 import { generateMigrationFromDiff } from './DialectMigrationSql';
 
 class User {

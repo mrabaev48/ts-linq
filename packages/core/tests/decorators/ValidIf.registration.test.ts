@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { ValidIfOf } from './ValidIf';
+import { ValidIfOf } from '../src/decorators/ValidIf';
 
 class Customer {
   email!: string;

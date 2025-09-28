@@ -72,9 +72,7 @@ export class SchemaSnapshotBuilder {
   public async buildActualFromProvider(expected?: SchemaSnapshot): Promise<SchemaSnapshot> {
     if (!this.provider)
       throw new Error('SchemaSnapshotBuilder requires a provider for actual schema');
-    const label =
-      (this.provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string) ||
-      'sqlite';
+    const label = this.provider.providerLabel || 'sqlite';
     if (label === 'sqlite') {
       const inspector = new SQLiteSchemaInspector(this.provider);
       const tableNames = await inspector.listTables();
@@ -179,7 +177,7 @@ export class SchemaSnapshotSerializer {
   public deserialize(jsonText: string): SchemaSnapshot {
     const obj = JSON.parse(jsonText);
     this.assertValid(obj);
-    return obj as SchemaSnapshot;
+    return obj;
   }
 
   private assertValid(obj: unknown): asserts obj is SchemaSnapshot {

@@ -2,19 +2,12 @@ import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata } from '../types';
 
-function isStage3FieldContext(
-  x: unknown
-): x is {
+function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
   addInitializer?(fn: (this: unknown) => void): void;
 } {
-  return (
-    !!x &&
-    typeof x === 'object' &&
-    (x as { kind?: unknown }).kind === 'field' &&
-    'name' in (x as object)
-  );
+  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
 
 export function DatabaseFunction(
@@ -32,7 +25,7 @@ export function DatabaseFunction(
     }
     const name = String(context.name);
     context.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
 
       // Create or update column metadata with defaultExpression

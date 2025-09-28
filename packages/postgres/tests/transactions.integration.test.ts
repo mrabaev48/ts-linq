@@ -31,9 +31,6 @@ d('[integration][postgres] transactions', () => {
       try {
         await p.executeNonQuery('DROP TABLE IF EXISTS "tx_items"');
       } catch {}
-      try {
-        await p.dispose?.();
-      } catch {}
     }
   });
 });

@@ -1,4 +1,5 @@
-import { SqlDialect, MetadataStorage, QueryOptions, SqlParameter } from '@ts-linq/core';
+import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/core';
 
 /**
  * PostgreSQL implementation of SqlDialect.
@@ -39,7 +40,7 @@ export class PostgresDialect implements SqlDialect {
     }
     const parameters: SqlParameter[] = [];
     if (options.selectParams && options.selectParams.length) {
-      parameters.push(...(options.selectParams as SqlParameter[]));
+      parameters.push(...options.selectParams);
     }
     if (options.where && options.where.length > 0) {
       const whereClauses = options.where.map((whereClause) => whereClause.condition);

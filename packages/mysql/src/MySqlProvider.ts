@@ -1,16 +1,18 @@
-import {
-  DatabaseProvider,
+import type {
   EntityMetadata,
   ColumnMetadata,
   SqlLogger,
   RetryPolicy,
   OrmMiddleware,
   SoftDeleteOptions,
+  SqlParameter,
+  SqlDialect
+} from '@ts-linq/core';
+import {
+  DatabaseProvider,
   OptimisticConcurrencyError,
   MetadataStorage,
-  SqlParameter,
   SqlHelper,
-  SqlDialect,
   UniqueConstraintError,
   DatabaseError
 } from '@ts-linq/core';

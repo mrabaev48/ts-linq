@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /* Minimal CLI: prints SQLite diff SQL using current metadata. */
 import 'reflect-metadata';
+import type { DatabaseProvider } from '@ts-linq/core';
 import {
   DiffMigrationGenerator,
   SchemaSnapshotBuilder,
   SchemaSnapshotSerializer,
   compareSchemas,
-  generateMigrationFromDiff,
-  DatabaseProvider
+  generateMigrationFromDiff
 } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
 import { PostgresProvider } from '@ts-linq/postgres';

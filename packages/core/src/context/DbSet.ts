@@ -121,7 +121,7 @@ export class DbSet<T extends object> {
       // Fallback: issue sequential finds (kept for completeness; generally not used)
       const results: T[] = [];
       for (const id of ids) {
-        const found = await this.find(id as PrimaryKeyOf<T>);
+        const found = await this.find(id);
         if (found) results.push(found);
       }
       return results;

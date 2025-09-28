@@ -13,7 +13,7 @@ import {
   PatternOf,
   RangeOf,
   ValidIf
-} from './ValidIf';
+} from '../src/decorators/ValidIf';
 
 type Stage3FieldContext = {
   kind: 'field';

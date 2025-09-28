@@ -1,4 +1,5 @@
-import { EntityMetadata, ColumnMetadata, SqlHelper } from '@ts-linq/core';
+import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+import { SqlHelper } from '@ts-linq/core';
 
 export class SQLiteDdlStrategy {
   public generateCreateTableSql(metadata: EntityMetadata): string {
@@ -48,8 +49,8 @@ export class SQLiteDdlStrategy {
     const whereSql = index.where ? ` WHERE ${index.where}` : '';
     const parts: string[] = [];
     for (const c of index.columns) {
-      const ord = index.orders?.[c] ? ` ${index.orders![c]}` : '';
-      const collate = index.collations?.[c] ? ` COLLATE ${index.collations![c]}` : '';
+      const ord = index.orders?.[c] ? ` ${index.orders[c]}` : '';
+      const collate = index.collations?.[c] ? ` COLLATE ${index.collations[c]}` : '';
       parts.push(`${c}${ord}${collate}`);
     }
     for (const e of index.expressions || []) parts.push(`(${e})`);

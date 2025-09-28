@@ -29,12 +29,7 @@ export class DiffMigrationGenerator {
     const steps: MigrationStep[] = [];
     const expected: SchemaSnapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
     // Build actual snapshot depending on provider
-    const label = this.provider.providerLabel as
-      | 'sqlite'
-      | 'postgresql'
-      | 'mysql'
-      | 'mssql'
-      | string;
+    const label = this.provider.providerLabel;
     let actual: SchemaSnapshot;
     if (label === 'sqlite') {
       const inspector = new SQLiteSchemaInspector(this.provider);

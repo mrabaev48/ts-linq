@@ -187,7 +187,7 @@ export class Queryable<T> {
     // Build subquery SQL once and stash into model via FROM override
     const { query } = subquery._sqlBuilder.generateFromModel(
       subquery._entityClass as unknown as new () => unknown,
-      (subquery as Queryable<unknown>)._model
+      subquery._model
     );
     const cloned = this.clone();
     // naive: store CTE name; real provider should prepend WITH clause at execution time

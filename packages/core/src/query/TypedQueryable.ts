@@ -1,4 +1,4 @@
-import { Queryable } from './Queryable';
+import type { Queryable } from './Queryable';
 import type { EntityMetadata } from '../types';
 import type { DbContext } from '../context/DbContext';
 

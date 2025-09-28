@@ -82,13 +82,13 @@ export function generateMigrationFromDiff(
         const name = q(dialect, idx.name);
         const parts: string[] = [];
         for (const c of idx.columns) {
-          const ord = idx.orders?.[c] ? ` ${idx.orders![c]}` : '';
+          const ord = idx.orders?.[c] ? ` ${idx.orders[c]}` : '';
           const collation = idx.collations?.[c]
             ? dialect === 'postgresql' || dialect === 'sqlite'
-              ? ` COLLATE ${idx.collations![c]}`
+              ? ` COLLATE ${idx.collations[c]}`
               : ''
             : '';
-          const nulls = dialect === 'postgresql' && idx.nulls?.[c] ? ` NULLS ${idx.nulls![c]}` : '';
+          const nulls = dialect === 'postgresql' && idx.nulls?.[c] ? ` NULLS ${idx.nulls[c]}` : '';
           parts.push(`${q(dialect, c)}${ord}${collation}${nulls}`);
         }
         for (const e of idx.expressions || []) parts.push(`(${e})`);
@@ -247,12 +247,12 @@ export function generateMigrationFromDiff(
             (ch.column as { computedExpression?: string }).computedExpression
           ) {
             // Use full column rendering for computed columns
-            const colSql = renderColumn(dialect, ch.column as ColumnDef);
+            const colSql = renderColumn(dialect, ch.column);
             const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
             up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${colSql}`);
           } else if ((ch.column as { defaultExpression?: string }).defaultExpression) {
             // Use full column rendering to include defaultExpression
-            const colSql = renderColumn(dialect, ch.column as ColumnDef);
+            const colSql = renderColumn(dialect, ch.column);
             const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
             up.push(`ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${colSql}`);
           } else {
@@ -287,7 +287,7 @@ export function generateMigrationFromDiff(
             up.push(buildDropColumnSql(dialect, tableDiff.table, ch.column.name));
             const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
             up.push(
-              `ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${renderColumn(dialect, ch.column as ColumnDef)}`
+              `ALTER TABLE ${q(dialect, tableDiff.table)} ${kw} ${renderColumn(dialect, ch.column)}`
             );
             continue;
           }
