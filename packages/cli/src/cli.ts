@@ -1,15 +1,61 @@
 #!/usr/bin/env node
 /* Minimal CLI: prints SQLite diff SQL using current metadata. */
 import 'reflect-metadata';
-import { DiffMigrationGenerator, SchemaSnapshotBuilder, SchemaSnapshotSerializer, compareSchemas, generateMigrationFromDiff } from '@ts-linq/core';
+import { DiffMigrationGenerator, SchemaSnapshotBuilder, SchemaSnapshotSerializer, compareSchemas, generateMigrationFromDiff, DatabaseProvider } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
+import { PostgresProvider } from '@ts-linq/postgres';
+import { MySqlProvider } from '@ts-linq/mysql';
+import { MssqlProvider } from '@ts-linq/mssql';
 import * as fs from 'fs';
 import * as path from 'path';
 
+function createProviderFromEnv(): DatabaseProvider {
+  const kind = (process.env.DB_PROVIDER || 'sqlite').toLowerCase();
+  if (kind === 'postgresql' || kind === 'postgres' || kind === 'pg') {
+    const url = process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
+    if (!url) throw new Error('POSTGRES_URL/DATABASE_URL is required for DB_PROVIDER=postgresql');
+    return new PostgresProvider(url) as unknown as DatabaseProvider;
+  }
+  if (kind === 'mysql') {
+    const url = process.env.MYSQL_URL || process.env.DATABASE_URL || '';
+    if (!url) throw new Error('MYSQL_URL/DATABASE_URL is required for DB_PROVIDER=mysql');
+    return new MySqlProvider(url) as unknown as DatabaseProvider;
+  }
+  if (kind === 'mssql' || kind === 'sqlserver') {
+    const url = process.env.MSSQL_URL || process.env.DATABASE_URL || '';
+    if (!url) throw new Error('MSSQL_URL/DATABASE_URL is required for DB_PROVIDER=mssql');
+    return new MssqlProvider(url) as unknown as DatabaseProvider;
+  }
+  const conn = process.env.SQLITE_URL || ':memory:';
+  return new SQLiteProvider(conn) as unknown as DatabaseProvider;
+}
+
+function tryLoadConfig(cwd: string): unknown | undefined {
+  const candidates = [
+    'ts-linq.config.ts',
+    'ts-linq.config.cjs',
+    'ts-linq.config.js',
+    'ts-linq.config.json'
+  ];
+  for (const name of candidates) {
+    const p = path.resolve(cwd, name);
+    if (!fs.existsSync(p)) continue;
+    try {
+      if (name.endsWith('.json')) return JSON.parse(fs.readFileSync(p, 'utf8'));
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const mod = require(p);
+      return (mod && (mod.default || mod)) as unknown;
+    } catch (e) {
+      console.error(`Failed to load config ${name}:`, (e as Error).message);
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 async function main() {
   const [, , cmd, arg1, arg2] = process.argv;
-  const conn = process.env.SQLITE_URL || ':memory:';
-  const provider = new SQLiteProvider(conn);
+  const provider = createProviderFromEnv();
   await provider.connect();
   const gen = new DiffMigrationGenerator(provider);
   const steps = await gen.generate();
@@ -103,6 +149,43 @@ async function main() {
         }
       }
       console.log(`Applied ${applied} step(s) from snapshot`);
+    }
+  } else if (cmd === 'schema:validate') {
+    const file = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
+    if (!fs.existsSync(file)) {
+      console.error(`Snapshot file not found: ${file}`);
+      process.exitCode = 2;
+    } else {
+      const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+      const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
+      const diff = compareSchemas(target, actual);
+      const rendered = generateMigrationFromDiff(diff, (provider as any).providerLabel);
+      if (rendered.up.length > 0) {
+        console.error(`Schema drift detected: ${rendered.up.length} change(s) required`);
+        for (const sql of rendered.up) console.error(sql);
+        process.exitCode = 1;
+      } else {
+        console.log('Schema validation: OK (no drift)');
+      }
+    }
+  } else if (cmd === 'config:check') {
+    const cfg = tryLoadConfig(process.cwd());
+    if (!cfg || typeof cfg !== 'object') {
+      console.error('Config not found or invalid. Looked for ts-linq.config.{ts,cjs,js,json}');
+      process.exitCode = 2;
+    } else {
+      const c = cfg as { provider?: unknown; connection?: unknown; migrations?: unknown; entities?: unknown };
+      const missing: string[] = [];
+      if (!c.provider || typeof c.provider !== 'string') missing.push('provider');
+      if (!c.connection || typeof c.connection !== 'string') missing.push('connection');
+      if (!c.migrations || typeof c.migrations !== 'string') missing.push('migrations');
+      if (!c.entities || typeof c.entities !== 'string') missing.push('entities');
+      if (missing.length) {
+        console.error(`Config validation failed. Missing/invalid: ${missing.join(', ')}`);
+        process.exitCode = 1;
+      } else {
+        console.log('Config validation: OK');
+      }
     }
   } else {
     for (const step of steps) console.log(step.sql);
