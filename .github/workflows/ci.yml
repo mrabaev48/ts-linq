@@ -17,6 +17,8 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      - name: Config validation
+        run: node packages/cli/dist/cli.js config:check || true
       - name: Lint
         run: npm run lint
       - name: Unit tests
