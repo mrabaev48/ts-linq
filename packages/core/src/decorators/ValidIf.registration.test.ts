@@ -1,7 +1,9 @@
 import 'reflect-metadata';
 import { ValidIfOf } from './ValidIf';
 
-class Customer { email!: string; }
+class Customer {
+  email!: string;
+}
 
 describe('ValidIf registration (Stage-3 initializer)', () => {
   test('stores rule in Reflect metadata on class', () => {
@@ -15,14 +17,13 @@ describe('ValidIf registration (Stage-3 initializer)', () => {
       } as any
     );
 
-    const rules = (Reflect.getOwnMetadata('orm:validations', Customer) as Array<{
-      propertyName: string;
-      predicate: (e: unknown) => boolean;
-      message?: string;
-    }>) || [];
+    const rules =
+      (Reflect.getOwnMetadata('orm:validations', Customer) as Array<{
+        propertyName: string;
+        predicate: (e: unknown) => boolean;
+        message?: string;
+      }>) || [];
     expect(rules.length).toBeGreaterThan(0);
     expect(rules.some((r) => r.propertyName === 'email')).toBe(true);
   });
 });
-
-

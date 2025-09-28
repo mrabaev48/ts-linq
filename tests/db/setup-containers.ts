@@ -1,6 +1,7 @@
 /**** Basic Testcontainers setup for DB-backed tests ****/
 
-import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
+import type { StartedTestContainer } from 'testcontainers';
+import { GenericContainer, Wait } from 'testcontainers';
 
 let postgres: StartedTestContainer | null = null;
 let mysql: StartedTestContainer | null = null;
@@ -15,21 +16,21 @@ export async function startDbContainers() {
 
   if (!db || db === 'postgres') {
     postgres = await new GenericContainer(pgImage)
-    .withEnv('POSTGRES_PASSWORD', 'test')
-    .withEnv('POSTGRES_DB', 'testdb')
-    .withExposedPorts(5432)
-    .start();
+      .withEnv('POSTGRES_PASSWORD', 'test')
+      .withEnv('POSTGRES_DB', 'testdb')
+      .withExposedPorts(5432)
+      .start();
     process.env.POSTGRES_URL = `postgres://postgres:test@${postgres.getHost()}:${postgres.getMappedPort(5432)}/testdb`;
   }
 
   if (!db || db === 'mysql') {
     mysql = await new GenericContainer(mysqlImage)
-    .withEnv('MYSQL_ROOT_PASSWORD', 'test')
-    .withEnv('MYSQL_DATABASE', 'testdb')
-    .withExposedPorts(3306)
-    .withWaitStrategy(Wait.forLogMessage(/ready for connections/i))
-    .withStartupTimeout(180_000)
-    .start();
+      .withEnv('MYSQL_ROOT_PASSWORD', 'test')
+      .withEnv('MYSQL_DATABASE', 'testdb')
+      .withExposedPorts(3306)
+      .withWaitStrategy(Wait.forLogMessage(/ready for connections/i))
+      .withStartupTimeout(180_000)
+      .start();
     process.env.MYSQL_URL = `mysql://root:test@${mysql.getHost()}:${mysql.getMappedPort(3306)}/testdb`;
   }
 
@@ -48,7 +49,7 @@ export async function stopDbContainers() {
   await Promise.all([
     postgres?.stop().catch(() => {}),
     mysql?.stop().catch(() => {}),
-    mssql?.stop().catch(() => {}),
+    mssql?.stop().catch(() => {})
   ]);
   postgres = null;
   mysql = null;

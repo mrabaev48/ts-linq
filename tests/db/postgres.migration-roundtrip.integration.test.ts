@@ -4,7 +4,11 @@ import { PostgresProvider } from '@ts-linq/postgres';
 const url = process.env.POSTGRES_URL || '';
 const d = url ? describe : describe.skip;
 
-class RUser { id!: number; email!: string; createdAt!: Date }
+class RUser {
+  id!: number;
+  email!: string;
+  createdAt!: Date;
+}
 
 d('[integration][postgres] migration round-trip (diff → apply → no diff)', () => {
   test('DiffMigrationGenerator produces empty diff after applying SQL', async () => {
@@ -17,9 +21,24 @@ d('[integration][postgres] migration round-trip (diff → apply → no diff)', (
       // Expected schema via MetadataStorage
       MetadataStorage.getInstance().clear();
       MetadataStorage.addEntity(RUser, 'rt_users');
-      MetadataStorage.addColumn(RUser, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false });
-      MetadataStorage.addColumn(RUser, { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false });
-      MetadataStorage.addColumn(RUser, { propertyName: 'createdAt', columnName: 'created_at', type: 'TIMESTAMP', nullable: false });
+      MetadataStorage.addColumn(RUser, {
+        propertyName: 'id',
+        columnName: 'id',
+        type: 'INTEGER',
+        nullable: false
+      });
+      MetadataStorage.addColumn(RUser, {
+        propertyName: 'email',
+        columnName: 'email',
+        type: 'TEXT',
+        nullable: false
+      });
+      MetadataStorage.addColumn(RUser, {
+        propertyName: 'createdAt',
+        columnName: 'created_at',
+        type: 'TIMESTAMP',
+        nullable: false
+      });
       MetadataStorage.addPrimaryKey(RUser, 'id');
 
       // 1) Generate diff
@@ -34,9 +53,9 @@ d('[integration][postgres] migration round-trip (diff → apply → no diff)', (
       const steps2 = await gen2.generate();
       expect(steps2.length).toBe(0);
     } finally {
-      try { await p.executeNonQuery('DROP TABLE IF EXISTS "rt_users"'); } catch {}
+      try {
+        await p.executeNonQuery('DROP TABLE IF EXISTS "rt_users"');
+      } catch {}
     }
   });
 });
-
-

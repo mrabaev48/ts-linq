@@ -24,8 +24,8 @@ describe('SQLite computed column (integration)', () => {
         type: 'INTEGER',
         nullable: true,
         isComputed: true,
-        computedExpression: 'a * 2',
-      } as ColumnMetadata,
+        computedExpression: 'a * 2'
+      } as ColumnMetadata
     ];
     cols.forEach((c) => MetadataStorage.addColumn(User, c));
     MetadataStorage.addPrimaryKey(User, 'id');
@@ -54,9 +54,14 @@ describe('SQLite computed column (integration)', () => {
     // Insert data without computed column
     await provider.executeNonQuery('INSERT INTO Users (id, a) VALUES (?, ?)', [1, 5]);
 
-    const rows = await provider.executeQuery<{ doubleA: number | null }>('SELECT doubleA FROM Users WHERE id = ?', [1]);
+    const rows = await provider.executeQuery<{ doubleA: number | null }>(
+      'SELECT doubleA FROM Users WHERE id = ?',
+      [1]
+    );
     if (rows[0]?.doubleA === null) {
-      console.warn('SQLite: generated columns appear unsupported in this runtime; skipping assertion');
+      console.warn(
+        'SQLite: generated columns appear unsupported in this runtime; skipping assertion'
+      );
       await provider.disconnect();
       return;
     }
@@ -65,5 +70,3 @@ describe('SQLite computed column (integration)', () => {
     await provider.disconnect();
   });
 });
-
-

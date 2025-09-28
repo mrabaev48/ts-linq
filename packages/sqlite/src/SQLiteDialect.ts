@@ -1,4 +1,12 @@
-import { SqlDialect, MetadataStorage, JoinClause, OrderByClause, QueryOptions, WhereClause, SqlParameter } from '@ts-linq/core';
+import {
+  SqlDialect,
+  MetadataStorage,
+  JoinClause,
+  OrderByClause,
+  QueryOptions,
+  WhereClause,
+  SqlParameter
+} from '@ts-linq/core';
 
 /**
  * SQLite implementation of SqlDialect.

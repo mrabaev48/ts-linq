@@ -56,7 +56,7 @@ describe('OrmMiddleware pipeline', () => {
     beforeCalls.length = 0;
     afterCalls.length = 0;
     materialized.length = 0;
-    await provider.createTable(MetadataStorage.getEntity(User)!);
+    await provider.createTable(MetadataStorage.getEntity(User));
   });
 
   afterEach(async () => {

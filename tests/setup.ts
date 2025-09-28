@@ -55,6 +55,8 @@ afterAll(() => {
   const p95 = sorted[idx];
   if (p95 > perfEnabled) {
     // Fail the run if p95 exceeds threshold
-    throw new Error(`Performance p95 exceeded: ${p95}ms > ${perfEnabled}ms over ${sorted.length} DB tests`);
+    throw new Error(
+      `Performance p95 exceeded: ${p95}ms > ${perfEnabled}ms over ${sorted.length} DB tests`
+    );
   }
 });

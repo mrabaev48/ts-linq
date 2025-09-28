@@ -24,8 +24,8 @@ describe('Postgres computed column (integration)', () => {
         type: 'INTEGER',
         nullable: true,
         isComputed: true,
-        computedExpression: 'a * 2',
-      } as ColumnMetadata,
+        computedExpression: 'a * 2'
+      } as ColumnMetadata
     ];
     cols.forEach((c) => MetadataStorage.addColumn(User, c));
     MetadataStorage.addPrimaryKey(User, 'id');
@@ -36,10 +36,11 @@ describe('Postgres computed column (integration)', () => {
     await provider.executeNonQuery('DROP TABLE IF EXISTS users_cc');
     await provider.createTable(meta);
     await provider.executeNonQuery('INSERT INTO users_cc (id, a) VALUES ($1, $2)', [1, 7]);
-    const rows = await provider.executeQuery<{ doublea: number }>('SELECT doublea FROM users_cc WHERE id=$1', [1]);
+    const rows = await provider.executeQuery<{ doublea: number }>(
+      'SELECT doublea FROM users_cc WHERE id=$1',
+      [1]
+    );
     expect(rows[0]?.doublea).toBe(14);
     await provider.disconnect();
   });
 });
-
-

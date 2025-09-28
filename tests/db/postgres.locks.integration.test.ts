@@ -17,17 +17,25 @@ d('[integration][postgres] locks and concurrency', () => {
     await p2.connect();
     try {
       await p1.executeNonQuery('DROP TABLE IF EXISTS "items_lock"');
-      await p1.executeNonQuery('CREATE TABLE "items_lock"(id SERIAL PRIMARY KEY, name TEXT NOT NULL)');
+      await p1.executeNonQuery(
+        'CREATE TABLE "items_lock"(id SERIAL PRIMARY KEY, name TEXT NOT NULL)'
+      );
       await p1.executeNonQuery("INSERT INTO \"items_lock\"(name) VALUES('a'),('b'),('c')");
 
       await p1.beginTransaction();
-      const rows = await p1.executeQuery<{ id: number }>('SELECT id FROM "items_lock" ORDER BY id LIMIT 1');
+      const rows = await p1.executeQuery<{ id: number }>(
+        'SELECT id FROM "items_lock" ORDER BY id LIMIT 1'
+      );
       const lockedId = rows[0].id;
-      await p1.executeNonQuery(`SELECT 1 FROM "items_lock" WHERE id = $1 FOR UPDATE`, [lockedId as unknown as never]);
+      await p1.executeNonQuery(`SELECT 1 FROM "items_lock" WHERE id = $1 FOR UPDATE`, [
+        lockedId as unknown as never
+      ]);
 
       // NOWAIT должно упасть
       await expect(
-        p2.executeQuery(`SELECT id FROM "items_lock" WHERE id = $1 FOR UPDATE NOWAIT`, [lockedId as unknown as never])
+        p2.executeQuery(`SELECT id FROM "items_lock" WHERE id = $1 FOR UPDATE NOWAIT`, [
+          lockedId as unknown as never
+        ])
       ).rejects.toBeInstanceOf(DatabaseError);
 
       // SKIP LOCKED должен вернуть другие строки
@@ -38,7 +46,9 @@ d('[integration][postgres] locks and concurrency', () => {
 
       await p1.commitTransaction();
     } finally {
-      try { await p1.executeNonQuery('DROP TABLE IF EXISTS "items_lock"'); } catch {}
+      try {
+        await p1.executeNonQuery('DROP TABLE IF EXISTS "items_lock"');
+      } catch {}
     }
   });
 
@@ -49,29 +59,53 @@ d('[integration][postgres] locks and concurrency', () => {
     await p2.connect();
     try {
       await p1.executeNonQuery('DROP TABLE IF EXISTS "dead_items"');
-      await p1.executeNonQuery('CREATE TABLE "dead_items"(id SERIAL PRIMARY KEY, name TEXT NOT NULL)');
+      await p1.executeNonQuery(
+        'CREATE TABLE "dead_items"(id SERIAL PRIMARY KEY, name TEXT NOT NULL)'
+      );
       await p1.executeNonQuery("INSERT INTO \"dead_items\"(name) VALUES('x'),('y')");
 
-      const [a, b] = await p1.executeQuery<{ id: number }>('SELECT id FROM "dead_items" ORDER BY id LIMIT 2');
+      const [a, b] = await p1.executeQuery<{ id: number }>(
+        'SELECT id FROM "dead_items" ORDER BY id LIMIT 2'
+      );
 
       await p1.beginTransaction();
       await p2.beginTransaction();
 
-      await p1.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-1' WHERE id = $1", [a.id as unknown as never]);
-      await p2.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-2' WHERE id = $1", [b.id as unknown as never]);
+      await p1.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-1' WHERE id = $1", [
+        a.id as unknown as never
+      ]);
+      await p2.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-2' WHERE id = $1", [
+        b.id as unknown as never
+      ]);
 
-      const t1 = () => p1.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-1' WHERE id = $1", [b.id as unknown as never]);
-      const t2 = () => p2.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-2' WHERE id = $1", [a.id as unknown as never]);
+      const t1 = () =>
+        p1.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-1' WHERE id = $1", [
+          b.id as unknown as never
+        ]);
+      const t2 = () =>
+        p2.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-2' WHERE id = $1", [
+          a.id as unknown as never
+        ]);
 
       let raised = 0;
-      try { await t1(); } catch { raised++; }
-      try { await t2(); } catch { raised++; }
+      try {
+        await t1();
+      } catch {
+        raised++;
+      }
+      try {
+        await t2();
+      } catch {
+        raised++;
+      }
       expect(raised).toBeGreaterThanOrEqual(1);
 
       await p1.rollbackTransaction().catch(() => {});
       await p2.rollbackTransaction().catch(() => {});
     } finally {
-      try { await p1.executeNonQuery('DROP TABLE IF EXISTS "dead_items"'); } catch {}
+      try {
+        await p1.executeNonQuery('DROP TABLE IF EXISTS "dead_items"');
+      } catch {}
     }
   });
 });

@@ -12,5 +12,3 @@ test('SQLite: index with COLLATE', () => {
   });
   expect(sql).toContain('(email COLLATE NOCASE)');
 });
-
-

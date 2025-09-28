@@ -10,5 +10,3 @@ test('Postgres: index WITH (...) params', () => {
   });
   expect(sql).toContain('WITH (fillfactor=90)');
 });
-
-

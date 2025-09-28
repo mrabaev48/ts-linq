@@ -24,7 +24,7 @@ describe('Queryable', () => {
     E = createEntity();
     provider = new SQLiteProvider(':memory:');
     await provider.connect();
-    await provider.createTable(MetadataStorage.getEntity(E)!);
+    await provider.createTable(MetadataStorage.getEntity(E));
     for (let i = 1; i <= 3; i++) {
       const e = new E();
       e.name = `N${i}`;

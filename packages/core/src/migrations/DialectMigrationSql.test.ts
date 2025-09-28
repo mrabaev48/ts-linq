@@ -35,7 +35,6 @@ test('Index WHERE is rendered for PG/SQLite/MSSQL and ignored for MySQL', () => 
   expect(mysql).not.toContain('WHERE active = 1');
 });
 
-
 test('Index drop+create for altered options (orders) on Postgres', () => {
   const diff = {
     tables: [
@@ -53,19 +52,27 @@ test('Index drop+create for altered options (orders) on Postgres', () => {
   expect(res).toContain('CREATE INDEX "idx_users_email" ON "Users" ("email" DESC)');
 });
 
-
 test('Add column with defaultExpression in Postgres', () => {
   const diff = {
     tables: [
       {
         table: 'Users',
         columnChanges: [
-          { kind: 'add', column: { name: 'createdAt', type: 'DATETIME', nullable: false, defaultExpression: 'CURRENT_TIMESTAMP' } }
+          {
+            kind: 'add',
+            column: {
+              name: 'createdAt',
+              type: 'DATETIME',
+              nullable: false,
+              defaultExpression: 'CURRENT_TIMESTAMP'
+            }
+          }
         ]
       }
     ]
   } as const;
   const res = generateMigrationFromDiff(diff as any, 'postgresql').up.join('\n');
-  expect(res).toContain('ALTER TABLE "Users" ADD COLUMN "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP');
+  expect(res).toContain(
+    'ALTER TABLE "Users" ADD COLUMN "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP'
+  );
 });
-

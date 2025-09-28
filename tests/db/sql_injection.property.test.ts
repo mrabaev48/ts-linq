@@ -5,18 +5,37 @@ import { MysqlDialect } from '@ts-linq/mysql';
 import { MssqlDialect } from '@ts-linq/mssql';
 import { SQLiteDialect } from '@ts-linq/sqlite';
 
-class Z { id!: number; x!: string }
+class Z {
+  id!: number;
+  x!: string;
+}
 
 describe('Parameterization (SQL-injection safety) property-based', () => {
   beforeEach(() => {
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(Z, 'z');
-    MetadataStorage.addColumn(Z, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true });
-    MetadataStorage.addColumn(Z, { propertyName: 'x', columnName: 'x', type: 'TEXT', nullable: false });
+    MetadataStorage.addColumn(Z, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false,
+      isGenerated: true
+    });
+    MetadataStorage.addColumn(Z, {
+      propertyName: 'x',
+      columnName: 'x',
+      type: 'TEXT',
+      nullable: false
+    });
     MetadataStorage.addPrimaryKey(Z, 'id');
   });
 
-  const dialects = [new PostgresDialect(), new MysqlDialect(), new MssqlDialect(), new SQLiteDialect()];
+  const dialects = [
+    new PostgresDialect(),
+    new MysqlDialect(),
+    new MssqlDialect(),
+    new SQLiteDialect()
+  ];
 
   test('malicious strings never interpolated into SQL (only placeholders appear)', () => {
     fc.assert(
@@ -44,5 +63,3 @@ describe('Parameterization (SQL-injection safety) property-based', () => {
     );
   });
 });
-
-

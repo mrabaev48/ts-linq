@@ -8,7 +8,7 @@ export type OrderDirection = 'ASC' | 'DESC';
 class WindowBuilder {
   private readonly funcCall: string;
   private partitions: string[] = [];
-  private orders: Array<{ column: string; direction: OrderDirection } > = [];
+  private orders: Array<{ column: string; direction: OrderDirection }> = [];
 
   constructor(funcCall: string) {
     this.funcCall = funcCall;
@@ -29,9 +29,7 @@ class WindowBuilder {
     const parts: string[] = [];
     if (this.partitions.length) parts.push(`PARTITION BY ${this.partitions.join(', ')}`);
     if (this.orders.length)
-      parts.push(
-        `ORDER BY ${this.orders.map(o => `${o.column} ${o.direction}`).join(', ')}`
-      );
+      parts.push(`ORDER BY ${this.orders.map((o) => `${o.column} ${o.direction}`).join(', ')}`);
     return `${this.funcCall} OVER (${parts.join(' ')})`;
   }
 
@@ -59,9 +57,15 @@ class RowNumberFunction {
 }
 
 export const sql = {
-  rank(): RankFunction { return new RankFunction(); },
-  denseRank(): DenseRankFunction { return new DenseRankFunction(); },
-  rowNumber(): RowNumberFunction { return new RowNumberFunction(); },
+  rank(): RankFunction {
+    return new RankFunction();
+  },
+  denseRank(): DenseRankFunction {
+    return new DenseRankFunction();
+  },
+  rowNumber(): RowNumberFunction {
+    return new RowNumberFunction();
+  },
   // JSON helpers (dialect-specific rendering expected downstream)
   jsonExtract(column: string, path: string): ExprBuilder {
     // Postgres: column #>> '{a,b}', MySQL: JSON_EXTRACT(column, '$.a.b')
@@ -71,14 +75,23 @@ export const sql = {
     return new ExprBuilder(`JSON_CONTAINS(${column}, ?)`, [json]);
   },
   // Full-text search DSL (vendor-aware by convention; dialect may remap)
-  mysqlMatchAgainst(columns: string | string[], query: string, mode: 'natural' | 'boolean' | 'query expansion' = 'natural'): ExprBuilder {
+  mysqlMatchAgainst(
+    columns: string | string[],
+    query: string,
+    mode: 'natural' | 'boolean' | 'query expansion' = 'natural'
+  ): ExprBuilder {
     const cols = Array.isArray(columns) ? columns.join(', ') : columns;
-    const modeSql = mode === 'boolean' ? ' IN BOOLEAN MODE' : (mode === 'query expansion' ? ' WITH QUERY EXPANSION' : ' IN NATURAL LANGUAGE MODE');
+    const modeSql =
+      mode === 'boolean'
+        ? ' IN BOOLEAN MODE'
+        : mode === 'query expansion'
+          ? ' WITH QUERY EXPANSION'
+          : ' IN NATURAL LANGUAGE MODE';
     return new ExprBuilder(`MATCH(${cols}) AGAINST (?${modeSql})`, [query]);
   },
   pgToTsVector(columns: string | string[], config: string = 'simple'): ExprBuilder {
     const cols = Array.isArray(columns) ? columns : [columns];
-    const coalesced = cols.map(c => `COALESCE(${c}, '')`).join(` || ' ' || `);
+    const coalesced = cols.map((c) => `COALESCE(${c}, '')`).join(` || ' ' || `);
     return new ExprBuilder(`to_tsvector(?, ${coalesced})`, [config]);
   },
   pgPlainToTsQuery(query: string, config: string = 'simple'): ExprBuilder {
@@ -99,10 +112,17 @@ import type { SqlExpression } from '../types';
 class ExprBuilder implements SqlExpression {
   private readonly expr: string;
   private readonly params: unknown[];
-  constructor(expr: string, params: unknown[] = []) { this.expr = expr; this.params = params; }
-  toString(): string { return this.expr; }
-  getParameters(): readonly unknown[] { return this.params; }
-  as(alias: string): ExprBuilder { return new ExprBuilder(`${this.expr} AS ${alias}`, this.params); }
+  constructor(expr: string, params: unknown[] = []) {
+    this.expr = expr;
+    this.params = params;
+  }
+  toString(): string {
+    return this.expr;
+  }
+  getParameters(): readonly unknown[] {
+    return this.params;
+  }
+  as(alias: string): ExprBuilder {
+    return new ExprBuilder(`${this.expr} AS ${alias}`, this.params);
+  }
 }
-
-

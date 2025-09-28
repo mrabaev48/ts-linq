@@ -14,5 +14,3 @@ test('Postgres: index USING GIN and CONCURRENTLY', () => {
   expect(sql).toContain('CREATE INDEX CONCURRENTLY IF NOT EXISTS');
   expect(sql).toContain('USING GIN');
 });
-
-

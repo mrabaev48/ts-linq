@@ -34,5 +34,3 @@ test('generateMigrationFromDiff: indexCreates/indexDrops (MySQL, WHERE ignored)'
   expect(res).not.toContain('WHERE active = 1');
   expect(res).toContain('DROP INDEX `idx_old`');
 });
-
-

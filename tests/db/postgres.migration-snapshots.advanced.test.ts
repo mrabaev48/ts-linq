@@ -41,9 +41,15 @@ describe('PostgreSQL advanced index DDL (SchemaDiff → SQL)', () => {
     };
     const sql = generateMigrationFromDiff(diff, 'postgresql' as any).up;
     const text = normalize(sql);
-    expect(text).toContain('CREATE UNIQUE INDEX "idx_users_email_active" ON "users" ("email") WHERE active = true');
-    expect(text).toContain(`CREATE INDEX CONCURRENTLY "idx_users_tags_gin" ON "users" USING GIN ("tags") WITH (fastupdate='on', fillfactor=90)`);
+    expect(text).toContain(
+      'CREATE UNIQUE INDEX "idx_users_email_active" ON "users" ("email") WHERE active = true'
+    );
+    expect(text).toContain(
+      `CREATE INDEX CONCURRENTLY "idx_users_tags_gin" ON "users" USING GIN ("tags") WITH (fastupdate='on', fillfactor=90)`
+    );
     // expressions and NULLS/COLLATE rendering
-    expect(text).toContain('CREATE INDEX "idx_users_expr" ON "users" ("created_at" DESC NULLS LAST, ((LOWER(email))))');
+    expect(text).toContain(
+      'CREATE INDEX "idx_users_expr" ON "users" ("created_at" DESC NULLS LAST, ((LOWER(email))))'
+    );
   });
 });

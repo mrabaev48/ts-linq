@@ -50,12 +50,19 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
     let s = input;
     s = s.replace(/'([^']|''))*'/g, `'[REDACTED]'`).replace(/"([^"\\]|\\.)*"/g, '"[REDACTED]"');
     for (const re of this.maskPatterns) {
-      try { s = s.replace(re, '[REDACTED]'); } catch {}
+      try {
+        s = s.replace(re, '[REDACTED]');
+      } catch {}
     }
     return s;
   }
 
-  queryStart(info: { sql: string; params: readonly SqlParameter[]; traceId?: string; provider?: string }): void {
+  queryStart(info: {
+    sql: string;
+    params: readonly SqlParameter[];
+    traceId?: string;
+    provider?: string;
+  }): void {
     if (!this.tracer) return;
     const span = this.tracer.startSpan('db.query', {
       attributes: {
@@ -93,5 +100,3 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
     }
   }
 }
-
-

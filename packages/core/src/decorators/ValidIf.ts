@@ -2,14 +2,29 @@ import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ValidationRule } from '../types';
 
-function isStage3FieldContext(x: unknown): x is { kind: 'field'; name: string | symbol; addInitializer?(fn: (this: unknown) => void): void } {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in (x as object);
+function isStage3FieldContext(
+  x: unknown
+): x is {
+  kind: 'field';
+  name: string | symbol;
+  addInitializer?(fn: (this: unknown) => void): void;
+} {
+  return (
+    !!x &&
+    typeof x === 'object' &&
+    (x as { kind?: unknown }).kind === 'field' &&
+    'name' in (x as object)
+  );
 }
 
 export function ValidIf(
   predicate: (entity: unknown) => boolean,
   message?: string,
-  options?: { phase?: 'onCreate' | 'onUpdate' | 'always'; messageKey?: string; messageParams?: Record<string, unknown> }
+  options?: {
+    phase?: 'onCreate' | 'onUpdate' | 'always';
+    messageKey?: string;
+    messageParams?: Record<string, unknown>;
+  }
 ): PropertyDecorator {
   return function ValidIfDecorator(_targetOrValue: unknown, propOrContext: unknown) {
     if (!isStage3FieldContext(propOrContext)) {
@@ -20,13 +35,20 @@ export function ValidIf(
     ctx.addInitializer?.(function (this: unknown) {
       const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
       if (!ctor) return;
-      const existing: ValidationRule[] = (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
-      existing.push({ propertyName: name, predicate, message, phase: options?.phase, messageKey: options?.messageKey, messageParams: options?.messageParams });
+      const existing: ValidationRule[] =
+        (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
+      existing.push({
+        propertyName: name,
+        predicate,
+        message,
+        phase: options?.phase,
+        messageKey: options?.messageKey,
+        messageParams: options?.messageParams
+      });
       Reflect.defineMetadata('orm:validations', existing, ctor);
     });
   };
 }
-
 
 // ——— DX/Typing: strongly-typed predicates and helpers ———
 
@@ -39,7 +61,10 @@ export function ValidIfOf<T>(predicate: EntityPredicate<T>, message?: string): P
 }
 
 /** Requires non-empty property value when condition holds. */
-export function RequiredIfOf<T>(condition: EntityPredicate<T>, message?: string): PropertyDecorator {
+export function RequiredIfOf<T>(
+  condition: EntityPredicate<T>,
+  message?: string
+): PropertyDecorator {
   return function RequiredIfDecorator(_targetOrValue: unknown, propOrContext: unknown) {
     if (!isStage3FieldContext(propOrContext)) {
       throw new Error('@RequiredIfOf requires TS5 Stage-3 decorators');
@@ -49,7 +74,8 @@ export function RequiredIfOf<T>(condition: EntityPredicate<T>, message?: string)
     ctx.addInitializer?.(function (this: unknown) {
       const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
       if (!ctor) return;
-      const existing: ValidationRule[] = (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
+      const existing: ValidationRule[] =
+        (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
       const predicate = (entity: unknown): boolean => {
         const e = entity as Record<string, unknown>;
         if (!condition(e as unknown as T)) return true;
@@ -59,7 +85,11 @@ export function RequiredIfOf<T>(condition: EntityPredicate<T>, message?: string)
         if (Array.isArray(v)) return v.length > 0;
         return true;
       };
-      existing.push({ propertyName: propName, predicate, message: message || `${propName} is required` });
+      existing.push({
+        propertyName: propName,
+        predicate,
+        message: message || `${propName} is required`
+      });
       Reflect.defineMetadata('orm:validations', existing, ctor);
     });
   };
@@ -68,18 +98,26 @@ export function RequiredIfOf<T>(condition: EntityPredicate<T>, message?: string)
 /** Minimum string length constraint for a property. */
 export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator {
   return function MinLengthDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext)) throw new Error('@MinLengthOf requires TS5 Stage-3 decorators');
-    const ctx = propOrContext; const propName = ctx.name.toString();
+    if (!isStage3FieldContext(propOrContext))
+      throw new Error('@MinLengthOf requires TS5 Stage-3 decorators');
+    const ctx = propOrContext;
+    const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined; if (!ctor) return;
-      const existing: ValidationRule[] = (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
+      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      if (!ctor) return;
+      const existing: ValidationRule[] =
+        (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
       const predicate = (entity: unknown): boolean => {
         const v = (entity as Record<string, unknown>)[propName];
         if (v === null || v === undefined) return true; // NotNull is checked separately
         if (typeof v === 'string') return v.length >= min;
         return true;
       };
-      existing.push({ propertyName: propName, predicate, message: message || `Length must be >= ${min}` });
+      existing.push({
+        propertyName: propName,
+        predicate,
+        message: message || `Length must be >= ${min}`
+      });
       Reflect.defineMetadata('orm:validations', existing, ctor);
     });
   };
@@ -88,18 +126,26 @@ export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator
 /** Maximum string length constraint for a property. */
 export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator {
   return function MaxLengthDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext)) throw new Error('@MaxLengthOf requires TS5 Stage-3 decorators');
-    const ctx = propOrContext; const propName = ctx.name.toString();
+    if (!isStage3FieldContext(propOrContext))
+      throw new Error('@MaxLengthOf requires TS5 Stage-3 decorators');
+    const ctx = propOrContext;
+    const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined; if (!ctor) return;
-      const existing: ValidationRule[] = (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
+      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      if (!ctor) return;
+      const existing: ValidationRule[] =
+        (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
       const predicate = (entity: unknown): boolean => {
         const v = (entity as Record<string, unknown>)[propName];
         if (v === null || v === undefined) return true;
         if (typeof v === 'string') return v.length <= max;
         return true;
       };
-      existing.push({ propertyName: propName, predicate, message: message || `Length must be <= ${max}` });
+      existing.push({
+        propertyName: propName,
+        predicate,
+        message: message || `Length must be <= ${max}`
+      });
       Reflect.defineMetadata('orm:validations', existing, ctor);
     });
   };
@@ -108,11 +154,15 @@ export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator
 /** Regex pattern match for a string property. */
 export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator {
   return function PatternDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext)) throw new Error('@PatternOf requires TS5 Stage-3 decorators');
-    const ctx = propOrContext; const propName = ctx.name.toString();
+    if (!isStage3FieldContext(propOrContext))
+      throw new Error('@PatternOf requires TS5 Stage-3 decorators');
+    const ctx = propOrContext;
+    const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined; if (!ctor) return;
-      const existing: ValidationRule[] = (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
+      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      if (!ctor) return;
+      const existing: ValidationRule[] =
+        (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
       const predicate = (entity: unknown): boolean => {
         const v = (entity as Record<string, unknown>)[propName];
         if (v === null || v === undefined) return true;
@@ -128,11 +178,15 @@ export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator
 /** Numeric range constraint for a property (when value is a number). */
 export function RangeOf<T>(min?: number, max?: number, message?: string): PropertyDecorator {
   return function RangeDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext)) throw new Error('@RangeOf requires TS5 Stage-3 decorators');
-    const ctx = propOrContext; const propName = ctx.name.toString();
+    if (!isStage3FieldContext(propOrContext))
+      throw new Error('@RangeOf requires TS5 Stage-3 decorators');
+    const ctx = propOrContext;
+    const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined; if (!ctor) return;
-      const existing: ValidationRule[] = (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
+      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      if (!ctor) return;
+      const existing: ValidationRule[] =
+        (Reflect.getOwnMetadata('orm:validations', ctor) as ValidationRule[]) || [];
       const predicate = (entity: unknown): boolean => {
         const v = (entity as Record<string, unknown>)[propName];
         if (v === null || v === undefined) return true;
@@ -147,5 +201,3 @@ export function RangeOf<T>(min?: number, max?: number, message?: string): Proper
     });
   };
 }
-
-

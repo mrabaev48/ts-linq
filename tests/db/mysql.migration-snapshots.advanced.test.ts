@@ -12,7 +12,12 @@ describe('MySQL advanced index DDL (SchemaDiff → SQL)', () => {
         {
           table: 'users',
           indexCreates: [
-            { name: 'idx_users_email', columns: ['email'], unique: true, mysqlVisibility: 'INVISIBLE' }
+            {
+              name: 'idx_users_email',
+              columns: ['email'],
+              unique: true,
+              mysqlVisibility: 'INVISIBLE'
+            }
           ],
           indexDrops: ['idx_old']
         }
@@ -24,5 +29,3 @@ describe('MySQL advanced index DDL (SchemaDiff → SQL)', () => {
     expect(text).toContain('ALTER TABLE `users` DROP INDEX `idx_old`');
   });
 });
-
-

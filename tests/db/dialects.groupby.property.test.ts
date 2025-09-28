@@ -5,32 +5,74 @@ import { MysqlDialect } from '@ts-linq/mysql';
 import { MssqlDialect } from '@ts-linq/mssql';
 import { SQLiteDialect } from '@ts-linq/sqlite';
 
-class U { id!: number; name!: string; region!: string; amount!: number }
+class U {
+  id!: number;
+  name!: string;
+  region!: string;
+  amount!: number;
+}
 
 describe('JOIN / GROUP BY / HAVING / ORDER (property-based)', () => {
   beforeEach(() => {
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(U, 'u');
-    MetadataStorage.addColumn(U, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true });
-    MetadataStorage.addColumn(U, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false });
-    MetadataStorage.addColumn(U, { propertyName: 'region', columnName: 'region', type: 'TEXT', nullable: false });
-    MetadataStorage.addColumn(U, { propertyName: 'amount', columnName: 'amount', type: 'INTEGER', nullable: false });
+    MetadataStorage.addColumn(U, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false,
+      isGenerated: true
+    });
+    MetadataStorage.addColumn(U, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    });
+    MetadataStorage.addColumn(U, {
+      propertyName: 'region',
+      columnName: 'region',
+      type: 'TEXT',
+      nullable: false
+    });
+    MetadataStorage.addColumn(U, {
+      propertyName: 'amount',
+      columnName: 'amount',
+      type: 'INTEGER',
+      nullable: false
+    });
     MetadataStorage.addPrimaryKey(U, 'id');
   });
 
   const dialects = [
-    { name: 'pg',   qb: () => new QueryBuilder(new PostgresDialect()), qid: (s: string) => `"${s}"` },
-    { name: 'mysql',qb: () => new QueryBuilder(new MysqlDialect()),    qid: (s: string) => `\`${s}\`` },
-    { name: 'mssql',qb: () => new QueryBuilder(new MssqlDialect()),    qid: (s: string) => `[${s}]` },
-    { name: 'sqlite',qb: () => new QueryBuilder(new SQLiteDialect()),  qid: (s: string) => s },
+    { name: 'pg', qb: () => new QueryBuilder(new PostgresDialect()), qid: (s: string) => `"${s}"` },
+    {
+      name: 'mysql',
+      qb: () => new QueryBuilder(new MysqlDialect()),
+      qid: (s: string) => `\`${s}\``
+    },
+    { name: 'mssql', qb: () => new QueryBuilder(new MssqlDialect()), qid: (s: string) => `[${s}]` },
+    { name: 'sqlite', qb: () => new QueryBuilder(new SQLiteDialect()), qid: (s: string) => s }
   ] as const;
 
   test.each(dialects)('%s: renders JOIN/GROUP BY/HAVING/ORDER consistently', ({ qb, qid }) => {
     fc.assert(
       fc.property(fc.boolean(), fc.boolean(), fc.boolean(), (withJoin, withHaving, withOrder) => {
         const builder = qb();
-        const joins = withJoin ? [{ type: 'LEFT', table: 'orders', alias: 'o', on: `${qid('o')}.${qid('user_id')} = ${qid('u')}.${qid('id')}` }] : [];
-        const groupBy = { columns: ['region'] as string[], having: withHaving ? { condition: 'COUNT(*) > ?', parameters: [1] } : undefined } as any;
+        const joins = withJoin
+          ? [
+              {
+                type: 'LEFT',
+                table: 'orders',
+                alias: 'o',
+                on: `${qid('o')}.${qid('user_id')} = ${qid('u')}.${qid('id')}`
+              }
+            ]
+          : [];
+        const groupBy = {
+          columns: ['region'] as string[],
+          having: withHaving ? { condition: 'COUNT(*) > ?', parameters: [1] } : undefined
+        } as any;
         const orderBy = withOrder ? [{ column: 'region', direction: 'ASC' }] : [];
         const opts: QueryOptions = {
           select: ['region', 'COUNT(*) AS cnt'],
@@ -53,5 +95,3 @@ describe('JOIN / GROUP BY / HAVING / ORDER (property-based)', () => {
     );
   });
 });
-
-

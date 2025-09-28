@@ -22,7 +22,10 @@ function isStage3ClassContext(
  * Supports TS5 Stage-3 decorators and legacy decorators.
  */
 export function Entity(options: EntityOptions = {}): ClassDecorator {
-  return function <TFunction extends Function>(target: TFunction, context?: unknown): TFunction | void {
+  return function <TFunction extends Function>(
+    target: TFunction,
+    context?: unknown
+  ): TFunction | void {
     const tableName = options?.name || target.name;
 
     // TS5 Stage-3 path

@@ -1,7 +1,12 @@
 import type { SchemaSnapshot, TableSnapshot, ColumnDef, IndexDef } from './DiffTypes';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { DatabaseProvider } from '../DatabaseProvider';
-import { SQLiteSchemaInspector, PostgresSchemaInspector, MySqlSchemaInspector, MssqlSchemaInspector } from './SchemaInspector';
+import {
+  SQLiteSchemaInspector,
+  PostgresSchemaInspector,
+  MySqlSchemaInspector,
+  MssqlSchemaInspector
+} from './SchemaInspector';
 
 /**
  * OOP builders/serializers for SchemaSnapshot with thin functional wrappers for back-compat.
@@ -21,11 +26,17 @@ export class SchemaSnapshotBuilder {
         type: this.mapPortableType(column.type),
         nullable: column.nullable,
         defaultValue: column.defaultValue,
-        defaultExpression: (column as { defaultExpression?: string; defaultExpressionDialect?: Record<string, string> }).defaultExpression,
+        defaultExpression: (
+          column as {
+            defaultExpression?: string;
+            defaultExpressionDialect?: Record<string, string>;
+          }
+        ).defaultExpression,
         isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName),
         isComputed: (column as { isComputed?: boolean }).isComputed,
         computedExpression: (column as { computedExpression?: string }).computedExpression,
-        computedStorage: (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage
+        computedStorage: (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
+          .computedStorage
       }));
       const primaryKeys = entityMeta.primaryKeys.map(
         (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
@@ -41,8 +52,10 @@ export class SchemaSnapshotBuilder {
         expressions: indexDef.expressions,
         using: (indexDef as { using?: 'btree' | 'hash' | 'gin' | 'gist' }).using,
         concurrently: (indexDef as { concurrently?: boolean }).concurrently,
-        withParams: (indexDef as { withParams?: Record<string, string | number | boolean> }).withParams,
-        mysqlVisibility: (indexDef as { mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' }).mysqlVisibility,
+        withParams: (indexDef as { withParams?: Record<string, string | number | boolean> })
+          .withParams,
+        mysqlVisibility: (indexDef as { mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' })
+          .mysqlVisibility,
         include: (indexDef as { include?: string[] }).include
       }));
       return {
@@ -57,8 +70,11 @@ export class SchemaSnapshotBuilder {
   }
 
   public async buildActualFromProvider(expected?: SchemaSnapshot): Promise<SchemaSnapshot> {
-    if (!this.provider) throw new Error('SchemaSnapshotBuilder requires a provider for actual schema');
-    const label = (this.provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string) || 'sqlite';
+    if (!this.provider)
+      throw new Error('SchemaSnapshotBuilder requires a provider for actual schema');
+    const label =
+      (this.provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string) ||
+      'sqlite';
     if (label === 'sqlite') {
       const inspector = new SQLiteSchemaInspector(this.provider);
       const tableNames = await inspector.listTables();
@@ -74,7 +90,12 @@ export class SchemaSnapshotBuilder {
             nullable: !col.notnull
           })),
           primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
-          indexes: indexes.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where })),
+          indexes: indexes.map((i) => ({
+            name: i.name,
+            columns: i.columns,
+            unique: i.unique,
+            where: i.where
+          })),
           foreignKeys: []
         });
       }
@@ -85,7 +106,12 @@ export class SchemaSnapshotBuilder {
       if (label === 'postgresql') {
         const ins = new PostgresSchemaInspector(this.provider!);
         const list = await ins.getIndexes(table);
-        return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+        return list.map((i) => ({
+          name: i.name,
+          columns: i.columns,
+          unique: i.unique,
+          where: i.where
+        }));
       }
       if (label === 'mysql') {
         const ins = new MySqlSchemaInspector(this.provider!);
@@ -95,7 +121,12 @@ export class SchemaSnapshotBuilder {
       if (label === 'mssql') {
         const ins = new MssqlSchemaInspector(this.provider!);
         const list = await ins.getIndexes(table);
-        return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+        return list.map((i) => ({
+          name: i.name,
+          columns: i.columns,
+          unique: i.unique,
+          where: i.where
+        }));
       }
       return [];
     };
@@ -157,6 +188,3 @@ export class SchemaSnapshotSerializer {
     }
   }
 }
-
-
-

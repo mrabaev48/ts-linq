@@ -2,12 +2,31 @@ import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata } from '../types';
 
-function isStage3FieldContext(x: unknown): x is { kind: 'field'; name: string | symbol; addInitializer?(fn: (this: unknown) => void): void } {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in (x as object);
+function isStage3FieldContext(
+  x: unknown
+): x is {
+  kind: 'field';
+  name: string | symbol;
+  addInitializer?(fn: (this: unknown) => void): void;
+} {
+  return (
+    !!x &&
+    typeof x === 'object' &&
+    (x as { kind?: unknown }).kind === 'field' &&
+    'name' in (x as object)
+  );
 }
 
-export function DatabaseFunction(expression: string | { sqlite?: string; postgresql?: string; mysql?: string; mssql?: string; default?: string }, nameOverride?: string) {
-  return function DatabaseFunctionDecorator(_initialValue: unknown, context: ClassFieldDecoratorContext) {
+export function DatabaseFunction(
+  expression:
+    | string
+    | { sqlite?: string; postgresql?: string; mysql?: string; mssql?: string; default?: string },
+  nameOverride?: string
+) {
+  return function DatabaseFunctionDecorator(
+    _initialValue: unknown,
+    context: ClassFieldDecoratorContext
+  ) {
     if (context.kind !== 'field') {
       throw new Error('@DatabaseFunction requires TS5 Stage-3 decorators');
     }
@@ -26,20 +45,26 @@ export function DatabaseFunction(expression: string | { sqlite?: string; postgre
         isGenerated: false,
         isVersion: false,
         defaultExpression: expr,
-        defaultExpressionDialect: typeof expression === 'string' ? undefined : {
-          sqlite: expression.sqlite,
-          postgresql: expression.postgresql,
-          mysql: expression.mysql,
-          mssql: expression.mssql
-        }
+        defaultExpressionDialect:
+          typeof expression === 'string'
+            ? undefined
+            : {
+                sqlite: expression.sqlite,
+                postgresql: expression.postgresql,
+                mysql: expression.mysql,
+                mssql: expression.mssql
+              }
       };
       MetadataStorage.addColumn(ctor, columnMetadata);
 
       // Maintain rehydration store for Entity decorator
       const existing: ColumnMetadata[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-      const existingColIndex = existing.findIndex(c => c.propertyName === name);
+      const existingColIndex = existing.findIndex((c) => c.propertyName === name);
       if (existingColIndex > -1) {
-        existing[existingColIndex] = { ...existing[existingColIndex], defaultExpression: expr } as ColumnMetadata;
+        existing[existingColIndex] = {
+          ...existing[existingColIndex],
+          defaultExpression: expr
+        } as ColumnMetadata;
       } else {
         existing.push(columnMetadata);
       }
@@ -47,5 +72,3 @@ export function DatabaseFunction(expression: string | { sqlite?: string; postgre
     });
   };
 }
-
-

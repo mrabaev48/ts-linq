@@ -12,9 +12,9 @@ d('[integration][postgres] statement timeout', () => {
       await p.executeNonQuery('SET statement_timeout = 50');
       await expect(p.executeQuery('SELECT pg_sleep(0.2)')).rejects.toBeInstanceOf(DatabaseError);
     } finally {
-      try { await p.executeNonQuery('RESET statement_timeout'); } catch {}
+      try {
+        await p.executeNonQuery('RESET statement_timeout');
+      } catch {}
     }
   });
 });
-
-

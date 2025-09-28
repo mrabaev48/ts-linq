@@ -23,8 +23,6 @@ import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { safeCache, safeCacheEvicted, safeCacheSize } from 'metrics-safe';
 
- 
-
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
  * in a QueryModel and delegates SQL generation to QueryBuilder.
@@ -800,7 +798,14 @@ export class Queryable<T> {
           provider: this._provider.providerLabel
         });
       } catch (e) {
-        try { const { warnIfLoggerDebug } = require('metrics-safe') as { warnIfLoggerDebug: (m: string, e: unknown) => void; }; warnIfLoggerDebug('notify:entityMaterialized', e); } catch { /* ignore */ }
+        try {
+          const { warnIfLoggerDebug } = require('metrics-safe') as {
+            warnIfLoggerDebug: (m: string, e: unknown) => void;
+          };
+          warnIfLoggerDebug('notify:entityMaterialized', e);
+        } catch {
+          /* ignore */
+        }
       }
       // notify middleware via provider hook
       try {
@@ -808,7 +813,14 @@ export class Queryable<T> {
           this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }
         ).notifyEntityMaterialized?.(entity, metadata);
       } catch (e) {
-        try { const { warnIfLoggerDebug } = require('metrics-safe') as { warnIfLoggerDebug: (m: string, e: unknown) => void; }; warnIfLoggerDebug('notify:entityMaterialized', e); } catch { /* ignore */ }
+        try {
+          const { warnIfLoggerDebug } = require('metrics-safe') as {
+            warnIfLoggerDebug: (m: string, e: unknown) => void;
+          };
+          warnIfLoggerDebug('notify:entityMaterialized', e);
+        } catch {
+          /* ignore */
+        }
       }
       return entity;
     }
@@ -832,7 +844,14 @@ export class Queryable<T> {
           this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }
         ).notifyEntityMaterialized?.(entity, metadata);
     } catch (e) {
-    try { const { warnIfLoggerDebug } = require('metrics-safe') as { warnIfLoggerDebug: (m: string, e: unknown) => void; }; warnIfLoggerDebug('notify:entityMaterialized', e); } catch { /* ignore */ }
+      try {
+        const { warnIfLoggerDebug } = require('metrics-safe') as {
+          warnIfLoggerDebug: (m: string, e: unknown) => void;
+        };
+        warnIfLoggerDebug('notify:entityMaterialized', e);
+      } catch {
+        /* ignore */
+      }
     }
     return entity;
   }
@@ -866,115 +885,115 @@ export class Queryable<T> {
   /** Check if all elements satisfy a condition (EF-style) */
   public async all(predicate: (entity: T) => boolean): Promise<boolean> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    
+
     // For efficiency, we'll check if any element does NOT satisfy the condition
     // If none exist that violate it, then all satisfy it
-    const violatingElement = await this.where(entity => !predicate(entity)).firstOrDefault();
+    const violatingElement = await this.where((entity) => !predicate(entity)).firstOrDefault();
     return violatingElement === null;
   }
 
   /** Calculate average of a numeric property (EF-style) */
   public async average<K extends keyof T>(selector: (entity: T) => T[K]): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    
+
     const entities = await this.toArray();
     if (entities.length === 0) throw new Error('Sequence contains no elements');
-    
-    const values = entities.map(e => {
+
+    const values = entities.map((e) => {
       const value = selector(e);
       return typeof value === 'number' ? value : Number(value) || 0;
     });
-    
+
     return values.reduce((sum, val) => sum + val, 0) / values.length;
   }
 
   /** Calculate sum of a numeric property (EF-style) */
   public async sum<K extends keyof T>(selector: (entity: T) => T[K]): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    
+
     const entities = await this.toArray();
-    const values = entities.map(e => {
+    const values = entities.map((e) => {
       const value = selector(e);
       return typeof value === 'number' ? value : Number(value) || 0;
     });
-    
+
     return values.reduce((sum, val) => sum + val, 0);
   }
 
   /** Find minimum value of a property (EF-style) */
   public async min<K extends keyof T>(selector: (entity: T) => T[K]): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    
+
     const entities = await this.toArray();
     if (entities.length === 0) throw new Error('Sequence contains no elements');
-    
+
     let minValue = selector(entities[0]);
     for (let i = 1; i < entities.length; i++) {
       const value = selector(entities[i]);
       if (value < minValue) minValue = value;
     }
-    
+
     return minValue;
   }
 
   /** Find maximum value of a property (EF-style) */
   public async max<K extends keyof T>(selector: (entity: T) => T[K]): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    
+
     const entities = await this.toArray();
     if (entities.length === 0) throw new Error('Sequence contains no elements');
-    
+
     let maxValue = selector(entities[0]);
     for (let i = 1; i < entities.length; i++) {
       const value = selector(entities[i]);
       if (value > maxValue) maxValue = value;
     }
-    
+
     return maxValue;
   }
 
   /** Check if the sequence contains a specific element (EF-style) */
   public async contains(item: T): Promise<boolean> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    
+
     // For entities, use primary key comparison if available
     const metadata = MetadataStorage.getEntity(this._entityClass);
     if (metadata && metadata.primaryKeys.length > 0) {
       const pk = metadata.primaryKeys[0];
       const itemId = (item as unknown as Record<string, unknown>)[pk];
-      
+
       if (itemId !== undefined && itemId !== null) {
         // Use primary key based comparison for efficiency
         const entities = await this.toArray();
-        return entities.some(entity => 
-          (entity as unknown as Record<string, unknown>)[pk] === itemId
+        return entities.some(
+          (entity) => (entity as unknown as Record<string, unknown>)[pk] === itemId
         );
       }
     }
-    
+
     // Fallback to deep equality comparison using JSON serialization
     const entities = await this.toArray();
     const itemJson = JSON.stringify(item);
-    return entities.some(entity => JSON.stringify(entity) === itemJson);
+    return entities.some((entity) => JSON.stringify(entity) === itemJson);
   }
 
   /** Get elements that are in this sequence but not in the other (EF-style) */
   public except(other: Queryable<T>): Queryable<T> {
     // Implement using client-side filtering since SQL EXCEPT support varies by provider
     const cloned = this.clone();
-    
+
     // Add a custom filter to exclude elements that exist in the other sequence
     const originalToArray = cloned.toArray;
-    cloned.toArray = async function(this: Queryable<T>): Promise<T[]> {
+    cloned.toArray = async function (this: Queryable<T>): Promise<T[]> {
       const thisResults = await originalToArray.call(this);
       const otherResults = await other.toArray();
-      
+
       // Create a Set for O(1) lookup performance
-      const otherSet = new Set(otherResults.map(item => JSON.stringify(item)));
-      
-      return thisResults.filter(item => !otherSet.has(JSON.stringify(item)));
+      const otherSet = new Set(otherResults.map((item) => JSON.stringify(item)));
+
+      return thisResults.filter((item) => !otherSet.has(JSON.stringify(item)));
     }.bind(cloned);
-    
+
     return cloned;
   }
 
@@ -982,19 +1001,19 @@ export class Queryable<T> {
   public intersect(other: Queryable<T>): Queryable<T> {
     // Implement using client-side filtering since SQL INTERSECT support varies by provider
     const cloned = this.clone();
-    
+
     // Add a custom filter to include only elements that exist in both sequences
     const originalToArray = cloned.toArray;
-    cloned.toArray = async function(this: Queryable<T>): Promise<T[]> {
+    cloned.toArray = async function (this: Queryable<T>): Promise<T[]> {
       const thisResults = await originalToArray.call(this);
       const otherResults = await other.toArray();
-      
+
       // Create a Set for O(1) lookup performance
-      const otherSet = new Set(otherResults.map(item => JSON.stringify(item)));
-      
-      return thisResults.filter(item => otherSet.has(JSON.stringify(item)));
+      const otherSet = new Set(otherResults.map((item) => JSON.stringify(item)));
+
+      return thisResults.filter((item) => otherSet.has(JSON.stringify(item)));
     }.bind(cloned);
-    
+
     return cloned;
   }
 
@@ -1002,17 +1021,17 @@ export class Queryable<T> {
   public concat(other: Queryable<T>): Queryable<T> {
     // Implement proper concatenation by combining results in order
     const cloned = this.clone();
-    
+
     // Override toArray to concatenate results while maintaining order
     const originalToArray = cloned.toArray;
-    cloned.toArray = async function(this: Queryable<T>): Promise<T[]> {
+    cloned.toArray = async function (this: Queryable<T>): Promise<T[]> {
       const thisResults = await originalToArray.call(this);
       const otherResults = await other.toArray();
-      
+
       // Concatenate maintaining order: this sequence first, then other
       return [...thisResults, ...otherResults];
     }.bind(cloned);
-    
+
     return cloned;
   }
 

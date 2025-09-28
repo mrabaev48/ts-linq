@@ -1,4 +1,4 @@
-import { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
+import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
 /**
  * MySQL dialect for SELECT generation.
  *
@@ -6,15 +6,18 @@ import { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
  * - Leaves '?' placeholders as-is (mysql2 supports positional params)
  */
 export declare class MysqlDialect implements SqlDialect {
-    quoteIdentifier(identifier: string): string;
-    /**
-     * Build SELECT for MySQL based on normalized QueryOptions.
-     * @param entityClass Entity constructor to resolve table name
-     * @param options Normalized query options (select/where/order/joins/group/limit/offset)
-     */
-    buildSelect<T>(entityClass: new () => T, options: QueryOptions): {
-        query: string;
-        parameters: readonly SqlParameter[];
-    };
+  quoteIdentifier(identifier: string): string;
+  /**
+   * Build SELECT for MySQL based on normalized QueryOptions.
+   * @param entityClass Entity constructor to resolve table name
+   * @param options Normalized query options (select/where/order/joins/group/limit/offset)
+   */
+  buildSelect<T>(
+    entityClass: new () => T,
+    options: QueryOptions
+  ): {
+    query: string;
+    parameters: readonly SqlParameter[];
+  };
 }
 //# sourceMappingURL=MysqlDialect.d.ts.map

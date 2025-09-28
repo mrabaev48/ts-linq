@@ -9,5 +9,3 @@ test('SQLite: index with column orders', () => {
   });
   expect(sql).toContain('(email ASC, createdAt DESC)');
 });
-
-

@@ -25,24 +25,61 @@ describe('BatchOperations', () => {
   beforeEach(() => {
     // Clear and setup metadata
     MetadataStorage.getInstance().clear();
-    
+
     // Set up User entity metadata properly
     MetadataStorage.addEntity(User, 'users');
-    const userIdCol: ColumnMetadata = { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true };
-    const userNameCol: ColumnMetadata = { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false };
-    const userEmailCol: ColumnMetadata = { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false };
-    const userAgeCol: ColumnMetadata = { propertyName: 'age', columnName: 'age', type: 'INTEGER', nullable: false };
+    const userIdCol: ColumnMetadata = {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false,
+      isGenerated: true
+    };
+    const userNameCol: ColumnMetadata = {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    };
+    const userEmailCol: ColumnMetadata = {
+      propertyName: 'email',
+      columnName: 'email',
+      type: 'TEXT',
+      nullable: false
+    };
+    const userAgeCol: ColumnMetadata = {
+      propertyName: 'age',
+      columnName: 'age',
+      type: 'INTEGER',
+      nullable: false
+    };
     MetadataStorage.addColumn(User, userIdCol);
     MetadataStorage.addColumn(User, userNameCol);
     MetadataStorage.addColumn(User, userEmailCol);
     MetadataStorage.addColumn(User, userAgeCol);
     MetadataStorage.addPrimaryKey(User, 'id');
-    
+
     // Set up Product entity metadata
     MetadataStorage.addEntity(Product, 'products');
-    const productIdCol: ColumnMetadata = { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true };
-    const productNameCol: ColumnMetadata = { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false };
-    const productPriceCol: ColumnMetadata = { propertyName: 'price', columnName: 'price', type: 'REAL', nullable: false };
+    const productIdCol: ColumnMetadata = {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false,
+      isGenerated: true
+    };
+    const productNameCol: ColumnMetadata = {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    };
+    const productPriceCol: ColumnMetadata = {
+      propertyName: 'price',
+      columnName: 'price',
+      type: 'REAL',
+      nullable: false
+    };
     MetadataStorage.addColumn(Product, productIdCol);
     MetadataStorage.addColumn(Product, productNameCol);
     MetadataStorage.addColumn(Product, productPriceCol);
@@ -75,7 +112,7 @@ describe('BatchOperations', () => {
   describe('bulkInsert', () => {
     test('should handle empty array', async () => {
       const result = await batchOps.bulkInsert([], User);
-      
+
       expect(result.entities).toEqual([]);
       expect(result.failedCount).toBe(0);
       expect(result.durationMs).toBeGreaterThanOrEqual(0);
@@ -133,8 +170,8 @@ describe('BatchOperations', () => {
         age: 20 + i
       }));
 
-      mockProvider.insertMany!
-        .mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
+      mockProvider
+        .insertMany!.mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
         .mockResolvedValueOnce(users.slice(2, 4) as unknown as object[]);
 
       const result = await batchOps.bulkInsert(users, User, { batchSize: 2 });
@@ -151,13 +188,13 @@ describe('BatchOperations', () => {
         age: 20 + i
       }));
 
-      mockProvider.insertMany!
-        .mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
+      mockProvider
+        .insertMany!.mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
         .mockResolvedValueOnce(users.slice(2, 4) as unknown as object[]);
 
       const progressCallback = jest.fn();
 
-      await batchOps.bulkInsert(users, User, { 
+      await batchOps.bulkInsert(users, User, {
         batchSize: 2,
         onProgress: progressCallback
       });
@@ -175,18 +212,18 @@ describe('BatchOperations', () => {
 
       // Remove insertMany to force fallback behavior
       delete (mockProvider as unknown as Record<string, unknown>).insertMany;
-      
+
       // Mock executeNonQuery to succeed for first and third, fail for second
       mockProvider.executeNonQuery
         .mockResolvedValueOnce(1) // First user success
         .mockRejectedValueOnce(new Error('Duplicate key')) // Second user fails
         .mockResolvedValueOnce(1); // Third user success
 
-      const result = await batchOps.bulkInsert(users, User, {
+      const result = (await batchOps.bulkInsert(users, User, {
         batchSize: 1,
         continueOnError: true,
         returnDetailedResults: true
-      }) as unknown as BatchResult<typeof users[0]>;
+      })) as unknown as BatchResult<(typeof users)[0]>;
 
       expect(result.successful).toHaveLength(2);
       expect(result.failed).toHaveLength(1);
@@ -196,14 +233,14 @@ describe('BatchOperations', () => {
 
     test('should throw error when continueOnError is false', async () => {
       const users = [{ id: 1, name: 'John', email: 'john@test.com', age: 30 }];
-      
+
       // Remove insertMany to force fallback
       delete (mockProvider as unknown as Record<string, unknown>).insertMany;
       mockProvider.executeNonQuery.mockRejectedValueOnce(new Error('Database error'));
 
-      await expect(
-        batchOps.bulkInsert(users, User, { continueOnError: false })
-      ).rejects.toThrow('Database error');
+      await expect(batchOps.bulkInsert(users, User, { continueOnError: false })).rejects.toThrow(
+        'Database error'
+      );
     });
   });
 
@@ -223,9 +260,7 @@ describe('BatchOperations', () => {
     });
 
     test('should fallback to individual updates', async () => {
-      const users = [
-        { id: 1, name: 'John Updated', email: 'john@test.com', age: 31 }
-      ];
+      const users = [{ id: 1, name: 'John Updated', email: 'john@test.com', age: 31 }];
 
       // Remove updateMany to test fallback
       delete (mockProvider as unknown as Record<string, unknown>).updateMany;
@@ -286,9 +321,7 @@ describe('BatchOperations', () => {
     });
 
     test('should fallback to individual upserts', async () => {
-      const users = [
-        { id: 1, name: 'John', email: 'john@test.com', age: 30 }
-      ];
+      const users = [{ id: 1, name: 'John', email: 'john@test.com', age: 30 }];
 
       // Remove upsertMany to test fallback
       delete (mockProvider as unknown as Record<string, unknown>).upsertMany;
@@ -304,7 +337,7 @@ describe('BatchOperations', () => {
   describe('Configuration', () => {
     test('should set and get default batch size', () => {
       expect(batchOps.getDefaultBatchSize()).toBe(1000);
-      
+
       batchOps.setDefaultBatchSize(500);
       expect(batchOps.getDefaultBatchSize()).toBe(500);
     });
@@ -323,32 +356,41 @@ describe('BatchOperations', () => {
       mockProvider.executeNonQuery.mockRejectedValueOnce(new Error('Database error'));
       Object.defineProperty(mockProvider, 'inTransactionState', { value: true, writable: true });
 
-      await expect(
-        batchOps.bulkInsert(users, User, { useTransactions: true })
-      ).rejects.toThrow('Database error');
+      await expect(batchOps.bulkInsert(users, User, { useTransactions: true })).rejects.toThrow(
+        'Database error'
+      );
 
       expect(mockProvider.rollbackTransaction).toHaveBeenCalled();
     });
 
     test('should throw error for missing metadata', async () => {
-      class UnknownEntity { id!: number; }
+      class UnknownEntity {
+        id!: number;
+      }
       const entities = [{ id: 1 }];
-      await expect(
-        batchOps.bulkInsert(entities, UnknownEntity)
-      ).rejects.toThrow('No metadata found for entity UnknownEntity');
+      await expect(batchOps.bulkInsert(entities, UnknownEntity)).rejects.toThrow(
+        'No metadata found for entity UnknownEntity'
+      );
     });
 
     test('should throw error for missing primary key in delete', async () => {
-      class EntityWithoutPK { name!: string; }
+      class EntityWithoutPK {
+        name!: string;
+      }
       MetadataStorage.getInstance().clear();
       MetadataStorage.addEntity(EntityWithoutPK, 'test_table');
-      const nameCol: ColumnMetadata = { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false };
+      const nameCol: ColumnMetadata = {
+        propertyName: 'name',
+        columnName: 'name',
+        type: 'TEXT',
+        nullable: false
+      };
       MetadataStorage.addColumn(EntityWithoutPK, nameCol);
 
       const entities = [{ name: 'John' }];
-      await expect(
-        batchOps.bulkDelete(entities, EntityWithoutPK)
-      ).rejects.toThrow('No primary key found for entity');
+      await expect(batchOps.bulkDelete(entities, EntityWithoutPK)).rejects.toThrow(
+        'No primary key found for entity'
+      );
     });
   });
 });

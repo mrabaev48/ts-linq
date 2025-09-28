@@ -28,7 +28,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false },
       { propertyName: 'age', columnName: 'age', type: 'INTEGER', nullable: false }
     ];
-    cols.forEach(c => MetadataStorage.addColumn(TestUser, c));
+    cols.forEach((c) => MetadataStorage.addColumn(TestUser, c));
     MetadataStorage.addPrimaryKey(TestUser, 'id');
 
     enhancedCache = new EnhancedSqlCache({
@@ -50,12 +50,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       })
     };
 
-    queryBuilder = new QueryBuilder(
-      mockDialect,
-      mockLogger,
-      'test-provider',
-      enhancedCache
-    );
+    queryBuilder = new QueryBuilder(mockDialect, mockLogger, 'test-provider', enhancedCache);
   });
 
   afterEach(() => {
@@ -74,7 +69,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       const result1 = queryBuilder.generateSql(TestUser, options);
       expect(result1.query).toBeDefined();
       expect(result1.parameters).toBeDefined();
-      
+
       // Verify cache miss was logged
       expect(mockLogger.cache).toHaveBeenCalledWith({
         cache: 'sqlGen',
@@ -85,10 +80,10 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       // Second call should hit cache
       (mockLogger.cache as jest.Mock).mockClear();
       const result2 = queryBuilder.generateSql(TestUser, options);
-      
+
       expect(result2.query).toBe(result1.query);
       expect(result2.parameters).toEqual(result1.parameters);
-      
+
       // Verify cache hit was logged
       expect(mockLogger.cache).toHaveBeenCalledWith({
         cache: 'sqlGen',
@@ -112,7 +107,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       expect(metrics.totalRequests).toBe(3);
       expect(metrics.hits).toBe(2);
       expect(metrics.misses).toBe(1);
-      expect(metrics.hitRatio).toBeCloseTo(2/3, 2);
+      expect(metrics.hitRatio).toBeCloseTo(2 / 3, 2);
       expect(metrics.currentSize).toBe(1);
     });
 
@@ -150,9 +145,16 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
           parameters: []
         })
       };
-      const localBuilder = new QueryBuilder(exprDialect, mockLogger, 'test-provider', enhancedCache);
+      const localBuilder = new QueryBuilder(
+        exprDialect,
+        mockLogger,
+        'test-provider',
+        enhancedCache
+      );
       const result = localBuilder.generateSql(TestUser, options);
-      expect(result.query).toContain('ROW_NUMBER() OVER (PARTITION BY name ORDER BY age DESC) AS rn');
+      expect(result.query).toContain(
+        'ROW_NUMBER() OVER (PARTITION BY name ORDER BY age DESC) AS rn'
+      );
     });
 
     test('should handle cache key compression for complex queries', () => {
@@ -186,7 +188,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
     });
 
     test('should allow CTE name override via options.from (dialect usage)', () => {
-      const options = { select: ['*'], where: [], } as const;
+      const options = { select: ['*'], where: [] } as const;
       const exprDialect: SqlDialect = {
         buildSelect: () => ({
           query: `WITH sales AS (SELECT * FROM orders) SELECT * FROM sales`,
@@ -214,8 +216,8 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       };
       const local = new QueryBuilder(jsonDialect, mockLogger, 'test', enhancedCache);
       const res = local.generateSql(TestUser, options as any);
-      expect(res.query).toContain("JSON_EXTRACT(data, ?) AS u_name");
-      expect(res.query).toContain("JSON_CONTAINS(tags, ?) AS has_admin");
+      expect(res.query).toContain('JSON_EXTRACT(data, ?) AS u_name');
+      expect(res.query).toContain('JSON_CONTAINS(tags, ?) AS has_admin');
       expect(res.parameters).toEqual(['$.user.name', 'admin']);
     });
 
@@ -223,10 +225,12 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       const options = {
         select: [
           sql.mysqlMatchAgainst(['title', 'content'], 'node js', 'boolean').as('mscore'),
-          sql.pgRank(
-            sql.pgToTsVector(['title', 'content']).toString(),
-            sql.pgWebsearchToTsQuery('node js').toString()
-          ).as('pscore')
+          sql
+            .pgRank(
+              sql.pgToTsVector(['title', 'content']).toString(),
+              sql.pgWebsearchToTsQuery('node js').toString()
+            )
+            .as('pscore')
         ],
         where: [] as any[]
       };
@@ -239,7 +243,9 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       const local = new QueryBuilder(ftsDialect, mockLogger, 'test', enhancedCache);
       const res = local.generateSql(TestUser, options as any);
       expect(res.query).toContain('MATCH(title, content) AGAINST (? IN BOOLEAN MODE)');
-      expect(res.query).toContain("ts_rank(to_tsvector(?, COALESCE(title, '') || ' ' || COALESCE(content, '')), websearch_to_tsquery(?, ?)) AS pscore");
+      expect(res.query).toContain(
+        "ts_rank(to_tsvector(?, COALESCE(title, '') || ' ' || COALESCE(content, '')), websearch_to_tsquery(?, ?)) AS pscore"
+      );
       // At this layer we only collect parameters from top-level select expressions.
       // Since pgRank() receives stringified inner expressions, only MySQL match contributes a param.
       expect(res.parameters).toEqual(['node js']);
@@ -292,19 +298,19 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
 
       // Generate query and cache it
       const result1 = shortTtlBuilder.generateSql(TestUser, options);
-      
+
       // Should hit cache immediately
       const result2 = shortTtlBuilder.generateSql(TestUser, options);
       expect(result2.query).toBe(result1.query);
 
       // Wait for TTL expiration
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       // Should miss cache after expiration
       (mockLogger.cache as jest.Mock).mockClear();
       const result3 = shortTtlBuilder.generateSql(TestUser, options);
-      
-      expect((mockLogger.cache as jest.Mock)).toHaveBeenCalledWith({
+
+      expect(mockLogger.cache as jest.Mock).toHaveBeenCalledWith({
         cache: 'sqlGen',
         hit: false,
         provider: 'test-provider'
@@ -340,10 +346,10 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
 
       smallCacheBuilder.generateSql(TestUser, options1);
       smallCacheBuilder.generateSql(TestUser, options2);
-      
+
       // Access options1 to make it recently used
       smallCacheBuilder.generateSql(TestUser, options1);
-      
+
       // This should evict options2 (least recently used)
       smallCacheBuilder.generateSql(TestUser, options3);
 
@@ -363,11 +369,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
         })
       };
 
-      const builderWithoutCache = new QueryBuilder(
-        mockDialect,
-        mockLogger,
-        'test-provider'
-      );
+      const builderWithoutCache = new QueryBuilder(mockDialect, mockLogger, 'test-provider');
 
       const options = { select: ['*'], where: [] };
 
@@ -376,7 +378,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       const result2 = builderWithoutCache.generateSql(TestUser, options);
 
       expect(result2.query).toBe(result1.query);
-      
+
       // Enhanced cache should track metrics by default
       const metrics = builderWithoutCache.getCacheMetrics();
       expect(metrics.currentSize).toBeGreaterThanOrEqual(1);
@@ -399,7 +401,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
       expect(metrics.totalRequests).toBe(20);
       expect(metrics.hits).toBe(19); // First miss, then 19 hits
       expect(metrics.misses).toBe(1);
-      expect(metrics.hitRatio).toBeCloseTo(19/20, 2);
+      expect(metrics.hitRatio).toBeCloseTo(19 / 20, 2);
       expect(metrics.averageAccessCount).toBe(20);
       expect(metrics.estimatedMemoryUsage).toBeGreaterThan(0);
     });
@@ -419,12 +421,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
         })
       };
 
-      const testBuilder = new QueryBuilder(
-        mockDialect,
-        undefined,
-        'test',
-        highEvictionCache
-      );
+      const testBuilder = new QueryBuilder(mockDialect, undefined, 'test', highEvictionCache);
 
       // Generate many different queries to cause evictions
       for (let i = 0; i < 20; i++) {

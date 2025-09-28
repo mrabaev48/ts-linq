@@ -20,6 +20,7 @@ The framework follows Entity Framework's layered architectural patterns:
 ## Metadata and Decorator System
 
 Uses TypeScript's experimental decorator support with reflect-metadata:
+
 - `MetadataStorage` singleton centralizes all entity metadata management
 - Decorators capture entity structure at runtime for SQL generation and validation
 - Supports relationships, indexes, and constraints through metadata
@@ -27,6 +28,7 @@ Uses TypeScript's experimental decorator support with reflect-metadata:
 ## Change Tracking Implementation
 
 Implements Entity Framework's change tracking pattern:
+
 - `ChangeTracker` monitors entity states (Added, Modified, Deleted, Unchanged)
 - `DbSet` provides Add/Update/Remove operations that update tracking state
 - `SaveChanges()` processes all tracked changes in a single transaction with optimistic concurrency
@@ -34,6 +36,7 @@ Implements Entity Framework's change tracking pattern:
 ## Database Provider Abstraction
 
 Clean separation of concerns through provider abstraction:
+
 - Each provider handles connection management, SQL dialect differences, and error mapping
 - `SqlDialect` classes handle database-specific SQL generation (parameter placeholders, escaping, DDL)
 - Supports connection pooling, retry policies, and transaction management
@@ -41,6 +44,7 @@ Clean separation of concerns through provider abstraction:
 ## Query Building and SQL Generation
 
 Two-layer query system:
+
 - `Queryable` provides LINQ-style method chaining interface
 - `QueryBuilder` with pluggable `SqlDialect` handles SQL generation
 - `PredicateParser` converts simple lambda expressions to SQL with fallback to in-memory filtering
@@ -49,6 +53,7 @@ Two-layer query system:
 ## Performance Features
 
 Multiple caching and optimization layers:
+
 - SQL generation cache (`SqlCache`) to avoid rebuilding identical queries
 - Count query cache (`CountCache`) with TTL for expensive aggregate operations
 - L2 entity cache (`EntityCache`) for frequently accessed entities
@@ -57,6 +62,7 @@ Multiple caching and optimization layers:
 ## Migration System
 
 Code-first migration support:
+
 - `Migration` base class with up/down methods
 - `MigrationRunner` handles migration execution and versioning
 - `DiffBasedMigration` compares current schema with desired state
@@ -66,6 +72,7 @@ Code-first migration support:
 ## Middleware Pipeline
 
 Extensible middleware system for cross-cutting concerns:
+
 - `OrmMiddleware` interface for beforeExecute/afterExecute/entityMaterialized hooks
 - Support for SQL logging, metrics collection, and custom business logic
 - Composable middleware with error handling and async support
@@ -73,6 +80,7 @@ Extensible middleware system for cross-cutting concerns:
 ## Error Handling
 
 Database-specific error mapping:
+
 - Maps provider-specific errors to common error types (`UniqueConstraintError`, `ForeignKeyConstraintError`)
 - Retry policies with exponential backoff for transient failures
 - Graceful degradation for unsupported query operations

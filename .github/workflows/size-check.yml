@@ -2,9 +2,9 @@ name: Size Check
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
   push:
-    branches: [ feat/build-optimization ]
+    branches: [feat/build-optimization]
 
 jobs:
   size:

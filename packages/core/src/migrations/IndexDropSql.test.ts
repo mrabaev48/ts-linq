@@ -22,5 +22,3 @@ test('DROP INDEX SQL is dialect-specific', () => {
   const mssql = generateMigrationFromDiff(diff as any, 'mssql').up.join('\n');
   expect(mssql).toContain('DROP INDEX [idx_users_active] ON [Users]');
 });
-
-

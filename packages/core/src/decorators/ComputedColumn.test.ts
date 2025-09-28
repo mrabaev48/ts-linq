@@ -1,7 +1,11 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata } from '../types';
 
-class User { id!: number; name!: string; nameLength!: number; }
+class User {
+  id!: number;
+  name!: string;
+  nameLength!: number;
+}
 
 describe('ComputedColumn metadata registration', () => {
   test('stores computed column flags and expression in metadata', () => {
@@ -10,17 +14,22 @@ describe('ComputedColumn metadata registration', () => {
     const cols: ColumnMetadata[] = [
       { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true },
       { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false },
-      { propertyName: 'nameLength', columnName: 'name_len', type: 'INTEGER', nullable: true, isComputed: true, computedExpression: 'length(name)' }
+      {
+        propertyName: 'nameLength',
+        columnName: 'name_len',
+        type: 'INTEGER',
+        nullable: true,
+        isComputed: true,
+        computedExpression: 'length(name)'
+      }
     ];
-    cols.forEach(c => MetadataStorage.addColumn(User, c));
+    cols.forEach((c) => MetadataStorage.addColumn(User, c));
     MetadataStorage.addPrimaryKey(User, 'id');
 
     const meta = MetadataStorage.getEntity(User);
     expect(meta).toBeDefined();
-    const cc = meta!.columns.find(c => c.propertyName === 'nameLength');
+    const cc = meta!.columns.find((c) => c.propertyName === 'nameLength');
     expect(cc?.isComputed).toBe(true);
     expect(cc?.computedExpression).toBe('length(name)');
   });
 });
-
-

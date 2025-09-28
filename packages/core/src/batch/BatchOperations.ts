@@ -69,7 +69,9 @@ export class BatchOperations {
     entities: T[],
     entityClass: new () => T,
     options: BatchOptions = {}
-  ): Promise<BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>> {
+  ): Promise<
+    BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>
+  > {
     const startTime = Date.now();
     const metadata = this.getEntityMetadata(entityClass);
     const {
@@ -91,7 +93,7 @@ export class BatchOperations {
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      
+
       try {
         if (useTransactions && !this.provider.inTransactionState) {
           await this.provider.beginTransaction();
@@ -106,7 +108,6 @@ export class BatchOperations {
 
         processed += chunk.length;
         onProgress?.(processed, entities.length);
-
       } catch (error) {
         if (useTransactions && this.provider.inTransactionState) {
           await this.provider.rollbackTransaction();
@@ -151,7 +152,9 @@ export class BatchOperations {
     entities: T[],
     entityClass: new () => T,
     options: BatchOptions = {}
-  ): Promise<BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>> {
+  ): Promise<
+    BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>
+  > {
     const startTime = Date.now();
     const metadata = this.getEntityMetadata(entityClass);
     const {
@@ -186,7 +189,6 @@ export class BatchOperations {
 
         processed += chunk.length;
         onProgress?.(processed, entities.length);
-
       } catch (error) {
         if (useTransactions && this.provider.inTransactionState) {
           await this.provider.rollbackTransaction();
@@ -264,7 +266,6 @@ export class BatchOperations {
 
         processed += chunk.length;
         onProgress?.(processed, entities.length);
-
       } catch (error) {
         if (useTransactions && this.provider.inTransactionState) {
           await this.provider.rollbackTransaction();
@@ -294,7 +295,9 @@ export class BatchOperations {
     entities: T[],
     entityClass: new () => T,
     options: BatchOptions = {}
-  ): Promise<BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>> {
+  ): Promise<
+    BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>
+  > {
     const startTime = Date.now();
     const metadata = this.getEntityMetadata(entityClass);
     const {
@@ -329,7 +332,6 @@ export class BatchOperations {
 
         processed += chunk.length;
         onProgress?.(processed, entities.length);
-
       } catch (error) {
         if (useTransactions && this.provider.inTransactionState) {
           await this.provider.rollbackTransaction();
@@ -374,7 +376,7 @@ export class BatchOperations {
     metadata: EntityMetadata
   ): Promise<T[]> {
     const dialect = this.provider.getDialect();
-    
+
     // Try to use provider-specific bulk insert if available
     if (this.provider.insertMany && entities.length > 1) {
       // Use database-specific bulk operations if supported
@@ -382,28 +384,30 @@ export class BatchOperations {
     }
 
     // Build bulk INSERT with VALUES clause
-    const columns = metadata.columns.filter(col => 
-      !col.isGenerated && entities.some(entity => (entity as any)[col.propertyName] !== undefined)
+    const columns = metadata.columns.filter(
+      (col) =>
+        !col.isGenerated &&
+        entities.some((entity) => (entity as any)[col.propertyName] !== undefined)
     );
 
     if (columns.length === 0) {
       throw new Error('No insertable columns found');
     }
 
-    const columnNames = columns.map(col => col.columnName || col.propertyName);
+    const columnNames = columns.map((col) => col.columnName || col.propertyName);
     const placeholders: string[] = [];
     const allParams: SqlParameter[] = [];
 
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i];
       const entityPlaceholders: string[] = [];
-      
+
       for (const column of columns) {
         const value = (entity as any)[column.propertyName];
         entityPlaceholders.push('?');
         allParams.push(value);
       }
-      
+
       placeholders.push(`(${entityPlaceholders.join(', ')})`);
     }
 
@@ -429,17 +433,16 @@ export class BatchOperations {
     }
 
     // Build batch update statements
-    const primaryKeyColumn = metadata.columns.find(col => 
+    const primaryKeyColumn = metadata.columns.find((col) =>
       metadata.primaryKeys.includes(col.propertyName)
     );
-    
+
     if (!primaryKeyColumn) {
       throw new Error(`No primary key found for entity ${metadata.target.name}`);
     }
 
-    const updateColumns = metadata.columns.filter(col => 
-      !metadata.primaryKeys.includes(col.propertyName) &&
-      !col.isGenerated
+    const updateColumns = metadata.columns.filter(
+      (col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated
     );
 
     if (updateColumns.length === 0) {
@@ -461,17 +464,17 @@ export class BatchOperations {
     entities: T[],
     metadata: EntityMetadata
   ): Promise<number> {
-    const primaryKeyColumn = metadata.columns.find(col => 
+    const primaryKeyColumn = metadata.columns.find((col) =>
       metadata.primaryKeys.includes(col.propertyName)
     );
-    
+
     if (!primaryKeyColumn) {
       throw new Error(`No primary key found for entity ${metadata.target.name}`);
     }
 
-    const primaryKeyValues = entities.map(entity => 
-      (entity as any)[primaryKeyColumn.propertyName]
-    ).filter(value => value !== undefined && value !== null);
+    const primaryKeyValues = entities
+      .map((entity) => (entity as any)[primaryKeyColumn.propertyName])
+      .filter((value) => value !== undefined && value !== null);
 
     if (primaryKeyValues.length === 0) {
       return 0;
@@ -504,7 +507,7 @@ export class BatchOperations {
       const result = await this.provider.upsert(entity, metadata.target);
       results.push(result);
     }
-    
+
     return results;
   }
 
@@ -533,12 +536,9 @@ export class BatchOperations {
   /**
    * Create empty result based on return type.
    */
-  private createEmptyResult<T>(
-    returnDetailedResults: boolean,
-    startTime: number
-  ): any {
+  private createEmptyResult<T>(returnDetailedResults: boolean, startTime: number): any {
     const durationMs = Date.now() - startTime;
-    
+
     if (returnDetailedResults) {
       return {
         successful: [],

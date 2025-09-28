@@ -4,10 +4,16 @@ import type { ColumnMetadata } from '@ts-linq/core';
 import { PostgresProvider } from '@ts-linq/postgres';
 import { ValidIfOf, RequiredIfOf } from '@ts-linq/core';
 
-class Article { id!: number; title!: string; status!: 'draft' | 'published'; }
+class Article {
+  id!: number;
+  title!: string;
+  status!: 'draft' | 'published';
+}
 
 class PgCtx extends DbContext {
-  constructor(url: string) { super({ provider: new PostgresProvider(url) as any }); }
+  constructor(url: string) {
+    super({ provider: new PostgresProvider(url) as any });
+  }
 }
 
 describe('[integration][postgres] Conditional Validation with real DB', () => {
@@ -25,37 +31,49 @@ describe('[integration][postgres] Conditional Validation with real DB', () => {
       { propertyName: 'title', columnName: 'title', type: 'TEXT', nullable: false, length: 100 },
       { propertyName: 'status', columnName: 'status', type: 'TEXT', nullable: false }
     ];
-    cols.forEach(c => MetadataStorage.addColumn(Article, c));
+    cols.forEach((c) => MetadataStorage.addColumn(Article, c));
     MetadataStorage.addPrimaryKey(Article, 'id');
     RequiredIfOf<Article>((a: Article) => a.status === 'published', 'Title required for published')(
       undefined as unknown as object,
-      { kind: 'field', name: 'title', addInitializer: (fn: (this: unknown) => void) => fn.call(Article.prototype) } as any
+      {
+        kind: 'field',
+        name: 'title',
+        addInitializer: (fn: (this: unknown) => void) => fn.call(Article.prototype)
+      } as any
     );
-    ValidIfOf<Article>((a: Article) => a.status !== 'published' || (a.title || '').includes(' '), 'Title must contain space when published')(
+    ValidIfOf<Article>(
+      (a: Article) => a.status !== 'published' || (a.title || '').includes(' '),
+      'Title must contain space when published'
+    )(
       undefined as unknown as object,
-      { kind: 'field', name: 'title', addInitializer: (fn: (this: unknown) => void) => fn.call(Article.prototype) } as any
+      {
+        kind: 'field',
+        name: 'title',
+        addInitializer: (fn: (this: unknown) => void) => fn.call(Article.prototype)
+      } as any
     );
   });
 
   test('rejects invalid entity', async () => {
-    const ctx = new PgCtx(url!);
+    const ctx = new PgCtx(url);
     await ctx.ensureCreated();
     const set = ctx.set(Article);
-    const a = new Article(); a.status = 'published';
+    const a = new Article();
+    a.status = 'published';
     set.add(a);
     await expect(ctx.saveChanges()).rejects.toBeInstanceOf(ValidationError);
     await ctx.dispose();
   });
 
   test('inserts valid entity', async () => {
-    const ctx = new PgCtx(url!);
+    const ctx = new PgCtx(url);
     await ctx.ensureCreated();
     const set = ctx.set(Article);
-    const a = new Article(); a.status = 'published'; a.title = 'Hello World';
+    const a = new Article();
+    a.status = 'published';
+    a.title = 'Hello World';
     set.add(a);
     await expect(ctx.saveChanges()).resolves.toBeGreaterThan(0);
     await ctx.dispose();
   });
 });
-
-

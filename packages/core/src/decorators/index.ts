@@ -3,7 +3,15 @@ import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { IndexMetadata } from '../types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
-export { ValidIf, ValidIfOf, RequiredIfOf, MinLengthOf, MaxLengthOf, PatternOf, RangeOf } from './ValidIf';
+export {
+  ValidIf,
+  ValidIfOf,
+  RequiredIfOf,
+  MinLengthOf,
+  MaxLengthOf,
+  PatternOf,
+  RangeOf
+} from './ValidIf';
 
 function isStage3ClassContext(x: unknown): x is ClassDecoratorContext {
   return !!x && typeof x === 'object';
@@ -28,21 +36,24 @@ export interface IndexOptions {
 export type IndexInput = IndexOptions | IndexOptionsBuilder;
 
 export function normalizeIndexOptions(input: IndexInput): IndexMetadata {
-  const built: IndexMetadata = input instanceof IndexOptionsBuilder ? input.build() : {
-    name: input.name,
-    columns: input.columns,
-    unique: input.unique ?? false,
-    where: input.where,
-    orders: input.orders,
-    expressions: input.expressions,
-    collations: input.collations,
-    nulls: input.nulls,
-    using: input.using,
-    concurrently: input.concurrently,
-    withParams: input.withParams,
-    mysqlVisibility: input.mysqlVisibility,
-    include: input.include
-  };
+  const built: IndexMetadata =
+    input instanceof IndexOptionsBuilder
+      ? input.build()
+      : {
+          name: input.name,
+          columns: input.columns,
+          unique: input.unique ?? false,
+          where: input.where,
+          orders: input.orders,
+          expressions: input.expressions,
+          collations: input.collations,
+          nulls: input.nulls,
+          using: input.using,
+          concurrently: input.concurrently,
+          withParams: input.withParams,
+          mysqlVisibility: input.mysqlVisibility,
+          include: input.include
+        };
   return built;
 }
 

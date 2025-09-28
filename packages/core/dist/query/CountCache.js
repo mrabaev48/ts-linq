@@ -1,34 +1,32 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
 exports.InMemoryCountCache = void 0;
 /** In-memory CountCache with TTL and max size (FIFO eviction). */
 class InMemoryCountCache {
-    constructor(ttlMs = 10000, maxSize = 2000) {
-        this.ttlMs = ttlMs;
-        this.maxSize = maxSize;
-        this.store = new Map();
+  constructor(ttlMs = 10000, maxSize = 2000) {
+    this.ttlMs = ttlMs;
+    this.maxSize = maxSize;
+    this.store = new Map();
+  }
+  get(key) {
+    const hit = this.store.get(key);
+    if (!hit) return undefined;
+    if (this.ttlMs > 0 && Date.now() - hit.ts > this.ttlMs) {
+      this.store.delete(key);
+      return undefined;
     }
-    get(key) {
-        const hit = this.store.get(key);
-        if (!hit)
-            return undefined;
-        if (this.ttlMs > 0 && Date.now() - hit.ts > this.ttlMs) {
-            this.store.delete(key);
-            return undefined;
-        }
-        return hit;
+    return hit;
+  }
+  set(key, entry) {
+    if (this.store.size >= this.maxSize) {
+      const first = this.store.keys().next().value;
+      if (first !== undefined) this.store.delete(first);
     }
-    set(key, entry) {
-        if (this.store.size >= this.maxSize) {
-            const first = this.store.keys().next().value;
-            if (first !== undefined)
-                this.store.delete(first);
-        }
-        this.store.set(key, entry);
-    }
-    clear() {
-        this.store.clear();
-    }
+    this.store.set(key, entry);
+  }
+  clear() {
+    this.store.clear();
+  }
 }
 exports.InMemoryCountCache = InMemoryCountCache;
 //# sourceMappingURL=CountCache.js.map

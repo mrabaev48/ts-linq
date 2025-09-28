@@ -6,7 +6,9 @@ describe('MySqlProvider CRUD (smoke)', () => {
     if (!url) return; // skip
     const p = new MySqlProvider(url);
     await p.connect();
-    await p.executeNonQuery('CREATE TABLE IF NOT EXISTS items(id INT AUTO_INCREMENT PRIMARY KEY, name TEXT NOT NULL)');
+    await p.executeNonQuery(
+      'CREATE TABLE IF NOT EXISTS items(id INT AUTO_INCREMENT PRIMARY KEY, name TEXT NOT NULL)'
+    );
     await p.executeNonQuery('INSERT INTO items(name) VALUES(?)', ['a']);
     let rows = await p.executeQuery<{ id: number; name: string }>('SELECT * FROM items');
     expect(rows.length).toBeGreaterThan(0);
