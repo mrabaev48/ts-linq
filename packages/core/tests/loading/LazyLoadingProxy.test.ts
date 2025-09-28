@@ -286,7 +286,7 @@ describe('LazyLoadingProxy', () => {
       const posts = [{ id: 1, title: 'Post 1', userId: 1 }];
       const user = { id: 1, name: 'John', posts } as unknown as User; // Pre-loaded
 
-      const proxy = LazyLoadingProxy.create(user, User, mockProvider) as User;
+      const proxy = LazyLoadingProxy.create(user, User, mockProvider);
 
       // Should return the pre-loaded posts directly
       const result = proxy.posts;

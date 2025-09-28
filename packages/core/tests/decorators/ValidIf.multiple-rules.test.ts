@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { DbContext } from '../context/DbContext';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata } from '../types';
-import { ValidationError } from '../types';
+import type { ValidationError } from '../types';
 import { DatabaseProvider } from '../DatabaseProvider';
 import type { SqlDialect } from '../query/SqlDialect';
 import { ValidIfOf, MinLengthOf } from './ValidIf';

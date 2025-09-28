@@ -1,4 +1,5 @@
-import { BatchOperations, BatchOptions, BatchResult, SimpleBatchResult } from './BatchOperations';
+import type { BatchResult } from './BatchOperations';
+import { BatchOperations, BatchOptions, SimpleBatchResult } from './BatchOperations';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { DatabaseProvider } from '../DatabaseProvider';
 import type { EntityMetadata, ColumnMetadata } from '../types';
@@ -154,7 +155,7 @@ describe('BatchOperations', () => {
 
     test('should use transactions when enabled', async () => {
       const users = [{ id: 1, name: 'John', email: 'john@test.com', age: 30 }];
-      mockProvider.insertMany!.mockResolvedValueOnce(users as unknown as object[]);
+      mockProvider.insertMany.mockResolvedValueOnce(users as unknown as object[]);
 
       await batchOps.bulkInsert(users, User, { useTransactions: true });
 
@@ -170,8 +171,8 @@ describe('BatchOperations', () => {
         age: 20 + i
       }));
 
-      mockProvider
-        .insertMany!.mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
+      mockProvider.insertMany
+        .mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
         .mockResolvedValueOnce(users.slice(2, 4) as unknown as object[]);
 
       const result = await batchOps.bulkInsert(users, User, { batchSize: 2 });
@@ -188,8 +189,8 @@ describe('BatchOperations', () => {
         age: 20 + i
       }));
 
-      mockProvider
-        .insertMany!.mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
+      mockProvider.insertMany
+        .mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
         .mockResolvedValueOnce(users.slice(2, 4) as unknown as object[]);
 
       const progressCallback = jest.fn();
@@ -251,7 +252,7 @@ describe('BatchOperations', () => {
         { id: 2, name: 'Jane Updated', email: 'jane@test.com', age: 26 }
       ];
 
-      mockProvider.updateMany!.mockResolvedValueOnce(users as unknown as object[]);
+      mockProvider.updateMany.mockResolvedValueOnce(users as unknown as object[]);
 
       const result = await batchOps.bulkUpdate(users, User);
 
@@ -312,7 +313,7 @@ describe('BatchOperations', () => {
         { id: 2, name: 'Jane', email: 'jane@test.com', age: 25 }
       ];
 
-      mockProvider.upsertMany!.mockResolvedValueOnce(users as unknown as object[]);
+      mockProvider.upsertMany.mockResolvedValueOnce(users as unknown as object[]);
 
       const result = await batchOps.bulkUpsert(users, User);
 
@@ -351,7 +352,7 @@ describe('BatchOperations', () => {
   describe('Error Handling', () => {
     test('should rollback transaction on error', async () => {
       const users = [{ id: 1, name: 'John', email: 'john@test.com', age: 30 }];
-      mockProvider.insertMany!.mockResolvedValueOnce(users as unknown as object[]);
+      mockProvider.insertMany.mockResolvedValueOnce(users as unknown as object[]);
       delete (mockProvider as unknown as Record<string, unknown>).insertMany;
       mockProvider.executeNonQuery.mockRejectedValueOnce(new Error('Database error'));
       Object.defineProperty(mockProvider, 'inTransactionState', { value: true, writable: true });

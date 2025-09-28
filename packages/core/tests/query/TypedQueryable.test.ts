@@ -1,6 +1,7 @@
 import { TypedQueryable, typed } from './TypedQueryable';
-import { Queryable } from './Queryable';
-import { EntityId, brandId, type ColumnMetadata } from '../types';
+import type { Queryable } from './Queryable';
+import type { EntityId } from '../types';
+import { brandId, type ColumnMetadata } from '../types';
 import { DbContext } from '../context/DbContext';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 
