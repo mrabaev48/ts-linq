@@ -2,7 +2,7 @@
 . "$(dirname "$0")/_/husky.sh"
 
 echo "Running lint --fix..."
-npm run lint -- --fix || true
+npm run lint -- --fix || exit 1
 
 echo "Adding changes..."
 git add -A

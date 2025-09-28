@@ -5,7 +5,7 @@ module.exports = {
   testEnvironment: 'node',
   detectOpenHandles: true,
   forceExit: true,
-  roots: ['<rootDir>/packages', '<rootDir>/tests'],
+  roots: ['<rootDir>/packages'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
     '^.+\\.ts$': 'ts-jest'
@@ -22,36 +22,36 @@ module.exports = {
   projects: [
     {
       displayName: 'core',
-      testMatch: ['<rootDir>/packages/core/**/*.test.ts'],
+      testMatch: ['<rootDir>/packages/core/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
     ...(includeIntegration
       ? [
           {
-            displayName: 'integration',
-            testMatch: ['<rootDir>/tests/db/**/*.test.ts'],
+            displayName: 'db',
+            testMatch: ['<rootDir>/packages/**/tests/**/*integration*.test.ts'],
             transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.tests.json' }] }
           }
         ]
       : []),
     {
       displayName: 'sqlite',
-      testMatch: ['<rootDir>/packages/sqlite/**/*.test.ts'],
+      testMatch: ['<rootDir>/packages/sqlite/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
     },
     {
       displayName: 'postgres',
-      testMatch: ['<rootDir>/packages/postgres/**/*.test.ts'],
+      testMatch: ['<rootDir>/packages/postgres/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
     },
     {
       displayName: 'mysql',
-      testMatch: ['<rootDir>/packages/mysql/**/*.test.ts'],
+      testMatch: ['<rootDir>/packages/mysql/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
     },
     {
       displayName: 'mssql',
-      testMatch: ['<rootDir>/packages/mssql/**/*.test.ts'],
+      testMatch: ['<rootDir>/packages/mssql/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
     }
   ]
