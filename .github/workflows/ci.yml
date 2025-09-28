@@ -24,6 +24,7 @@ jobs:
       - name: Integration DB tests (containers)
         env:
           RUN_DB_TESTS: '1'
+          PERF_GUARD_MS: '250'
         run: npm run test:db:all
       - name: Size budgets
         run: npm run size:bundle
