@@ -25,15 +25,34 @@ function safeRequireOtel(): OtelLike | undefined {
   return undefined;
 }
 
+export interface OpenTelemetryLoggerOptions {
+  maskSql?: boolean;
+  maskPatterns?: ReadonlyArray<RegExp>;
+}
+
 export class OpenTelemetrySqlLogger implements SqlLogger {
   private tracer:
     | { startSpan: (name: string, opts?: { attributes?: Record<string, unknown> }) => SpanLike }
     | undefined;
   private spanByTraceId: Map<string | undefined, SpanLike> = new Map();
+  private maskSql = false;
+  private maskPatterns: ReadonlyArray<RegExp> = [];
 
-  constructor(serviceName: string = 'ts-linq') {
+  constructor(serviceName: string = 'ts-linq', options?: OpenTelemetryLoggerOptions) {
     const otel = safeRequireOtel();
     this.tracer = otel?.trace.getTracer(serviceName);
+    this.maskSql = !!options?.maskSql;
+    this.maskPatterns = options?.maskPatterns ?? [];
+  }
+
+  private mask(input: string): string {
+    if (!this.maskSql) return input;
+    let s = input;
+    s = s.replace(/'([^']|''))*'/g, `'[REDACTED]'`).replace(/"([^"\\]|\\.)*"/g, '"[REDACTED]"');
+    for (const re of this.maskPatterns) {
+      try { s = s.replace(re, '[REDACTED]'); } catch {}
+    }
+    return s;
   }
 
   queryStart(info: { sql: string; params: readonly SqlParameter[]; traceId?: string; provider?: string }): void {
@@ -41,7 +60,7 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
     const span = this.tracer.startSpan('db.query', {
       attributes: {
         'db.system': info.provider || 'sql',
-        'db.statement': info.sql,
+        'db.statement': this.mask(info.sql),
         'db.parameters': JSON.stringify(info.params ?? [])
       }
     });
