@@ -394,7 +394,9 @@ export class EnhancedSqlCache implements SqlCache {
 
     // Prevent the interval from keeping the event loop alive in tests/process exit
     // NodeJS.Timeout supports unref() in Node environments
-    (this.cleanupInterval as any)?.unref?.();
+    // Best-effort: unref is not available in all environments
+    const maybe = this.cleanupInterval as unknown as { unref?: () => void } | undefined;
+    maybe?.unref?.();
   }
 
   private chunkArray<T>(array: T[], size: number): T[][] {

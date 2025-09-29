@@ -16,7 +16,11 @@ d('[integration][types][mssql] DECIMAL/date', () => {
       );
       await p.executeNonQuery(
         'INSERT INTO [dbo].[edge_types]([id],[amount],[created_at]) VALUES(@p1,@p2,@p3)',
-        [1 as unknown as never, '1234.56' as unknown as never, '2020-01-02 03:04:05' as unknown as never]
+        [
+          1 as unknown as never,
+          '1234.56' as unknown as never,
+          '2020-01-02 03:04:05' as unknown as never
+        ]
       );
       const rows = await p.executeQuery<{ amount: string; created_at: Date }>(
         'SELECT [amount], [created_at] FROM [dbo].[edge_types]'
@@ -31,5 +35,3 @@ d('[integration][types][mssql] DECIMAL/date', () => {
     }
   });
 });
-
-

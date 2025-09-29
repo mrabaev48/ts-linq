@@ -22,7 +22,7 @@ type TypedOrderSelector<TEntity, K extends keyof TEntity> = (entity: TEntity) =>
  * Relationship properties are arrays or objects (not primitives).
  */
 type RelationshipProperties<T> = {
-  [K in keyof T]: T[K] extends Array<any>
+  [K in keyof T]: T[K] extends Array<unknown>
     ? K
     : T[K] extends object
       ? T[K] extends Date
@@ -226,9 +226,9 @@ export class TypedQueryable<TEntity> {
   /** Attach AbortSignal (typed proxy) */
   withAbort(signal: AbortSignal): TypedQueryable<TEntity> {
     const q = (
-      this._queryable as unknown as { withAbort: (s: AbortSignal) => typeof this._queryable }
+      this._queryable as unknown as { withAbort: (s: AbortSignal) => Queryable<TEntity> }
     ).withAbort(signal);
-    return new TypedQueryable(q as unknown as any);
+    return new TypedQueryable(q);
   }
 
   // Execution methods that return results

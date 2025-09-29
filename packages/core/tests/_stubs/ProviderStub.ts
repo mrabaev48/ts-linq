@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/require-await */
+/* eslint-disable max-lines-per-function */
+/* eslint-disable complexity */
 import { DatabaseProvider } from '../../src/DatabaseProvider';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import type { EntityMetadata } from '../../src/types';

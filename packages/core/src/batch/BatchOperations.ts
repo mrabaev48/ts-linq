@@ -135,13 +135,17 @@ export class BatchOperations {
         totalProcessed: processed,
         durationMs,
         batchCount: chunks.length
-      } as any;
+      } as unknown as BatchOptions['returnDetailedResults'] extends true
+        ? BatchResult<T>
+        : SimpleBatchResult<T>;
     } else {
       return {
         entities: successful,
         failedCount: failed.length,
         durationMs
-      } as any;
+      } as unknown as BatchOptions['returnDetailedResults'] extends true
+        ? BatchResult<T>
+        : SimpleBatchResult<T>;
     }
   }
 
@@ -215,13 +219,17 @@ export class BatchOperations {
         totalProcessed: processed,
         durationMs,
         batchCount: chunks.length
-      } as any;
+      } as unknown as BatchOptions['returnDetailedResults'] extends true
+        ? BatchResult<T>
+        : SimpleBatchResult<T>;
     } else {
       return {
         entities: successful,
         failedCount: failed.length,
         durationMs
-      } as any;
+      } as unknown as BatchOptions['returnDetailedResults'] extends true
+        ? BatchResult<T>
+        : SimpleBatchResult<T>;
     }
   }
 
@@ -358,13 +366,17 @@ export class BatchOperations {
         totalProcessed: processed,
         durationMs,
         batchCount: chunks.length
-      } as any;
+      } as unknown as BatchOptions['returnDetailedResults'] extends true
+        ? BatchResult<T>
+        : SimpleBatchResult<T>;
     } else {
       return {
         entities: successful,
         failedCount: failed.length,
         durationMs
-      } as any;
+      } as unknown as BatchOptions['returnDetailedResults'] extends true
+        ? BatchResult<T>
+        : SimpleBatchResult<T>;
     }
   }
 
@@ -387,7 +399,9 @@ export class BatchOperations {
     const columns = metadata.columns.filter(
       (col) =>
         !col.isGenerated &&
-        entities.some((entity) => (entity as any)[col.propertyName] !== undefined)
+        entities.some(
+          (entity) => (entity as Record<string, unknown>)[col.propertyName] !== undefined
+        )
     );
 
     if (columns.length === 0) {
@@ -403,7 +417,7 @@ export class BatchOperations {
       const entityPlaceholders: string[] = [];
 
       for (const column of columns) {
-        const value = (entity as any)[column.propertyName];
+        const value = (entity as Record<string, unknown>)[column.propertyName] as SqlParameter;
         entityPlaceholders.push('?');
         allParams.push(value);
       }
@@ -473,7 +487,10 @@ export class BatchOperations {
     }
 
     const primaryKeyValues = entities
-      .map((entity) => (entity as any)[primaryKeyColumn.propertyName])
+      .map(
+        (entity) =>
+          (entity as Record<string, unknown>)[primaryKeyColumn.propertyName] as SqlParameter
+      )
       .filter((value) => value !== undefined && value !== null);
 
     if (primaryKeyValues.length === 0) {
@@ -536,7 +553,10 @@ export class BatchOperations {
   /**
    * Create empty result based on return type.
    */
-  private createEmptyResult<T>(returnDetailedResults: boolean, startTime: number): any {
+  private createEmptyResult<T>(
+    returnDetailedResults: boolean,
+    startTime: number
+  ): BatchResult<T> | SimpleBatchResult<T> {
     const durationMs = Date.now() - startTime;
 
     if (returnDetailedResults) {
@@ -546,13 +566,13 @@ export class BatchOperations {
         totalProcessed: 0,
         durationMs,
         batchCount: 0
-      };
+      } as BatchResult<T>;
     } else {
       return {
         entities: [],
         failedCount: 0,
         durationMs
-      };
+      } as SimpleBatchResult<T>;
     }
   }
 
