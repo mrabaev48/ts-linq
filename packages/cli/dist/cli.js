@@ -44,6 +44,8 @@ const mysql_1 = require("@ts-linq/mysql");
 const mssql_1 = require("@ts-linq/mssql");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const utils_1 = require("./utils");
+const schema_inspect_1 = require("./schema-inspect");
 function createProviderFromEnv() {
     const kind = (process.env.DB_PROVIDER || 'sqlite').toLowerCase();
     if (kind === 'postgresql' || kind === 'postgres' || kind === 'pg') {
@@ -92,227 +94,12 @@ function tryLoadConfig(cwd) {
     }
     return undefined;
 }
-/**
- * Normalize provider label to one of supported dialects.
- */
-function resolveDialect(label) {
-    const allowed = ['sqlite', 'postgresql', 'mysql', 'mssql'];
-    return allowed.includes(label)
-        ? label
-        : 'sqlite';
-}
-/** Ensure a directory exists. */
-function ensureDir(dirPath) {
-    if (!fs.existsSync(dirPath))
-        fs.mkdirSync(dirPath, { recursive: true });
-}
-/** Write a file only if it does not exist yet. */
-function writeFileIfMissing(filePath, contents) {
-    if (!fs.existsSync(filePath)) {
-        ensureDir(path.dirname(filePath));
-        fs.writeFileSync(filePath, contents, 'utf8');
-    }
-}
-/** Map native DB column type to portable ORM type string. */
-function normalizeDbType(label, dbTypeRaw) {
-    const t = String(dbTypeRaw || '').toLowerCase();
-    if (label === 'sqlite') {
-        if (/int/.test(t))
-            return 'INTEGER';
-        if (/real|double|float/.test(t))
-            return 'REAL';
-        if (/blob/.test(t))
-            return 'BLOB';
-        if (/date|time/.test(t))
-            return 'DATETIME';
-        if (/bool/.test(t))
-            return 'BOOLEAN';
-        return 'TEXT';
-    }
-    if (label === 'postgresql') {
-        if (/(?:small|big)?int|serial|bigserial/.test(t))
-            return 'INTEGER';
-        if (/numeric|decimal/.test(t))
-            return 'DECIMAL';
-        if (/double|real/.test(t))
-            return 'REAL';
-        if (/uuid/.test(t))
-            return 'UUID';
-        if (/jsonb?/.test(t))
-            return t.includes('jsonb') ? 'JSONB' : 'JSON';
-        if (/timestamp|timestamptz|date|time/.test(t))
-            return 'DATETIME';
-        if (/bool/.test(t))
-            return 'BOOLEAN';
-        if (/bytea/.test(t))
-            return 'BLOB';
-        return 'TEXT';
-    }
-    if (label === 'mysql') {
-        if (/int/.test(t))
-            return 'INTEGER';
-        if (/decimal|numeric/.test(t))
-            return 'DECIMAL';
-        if (/double|float/.test(t))
-            return 'REAL';
-        if (/json/.test(t))
-            return 'JSON';
-        if (/datetime|timestamp|date|time/.test(t))
-            return 'DATETIME';
-        if (/bool|tinyint\(1\)/.test(t))
-            return 'BOOLEAN';
-        if (/blob|binary|varbinary/.test(t))
-            return 'BLOB';
-        return 'TEXT';
-    }
-    // mssql
-    if (/int|bigint|smallint|tinyint/.test(t))
-        return 'INTEGER';
-    if (/decimal|numeric|money|smallmoney/.test(t))
-        return 'DECIMAL';
-    if (/float|real/.test(t))
-        return 'REAL';
-    if (/datetime|smalldatetime|date|time/.test(t))
-        return 'DATETIME';
-    if (/bit/.test(t))
-        return 'BOOLEAN';
-    if (/binary|varbinary|image/.test(t))
-        return 'BLOB';
-    if (/uniqueidentifier/.test(t))
-        return 'UUID';
-    return 'TEXT';
-}
-/** Map portable ORM type to a TypeScript type. */
-function tsTypeForOrm(colType) {
-    switch (colType) {
-        case 'INTEGER':
-        case 'REAL':
-        case 'DECIMAL':
-            return 'number';
-        case 'BOOLEAN':
-            return 'boolean';
-        case 'DATETIME':
-            return 'Date';
-        case 'BLOB':
-            return 'Buffer';
-        case 'UUID':
-            return 'string';
-        case 'JSON':
-        case 'JSONB':
-            return 'unknown';
-        default:
-            return 'string';
-    }
-}
-/**
- * Inspect a single table and return columns with typing and PK flags.
- */
-async function inspectTable(provider, label, table, schema) {
-    const rows = [];
-    if (label === 'sqlite') {
-        const pragma = await provider.executeQuery(`PRAGMA table_info(${table})`);
-        for (const r of pragma) {
-            rows.push({ name: r.name, type: r.type, nullable: !r.notnull, pk: !!r.pk });
-        }
-    }
-    else if (label === 'postgresql') {
-        const sch = schema || 'public';
-        const cols = await provider.executeQuery('SELECT column_name, data_type, udt_name, is_nullable, numeric_precision, numeric_scale FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2 ORDER BY ordinal_position', [sch, table]);
-        const pkCols = await provider.executeQuery("SELECT kcu.column_name FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema WHERE tc.table_schema = $1 AND tc.table_name = $2 AND tc.constraint_type = 'PRIMARY KEY' ORDER BY kcu.ordinal_position", [sch, table]);
-        const pkSet = new Set(pkCols.map((x) => x.column_name));
-        for (const c of cols) {
-            const raw = (c.udt_name || c.data_type || '').toLowerCase();
-            rows.push({
-                name: c.column_name,
-                type: raw,
-                nullable: c.is_nullable === 'YES',
-                pk: pkSet.has(c.column_name)
-            });
-        }
-    }
-    else if (label === 'mysql') {
-        const cols = await provider.executeQuery('SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? ORDER BY ORDINAL_POSITION', [table]);
-        for (const c of cols) {
-            rows.push({
-                name: c.COLUMN_NAME,
-                type: c.DATA_TYPE,
-                nullable: c.IS_NULLABLE === 'YES',
-                pk: c.COLUMN_KEY === 'PRI'
-            });
-        }
-    }
-    else {
-        // mssql
-        const sch = schema || 'dbo';
-        const cols = await provider.executeQuery('SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = @p1 AND TABLE_NAME = @p2 ORDER BY ORDINAL_POSITION', [sch, table]);
-        const pkCols = await provider.executeQuery("SELECT k.COLUMN_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS t JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k ON t.CONSTRAINT_NAME = k.CONSTRAINT_NAME AND t.TABLE_SCHEMA = k.TABLE_SCHEMA WHERE t.TABLE_SCHEMA = @p1 AND t.TABLE_NAME = @p2 AND t.CONSTRAINT_TYPE = 'PRIMARY KEY' ORDER BY k.ORDINAL_POSITION", [sch, table]);
-        const pkSet = new Set(pkCols.map((x) => x.COLUMN_NAME));
-        for (const c of cols) {
-            rows.push({
-                name: c.COLUMN_NAME,
-                type: c.DATA_TYPE,
-                nullable: c.IS_NULLABLE === 'YES',
-                pk: pkSet.has(c.COLUMN_NAME)
-            });
-        }
-    }
-    return rows.map((r) => ({
-        name: r.name,
-        dbType: r.type,
-        ormType: normalizeDbType(label, r.type),
-        nullable: r.nullable,
-        isPrimary: r.pk
-    }));
-}
-/**
- * List user tables for current provider and optional schema.
- */
-async function listAllTables(provider, label, schema) {
-    if (label === 'sqlite') {
-        const rows = await provider.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
-        return rows.map((r) => r.name);
-    }
-    if (label === 'postgresql') {
-        const sch = schema || 'public';
-        const rows = await provider.executeQuery('SELECT tablename FROM pg_tables WHERE schemaname = $1 ORDER BY tablename', [sch]);
-        return rows.map((r) => r.tablename);
-    }
-    if (label === 'mysql') {
-        const rows = await provider.executeQuery('SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema = DATABASE() AND TABLE_TYPE = "BASE TABLE" ORDER BY TABLE_NAME');
-        return rows.map((r) => r.TABLE_NAME);
-    }
-    const sch = schema || 'dbo';
-    const rows = await provider.executeQuery('SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @p1 AND TABLE_TYPE = "BASE TABLE" ORDER BY TABLE_NAME', [sch]);
-    return rows.map((r) => r.TABLE_NAME);
-}
-function getFlag(argv, flag) {
-    const long = `--${flag}`;
-    for (let i = 0; i < argv.length; i++) {
-        const a = argv[i];
-        if (a === long) {
-            const next = argv[i + 1];
-            if (next && !next.startsWith('--'))
-                return next;
-            return true;
-        }
-        if (a.startsWith(`${long}=`))
-            return a.slice(long.length + 1);
-    }
-    return undefined;
-}
-function validateEnv(required) {
-    const missing = required.filter((k) => !process.env[k]);
-    if (missing.length) {
-        console.error(`Missing required environment variables: ${missing.join(', ')}`);
-        return false;
-    }
-    return true;
-}
+// resolveDialect/ensureDir/writeFileIfMissing moved to ./utils; schema helpers imported from './schema-inspect'
 async function printDiffFromSnapshot(provider, file) {
     const target = new core_2.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
     const actual = await new core_2.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
     const diff = (0, core_2.compareSchemas)(target, actual);
-    const dialect = resolveDialect(provider.providerLabel);
+    const dialect = (0, utils_1.resolveDialect)(provider.providerLabel);
     const rendered = (0, core_2.generateMigrationFromDiff)(diff, dialect);
     for (const sql of rendered.up)
         console.log(sql);
@@ -324,7 +111,7 @@ async function main() {
     if (cmd === 'init') {
         const dest = path.resolve(process.cwd(), arg1 || '.');
         if (arg1)
-            ensureDir(dest);
+            (0, utils_1.ensureDir)(dest);
         const withMigration = process.argv.includes('--with-migration');
         // tsconfig.json tuned for TS5 Stage-3 decorators
         const tsconfig = `{
@@ -391,14 +178,14 @@ SQLITE_URL=file:app.db
 # MSSQL_URL=mssql://user:pass@localhost:1433/db
 `;
         // Scaffold
-        writeFileIfMissing(path.join(dest, 'tsconfig.json'), tsconfig);
-        writeFileIfMissing(path.join(dest, 'ts-linq.config.ts'), configTs);
-        writeFileIfMissing(path.join(dest, '.env.example'), envExample);
-        writeFileIfMissing(path.join(dest, 'src', 'entities', 'User.ts'), userEntity);
-        writeFileIfMissing(path.join(dest, 'src', 'context', 'AppDbContext.ts'), dbContext);
-        ensureDir(path.join(dest, 'migrations'));
+        (0, utils_1.writeFileIfMissing)(path.join(dest, 'tsconfig.json'), tsconfig);
+        (0, utils_1.writeFileIfMissing)(path.join(dest, 'ts-linq.config.ts'), configTs);
+        (0, utils_1.writeFileIfMissing)(path.join(dest, '.env.example'), envExample);
+        (0, utils_1.writeFileIfMissing)(path.join(dest, 'src', 'entities', 'User.ts'), userEntity);
+        (0, utils_1.writeFileIfMissing)(path.join(dest, 'src', 'context', 'AppDbContext.ts'), dbContext);
+        (0, utils_1.ensureDir)(path.join(dest, 'migrations'));
         // Keep migrations dir tracked
-        writeFileIfMissing(path.join(dest, 'migrations', '.gitkeep'), '');
+        (0, utils_1.writeFileIfMissing)(path.join(dest, 'migrations', '.gitkeep'), '');
         if (withMigration) {
             const name = 'Initial';
             const ts = new Date()
@@ -406,10 +193,10 @@ SQLITE_URL=file:app.db
                 .replace(/[-:TZ.]/g, '')
                 .slice(0, 14);
             const migDir = path.join(dest, 'migrations');
-            ensureDir(migDir);
+            (0, utils_1.ensureDir)(migDir);
             const migFile = path.join(migDir, `${ts}_${name}.ts`);
             const template = `import { Migration } from '@ts-linq/core';\n\nexport class ${name} extends Migration {\n  protected get name() { return '${name}'; }\n  protected get version() { return '${ts}'; }\n  public async up(): Promise<void> {\n    // TODO: write your DDL here\n  }\n  public async down(): Promise<void> {\n    // TODO: write your rollback here\n  }\n}\n`;
-            writeFileIfMissing(migFile, template);
+            (0, utils_1.writeFileIfMissing)(migFile, template);
             console.log(`Created ${migFile}`);
         }
         console.log(`Initialized ts-linq project at ${dest}`);
@@ -453,24 +240,24 @@ SQLITE_URL=file:app.db
                 return;
             }
             const entityName = toPascalCase(rawName);
-            const outDir = getFlag(argv, 'dir') || path.join('src', 'entities');
-            const table = getFlag(argv, 'table') || `${entityName.toLowerCase()}s`;
-            const fromTable = getFlag(argv, 'from-table') || undefined;
-            const schema = getFlag(argv, 'schema') || undefined;
+            const outDir = (0, utils_1.getFlag)(argv, 'dir') || path.join('src', 'entities');
+            const table = (0, utils_1.getFlag)(argv, 'table') || `${entityName.toLowerCase()}s`;
+            const fromTable = (0, utils_1.getFlag)(argv, 'from-table') || undefined;
+            const schema = (0, utils_1.getFlag)(argv, 'schema') || undefined;
             const destDir = path.resolve(process.cwd(), outDir);
-            ensureDir(destDir);
+            (0, utils_1.ensureDir)(destDir);
             const destFile = path.join(destDir, `${entityName}.ts`);
             let tpl;
             if (fromTable) {
-                const label = resolveDialect(provider.providerLabel);
-                const defs = await inspectTable(provider, label, fromTable, schema);
+                const label = (0, utils_1.resolveDialect)(provider.providerLabel);
+                const defs = await (0, schema_inspect_1.inspectTable)(provider, label, fromTable, schema);
                 const lines = [];
                 lines.push(`import { Entity, Column, PrimaryKey } from '@ts-linq/core';`);
                 lines.push('');
                 lines.push(`@Entity('${fromTable}')`);
                 lines.push(`export class ${entityName} {`);
                 for (const col of defs) {
-                    const tsType = tsTypeForOrm(col.ormType) + (col.nullable ? ' | null' : '');
+                    const tsType = (0, schema_inspect_1.tsTypeForOrm)(col.ormType) + (col.nullable ? ' | null' : '');
                     const opts = [];
                     opts.push(`type: '${col.ormType}'`);
                     if (!col.nullable)
@@ -497,19 +284,19 @@ SQLITE_URL=file:app.db
         }
         else if (arg1 === 'entities') {
             // Bulk reverse-engineering: generate entities for all tables in schema
-            const outDir = getFlag(argv, 'dir') || path.join('src', 'entities');
-            const schema = getFlag(argv, 'schema') || undefined;
-            const label = resolveDialect(provider.providerLabel);
+            const outDir = (0, utils_1.getFlag)(argv, 'dir') || path.join('src', 'entities');
+            const schema = (0, utils_1.getFlag)(argv, 'schema') || undefined;
+            const label = (0, utils_1.resolveDialect)(provider.providerLabel);
             const destDir = path.resolve(process.cwd(), outDir);
-            ensureDir(destDir);
-            const tables = await listAllTables(provider, label, schema);
+            (0, utils_1.ensureDir)(destDir);
+            const tables = await (0, schema_inspect_1.listAllTables)(provider, label, schema);
             if (tables.length === 0) {
                 console.log('No tables found to generate entities.');
                 return;
             }
             for (const tbl of tables) {
                 // eslint-disable-next-line no-await-in-loop
-                const cols = await inspectTable(provider, label, tbl, schema);
+                const cols = await (0, schema_inspect_1.inspectTable)(provider, label, tbl, schema);
                 const entityName = tbl
                     .replace(/[^a-zA-Z0-9_]/g, ' ')
                     .split(/\s+/)
@@ -528,7 +315,7 @@ SQLITE_URL=file:app.db
                 lines.push(`@Entity('${tbl}')`);
                 lines.push(`export class ${entityName} {`);
                 for (const col of cols) {
-                    const tsType = tsTypeForOrm(col.ormType) + (col.nullable ? ' | null' : '');
+                    const tsType = (0, schema_inspect_1.tsTypeForOrm)(col.ormType) + (col.nullable ? ' | null' : '');
                     const opts = [];
                     opts.push(`type: '${col.ormType}'`);
                     if (!col.nullable)
@@ -579,7 +366,7 @@ SQLITE_URL=file:app.db
         }
     }
     else if (cmd === 'validate:env') {
-        const ok = validateEnv(['NODE_ENV']);
+        const ok = (0, utils_1.validateEnv)(['NODE_ENV']);
         if (!ok)
             process.exitCode = 2;
         else
@@ -612,7 +399,7 @@ SQLITE_URL=file:app.db
             const target = new core_2.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
             const actual = await new core_2.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
             const diff = (0, core_2.compareSchemas)(target, actual);
-            const dialect = resolveDialect(provider.providerLabel);
+            const dialect = (0, utils_1.resolveDialect)(provider.providerLabel);
             const rendered = (0, core_2.generateMigrationFromDiff)(diff, dialect);
             let applied = 0;
             for (const sql of rendered.up) {
@@ -635,7 +422,7 @@ SQLITE_URL=file:app.db
             const target = new core_2.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
             const actual = await new core_2.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
             const diff = (0, core_2.compareSchemas)(target, actual);
-            const rendered = (0, core_2.generateMigrationFromDiff)(diff, resolveDialect(provider.providerLabel));
+            const rendered = (0, core_2.generateMigrationFromDiff)(diff, (0, utils_1.resolveDialect)(provider.providerLabel));
             if (rendered.up.length > 0) {
                 console.error(`Schema drift detected: ${rendered.up.length} change(s) required`);
                 for (const sql of rendered.up)
@@ -717,7 +504,7 @@ SQLITE_URL=file:app.db
             const target = new core_2.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
             const actual = await new core_2.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
             const diff = (0, core_2.compareSchemas)(target, actual);
-            const rendered = (0, core_2.generateMigrationFromDiff)(diff, resolveDialect(provider.providerLabel));
+            const rendered = (0, core_2.generateMigrationFromDiff)(diff, (0, utils_1.resolveDialect)(provider.providerLabel));
             for (const sql of rendered.up)
                 console.log(sql);
         };
