@@ -197,9 +197,7 @@ class PrometheusSqlLogger {
             return sql;
         let s = sql;
         // redact single- and double-quoted strings using safe regexps (no unmatched groups)
-        s = s
-            .replace(/'(?:[^']|''+)*'/g, "'[REDACTED]'")
-            .replace(/"(?:[^"\\]|\\.)*"/g, '"[REDACTED]"');
+        s = s.replace(/'(?:[^']|''+)*'/g, "'[REDACTED]'").replace(/"(?:[^"\\]|\\.)*"/g, '"[REDACTED]"');
         for (const re of this.maskPatterns) {
             try {
                 s = s.replace(re, '[REDACTED]');
