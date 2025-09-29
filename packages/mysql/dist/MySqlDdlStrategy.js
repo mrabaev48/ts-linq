@@ -35,7 +35,8 @@ class MySqlDdlStrategy {
     }
     generateColumnDefinition(column) {
         if (column.isComputed && column.computedExpression) {
-            const storage = column.computedStorage;
+            const storage = column
+                .computedStorage;
             if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
                 console.warn(`MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`);
             }

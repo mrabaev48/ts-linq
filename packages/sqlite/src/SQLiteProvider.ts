@@ -1,6 +1,4 @@
-import {
-  DatabaseProvider,
-  MetadataStorage,
+import type {
   EntityMetadata,
   ColumnMetadata,
   RetryPolicy,
@@ -8,12 +6,16 @@ import {
   OrmMiddleware,
   SoftDeleteOptions,
   SqlLogger,
+  SqlDialect
+} from '@ts-linq/core';
+import {
+  DatabaseProvider,
+  MetadataStorage,
   DatabaseError,
   UniqueConstraintError,
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
-  SqlHelper,
-  SqlDialect
+  SqlHelper
 } from '@ts-linq/core';
 import { SQLiteDialect } from './SQLiteDialect';
 import { SQLiteDdlStrategy } from './SQLiteDdlStrategy';
@@ -26,7 +28,11 @@ import { SQLiteDdlStrategy } from './SQLiteDdlStrategy';
  * Note: sqlite3 driver is callback-based; provider wraps calls into Promises.
  */
 interface Sqlite3DatabaseLike {
-  run(sql: string, params?: unknown, cb?: (this: { changes: number }, err: Error | null) => void): void;
+  run(
+    sql: string,
+    params?: unknown,
+    cb?: (this: { changes: number }, err: Error | null) => void
+  ): void;
   all(sql: string, params: unknown[], cb: (err: Error | null, rows: unknown[]) => void): void;
   close(cb: (err?: Error | null) => void): void;
 }
@@ -399,7 +405,8 @@ export class SQLiteProvider extends DatabaseProvider {
     versionCol?: ColumnMetadata
   ): { sql: string; params: SqlParameter[] } {
     const updatableColumns = metadata.columns.filter(
-      (col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated && !col.isComputed
+      (col) =>
+        !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated && !col.isComputed
     );
 
     if (updatableColumns.length === 0) {

@@ -15,7 +15,9 @@ class CompositeSqlLoggerFactory {
                 if (l)
                     delegates.push(l);
             }
-            catch { /* ignore */ }
+            catch {
+                /* ignore */
+            }
         }
         for (const s of this.statics)
             if (s)

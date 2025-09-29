@@ -1,4 +1,4 @@
-import { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
+import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
 /**
  * PostgreSQL implementation of SqlDialect.
  *

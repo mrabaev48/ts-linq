@@ -1,10 +1,12 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnOptions } from './Column';
 
-function isStage3FieldContext(
-  x: unknown
-): x is { kind: 'field'; name: string | symbol; addInitializer?: (fn: (this: unknown) => void) => void } {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in (x as object);
+function isStage3FieldContext(x: unknown): x is {
+  kind: 'field';
+  name: string | symbol;
+  addInitializer?: (fn: (this: unknown) => void) => void;
+} {
+  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
 
 export interface PrimaryKeyOptions extends ColumnOptions {
@@ -20,9 +22,18 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
     const ctx = propOrContext;
     const name = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
-      const columnMeta = {
+      const columnMeta: {
+        propertyName: string;
+        columnName: string;
+        type: string;
+        nullable: boolean;
+        isGenerated: boolean;
+        isVersion: boolean;
+        isBranded?: boolean;
+        brand?: string;
+      } = {
         propertyName: name,
         columnName: options?.name || name,
         type: options?.type || 'INTEGER',
@@ -30,18 +41,29 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
         isGenerated: !!options?.autoIncrement,
         isVersion: !!options?.version
       } as const;
-      MetadataStorage.addColumn(ctor, columnMeta as any);
-      const existingCols: any[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
+      MetadataStorage.addColumn(ctor, columnMeta);
+      const existingCols: Array<{
+        propertyName: string;
+        columnName: string;
+        type: string;
+        nullable: boolean;
+        isGenerated: boolean;
+        isVersion: boolean;
+        isBranded?: boolean;
+        brand?: string;
+      }> = Reflect.getOwnMetadata('orm:columns', ctor) || [];
       existingCols.push(columnMeta);
       Reflect.defineMetadata('orm:columns', existingCols, ctor);
 
       MetadataStorage.addPrimaryKey(ctor, name);
       if (options.branded) {
         const meta = MetadataStorage.getEntity(ctor);
-        const col = meta?.columns.find((c) => c.propertyName === name);
+        const col = meta?.columns.find((c) => c.propertyName === name) as
+          | typeof columnMeta
+          | undefined;
         if (col) {
-          (col as any).isBranded = true;
-          (col as any).brand = ctor.name;
+          col.isBranded = true;
+          col.brand = ctor.name;
         }
       }
       const existingPks: string[] = Reflect.getOwnMetadata('orm:primaryKeys', ctor) || [];
@@ -50,4 +72,3 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
     });
   };
 }
-

@@ -36,7 +36,11 @@ class TableBuilder {
     this.name = name;
   }
 
-  column(name: string, type: string, opts?: { nullable?: boolean; defaultValue?: unknown; defaultExpression?: string }): this {
+  column(
+    name: string,
+    type: string,
+    opts?: { nullable?: boolean; defaultValue?: unknown; defaultExpression?: string }
+  ): this {
     this.columns.push({
       name,
       type,

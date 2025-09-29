@@ -44,7 +44,7 @@ export const dbContextProvider = {
     // connect lazily inside ensureCreated() or here if you prefer
     const ctx = new AppDbContext({ provider });
     return ctx;
-  },
+  }
 };
 ```
 
@@ -60,20 +60,26 @@ import { DB_CONTEXT } from './database.tokens';
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true })],
   providers: [dbContextProvider],
-  exports: [dbContextProvider],
+  exports: [dbContextProvider]
 })
 export class DatabaseModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(async (req: any, res: any, next: () => void) => {
-      // On response finish, try disposing request DbContext if present
-      res.on('finish', async () => {
-        const ctx: { dispose?: () => Promise<void> } | undefined = req[DB_CONTEXT];
-        if (ctx?.dispose) {
-          try { await ctx.dispose(); } catch { /* ignore */ }
-        }
-      });
-      next();
-    }).forRoutes('*');
+    consumer
+      .apply(async (req: any, res: any, next: () => void) => {
+        // On response finish, try disposing request DbContext if present
+        res.on('finish', async () => {
+          const ctx: { dispose?: () => Promise<void> } | undefined = req[DB_CONTEXT];
+          if (ctx?.dispose) {
+            try {
+              await ctx.dispose();
+            } catch {
+              /* ignore */
+            }
+          }
+        });
+        next();
+      })
+      .forRoutes('*');
   }
 }
 ```
@@ -127,7 +133,9 @@ import { DbContextInterceptor } from './dbcontext.interceptor';
 export class UserController {
   constructor(private readonly users: UserService) {}
   @Get()
-  async list() { return await this.users.listUsers(); }
+  async list() {
+    return await this.users.listUsers();
+  }
 }
 ```
 
@@ -143,7 +151,7 @@ import { UserController } from './user.controller';
 @Module({
   imports: [DatabaseModule],
   controllers: [UserController],
-  providers: [UserService],
+  providers: [UserService]
 })
 export class AppModule {}
 ```
@@ -158,5 +166,3 @@ Notes
 
 - Scope.REQUEST provides isolation per request. For background jobs, register a separate module using Scope.DEFAULT (singleton) or create/dispose contexts within the job handler.
 - Consider adding a health check that validates DB connectivity via `ctx.provider.connect()`.
-
-

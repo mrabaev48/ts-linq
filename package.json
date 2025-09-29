@@ -90,11 +90,11 @@
     "test:postgres": "jest --selectProjects postgres",
     "test:mysql": "jest --selectProjects mysql",
     "test:mssql": "jest --selectProjects mssql",
-    "test:sqlite:db": "RUN_DB_TESTS=1 jest tests/db/sqlite.* --runInBand --detectOpenHandles",
-    "test:postgres:db": "RUN_DB_TESTS=1 jest tests/db/postgres.* --runInBand --detectOpenHandles",
-    "test:mysql:db": "RUN_DB_TESTS=1 jest tests/db/mysql.* --runInBand --detectOpenHandles",
-    "test:mssql:db": "RUN_DB_TESTS=1 jest tests/db/mssql.* --runInBand --detectOpenHandles",
-    "test:db:all": "RUN_DB_TESTS=1 jest tests/db/*.test.ts --runInBand --detectOpenHandles"
+    "test:sqlite:db": "RUN_DB_TESTS=1 jest packages/sqlite/tests/*integration*.test.ts --runInBand --detectOpenHandles",
+    "test:postgres:db": "RUN_DB_TESTS=1 jest packages/postgres/tests/*integration*.test.ts --runInBand --detectOpenHandles",
+    "test:mysql:db": "RUN_DB_TESTS=1 jest packages/mysql/tests/*integration*.test.ts --runInBand --detectOpenHandles",
+    "test:mssql:db": "RUN_DB_TESTS=1 jest packages/mssql/tests/*integration*.test.ts --runInBand --detectOpenHandles",
+    "test:db:all": "RUN_DB_TESTS=1 jest packages/**/tests/*integration*.test.ts --runInBand --detectOpenHandles"
   },
   "keywords": [
     "orm",

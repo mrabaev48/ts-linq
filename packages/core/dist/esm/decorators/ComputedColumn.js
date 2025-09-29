@@ -22,11 +22,11 @@ export function ComputedColumn(options) {
                 isGenerated: false,
                 isVersion: false,
                 isComputed: true,
-                computedExpression: options.expression,
+                computedExpression: options.expression
             };
             MetadataStorage.addColumn(ctor, columnMetadata);
             const existing = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-            const existingColIndex = existing.findIndex(c => c.propertyName === name);
+            const existingColIndex = existing.findIndex((c) => c.propertyName === name);
             if (existingColIndex > -1) {
                 existing[existingColIndex] = columnMetadata;
             }

@@ -1,113 +1,76 @@
 #!/usr/bin/env node
 /* Minimal CLI: prints SQLite diff SQL using current metadata. */
 import 'reflect-metadata';
-import { DiffMigrationGenerator, SchemaSnapshotBuilder, SchemaSnapshotSerializer, compareSchemas, generateMigrationFromDiff } from '@ts-linq/core';
-import { SQLiteProvider } from '@ts-linq/sqlite';
-import * as fs from 'fs';
-import * as path from 'path';
+//
+import { InitCommand } from './commands/InitCommand';
+import { GenerateEntityCommand } from './commands/GenerateEntityCommand';
+import { GenerateEntitiesCommand } from './commands/GenerateEntitiesCommand';
+import { GenerateMigrationCommand } from './commands/GenerateMigrationCommand';
+import { SchemaExportCommand } from './commands/SchemaExportCommand';
+import { SchemaDiffCommand } from './commands/SchemaDiffCommand';
+import { SchemaApplyCommand } from './commands/SchemaApplyCommand';
+import { SchemaValidateCommand } from './commands/SchemaValidateCommand';
+import { MigrationsStatusCommand } from './commands/MigrationsStatusCommand';
+import { MigrationsDryRunCommand } from './commands/MigrationsDryRunCommand';
+import { MigrationsRollbackCommand } from './commands/MigrationsRollbackCommand';
+import { MigrationsValidateCommand } from './commands/MigrationsValidateCommand';
+import { SeedCommand } from './commands/SeedCommand';
+//
+import { CommandRegistry } from './CommandRegistry';
+import type { Command, DbCommand } from './commands/Command';
+import { createProviderFromEnv } from './provider-factory';
+
+// provider-factory and config helpers are in separate modules now
 
 async function main() {
-  const [, , cmd, arg1, arg2] = process.argv;
-  const conn = process.env.SQLITE_URL || ':memory:';
-  const provider = new SQLiteProvider(conn);
-  await provider.connect();
-  const gen = new DiffMigrationGenerator(provider);
-  const steps = await gen.generate();
-  if (cmd === 'apply-diff' || cmd === 'migrate') {
-    for (const step of steps) {
-      if (!step.sql.trim().startsWith('--')) {
-        // eslint-disable-next-line no-await-in-loop
-        await provider.executeNonQuery(step.sql);
-      }
-    }
-    console.log(`Applied ${steps.length} step(s).`);
-  } else if (cmd === 'rollback') {
-    console.warn(
-      'Rollback is not supported for diff-based migrations. Please provide explicit down migrations.'
+  const argv = process.argv.slice(2);
+  const cmdName = argv[0];
+
+  const registry = new CommandRegistry([
+    new InitCommand(),
+    new GenerateEntityCommand(),
+    new GenerateEntitiesCommand(),
+    new GenerateMigrationCommand(),
+    new SchemaExportCommand(),
+    new SchemaDiffCommand(),
+    new SchemaApplyCommand(),
+    new SchemaValidateCommand(),
+    new MigrationsStatusCommand(),
+    new MigrationsDryRunCommand(),
+    new MigrationsRollbackCommand(),
+    new MigrationsValidateCommand(),
+    new SeedCommand()
+  ]);
+  const command = registry.get(cmdName);
+  if (!command) {
+    const lines = registry
+      .listCatalog()
+      .map(
+        (c) =>
+          `  ${c.name}${c.aliases?.length ? ` (aliases: ${c.aliases.join(', ')})` : ''} - ${c.describe}`
+      );
+    console.error(
+      `Unknown command: ${cmdName || '(none)'}\nAvailable commands:\n${lines.join('\n')}`
     );
     process.exitCode = 2;
-  } else if (cmd === 'generate') {
-    const name = (arg1 || 'Migration').replace(/\s+/g, '_');
-    const ts = new Date()
-      .toISOString()
-      .replace(/[-:TZ.]/g, '')
-      .slice(0, 14);
-    const dir = path.resolve(process.cwd(), 'migrations');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const file = path.join(dir, `${ts}_${name}.ts`);
-    const template = `import { Migration } from '@ts-linq/core';\n\nexport class ${name} extends Migration {\n  protected get name() { return '${name}'; }\n  protected get version() { return '${ts}'; }\n  public async up(): Promise<void> {\n    // TODO: write your DDL here\n  }\n  public async down(): Promise<void> {\n    // TODO: write your rollback here\n  }\n}\n`;
-    fs.writeFileSync(file, template, 'utf8');
-    console.log(`Created ${file}`);
-  } else if (cmd === 'seed') {
-    const sqlFile = arg1 || path.resolve(process.cwd(), 'seeds.sql');
-    if (!fs.existsSync(sqlFile)) {
-      console.error(`Seed file not found: ${sqlFile}`);
-      process.exitCode = 2;
-    } else {
-      const text = fs.readFileSync(sqlFile, 'utf8');
-      const statements = text
-        .split(';')
-        .map((stmt) => stmt.trim())
-        .filter(Boolean);
-      for (const statement of statements) {
-        // eslint-disable-next-line no-await-in-loop
-        await provider.executeNonQuery(statement);
-      }
-      console.log(`Applied ${statements.length} seed statements from ${sqlFile}`);
-    }
-  } else if (cmd === 'validate:env') {
-    const required = ['NODE_ENV'];
-    const missing = required.filter((k) => !process.env[k]);
-    if (missing.length) {
-      console.error(`Missing required environment variables: ${missing.join(', ')}`);
-      process.exitCode = 2;
-    } else {
-      console.log('Environment validation: OK');
-    }
-  } else if (cmd === 'schema:export') {
-    const out = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
-    const snapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
-    const json = new SchemaSnapshotSerializer().serialize(snapshot);
-    fs.writeFileSync(out, json, 'utf8');
-    console.log(`Schema snapshot saved to ${out}`);
-  } else if (cmd === 'schema:diff') {
-    const file = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
-    if (!fs.existsSync(file)) {
-      console.error(`Snapshot file not found: ${file}`);
-      process.exitCode = 2;
-    } else {
-      const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
-      const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
-      const diff = compareSchemas(target, actual);
-      const dialect = (provider as any).providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
-      const rendered = generateMigrationFromDiff(diff, dialect);
-      for (const sql of rendered.up) console.log(sql);
-    }
-  } else if (cmd === 'schema:apply') {
-    const file = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
-    if (!fs.existsSync(file)) {
-      console.error(`Snapshot file not found: ${file}`);
-      process.exitCode = 2;
-    } else {
-      const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
-      const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
-      const diff = compareSchemas(target, actual);
-      const dialect = (provider as any).providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
-      const rendered = generateMigrationFromDiff(diff, dialect);
-      let applied = 0;
-      for (const sql of rendered.up) {
-        if (!sql.trim().startsWith('--')) {
-          // eslint-disable-next-line no-await-in-loop
-          await provider.executeNonQuery(sql);
-          applied++;
-        }
-      }
-      console.log(`Applied ${applied} step(s) from snapshot`);
-    }
-  } else {
-    for (const step of steps) console.log(step.sql);
+    return;
   }
-  await provider.disconnect();
+
+  // Determine command type: DbCommand vs Command
+  const maybeDb = command as DbCommand;
+  const isDbCommand = typeof maybeDb.runDb === 'function';
+  if (isDbCommand) {
+    const provider = createProviderFromEnv();
+    try {
+      await provider.connect();
+      await maybeDb.runDb(provider, argv);
+    } finally {
+      await provider.disconnect();
+    }
+    return;
+  }
+  const simple = command as Command;
+  await simple.run(argv);
 }
 
 main().catch((err) => {

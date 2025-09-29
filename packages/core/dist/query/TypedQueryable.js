@@ -125,6 +125,23 @@ class TypedQueryable {
         const resultQueryable = this._queryable.thenByDescending(keySelector);
         return new TypedQueryable(resultQueryable);
     }
+    /**
+     * Paginate by page number and size (typed proxy).
+     */
+    async paginate(page, size) {
+        return await this._queryable.paginate(page, size);
+    }
+    /**
+     * Keyset pagination helper (typed proxy).
+     */
+    async keysetPaginate(key, after, size) {
+        return await this._queryable.keysetPaginate(key, after, size);
+    }
+    /** Attach AbortSignal (typed proxy) */
+    withAbort(signal) {
+        const q = this._queryable.withAbort(signal);
+        return new TypedQueryable(q);
+    }
     // Execution methods that return results
     /**
      * Type-safe first() with proper return type.

@@ -3,7 +3,8 @@ export class PostgresDdlStrategy {
         const columnSqls = entityMetadata.columns.map((column) => {
             if (column.isComputed && column.computedExpression) {
                 // PostgreSQL supports only STORED
-                const storage = column.computedStorage;
+                const storage = column
+                    .computedStorage;
                 if (storage && storage !== 'STORED') {
                     console.warn(`Postgres: computedStorage='${storage}' is not supported; coercing to STORED for ${column.columnName}`);
                 }
@@ -48,7 +49,9 @@ export class PostgresDdlStrategy {
         const columnsListSql = parts.join(', ');
         const whereSql = index.where ? ` WHERE ${index.where}` : '';
         const withSql = index.withParams && Object.keys(index.withParams).length > 0
-            ? ` WITH (${Object.entries(index.withParams).map(([k, v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`).join(', ')})`
+            ? ` WITH (${Object.entries(index.withParams)
+                .map(([k, v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`)
+                .join(', ')})`
             : '';
         return `CREATE ${uniqueKeyword}INDEX${concurrently} IF NOT EXISTS "${index.name}" ON "${table}"${using} (${columnsListSql})${withSql}${whereSql}`;
     }

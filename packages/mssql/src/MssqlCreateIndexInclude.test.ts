@@ -9,5 +9,3 @@ test('MSSQL: index with INCLUDE(...)', () => {
   });
   expect(sql).toContain('INCLUDE (email, createdAt)');
 });
-
-

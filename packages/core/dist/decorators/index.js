@@ -19,21 +19,23 @@ function isStage3ClassContext(x) {
     return !!x && typeof x === 'object';
 }
 function normalizeIndexOptions(input) {
-    const built = input instanceof IndexOptionsBuilder_1.IndexOptionsBuilder ? input.build() : {
-        name: input.name,
-        columns: input.columns,
-        unique: input.unique ?? false,
-        where: input.where,
-        orders: input.orders,
-        expressions: input.expressions,
-        collations: input.collations,
-        nulls: input.nulls,
-        using: input.using,
-        concurrently: input.concurrently,
-        withParams: input.withParams,
-        mysqlVisibility: input.mysqlVisibility,
-        include: input.include
-    };
+    const built = input instanceof IndexOptionsBuilder_1.IndexOptionsBuilder
+        ? input.build()
+        : {
+            name: input.name,
+            columns: input.columns,
+            unique: input.unique ?? false,
+            where: input.where,
+            orders: input.orders,
+            expressions: input.expressions,
+            collations: input.collations,
+            nulls: input.nulls,
+            using: input.using,
+            concurrently: input.concurrently,
+            withParams: input.withParams,
+            mysqlVisibility: input.mysqlVisibility,
+            include: input.include
+        };
     return built;
 }
 function Index(options) {

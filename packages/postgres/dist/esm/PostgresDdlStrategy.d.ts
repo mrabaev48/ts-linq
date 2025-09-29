@@ -1,4 +1,4 @@
-import { EntityMetadata } from '@ts-linq/core';
+import type { EntityMetadata } from '@ts-linq/core';
 export declare class PostgresDdlStrategy {
     generateCreateTableSql(entityMetadata: EntityMetadata): string;
     generateCreateIndexSql(table: string, index: {

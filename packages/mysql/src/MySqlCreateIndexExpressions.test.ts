@@ -10,5 +10,3 @@ test('MySQL: expression-based index (functional)', () => {
   });
   expect(sql).toContain('(id, (LOWER(email)))');
 });
-
-

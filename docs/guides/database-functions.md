@@ -49,13 +49,13 @@ id!: string;
 
 Compatibility table (common functions)
 
-| Purpose | PostgreSQL | MySQL | SQLite | MSSQL |
-| --- | --- | --- | --- | --- |
-| Current timestamp | CURRENT_TIMESTAMP | CURRENT_TIMESTAMP | CURRENT_TIMESTAMP | SYSDATETIME() (or GETDATE()) |
-| UUID v4 | gen_random_uuid() / uuid_generate_v4() | UUID() | lower(hex(randomblob(16))) | NEWID() |
-| Random | random() | RAND() | random() | RAND() |
-| String concat | 'a' || 'b' | CONCAT('a','b') or 'a''b' | 'a' || 'b' | 'a' + 'b' or CONCAT('a','b') |
-| JSON extract | ->, ->>, jsonb_* | JSON_EXTRACT(), JSON_* | json_extract(), json_* | JSON_VALUE(), JSON_QUERY() |
+| Purpose           | PostgreSQL                             | MySQL                   | SQLite                     | MSSQL                        |
+| ----------------- | -------------------------------------- | ----------------------- | -------------------------- | ---------------------------- | --- | --- | --- | ---------------------------- |
+| Current timestamp | CURRENT_TIMESTAMP                      | CURRENT_TIMESTAMP       | CURRENT_TIMESTAMP          | SYSDATETIME() (or GETDATE()) |
+| UUID v4           | gen_random_uuid() / uuid_generate_v4() | UUID()                  | lower(hex(randomblob(16))) | NEWID()                      |
+| Random            | random()                               | RAND()                  | random()                   | RAND()                       |
+| String concat     | 'a'                                    |                         | 'b'                        | CONCAT('a','b') or 'a''b'    | 'a' |     | 'b' | 'a' + 'b' or CONCAT('a','b') |
+| JSON extract      | ->, ->>, jsonb\_\*                     | JSON*EXTRACT(), JSON*\* | json*extract(), json*\*    | JSON_VALUE(), JSON_QUERY()   |
 
 Notes & limitations
 
@@ -74,7 +74,12 @@ MetadataStorage.addColumn(AuditLog, {
   columnName: 'created_at',
   type: 'DATETIME',
   nullable: false,
-  defaultExpressionDialect: { postgresql: 'CURRENT_TIMESTAMP', mysql: 'CURRENT_TIMESTAMP', sqlite: 'CURRENT_TIMESTAMP', mssql: 'SYSDATETIME()' }
+  defaultExpressionDialect: {
+    postgresql: 'CURRENT_TIMESTAMP',
+    mysql: 'CURRENT_TIMESTAMP',
+    sqlite: 'CURRENT_TIMESTAMP',
+    mssql: 'SYSDATETIME()'
+  }
 });
 ```
 
@@ -86,7 +91,12 @@ MetadataStorage.addColumn(User, {
   columnName: 'id',
   type: 'UUID',
   nullable: false,
-  defaultExpressionDialect: { postgresql: 'gen_random_uuid()', mysql: 'UUID()', sqlite: "lower(hex(randomblob(16)))", mssql: 'NEWID()' }
+  defaultExpressionDialect: {
+    postgresql: 'gen_random_uuid()',
+    mysql: 'UUID()',
+    sqlite: 'lower(hex(randomblob(16)))',
+    mssql: 'NEWID()'
+  }
 });
 ```
 
@@ -98,7 +108,12 @@ MetadataStorage.addColumn(Config, {
   columnName: 'settings',
   type: 'JSON',
   nullable: false,
-  defaultExpressionDialect: { postgresql: "'{}'::jsonb", mysql: "JSON_OBJECT()", sqlite: "json('{}')", mssql: "JSON_QUERY('{}')" }
+  defaultExpressionDialect: {
+    postgresql: "'{}'::jsonb",
+    mysql: 'JSON_OBJECT()',
+    sqlite: "json('{}')",
+    mssql: "JSON_QUERY('{}')"
+  }
 });
 ```
 
@@ -107,5 +122,3 @@ Best practices
 - Prefer `defaultExpressionDialect` for portability; supply all target engines your app supports.
 - Keep expressions simple and engine‑native; avoid relying on functions that vary semantically across engines.
 - For critical invariants, duplicate with DB constraints (NOT NULL, CHECK, UNIQUE) even if defaults are provided.
-
-

@@ -670,8 +670,12 @@ export class Queryable {
             }
             const entity = new this._entityClass();
             for (const column of metadata.columns) {
-                if (row.hasOwnProperty(column.columnName)) {
-                    entity[column.propertyName] = this.convertValue(row[column.columnName], column.type);
+                const r = row;
+                const val = r.hasOwnProperty(column.columnName)
+                    ? r[column.columnName]
+                    : r[column.propertyName];
+                if (val !== undefined) {
+                    entity[column.propertyName] = this.convertValue(val, column.type);
                 }
             }
             this._entityCache.set(this._entityClass, idValue, entity);
@@ -693,7 +697,9 @@ export class Queryable {
                     const { warnIfLoggerDebug } = require('metrics-safe');
                     warnIfLoggerDebug('notify:entityMaterialized', e);
                 }
-                catch { /* ignore */ }
+                catch {
+                    /* ignore */
+                }
             }
             // notify middleware via provider hook
             try {
@@ -704,15 +710,21 @@ export class Queryable {
                     const { warnIfLoggerDebug } = require('metrics-safe');
                     warnIfLoggerDebug('notify:entityMaterialized', e);
                 }
-                catch { /* ignore */ }
+                catch {
+                    /* ignore */
+                }
             }
             return entity;
         }
         const entity = new this._entityClass();
         if (metadata) {
             for (const column of metadata.columns) {
-                if (row.hasOwnProperty(column.columnName)) {
-                    entity[column.propertyName] = this.convertValue(row[column.columnName], column.type);
+                const r = row;
+                const val = r.hasOwnProperty(column.columnName)
+                    ? r[column.columnName]
+                    : r[column.propertyName];
+                if (val !== undefined) {
+                    entity[column.propertyName] = this.convertValue(val, column.type);
                 }
             }
         }
@@ -729,7 +741,9 @@ export class Queryable {
                 const { warnIfLoggerDebug } = require('metrics-safe');
                 warnIfLoggerDebug('notify:entityMaterialized', e);
             }
-            catch { /* ignore */ }
+            catch {
+                /* ignore */
+            }
         }
         return entity;
     }
@@ -764,7 +778,7 @@ export class Queryable {
             throw new Error('Operation aborted');
         // For efficiency, we'll check if any element does NOT satisfy the condition
         // If none exist that violate it, then all satisfy it
-        const violatingElement = await this.where(entity => !predicate(entity)).firstOrDefault();
+        const violatingElement = await this.where((entity) => !predicate(entity)).firstOrDefault();
         return violatingElement === null;
     }
     /** Calculate average of a numeric property (EF-style) */
@@ -774,7 +788,7 @@ export class Queryable {
         const entities = await this.toArray();
         if (entities.length === 0)
             throw new Error('Sequence contains no elements');
-        const values = entities.map(e => {
+        const values = entities.map((e) => {
             const value = selector(e);
             return typeof value === 'number' ? value : Number(value) || 0;
         });
@@ -785,7 +799,7 @@ export class Queryable {
         if (this._abortSignal?.aborted)
             throw new Error('Operation aborted');
         const entities = await this.toArray();
-        const values = entities.map(e => {
+        const values = entities.map((e) => {
             const value = selector(e);
             return typeof value === 'number' ? value : Number(value) || 0;
         });
@@ -833,26 +847,26 @@ export class Queryable {
             if (itemId !== undefined && itemId !== null) {
                 // Use primary key based comparison for efficiency
                 const entities = await this.toArray();
-                return entities.some(entity => entity[pk] === itemId);
+                return entities.some((entity) => entity[pk] === itemId);
             }
         }
         // Fallback to deep equality comparison using JSON serialization
         const entities = await this.toArray();
         const itemJson = JSON.stringify(item);
-        return entities.some(entity => JSON.stringify(entity) === itemJson);
+        return entities.some((entity) => JSON.stringify(entity) === itemJson);
     }
     /** Get elements that are in this sequence but not in the other (EF-style) */
     except(other) {
         // Implement using client-side filtering since SQL EXCEPT support varies by provider
         const cloned = this.clone();
         // Add a custom filter to exclude elements that exist in the other sequence
-        const originalToArray = cloned.toArray;
+        const boundOriginal = cloned.toArray.bind(cloned);
         cloned.toArray = async function () {
-            const thisResults = await originalToArray.call(this);
+            const thisResults = await boundOriginal();
             const otherResults = await other.toArray();
             // Create a Set for O(1) lookup performance
-            const otherSet = new Set(otherResults.map(item => JSON.stringify(item)));
-            return thisResults.filter(item => !otherSet.has(JSON.stringify(item)));
+            const otherSet = new Set(otherResults.map((item) => JSON.stringify(item)));
+            return thisResults.filter((item) => !otherSet.has(JSON.stringify(item)));
         }.bind(cloned);
         return cloned;
     }
@@ -861,13 +875,13 @@ export class Queryable {
         // Implement using client-side filtering since SQL INTERSECT support varies by provider
         const cloned = this.clone();
         // Add a custom filter to include only elements that exist in both sequences
-        const originalToArray = cloned.toArray;
+        const boundOriginal2 = cloned.toArray.bind(cloned);
         cloned.toArray = async function () {
-            const thisResults = await originalToArray.call(this);
+            const thisResults = await boundOriginal2();
             const otherResults = await other.toArray();
             // Create a Set for O(1) lookup performance
-            const otherSet = new Set(otherResults.map(item => JSON.stringify(item)));
-            return thisResults.filter(item => otherSet.has(JSON.stringify(item)));
+            const otherSet = new Set(otherResults.map((item) => JSON.stringify(item)));
+            return thisResults.filter((item) => otherSet.has(JSON.stringify(item)));
         }.bind(cloned);
         return cloned;
     }
@@ -876,9 +890,9 @@ export class Queryable {
         // Implement proper concatenation by combining results in order
         const cloned = this.clone();
         // Override toArray to concatenate results while maintaining order
-        const originalToArray = cloned.toArray;
+        const boundOriginal3 = cloned.toArray.bind(cloned);
         cloned.toArray = async function () {
-            const thisResults = await originalToArray.call(this);
+            const thisResults = await boundOriginal3();
             const otherResults = await other.toArray();
             // Concatenate maintaining order: this sequence first, then other
             return [...thisResults, ...otherResults];

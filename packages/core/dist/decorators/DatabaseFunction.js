@@ -26,19 +26,24 @@ function DatabaseFunction(expression, nameOverride) {
                 isGenerated: false,
                 isVersion: false,
                 defaultExpression: expr,
-                defaultExpressionDialect: typeof expression === 'string' ? undefined : {
-                    sqlite: expression.sqlite,
-                    postgresql: expression.postgresql,
-                    mysql: expression.mysql,
-                    mssql: expression.mssql
-                }
+                defaultExpressionDialect: typeof expression === 'string'
+                    ? undefined
+                    : {
+                        sqlite: expression.sqlite,
+                        postgresql: expression.postgresql,
+                        mysql: expression.mysql,
+                        mssql: expression.mssql
+                    }
             };
             MetadataStorage_1.MetadataStorage.addColumn(ctor, columnMetadata);
             // Maintain rehydration store for Entity decorator
             const existing = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-            const existingColIndex = existing.findIndex(c => c.propertyName === name);
+            const existingColIndex = existing.findIndex((c) => c.propertyName === name);
             if (existingColIndex > -1) {
-                existing[existingColIndex] = { ...existing[existingColIndex], defaultExpression: expr };
+                existing[existingColIndex] = {
+                    ...existing[existingColIndex],
+                    defaultExpression: expr
+                };
             }
             else {
                 existing.push(columnMetadata);

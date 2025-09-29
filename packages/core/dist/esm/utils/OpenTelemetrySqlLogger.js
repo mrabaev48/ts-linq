@@ -1,14 +1,12 @@
 function safeRequireOtel() {
-    try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const otel = require('@opentelemetry/api');
-        if (otel && otel.trace && typeof otel.trace.getTracer === 'function')
-            return otel;
-    }
-    catch {
-        /* ignore */
-    }
-    return undefined;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const otel = require('@opentelemetry/api');
+    if (otel && otel.trace && typeof otel.trace.getTracer === 'function') return otel;
+  } catch {
+    /* ignore */
+  }
+  return undefined;
 }
 export {};
 /**

@@ -111,7 +111,9 @@ export interface ColumnMetadata {
   /** Raw SQL default expression (e.g., CURRENT_TIMESTAMP). Takes precedence over defaultValue. */
   defaultExpression?: string;
   /** Dialect-specific default expressions mapping; takes precedence over defaultExpression when rendering for that dialect. */
-  defaultExpressionDialect?: Partial<Record<'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string, string>>;
+  defaultExpressionDialect?: Partial<
+    Record<'sqlite' | 'postgresql' | 'mysql' | 'mssql' | string, string>
+  >;
   /** Max length for text columns. */
   length?: number;
   /** Numeric precision for decimals. */
@@ -597,12 +599,12 @@ export function isBrandedId<T extends string | number, EntityName extends string
  * Utility type to extract entity name from a branded ID type.
  * Useful for generic operations and metadata handling.
  */
-export type ExtractEntityName<T> = T extends EntityId<any, infer U> ? U : never;
+export type ExtractEntityName<T> = T extends EntityId<string | number, infer U> ? U : never;
 
 /**
  * Utility type to extract the underlying ID type from a branded ID.
  */
-export type ExtractIdType<T> = T extends EntityId<infer U, any> ? U : never;
+export type ExtractIdType<T> = T extends EntityId<infer U, string> ? U : never;
 
 /**
  * Make specified properties of T readonly (DX helper).

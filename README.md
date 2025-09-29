@@ -73,7 +73,10 @@ Example:
 @Entity()
 @Index('idx_users_active', ['active'], { where: 'active = true' })
 @Index('idx_users_email_ci', ['email'], { collations: { email: 'NOCASE' } })
-@Index('idx_users_created_ord', ['createdAt'], { orders: { createdAt: 'DESC' }, nulls: { createdAt: 'LAST' } })
+@Index('idx_users_created_ord', ['createdAt'], {
+  orders: { createdAt: 'DESC' },
+  nulls: { createdAt: 'LAST' }
+})
 @Index('idx_users_email_expr', [], { expressions: ['LOWER(email)'] })
 class User {
   @PrimaryKey() id!: number;
@@ -124,17 +127,20 @@ class User {
 Computed (generated) columns вычисляются базой по выражению и считаются read‑only в ORM. В отличие от `defaultExpression`, которое подставляет значение только при INSERT, computed пересчитывается на стороне БД при изменении зависимых столбцов.
 
 Правила и ограничения:
+
 - Computed колонки исключены из INSERT/UPDATE; попытка записи вызывает ValidationError.
 - Нельзя сочетать `isComputed` с `defaultValue`/`defaultExpression`/`isGenerated`/`isVersion`.
 - Миграции: изменение computed выполняется как drop+add (для SQLite прямой DROP COLUMN недоступен; требуется перестройка таблицы вне scope минимального диффа).
 
 Поддержка диалектов (storage):
+
 - PostgreSQL: только STORED (`GENERATED ALWAYS AS (...) STORED`).
 - MySQL ≥ 5.7: `VIRTUAL` и `STORED`.
 - SQLite ≥ 3.31: `VIRTUAL`/`STORED` (в проекте по умолчанию VIRTUAL; при старых версиях выводится предупреждение и/или тесты пропускаются).
 - MSSQL: `AS (...)` c опцией `PERSISTED` при необходимости материализации.
 
 Пример регистрации без декораторов:
+
 ```ts
 MetadataStorage.addEntity(Order, 'orders');
 MetadataStorage.addColumn(Order, {

@@ -63,9 +63,9 @@ export class LazyLoadingProxy {
         isLoaded: false,
         isLoading: false
       };
-      
+
       // Check if property is already loaded (has non-null value)
-      const currentValue = (entity as any)[relationship.propertyName];
+      const currentValue = (entity as Record<string, unknown>)[relationship.propertyName];
       if (currentValue !== undefined && currentValue !== null) {
         state[relationship.propertyName].isLoaded = true;
       }
@@ -80,8 +80,8 @@ export class LazyLoadingProxy {
         if (prop === LAZY_LOADING_STATE) return state;
 
         const propName = String(prop);
-        const relationship = metadata.relationships.find(r => r.propertyName === propName);
-        
+        const relationship = metadata.relationships.find((r) => r.propertyName === propName);
+
         if (relationship && !state[propName].isLoaded && !state[propName].isLoading) {
           // Start lazy loading this relationship
           state[propName].isLoading = true;
@@ -90,22 +90,23 @@ export class LazyLoadingProxy {
             entityClass,
             relationship,
             provider
-          ).then(result => {
-            // Set the loaded value
-            (target as any)[propName] = result;
-            state[propName].isLoaded = true;
-            state[propName].isLoading = false;
-            delete state[propName].loadingPromise;
-            return result;
-          }).catch(error => {
-            console.warn(`Failed to lazy load ${propName}:`, error);
-            state[propName].isLoading = false;
-            delete state[propName].loadingPromise;
-            return relationship.type === 'one-to-many' ? [] : null;
-          });
+          )
+            .then((result) => {
+              // Set the loaded value
+              (target as Record<string, unknown>)[propName] = result;
+              state[propName].isLoaded = true;
+              state[propName].isLoading = false;
+              delete state[propName].loadingPromise;
+              return result;
+            })
+            .catch((error) => {
+              console.warn(`Failed to lazy load ${propName}:`, error);
+              state[propName].isLoading = false;
+              delete state[propName].loadingPromise;
+              return relationship.type === 'one-to-many' ? [] : null;
+            });
 
-          // For synchronous access, return promise (EF style async access)
-          // Or return undefined and load in background
+          // Return promise so callers can await lazy loading explicitly
           return state[propName].loadingPromise;
         }
 
@@ -120,8 +121,8 @@ export class LazyLoadingProxy {
 
       set(target, prop, value, receiver) {
         const propName = String(prop);
-        const relationship = metadata.relationships.find(r => r.propertyName === propName);
-        
+        const relationship = metadata.relationships.find((r) => r.propertyName === propName);
+
         if (relationship) {
           // Mark as loaded when manually set
           state[propName].isLoaded = true;
@@ -133,8 +134,12 @@ export class LazyLoadingProxy {
       },
 
       has(target, prop) {
-        if (prop === LAZY_LOADING_PROXY || prop === LAZY_LOADING_TARGET || 
-            prop === LAZY_LOADING_PROVIDER || prop === LAZY_LOADING_STATE) {
+        if (
+          prop === LAZY_LOADING_PROXY ||
+          prop === LAZY_LOADING_TARGET ||
+          prop === LAZY_LOADING_PROVIDER ||
+          prop === LAZY_LOADING_STATE
+        ) {
           return true;
         }
         return Reflect.has(target, prop);
@@ -143,17 +148,22 @@ export class LazyLoadingProxy {
       ownKeys(target) {
         const keys = Reflect.ownKeys(target);
         // Don't include lazy loading symbols in enumeration
-        return keys.filter(key => 
-          key !== LAZY_LOADING_TARGET && 
-          key !== LAZY_LOADING_PROVIDER && 
-          key !== LAZY_LOADING_PROXY &&
-          key !== LAZY_LOADING_STATE
+        return keys.filter(
+          (key) =>
+            key !== LAZY_LOADING_TARGET &&
+            key !== LAZY_LOADING_PROVIDER &&
+            key !== LAZY_LOADING_PROXY &&
+            key !== LAZY_LOADING_STATE
         );
       },
 
       getOwnPropertyDescriptor(target, prop) {
-        if (prop === LAZY_LOADING_PROXY || prop === LAZY_LOADING_TARGET || 
-            prop === LAZY_LOADING_PROVIDER || prop === LAZY_LOADING_STATE) {
+        if (
+          prop === LAZY_LOADING_PROXY ||
+          prop === LAZY_LOADING_TARGET ||
+          prop === LAZY_LOADING_PROVIDER ||
+          prop === LAZY_LOADING_STATE
+        ) {
           return {
             configurable: true,
             enumerable: false,
@@ -174,14 +184,14 @@ export class LazyLoadingProxy {
     entityClass: new () => T,
     provider: DatabaseProvider
   ): T[] {
-    return entities.map(entity => this.create(entity, entityClass, provider));
+    return entities.map((entity) => this.create(entity, entityClass, provider));
   }
 
   /**
    * Check if an entity is a lazy loading proxy.
    */
   static isLazyProxy(entity: unknown): boolean {
-    return !!(entity as any)?.[LAZY_LOADING_PROXY];
+    return !!(entity as Record<string, unknown>)?.[LAZY_LOADING_PROXY as unknown as string];
   }
 
   /**
@@ -189,7 +199,7 @@ export class LazyLoadingProxy {
    */
   static getTarget<T>(entity: T): T {
     if (this.isLazyProxy(entity)) {
-      return (entity as any)[LAZY_LOADING_TARGET];
+      return (entity as Record<string, unknown>)[LAZY_LOADING_TARGET as unknown as string] as T;
     }
     return entity;
   }
@@ -199,7 +209,9 @@ export class LazyLoadingProxy {
    */
   static getLoadingState(entity: unknown): LazyLoadingState | null {
     if (this.isLazyProxy(entity)) {
-      return (entity as any)[LAZY_LOADING_STATE];
+      return (entity as Record<string, unknown>)[
+        LAZY_LOADING_STATE as unknown as string
+      ] as LazyLoadingState;
     }
     return null;
   }
@@ -229,7 +241,7 @@ export class LazyLoadingProxy {
     // Group entities by whether they're already proxies
     const proxiedEntities: T[] = [];
     const nonProxiedEntities: T[] = [];
-    
+
     for (const entity of entities) {
       if (this.isLazyProxy(entity)) {
         proxiedEntities.push(entity);
@@ -240,11 +252,11 @@ export class LazyLoadingProxy {
 
     // Preload for each specified property
     for (const propertyName of propertyNames) {
-      const relationship = metadata.relationships.find(r => r.propertyName === propertyName);
+      const relationship = metadata.relationships.find((r) => r.propertyName === propertyName);
       if (!relationship) continue;
 
       // Filter entities that need loading for this property
-      const entitiesToLoad = proxiedEntities.filter(entity => {
+      const entitiesToLoad = proxiedEntities.filter((entity) => {
         const state = this.getLoadingState(entity);
         return state && !state[propertyName].isLoaded && !state[propertyName].isLoading;
       });
@@ -278,8 +290,8 @@ export class LazyLoadingProxy {
       case 'many-to-one':
       case 'one-to-one': {
         const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
-        const foreignKeyValue = (entity as any)[foreignKeyName];
-        
+        const foreignKeyValue = (entity as Record<string, unknown>)[foreignKeyName];
+
         if (foreignKeyValue === undefined || foreignKeyValue === null) {
           return null;
         }
@@ -292,7 +304,7 @@ export class LazyLoadingProxy {
         const parentPkProperty = metadata.primaryKeys[0];
         if (!parentPkProperty) return [];
 
-        const parentPkValue = (entity as any)[parentPkProperty];
+        const parentPkValue = (entity as Record<string, unknown>)[parentPkProperty];
         if (parentPkValue === undefined || parentPkValue === null) {
           return [];
         }
@@ -337,15 +349,16 @@ export class LazyLoadingProxy {
       case 'one-to-one': {
         const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
         const fkValues = entities
-          .map(e => (e as any)[foreignKeyName])
-          .filter(v => v !== undefined && v !== null);
+          .map((e) => (e as Record<string, unknown>)[foreignKeyName])
+          .filter((v) => v !== undefined && v !== null);
         const uniqueFkValues = Array.from(new Set(fkValues));
-        
+
         if (uniqueFkValues.length === 0) break;
 
         const related = await provider.findWhereIn(
           targetCtor,
-          metadata.columns.find(c => c.propertyName === metadata.primaryKeys[0])?.columnName || metadata.primaryKeys[0],
+          metadata.columns.find((c) => c.propertyName === metadata.primaryKeys[0])?.columnName ||
+            metadata.primaryKeys[0],
           uniqueFkValues
         );
 
@@ -357,14 +370,15 @@ export class LazyLoadingProxy {
 
         for (const relatedEntity of relatedProxies) {
           const target = this.getTarget(relatedEntity);
-          byId.set((target as any)[targetPk], relatedEntity);
+          byId.set((target as Record<string, unknown>)[targetPk], relatedEntity);
         }
 
         for (const entity of entities) {
-          const fk = (entity as any)[foreignKeyName];
+          const fk = (entity as Record<string, unknown>)[foreignKeyName];
           if (fk !== undefined && fk !== null) {
-            (entity as any)[relationship.propertyName] = byId.get(fk) || null;
-            
+            (entity as Record<string, unknown>)[relationship.propertyName] =
+              (byId.get(fk) as unknown) || null;
+
             // Update loading state if it's a proxy
             const state = this.getLoadingState(entity);
             if (state) {
@@ -381,29 +395,31 @@ export class LazyLoadingProxy {
         if (!parentPkProperty) break;
 
         const parentIds = entities
-          .map(e => (e as any)[parentPkProperty])
-          .filter(v => v !== undefined && v !== null);
+          .map((e) => (e as Record<string, unknown>)[parentPkProperty])
+          .filter((v) => v !== undefined && v !== null);
         const uniqueParentIds = Array.from(new Set(parentIds));
-        
+
         if (uniqueParentIds.length === 0) break;
 
         const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
-        const related = await provider.findWhereIn(targetCtor, foreignKeyName, uniqueParentIds) || [];
+        const related =
+          (await provider.findWhereIn(targetCtor, foreignKeyName, uniqueParentIds)) || [];
         const relatedProxies = this.createMany(related, targetCtor, provider);
-        
+
         const grouped = new Map<unknown, unknown[]>();
         for (const relatedEntity of relatedProxies) {
           const target = this.getTarget(relatedEntity);
-          const key = (target as any)[foreignKeyName];
+          const key = (target as Record<string, unknown>)[foreignKeyName];
           const arr = grouped.get(key) || [];
           arr.push(relatedEntity);
           grouped.set(key, arr);
         }
 
         for (const entity of entities) {
-          const parentId = (entity as any)[parentPkProperty];
-          (entity as any)[relationship.propertyName] = grouped.get(parentId) || [];
-          
+          const parentId = (entity as Record<string, unknown>)[parentPkProperty];
+          (entity as Record<string, unknown>)[relationship.propertyName] =
+            (grouped.get(parentId) as unknown) || [];
+
           // Update loading state if it's a proxy
           const state = this.getLoadingState(entity);
           if (state) {

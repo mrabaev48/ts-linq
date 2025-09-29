@@ -37,7 +37,12 @@ class DiffMigrationGenerator {
                         nullable: !col.notnull
                     })),
                     primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
-                    indexes: indexes.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where })),
+                    indexes: indexes.map((i) => ({
+                        name: i.name,
+                        columns: i.columns,
+                        unique: i.unique,
+                        where: i.where
+                    })),
                     foreignKeys: []
                 });
             }
@@ -49,7 +54,12 @@ class DiffMigrationGenerator {
                 if (label === 'postgresql') {
                     const ins = new SchemaInspector_1.PostgresSchemaInspector(this.provider);
                     const list = await ins.getIndexes(table);
-                    return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+                    return list.map((i) => ({
+                        name: i.name,
+                        columns: i.columns,
+                        unique: i.unique,
+                        where: i.where
+                    }));
                 }
                 if (label === 'mysql') {
                     const ins = new SchemaInspector_1.MySqlSchemaInspector(this.provider);
@@ -59,7 +69,12 @@ class DiffMigrationGenerator {
                 if (label === 'mssql') {
                     const ins = new SchemaInspector_1.MssqlSchemaInspector(this.provider);
                     const list = await ins.getIndexes(table);
-                    return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+                    return list.map((i) => ({
+                        name: i.name,
+                        columns: i.columns,
+                        unique: i.unique,
+                        where: i.where
+                    }));
                 }
                 return [];
             };

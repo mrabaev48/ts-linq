@@ -5,50 +5,104 @@ module.exports = {
   testEnvironment: 'node',
   detectOpenHandles: true,
   forceExit: true,
-  roots: ['<rootDir>/packages', '<rootDir>/tests'],
+  roots: ['<rootDir>/packages'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
     '^.+\\.ts$': 'ts-jest'
   },
+  moduleNameMapper: {
+    '^@core/(.*)$': '<rootDir>/packages/core/src/$1',
+    '^@src/(.*)$': '<rootDir>/$1',
+    '^@ts-linq/sqlite$': '<rootDir>/packages/sqlite/src',
+    '^@ts-linq/postgres$': '<rootDir>/packages/postgres/src',
+    '^@ts-linq/mysql$': '<rootDir>/packages/mysql/src',
+    '^@ts-linq/mssql$': '<rootDir>/packages/mssql/src',
+    '^@ts-linq/core$': '<rootDir>/packages/core/src',
+    '^@ts-linq/core/(.*)$': '<rootDir>/packages/core/src/$1',
+    '^@ts-linq/sqlite/(.*)$': '<rootDir>/packages/sqlite/src/$1',
+    '^@ts-linq/postgres/(.*)$': '<rootDir>/packages/postgres/src/$1',
+    '^@ts-linq/mysql/(.*)$': '<rootDir>/packages/mysql/src/$1',
+    '^@ts-linq/mssql/(.*)$': '<rootDir>/packages/mssql/src/$1',
+    '^(\\.\\.\/)+src\/(.*)$': '<rootDir>/packages/core/src/$2',
+    '^(\\.\\.\/)+context\/(.*)$': '<rootDir>/packages/core/src/context/$2',
+    '^(\\.\\.\/)+metadata\/(.*)$': '<rootDir>/packages/core/src/metadata/$2',
+    '^(\\.\\.\/)+types$': '<rootDir>/packages/core/src/types',
+    '^(\\.\\.\/)+types\/(.*)$': '<rootDir>/packages/core/src/types/$2',
+    '^(\\.\\.\/)+DatabaseProvider$': '<rootDir>/packages/core/src/DatabaseProvider',
+    '^(\\.\\.\/)+query\/(.*)$': '<rootDir>/packages/core/src/query/$2',
+    '^(\\.\\.\/)+decorators\/(.*)$': '<rootDir>/packages/core/src/decorators/$2',
+    '^(\\.\\.\/)+migrations\/(.*)$': '<rootDir>/packages/core/src/migrations/$2',
+    '^(\\.\\.\/)+utils\/(.*)$': '<rootDir>/packages/core/src/utils/$2',
+
+    '^\\.\\.\\/src\\/providers\\/SQLiteProvider$': '<rootDir>/packages/sqlite/src/SQLiteProvider',
+    '^\\.\\.\\/src\\/providers\\/PostgresProvider$': '<rootDir>/packages/postgres/src/PostgresProvider',
+    '^\\.\\.\\/src\\/providers\\/MySqlProvider$': '<rootDir>/packages/mysql/src/MySqlProvider',
+    '^\\.\\.\\/src\\/providers\\/MssqlProvider$': '<rootDir>/packages/mssql/src/MssqlProvider',
+    '^\\.\\.\\/src\\/providers\\/DatabaseProvider$': '<rootDir>/packages/core/src/DatabaseProvider',
+    '^\\.\\.\\/src\\/providers\\/DdlBuilder$': '<rootDir>/packages/core/src/DdlBuilder',
+    '^\\.\\.\\/src\\/providers\\/sqlite\\/SQLiteDdlStrategy$': '<rootDir>/packages/sqlite/src/SQLiteDdlStrategy',
+    '^\\.\\.\\/src\\/providers\\/mysql\\/MySqlDdlStrategy$': '<rootDir>/packages/mysql/src/MySqlDdlStrategy',
+    '^\\.\\.\\/src\\/providers\\/mssql\\/MssqlDdlStrategy$': '<rootDir>/packages/mssql/src/MssqlDdlStrategy',
+    '^\\.\\.\\/src\\/providers\\/postgres\\/PostgresDdlStrategy$': '<rootDir>/packages/postgres/src/PostgresDdlStrategy',
+    '^\\.\\.\\/src\\/query\\/SQLiteDialect$': '<rootDir>/packages/sqlite/src/SQLiteDialect',
+    '^\\.\\.\\/src\\/query\\/MysqlDialect$': '<rootDir>/packages/mysql/src/MysqlDialect',
+    '^\\.\\.\\/src\\/query\\/PostgresDialect$': '<rootDir>/packages/postgres/src/PostgresDialect',
+    '^\\.\\.\\/src\\/query\\/MssqlDialect$': '<rootDir>/packages/mssql/src/MssqlDialect',
+    '^\\.\\.\\/src\\/utils\\/PrometheusSqlLogger$': '<rootDir>/packages/prometheus-sql-logger/src/logger/PrometheusSqlLogger'
+  },
   collectCoverageFrom: [
-    'packages/**/src/**/*.ts', 
-    '!packages/**/src/**/*.d.ts', 
+    'packages/**/src/**/*.ts',
+    '!packages/**/src/**/*.d.ts',
     '!packages/**/src/index.ts'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/packages/core/tests/setup.ts'],
   testTimeout: 10000,
   projects: [
     {
       displayName: 'core',
-      testMatch: ['<rootDir>/packages/core/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] },
+      testMatch: ['<rootDir>/packages/core/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }] }
     },
-    ...(includeIntegration ? [{
-      displayName: 'integration',
-      testMatch: ['<rootDir>/tests/db/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.tests.json' }] },
-    }] : []),
+    ...(includeIntegration
+      ? [
+          {
+            displayName: 'db',
+            testMatch: [
+              '<rootDir>/packages/sqlite/tests/**/*integration*.test.ts',
+              '<rootDir>/packages/postgres/tests/**/*integration*.test.ts',
+              '<rootDir>/packages/mysql/tests/**/*integration*.test.ts',
+              '<rootDir>/packages/mssql/tests/**/*integration*.test.ts'
+            ],
+            transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
+          }
+        ]
+      : []),
     {
       displayName: 'sqlite',
-      testMatch: ['<rootDir>/packages/sqlite/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
+      testMatch: ['<rootDir>/packages/sqlite/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/sqlite/tsconfig.json' }] }
     },
     {
       displayName: 'postgres',
-      testMatch: ['<rootDir>/packages/postgres/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
+      testMatch: ['<rootDir>/packages/postgres/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/postgres/tsconfig.json' }] }
     },
     {
       displayName: 'mysql',
-      testMatch: ['<rootDir>/packages/mysql/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
+      testMatch: ['<rootDir>/packages/mysql/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/mysql/tsconfig.json' }] }
     },
     {
       displayName: 'mssql',
-      testMatch: ['<rootDir>/packages/mssql/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
+      testMatch: ['<rootDir>/packages/mssql/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/mssql/tsconfig.json' }] }
+    },
+    {
+      displayName: 'cli',
+      testMatch: ['<rootDir>/packages/cli/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/cli/tsconfig.json' }] }
     }
   ]
 };

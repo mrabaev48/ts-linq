@@ -77,5 +77,3 @@ export class IndexOptionsBuilder {
     return { ...this.current };
   }
 }
-
-

@@ -534,11 +534,11 @@ export declare function isBrandedId<T extends string | number, EntityName extend
  * Utility type to extract entity name from a branded ID type.
  * Useful for generic operations and metadata handling.
  */
-export type ExtractEntityName<T> = T extends EntityId<any, infer U> ? U : never;
+export type ExtractEntityName<T> = T extends EntityId<string | number, infer U> ? U : never;
 /**
  * Utility type to extract the underlying ID type from a branded ID.
  */
-export type ExtractIdType<T> = T extends EntityId<infer U, any> ? U : never;
+export type ExtractIdType<T> = T extends EntityId<infer U, string> ? U : never;
 /**
  * Make specified properties of T readonly (DX helper).
  */

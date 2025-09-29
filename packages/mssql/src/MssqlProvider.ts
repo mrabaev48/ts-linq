@@ -1,5 +1,4 @@
-import {
-  DatabaseProvider,
+import type {
   EntityMetadata,
   ColumnMetadata,
   SqlLogger,
@@ -7,10 +6,13 @@ import {
   SqlParameter,
   OrmMiddleware,
   SoftDeleteOptions,
+  SqlDialect
+} from '@ts-linq/core';
+import {
+  DatabaseProvider,
   OptimisticConcurrencyError,
   MetadataStorage,
-  SqlHelper,
-  SqlDialect
+  SqlHelper
 } from '@ts-linq/core';
 import { MssqlDialect } from './MssqlDialect';
 import { MssqlDdlStrategy } from './MssqlDdlStrategy';

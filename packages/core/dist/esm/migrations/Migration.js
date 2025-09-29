@@ -3,13 +3,13 @@
  * Concrete migrations implement `up` and `down`, and expose name and version.
  */
 export class Migration {
-    /** Get the migration name. */
-    getName() {
-        return this.name;
-    }
-    /** Get the migration version identifier. */
-    getVersion() {
-        return this.version;
-    }
+  /** Get the migration name. */
+  getName() {
+    return this.name;
+  }
+  /** Get the migration version identifier. */
+  getVersion() {
+    return this.version;
+  }
 }
 //# sourceMappingURL=Migration.js.map

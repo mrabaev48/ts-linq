@@ -1,4 +1,5 @@
-import { EntityMetadata, ColumnMetadata, SqlHelper } from '@ts-linq/core';
+import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+import { SqlHelper } from '@ts-linq/core';
 
 export class SQLiteDdlStrategy {
   public generateCreateTableSql(metadata: EntityMetadata): string {
@@ -34,14 +35,22 @@ export class SQLiteDdlStrategy {
 
   public generateCreateIndexSql(
     tableName: string,
-    index: { name: string; columns: string[]; unique: boolean; where?: string; orders?: { [column: string]: 'ASC' | 'DESC' }; expressions?: string[]; collations?: { [column: string]: string } }
+    index: {
+      name: string;
+      columns: string[];
+      unique: boolean;
+      where?: string;
+      orders?: { [column: string]: 'ASC' | 'DESC' };
+      expressions?: string[];
+      collations?: { [column: string]: string };
+    }
   ): string {
     const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
     const whereSql = index.where ? ` WHERE ${index.where}` : '';
     const parts: string[] = [];
     for (const c of index.columns) {
-      const ord = index.orders?.[c] ? ` ${index.orders![c]}` : '';
-      const collate = index.collations?.[c] ? ` COLLATE ${index.collations![c]}` : '';
+      const ord = index.orders?.[c] ? ` ${index.orders[c]}` : '';
+      const collate = index.collations?.[c] ? ` COLLATE ${index.collations[c]}` : '';
       parts.push(`${c}${ord}${collate}`);
     }
     for (const e of index.expressions || []) parts.push(`(${e})`);
@@ -51,13 +60,18 @@ export class SQLiteDdlStrategy {
 
   public generateColumnDefinition(column: ColumnMetadata): string {
     if (column.isComputed && column.computedExpression) {
-      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage;
+      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
+        .computedStorage;
       const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
       if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
-        console.warn(`SQLite: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); using ${kind} for ${column.columnName}`);
+        console.warn(
+          `SQLite: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); using ${kind} for ${column.columnName}`
+        );
       }
       if (kind === 'STORED') {
-        console.warn(`SQLite: STORED generated columns require SQLite >= 3.31; falling back to VIRTUAL for ${column.columnName}`);
+        console.warn(
+          `SQLite: STORED generated columns require SQLite >= 3.31; falling back to VIRTUAL for ${column.columnName}`
+        );
       }
       return `${column.columnName} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
     }
@@ -67,7 +81,8 @@ export class SQLiteDdlStrategy {
       definition += `(${column.length})`;
     }
 
-    const isIntegerAutoincPk = column.isGenerated && this.mapTypeToSQLite(column.type) === 'INTEGER';
+    const isIntegerAutoincPk =
+      column.isGenerated && this.mapTypeToSQLite(column.type) === 'INTEGER';
     if (!isIntegerAutoincPk) {
       if (!column.nullable) {
         definition += ' NOT NULL';

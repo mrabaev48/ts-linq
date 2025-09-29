@@ -5,7 +5,7 @@ import 'reflect-metadata';
  * - name: Explicit table name. Defaults to the class name if omitted.
  */
 export interface EntityOptions {
-    name?: string;
+  name?: string;
 }
 /**
  * Class decorator that registers a class as a database entity (table).

@@ -7,7 +7,7 @@ test('MySQL: index visibility (INVISIBLE)', () => {
     unique: false,
     mysqlVisibility: 'INVISIBLE'
   });
-  expect(sql).toContain('CREATE INDEX IF NOT EXISTS idx_users_email_inv ON Users (email) INVISIBLE');
+  expect(sql).toContain(
+    'CREATE INDEX IF NOT EXISTS idx_users_email_inv ON Users (email) INVISIBLE'
+  );
 });
-
-
