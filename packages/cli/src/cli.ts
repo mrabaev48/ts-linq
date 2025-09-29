@@ -63,6 +63,9 @@ function tryLoadConfig(cwd: string): unknown | undefined {
   return undefined;
 }
 
+/**
+ * Normalize provider label to one of supported dialects.
+ */
 function resolveDialect(label: string): 'sqlite' | 'postgresql' | 'mysql' | 'mssql' {
   const allowed = ['sqlite', 'postgresql', 'mysql', 'mssql'] as const;
   return (allowed as readonly string[]).includes(label)
@@ -70,10 +73,12 @@ function resolveDialect(label: string): 'sqlite' | 'postgresql' | 'mysql' | 'mss
     : 'sqlite';
 }
 
+/** Ensure a directory exists. */
 function ensureDir(dirPath: string): void {
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
 }
 
+/** Write a file only if it does not exist yet. */
 function writeFileIfMissing(filePath: string, contents: string): void {
   if (!fs.existsSync(filePath)) {
     ensureDir(path.dirname(filePath));
@@ -81,6 +86,7 @@ function writeFileIfMissing(filePath: string, contents: string): void {
   }
 }
 
+/** Map native DB column type to portable ORM type string. */
 function normalizeDbType(label: string, dbTypeRaw: string): string {
   const t = String(dbTypeRaw || '').toLowerCase();
   if (label === 'sqlite') {
@@ -123,6 +129,7 @@ function normalizeDbType(label: string, dbTypeRaw: string): string {
   return 'TEXT';
 }
 
+/** Map portable ORM type to a TypeScript type. */
 function tsTypeForOrm(colType: string): string {
   switch (colType) {
     case 'INTEGER':
@@ -145,6 +152,9 @@ function tsTypeForOrm(colType: string): string {
   }
 }
 
+/**
+ * Inspect a single table and return columns with typing and PK flags.
+ */
 async function inspectTable(
   provider: DatabaseProvider,
   label: string,
@@ -249,6 +259,9 @@ async function inspectTable(
   }));
 }
 
+/**
+ * List user tables for current provider and optional schema.
+ */
 async function listAllTables(
   provider: DatabaseProvider,
   label: string,
@@ -280,6 +293,20 @@ async function listAllTables(
     [sch]
   );
   return rows.map((r) => r.TABLE_NAME);
+}
+
+function getFlag(argv: string[], flag: string): string | boolean | undefined {
+  const long = `--${flag}`;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === long) {
+      const next = argv[i + 1];
+      if (next && !next.startsWith('--')) return next;
+      return true;
+    }
+    if (a.startsWith(`${long}=`)) return a.slice(long.length + 1);
+  }
+  return undefined;
 }
 
 async function main() {
@@ -411,20 +438,6 @@ SQLITE_URL=file:app.db
     );
     process.exitCode = 2;
   } else if (cmd === 'generate') {
-    const getFlag = (flag: string): string | boolean | undefined => {
-      const long = `--${flag}`;
-      for (let i = 0; i < argv.length; i++) {
-        const a = argv[i];
-        if (a === long) {
-          const next = argv[i + 1];
-          if (next && !next.startsWith('--')) return next;
-          return true;
-        }
-        if (a.startsWith(`${long}=`)) return a.slice(long.length + 1);
-      }
-      return undefined;
-    };
-
     const toPascalCase = (s: string): string =>
       s
         .replace(/[-_\s]+/g, ' ')
@@ -442,10 +455,10 @@ SQLITE_URL=file:app.db
         return;
       }
       const entityName = toPascalCase(rawName);
-      const outDir = (getFlag('dir') as string) || path.join('src', 'entities');
-      const table = (getFlag('table') as string) || `${entityName.toLowerCase()}s`;
-      const fromTable = (getFlag('from-table') as string) || undefined;
-      const schema = (getFlag('schema') as string) || undefined;
+      const outDir = (getFlag(argv, 'dir') as string) || path.join('src', 'entities');
+      const table = (getFlag(argv, 'table') as string) || `${entityName.toLowerCase()}s`;
+      const fromTable = (getFlag(argv, 'from-table') as string) || undefined;
+      const schema = (getFlag(argv, 'schema') as string) || undefined;
       const destDir = path.resolve(process.cwd(), outDir);
       ensureDir(destDir);
       const destFile = path.join(destDir, `${entityName}.ts`);
@@ -483,8 +496,8 @@ SQLITE_URL=file:app.db
       return;
     } else if (arg1 === 'entities') {
       // Bulk reverse-engineering: generate entities for all tables in schema
-      const outDir = (getFlag('dir') as string) || path.join('src', 'entities');
-      const schema = (getFlag('schema') as string) || undefined;
+      const outDir = (getFlag(argv, 'dir') as string) || path.join('src', 'entities');
+      const schema = (getFlag(argv, 'schema') as string) || undefined;
       const label = resolveDialect(provider.providerLabel);
       const destDir = path.resolve(process.cwd(), outDir);
       ensureDir(destDir);
