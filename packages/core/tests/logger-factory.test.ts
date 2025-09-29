@@ -48,7 +48,6 @@ class Ctx extends DbContext {
         ':memory:',
         (loggerFactory || (extra?.factories?.[0] as any))?.create?.(p)
       ),
-      connectionString: ':memory:',
       loggerFactory,
       loggerFactories: extra?.factories,
       loggers: extra?.loggers

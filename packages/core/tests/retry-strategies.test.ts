@@ -33,7 +33,7 @@ class Ctx extends DbContext {
       undefined,
       policy
     ) as unknown as 'sqlite';
-    super({ provider, connectionString: ':memory:' });
+    super({ provider });
   }
 }
 

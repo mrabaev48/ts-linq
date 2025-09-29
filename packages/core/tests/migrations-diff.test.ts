@@ -18,8 +18,7 @@ class DCtx extends DbContext {
   public dusers!: DbSet<InstanceType<ReturnType<typeof defineEntities>['DUser']>>;
   constructor() {
     super({
-      provider: new ProviderStub(':memory:') as unknown as 'sqlite',
-      connectionString: ':memory:'
+      provider: new ProviderStub(':memory:') as unknown as 'sqlite'
     });
   }
 }

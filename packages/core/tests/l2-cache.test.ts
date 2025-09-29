@@ -17,7 +17,6 @@ class CacheCtx extends DbContext {
   constructor() {
     super({
       provider: new ProviderStub(':memory:') as unknown as 'sqlite',
-      connectionString: ':memory:',
       performance: { enableEntityCache: true, entityCacheSize: 100 }
     });
   }
