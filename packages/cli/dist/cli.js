@@ -14,6 +14,7 @@ const SchemaApplyCommand_1 = require("./commands/SchemaApplyCommand");
 const SchemaValidateCommand_1 = require("./commands/SchemaValidateCommand");
 const MigrationsStatusCommand_1 = require("./commands/MigrationsStatusCommand");
 const MigrationsDryRunCommand_1 = require("./commands/MigrationsDryRunCommand");
+const MigrationsRollbackCommand_1 = require("./commands/MigrationsRollbackCommand");
 const SeedCommand_1 = require("./commands/SeedCommand");
 //
 const CommandRegistry_1 = require("./CommandRegistry");
@@ -33,6 +34,7 @@ async function main() {
         new SchemaValidateCommand_1.SchemaValidateCommand(),
         new MigrationsStatusCommand_1.MigrationsStatusCommand(),
         new MigrationsDryRunCommand_1.MigrationsDryRunCommand(),
+        new MigrationsRollbackCommand_1.MigrationsRollbackCommand(),
         new SeedCommand_1.SeedCommand()
     ]);
     const command = registry.get(cmdName);
