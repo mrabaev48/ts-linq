@@ -2,6 +2,7 @@ import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MigrationRunner } from '@ts-linq/core';
 import type { DbCommand } from './Command';
+import type { Migration } from '@ts-linq/core';
 import type { Logger } from '../ports/Logger';
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
 import type { FileSystem } from '../ports/FileSystem';
@@ -47,27 +48,31 @@ export class MigrationsRollbackCommand implements DbCommand {
     return path.resolve(process.cwd(), cfg.migrations || 'migrations');
   }
 
-  private async loadAllMigrations(dir: string): Promise<Array<Record<string, unknown>>> {
-    if (!this.fsAdapter.exists(dir)) return [] as Array<Record<string, unknown>>;
+  private loadAllMigrations(dir: string): Promise<Array<Record<string, unknown>>> {
+    if (!this.fsAdapter.exists(dir)) return Promise.resolve([] as Array<Record<string, unknown>>);
     const files = this.fsAdapter
       .readDir(dir)
       .filter((f) => /\.(ts|js|mjs|cjs)$/.test(f))
       .map((f) => path.join(dir, f));
 
-    if (files.some((f) => f.endsWith('.ts'))) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        require('ts-node/register/transpile-only');
-      } catch {
-        // ignore if not available
-      }
-    }
+    if (files.some((f) => f.endsWith('.ts'))) this.tryRegisterTsNode();
     const mods: Array<Record<string, unknown>> = [];
-    for (const file of files) {
+    for (const file of files) mods.push(this.requireModule(file));
+    return Promise.resolve(mods);
+  }
+
+  private tryRegisterTsNode(): void {
+    try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      mods.push(require(file) as Record<string, unknown>);
+      require('ts-node/register/transpile-only');
+    } catch {
+      // ignore if not available
     }
-    return mods;
+  }
+
+  private requireModule(file: string): Record<string, unknown> {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require(file) as Record<string, unknown>;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,7 +88,7 @@ export class MigrationsRollbackCommand implements DbCommand {
         const Ctor = exported as unknown as { new (): { getVersion: () => string } };
         const instance = new Ctor();
         if (typeof instance.getVersion === 'function') {
-          runner.addMigration(instance as unknown as import('@ts-linq/core').Migration);
+          runner.addMigration(instance as unknown as Migration);
         }
       } catch {
         // ignore non-constructible exports
