@@ -112,7 +112,7 @@ describe('Integration Tests', () => {
 
     context = new BlogDbContext({
       connectionString: ':memory:',
-      provider: new ProviderStub(':memory:') as unknown as 'sqlite'
+      provider: new ProviderStub(':memory:')
     });
 
     await context.ensureCreated();
