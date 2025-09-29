@@ -80,6 +80,7 @@ function writeFileIfMissing(filePath: string, contents: string): void {
 
 async function main() {
   const [, , cmd, arg1, _arg2] = process.argv;
+  const argv = process.argv.slice(2);
 
   // Handle project initialization without requiring a DB connection
   if (cmd === 'init') {
@@ -206,7 +207,58 @@ SQLITE_URL=file:app.db
     );
     process.exitCode = 2;
   } else if (cmd === 'generate') {
-    const name = (arg1 || 'Migration').replace(/\s+/g, '_');
+    const getFlag = (flag: string): string | boolean | undefined => {
+      const long = `--${flag}`;
+      for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === long) {
+          const next = argv[i + 1];
+          if (next && !next.startsWith('--')) return next;
+          return true;
+        }
+        if (a.startsWith(`${long}=`)) return a.slice(long.length + 1);
+      }
+      return undefined;
+    };
+
+    const toPascalCase = (s: string): string =>
+      s
+        .replace(/[-_\s]+/g, ' ')
+        .split(' ')
+        .filter(Boolean)
+        .map((x) => x.charAt(0).toUpperCase() + x.slice(1))
+        .join('');
+
+    // Subcommand: entity
+    if (arg1 === 'entity') {
+      const rawName = (argv[2] || '').trim();
+      if (!rawName) {
+        console.error('Usage: ts-linq generate entity <Name> [--table users] [--dir src/entities]');
+        process.exitCode = 2;
+        return;
+      }
+      const entityName = toPascalCase(rawName);
+      const outDir = (getFlag('dir') as string) || path.join('src', 'entities');
+      const table = (getFlag('table') as string) || `${entityName.toLowerCase()}s`;
+      const destDir = path.resolve(process.cwd(), outDir);
+      ensureDir(destDir);
+      const destFile = path.join(destDir, `${entityName}.ts`);
+      const tpl = `import { Entity, Column, PrimaryKey } from '@ts-linq/core';\n\n@Entity('${table}')\nexport class ${entityName} {\n  @PrimaryKey()\n  public id!: number;\n\n  @Column()\n  public name!: string;\n\n  @Column()\n  public createdAt!: Date;\n}\n`;
+      if (fs.existsSync(destFile)) {
+        console.error(`Entity already exists: ${destFile}`);
+        process.exitCode = 2;
+        return;
+      }
+      fs.writeFileSync(destFile, tpl, 'utf8');
+      console.log(`Created entity ${entityName} at ${destFile}`);
+      return;
+    }
+
+    // Default: migration
+    const name = (argv[1] && argv[0] !== 'entity' ? argv[1] : argv[0] || 'Migration').replace(
+      /\s+/g,
+      '_'
+    );
     const ts = new Date()
       .toISOString()
       .replace(/[-:TZ.]/g, '')
