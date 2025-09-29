@@ -202,6 +202,45 @@
 - [x] `config:check` — валидация конфигурации проекта (неблокирующая) ✅
 - [x] `schema:validate` — сравнение снапшота со схемой БД, non‑zero exit при расхождении ✅
 
+#### SOLID & Clean Code для CLI (обновлено)
+
+- [x] Ввести слои и порты (DI):
+  - [x] `Logger` порт + адаптер `ConsoleLogger`; совместимость с OTel/Prometheus логгерами ✅
+  - [x] `FileSystem` порт (`exists/readText/writeText/ensureDir/readDir`) + адаптер `NodeFs` ✅
+  - [x] `ProviderFactory` — реализован `EnvProviderFactory` (создание провайдера из ENV) ✅
+- [x] Разделить крупные команды (Single Responsibility):
+  - [x] `generate:entity`, `generate:entities`, `generate:migration` как отдельные классы ✅
+  - [x] Шаблоны вынесены в `generators/EntityTemplateBuilder` и `generators/MigrationTemplateBuilder` ✅
+  - [x] `ArgReader` сервис поверх `getFlag` ✅
+- [x] Registry & UX:
+  - [x] `CommandRegistry` — help/список команд, поддержка `aliases` ✅
+  - [x] Краткая справка при неизвестной команде (cli выводит список доступных команд) ✅
+- [ ] Interface Segregation:
+  - [ ] Разделить `Command` на `Command` и `DbCommand` (избавиться от `requiresProvider`) — запланировано
+- [x] Опции безопасности/UX:
+  - [x] `--dry-run` для `schema:apply` ✅
+  - [x] `--force` предупреждение для разрушительных операций ✅
+- [x] Структура пакета CLI:
+  - [x] Директории: `commands/`, `ports/`, `adapters/`, `generators/`, `services/` ✅
+- [x] Тестируемость:
+  - [x] Инжектирование портов через конструктор команд; unit‑тесты без реального IO/DB ✅
+
+#### Покрытие тестами CLI (новое)
+
+- [x] Проект CLI добавлен в Jest `projects` ✅
+- [x] Покрыты команды: `schema:export/diff/validate/apply`, `seed` ✅
+- [x] Покрыты генераторы: `EntityTemplateBuilder`, `MigrationTemplateBuilder` ✅
+- [x] Покрыты сервисы и хелперы: `ArgReader`, `utils`, `schema-inspect` ✅
+- [x] Покрыты инфраструктура: `CommandRegistry`, `ConsoleLogger`, `NodeFs` ✅
+- [x] Негативные сценарии: отсутствующий snapshot, help для неизвестной команды ✅
+
+#### Маскирование SQL в логгерах (безопасность) (новое)
+
+- [x] `OpenTelemetrySqlLogger` и `PrometheusSqlLogger`:
+  - [x] Добавлены безопасные регэкспы для маскирования строковых литералов ✅
+  - [x] Поддержка пользовательских `maskPatterns` ✅
+  - [x] Тесты проходят, dist обновлён ✅
+
 ### 1.4 CI/CD & Quality Gates (добавлено)
 
 - [x] CI: матрица по провайдерам, p95 guard (`PERF_GUARD_MS`) ✅

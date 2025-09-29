@@ -261,8 +261,8 @@ export class PrometheusSqlLogger implements SqlLogger {
   private maskIfNeeded(sql: string): string {
     if (!this.maskSql) return sql;
     let s = sql;
-    // redact single-quoted string literals
-    s = s.replace(/'([^']|''))*'/g, `'[REDACTED]'`).replace(/"([^"\\]|\\.)*"/g, '"[REDACTED]"');
+    // redact single- and double-quoted strings using safe regexps (no unmatched groups)
+    s = s.replace(/'(?:[^']|''+)*'/g, "'[REDACTED]'").replace(/"(?:[^"\\]|\\.)*"/g, '"[REDACTED]"');
     for (const re of this.maskPatterns) {
       try {
         s = s.replace(re, '[REDACTED]');

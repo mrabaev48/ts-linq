@@ -48,7 +48,8 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
   private mask(input: string): string {
     if (!this.maskSql) return input;
     let s = input;
-    s = s.replace(/'([^']|''))*'/g, `'[REDACTED]'`).replace(/"([^"\\]|\\.)*"/g, '"[REDACTED]"');
+    // redact single- and double-quoted strings using safe regexps (no unmatched groups)
+    s = s.replace(/'(?:[^']|''+)*'/g, "'[REDACTED]'").replace(/"(?:[^"\\]|\\.)*"/g, '"[REDACTED]"');
     for (const re of this.maskPatterns) {
       try {
         s = s.replace(re, '[REDACTED]');

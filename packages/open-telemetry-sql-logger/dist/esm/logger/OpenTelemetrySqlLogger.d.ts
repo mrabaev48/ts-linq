@@ -1,8 +1,15 @@
 import type { SqlLogger, SqlParameter } from '@ts-linq/core';
+export interface OpenTelemetryLoggerOptions {
+    maskSql?: boolean;
+    maskPatterns?: ReadonlyArray<RegExp>;
+}
 export declare class OpenTelemetrySqlLogger implements SqlLogger {
     private tracer;
     private spanByTraceId;
-    constructor(serviceName?: string);
+    private maskSql;
+    private maskPatterns;
+    constructor(serviceName?: string, options?: OpenTelemetryLoggerOptions);
+    private mask;
     queryStart(info: {
         sql: string;
         params: readonly SqlParameter[];
