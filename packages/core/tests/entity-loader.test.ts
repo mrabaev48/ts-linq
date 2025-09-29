@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { EntityLoader } from '../src/loading/EntityLoader';
-import { SQLiteProvider } from '../src/providers/SQLiteProvider';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { LoadingStrategy } from '../src/loading/LoadingStrategy';
 import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
@@ -38,7 +38,7 @@ function createTestEntities() {
 }
 
 describe('EntityLoader', () => {
-  let provider: SQLiteProvider;
+  let provider: ProviderStub;
   let entityLoader: EntityLoader;
   let LoaderUser: ReturnType<typeof createTestEntities>['LoaderUser'];
   let LoaderPost: ReturnType<typeof createTestEntities>['LoaderPost'];
@@ -50,7 +50,7 @@ describe('EntityLoader', () => {
     LoaderUser = entities.LoaderUser;
     LoaderPost = entities.LoaderPost;
 
-    provider = new SQLiteProvider(':memory:');
+    provider = new ProviderStub(':memory:');
     await provider.connect();
 
     // Create tables

@@ -1,17 +1,14 @@
 import 'reflect-metadata';
-import { Entity } from '../src/decorators/Entity';
-import { PrimaryKey } from '../src/decorators/PrimaryKey';
-import { Column } from '../src/decorators/Column';
-import { SQLiteDialect } from '../src/query/SQLiteDialect';
-import { PostgresDialect } from '../src/query/PostgresDialect';
-import { MssqlDialect } from '../src/query/MssqlDialect';
-import { MysqlDialect } from '../src/query/MysqlDialect';
+import { MetadataStorage } from '@ts-linq/core';
+import { SQLiteDialect } from '@ts-linq/sqlite';
+import { PostgresDialect } from '@ts-linq/postgres';
+import { MssqlDialect } from '@ts-linq/mssql';
+import { MysqlDialect } from '@ts-linq/mysql';
 
-@Entity({ name: 't' })
 class T {
-  @PrimaryKey({ autoIncrement: true }) id!: number;
-  @Column({ type: 'INTEGER' }) authorId!: number;
-  @Column({ type: 'TEXT' }) name!: string;
+  id!: number;
+  authorId!: number;
+  name!: string;
 }
 
 import type { QueryOptions } from '../src/types';
@@ -21,8 +18,51 @@ const options: QueryOptions = {
 };
 
 describe('GROUP BY / HAVING in dialects', () => {
+  beforeEach(() => {
+    MetadataStorage.getInstance().clear();
+    MetadataStorage.addEntity(T, 't');
+    MetadataStorage.addColumn(T, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'authorId',
+      columnName: 'authorId',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    });
+    MetadataStorage.addPrimaryKey(T, 'id');
+  });
   test('SQLite', () => {
-    new T();
+    MetadataStorage.getInstance().clear();
+    MetadataStorage.addEntity(T, 't');
+    MetadataStorage.addColumn(T, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'authorId',
+      columnName: 'authorId',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    });
+    MetadataStorage.addPrimaryKey(T, 'id');
     const d = new SQLiteDialect();
     const { query, parameters } = d.buildSelect(T, options);
     expect(query).toContain('GROUP BY authorId');
@@ -30,7 +70,27 @@ describe('GROUP BY / HAVING in dialects', () => {
     expect(parameters).toEqual([1]);
   });
   test('Postgres', () => {
-    new T();
+    MetadataStorage.getInstance().clear();
+    MetadataStorage.addEntity(T, 't');
+    MetadataStorage.addColumn(T, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'authorId',
+      columnName: 'authorId',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    });
+    MetadataStorage.addPrimaryKey(T, 'id');
     const d = new PostgresDialect();
     const { query, parameters } = d.buildSelect(T, options);
     expect(query).toContain('GROUP BY authorId');
@@ -38,7 +98,27 @@ describe('GROUP BY / HAVING in dialects', () => {
     expect(parameters).toEqual([1]);
   });
   test('MSSQL', () => {
-    new T();
+    MetadataStorage.getInstance().clear();
+    MetadataStorage.addEntity(T, 't');
+    MetadataStorage.addColumn(T, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'authorId',
+      columnName: 'authorId',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    });
+    MetadataStorage.addPrimaryKey(T, 'id');
     const d = new MssqlDialect();
     const { query, parameters } = d.buildSelect(T, options);
     expect(query).toContain('GROUP BY authorId');
@@ -47,7 +127,27 @@ describe('GROUP BY / HAVING in dialects', () => {
     expect(parameters).toEqual([1]);
   });
   test('MySQL', () => {
-    new T();
+    MetadataStorage.getInstance().clear();
+    MetadataStorage.addEntity(T, 't');
+    MetadataStorage.addColumn(T, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'authorId',
+      columnName: 'authorId',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(T, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    });
+    MetadataStorage.addPrimaryKey(T, 'id');
     const d = new MysqlDialect();
     const { query, parameters } = d.buildSelect(T, options);
     expect(query).toContain('GROUP BY authorId');

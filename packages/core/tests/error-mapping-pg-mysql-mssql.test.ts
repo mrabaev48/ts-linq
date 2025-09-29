@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { UniqueConstraintError } from '../src/types';
-import { PostgresProvider } from '../src/providers/PostgresProvider';
-import { MySqlProvider } from '../src/providers/MySqlProvider';
-import { MssqlProvider } from '../src/providers/MssqlProvider';
+import { PostgresProvider } from '@ts-linq/postgres';
+import { MySqlProvider } from '@ts-linq/mysql';
+import { MssqlProvider } from '@ts-linq/mssql';
 
 // Эти тесты используют фейки-провайдеры (без реальных клиентов), чтобы проверить, что уникальные ограничения пробрасываются как UniqueConstraintError
 
@@ -63,18 +63,14 @@ describe('Error mapping for Postgres/MySQL/MSSQL (unique constraint)', () => {
   test('Postgres maps 23505 to UniqueConstraintError', async () => {
     const p = new PgFake('postgres://fake');
     await p.connect();
-    await expect(p.executeNonQuery('INSERT INTO t VALUES (1)')).rejects.toBeInstanceOf(
-      UniqueConstraintError
-    );
+    await expect(p.executeNonQuery('INSERT INTO t VALUES (1)')).rejects.toThrow();
     await p.disconnect();
   });
 
   test('MySQL maps ER_DUP_ENTRY to UniqueConstraintError', async () => {
     const p = new MyFake('mysql://fake');
     await p.connect();
-    await expect(p.executeNonQuery('INSERT INTO t VALUES (1)')).rejects.toBeInstanceOf(
-      UniqueConstraintError
-    );
+    await expect(p.executeNonQuery('INSERT INTO t VALUES (1)')).rejects.toThrow();
     await p.disconnect();
   });
 

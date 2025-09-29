@@ -1,7 +1,7 @@
 import { DiffBasedMigration } from '../src/migrations/DiffBasedMigration';
 import type { Dialect } from '../src/migrations/DialectMigrationSql';
 import type { SchemaDiff } from '../src/migrations/DiffTypes';
-import { SQLiteProvider } from '../src/providers/SQLiteProvider';
+import { SQLiteProvider } from '@ts-linq/sqlite';
 
 class TestDiffMigration extends DiffBasedMigration {
   protected provider: SQLiteProvider;

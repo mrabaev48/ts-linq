@@ -1,4 +1,5 @@
 import { DbContext } from '../src/context/DbContext';
+import { ProviderStub } from './_stubs/ProviderStub';
 import type { DbSet } from '../src/context/DbSet';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import type { ColumnMetadata, RetryPolicy } from '../src/types';
@@ -25,7 +26,14 @@ MetadataStorage.addPrimaryKey(RsUser, 'id');
 class Ctx extends DbContext {
   public rs_users!: DbSet<RsUser>;
   constructor(policy?: RetryPolicy) {
-    super({ provider: 'sqlite', connectionString: ':memory:', retryPolicy: policy });
+    const provider = new ProviderStub(
+      ':memory:',
+      undefined,
+      undefined,
+      undefined,
+      policy
+    ) as unknown as 'sqlite';
+    super({ provider, connectionString: ':memory:' });
   }
 }
 

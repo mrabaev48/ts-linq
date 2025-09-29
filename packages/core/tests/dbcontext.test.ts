@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { Entity, Column, PrimaryKey } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
@@ -32,7 +33,7 @@ describe('DbContext', () => {
 
     context = new TestDbContext({
       connectionString: ':memory:',
-      provider: 'sqlite'
+      provider: new ProviderStub(':memory:') as unknown as 'sqlite'
     });
 
     await context.ensureCreated();

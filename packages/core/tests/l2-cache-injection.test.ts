@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { Queryable } from '../src/query/Queryable';
-import { DatabaseProvider } from '../src/providers/DatabaseProvider';
+import { DatabaseProvider } from '../src/DatabaseProvider';
 import type { SqlDialect } from '../src/query/SqlDialect';
 import type { QueryOptions, SqlParameter } from '../src/types';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';

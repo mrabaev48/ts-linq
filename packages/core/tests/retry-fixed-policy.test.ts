@@ -1,4 +1,5 @@
 import { DbContext } from '../src/context/DbContext';
+import { ProviderStub } from './_stubs/ProviderStub';
 import type { DbSet } from '../src/context/DbSet';
 import { FixedIntervalRetryPolicy } from '../src/utils/RetryPolicies';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
@@ -21,7 +22,7 @@ class Ctx extends DbContext {
   public users!: DbSet<FxUser>;
   constructor() {
     super({
-      provider: 'sqlite',
+      provider: new ProviderStub(':memory:') as unknown as 'sqlite',
       connectionString: ':memory:',
       retryPolicy: new FixedIntervalRetryPolicy(25)
     });

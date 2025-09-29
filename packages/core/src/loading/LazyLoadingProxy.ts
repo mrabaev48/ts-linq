@@ -106,8 +106,7 @@ export class LazyLoadingProxy {
               return relationship.type === 'one-to-many' ? [] : null;
             });
 
-          // For synchronous access, return promise (EF style async access)
-          // Or return undefined and load in background
+          // Return promise so callers can await lazy loading explicitly
           return state[propName].loadingPromise;
         }
 

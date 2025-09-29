@@ -1,4 +1,4 @@
-import { generateMigrationFromDiff } from './DialectMigrationSql';
+import { generateMigrationFromDiff } from '../../src/migrations/DialectMigrationSql';
 
 const diff = {
   tables: [

@@ -15,7 +15,11 @@ function defineE() {
 class MWCtx extends DbContext {
   public mws!: DbSet<InstanceType<ReturnType<typeof defineE>['MW']>>;
   constructor(middlewares: OrmMiddleware[]) {
-    super({ provider: 'sqlite', connectionString: ':memory:', middlewares });
+    const { ProviderStub } = require('./_stubs/ProviderStub');
+    super({
+      provider: new ProviderStub(':memory:', undefined, middlewares),
+      connectionString: ':memory:'
+    });
   }
 }
 
@@ -34,10 +38,10 @@ describe('Middleware entityMaterialized hook', () => {
     await ctx.ensureCreated();
     const a = new MW();
     a.name = 'A';
-    ctx.mws.add(a);
+    ctx.set(MW).add(a);
     const b = new MW();
     b.name = 'B';
-    ctx.mws.add(b);
+    ctx.set(MW).add(b);
     await ctx.saveChanges();
 
     const rows = await ctx

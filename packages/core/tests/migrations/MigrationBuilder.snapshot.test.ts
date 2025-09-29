@@ -1,4 +1,4 @@
-import { MigrationBuilder } from '../src/migrations/MigrationBuilder';
+import { MigrationBuilder } from '../../src/migrations/MigrationBuilder';
 
 function normalizeSql(lines: string[]): string {
   return lines.join('\n');

@@ -1,8 +1,9 @@
 import 'reflect-metadata';
 import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { DiffMigrationGenerator } from '../src/migrations/DiffMigrationGenerator';
-import { DatabaseProvider } from '../src/providers/DatabaseProvider';
+import { DatabaseProvider } from '../src/DatabaseProvider';
 
 function defineEntities() {
   @Entity({ name: 'DUsers' })
@@ -16,7 +17,10 @@ function defineEntities() {
 class DCtx extends DbContext {
   public dusers!: DbSet<InstanceType<ReturnType<typeof defineEntities>['DUser']>>;
   constructor() {
-    super({ provider: 'sqlite', connectionString: ':memory:' });
+    super({
+      provider: new ProviderStub(':memory:') as unknown as 'sqlite',
+      connectionString: ':memory:'
+    });
   }
 }
 

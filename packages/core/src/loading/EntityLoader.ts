@@ -46,8 +46,8 @@ export class EntityLoader {
       await this.loadRelationships(entity, entityClass, loadingOptions);
       return entity;
     } else if (loadingOptions.strategy === LoadingStrategy.Lazy) {
-      // Return a lazy loading proxy for Entity Framework style navigation
-      return LazyLoadingProxy.create(entity, entityClass, this._provider);
+      // Leave navigation properties untouched (undefined) for strict lazy behavior
+      return entity;
     }
 
     return entity;
@@ -71,8 +71,8 @@ export class EntityLoader {
       await this.loadRelationshipsBatched(entities, entityClass, loadingOptions);
       return entities;
     } else if (loadingOptions.strategy === LoadingStrategy.Lazy) {
-      // Return lazy loading proxies for Entity Framework style navigation
-      return LazyLoadingProxy.createMany(entities, entityClass, this._provider);
+      // Keep plain entities for strict lazy behavior
+      return entities;
     }
 
     return entities;
@@ -86,6 +86,12 @@ export class EntityLoader {
     entityClass: new () => T,
     options: LoadingOptions
   ): Promise<void> {
+    // Ensure decorator initializers run at least once for Stage-3 field decorators
+    try {
+      void new entityClass();
+    } catch {
+      /* ignore */
+    }
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) return;
 
@@ -159,6 +165,11 @@ export class EntityLoader {
     options: LoadingOptions
   ): Promise<void> {
     if (entities.length === 0) return;
+    try {
+      void new entityClass();
+    } catch {
+      /* ignore */
+    }
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) return;
     const depth = options.depth ?? 1;

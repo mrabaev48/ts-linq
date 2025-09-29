@@ -1,9 +1,9 @@
-import { QueryBuilder } from '../src/query/QueryBuilder';
-import { EnhancedSqlCache } from './EnhancedSqlCache';
-import type { SqlDialect } from '../src/query/SqlDialect';
-import { sql } from './SqlFunctions';
+import { QueryBuilder } from '../../src/query/QueryBuilder';
+import { EnhancedSqlCache } from '../../src/query/EnhancedSqlCache';
+import type { SqlDialect } from '../../src/query/SqlDialect';
+import { sql } from '../../src/query/SqlFunctions';
 import { MetadataStorage } from '@ts-linq/core';
-import type { ColumnMetadata, SqlLogger } from '../types';
+import type { ColumnMetadata, SqlLogger } from '../../src/types';
 
 // Test entity for QueryBuilder integration
 class TestUser {

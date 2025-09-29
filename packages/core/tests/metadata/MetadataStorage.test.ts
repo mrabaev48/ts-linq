@@ -1,6 +1,6 @@
-import { MetadataStorage } from './MetadataStorage';
-import type { ColumnMetadata, IndexMetadata } from '../types';
-import { ValidationError } from '../types';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import type { ColumnMetadata, IndexMetadata } from '../../src/types';
+import { ValidationError } from '../../src/types';
 
 class T {
   x!: number;

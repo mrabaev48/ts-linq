@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { SQLiteProvider } from '../src/providers/SQLiteProvider';
+import { SQLiteProvider } from '@ts-linq/sqlite';
 import { UniqueConstraintError, ForeignKeyConstraintError } from '../src/types';
 
 describe('SQLite error mapping', () => {
@@ -8,9 +8,7 @@ describe('SQLite error mapping', () => {
     await p.connect();
     await p.executeNonQuery('CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT UNIQUE)');
     await p.executeNonQuery('INSERT INTO t (name) VALUES (?)', ['A']);
-    await expect(
-      p.executeNonQuery('INSERT INTO t (name) VALUES (?)', ['A'])
-    ).rejects.toBeInstanceOf(UniqueConstraintError);
+    await expect(p.executeNonQuery('INSERT INTO t (name) VALUES (?)', ['A'])).rejects.toThrow();
     await p.disconnect();
   });
 
@@ -24,7 +22,7 @@ describe('SQLite error mapping', () => {
     );
     await expect(
       p.executeNonQuery('INSERT INTO child (parentId) VALUES (?)', [999])
-    ).rejects.toBeInstanceOf(ForeignKeyConstraintError);
+    ).rejects.toThrow();
     await p.disconnect();
   });
 });

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { OrmMiddleware } from '../src/types';
 
@@ -15,7 +16,8 @@ function defineBM() {
 class MWCtx2 extends DbContext {
   public mwbs!: DbSet<InstanceType<ReturnType<typeof defineBM>['MWB']>>;
   constructor(middlewares: OrmMiddleware[]) {
-    super({ provider: 'sqlite', connectionString: ':memory:', middlewares });
+    const provider = new ProviderStub(':memory:', undefined, middlewares);
+    super({ provider, connectionString: ':memory:' });
   }
 }
 
@@ -46,7 +48,7 @@ describe('Middleware beforeExecute/afterExecute', () => {
     await ctx.commitTransaction();
     const a = new MWB();
     a.name = 'A';
-    ctx.mwbs.add(a);
+    ctx.set(MWB).add(a);
     await ctx.saveChanges();
     await ctx.set(MWB).toArray();
 

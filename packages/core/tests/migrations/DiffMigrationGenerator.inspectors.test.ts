@@ -1,7 +1,7 @@
-import { DiffMigrationGenerator } from './DiffMigrationGenerator';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { ColumnMetadata, SqlParameter } from '../types';
-import { DatabaseProvider } from '../DatabaseProvider';
+import { DiffMigrationGenerator } from '../../src/migrations/DiffMigrationGenerator';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import type { ColumnMetadata, SqlParameter } from '../../src/types';
+import { DatabaseProvider } from '../../src/DatabaseProvider';
 
 class FakeProvider extends DatabaseProvider {
   constructor(

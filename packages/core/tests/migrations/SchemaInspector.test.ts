@@ -1,10 +1,10 @@
-import { DatabaseProvider } from '../DatabaseProvider';
+import { DatabaseProvider } from '../../src/DatabaseProvider';
 import type { SqlParameter } from '../types';
 import {
   PostgresSchemaInspector,
   MySqlSchemaInspector,
   MssqlSchemaInspector
-} from './SchemaInspector';
+} from '../../src/migrations/SchemaInspector';
 
 class FakeProvider extends DatabaseProvider {
   private responses: Array<{ sqlLike: RegExp; rows: unknown[] }>;

@@ -1,4 +1,4 @@
-import { generateMigrationFromDiff } from './DialectMigrationSql';
+import { generateMigrationFromDiff } from '../../src/migrations/DialectMigrationSql';
 
 test('Index WHERE is rendered for PG/SQLite/MSSQL and ignored for MySQL', () => {
   const diff = {

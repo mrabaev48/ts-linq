@@ -3,8 +3,9 @@ import { Entity } from '../src/decorators/Entity';
 import { Column } from '../src/decorators/Column';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Queryable } from '../src/query/Queryable';
-import { DatabaseProvider } from '../src/providers/DatabaseProvider';
+import { DatabaseProvider } from '../src/DatabaseProvider';
 import { SqlParameter } from '../src/types';
+import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 @Entity({ name: 'Authors' })
 class Author {
@@ -24,6 +25,19 @@ class ProviderStub extends DatabaseProvider {
   public async connect(): Promise<void> {}
   public async disconnect(): Promise<void> {}
   public async createTable(): Promise<void> {}
+  public getDialect(): any {
+    return {
+      buildSelect: (ctor: Function, opts: any) => {
+        const meta = MetadataStorage.getEntity(ctor as unknown as Function);
+        const table = meta?.tableName ?? (ctor as any).name;
+        let q = `SELECT * FROM ${table}`;
+        if (opts?.joins?.length) {
+          for (const j of opts.joins) q += ` ${j.type} JOIN ${j.table} ON ${j.on}`;
+        }
+        return { query: q, parameters: [] };
+      }
+    } as any;
+  }
   public async insert<T>(e: T): Promise<T> {
     return e;
   }

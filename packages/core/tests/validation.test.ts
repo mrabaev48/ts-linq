@@ -14,7 +14,8 @@ class ValUser {
 class ValCtx extends DbContext {
   public valusers!: import('../src').DbSet<ValUser>;
   constructor() {
-    super({ connectionString: ':memory:', provider: 'sqlite' });
+    const { ProviderStub } = require('./_stubs/ProviderStub');
+    super({ provider: new ProviderStub(':memory:') } as any);
   }
 }
 
@@ -25,7 +26,7 @@ describe('Model validation', () => {
     await ctx.ensureCreated();
     const u = new ValUser();
     // name is required
-    ctx.valusers.add(u);
+    ctx.set(ValUser).add(u);
     await expect(ctx.saveChanges()).rejects.toBeInstanceOf(ValidationError);
     // fix null but exceed length
     u.name = 'too-long-name';
@@ -38,7 +39,7 @@ describe('Model validation', () => {
     const ctx = new ValCtx();
     await ctx.ensureCreated();
     const u = new ValUser();
-    ctx.valusers.add(u);
+    ctx.set(ValUser).add(u);
     const res = await ctx.trySaveChanges();
     expect(res.ok).toBe(false);
     await ctx.dispose();

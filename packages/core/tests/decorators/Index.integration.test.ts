@@ -1,6 +1,6 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { ColumnMetadata } from '../types';
-import { Index, IndexOptionsBuilder } from './index';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import type { ColumnMetadata } from '../../src/types';
+import { Index, IndexOptionsBuilder } from '../../src/decorators';
 
 @Index(
   new IndexOptionsBuilder('idx_users_email_created')

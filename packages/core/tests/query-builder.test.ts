@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import { QueryBuilder } from '../src/query/QueryBuilder';
-import { SQLiteProvider } from '../src/providers/SQLiteProvider';
+import { DatabaseProvider } from '../src/DatabaseProvider';
+import type { SqlDialect } from '../src/query/SqlDialect';
+import type { QueryOptions, SqlParameter } from '../src/types';
 import { Entity, Column, PrimaryKey } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { QueryOptions } from '../src/types';
@@ -22,7 +24,7 @@ function createQueryTestEntity() {
 }
 
 describe('QueryBuilder (SQL generation only)', () => {
-  let provider: SQLiteProvider;
+  let provider: DatabaseProvider;
   let queryBuilder: QueryBuilder;
   let QueryTestEntity: ReturnType<typeof createQueryTestEntity>;
 
@@ -31,13 +33,67 @@ describe('QueryBuilder (SQL generation only)', () => {
     // Create test entity
     QueryTestEntity = createQueryTestEntity();
 
-    provider = new SQLiteProvider(':memory:');
-    await provider.connect();
+    // In-memory stub provider: only SELECT used
+    provider = new (class extends DatabaseProvider {
+      private data: any[] = [];
+      private seq: number = 0;
+      public async connect(): Promise<void> {}
+      public async disconnect(): Promise<void> {}
+      public async createTable(): Promise<void> {}
+      public getDialect(): any {
+        return {};
+      }
+      public async insert<T extends object>(e: T): Promise<T> {
+        const rec = { ...(e as any) };
+        if (rec.id === undefined || rec.id === null) rec.id = ++this.seq;
+        this.data.push(rec);
+        return e;
+      }
+      public async update<T extends object>(e: T): Promise<T> {
+        return e;
+      }
+      public async delete<T extends object>(): Promise<void> {}
+      public async findById<T extends object>(): Promise<T | null> {
+        return null;
+      }
+      public async findAll<T extends object>(): Promise<T[]> {
+        return this.data.slice() as T[];
+      }
+      public async findWhere<T extends object>(): Promise<T[]> {
+        return this.data.slice() as T[];
+      }
+      public async findWhereIn<T extends object>(): Promise<T[]> {
+        return this.data.slice() as T[];
+      }
+      protected async doExecuteQuery<T>(sql: string): Promise<T[]> {
+        const limit = /LIMIT\s+(\d+)/i.exec(sql)?.[1];
+        const offset = /OFFSET\s+(\d+)/i.exec(sql)?.[1];
+        let rows = this.data.slice();
+        const orderMatch = /ORDER BY\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(ASC|DESC)/i.exec(sql);
+        if (orderMatch) {
+          const col = orderMatch[1];
+          const dir = orderMatch[2].toUpperCase();
+          rows.sort((a, b) => (a[col] === b[col] ? 0 : a[col] < b[col] ? -1 : 1));
+          if (dir === 'DESC') rows.reverse();
+        }
+        if (offset) rows = rows.slice(Number(offset));
+        if (limit) rows = rows.slice(0, Number(limit));
+        return rows as unknown as T[];
+      }
+      protected async doExecuteNonQuery(sql: string): Promise<number> {
+        if (/^\s*DELETE\s+FROM\s+QueryTestEntity/i.test(sql)) {
+          const n = this.data.length;
+          this.data = [];
+          return n;
+        }
+        return 0;
+      }
+      public async beginTransaction(): Promise<void> {}
+      public async commitTransaction(): Promise<void> {}
+      public async rollbackTransaction(): Promise<void> {}
+    })('');
 
-    const metadata = MetadataStorage.getEntity(QueryTestEntity)!;
-    await provider.createTable(metadata);
-
-    // Insert test data
+    // Seed data
     for (let i = 1; i <= 10; i++) {
       const entity = new QueryTestEntity();
       entity.name = `Name ${i}`;
@@ -45,7 +101,33 @@ describe('QueryBuilder (SQL generation only)', () => {
       await provider.insert(entity, QueryTestEntity);
     }
 
-    queryBuilder = new QueryBuilder();
+    const mockDialect: SqlDialect = {
+      buildSelect: (ctor: new () => unknown, opts: QueryOptions) => {
+        const meta = MetadataStorage.getEntity(ctor as unknown as Function)!;
+        let query = `SELECT ${opts.distinct ? 'DISTINCT ' : ''}${
+          opts.select?.length ? (opts.select as string[]).join(', ') : '*'
+        }`;
+        query += ` FROM ${meta.tableName}`;
+        const parameters: SqlParameter[] = [];
+        if (opts.where && opts.where.length) {
+          query += ' WHERE ' + opts.where.map((w) => w.condition).join(' AND ');
+          for (const w of opts.where) parameters.push(...w.parameters);
+        }
+        if (opts.orderBy && opts.orderBy.length) {
+          query += ' ORDER BY ' + opts.orderBy.map((o) => `${o.column} ${o.direction}`).join(', ');
+        }
+        const hasLimit = opts.limit !== undefined && opts.limit !== null;
+        const hasOffset = opts.offset !== undefined && opts.offset !== null;
+        if (hasLimit) {
+          query += ` LIMIT ${opts.limit}`;
+          if (hasOffset) query += ` OFFSET ${opts.offset}`;
+        } else if (hasOffset) {
+          query += ` LIMIT -1 OFFSET ${opts.offset}`;
+        }
+        return { query, parameters } as const;
+      }
+    } as unknown as SqlDialect;
+    queryBuilder = new QueryBuilder(mockDialect);
   });
 
   afterEach(async () => {

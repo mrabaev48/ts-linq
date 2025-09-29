@@ -4,10 +4,10 @@ import {
   getLazyTarget,
   awaitLazyLoad,
   LAZY_LOADING_PROXY
-} from './LazyLoadingProxy';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { DatabaseProvider } from '../DatabaseProvider';
-import type { ColumnMetadata, RelationshipMetadata } from '../types';
+} from '../../src/loading/LazyLoadingProxy';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import type { DatabaseProvider } from '../../src/DatabaseProvider';
+import type { ColumnMetadata, RelationshipMetadata } from '../../src/types';
 
 // Test entities
 class User {

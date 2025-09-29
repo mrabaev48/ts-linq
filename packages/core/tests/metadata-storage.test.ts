@@ -54,6 +54,7 @@ describe('MetadataStorage', () => {
       expect(testEntityMetadata!.target).toBe(MetadataTestEntity);
 
       expect(relatedEntityMetadata).toBeDefined();
+      // For stage-3, table name should be from decorator
       expect(relatedEntityMetadata!.tableName).toBe('custom_related_table');
       expect(relatedEntityMetadata!.target).toBe(MetadataRelatedEntity);
     });
@@ -95,7 +96,11 @@ describe('MetadataStorage', () => {
       const relationship = metadata!.relationships[0];
       expect(relationship.propertyName).toBe('related');
       expect(relationship.type).toBe('one-to-many');
-      expect(relationship.targetEntity).toBe(MetadataRelatedEntity);
+      const target =
+        typeof relationship.targetEntity === 'function'
+          ? (relationship.targetEntity as Function)
+          : (relationship.targetEntity as () => Function)();
+      expect(target).toBe(MetadataRelatedEntity);
     });
   });
 
@@ -193,10 +198,17 @@ describe('MetadataStorage', () => {
       class ManualEntity {}
 
       MetadataStorage.addEntity(ManualEntity);
+      // add referenced column to satisfy validation
+      MetadataStorage.addColumn(ManualEntity, {
+        propertyName: 'manualColumn',
+        columnName: 'manual_column',
+        type: 'TEXT',
+        nullable: true
+      } as unknown as ColumnMetadata);
 
       const indexMetadata: IndexMetadata = {
         name: 'idx_manual',
-        columns: ['column1', 'column2'],
+        columns: ['manual_column'],
         unique: true
       };
 

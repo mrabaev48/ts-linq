@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { MySqlProvider } from '../src/providers/MySqlProvider';
+import { MySqlProvider } from '@ts-linq/mysql';
 import { generateMigrationFromDiff } from '../src/migrations/DialectMigrationSql';
 
 const MYSQL_URL = process.env.MYSQL_URL;

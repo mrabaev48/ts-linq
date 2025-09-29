@@ -1,5 +1,5 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { ColumnMetadata, IndexMetadata } from '../types';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import type { ColumnMetadata, IndexMetadata } from '../../src/types';
 
 class User {
   id!: number;

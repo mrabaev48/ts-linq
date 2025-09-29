@@ -1,4 +1,4 @@
-import { generateMigrationFromDiff } from './DialectMigrationSql';
+import { generateMigrationFromDiff } from '../../src/migrations/DialectMigrationSql';
 
 test('generateMigrationFromDiff: indexCreates/indexDrops (Postgres with WHERE)', () => {
   const diff = {

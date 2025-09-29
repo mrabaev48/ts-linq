@@ -14,7 +14,8 @@ function defineB() {
 class BCtx extends DbContext {
   public busers!: DbSet<InstanceType<ReturnType<typeof defineB>['BUser']>>;
   constructor() {
-    super({ provider: 'sqlite', connectionString: ':memory:' });
+    const { ProviderStub } = require('./_stubs/ProviderStub');
+    super({ provider: new ProviderStub(':memory:') });
   }
 }
 

@@ -1,13 +1,6 @@
 import 'reflect-metadata';
-import {
-  SQLiteProvider,
-  Entity,
-  Column,
-  PrimaryKey,
-  MetadataStorage,
-  OrmMiddleware,
-  SqlParameter
-} from '../src';
+import { Entity, Column, PrimaryKey, MetadataStorage, OrmMiddleware, SqlParameter } from '../src';
+import { ProviderStub } from './_stubs/ProviderStub';
 
 // Re-export convenience decorators to avoid path confusion in tests
 // Some tests import from '../src', but here we import directly to be explicit
@@ -25,7 +18,7 @@ function defineUserEntity() {
 }
 
 describe('OrmMiddleware pipeline', () => {
-  let provider: SQLiteProvider;
+  let provider: ProviderStub;
   let User: ReturnType<typeof defineUserEntity>;
   const beforeCalls: Array<{ sql: string; params: readonly SqlParameter[] }> = [];
   const afterCalls: Array<{
@@ -51,7 +44,7 @@ describe('OrmMiddleware pipeline', () => {
   beforeEach(async () => {
     MetadataStorage.getInstance().clear();
     User = defineUserEntity();
-    provider = new SQLiteProvider(':memory:', undefined, [mw]);
+    provider = new ProviderStub(':memory:', undefined, [mw] as any);
     await provider.connect();
     beforeCalls.length = 0;
     afterCalls.length = 0;
