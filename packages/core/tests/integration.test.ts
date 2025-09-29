@@ -111,7 +111,6 @@ describe('Integration Tests', () => {
     });
 
     context = new BlogDbContext({
-      connectionString: ':memory:',
       provider: new ProviderStub(':memory:')
     });
 
