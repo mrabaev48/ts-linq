@@ -19,7 +19,8 @@ export class SchemaSnapshotBuilder {
                 isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName),
                 isComputed: column.isComputed,
                 computedExpression: column.computedExpression,
-                computedStorage: column.computedStorage
+                computedStorage: column
+                    .computedStorage
             }));
             const primaryKeys = entityMeta.primaryKeys.map((pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk);
             const indexes = (entityMeta.indexes || []).map((indexDef) => ({
@@ -33,8 +34,10 @@ export class SchemaSnapshotBuilder {
                 expressions: indexDef.expressions,
                 using: indexDef.using,
                 concurrently: indexDef.concurrently,
-                withParams: indexDef.withParams,
-                mysqlVisibility: indexDef.mysqlVisibility,
+                withParams: indexDef
+                    .withParams,
+                mysqlVisibility: indexDef
+                    .mysqlVisibility,
                 include: indexDef.include
             }));
             return {
@@ -66,7 +69,12 @@ export class SchemaSnapshotBuilder {
                         nullable: !col.notnull
                     })),
                     primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
-                    indexes: indexes.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where })),
+                    indexes: indexes.map((i) => ({
+                        name: i.name,
+                        columns: i.columns,
+                        unique: i.unique,
+                        where: i.where
+                    })),
                     foreignKeys: []
                 });
             }
@@ -77,7 +85,12 @@ export class SchemaSnapshotBuilder {
             if (label === 'postgresql') {
                 const ins = new PostgresSchemaInspector(this.provider);
                 const list = await ins.getIndexes(table);
-                return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+                return list.map((i) => ({
+                    name: i.name,
+                    columns: i.columns,
+                    unique: i.unique,
+                    where: i.where
+                }));
             }
             if (label === 'mysql') {
                 const ins = new MySqlSchemaInspector(this.provider);
@@ -87,7 +100,12 @@ export class SchemaSnapshotBuilder {
             if (label === 'mssql') {
                 const ins = new MssqlSchemaInspector(this.provider);
                 const list = await ins.getIndexes(table);
-                return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique, where: i.where }));
+                return list.map((i) => ({
+                    name: i.name,
+                    columns: i.columns,
+                    unique: i.unique,
+                    where: i.where
+                }));
             }
             return [];
         };

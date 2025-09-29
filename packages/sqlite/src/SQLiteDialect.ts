@@ -1,4 +1,11 @@
-import { SqlDialect, MetadataStorage, JoinClause, OrderByClause, QueryOptions, WhereClause, SqlParameter } from '@ts-linq/core';
+import type {
+  SqlDialect,
+  OrderByClause,
+  QueryOptions,
+  WhereClause,
+  SqlParameter
+} from '@ts-linq/core';
+import { MetadataStorage, JoinClause } from '@ts-linq/core';
 
 /**
  * SQLite implementation of SqlDialect.
@@ -35,7 +42,7 @@ export class SQLiteDialect implements SqlDialect {
 
     const parameters: SqlParameter[] = [];
     if (options.selectParams && options.selectParams.length) {
-      parameters.push(...(options.selectParams as SqlParameter[]));
+      parameters.push(...options.selectParams);
     }
 
     // WHERE

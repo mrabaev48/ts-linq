@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityLoader = void 0;
 const LoadingStrategy_1 = require("./LoadingStrategy");
 const MetadataStorage_1 = require("../metadata/MetadataStorage");
-const LazyLoadingProxy_1 = require("./LazyLoadingProxy");
 /**
  * Service responsible for loading entities with either lazy or eager strategy,
  * including recursive loading of relationships based on provided options.
@@ -38,8 +37,8 @@ class EntityLoader {
             return entity;
         }
         else if (loadingOptions.strategy === LoadingStrategy_1.LoadingStrategy.Lazy) {
-            // Return a lazy loading proxy for Entity Framework style navigation
-            return LazyLoadingProxy_1.LazyLoadingProxy.create(entity, entityClass, this._provider);
+            // Leave navigation properties untouched (undefined) for strict lazy behavior
+            return entity;
         }
         return entity;
     }
@@ -57,8 +56,8 @@ class EntityLoader {
             return entities;
         }
         else if (loadingOptions.strategy === LoadingStrategy_1.LoadingStrategy.Lazy) {
-            // Return lazy loading proxies for Entity Framework style navigation
-            return LazyLoadingProxy_1.LazyLoadingProxy.createMany(entities, entityClass, this._provider);
+            // Keep plain entities for strict lazy behavior
+            return entities;
         }
         return entities;
     }
@@ -66,6 +65,13 @@ class EntityLoader {
      * Populate relationship properties on an entity according to options.
      */
     async loadRelationships(entity, entityClass, options) {
+        // Ensure decorator initializers run at least once for Stage-3 field decorators
+        try {
+            void new entityClass();
+        }
+        catch {
+            /* ignore */
+        }
         const metadata = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;
@@ -129,6 +135,12 @@ class EntityLoader {
     async loadRelationshipsBatched(entities, entityClass, options) {
         if (entities.length === 0)
             return;
+        try {
+            void new entityClass();
+        }
+        catch {
+            /* ignore */
+        }
         const metadata = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;

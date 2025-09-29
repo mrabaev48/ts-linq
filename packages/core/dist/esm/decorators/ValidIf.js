@@ -14,7 +14,14 @@ export function ValidIf(predicate, message, options) {
             if (!ctor)
                 return;
             const existing = Reflect.getOwnMetadata('orm:validations', ctor) || [];
-            existing.push({ propertyName: name, predicate, message, phase: options?.phase, messageKey: options?.messageKey, messageParams: options?.messageParams });
+            existing.push({
+                propertyName: name,
+                predicate,
+                message,
+                phase: options?.phase,
+                messageKey: options?.messageKey,
+                messageParams: options?.messageParams
+            });
             Reflect.defineMetadata('orm:validations', existing, ctor);
         });
     };
@@ -50,7 +57,11 @@ export function RequiredIfOf(condition, message) {
                     return v.length > 0;
                 return true;
             };
-            existing.push({ propertyName: propName, predicate, message: message || `${propName} is required` });
+            existing.push({
+                propertyName: propName,
+                predicate,
+                message: message || `${propName} is required`
+            });
             Reflect.defineMetadata('orm:validations', existing, ctor);
         });
     };
@@ -75,7 +86,11 @@ export function MinLengthOf(min, message) {
                     return v.length >= min;
                 return true;
             };
-            existing.push({ propertyName: propName, predicate, message: message || `Length must be >= ${min}` });
+            existing.push({
+                propertyName: propName,
+                predicate,
+                message: message || `Length must be >= ${min}`
+            });
             Reflect.defineMetadata('orm:validations', existing, ctor);
         });
     };
@@ -100,7 +115,11 @@ export function MaxLengthOf(max, message) {
                     return v.length <= max;
                 return true;
             };
-            existing.push({ propertyName: propName, predicate, message: message || `Length must be <= ${max}` });
+            existing.push({
+                propertyName: propName,
+                predicate,
+                message: message || `Length must be <= ${max}`
+            });
             Reflect.defineMetadata('orm:validations', existing, ctor);
         });
     };

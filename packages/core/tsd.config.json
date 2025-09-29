@@ -1,8 +1,6 @@
 {
   "directory": "test-d",
-  "files": [
-    "dist/index.d.ts"
-  ],
+  "files": ["dist/index.d.ts"],
   "compilerOptions": {
     "strict": true
   }

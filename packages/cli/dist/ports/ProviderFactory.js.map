@@ -1,0 +1,1 @@
+{"version":3,"file":"ProviderFactory.js","sourceRoot":"","sources":["../../src/ports/ProviderFactory.ts"],"names":[],"mappings":"","sourcesContent":["import type { DatabaseProvider } from '@ts-linq/core';\n\nexport interface ProviderFactory {\n  create(): DatabaseProvider;\n}\n"]}

@@ -1,4 +1,4 @@
-import { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
 export declare class MySqlDdlStrategy {
     generateCreateTableSql(metadata: EntityMetadata): string;
     generateCreateIndexSql(table: string, index: {

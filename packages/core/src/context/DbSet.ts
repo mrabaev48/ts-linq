@@ -121,7 +121,7 @@ export class DbSet<T extends object> {
       // Fallback: issue sequential finds (kept for completeness; generally not used)
       const results: T[] = [];
       for (const id of ids) {
-        const found = await this.find(id as PrimaryKeyOf<T>);
+        const found = await this.find(id);
         if (found) results.push(found);
       }
       return results;
@@ -129,11 +129,7 @@ export class DbSet<T extends object> {
     const pk = metadata.primaryKeys[0];
     const column = metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk;
     // Delegate to provider for efficient IN query
-    return await this._provider.findWhereIn(
-      this._entityClass,
-      column,
-      ids as unknown as unknown[]
-    );
+    return await this._provider.findWhereIn(this._entityClass, column, ids as unknown as unknown[]);
   }
 
   /**
@@ -167,10 +163,9 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).where(predicate);
-    
+
     return TypedQueryable.from(queryable);
   }
-
 
   /** Proxy: WHERE EXISTS (subquery). */
   public whereExists<TOther>(subquery: Queryable<TOther>): TypedQueryable<T> {
@@ -182,7 +177,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).whereExists(subquery);
-    
+
     return TypedQueryable.from(queryable);
   }
   /** Proxy: column IN (subquery). */
@@ -198,7 +193,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).whereInSubquery(column, subquery);
-    
+
     return TypedQueryable.from(queryable);
   }
 
@@ -212,7 +207,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).select(selector);
-    
+
     return TypedQueryable.from(queryable);
   }
 
@@ -226,7 +221,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).orderBy(keySelector);
-    
+
     return TypedQueryable.from(queryable);
   }
 
@@ -240,7 +235,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).orderByDescending(keySelector);
-    
+
     return TypedQueryable.from(queryable);
   }
 
@@ -254,7 +249,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).take(count);
-    
+
     return TypedQueryable.from(queryable);
   }
 
@@ -268,7 +263,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).skip(count);
-    
+
     return TypedQueryable.from(queryable);
   }
 
@@ -282,7 +277,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).distinct();
-    
+
     return TypedQueryable.from(queryable);
   }
 
@@ -296,7 +291,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).union(other);
-    
+
     return TypedQueryable.from(queryable);
   }
   /** Proxy: UNION ALL of two queries of the same DbSet. */
@@ -309,7 +304,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).unionAll(other);
-    
+
     return TypedQueryable.from(queryable);
   }
 
@@ -396,7 +391,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     ).include(selector);
-    
+
     return TypedQueryable.from(queryable);
   }
 

@@ -134,8 +134,22 @@ class MetadataStorage {
     }
     /** Add a relationship definition to the target entity's builder. */
     addRelationshipMetadata(target, relationship) {
+        // Normalize thunk target to constructor to keep tests stable
+        const te = relationship.targetEntity;
+        const resolved = typeof te === 'function' && te.prototype
+            ? te
+            : te();
+        const key = this.normalizeTarget(target);
+        const finalized = this.entities.get(key);
+        if (finalized) {
+            finalized.relationships = [
+                ...finalized.relationships,
+                { ...relationship, targetEntity: resolved }
+            ];
+            return;
+        }
         const builder = this.getOrCreateBuilder(target);
-        builder.addRelationship(relationship);
+        builder.addRelationship({ ...relationship, targetEntity: resolved });
     }
     /** Add an index definition to the target entity's builder. */
     addIndexMetadata(target, index) {

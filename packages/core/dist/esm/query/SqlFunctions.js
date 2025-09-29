@@ -22,7 +22,7 @@ class WindowBuilder {
         if (this.partitions.length)
             parts.push(`PARTITION BY ${this.partitions.join(', ')}`);
         if (this.orders.length)
-            parts.push(`ORDER BY ${this.orders.map(o => `${o.column} ${o.direction}`).join(', ')}`);
+            parts.push(`ORDER BY ${this.orders.map((o) => `${o.column} ${o.direction}`).join(', ')}`);
         return `${this.funcCall} OVER (${parts.join(' ')})`;
     }
     as(alias) {
@@ -45,9 +45,15 @@ class RowNumberFunction {
     }
 }
 export const sql = {
-    rank() { return new RankFunction(); },
-    denseRank() { return new DenseRankFunction(); },
-    rowNumber() { return new RowNumberFunction(); },
+    rank() {
+        return new RankFunction();
+    },
+    denseRank() {
+        return new DenseRankFunction();
+    },
+    rowNumber() {
+        return new RowNumberFunction();
+    },
     // JSON helpers (dialect-specific rendering expected downstream)
     jsonExtract(column, path) {
         // Postgres: column #>> '{a,b}', MySQL: JSON_EXTRACT(column, '$.a.b')
@@ -59,12 +65,16 @@ export const sql = {
     // Full-text search DSL (vendor-aware by convention; dialect may remap)
     mysqlMatchAgainst(columns, query, mode = 'natural') {
         const cols = Array.isArray(columns) ? columns.join(', ') : columns;
-        const modeSql = mode === 'boolean' ? ' IN BOOLEAN MODE' : (mode === 'query expansion' ? ' WITH QUERY EXPANSION' : ' IN NATURAL LANGUAGE MODE');
+        const modeSql = mode === 'boolean'
+            ? ' IN BOOLEAN MODE'
+            : mode === 'query expansion'
+                ? ' WITH QUERY EXPANSION'
+                : ' IN NATURAL LANGUAGE MODE';
         return new ExprBuilder(`MATCH(${cols}) AGAINST (?${modeSql})`, [query]);
     },
     pgToTsVector(columns, config = 'simple') {
         const cols = Array.isArray(columns) ? columns : [columns];
-        const coalesced = cols.map(c => `COALESCE(${c}, '')`).join(` || ' ' || `);
+        const coalesced = cols.map((c) => `COALESCE(${c}, '')`).join(` || ' ' || `);
         return new ExprBuilder(`to_tsvector(?, ${coalesced})`, [config]);
     },
     pgPlainToTsQuery(query, config = 'simple') {
@@ -78,9 +88,18 @@ export const sql = {
     }
 };
 class ExprBuilder {
-    constructor(expr, params = []) { this.expr = expr; this.params = params; }
-    toString() { return this.expr; }
-    getParameters() { return this.params; }
-    as(alias) { return new ExprBuilder(`${this.expr} AS ${alias}`, this.params); }
+    constructor(expr, params = []) {
+        this.expr = expr;
+        this.params = params;
+    }
+    toString() {
+        return this.expr;
+    }
+    getParameters() {
+        return this.params;
+    }
+    as(alias) {
+        return new ExprBuilder(`${this.expr} AS ${alias}`, this.params);
+    }
 }
 //# sourceMappingURL=SqlFunctions.js.map

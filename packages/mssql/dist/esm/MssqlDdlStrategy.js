@@ -16,7 +16,8 @@ export class MssqlDdlStrategy {
     }
     generateColumnDefinition(column) {
         if (column.isComputed && column.computedExpression) {
-            const storage = column.computedStorage;
+            const storage = column
+                .computedStorage;
             if (storage && storage !== 'PERSISTED') {
                 console.warn(`MSSQL: computedStorage='${storage}' is not supported; use 'PERSISTED' or omit. Applying non-persisted computed for ${column.columnName}`);
             }
@@ -52,7 +53,9 @@ export class MssqlDdlStrategy {
         }
         const unique = index.unique ? 'UNIQUE ' : '';
         const whereSql = index.where ? ` WHERE ${index.where}` : '';
-        const cols = index.columns.map(c => index.orders?.[c] ? `${c} ${index.orders[c]}` : c).join(', ');
+        const cols = index.columns
+            .map((c) => (index.orders?.[c] ? `${c} ${index.orders[c]}` : c))
+            .join(', ');
         const include = index.include && index.include.length > 0 ? ` INCLUDE (${index.include.join(', ')})` : '';
         return `IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='${index.name}' AND object_id=OBJECT_ID('${tableName}')) CREATE ${unique}INDEX ${index.name} ON ${tableName} (${cols})${include}${whereSql}`;
     }

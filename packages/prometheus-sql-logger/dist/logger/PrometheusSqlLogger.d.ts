@@ -24,6 +24,10 @@ export interface PrometheusLoggerOptions {
     prefix?: string;
     bucketsMs?: number[];
     client?: PromClientLike;
+    /** When true, redact string literals and sensitive patterns from SQL before parsing labels */
+    maskSql?: boolean;
+    /** Custom patterns to redact from SQL text (replaced by [REDACTED]) */
+    maskPatterns?: ReadonlyArray<RegExp>;
 }
 export declare class PrometheusSqlLogger implements SqlLogger {
     private enabled;
@@ -40,6 +44,8 @@ export declare class PrometheusSqlLogger implements SqlLogger {
     private countCacheTtlHits?;
     private countCacheHardHits?;
     private cacheEvictions?;
+    private maskSql;
+    private maskPatterns;
     constructor(namespace: string, options?: PrometheusLoggerOptions);
     queryStart(_info?: {
         sql: string;
@@ -86,6 +92,7 @@ export declare class PrometheusSqlLogger implements SqlLogger {
         provider?: string;
     }): void;
     private safeRequirePromClient;
+    private maskIfNeeded;
     private parseOperation;
     private parseEntity;
     private cleanIdentifier;

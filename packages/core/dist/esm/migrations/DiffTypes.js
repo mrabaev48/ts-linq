@@ -34,7 +34,7 @@ export function compareSchemas(expected, actual) {
                     (expectedExpr || '') !== (actualExpr || '') ||
                     (expectedStorage || '') !== (actualStorage || '');
                 const defaultExprChanged = (expectedColumn.defaultExpression || '') !==
-                    ((actualColumn.defaultExpression) || '');
+                    (actualColumn.defaultExpression || '');
                 const needsAlter = typeChanged || nullableChanged || computedChanged || defaultExprChanged;
                 if (needsAlter) {
                     changes.push({ kind: 'alter', column: expectedColumn, prev: actualColumn });
@@ -75,7 +75,12 @@ export function compareSchemas(expected, actual) {
                 indexDrops.push(name);
         }
         if (changes.length > 0 || indexCreates.length > 0 || indexDrops.length > 0) {
-            diffs.push({ table: expectedTable.name, columnChanges: changes.length ? changes : undefined, indexCreates: indexCreates.length ? indexCreates : undefined, indexDrops: indexDrops.length ? indexDrops : undefined });
+            diffs.push({
+                table: expectedTable.name,
+                columnChanges: changes.length ? changes : undefined,
+                indexCreates: indexCreates.length ? indexCreates : undefined,
+                indexDrops: indexDrops.length ? indexDrops : undefined
+            });
         }
     }
     // Dropped tables

@@ -11,7 +11,7 @@ export class EntityMetadataBuilder {
     constructor(target) {
         this.metadata = {
             target,
-            tableName: target.name,
+            tableName: Reflect.getOwnMetadata?.('orm:tableName', target) || target.name,
             columns: [],
             primaryKeys: [],
             relationships: [],
@@ -68,7 +68,9 @@ export class EntityMetadataBuilder {
         }
         return {
             target: this.metadata.target,
-            tableName: this.metadata.tableName || this.metadata.target.name,
+            tableName: this.metadata.tableName ||
+                Reflect.getOwnMetadata?.('orm:tableName', this.metadata.target) ||
+                this.metadata.target.name,
             columns: this.metadata.columns || [],
             primaryKeys: this.metadata.primaryKeys || [],
             relationships: this.metadata.relationships || [],

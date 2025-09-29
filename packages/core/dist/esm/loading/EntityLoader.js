@@ -1,6 +1,5 @@
 import { LoadingStrategy } from './LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
-import { LazyLoadingProxy } from './LazyLoadingProxy';
 /**
  * Service responsible for loading entities with either lazy or eager strategy,
  * including recursive loading of relationships based on provided options.
@@ -35,8 +34,8 @@ export class EntityLoader {
             return entity;
         }
         else if (loadingOptions.strategy === LoadingStrategy.Lazy) {
-            // Return a lazy loading proxy for Entity Framework style navigation
-            return LazyLoadingProxy.create(entity, entityClass, this._provider);
+            // Leave navigation properties untouched (undefined) for strict lazy behavior
+            return entity;
         }
         return entity;
     }
@@ -54,8 +53,8 @@ export class EntityLoader {
             return entities;
         }
         else if (loadingOptions.strategy === LoadingStrategy.Lazy) {
-            // Return lazy loading proxies for Entity Framework style navigation
-            return LazyLoadingProxy.createMany(entities, entityClass, this._provider);
+            // Keep plain entities for strict lazy behavior
+            return entities;
         }
         return entities;
     }
@@ -63,6 +62,13 @@ export class EntityLoader {
      * Populate relationship properties on an entity according to options.
      */
     async loadRelationships(entity, entityClass, options) {
+        // Ensure decorator initializers run at least once for Stage-3 field decorators
+        try {
+            void new entityClass();
+        }
+        catch {
+            /* ignore */
+        }
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;
@@ -126,6 +132,12 @@ export class EntityLoader {
     async loadRelationshipsBatched(entities, entityClass, options) {
         if (entities.length === 0)
             return;
+        try {
+            void new entityClass();
+        }
+        catch {
+            /* ignore */
+        }
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;

@@ -2,8 +2,12 @@ import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { ColumnMetadata } from '../types';
 
-function isStage3FieldContext(x: unknown): x is { kind: 'field'; name: string | symbol; addInitializer?(fn: (this: unknown) => void): void } {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in (x as object);
+function isStage3FieldContext(x: unknown): x is {
+  kind: 'field';
+  name: string | symbol;
+  addInitializer?(fn: (this: unknown) => void): void;
+} {
+  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
 
 export interface ComputedColumnOptions {
@@ -23,7 +27,7 @@ export function ComputedColumn(options: ComputedColumnOptions): PropertyDecorato
     const ctx = propOrContext;
     const name = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor as Function | undefined;
+      const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
       const columnMetadata: ColumnMetadata = {
         propertyName: name,
@@ -33,11 +37,11 @@ export function ComputedColumn(options: ComputedColumnOptions): PropertyDecorato
         isGenerated: false,
         isVersion: false,
         isComputed: true,
-        computedExpression: options.expression,
+        computedExpression: options.expression
       };
       MetadataStorage.addColumn(ctor, columnMetadata);
       const existing: ColumnMetadata[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-      const existingColIndex = existing.findIndex(c => c.propertyName === name);
+      const existingColIndex = existing.findIndex((c) => c.propertyName === name);
       if (existingColIndex > -1) {
         existing[existingColIndex] = columnMetadata;
       } else {
@@ -47,5 +51,3 @@ export function ComputedColumn(options: ComputedColumnOptions): PropertyDecorato
     });
   };
 }
-
-

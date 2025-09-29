@@ -1,4 +1,5 @@
-import { DatabaseProvider, EntityMetadata, SqlLogger, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlDialect } from '@ts-linq/core';
+import type { EntityMetadata, SqlLogger, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlDialect } from '@ts-linq/core';
+import { DatabaseProvider } from '@ts-linq/core';
 /**
  * Microsoft SQL Server provider based on the `mssql` package.
  *

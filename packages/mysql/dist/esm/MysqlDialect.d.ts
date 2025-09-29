@@ -1,4 +1,4 @@
-import { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
+import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
 /**
  * MySQL dialect for SELECT generation.
  *

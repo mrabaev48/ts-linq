@@ -1,4 +1,4 @@
-import { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
 export declare class MssqlDdlStrategy {
     generateCreateTableSql(metadata: EntityMetadata): string;
     generateColumnDefinition(column: ColumnMetadata): string;

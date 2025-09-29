@@ -121,7 +121,7 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
           (expectedStorage || '') !== (actualStorage || '');
         const defaultExprChanged =
           ((expectedColumn as { defaultExpression?: string }).defaultExpression || '') !==
-          (((actualColumn as unknown as ColumnDef).defaultExpression) || '');
+          ((actualColumn as unknown as ColumnDef).defaultExpression || '');
         const needsAlter = typeChanged || nullableChanged || computedChanged || defaultExprChanged;
         if (needsAlter) {
           changes.push({ kind: 'alter', column: expectedColumn, prev: actualColumn });
@@ -146,10 +146,22 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
         ? arraysEqual(expIdx.columns, actIdx.columns) &&
           !!expIdx.unique === !!actIdx.unique &&
           (expIdx.where || '') === ((actIdx as { where?: string }).where || '') &&
-          shallowObjEqual(expIdx.orders, (actIdx as { orders?: Record<string, 'ASC'|'DESC'> }).orders) &&
-          shallowObjEqual(expIdx.collations, (actIdx as { collations?: Record<string, string> }).collations) &&
-          shallowObjEqual(expIdx.nulls, (actIdx as { nulls?: Record<string, 'FIRST'|'LAST'> }).nulls) &&
-          arraysEqual(expIdx.expressions || [], (actIdx as { expressions?: string[] }).expressions || [])
+          shallowObjEqual(
+            expIdx.orders,
+            (actIdx as { orders?: Record<string, 'ASC' | 'DESC'> }).orders
+          ) &&
+          shallowObjEqual(
+            expIdx.collations,
+            (actIdx as { collations?: Record<string, string> }).collations
+          ) &&
+          shallowObjEqual(
+            expIdx.nulls,
+            (actIdx as { nulls?: Record<string, 'FIRST' | 'LAST'> }).nulls
+          ) &&
+          arraysEqual(
+            expIdx.expressions || [],
+            (actIdx as { expressions?: string[] }).expressions || []
+          )
         : false;
       if (!actIdx || !equal) {
         if (actIdx && !equal) indexDrops.push(name);
@@ -160,7 +172,12 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
       if (!expIdxByName.has(name)) indexDrops.push(name);
     }
     if (changes.length > 0 || indexCreates.length > 0 || indexDrops.length > 0) {
-      diffs.push({ table: expectedTable.name, columnChanges: changes.length ? changes : undefined, indexCreates: indexCreates.length ? indexCreates : undefined, indexDrops: indexDrops.length ? indexDrops : undefined });
+      diffs.push({
+        table: expectedTable.name,
+        columnChanges: changes.length ? changes : undefined,
+        indexCreates: indexCreates.length ? indexCreates : undefined,
+        indexDrops: indexDrops.length ? indexDrops : undefined
+      });
     }
   }
   // Dropped tables
@@ -188,11 +205,11 @@ function arraysEqual(a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolea
 function shallowObjEqual<T extends Record<string, unknown> | undefined>(a: T, b: T): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;
-  const ak = Object.keys(a as Record<string, unknown>);
-  const bk = Object.keys(b as Record<string, unknown>);
+  const ak = Object.keys(a);
+  const bk = Object.keys(b);
   if (ak.length !== bk.length) return false;
   for (const k of ak) {
-    if ((a as Record<string, unknown>)[k] !== (b as Record<string, unknown>)[k]) return false;
+    if (a[k] !== b[k]) return false;
   }
   return true;
 }

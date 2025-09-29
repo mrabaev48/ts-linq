@@ -32,7 +32,12 @@ function tryInvoke(
 
 export function safeCache(
   logger: unknown,
-  payload: { cache: 'sqlGen' | 'entityL2' | 'count'; hit: boolean; provider?: string; ttl?: boolean }
+  payload: {
+    cache: 'sqlGen' | 'entityL2' | 'count';
+    hit: boolean;
+    provider?: string;
+    ttl?: boolean;
+  }
 ): void {
   tryInvoke(logger, 'cache', payload);
 }
@@ -63,5 +68,3 @@ export function warnIfLoggerDebug(method: string, error: unknown): void {
     /* ignore */
   }
 }
-
-

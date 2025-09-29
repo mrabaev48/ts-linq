@@ -1,4 +1,4 @@
-import { Queryable } from './Queryable';
+import type { Queryable } from './Queryable';
 /**
  * Type-safe selector function that only allows selecting valid entity properties.
  */
@@ -16,7 +16,7 @@ type TypedOrderSelector<TEntity, K extends keyof TEntity> = (entity: TEntity) =>
  * Relationship properties are arrays or objects (not primitives).
  */
 type RelationshipProperties<T> = {
-    [K in keyof T]: T[K] extends Array<any> ? K : T[K] extends object ? (T[K] extends Date ? never : T[K] extends Function ? never : K) : never;
+    [K in keyof T]: T[K] extends Array<unknown> ? K : T[K] extends object ? T[K] extends Date ? never : T[K] extends Function ? never : K : never;
 }[keyof T];
 /**
  * Compile-time typed wrapper around Queryable that provides type safety
@@ -106,6 +106,25 @@ export declare class TypedQueryable<TEntity> {
      * Must be used after orderBy() or orderByDescending().
      */
     thenByDescending<K extends keyof TEntity>(keySelector: TypedOrderSelector<TEntity, K>): TypedQueryable<TEntity>;
+    /**
+     * Paginate by page number and size (typed proxy).
+     */
+    paginate(page: number, size: number): Promise<{
+        items: TEntity[];
+        total: number;
+        page: number;
+        size: number;
+    }>;
+    /**
+     * Keyset pagination helper (typed proxy).
+     */
+    keysetPaginate<TKey extends keyof TEntity>(key: TKey, after: TEntity[TKey] | null, size: number): Promise<{
+        items: TEntity[];
+        pageSize: number;
+        nextAfter: TEntity[TKey] | null;
+    }>;
+    /** Attach AbortSignal (typed proxy) */
+    withAbort(signal: AbortSignal): TypedQueryable<TEntity>;
     /**
      * Type-safe first() with proper return type.
      * Throws if no elements found, consistent with underlying Queryable.

@@ -44,6 +44,14 @@ export class DbContext {
         // Initialize database provider from options
         this._provider = options.provider;
         this._softDelete = options.softDelete;
+        // Propagate soft-delete settings into provider for GlobalFilterApplier and ProviderStub
+        try {
+            this._provider.softDelete =
+                options.softDelete;
+        }
+        catch {
+            /* ignore */
+        }
         this._audit = options.audit;
         this._globalFilters = options.globalFilters;
         this._validationOptions = options.validation;
@@ -380,7 +388,9 @@ export class DbContext {
             return LazyLoadingProxy.isRelationshipLoaded(entity, propertyName);
         }
         // For non-proxy entities, check if property exists and is not undefined/null
-        return entity[propertyName] !== undefined && entity[propertyName] !== null;
+        const record = entity;
+        const value = record[propertyName];
+        return value !== undefined && value !== null;
     }
     // Removed string-based include API in favor of predicate-based include on Queryable
     /**
@@ -403,7 +413,7 @@ export class DbContext {
             Object.defineProperty(this, propertyName, {
                 get: () => dbSet,
                 enumerable: true,
-                configurable: false
+                configurable: true
             });
         }
     }
@@ -448,9 +458,21 @@ export class DbContext {
                 // Allow DB-level defaultValue to satisfy non-null on Added when undefined in entity
                 const hasDbDefault = col.defaultValue !== undefined && change.state === 'added';
                 // Allow audit stamping to satisfy non-null constraints (compat with audit)
-                const satisfiableByAudit = !!audit && ((change.state === 'added' && (col.propertyName === auditNames.createdAt || col.propertyName === auditNames.createdBy) && (col.propertyName === auditNames.createdAt || audit.getCurrentUserId !== undefined)) ||
-                    ((change.state === 'added' || change.state === 'modified') && (col.propertyName === auditNames.updatedAt || col.propertyName === auditNames.updatedBy) && (col.propertyName === auditNames.updatedAt || audit.getCurrentUserId !== undefined)));
-                if (!col.nullable && (value === null || value === undefined) && !isGeneratedPk && !hasDbDefault && !satisfiableByAudit) {
+                const satisfiableByAudit = !!audit &&
+                    ((change.state === 'added' &&
+                        (col.propertyName === auditNames.createdAt ||
+                            col.propertyName === auditNames.createdBy) &&
+                        (col.propertyName === auditNames.createdAt || audit.getCurrentUserId !== undefined)) ||
+                        ((change.state === 'added' || change.state === 'modified') &&
+                            (col.propertyName === auditNames.updatedAt ||
+                                col.propertyName === auditNames.updatedBy) &&
+                            (col.propertyName === auditNames.updatedAt ||
+                                audit.getCurrentUserId !== undefined)));
+                if (!col.nullable &&
+                    (value === null || value === undefined) &&
+                    !isGeneratedPk &&
+                    !hasDbDefault &&
+                    !satisfiableByAudit) {
                     errors.push(this.buildValidationDetail(meta, col.propertyName, 'Value cannot be null'));
                 }
                 if (col.length && typeof value === 'string' && value.length > col.length) {
@@ -493,8 +515,7 @@ export class DbContext {
         const cached = this._validationRulesCache.get(entityClass);
         if (cached)
             return cached;
-        const rules = (Reflect.getOwnMetadata('orm:validations', entityClass) || [])
-            .slice();
+        const rules = (Reflect.getOwnMetadata('orm:validations', entityClass) || []).slice();
         this._validationRulesCache.set(entityClass, rules);
         return rules;
     }
@@ -503,7 +524,15 @@ export class DbContext {
         const typeName = meta?.target?.name || 'UnknownEntity';
         const col = meta?.columns.find((c) => c.propertyName === property)?.columnName || property;
         const fullMessage = `${typeName}.${property} (${table}.${col}): ${message}`;
-        return { entity: table, property, message, entityClass: typeName, table, column: col, fullMessage };
+        return {
+            entity: table,
+            property,
+            message,
+            entityClass: typeName,
+            table,
+            column: col,
+            fullMessage
+        };
     }
 }
 //# sourceMappingURL=DbContext.js.map

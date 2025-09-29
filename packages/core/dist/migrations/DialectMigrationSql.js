@@ -49,7 +49,11 @@ function generateMigrationFromDiff(diff, dialect) {
                 const parts = [];
                 for (const c of idx.columns) {
                     const ord = idx.orders?.[c] ? ` ${idx.orders[c]}` : '';
-                    const collation = idx.collations?.[c] ? (dialect === 'postgresql' || dialect === 'sqlite' ? ` COLLATE ${idx.collations[c]}` : '') : '';
+                    const collation = idx.collations?.[c]
+                        ? dialect === 'postgresql' || dialect === 'sqlite'
+                            ? ` COLLATE ${idx.collations[c]}`
+                            : ''
+                        : '';
                     const nulls = dialect === 'postgresql' && idx.nulls?.[c] ? ` NULLS ${idx.nulls[c]}` : '';
                     parts.push(`${q(dialect, c)}${ord}${collation}${nulls}`);
                 }
@@ -60,10 +64,14 @@ function generateMigrationFromDiff(diff, dialect) {
                 const using = dialect === 'postgresql' && idx.using ? ` USING ${idx.using.toUpperCase()}` : '';
                 const concurrently = dialect === 'postgresql' && idx.concurrently ? ' CONCURRENTLY' : '';
                 const withSql = dialect === 'postgresql' && idx.withParams && Object.keys(idx.withParams).length > 0
-                    ? ` WITH (${Object.entries(idx.withParams).map(([k, v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`).join(', ')})`
+                    ? ` WITH (${Object.entries(idx.withParams)
+                        .map(([k, v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`)
+                        .join(', ')})`
                     : '';
                 const visibility = dialect === 'mysql' && idx.mysqlVisibility ? ` ${idx.mysqlVisibility}` : '';
-                const include = dialect === 'mssql' && idx.include && idx.include.length > 0 ? ` INCLUDE (${idx.include.map(c => q(dialect, c)).join(', ')})` : '';
+                const include = dialect === 'mssql' && idx.include && idx.include.length > 0
+                    ? ` INCLUDE (${idx.include.map((c) => q(dialect, c)).join(', ')})`
+                    : '';
                 switch (dialect) {
                     case 'postgresql':
                         up.push(`CREATE ${uniq}INDEX${concurrently} ${name} ON ${q(dialect, tableDiff.table)}${using} (${cols})${withSql}${where}`);
@@ -137,7 +145,8 @@ function generateMigrationFromDiff(diff, dialect) {
         if (tableDiff.columnChanges && tableDiff.columnChanges.length > 0) {
             for (const ch of tableDiff.columnChanges) {
                 if (ch.kind === 'add') {
-                    if (ch.column.isComputed && ch.column.computedExpression) {
+                    if (ch.column.isComputed &&
+                        ch.column.computedExpression) {
                         // Use full column rendering for computed columns
                         const colSql = renderColumn(dialect, ch.column);
                         const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
@@ -158,9 +167,11 @@ function generateMigrationFromDiff(diff, dialect) {
                     // Separate type and nullability handling
                     const alterType = ch.prev && norm(ch.prev.type) !== norm(ch.column.type);
                     // For computed changes, prefer drop + add (dialect-safe baseline)
-                    const computedChanged = (ch.prev?.isComputed !== ch.column.isComputed) ||
-                        (ch.prev?.computedExpression !== ch.column.computedExpression) ||
-                        (ch.prev?.computedStorage !== ch.column.computedStorage);
+                    const computedChanged = ch.prev?.isComputed !== ch.column.isComputed ||
+                        ch.prev?.computedExpression !==
+                            ch.column.computedExpression ||
+                        ch.prev?.computedStorage !==
+                            ch.column.computedStorage;
                     if (computedChanged) {
                         // baseline: drop then add
                         up.push(buildDropColumnSql(dialect, tableDiff.table, ch.column.name));
@@ -243,7 +254,11 @@ function renderColumn(dialect, c) {
     }
     const dialectMap = c.defaultExpressionDialect || {};
     const defExpr = dialectMap[dialect] || c.defaultExpression;
-    const defSql = defExpr ? ` DEFAULT ${defExpr}` : c.defaultValue !== undefined ? ' DEFAULT ' + formatValue(dialect, c.defaultValue) : '';
+    const defSql = defExpr
+        ? ` DEFAULT ${defExpr}`
+        : c.defaultValue !== undefined
+            ? ' DEFAULT ' + formatValue(dialect, c.defaultValue)
+            : '';
     return `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${defSql}`;
 }
 function buildAddColumnSql(dialect, td, name, type, nullable, def) {

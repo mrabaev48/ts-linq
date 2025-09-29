@@ -10,7 +10,9 @@ class CompositeSqlLogger {
             try {
                 d.queryStart?.(info);
             }
-            catch { /* swallow */ }
+            catch {
+                /* swallow */
+            }
         }
     }
     queryEnd(info) {
@@ -18,7 +20,9 @@ class CompositeSqlLogger {
             try {
                 d.queryEnd?.(info);
             }
-            catch { /* swallow */ }
+            catch {
+                /* swallow */
+            }
         }
     }
     retry(info) {
@@ -26,7 +30,9 @@ class CompositeSqlLogger {
             try {
                 d.retry?.(info);
             }
-            catch { /* swallow */ }
+            catch {
+                /* swallow */
+            }
         }
     }
     transactionStart(info) {
@@ -34,7 +40,9 @@ class CompositeSqlLogger {
             try {
                 d.transactionStart?.(info);
             }
-            catch { /* swallow */ }
+            catch {
+                /* swallow */
+            }
         }
     }
     transactionEnd(info) {
@@ -42,7 +50,9 @@ class CompositeSqlLogger {
             try {
                 d.transactionEnd?.(info);
             }
-            catch { /* swallow */ }
+            catch {
+                /* swallow */
+            }
         }
     }
     cache(info) {
@@ -50,7 +60,9 @@ class CompositeSqlLogger {
             try {
                 d.cache?.(info);
             }
-            catch { /* swallow */ }
+            catch {
+                /* swallow */
+            }
         }
     }
 }

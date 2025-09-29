@@ -19,7 +19,7 @@ class EnhancedSqlCache {
             enableKeyCompression: options.enableKeyCompression ?? true,
             compressionThreshold: options.compressionThreshold ?? 200,
             enableMetrics: options.enableMetrics ?? true,
-            warmingBatchSize: options.warmingBatchSize ?? 50,
+            warmingBatchSize: options.warmingBatchSize ?? 50
         };
         this.metrics = this.initializeMetrics();
         // Set up periodic cleanup if TTL is enabled
@@ -179,7 +179,8 @@ class EnhancedSqlCache {
     }
     // Private helper methods
     getCompressedKey(originalKey) {
-        if (!this.options.enableKeyCompression || originalKey.length <= this.options.compressionThreshold) {
+        if (!this.options.enableKeyCompression ||
+            originalKey.length <= this.options.compressionThreshold) {
             return originalKey;
         }
         const existing = this.keyMap.get(originalKey);
@@ -210,7 +211,7 @@ class EnhancedSqlCache {
                 if (evictedCount >= entriesToEvict)
                     break;
             }
-            keysToDelete.forEach(key => this.store.delete(key));
+            keysToDelete.forEach((key) => this.store.delete(key));
         }
         else {
             // FIFO: evict oldest entries
@@ -221,7 +222,7 @@ class EnhancedSqlCache {
                 if (evictedCount >= entriesToEvict)
                     break;
             }
-            keysToDelete.forEach(key => this.store.delete(key));
+            keysToDelete.forEach((key) => this.store.delete(key));
         }
         if (this.options.enableMetrics) {
             this.metrics.evictions += evictedCount;
@@ -259,8 +260,7 @@ class EnhancedSqlCache {
             this.metrics.averageAccessCount = 0;
             return;
         }
-        const totalAccess = Array.from(this.store.values())
-            .reduce((sum, entry) => sum + entry.accessCount, 0);
+        const totalAccess = Array.from(this.store.values()).reduce((sum, entry) => sum + entry.accessCount, 0);
         this.metrics.averageAccessCount = totalAccess / this.store.size;
     }
     startPeriodicCleanup() {
@@ -270,7 +270,9 @@ class EnhancedSqlCache {
         }, cleanupInterval);
         // Prevent the interval from keeping the event loop alive in tests/process exit
         // NodeJS.Timeout supports unref() in Node environments
-        this.cleanupInterval?.unref?.();
+        // Best-effort: unref is not available in all environments
+        const maybe = this.cleanupInterval;
+        maybe?.unref?.();
     }
     chunkArray(array, size) {
         const chunks = [];

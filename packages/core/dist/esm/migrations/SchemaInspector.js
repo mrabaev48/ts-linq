@@ -19,7 +19,12 @@ export class SQLiteSchemaInspector {
             const sqlRows = await this.provider.executeQuery(`SELECT sql FROM sqlite_master WHERE type='index' AND name='${row.name}'`);
             const sql = sqlRows[0]?.sql || null;
             const where = extractWhereClause(sql || undefined);
-            result.push({ name: row.name, columns: cols.map((c) => c.name), unique: !!row.unique, where: where || undefined });
+            result.push({
+                name: row.name,
+                columns: cols.map((c) => c.name),
+                unique: !!row.unique,
+                where: where || undefined
+            });
         }
         return result;
     }
@@ -105,11 +110,17 @@ export class MssqlSchemaInspector {
         return rows.map((r) => r.name);
     }
     async getIndexes(table) {
-        const idxRows = await this.provider.executeQuery("SELECT i.name, i.is_unique, i.filter_definition FROM sys.indexes i WHERE i.object_id = OBJECT_ID(@p1) AND i.is_hypothetical = 0 AND i.name IS NOT NULL", [table]);
+        const idxRows = await this.provider.executeQuery('SELECT i.name, i.is_unique, i.filter_definition FROM sys.indexes i WHERE i.object_id = OBJECT_ID(@p1) AND i.is_hypothetical = 0 AND i.name IS NOT NULL', [table]);
         const colRows = await this.provider.executeQuery('SELECT i.name as index_name, c.name as column_name, ic.key_ordinal, ic.is_descending_key FROM sys.indexes i JOIN sys.index_columns ic ON ic.object_id=i.object_id AND ic.index_id=i.index_id JOIN sys.columns c ON c.object_id=i.object_id AND c.column_id=ic.column_id WHERE i.object_id = OBJECT_ID(@p1) ORDER BY i.name, ic.key_ordinal', [table]);
         const byName = new Map();
         for (const r of idxRows) {
-            byName.set(r.name, { name: r.name, columns: [], unique: r.is_unique === 1, where: r.filter_definition || undefined, _cols: [] });
+            byName.set(r.name, {
+                name: r.name,
+                columns: [],
+                unique: r.is_unique === 1,
+                where: r.filter_definition || undefined,
+                _cols: []
+            });
         }
         for (const r of colRows) {
             const e = byName.get(r.index_name);

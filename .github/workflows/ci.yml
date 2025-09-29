@@ -2,7 +2,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build-test:
@@ -17,6 +17,8 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      - name: Config validation
+        run: node packages/cli/dist/cli.js config:check || true
       - name: Lint
         run: npm run lint
       - name: Unit tests
@@ -24,9 +26,9 @@ jobs:
       - name: Integration DB tests (containers)
         env:
           RUN_DB_TESTS: '1'
+          PERF_GUARD_MS: '250'
         run: npm run test:db:all
       - name: Size budgets
         run: npm run size:bundle
       - name: Enforce bundle size thresholds
         run: node size-tests/check-thresholds.mjs
-

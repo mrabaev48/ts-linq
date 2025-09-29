@@ -15,7 +15,7 @@ export default [
       format: 'esm',
       sourcemap: false
     },
-    plugins: [resolve({ extensions: ['.js'] }), terser()] ,
+    plugins: [resolve({ extensions: ['.js'] }), terser()],
     external: ['reflect-metadata'],
     onwarn(w, warn) {
       if (w.code === 'THIS_IS_UNDEFINED') return;
@@ -38,5 +38,3 @@ export default [
     }
   }
 ];
-
-

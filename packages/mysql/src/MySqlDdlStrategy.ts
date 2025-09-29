@@ -1,4 +1,5 @@
-import { EntityMetadata, ColumnMetadata, SqlHelper } from '@ts-linq/core';
+import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+import { SqlHelper } from '@ts-linq/core';
 
 export class MySqlDdlStrategy {
   public generateCreateTableSql(metadata: EntityMetadata): string {
@@ -31,14 +32,18 @@ export class MySqlDdlStrategy {
   ): string {
     if (index.where) {
       // MySQL ignores partial WHERE in CREATE INDEX (requires functional equivalent)
-      console.warn(`MySQL: partial index WHERE is not supported and will be ignored for ${index.name}`);
+      console.warn(
+        `MySQL: partial index WHERE is not supported and will be ignored for ${index.name}`
+      );
     }
     if (index.nulls && Object.keys(index.nulls).length > 0) {
-      console.warn(`MySQL: NULLS FIRST/LAST is not supported and will be ignored for ${index.name}`);
+      console.warn(
+        `MySQL: NULLS FIRST/LAST is not supported and will be ignored for ${index.name}`
+      );
     }
     // Warn on unsupported computed storage if encountered via DDL (rendering handled in column gen)
     const parts: string[] = [];
-    for (const c of index.columns) parts.push(index.orders?.[c] ? `${c} ${index.orders![c]}` : c);
+    for (const c of index.columns) parts.push(index.orders?.[c] ? `${c} ${index.orders[c]}` : c);
     for (const e of index.expressions || []) parts.push(`(${e})`);
     const cols = parts.join(', ');
     const kind = index.mysqlType ? `${index.mysqlType} ` : index.unique ? 'UNIQUE ' : '';
@@ -48,9 +53,12 @@ export class MySqlDdlStrategy {
 
   public generateColumnDefinition(column: ColumnMetadata): string {
     if (column.isComputed && column.computedExpression) {
-      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage;
+      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
+        .computedStorage;
       if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
-        console.warn(`MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`);
+        console.warn(
+          `MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`
+        );
       }
       const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
       return `${column.columnName} ${this.mapTypeToMySql(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;

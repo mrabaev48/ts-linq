@@ -1,18 +1,20 @@
-import {
-  DatabaseProvider,
+import type {
   EntityMetadata,
   RetryPolicy,
   SqlParameter,
   OrmMiddleware,
   SoftDeleteOptions,
   SqlLogger,
+  SqlDialect
+} from '@ts-linq/core';
+import {
+  DatabaseProvider,
   OptimisticConcurrencyError,
   UniqueConstraintError,
   DatabaseError,
   ForeignKeyConstraintError,
   MetadataStorage,
-  QueryBuilder,
-  SqlDialect
+  QueryBuilder
 } from '@ts-linq/core';
 import { PostgresDialect } from './PostgresDialect';
 import { PostgresDdlStrategy } from './PostgresDdlStrategy';

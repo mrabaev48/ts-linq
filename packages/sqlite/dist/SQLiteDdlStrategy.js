@@ -46,7 +46,8 @@ class SQLiteDdlStrategy {
     }
     generateColumnDefinition(column) {
         if (column.isComputed && column.computedExpression) {
-            const storage = column.computedStorage;
+            const storage = column
+                .computedStorage;
             const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
             if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
                 console.warn(`SQLite: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); using ${kind} for ${column.columnName}`);

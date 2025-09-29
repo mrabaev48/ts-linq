@@ -253,11 +253,12 @@ export class BatchOperations {
             return await this.provider.insertMany(entities, metadata.target);
         }
         // Build bulk INSERT with VALUES clause
-        const columns = metadata.columns.filter(col => !col.isGenerated && entities.some(entity => entity[col.propertyName] !== undefined));
+        const columns = metadata.columns.filter((col) => !col.isGenerated &&
+            entities.some((entity) => entity[col.propertyName] !== undefined));
         if (columns.length === 0) {
             throw new Error('No insertable columns found');
         }
-        const columnNames = columns.map(col => col.columnName || col.propertyName);
+        const columnNames = columns.map((col) => col.columnName || col.propertyName);
         const placeholders = [];
         const allParams = [];
         for (let i = 0; i < entities.length; i++) {
@@ -286,12 +287,11 @@ export class BatchOperations {
             return await this.provider.updateMany(entities, metadata.target);
         }
         // Build batch update statements
-        const primaryKeyColumn = metadata.columns.find(col => metadata.primaryKeys.includes(col.propertyName));
+        const primaryKeyColumn = metadata.columns.find((col) => metadata.primaryKeys.includes(col.propertyName));
         if (!primaryKeyColumn) {
             throw new Error(`No primary key found for entity ${metadata.target.name}`);
         }
-        const updateColumns = metadata.columns.filter(col => !metadata.primaryKeys.includes(col.propertyName) &&
-            !col.isGenerated);
+        const updateColumns = metadata.columns.filter((col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated);
         if (updateColumns.length === 0) {
             return entities; // Nothing to update
         }
@@ -305,11 +305,13 @@ export class BatchOperations {
      * Execute optimized bulk delete using IN clause.
      */
     async executeBulkDelete(entities, metadata) {
-        const primaryKeyColumn = metadata.columns.find(col => metadata.primaryKeys.includes(col.propertyName));
+        const primaryKeyColumn = metadata.columns.find((col) => metadata.primaryKeys.includes(col.propertyName));
         if (!primaryKeyColumn) {
             throw new Error(`No primary key found for entity ${metadata.target.name}`);
         }
-        const primaryKeyValues = entities.map(entity => entity[primaryKeyColumn.propertyName]).filter(value => value !== undefined && value !== null);
+        const primaryKeyValues = entities
+            .map((entity) => entity[primaryKeyColumn.propertyName])
+            .filter((value) => value !== undefined && value !== null);
         if (primaryKeyValues.length === 0) {
             return 0;
         }

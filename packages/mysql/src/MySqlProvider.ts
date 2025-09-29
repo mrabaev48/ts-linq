@@ -1,16 +1,18 @@
-import {
-  DatabaseProvider,
+import type {
   EntityMetadata,
   ColumnMetadata,
   SqlLogger,
   RetryPolicy,
   OrmMiddleware,
   SoftDeleteOptions,
+  SqlParameter,
+  SqlDialect
+} from '@ts-linq/core';
+import {
+  DatabaseProvider,
   OptimisticConcurrencyError,
   MetadataStorage,
-  SqlParameter,
   SqlHelper,
-  SqlDialect,
   UniqueConstraintError,
   DatabaseError
 } from '@ts-linq/core';
@@ -405,8 +407,7 @@ function mapMySqlError(err: unknown): Error {
   const anyErr = err as { code?: string; message?: string } | undefined;
   const code = anyErr?.code;
   const message = anyErr?.message || String(err);
-  if (code === 'ER_DUP_ENTRY')
-    return new UniqueConstraintError(message, code);
+  if (code === 'ER_DUP_ENTRY') return new UniqueConstraintError(message, code);
   return new DatabaseError(message, code);
 }
 
