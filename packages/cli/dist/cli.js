@@ -37,6 +37,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /* Minimal CLI: prints SQLite diff SQL using current metadata. */
 require("reflect-metadata");
 const core_1 = require("@ts-linq/core");
+const core_2 = require("@ts-linq/core");
 const sqlite_1 = require("@ts-linq/sqlite");
 const postgres_1 = require("@ts-linq/postgres");
 const mysql_1 = require("@ts-linq/mysql");
@@ -211,7 +212,12 @@ async function inspectTable(provider, label, table, schema) {
         const pkSet = new Set(pkCols.map((x) => x.column_name));
         for (const c of cols) {
             const raw = (c.udt_name || c.data_type || '').toLowerCase();
-            rows.push({ name: c.column_name, type: raw, nullable: c.is_nullable === 'YES', pk: pkSet.has(c.column_name) });
+            rows.push({
+                name: c.column_name,
+                type: raw,
+                nullable: c.is_nullable === 'YES',
+                pk: pkSet.has(c.column_name)
+            });
         }
     }
     else if (label === 'mysql') {
@@ -232,7 +238,12 @@ async function inspectTable(provider, label, table, schema) {
         const pkCols = await provider.executeQuery("SELECT k.COLUMN_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS t JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k ON t.CONSTRAINT_NAME = k.CONSTRAINT_NAME AND t.TABLE_SCHEMA = k.TABLE_SCHEMA WHERE t.TABLE_SCHEMA = @p1 AND t.TABLE_NAME = @p2 AND t.CONSTRAINT_TYPE = 'PRIMARY KEY' ORDER BY k.ORDINAL_POSITION", [sch, table]);
         const pkSet = new Set(pkCols.map((x) => x.COLUMN_NAME));
         for (const c of cols) {
-            rows.push({ name: c.COLUMN_NAME, type: c.DATA_TYPE, nullable: c.IS_NULLABLE === 'YES', pk: pkSet.has(c.COLUMN_NAME) });
+            rows.push({
+                name: c.COLUMN_NAME,
+                type: c.DATA_TYPE,
+                nullable: c.IS_NULLABLE === 'YES',
+                pk: pkSet.has(c.COLUMN_NAME)
+            });
         }
     }
     return rows.map((r) => ({
@@ -242,6 +253,24 @@ async function inspectTable(provider, label, table, schema) {
         nullable: r.nullable,
         isPrimary: r.pk
     }));
+}
+async function listAllTables(provider, label, schema) {
+    if (label === 'sqlite') {
+        const rows = await provider.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+        return rows.map((r) => r.name);
+    }
+    if (label === 'postgresql') {
+        const sch = schema || 'public';
+        const rows = await provider.executeQuery('SELECT tablename FROM pg_tables WHERE schemaname = $1 ORDER BY tablename', [sch]);
+        return rows.map((r) => r.tablename);
+    }
+    if (label === 'mysql') {
+        const rows = await provider.executeQuery('SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema = DATABASE() AND TABLE_TYPE = "BASE TABLE" ORDER BY TABLE_NAME');
+        return rows.map((r) => r.TABLE_NAME);
+    }
+    const sch = schema || 'dbo';
+    const rows = await provider.executeQuery('SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @p1 AND TABLE_TYPE = "BASE TABLE" ORDER BY TABLE_NAME', [sch]);
+    return rows.map((r) => r.TABLE_NAME);
 }
 async function main() {
     const [, , cmd, arg1, _arg2] = process.argv;
@@ -348,7 +377,7 @@ SQLITE_URL=file:app.db
     }
     const provider = createProviderFromEnv();
     await provider.connect();
-    const gen = new core_1.DiffMigrationGenerator(provider);
+    const gen = new core_2.DiffMigrationGenerator(provider);
     const steps = await gen.generate();
     if (cmd === 'apply-diff' || cmd === 'migrate') {
         for (const step of steps) {
@@ -436,6 +465,56 @@ SQLITE_URL=file:app.db
             console.log(`Created entity ${entityName} at ${destFile}`);
             return;
         }
+        else if (arg1 === 'entities') {
+            // Bulk reverse-engineering: generate entities for all tables in schema
+            const outDir = getFlag('dir') || path.join('src', 'entities');
+            const schema = getFlag('schema') || undefined;
+            const label = resolveDialect(provider.providerLabel);
+            const destDir = path.resolve(process.cwd(), outDir);
+            ensureDir(destDir);
+            const tables = await listAllTables(provider, label, schema);
+            if (tables.length === 0) {
+                console.log('No tables found to generate entities.');
+                return;
+            }
+            for (const tbl of tables) {
+                // eslint-disable-next-line no-await-in-loop
+                const cols = await inspectTable(provider, label, tbl, schema);
+                const entityName = tbl
+                    .replace(/[^a-zA-Z0-9_]/g, ' ')
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+                    .join('');
+                const destFile = path.join(destDir, `${entityName}.ts`);
+                if (fs.existsSync(destFile)) {
+                    // Skip existing
+                    // eslint-disable-next-line no-continue
+                    continue;
+                }
+                const lines = [];
+                lines.push(`import { Entity, Column, PrimaryKey } from '@ts-linq/core';`);
+                lines.push('');
+                lines.push(`@Entity('${tbl}')`);
+                lines.push(`export class ${entityName} {`);
+                for (const col of cols) {
+                    const tsType = tsTypeForOrm(col.ormType) + (col.nullable ? ' | null' : '');
+                    const opts = [];
+                    opts.push(`type: '${col.ormType}'`);
+                    if (!col.nullable)
+                        opts.push('nullable: false');
+                    const deco = col.isPrimary ? 'PrimaryKey' : 'Column';
+                    lines.push(`  @${deco}({ ${opts.join(', ')} })`);
+                    lines.push(`  public ${col.name}!: ${tsType};`);
+                    lines.push('');
+                }
+                lines.push('}');
+                const tpl = lines.join('\n');
+                fs.writeFileSync(destFile, tpl, 'utf8');
+                console.log(`Created entity ${entityName} for table '${tbl}' at ${destFile}`);
+            }
+            return;
+        }
         // Default: migration
         const name = (argv[1] && argv[0] !== 'entity' ? argv[1] : argv[0] || 'Migration').replace(/\s+/g, '_');
         const ts = new Date()
@@ -482,8 +561,8 @@ SQLITE_URL=file:app.db
     }
     else if (cmd === 'schema:export') {
         const out = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
-        const snapshot = new core_1.SchemaSnapshotBuilder().buildExpectedFromMetadata();
-        const json = new core_1.SchemaSnapshotSerializer().serialize(snapshot);
+        const snapshot = new core_2.SchemaSnapshotBuilder().buildExpectedFromMetadata();
+        const json = new core_2.SchemaSnapshotSerializer().serialize(snapshot);
         fs.writeFileSync(out, json, 'utf8');
         console.log(`Schema snapshot saved to ${out}`);
     }
@@ -494,11 +573,11 @@ SQLITE_URL=file:app.db
             process.exitCode = 2;
         }
         else {
-            const target = new core_1.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
-            const actual = await new core_1.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
-            const diff = (0, core_1.compareSchemas)(target, actual);
+            const target = new core_2.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+            const actual = await new core_2.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
+            const diff = (0, core_2.compareSchemas)(target, actual);
             const dialect = resolveDialect(provider.providerLabel);
-            const rendered = (0, core_1.generateMigrationFromDiff)(diff, dialect);
+            const rendered = (0, core_2.generateMigrationFromDiff)(diff, dialect);
             for (const sql of rendered.up)
                 console.log(sql);
         }
@@ -510,11 +589,11 @@ SQLITE_URL=file:app.db
             process.exitCode = 2;
         }
         else {
-            const target = new core_1.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
-            const actual = await new core_1.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
-            const diff = (0, core_1.compareSchemas)(target, actual);
+            const target = new core_2.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+            const actual = await new core_2.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
+            const diff = (0, core_2.compareSchemas)(target, actual);
             const dialect = resolveDialect(provider.providerLabel);
-            const rendered = (0, core_1.generateMigrationFromDiff)(diff, dialect);
+            const rendered = (0, core_2.generateMigrationFromDiff)(diff, dialect);
             let applied = 0;
             for (const sql of rendered.up) {
                 if (!sql.trim().startsWith('--')) {
@@ -533,10 +612,10 @@ SQLITE_URL=file:app.db
             process.exitCode = 2;
         }
         else {
-            const target = new core_1.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
-            const actual = await new core_1.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
-            const diff = (0, core_1.compareSchemas)(target, actual);
-            const rendered = (0, core_1.generateMigrationFromDiff)(diff, resolveDialect(provider.providerLabel));
+            const target = new core_2.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+            const actual = await new core_2.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
+            const diff = (0, core_2.compareSchemas)(target, actual);
+            const rendered = (0, core_2.generateMigrationFromDiff)(diff, resolveDialect(provider.providerLabel));
             if (rendered.up.length > 0) {
                 console.error(`Schema drift detected: ${rendered.up.length} change(s) required`);
                 for (const sql of rendered.up)
@@ -572,6 +651,69 @@ SQLITE_URL=file:app.db
             else {
                 console.log('Config validation: OK');
             }
+        }
+    }
+    else if (cmd === 'migration' || cmd === 'migrations') {
+        const sub = arg1 || 'status';
+        const cfg = (tryLoadConfig(process.cwd()) || {});
+        const migrationsDir = path.resolve(process.cwd(), cfg.migrations || 'migrations');
+        const listLocalMigrations = () => {
+            if (!fs.existsSync(migrationsDir))
+                return [];
+            const files = fs.readdirSync(migrationsDir);
+            const res = [];
+            for (const f of files) {
+                const m = /^(\d{14})_(.+)\.(?:ts|js|cjs|mjs)$/.exec(f);
+                if (m)
+                    res.push({ version: m[1], name: m[2], file: path.join(migrationsDir, f) });
+            }
+            res.sort((a, b) => a.version.localeCompare(b.version));
+            return res;
+        };
+        const printStatus = async () => {
+            await provider.connect();
+            const runner = new core_1.MigrationRunner(provider);
+            const applied = await runner.getAppliedMigrations();
+            const local = listLocalMigrations();
+            const appliedSet = new Set(applied.map((a) => a.version));
+            const pending = local.filter((l) => !appliedSet.has(l.version));
+            console.log(`Migrations directory: ${migrationsDir}`);
+            console.log(`Applied: ${applied.length}`);
+            for (const a of applied)
+                console.log(`  ${a.version}  ${a.name}`);
+            console.log(`Pending: ${pending.length}`);
+            for (const p of pending)
+                console.log(`  ${p.version}  ${p.name}`);
+            await provider.disconnect();
+        };
+        const dryRun = async () => {
+            // Alias to schema:diff
+            const file = argv[2] || path.resolve(process.cwd(), 'schema.snapshot.json');
+            if (!fs.existsSync(file)) {
+                console.error(`Snapshot file not found: ${file}`);
+                process.exitCode = 2;
+                return;
+            }
+            const target = new core_2.SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+            const actual = await new core_2.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
+            const diff = (0, core_2.compareSchemas)(target, actual);
+            const rendered = (0, core_2.generateMigrationFromDiff)(diff, resolveDialect(provider.providerLabel));
+            for (const sql of rendered.up)
+                console.log(sql);
+        };
+        if (sub === 'status') {
+            await printStatus();
+        }
+        else if (sub === 'dry-run') {
+            await dryRun();
+        }
+        else if (sub === 'rollback') {
+            console.error('Rollback requires executable migration files with down() methods. Support will be added in a follow-up.');
+            process.exitCode = 2;
+        }
+        else {
+            console.error('Usage: ts-linq migration <status|dry-run|rollback> [args]  (see docs for details)');
+            process.exitCode = 2;
         }
     }
     else {

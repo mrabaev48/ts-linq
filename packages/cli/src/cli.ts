@@ -2,6 +2,8 @@
 /* Minimal CLI: prints SQLite diff SQL using current metadata. */
 import 'reflect-metadata';
 import type { DatabaseProvider } from '@ts-linq/core';
+import type { Migration } from '@ts-linq/core';
+import { MigrationRunner } from '@ts-linq/core';
 import {
   DiffMigrationGenerator,
   SchemaSnapshotBuilder,
@@ -15,6 +17,7 @@ import { MySqlProvider } from '@ts-linq/mysql';
 import { MssqlProvider } from '@ts-linq/mssql';
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 
 function createProviderFromEnv(): DatabaseProvider {
   const kind = (process.env.DB_PROVIDER || 'sqlite').toLowerCase();
@@ -246,6 +249,39 @@ async function inspectTable(
   }));
 }
 
+async function listAllTables(
+  provider: DatabaseProvider,
+  label: string,
+  schema?: string
+): Promise<string[]> {
+  if (label === 'sqlite') {
+    const rows = await provider.executeQuery<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    );
+    return rows.map((r) => r.name);
+  }
+  if (label === 'postgresql') {
+    const sch = schema || 'public';
+    const rows = await provider.executeQuery<{ tablename: string }>(
+      'SELECT tablename FROM pg_tables WHERE schemaname = $1 ORDER BY tablename',
+      [sch]
+    );
+    return rows.map((r) => r.tablename);
+  }
+  if (label === 'mysql') {
+    const rows = await provider.executeQuery<{ TABLE_NAME: string }>(
+      'SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema = DATABASE() AND TABLE_TYPE = "BASE TABLE" ORDER BY TABLE_NAME'
+    );
+    return rows.map((r) => r.TABLE_NAME);
+  }
+  const sch = schema || 'dbo';
+  const rows = await provider.executeQuery<{ TABLE_NAME: string }>(
+    'SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @p1 AND TABLE_TYPE = "BASE TABLE" ORDER BY TABLE_NAME',
+    [sch]
+  );
+  return rows.map((r) => r.TABLE_NAME);
+}
+
 async function main() {
   const [, , cmd, arg1, _arg2] = process.argv;
   const argv = process.argv.slice(2);
@@ -445,6 +481,54 @@ SQLITE_URL=file:app.db
       fs.writeFileSync(destFile, tpl, 'utf8');
       console.log(`Created entity ${entityName} at ${destFile}`);
       return;
+    } else if (arg1 === 'entities') {
+      // Bulk reverse-engineering: generate entities for all tables in schema
+      const outDir = (getFlag('dir') as string) || path.join('src', 'entities');
+      const schema = (getFlag('schema') as string) || undefined;
+      const label = resolveDialect(provider.providerLabel);
+      const destDir = path.resolve(process.cwd(), outDir);
+      ensureDir(destDir);
+      const tables = await listAllTables(provider, label, schema);
+      if (tables.length === 0) {
+        console.log('No tables found to generate entities.');
+        return;
+      }
+      for (const tbl of tables) {
+        // eslint-disable-next-line no-await-in-loop
+        const cols = await inspectTable(provider, label, tbl, schema);
+        const entityName = tbl
+          .replace(/[^a-zA-Z0-9_]/g, ' ')
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+          .join('');
+        const destFile = path.join(destDir, `${entityName}.ts`);
+        if (fs.existsSync(destFile)) {
+          // Skip existing
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+        const lines: string[] = [];
+        lines.push(`import { Entity, Column, PrimaryKey } from '@ts-linq/core';`);
+        lines.push('');
+        lines.push(`@Entity('${tbl}')`);
+        lines.push(`export class ${entityName} {`);
+        for (const col of cols) {
+          const tsType = tsTypeForOrm(col.ormType) + (col.nullable ? ' | null' : '');
+          const opts: string[] = [];
+          opts.push(`type: '${col.ormType}'`);
+          if (!col.nullable) opts.push('nullable: false');
+          const deco = col.isPrimary ? 'PrimaryKey' : 'Column';
+          lines.push(`  @${deco}({ ${opts.join(', ')} })`);
+          lines.push(`  public ${col.name}!: ${tsType};`);
+          lines.push('');
+        }
+        lines.push('}');
+        const tpl = lines.join('\n');
+        fs.writeFileSync(destFile, tpl, 'utf8');
+        console.log(`Created entity ${entityName} for table '${tbl}' at ${destFile}`);
+      }
+      return;
     }
 
     // Default: migration
@@ -569,6 +653,71 @@ SQLITE_URL=file:app.db
       } else {
         console.log('Config validation: OK');
       }
+    }
+  } else if (cmd === 'migration' || cmd === 'migrations') {
+    const sub = arg1 || 'status';
+    const cfg = (tryLoadConfig(process.cwd()) || {}) as {
+      migrations?: string;
+    };
+    const migrationsDir = path.resolve(process.cwd(), cfg.migrations || 'migrations');
+
+    const listLocalMigrations = (): Array<{ version: string; name: string; file: string }> => {
+      if (!fs.existsSync(migrationsDir)) return [];
+      const files = fs.readdirSync(migrationsDir);
+      const res: Array<{ version: string; name: string; file: string }> = [];
+      for (const f of files) {
+        const m = /^(\d{14})_(.+)\.(?:ts|js|cjs|mjs)$/.exec(f);
+        if (m) res.push({ version: m[1], name: m[2], file: path.join(migrationsDir, f) });
+      }
+      res.sort((a, b) => a.version.localeCompare(b.version));
+      return res;
+    };
+
+    const printStatus = async (): Promise<void> => {
+      await provider.connect();
+      const runner = new MigrationRunner(provider);
+      const applied = await runner.getAppliedMigrations();
+      const local = listLocalMigrations();
+      const appliedSet = new Set(applied.map((a) => a.version));
+      const pending = local.filter((l) => !appliedSet.has(l.version));
+
+      console.log(`Migrations directory: ${migrationsDir}`);
+      console.log(`Applied: ${applied.length}`);
+      for (const a of applied) console.log(`  ${a.version}  ${a.name}`);
+      console.log(`Pending: ${pending.length}`);
+      for (const p of pending) console.log(`  ${p.version}  ${p.name}`);
+      await provider.disconnect();
+    };
+
+    const dryRun = async (): Promise<void> => {
+      // Alias to schema:diff
+      const file = argv[2] || path.resolve(process.cwd(), 'schema.snapshot.json');
+      if (!fs.existsSync(file)) {
+        console.error(`Snapshot file not found: ${file}`);
+        process.exitCode = 2;
+        return;
+      }
+      const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+      const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
+      const diff = compareSchemas(target, actual);
+      const rendered = generateMigrationFromDiff(diff, resolveDialect(provider.providerLabel));
+      for (const sql of rendered.up) console.log(sql);
+    };
+
+    if (sub === 'status') {
+      await printStatus();
+    } else if (sub === 'dry-run') {
+      await dryRun();
+    } else if (sub === 'rollback') {
+      console.error(
+        'Rollback requires executable migration files with down() methods. Support will be added in a follow-up.'
+      );
+      process.exitCode = 2;
+    } else {
+      console.error(
+        'Usage: ts-linq migration <status|dry-run|rollback> [args]  (see docs for details)'
+      );
+      process.exitCode = 2;
     }
   } else {
     for (const step of steps) console.log(step.sql);
