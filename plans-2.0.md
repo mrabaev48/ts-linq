@@ -161,13 +161,13 @@
   # Reverse engineering из существующей БД (PK/nullable/types)
   ```
 
-- [ ] **Advanced Migration Commands**
+- [x] **Advanced Migration Commands**
 
   ```bash
   ts-linq migration status           # Показать pending migrations
-  ts-linq migration rollback --steps=2   # Rollback N migrations
+  ts-linq migration rollback --steps=2   # Rollback N миграций (или --to=YYYYMMDDHHmmss)
   ts-linq migration dry-run          # Preview SQL без применения
-  ts-linq migration validate         # Validate migration safety
+  ts-linq migration validate         # Validate migration safety (план)
   ```
 
 - [ ] **Schema Inspection**
