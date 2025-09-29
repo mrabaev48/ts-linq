@@ -20,91 +20,98 @@ export class MigrationsRollbackCommand implements DbCommand {
   ) {}
 
   public async runDb(provider: DatabaseProvider, argv: string[]): Promise<void> {
-    // parse args: --steps=N or --to=version
+    const { steps, toVersion } = this.parseArgs(argv);
+    const migrationsDir = this.resolveMigrationsDir();
+    const runner = new MigrationRunner(provider);
+    const applied = await runner.getAppliedMigrations();
+
+    const modules = await this.loadAllMigrations(migrationsDir);
+    for (const mod of modules) this.registerModuleMigrations(mod, runner);
+
+    const targetVersion = this.computeTargetVersion(applied, steps, toVersion);
+    this.logRollbackTarget(steps, targetVersion);
+    await runner.rollback(targetVersion);
+    this.logger.info('Rollback completed');
+  }
+
+  private parseArgs(argv: string[]): { steps: number; toVersion?: string } {
     const stepsArg = argv.find((a) => a.startsWith('--steps='));
     const toArg = argv.find((a) => a.startsWith('--to='));
     const steps = stepsArg ? parseInt(stepsArg.split('=')[1] || '0', 10) : 0;
     const toVersion = toArg ? toArg.split('=')[1] : undefined;
+    return { steps, toVersion };
+  }
 
+  private resolveMigrationsDir(): string {
     const cfg = (tryLoadConfig(process.cwd()) || {}) as { migrations?: string };
-    const migrationsDir = path.resolve(process.cwd(), cfg.migrations || 'migrations');
+    return path.resolve(process.cwd(), cfg.migrations || 'migrations');
+  }
 
-    const loadAllMigrations = async () => {
-      if (!this.fsAdapter.exists(migrationsDir)) return [] as unknown[];
-      const files = this.fsAdapter
-        .readDir(migrationsDir)
-        .filter((f) => /\.(ts|js|mjs|cjs)$/.test(f))
-        .map((f) => path.join(migrationsDir, f));
+  private async loadAllMigrations(dir: string): Promise<Array<Record<string, unknown>>> {
+    if (!this.fsAdapter.exists(dir)) return [] as Array<Record<string, unknown>>;
+    const files = this.fsAdapter
+      .readDir(dir)
+      .filter((f) => /\.(ts|js|mjs|cjs)$/.test(f))
+      .map((f) => path.join(dir, f));
 
-      // register ts-node for .ts files at runtime if available
-      if (files.some((f) => f.endsWith('.ts'))) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          require('ts-node/register/transpile-only');
-        } catch {
-          // ignore if not available
-        }
-      }
-
-      const mods: Array<Record<string, unknown>> = [];
-      for (const file of files) {
+    if (files.some((f) => f.endsWith('.ts'))) {
+      try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const mod = require(file);
-        mods.push(mod);
+        require('ts-node/register/transpile-only');
+      } catch {
+        // ignore if not available
       }
-      return mods;
-    };
+    }
+    const mods: Array<Record<string, unknown>> = [];
+    for (const file of files) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      mods.push(require(file) as Record<string, unknown>);
+    }
+    return mods;
+  }
 
-    const runner = new MigrationRunner(provider);
-    const applied = await runner.getAppliedMigrations();
-
-    // load migration classes from files and register in runner
-    const modules = (await loadAllMigrations()) as Array<Record<string, unknown>>;
-    for (const mod of modules) {
-      for (const key of Object.keys(mod as object)) {
-        const exported = mod[key];
-        if (
-          exported &&
-          typeof exported === 'function' &&
-          Object.prototype.hasOwnProperty.call(
-            (exported as unknown as { prototype: unknown }).prototype || {},
-            'up'
-          ) &&
-          Object.prototype.hasOwnProperty.call(
-            (exported as unknown as { prototype: unknown }).prototype || {},
-            'down'
-          )
-        ) {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            const Ctor = exported as unknown as { new (): { getVersion: () => string } };
-            const instance = new Ctor();
-            if (typeof instance.getVersion === 'function') {
-              runner.addMigration(instance as unknown as import('@ts-linq/core').Migration);
-            }
-          } catch {
-            // ignore non-constructible exports
-          }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private registerModuleMigrations(mod: Record<string, any>, runner: MigrationRunner): void {
+    for (const key of Object.keys(mod)) {
+      const exported = mod[key];
+      if (!exported || typeof exported !== 'function') continue;
+      const proto = (exported as { prototype?: unknown }).prototype || {};
+      const hasUp = Object.prototype.hasOwnProperty.call(proto, 'up');
+      const hasDown = Object.prototype.hasOwnProperty.call(proto, 'down');
+      if (!hasUp || !hasDown) continue;
+      try {
+        const Ctor = exported as unknown as { new (): { getVersion: () => string } };
+        const instance = new Ctor();
+        if (typeof instance.getVersion === 'function') {
+          runner.addMigration(instance as unknown as import('@ts-linq/core').Migration);
         }
+      } catch {
+        // ignore non-constructible exports
       }
     }
+  }
 
-    let targetVersion: string | undefined = toVersion;
-    if (!targetVersion && steps > 0) {
-      const sortedApplied = [...applied].sort((a, b) => a.version.localeCompare(b.version));
-      const keepCount = Math.max(sortedApplied.length - steps, 0);
-      targetVersion = keepCount > 0 ? sortedApplied[keepCount - 1].version : undefined;
+  private computeTargetVersion(
+    applied: Array<{ version: string }>,
+    steps: number,
+    toVersion?: string
+  ): string | undefined {
+    if (toVersion) return toVersion;
+    if (steps <= 0) return undefined;
+    const sorted = [...applied].sort((a, b) => a.version.localeCompare(b.version));
+    const keepCount = Math.max(sorted.length - steps, 0);
+    return keepCount > 0 ? sorted[keepCount - 1].version : undefined;
+  }
+
+  private logRollbackTarget(steps: number, targetVersion?: string): void {
+    if (targetVersion) {
+      this.logger.info(`Rolling back to version ${targetVersion}...`);
+      return;
     }
-
-    this.logger.info(
-      targetVersion
-        ? `Rolling back to version ${targetVersion}...`
-        : steps > 0
-          ? `Rolling back ${steps} step(s)...`
-          : 'Rolling back all applied migrations...'
-    );
-
-    await runner.rollback(targetVersion);
-    this.logger.info('Rollback completed');
+    if (steps > 0) {
+      this.logger.info(`Rolling back ${steps} step(s)...`);
+      return;
+    }
+    this.logger.info('Rolling back all applied migrations...');
   }
 }
