@@ -17,7 +17,7 @@ export class GenerateMigrationCommand implements Command {
     private readonly builder = new MigrationTemplateBuilder()
   ) {}
 
-  public async run(argv: string[]): Promise<void> {
+  public run(argv: string[]): Promise<void> {
     const name = (argv[2] && argv[1] !== 'entity' ? argv[2] : argv[1] || 'Migration').replace(
       /\s+/g,
       '_'
@@ -32,5 +32,6 @@ export class GenerateMigrationCommand implements Command {
     const template = this.builder.build(name, ts);
     this.fsAdapter.writeText(file, template);
     this.logger.info(`Created ${file}`);
+    return Promise.resolve();
   }
 }

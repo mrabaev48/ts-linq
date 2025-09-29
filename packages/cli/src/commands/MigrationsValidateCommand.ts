@@ -17,12 +17,12 @@ export class MigrationsValidateCommand implements Command {
     private readonly fsAdapter: FileSystem = new NodeFs()
   ) {}
 
-  public async run(_argv: string[]): Promise<void> {
+  public run(_argv: string[]): Promise<void> {
     const migrationsDir = this.resolveMigrationsDir();
     if (!this.fsAdapter.exists(migrationsDir)) {
       this.logger.warn?.(`Migrations directory not found: ${migrationsDir}`);
       process.exitCode = 2;
-      return;
+      return Promise.resolve();
     }
     const files = this.readMigrationFiles(migrationsDir);
     const errors: string[] = [];
@@ -30,8 +30,9 @@ export class MigrationsValidateCommand implements Command {
     this.detectDuplicates(parsed, errors);
     this.checkOrder(parsed, errors);
     this.ensureTsSupport(parsed);
-    await this.validateExports(parsed, errors);
+    this.validateExports(parsed, errors);
     this.report(errors);
+    return Promise.resolve();
   }
 
   private resolveMigrationsDir(): string {
@@ -92,10 +93,10 @@ export class MigrationsValidateCommand implements Command {
     }
   }
 
-  private async validateExports(
+  private validateExports(
     parsed: Array<{ file: string; abs: string; version: string }>,
     errors: string[]
-  ): Promise<void> {
+  ): void {
     type MigrationLike = {
       up: () => Promise<void> | void;
       down: () => Promise<void> | void;
