@@ -13,6 +13,7 @@ import { SchemaValidateCommand } from './commands/SchemaValidateCommand';
 import { MigrationsStatusCommand } from './commands/MigrationsStatusCommand';
 import { MigrationsDryRunCommand } from './commands/MigrationsDryRunCommand';
 import { MigrationsRollbackCommand } from './commands/MigrationsRollbackCommand';
+import { MigrationsValidateCommand } from './commands/MigrationsValidateCommand';
 import { SeedCommand } from './commands/SeedCommand';
 //
 import { CommandRegistry } from './CommandRegistry';
@@ -36,6 +37,7 @@ async function main() {
     new MigrationsStatusCommand(),
     new MigrationsDryRunCommand(),
     new MigrationsRollbackCommand(),
+    new MigrationsValidateCommand(),
     new SeedCommand()
   ]);
   const command = registry.get(cmdName);

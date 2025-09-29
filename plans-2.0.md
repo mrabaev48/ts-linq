@@ -167,7 +167,7 @@
   ts-linq migration status           # Показать pending migrations
   ts-linq migration rollback --steps=2   # Rollback N миграций (или --to=YYYYMMDDHHmmss)
   ts-linq migration dry-run          # Preview SQL без применения
-  ts-linq migration validate         # Validate migration safety (план)
+  ts-linq migration validate         # Validate migration filenames/order/exports
   ```
 
 - [ ] **Schema Inspection**
