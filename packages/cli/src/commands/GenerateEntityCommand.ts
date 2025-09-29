@@ -1,6 +1,6 @@
 import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
-import type { Command } from './Command';
+import type { DbCommand } from './Command';
 import type { Logger } from '../ports/Logger';
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
 import type { FileSystem } from '../ports/FileSystem';
@@ -10,10 +10,9 @@ import { inspectTable } from '../schema-inspect';
 import { EntityTemplateBuilder } from '../generators/EntityTemplateBuilder';
 import { ArgReader } from '../services/ArgReader';
 
-export class GenerateEntityCommand implements Command {
+export class GenerateEntityCommand implements DbCommand {
   public readonly name = 'generate:entity';
   public readonly describe = 'Генерирует сущность из имени или из таблицы';
-  public readonly requiresProvider = true;
   public readonly aliases = ['generate entity'];
 
   public constructor(
@@ -22,8 +21,7 @@ export class GenerateEntityCommand implements Command {
     private readonly template = new EntityTemplateBuilder()
   ) {}
 
-  public async run(provider: DatabaseProvider | null, argv: string[]): Promise<void> {
-    if (!provider) throw new Error('Provider is required');
+  public async runDb(provider: DatabaseProvider, argv: string[]): Promise<void> {
     const args = new ArgReader(argv);
     const rawName = (argv[2] || '').trim();
     if (!rawName) {

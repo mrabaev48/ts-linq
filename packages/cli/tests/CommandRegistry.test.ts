@@ -5,7 +5,6 @@ describe('CommandRegistry', () => {
   const mk = (name: string, aliases?: string[]): Command => ({
     name,
     describe: `desc:${name}`,
-    requiresProvider: false,
     aliases,
     // eslint-disable-next-line @typescript-eslint/require-await
     async run() {}

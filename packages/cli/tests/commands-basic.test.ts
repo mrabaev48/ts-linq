@@ -44,7 +44,7 @@ describe('CLI commands basic', () => {
   it('schema:export writes snapshot', async () => {
     const fs = new MemFs();
     const cmd = new SchemaExportCommand(logger as any, fs as any);
-    await cmd.run(null, ['schema:export', out]);
+    await cmd.run(['schema:export', out]);
     expect(fs.exists(out)).toBe(true);
     expect(fs.readText(out)).toContain('tables');
   });
@@ -52,23 +52,23 @@ describe('CLI commands basic', () => {
   it('schema:diff prints SQL or warns when file missing', async () => {
     const fs = new MemFs();
     const cmd = new SchemaDiffCommand(logger as any, fs as any);
-    await cmd.run(new FakeProvider() as unknown as DatabaseProvider, ['schema:diff', out]);
+    await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, ['schema:diff', out]);
     fs.writeText(out, JSON.stringify({ tables: [] }));
-    await cmd.run(new FakeProvider() as unknown as DatabaseProvider, ['schema:diff', out]);
+    await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, ['schema:diff', out]);
   });
 
   it('schema:validate detects drift or ok', async () => {
     const fs = new MemFs();
     const cmd = new SchemaValidateCommand(logger as any, fs as any);
     fs.writeText(out, JSON.stringify({ tables: [] }));
-    await cmd.run(new FakeProvider() as unknown as DatabaseProvider, ['schema:validate', out]);
+    await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, ['schema:validate', out]);
   });
 
   it('schema:apply honors dry-run', async () => {
     const fs = new MemFs();
     fs.writeText(out, JSON.stringify({ tables: [] }));
     const cmd = new SchemaApplyCommand(logger as any, fs as any);
-    await cmd.run(new FakeProvider() as unknown as DatabaseProvider, [
+    await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, [
       'schema:apply',
       out,
       '--dry-run'
@@ -79,6 +79,6 @@ describe('CLI commands basic', () => {
     const fs = new MemFs();
     fs.writeText('/tmp/seed.sql', 'CREATE TABLE t1(id int);\nINSERT INTO t1 VALUES(1);');
     const cmd = new SeedCommand(logger as any, fs as any);
-    await cmd.run(new FakeProvider() as unknown as DatabaseProvider, ['seed', '/tmp/seed.sql']);
+    await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, ['seed', '/tmp/seed.sql']);
   });
 });

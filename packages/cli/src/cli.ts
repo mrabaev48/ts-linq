@@ -17,6 +17,7 @@ import { MigrationsValidateCommand } from './commands/MigrationsValidateCommand'
 import { SeedCommand } from './commands/SeedCommand';
 //
 import { CommandRegistry } from './CommandRegistry';
+import type { Command, DbCommand } from './commands/Command';
 import { createProviderFromEnv } from './provider-factory';
 
 // provider-factory and config helpers are in separate modules now
@@ -55,13 +56,21 @@ async function main() {
     return;
   }
 
-  const provider = command.requiresProvider ? createProviderFromEnv() : null;
-  try {
-    if (provider) await provider.connect();
-    await command.run(provider, argv);
-  } finally {
-    if (provider) await provider.disconnect();
+  // Determine command type: DbCommand vs Command
+  const maybeDb = command as DbCommand;
+  const isDbCommand = typeof maybeDb.runDb === 'function';
+  if (isDbCommand) {
+    const provider = createProviderFromEnv();
+    try {
+      await provider.connect();
+      await maybeDb.runDb(provider, argv);
+    } finally {
+      await provider.disconnect();
+    }
+    return;
   }
+  const simple = command as Command;
+  await simple.run(argv);
 }
 
 main().catch((err) => {

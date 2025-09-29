@@ -1,14 +1,11 @@
 import * as path from 'path';
 import { ensureDir, writeFileIfMissing } from '../utils';
-import type { DatabaseProvider } from '@ts-linq/core';
 import type { Command } from './Command';
 
 export class InitCommand implements Command {
   public readonly name = 'init';
   public readonly describe = 'Инициализация проекта со скелетом ts-linq';
-  public readonly requiresProvider = false;
-
-  public async run(_provider: DatabaseProvider | null, argv: string[]): Promise<void> {
+  public async run(argv: string[]): Promise<void> {
     const destArg = argv[1];
     const dest = path.resolve(process.cwd(), destArg || '.');
     if (destArg) ensureDir(dest);
