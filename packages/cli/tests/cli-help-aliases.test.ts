@@ -6,7 +6,6 @@ describe('cli help via registry', () => {
     const mk = (name: string, describe: string, aliases?: string[]): Command => ({
       name,
       describe,
-      requiresProvider: false,
       aliases,
       // eslint-disable-next-line @typescript-eslint/require-await
       async run() {}

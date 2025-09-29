@@ -7,16 +7,15 @@ import {
 } from '@ts-linq/core';
 import { compareSchemas } from '@ts-linq/core';
 import { resolveDialect } from '../utils';
-import type { Command } from './Command';
+import type { DbCommand } from './Command';
 import type { Logger } from '../ports/Logger';
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
 import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
 
-export class SchemaDiffCommand implements Command {
+export class SchemaDiffCommand implements DbCommand {
   public readonly name = 'schema:diff';
   public readonly describe = 'Печатает SQL отличий между snapshot и фактической схемой';
-  public readonly requiresProvider = true;
   public readonly aliases = ['schema diff'];
 
   public constructor(
@@ -24,8 +23,7 @@ export class SchemaDiffCommand implements Command {
     private readonly fsAdapter: FileSystem = new NodeFs()
   ) {}
 
-  public async run(provider: DatabaseProvider | null, argv: string[]): Promise<void> {
-    if (!provider) throw new Error('Provider is required');
+  public async runDb(provider: DatabaseProvider, argv: string[]): Promise<void> {
     const file = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
     if (!this.fsAdapter.exists(file)) {
       this.logger.error(`Snapshot file not found: ${file}`);

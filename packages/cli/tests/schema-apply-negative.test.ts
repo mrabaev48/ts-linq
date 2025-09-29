@@ -38,7 +38,9 @@ describe('schema:apply negative', () => {
     const fs = new MemFs();
     const logger = new ConsoleLogger();
     const cmd = new SchemaApplyCommand(logger as any, fs as any);
-    await cmd.run(new ProviderStub() as unknown as DatabaseProvider, ['schema:apply', file]);
+    await cmd.runDb(new ProviderStub() as unknown as DatabaseProvider, ['schema:apply', file]);
     expect(process.exitCode).toBe(2);
   });
+
+  // destructive сценарий проверяется в отдельном тесте с моками core (schema-apply-destructive.test.ts)
 });

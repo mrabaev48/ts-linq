@@ -74,7 +74,7 @@ describe('migration:rollback', () => {
       } as any
     );
 
-    await cmd.run(provider as any, ['migration:rollback', '--steps=1']);
+    await cmd.runDb(provider as any, ['migration:rollback', '--steps=1']);
     expect(spy).toHaveBeenCalledWith('20250102000000');
     spy.mockRestore();
   });
@@ -91,7 +91,7 @@ describe('migration:rollback', () => {
       )
       .mockImplementation(async () => {});
     const cmd = new MigrationsRollbackCommand();
-    await cmd.run(provider as any, ['migration:rollback', '--to=20240101010101']);
+    await cmd.runDb(provider as any, ['migration:rollback', '--to=20240101010101']);
     expect(spy).toHaveBeenCalledWith('20240101010101');
     spy.mockRestore();
   });

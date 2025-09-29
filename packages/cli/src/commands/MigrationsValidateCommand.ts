@@ -1,5 +1,4 @@
 import * as path from 'path';
-import type { DatabaseProvider } from '@ts-linq/core';
 import type { Command } from './Command';
 import type { Logger } from '../ports/Logger';
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
@@ -11,7 +10,6 @@ export class MigrationsValidateCommand implements Command {
   public readonly name = 'migration:validate';
   public readonly describe =
     'Валидирует миграции: формат имен, дубликаты, порядок, наличие up/down';
-  public readonly requiresProvider = false;
   public readonly aliases = ['migrations:validate'];
 
   public constructor(
@@ -19,7 +17,7 @@ export class MigrationsValidateCommand implements Command {
     private readonly fsAdapter: FileSystem = new NodeFs()
   ) {}
 
-  public async run(_provider: DatabaseProvider | null, _argv: string[]): Promise<void> {
+  public async run(_argv: string[]): Promise<void> {
     const cfg = (tryLoadConfig(process.cwd()) || {}) as { migrations?: string };
     const migrationsDir = path.resolve(process.cwd(), cfg.migrations || 'migrations');
 
@@ -123,5 +121,6 @@ export class MigrationsValidateCommand implements Command {
     }
 
     this.logger.info('Migrations validation: OK');
+    process.exitCode = 0;
   }
 }

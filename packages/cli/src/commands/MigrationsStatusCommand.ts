@@ -2,16 +2,15 @@ import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MigrationRunner } from '@ts-linq/core';
 import { tryLoadConfig } from '../config';
-import type { Command } from './Command';
+import type { DbCommand } from './Command';
 import type { Logger } from '../ports/Logger';
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
 import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
 
-export class MigrationsStatusCommand implements Command {
+export class MigrationsStatusCommand implements DbCommand {
   public readonly name = 'migration:status';
   public readonly describe = 'Показывает статус применённых/ожидающих миграций';
-  public readonly requiresProvider = true;
   public readonly aliases = ['migrations:status'];
 
   public constructor(
@@ -19,8 +18,7 @@ export class MigrationsStatusCommand implements Command {
     private readonly fsAdapter: FileSystem = new NodeFs()
   ) {}
 
-  public async run(provider: DatabaseProvider | null, _argv: string[]): Promise<void> {
-    if (!provider) throw new Error('Provider is required');
+  public async runDb(provider: DatabaseProvider, _argv: string[]): Promise<void> {
     const cfg = (tryLoadConfig(process.cwd()) || {}) as { migrations?: string };
     const migrationsDir = path.resolve(process.cwd(), cfg.migrations || 'migrations');
 

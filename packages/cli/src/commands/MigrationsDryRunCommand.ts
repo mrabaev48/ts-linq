@@ -7,16 +7,15 @@ import {
 } from '@ts-linq/core';
 import { compareSchemas } from '@ts-linq/core';
 import { resolveDialect } from '../utils';
-import type { Command } from './Command';
+import type { DbCommand } from './Command';
 import type { Logger } from '../ports/Logger';
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
 import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
 
-export class MigrationsDryRunCommand implements Command {
+export class MigrationsDryRunCommand implements DbCommand {
   public readonly name = 'migration:dry-run';
   public readonly describe = 'Печатает SQL изменений между snapshot и БД (dry-run)';
-  public readonly requiresProvider = true;
   public readonly aliases = ['migrations:dry-run'];
 
   public constructor(
@@ -24,8 +23,7 @@ export class MigrationsDryRunCommand implements Command {
     private readonly fsAdapter: FileSystem = new NodeFs()
   ) {}
 
-  public async run(provider: DatabaseProvider | null, argv: string[]): Promise<void> {
-    if (!provider) throw new Error('Provider is required');
+  public async runDb(provider: DatabaseProvider, argv: string[]): Promise<void> {
     const file = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
     if (!this.fsAdapter.exists(file)) {
       this.logger.error(`Snapshot file not found: ${file}`);

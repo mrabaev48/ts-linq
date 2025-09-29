@@ -161,7 +161,7 @@
   # Reverse engineering из существующей БД (PK/nullable/types)
   ```
 
-- [x] **Advanced Migration Commands**
+- [x] **Advanced Migration Commands** ✅
 
   ```bash
   ts-linq migration status           # Показать pending migrations
@@ -170,7 +170,7 @@
   ts-linq migration validate         # Validate migration filenames/order/exports
   ```
 
-- [x] **Schema Inspection**
+- [x] **Schema Inspection** ✅
 
   ```bash
   ts-linq schema diff              # Показать diff между моделями и БД
@@ -178,7 +178,7 @@
   ts-linq schema export --format=sql   # Export current schema
   ```
 
-- [ ] **Configuration Management**
+- [ ] **Configuration Management** ✅
   ```typescript
   // ts-linq.config.ts
   export default {

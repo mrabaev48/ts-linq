@@ -1,18 +1,17 @@
 import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MigrationRunner } from '@ts-linq/core';
-import type { Command } from './Command';
+import type { DbCommand } from './Command';
 import type { Logger } from '../ports/Logger';
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
 import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
 import { tryLoadConfig } from '../config';
 
-export class MigrationsRollbackCommand implements Command {
+export class MigrationsRollbackCommand implements DbCommand {
   public readonly name = 'migration:rollback';
   public readonly describe =
     'Откатить последние миграции (--steps=N) или до версии (--to=YYYYMMDDHHmmss)';
-  public readonly requiresProvider = true;
   public readonly aliases = ['migrations:rollback'];
 
   public constructor(
@@ -20,9 +19,7 @@ export class MigrationsRollbackCommand implements Command {
     private readonly fsAdapter: FileSystem = new NodeFs()
   ) {}
 
-  public async run(provider: DatabaseProvider | null, argv: string[]): Promise<void> {
-    if (!provider) throw new Error('Provider is required');
-
+  public async runDb(provider: DatabaseProvider, argv: string[]): Promise<void> {
     // parse args: --steps=N or --to=version
     const stepsArg = argv.find((a) => a.startsWith('--steps='));
     const toArg = argv.find((a) => a.startsWith('--to='));

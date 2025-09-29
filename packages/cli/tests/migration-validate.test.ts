@@ -35,7 +35,7 @@ describe('migration:validate', () => {
       "class Init { get name(){return 'Init'} get version(){return '20250101000000'} getVersion(){return this.version} getName(){return this.name} async up(){} async down(){} }\nmodule.exports = { Init };\n"
     );
     const cmd = new MigrationsValidateCommand(new SilentLogger() as any);
-    await cmd.run(null, ['migration:validate']);
+    await cmd.run(['migration:validate']);
     expect(process.exitCode ?? 0).toBe(0);
     // reset exitCode for isolation
     process.exitCode = 0;
@@ -44,8 +44,26 @@ describe('migration:validate', () => {
   test('fails on invalid filename and missing methods', async () => {
     fs.writeFileSync(path.join(migrationsDir, 'badname.js'), 'module.exports = {};\n');
     const cmd = new MigrationsValidateCommand(new SilentLogger() as any);
-    await cmd.run(null, ['migration:validate']);
+    await cmd.run(['migration:validate']);
     expect((process.exitCode as number) > 0).toBe(true);
     process.exitCode = 0;
   });
+
+  test('detects duplicate versions', async () => {
+    fs.writeFileSync(
+      path.join(migrationsDir, '20250101000000_A.js'),
+      "class A { get name(){return 'A'} get version(){return '20250101000000'} getVersion(){return this.version} getName(){return this.name} async up(){} async down(){} }\nmodule.exports = { A };\n"
+    );
+    fs.writeFileSync(
+      path.join(migrationsDir, '20250101000000_B.js'),
+      "class B { get name(){return 'B'} get version(){return '20250101000000'} getVersion(){return this.version} getName(){return this.name} async up(){} async down(){} }\nmodule.exports = { B };\n"
+    );
+    const cmd = new MigrationsValidateCommand(new SilentLogger() as any);
+    await cmd.run(['migration:validate']);
+    expect((process.exitCode as number) > 0).toBe(true);
+    process.exitCode = 0;
+  });
+
+  // Note: проверка несоответствия порядка версий и имён не добавляется,
+  // так как имена начинаются с версии и сортировки совпадают по определению.
 });
