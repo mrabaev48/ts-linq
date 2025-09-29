@@ -65,10 +65,10 @@
 
 #### Production‑Ready дополнения
 
-- Подпись релизов (npm provenance/2FA), воспроизводимые сборки
-- Поддержка Node LTS и матрица CI; SemVer‑политика совместимости
-- Release workflow: авто‑CHANGELOG, GitHub Releases, provenance
-- Проверки: sideEffects/tree‑shaking, size budgets, smoke‑инсталляция tarball
+- [x] Подпись релизов и provenance (npm provenance) ✅
+- [ ] Поддержка Node LTS и политика SemVer (документация/матрица) — в работе
+- [x] Автоматизированный release workflow (GitHub Actions, provenance) ✅
+- [x] Гейты по размеру бандла и tree‑shaking (size-tests в CI) ✅
 
 ### 1.2 Testing Infrastructure Overhaul
 
@@ -131,6 +131,12 @@
 - [x] Round‑trip миграции (diff → apply → нет diff) для PG/MySQL/MSSQL/SQLite ✅
 - [x] Маппинг ошибок UNIQUE/FK (PG/MySQL/MSSQL) ✅
 
+#### Структура тестов и конфигурация (добавлено)
+
+- [x] Унификация структуры: все тесты перенесены в `packages/*/tests/`, корневой `tests/` удалён ✅
+- [x] Jest конфигурация обновлена: `roots`, `projects`, `moduleNameMapper`, `setupFilesAfterEnv` ✅
+- [x] Абсолютные импорты для тестов: `@src/*`, `@core/*`, `@ts-linq/*` ✅
+
 ### 1.3 Enhanced CLI Development
 
 **Цель**: Полнофункциональный CLI для production workflows
@@ -187,6 +193,22 @@
 
 **Приоритет**: P0 (Критично)
 **Временные затраты**: 2.5 недели
+
+#### Базовые проверки и валидация (добавлено)
+
+- [x] `validate:env` — проверка минимально необходимых переменных окружения ✅
+- [x] `config:check` — валидация конфигурации проекта (неблокирующая) ✅
+- [x] `schema:validate` — сравнение снапшота со схемой БД, non‑zero exit при расхождении ✅
+
+### 1.4 CI/CD & Quality Gates (добавлено)
+
+- [x] CI: матрица по провайдерам, p95 guard (`PERF_GUARD_MS`) ✅
+- [x] Линт-гейт: Husky pre‑commit запускает `npm run lint -- --fix` (блокирующий) ✅
+- [x] Commitlint + Conventional Commits в `commit-msg` хуке ✅
+- [x] CodeQL workflow (анализ включён, шаг анализa не блокирует при отключённом сканировании) ✅
+- [ ] Gitleaks workflow (сканирование секретов) — запланировано
+- [x] Size budget gate: `npm run size:bundle` в CI ✅
+
 
 ---
 
