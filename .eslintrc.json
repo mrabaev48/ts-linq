@@ -26,6 +26,7 @@
     "dist/**",
     "node_modules/**",
     "packages/*/dist/**",
+    "packages/*/test-d/**",
     "docs/**",
     "shop.db",
     "examples/**"

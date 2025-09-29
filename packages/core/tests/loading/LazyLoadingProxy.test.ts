@@ -201,6 +201,7 @@ describe('LazyLoadingProxy', () => {
       const postsPromise = proxy.posts;
       expect(postsPromise).toBeInstanceOf(Promise);
 
+      // eslint-disable-next-line @typescript-eslint/await-thenable
       const loadedPosts = await postsPromise;
       expect(loadedPosts).toHaveLength(2);
       expect(isLazyProxy(loadedPosts[0])).toBe(true);
@@ -227,6 +228,7 @@ describe('LazyLoadingProxy', () => {
       const userPromise = proxy.user;
       expect(userPromise).toBeInstanceOf(Promise);
 
+      // eslint-disable-next-line @typescript-eslint/await-thenable
       const loadedUser = await userPromise;
       expect(isLazyProxy(loadedUser)).toBe(true);
       expect((loadedUser as unknown as User).name).toBe('John');
@@ -245,6 +247,7 @@ describe('LazyLoadingProxy', () => {
       const proxy = LazyLoadingProxy.create(post, Post, mockProvider) as unknown as Post;
 
       const userPromise = proxy.user;
+      // eslint-disable-next-line @typescript-eslint/await-thenable
       const loadedUser = await userPromise;
 
       expect(loadedUser).toBeNull();
@@ -258,6 +261,7 @@ describe('LazyLoadingProxy', () => {
       const proxy = LazyLoadingProxy.create(user, User, mockProvider) as User;
 
       const postsPromise = proxy.posts;
+      // eslint-disable-next-line @typescript-eslint/await-thenable
       const loadedPosts = await postsPromise;
 
       expect(loadedPosts).toEqual([]);

@@ -15,9 +15,7 @@ d('[integration][postgres] transactions', () => {
       await p.beginTransaction();
       await p.executeNonQuery(`INSERT INTO "tx_items"(name) VALUES('a')`);
       await p.commitTransaction();
-      const afterCommit = await p.executeQuery<{ name: string }>(
-        `SELECT name FROM "tx_items"`
-      );
+      const afterCommit = await p.executeQuery<{ name: string }>(`SELECT name FROM "tx_items"`);
       expect(afterCommit.length).toBe(1);
 
       await p.beginTransaction();
@@ -34,5 +32,3 @@ d('[integration][postgres] transactions', () => {
     }
   });
 });
-
-

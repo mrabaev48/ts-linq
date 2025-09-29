@@ -181,7 +181,7 @@ export class SchemaSnapshotSerializer {
   }
 
   private assertValid(obj: unknown): asserts obj is SchemaSnapshot {
-    if (!obj || typeof obj !== 'object' || !Array.isArray((obj as any).tables)) {
+    if (!obj || typeof obj !== 'object' || !Array.isArray((obj as { tables?: unknown[] }).tables)) {
       throw new Error('Invalid SchemaSnapshot JSON');
     }
   }

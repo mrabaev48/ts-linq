@@ -60,8 +60,15 @@ function tryLoadConfig(cwd: string): unknown | undefined {
   return undefined;
 }
 
+function resolveDialect(label: string): 'sqlite' | 'postgresql' | 'mysql' | 'mssql' {
+  const allowed = ['sqlite', 'postgresql', 'mysql', 'mssql'] as const;
+  return (allowed as readonly string[]).includes(label)
+    ? (label as (typeof allowed)[number])
+    : 'sqlite';
+}
+
 async function main() {
-  const [, , cmd, arg1, arg2] = process.argv;
+  const [, , cmd, arg1, _arg2] = process.argv;
   const provider = createProviderFromEnv();
   await provider.connect();
   const gen = new DiffMigrationGenerator(provider);
@@ -132,11 +139,7 @@ async function main() {
       const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
       const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
       const diff = compareSchemas(target, actual);
-      const dialect = (provider as any).providerLabel as
-        | 'sqlite'
-        | 'postgresql'
-        | 'mysql'
-        | 'mssql';
+      const dialect = resolveDialect(provider.providerLabel);
       const rendered = generateMigrationFromDiff(diff, dialect);
       for (const sql of rendered.up) console.log(sql);
     }
@@ -149,11 +152,7 @@ async function main() {
       const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
       const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
       const diff = compareSchemas(target, actual);
-      const dialect = (provider as any).providerLabel as
-        | 'sqlite'
-        | 'postgresql'
-        | 'mysql'
-        | 'mssql';
+      const dialect = resolveDialect(provider.providerLabel);
       const rendered = generateMigrationFromDiff(diff, dialect);
       let applied = 0;
       for (const sql of rendered.up) {
@@ -174,7 +173,7 @@ async function main() {
       const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
       const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
       const diff = compareSchemas(target, actual);
-      const rendered = generateMigrationFromDiff(diff, (provider as any).providerLabel);
+      const rendered = generateMigrationFromDiff(diff, resolveDialect(provider.providerLabel));
       if (rendered.up.length > 0) {
         console.error(`Schema drift detected: ${rendered.up.length} change(s) required`);
         for (const sql of rendered.up) console.error(sql);

@@ -100,7 +100,10 @@ export class DiffMigrationGenerator {
       actual = { tables: actualTables };
     }
     const diff = compareSchemas(expected, actual);
-    const rendered = generateMigrationFromDiff(diff, label as any);
+    const rendered = generateMigrationFromDiff(
+      diff,
+      label as 'sqlite' | 'postgresql' | 'mysql' | 'mssql'
+    );
     return rendered.up.map((sql) => ({ sql }));
   }
 

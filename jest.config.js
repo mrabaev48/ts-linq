@@ -11,6 +11,29 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest'
   },
   moduleNameMapper: {
+    '^@core/(.*)$': '<rootDir>/packages/core/src/$1',
+    '^@src/(.*)$': '<rootDir>/$1',
+    '^@ts-linq/sqlite$': '<rootDir>/packages/sqlite/src',
+    '^@ts-linq/postgres$': '<rootDir>/packages/postgres/src',
+    '^@ts-linq/mysql$': '<rootDir>/packages/mysql/src',
+    '^@ts-linq/mssql$': '<rootDir>/packages/mssql/src',
+    '^@ts-linq/core$': '<rootDir>/packages/core/src',
+    '^@ts-linq/core/(.*)$': '<rootDir>/packages/core/src/$1',
+    '^@ts-linq/sqlite/(.*)$': '<rootDir>/packages/sqlite/src/$1',
+    '^@ts-linq/postgres/(.*)$': '<rootDir>/packages/postgres/src/$1',
+    '^@ts-linq/mysql/(.*)$': '<rootDir>/packages/mysql/src/$1',
+    '^@ts-linq/mssql/(.*)$': '<rootDir>/packages/mssql/src/$1',
+    '^(\\.\\.\/)+src\/(.*)$': '<rootDir>/packages/core/src/$2',
+    '^(\\.\\.\/)+context\/(.*)$': '<rootDir>/packages/core/src/context/$2',
+    '^(\\.\\.\/)+metadata\/(.*)$': '<rootDir>/packages/core/src/metadata/$2',
+    '^(\\.\\.\/)+types$': '<rootDir>/packages/core/src/types',
+    '^(\\.\\.\/)+types\/(.*)$': '<rootDir>/packages/core/src/types/$2',
+    '^(\\.\\.\/)+DatabaseProvider$': '<rootDir>/packages/core/src/DatabaseProvider',
+    '^(\\.\\.\/)+query\/(.*)$': '<rootDir>/packages/core/src/query/$2',
+    '^(\\.\\.\/)+decorators\/(.*)$': '<rootDir>/packages/core/src/decorators/$2',
+    '^(\\.\\.\/)+migrations\/(.*)$': '<rootDir>/packages/core/src/migrations/$2',
+    '^(\\.\\.\/)+utils\/(.*)$': '<rootDir>/packages/core/src/utils/$2',
+
     '^\\.\\.\\/src\\/providers\\/SQLiteProvider$': '<rootDir>/packages/sqlite/src/SQLiteProvider',
     '^\\.\\.\\/src\\/providers\\/PostgresProvider$': '<rootDir>/packages/postgres/src/PostgresProvider',
     '^\\.\\.\\/src\\/providers\\/MySqlProvider$': '<rootDir>/packages/mysql/src/MySqlProvider',
@@ -40,7 +63,7 @@ module.exports = {
     {
       displayName: 'core',
       testMatch: ['<rootDir>/packages/core/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }] }
     },
     ...(includeIntegration
       ? [
@@ -54,22 +77,22 @@ module.exports = {
     {
       displayName: 'sqlite',
       testMatch: ['<rootDir>/packages/sqlite/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/sqlite/tsconfig.json' }] }
     },
     {
       displayName: 'postgres',
       testMatch: ['<rootDir>/packages/postgres/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/postgres/tsconfig.json' }] }
     },
     {
       displayName: 'mysql',
       testMatch: ['<rootDir>/packages/mysql/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/mysql/tsconfig.json' }] }
     },
     {
       displayName: 'mssql',
       testMatch: ['<rootDir>/packages/mssql/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/mssql/tsconfig.json' }] }
     }
   ]
 };

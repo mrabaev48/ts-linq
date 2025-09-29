@@ -36,5 +36,3 @@ d('[integration][mssql] transactions', () => {
     }
   });
 });
-
-

@@ -31,5 +31,3 @@ d('[integration][sqlite] transactions', () => {
     }
   });
 });
-
-

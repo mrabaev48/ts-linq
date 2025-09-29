@@ -27,5 +27,3 @@ d('[integration][types][mysql] DECIMAL/date', () => {
     }
   });
 });
-
-

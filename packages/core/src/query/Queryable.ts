@@ -991,9 +991,9 @@ export class Queryable<T> {
     const cloned = this.clone();
 
     // Add a custom filter to exclude elements that exist in the other sequence
-    const originalToArray = cloned.toArray;
+    const boundOriginal = cloned.toArray.bind(cloned);
     cloned.toArray = async function (this: Queryable<T>): Promise<T[]> {
-      const thisResults = await originalToArray.call(this);
+      const thisResults = await boundOriginal();
       const otherResults = await other.toArray();
 
       // Create a Set for O(1) lookup performance
@@ -1011,9 +1011,9 @@ export class Queryable<T> {
     const cloned = this.clone();
 
     // Add a custom filter to include only elements that exist in both sequences
-    const originalToArray = cloned.toArray;
+    const boundOriginal2 = cloned.toArray.bind(cloned);
     cloned.toArray = async function (this: Queryable<T>): Promise<T[]> {
-      const thisResults = await originalToArray.call(this);
+      const thisResults = await boundOriginal2();
       const otherResults = await other.toArray();
 
       // Create a Set for O(1) lookup performance
@@ -1031,9 +1031,9 @@ export class Queryable<T> {
     const cloned = this.clone();
 
     // Override toArray to concatenate results while maintaining order
-    const originalToArray = cloned.toArray;
+    const boundOriginal3 = cloned.toArray.bind(cloned);
     cloned.toArray = async function (this: Queryable<T>): Promise<T[]> {
-      const thisResults = await originalToArray.call(this);
+      const thisResults = await boundOriginal3();
       const otherResults = await other.toArray();
 
       // Concatenate maintaining order: this sequence first, then other

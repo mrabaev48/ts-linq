@@ -70,13 +70,7 @@ export function OneToMany(
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship(
-      'one-to-many',
-      targetEntity,
-      options,
-      targetOrValue,
-      propOrContext
-    ) as any;
+    defineRelationship('one-to-many', targetEntity, options, targetOrValue, propOrContext);
   };
 }
 
@@ -88,13 +82,7 @@ export function ManyToOne(
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship(
-      'many-to-one',
-      targetEntity,
-      options,
-      targetOrValue,
-      propOrContext
-    ) as any;
+    defineRelationship('many-to-one', targetEntity, options, targetOrValue, propOrContext);
   };
 }
 
@@ -106,13 +94,7 @@ export function OneToOne(
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship(
-      'one-to-one',
-      targetEntity,
-      options,
-      targetOrValue,
-      propOrContext
-    ) as any;
+    defineRelationship('one-to-one', targetEntity, options, targetOrValue, propOrContext);
   };
 }
 
@@ -124,12 +106,6 @@ export function ManyToMany(
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship(
-      'many-to-many',
-      targetEntity,
-      options,
-      targetOrValue,
-      propOrContext
-    ) as any;
+    defineRelationship('many-to-many', targetEntity, options, targetOrValue, propOrContext);
   };
 }
