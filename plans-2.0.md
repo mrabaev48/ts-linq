@@ -170,7 +170,7 @@
   ts-linq migration validate         # Validate migration filenames/order/exports
   ```
 
-- [ ] **Schema Inspection**
+- [x] **Schema Inspection**
 
   ```bash
   ts-linq schema diff              # Показать diff между моделями и БД
