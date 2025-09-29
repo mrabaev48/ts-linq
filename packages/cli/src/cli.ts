@@ -85,6 +85,7 @@ async function main() {
   if (cmd === 'init') {
     const dest = path.resolve(process.cwd(), arg1 || '.');
     if (arg1) ensureDir(dest);
+    const withMigration = process.argv.includes('--with-migration');
 
     // tsconfig.json tuned for TS5 Stage-3 decorators
     const tsconfig = `{
@@ -164,6 +165,20 @@ SQLITE_URL=file:app.db
     ensureDir(path.join(dest, 'migrations'));
     // Keep migrations dir tracked
     writeFileIfMissing(path.join(dest, 'migrations', '.gitkeep'), '');
+
+    if (withMigration) {
+      const name = 'Initial';
+      const ts = new Date()
+        .toISOString()
+        .replace(/[-:TZ.]/g, '')
+        .slice(0, 14);
+      const migDir = path.join(dest, 'migrations');
+      ensureDir(migDir);
+      const migFile = path.join(migDir, `${ts}_${name}.ts`);
+      const template = `import { Migration } from '@ts-linq/core';\n\nexport class ${name} extends Migration {\n  protected get name() { return '${name}'; }\n  protected get version() { return '${ts}'; }\n  public async up(): Promise<void> {\n    // TODO: write your DDL here\n  }\n  public async down(): Promise<void> {\n    // TODO: write your rollback here\n  }\n}\n`;
+      writeFileIfMissing(migFile, template);
+      console.log(`Created ${migFile}`);
+    }
 
     console.log(`Initialized ts-linq project at ${dest}`);
     console.log('Next steps:');
