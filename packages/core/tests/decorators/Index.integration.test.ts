@@ -2,12 +2,12 @@ import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import type { ColumnMetadata } from '../../src/types';
 import { Index, IndexOptionsBuilder } from '../../src/decorators';
 
-@Index(
-  new IndexOptionsBuilder('idx_users_email_created')
-    .onColumns(['email', 'createdAt'])
-    .unique()
-    .orderBy({ email: 'ASC', createdAt: 'DESC' })
-)
+@Index({
+  name: 'idx_users_email_created',
+  columns: ['email', 'createdAt'],
+  unique: true,
+  orders: { email: 'ASC', createdAt: 'DESC' }
+})
 class User {
   id!: number;
   email!: string;

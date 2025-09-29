@@ -69,8 +69,13 @@ module.exports = {
       ? [
           {
             displayName: 'db',
-            testMatch: ['<rootDir>/packages/**/tests/**/*integration*.test.ts'],
-            transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.tests.json' }] }
+            testMatch: [
+              '<rootDir>/packages/sqlite/tests/**/*integration*.test.ts',
+              '<rootDir>/packages/postgres/tests/**/*integration*.test.ts',
+              '<rootDir>/packages/mysql/tests/**/*integration*.test.ts',
+              '<rootDir>/packages/mssql/tests/**/*integration*.test.ts'
+            ],
+            transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
           }
         ]
       : []),
