@@ -143,12 +143,14 @@
 
 **Задачи:**
 
-- [ ] **Project Initialization**
+- [x] **Project Initialization** ✅
 
   ```bash
   npx ts-linq init my-project
   # Создает: tsconfig, DbContext, первую миграцию
   ```
+
+  - [x] Флаг `--with-migration` для автоматического создания начальной миграции ✅
 
 - [ ] **Entity Generation**
 
