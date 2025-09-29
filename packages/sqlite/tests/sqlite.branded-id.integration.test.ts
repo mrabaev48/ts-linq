@@ -61,13 +61,13 @@ describe('SQLite branded ID integration', () => {
 
     const u = new User();
     u.name = 'Alice';
-    ctx.users.add(u);
+    ctx.set(User).add(u);
     await ctx.saveChanges();
 
-    const one = await ctx.users.find(u.id as UserId);
+    const one = await ctx.set(User).find(u.id as UserId);
     expect(one?.name).toBe('Alice');
 
-    const many = await ctx.users.findByIds([u.id as UserId]);
+    const many = await ctx.set(User).findByIds([u.id as UserId]);
     expect(many.length).toBe(1);
 
     await ctx.dispose();
