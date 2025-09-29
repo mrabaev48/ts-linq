@@ -2,5 +2,3 @@
 import 'reflect-metadata';
 
 export {};
-
-

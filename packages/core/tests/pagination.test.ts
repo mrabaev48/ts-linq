@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 function defineEntities() {
@@ -14,7 +15,10 @@ function defineEntities() {
 class PContext extends DbContext {
   public pitems!: DbSet<InstanceType<ReturnType<typeof defineEntities>['PItem']>>;
   constructor() {
-    super({ provider: 'sqlite', connectionString: ':memory:' });
+    super({
+      provider: new ProviderStub(':memory:') as unknown as 'sqlite',
+      connectionString: ':memory:'
+    });
   }
 }
 
@@ -31,7 +35,7 @@ describe('Pagination helpers', () => {
     for (let i = 1; i <= 10; i++) {
       const it = new PItem();
       it.name = `N${i}`;
-      ctx.pitems.add(it);
+      ctx.set(PItem).add(it);
       await ctx.saveChanges();
     }
   });

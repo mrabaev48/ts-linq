@@ -1,6 +1,6 @@
-import { QueryBuilder } from '../src/query/QueryBuilder';
-import type { SqlDialect } from '../src/query/SqlDialect';
-import type { QueryOptions, WhereClause, SqlParameter } from '../types';
+import { QueryBuilder } from '../../src/query/QueryBuilder';
+import type { SqlDialect } from '../../src/query/SqlDialect';
+import type { QueryOptions, WhereClause, SqlParameter } from '../../src/types';
 
 class DummyEntity {
   id!: number;

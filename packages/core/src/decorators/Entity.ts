@@ -28,12 +28,25 @@ export function Entity(options: EntityOptions = {}): ClassDecorator {
   ): TFunction | void {
     const tableName = options?.name || target.name;
 
-    // TS5 Stage-3 path
+    // TS5 Stage-3 path only
     if (isStage3ClassContext(context)) {
+      // Persist table name via reflect so metadata survives storage.clear()
+      try {
+        (
+          Reflect as unknown as { defineMetadata?: (k: string, v: unknown, t: Function) => void }
+        ).defineMetadata?.('orm:tableName', tableName, target);
+      } catch {
+        /* ignore */
+      }
       // Register entity immediately
       MetadataStorage.addEntity(target, tableName);
       context.addInitializer?.(function (this: unknown) {
         const ctor = target as unknown as Function;
+        // Ensure entity exists after possible MetadataStorage.clear() calls between module eval and first instantiation
+        const existing = MetadataStorage.getEntity(ctor);
+        if (!existing) {
+          MetadataStorage.addEntity(ctor, tableName);
+        }
         // Sync any reflect-stored columns/primaryKeys/relationships into MetadataStorage
         try {
           const cols = (Reflect.getOwnMetadata('orm:columns', ctor) as ColumnMetadata[]) || [];
@@ -65,43 +78,7 @@ export function Entity(options: EntityOptions = {}): ClassDecorator {
       return;
     }
 
-    // Legacy decorators path: preserve previous behavior
-    // Persist table name on the constructor for optional external rehydration
-    Reflect.defineMetadata('orm:tableName', tableName, target);
-    // Register entity metadata immediately
-    MetadataStorage.addEntity(target, tableName);
-
-    // Return lightweight subclass that re-registers metadata if storage was cleared
-    const ExtendedClass = class extends (target as unknown as new (...args: unknown[]) => object) {
-      constructor(...args: unknown[]) {
-        super(...args);
-        if (!MetadataStorage.getEntity(target)) {
-          const tn =
-            (Reflect.getOwnMetadata('orm:tableName', target) as string | undefined) || tableName;
-          MetadataStorage.addEntity(target, tn);
-          const columns = (Reflect.getOwnMetadata('orm:columns', target) as ColumnMetadata[]) || [];
-          for (const col of columns) {
-            MetadataStorage.addColumn(target, col);
-          }
-          const primaryKeys = (Reflect.getOwnMetadata('orm:primaryKeys', target) as string[]) || [];
-          for (const pk of primaryKeys) {
-            MetadataStorage.addPrimaryKey(target, pk);
-          }
-          const relationships =
-            (Reflect.getOwnMetadata('orm:relationships', target) as RelationshipMetadata[]) || [];
-          for (const rel of relationships) {
-            const te = rel.targetEntity;
-            const resolvedTarget =
-              typeof te === 'function' && (te as { prototype?: unknown }).prototype
-                ? (te as Function)
-                : (te as () => Function)();
-            MetadataStorage.addRelationship(target, { ...rel, targetEntity: resolvedTarget });
-          }
-        }
-      }
-    };
-    // Let storage map back from Extended to original for getEntity lookups
-    Reflect.defineMetadata('orm:original', target, ExtendedClass);
-    return ExtendedClass as unknown as TFunction;
+    // If not Stage-3, fail fast per project policy
+    throw new Error('@Entity requires TS5 Stage-3 decorators');
   };
 }

@@ -1,8 +1,8 @@
-import { Queryable } from './Queryable';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { SqlDialect } from '../src/query/SqlDialect';
-import type { SqlParameter } from '../types';
-import { DatabaseProvider } from '../DatabaseProvider';
+import { Queryable } from '../../src/query/Queryable';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import type { SqlDialect } from '../../src/query/SqlDialect';
+import type { SqlParameter } from '../../src/types';
+import { DatabaseProvider } from '../../src/DatabaseProvider';
 
 class User {
   id!: number;

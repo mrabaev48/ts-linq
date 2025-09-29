@@ -37,7 +37,8 @@ describe('Decorators', () => {
         @Column()
         name!: string;
       }
-
+      // instantiate to trigger Stage-3 field initializers
+      new TestEntity();
       const metadata = MetadataStorage.getEntity(TestEntity);
       expect(metadata!.columns).toHaveLength(1);
       expect(metadata!.columns[0].propertyName).toBe('name');
@@ -50,7 +51,7 @@ describe('Decorators', () => {
         @Column({ name: 'full_name', type: 'VARCHAR', length: 255, nullable: false })
         name!: string;
       }
-
+      new TestEntity();
       const metadata = MetadataStorage.getEntity(TestEntity);
       const column = metadata!.columns[0];
       expect(column.columnName).toBe('full_name');
@@ -67,7 +68,7 @@ describe('Decorators', () => {
         @PrimaryKey()
         id!: number;
       }
-
+      new TestEntity();
       const metadata = MetadataStorage.getEntity(TestEntity);
       expect(metadata!.primaryKeys).toContain('id');
       expect(metadata!.columns[0].nullable).toBe(false);
@@ -79,7 +80,7 @@ describe('Decorators', () => {
         @PrimaryKey({ autoIncrement: true })
         id!: number;
       }
-
+      new TestEntity();
       const metadata = MetadataStorage.getEntity(TestEntity);
       expect(metadata!.columns[0].isGenerated).toBe(true);
     });
@@ -105,23 +106,20 @@ describe('Decorators', () => {
         user!: User;
       }
 
+      // instantiate to ensure metadata finalized
+      new User();
+      new Post();
       const userMetadata = MetadataStorage.getEntity(User);
       const postMetadata = MetadataStorage.getEntity(Post);
 
       expect(userMetadata!.relationships).toHaveLength(1);
       expect(userMetadata!.relationships[0].type).toBe('one-to-many');
-      const userTargetEntity =
-        typeof userMetadata!.relationships[0].targetEntity === 'function'
-          ? userMetadata!.relationships[0].targetEntity()
-          : userMetadata!.relationships[0].targetEntity;
+      const userTargetEntity = userMetadata!.relationships[0].targetEntity as unknown as Function;
       expect(userTargetEntity).toBe(Post);
 
       expect(postMetadata!.relationships).toHaveLength(1);
       expect(postMetadata!.relationships[0].type).toBe('many-to-one');
-      const postTargetEntity =
-        typeof postMetadata!.relationships[0].targetEntity === 'function'
-          ? postMetadata!.relationships[0].targetEntity()
-          : postMetadata!.relationships[0].targetEntity;
+      const postTargetEntity = postMetadata!.relationships[0].targetEntity as unknown as Function;
       expect(postTargetEntity).toBe(User);
     });
   });

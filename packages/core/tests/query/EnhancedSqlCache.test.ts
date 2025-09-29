@@ -1,5 +1,5 @@
-import { EnhancedSqlCache, type EnhancedSqlCacheOptions } from './EnhancedSqlCache';
-import type { SqlCacheEntry } from './SqlCache';
+import { EnhancedSqlCache, type EnhancedSqlCacheOptions } from '../../src/query/EnhancedSqlCache';
+import type { SqlCacheEntry } from '../../src/query/SqlCache';
 
 describe('EnhancedSqlCache', () => {
   let cache: EnhancedSqlCache;

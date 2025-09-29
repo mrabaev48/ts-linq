@@ -773,9 +773,13 @@ export class Queryable<T> {
       }
       const entity = new this._entityClass();
       for (const column of metadata.columns) {
-        if ((row as Record<string, unknown>).hasOwnProperty(column.columnName)) {
+        const r = row as Record<string, unknown>;
+        const val = r.hasOwnProperty(column.columnName)
+          ? r[column.columnName]
+          : r[column.propertyName];
+        if (val !== undefined) {
           (entity as unknown as Record<string, unknown>)[column.propertyName] = this.convertValue(
-            (row as Record<string, unknown>)[column.columnName],
+            val,
             column.type
           );
         }
@@ -827,9 +831,13 @@ export class Queryable<T> {
     const entity = new this._entityClass();
     if (metadata) {
       for (const column of metadata.columns) {
-        if ((row as Record<string, unknown>).hasOwnProperty(column.columnName)) {
+        const r = row as Record<string, unknown>;
+        const val = r.hasOwnProperty(column.columnName)
+          ? r[column.columnName]
+          : r[column.propertyName];
+        if (val !== undefined) {
           (entity as unknown as Record<string, unknown>)[column.propertyName] = this.convertValue(
-            (row as Record<string, unknown>)[column.columnName],
+            val,
             column.type
           );
         }

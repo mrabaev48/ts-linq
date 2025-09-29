@@ -1,8 +1,11 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import type { ColumnMetadata } from '../types';
-import { SchemaSnapshotBuilder, SchemaSnapshotSerializer } from './SchemaSnapshot';
-import { compareSchemas } from '../src/migrations/DiffTypes';
-import { generateMigrationFromDiff } from './DialectMigrationSql';
+import {
+  SchemaSnapshotBuilder,
+  SchemaSnapshotSerializer
+} from '../../src/migrations/SchemaSnapshot';
+import { compareSchemas } from '../../src/migrations/DiffTypes';
+import { generateMigrationFromDiff } from '../../src/migrations/DialectMigrationSql';
 
 class User {
   id!: number;

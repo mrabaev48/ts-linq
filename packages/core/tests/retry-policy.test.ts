@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { SQLiteProvider } from '../src/providers/SQLiteProvider';
+import { SQLiteProvider } from '@ts-linq/sqlite';
 
 class FlakyProvider extends SQLiteProvider {
   private failCount = 0;

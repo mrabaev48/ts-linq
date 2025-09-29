@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 function defineSUser() {
@@ -19,11 +20,10 @@ class SoftCtx<TUser extends object> extends DbContext {
   public susers!: DbSet<TUser>;
   constructor() {
     super({
-      provider: 'sqlite',
-      connectionString: ':memory:',
+      provider: new ProviderStub(':memory:'),
       softDelete: { enabled: true, column: 'isDeleted', deletedAtColumn: 'deletedAt' },
       audit: { enabled: true }
-    });
+    } as any);
   }
 }
 
@@ -43,16 +43,16 @@ describe('Soft delete & audit', () => {
   it('filters out soft-deleted rows and stamps audit fields', async () => {
     const u = new SUser();
     u.name = 'A';
-    ctx.susers.add(u);
+    ctx.set(SUser).add(u);
     await ctx.saveChanges();
 
     // update triggers updatedAt
     u.name = 'B';
-    ctx.susers.update(u);
+    ctx.set(SUser).update(u);
     await ctx.saveChanges();
 
     // soft delete
-    ctx.susers.remove(u);
+    ctx.set(SUser).remove(u);
     await ctx.saveChanges();
 
     const all = await ctx.set(SUser).toArray();

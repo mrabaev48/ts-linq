@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 function defineEntity() {
@@ -16,7 +17,7 @@ class AppCtx extends DbContext {
   constructor() {
     super({
       connectionString: ':memory:',
-      provider: 'sqlite',
+      provider: new ProviderStub(':memory:'),
       performance: {
         enableEntityCache: true,
         entityCacheSize: 100,

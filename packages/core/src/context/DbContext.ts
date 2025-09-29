@@ -72,6 +72,13 @@ export abstract class DbContext {
     // Initialize database provider from options
     this._provider = options.provider;
     this._softDelete = options.softDelete;
+    // Propagate soft-delete settings into provider for GlobalFilterApplier and ProviderStub
+    try {
+      (this._provider as unknown as { softDelete?: SoftDeleteOptions }).softDelete =
+        options.softDelete;
+    } catch {
+      /* ignore */
+    }
     this._audit = options.audit;
     this._globalFilters = options.globalFilters;
     this._validationOptions = options.validation;
@@ -516,7 +523,7 @@ export abstract class DbContext {
       Object.defineProperty(this, propertyName, {
         get: () => dbSet,
         enumerable: true,
-        configurable: false
+        configurable: true
       });
     }
   }

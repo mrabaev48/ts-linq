@@ -1,19 +1,22 @@
 import 'reflect-metadata';
-import { DatabaseProvider } from '../src/providers/DatabaseProvider';
-import { SQLiteProvider } from '../src/providers/SQLiteProvider';
-import { MySqlProvider } from '../src/providers/MySqlProvider';
-import { PostgresProvider } from '../src/providers/PostgresProvider';
-import { MssqlProvider } from '../src/providers/MssqlProvider';
-import { SQLiteDialect } from '../src/query/SQLiteDialect';
-import { MysqlDialect } from '../src/query/MysqlDialect';
-import { PostgresDialect } from '../src/query/PostgresDialect';
-import { MssqlDialect } from '../src/query/MssqlDialect';
+import { DatabaseProvider } from '../src/DatabaseProvider';
+import { SQLiteProvider } from '@ts-linq/sqlite';
+import { MySqlProvider } from '@ts-linq/mysql';
+import { PostgresProvider } from '@ts-linq/postgres';
+import { MssqlProvider } from '@ts-linq/mssql';
+import { SQLiteDialect } from '@ts-linq/sqlite';
+import { MysqlDialect } from '@ts-linq/mysql';
+import { PostgresDialect } from '@ts-linq/postgres';
+import { MssqlDialect } from '@ts-linq/mssql';
 import type { SqlDialect } from '../src/query/SqlDialect';
 import type { SqlParameter } from '../src/types';
 import { QueryOptions } from '../src/types';
 import { Queryable } from '../src/query/Queryable';
 
 class ProviderStub extends DatabaseProvider {
+  public getDialect(): any {
+    return new SQLiteDialect();
+  }
   public async connect(): Promise<void> {}
   public async disconnect(): Promise<void> {}
   public async createTable(): Promise<void> {}

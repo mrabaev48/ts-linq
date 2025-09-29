@@ -1,8 +1,8 @@
-import type { BatchResult } from './BatchOperations';
-import { BatchOperations, BatchOptions, SimpleBatchResult } from './BatchOperations';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { DatabaseProvider } from '../DatabaseProvider';
-import type { EntityMetadata, ColumnMetadata } from '../types';
+import type { BatchResult } from '../../src/batch/BatchOperations';
+import { BatchOperations } from '../../src/batch/BatchOperations';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import type { DatabaseProvider } from '../../src/DatabaseProvider';
+import type { ColumnMetadata, EntityMetadata } from '../../src/types';
 
 // Test entities
 class User {

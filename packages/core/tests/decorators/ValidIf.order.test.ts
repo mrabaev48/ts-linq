@@ -1,10 +1,10 @@
 import 'reflect-metadata';
-import { DbContext } from '../context/DbContext';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { ColumnMetadata, SqlParameter } from '../types';
-import { ValidationError } from '../types';
-import { DatabaseProvider } from '../DatabaseProvider';
-import type { SqlDialect } from '../query/SqlDialect';
+import { DbContext } from '../../src/context/DbContext';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import type { ColumnMetadata, SqlParameter } from '../../src/types';
+import { ValidationError } from '../../src/types';
+import { DatabaseProvider } from '../../src/DatabaseProvider';
+import type { SqlDialect } from '../../src/query/SqlDialect';
 
 class ProviderStub extends DatabaseProvider {
   constructor() {

@@ -1,4 +1,4 @@
-import { compareSchemas, type SchemaSnapshot } from '../src/migrations/DiffTypes';
+import { compareSchemas, type SchemaSnapshot } from '../../src/migrations/DiffTypes';
 
 test('compareSchemas: detects index creates/drops and where/unique/columns changes', () => {
   const expected: SchemaSnapshot = {

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { Entity } from '../src/decorators/Entity';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
@@ -28,7 +29,11 @@ class PerfCtx extends DbContext {
   };
   public perfbooks!: { add: (b: PerfBook) => void };
   constructor(logger?: SqlLogger) {
-    super({ connectionString: ':memory:', provider: 'sqlite', logger });
+    super({
+      connectionString: ':memory:',
+      provider: new ProviderStub(':memory:', logger) as unknown as 'sqlite',
+      logger
+    });
   }
 }
 
@@ -48,14 +53,15 @@ describe('Include batching performance', () => {
 
     // Seed 10 authors + 10 books
     for (let i = 0; i < 10; i++) {
-      const a = { name: `A${i}` } as unknown as PerfAuthor;
-      ctx.perfauthors.add(a);
+      const a = new PerfAuthor();
+      a.name = `A${i}`;
+      ctx.set(PerfAuthor).add(a);
       await ctx.saveChanges();
       const b = {
         title: `B${i}`,
         authorId: (a as unknown as { id: number }).id
       } as unknown as PerfBook;
-      ctx.perfbooks.add(b);
+      ctx.set(PerfBook).add(b as unknown as PerfBook);
       await ctx.saveChanges();
     }
 
@@ -63,7 +69,10 @@ describe('Include batching performance', () => {
     events.length = 0;
 
     // Run include query expected to batch
-    const authors = await ctx.perfauthors.include((a: PerfAuthor) => a.books).toArray();
+    const authors = await ctx
+      .set(PerfAuthor)
+      .include((a: PerfAuthor) => a.books)
+      .toArray();
     expect(authors.length).toBe(10);
 
     // Count SELECT statements during the measured operation

@@ -187,6 +187,50 @@ export class TypedQueryable<TEntity> {
     return new TypedQueryable(resultQueryable);
   }
 
+  /**
+   * Paginate by page number and size (typed proxy).
+   */
+  async paginate(
+    page: number,
+    size: number
+  ): Promise<{ items: TEntity[]; total: number; page: number; size: number }> {
+    return await (
+      this._queryable as unknown as {
+        paginate: (
+          page: number,
+          size: number
+        ) => Promise<{ items: TEntity[]; total: number; page: number; size: number }>;
+      }
+    ).paginate(page, size);
+  }
+
+  /**
+   * Keyset pagination helper (typed proxy).
+   */
+  async keysetPaginate<TKey extends keyof TEntity>(
+    key: TKey,
+    after: TEntity[TKey] | null,
+    size: number
+  ): Promise<{ items: TEntity[]; pageSize: number; nextAfter: TEntity[TKey] | null }> {
+    return await (
+      this._queryable as unknown as {
+        keysetPaginate: (
+          key: TKey,
+          after: TEntity[TKey] | null,
+          size: number
+        ) => Promise<{ items: TEntity[]; pageSize: number; nextAfter: TEntity[TKey] | null }>;
+      }
+    ).keysetPaginate(key, after, size);
+  }
+
+  /** Attach AbortSignal (typed proxy) */
+  withAbort(signal: AbortSignal): TypedQueryable<TEntity> {
+    const q = (
+      this._queryable as unknown as { withAbort: (s: AbortSignal) => typeof this._queryable }
+    ).withAbort(signal);
+    return new TypedQueryable(q as unknown as any);
+  }
+
   // Execution methods that return results
 
   /**

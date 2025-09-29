@@ -32,34 +32,59 @@ export interface ColumnOptions {
  */
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
   return function ColumnDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext)) {
-      throw new Error('@Column requires TS5 Stage-3 decorators');
+    if (isStage3FieldContext(propOrContext)) {
+      const ctx = propOrContext;
+      const name = ctx.name.toString();
+      ctx.addInitializer?.(function (this: unknown) {
+        const ctor = (this as { constructor?: Function })?.constructor;
+        if (!ctor) return;
+        const designType = Reflect.getMetadata('design:type', (ctor as any).prototype, name) as
+          | { name?: string }
+          | undefined;
+        const columnMetadata: ColumnMetadata = {
+          propertyName: name,
+          columnName: options?.name || name,
+          type: options?.type || getTypeString(designType),
+          nullable: options?.nullable !== false,
+          defaultValue: options?.defaultValue,
+          length: options?.length,
+          precision: options?.precision,
+          scale: options?.scale,
+          isGenerated: options?.generated || false,
+          isVersion: options?.version || false
+        };
+        MetadataStorage.addColumn(ctor, columnMetadata);
+        const existing: ColumnMetadata[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
+        existing.push(columnMetadata);
+        Reflect.defineMetadata('orm:columns', existing, ctor);
+      });
+      return;
     }
-    const ctx = propOrContext;
-    const name = ctx.name.toString();
-    ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
-      if (!ctor) return;
-      const designType = Reflect.getMetadata('design:type', (ctor as any).prototype, name) as
-        | { name?: string }
-        | undefined;
-      const columnMetadata: ColumnMetadata = {
-        propertyName: name,
-        columnName: options?.name || name,
-        type: options?.type || getTypeString(designType),
-        nullable: options?.nullable !== false,
-        defaultValue: options?.defaultValue,
-        length: options?.length,
-        precision: options?.precision,
-        scale: options?.scale,
-        isGenerated: options?.generated || false,
-        isVersion: options?.version || false
-      };
-      MetadataStorage.addColumn(ctor, columnMetadata);
-      const existing: ColumnMetadata[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-      existing.push(columnMetadata);
-      Reflect.defineMetadata('orm:columns', existing, ctor);
-    });
+    // Legacy decorators path: target is prototype, propOrContext is propertyKey
+    const propertyKey = propOrContext as string | symbol;
+    const target = _targetOrValue as { constructor?: Function };
+    const ctor = target?.constructor;
+    if (!ctor) return;
+    const designType = Reflect.getMetadata('design:type', target, propertyKey) as
+      | { name?: string }
+      | undefined;
+    const name = propertyKey.toString();
+    const columnLegacy: ColumnMetadata = {
+      propertyName: name,
+      columnName: options?.name || name,
+      type: options?.type || getTypeString(designType),
+      nullable: options?.nullable !== false,
+      defaultValue: options?.defaultValue,
+      length: options?.length,
+      precision: options?.precision,
+      scale: options?.scale,
+      isGenerated: options?.generated || false,
+      isVersion: options?.version || false
+    };
+    MetadataStorage.addColumn(ctor, columnLegacy);
+    const existingCols: ColumnMetadata[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
+    existingCols.push(columnLegacy);
+    Reflect.defineMetadata('orm:columns', existingCols, ctor);
   };
 }
 

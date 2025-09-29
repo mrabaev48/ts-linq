@@ -1,11 +1,11 @@
 import 'reflect-metadata';
-import { DbContext } from '../context/DbContext';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { ColumnMetadata } from '../types';
-import type { ValidationError } from '../types';
-import { DatabaseProvider } from '../DatabaseProvider';
-import type { SqlDialect } from '../query/SqlDialect';
-import { ValidIfOf, MinLengthOf } from '../src/decorators/ValidIf';
+import { DbContext } from '../../src/context/DbContext';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
+import type { ColumnMetadata } from '../../src/types';
+import type { ValidationError } from '../../src/types';
+import { DatabaseProvider } from '../../src/DatabaseProvider';
+import type { SqlDialect } from '../../src/query/SqlDialect';
+import { ValidIfOf, MinLengthOf } from '../../src/decorators/ValidIf';
 
 class ProviderStub extends DatabaseProvider {
   constructor() {

@@ -1,9 +1,9 @@
-import { TypedQueryable, typed } from './TypedQueryable';
-import type { Queryable } from './Queryable';
-import type { EntityId } from '../types';
-import { brandId, type ColumnMetadata } from '../types';
-import { DbContext } from '../context/DbContext';
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import { TypedQueryable, typed } from '../../src/query/TypedQueryable';
+import type { Queryable } from '../../src/query/Queryable';
+import type { EntityId } from '../../src/types';
+import { brandId, type ColumnMetadata } from '../../src/types';
+import { DbContext } from '../../src/context/DbContext';
+import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 
 // Sample entity types for testing
 type UserId = EntityId<number, 'User'>;

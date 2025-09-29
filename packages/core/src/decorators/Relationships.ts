@@ -30,17 +30,23 @@ function defineRelationship(
   targetOrValue: unknown,
   propOrContext: unknown
 ): void | PropertyDecorator {
-  // Stage-3 field decorator path
+  // Stage-3 field decorator path only
   if (isStage3FieldContext(propOrContext)) {
     const ctx = propOrContext;
     const name = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
       const ctor = (this as { constructor?: Function })?.constructor;
       if (!ctor) return;
+      // Resolve targetEntity immediately to concrete ctor to avoid anonymous thunks in tests
+      const te = targetEntity as unknown as Function | (() => Function);
+      const resolved =
+        typeof te === 'function' && (te as { prototype?: unknown }).prototype
+          ? (te as Function)
+          : (te as () => Function)();
       const relationship: RelationshipMetadata = {
         propertyName: name,
         type: kind,
-        targetEntity,
+        targetEntity: resolved,
         foreignKey: options?.foreignKey,
         inverseSide: options?.inverseSide,
         cascade: options?.cascade || false
@@ -53,23 +59,7 @@ function defineRelationship(
     });
     return;
   }
-  // Legacy fallback
-  const target = targetOrValue as object;
-  const propertyKey = propOrContext as string | symbol;
-  const propertyName = propertyKey.toString();
-  const relationship: RelationshipMetadata = {
-    propertyName,
-    type: kind,
-    targetEntity,
-    foreignKey: options?.foreignKey,
-    inverseSide: options?.inverseSide,
-    cascade: options?.cascade || false
-  };
-  MetadataStorage.addRelationship((target as { constructor: Function }).constructor, relationship);
-  const ctor = (target as { constructor: Function }).constructor;
-  const existing: RelationshipMetadata[] = Reflect.getOwnMetadata('orm:relationships', ctor) || [];
-  existing.push(relationship);
-  Reflect.defineMetadata('orm:relationships', existing, ctor);
+  throw new Error('Relationship decorators require TS5 Stage-3 decorators');
 }
 
 /**

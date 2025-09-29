@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
 function defineEntity() {
@@ -15,7 +16,7 @@ class CacheCtx extends DbContext {
   public cusers!: DbSet<InstanceType<ReturnType<typeof defineEntity>['CUser']>>;
   constructor() {
     super({
-      provider: 'sqlite',
+      provider: new ProviderStub(':memory:') as unknown as 'sqlite',
       connectionString: ':memory:',
       performance: { enableEntityCache: true, entityCacheSize: 100 }
     });
@@ -39,7 +40,7 @@ describe('L2 Entity Cache', () => {
   it('caches entity on first load and returns same instance next time', async () => {
     const u = new CUser();
     u.name = 'A';
-    ctx.cusers.add(u);
+    ctx.set(CUser).add(u);
     await ctx.saveChanges();
 
     const first = await ctx.set(CUser).find(u.id);
@@ -50,7 +51,7 @@ describe('L2 Entity Cache', () => {
   it('updates cache on update and invalidates on delete', async () => {
     const u = new CUser();
     u.name = 'A';
-    ctx.cusers.add(u);
+    ctx.set(CUser).add(u);
     await ctx.saveChanges();
 
     const first = await ctx.set(CUser).find(u.id);
@@ -58,7 +59,7 @@ describe('L2 Entity Cache', () => {
 
     // update
     first!.name = 'B';
-    ctx.cusers.update(first);
+    ctx.set(CUser).update(first);
     await ctx.saveChanges();
 
     const afterUpdate = await ctx.set(CUser).find(u.id);
@@ -66,7 +67,7 @@ describe('L2 Entity Cache', () => {
     expect(afterUpdate).toBe(first); // same instance updated in cache
 
     // delete
-    ctx.cusers.remove(afterUpdate);
+    ctx.set(CUser).remove(afterUpdate);
     await ctx.saveChanges();
 
     const afterDelete = await ctx.set(CUser).find(u.id);

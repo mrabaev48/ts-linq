@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
+import { ProviderStub } from './_stubs/ProviderStub';
 import { DbSet } from '../src/context/DbSet';
 import { Entity } from '../src/decorators/Entity';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
@@ -14,7 +15,10 @@ class A {
 class Ctx extends DbContext {
   public a!: DbSet<A>;
   constructor() {
-    super({ connectionString: ':memory:', provider: 'sqlite' });
+    super({
+      connectionString: ':memory:',
+      provider: new ProviderStub(':memory:') as unknown as 'sqlite'
+    });
   }
 }
 
