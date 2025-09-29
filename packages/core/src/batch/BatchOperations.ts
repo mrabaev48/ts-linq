@@ -83,7 +83,12 @@ export class BatchOperations {
     } = options;
 
     if (entities.length === 0) {
-      return this.createEmptyResult<T>(returnDetailedResults, startTime);
+      return this.createEmptyResult<T>(
+        returnDetailedResults,
+        startTime
+      ) as unknown as BatchOptions['returnDetailedResults'] extends true
+        ? BatchResult<T>
+        : SimpleBatchResult<T>;
     }
 
     const successful: T[] = [];
@@ -170,7 +175,12 @@ export class BatchOperations {
     } = options;
 
     if (entities.length === 0) {
-      return this.createEmptyResult<T>(returnDetailedResults, startTime);
+      return this.createEmptyResult<T>(
+        returnDetailedResults,
+        startTime
+      ) as unknown as BatchOptions['returnDetailedResults'] extends true
+        ? BatchResult<T>
+        : SimpleBatchResult<T>;
     }
 
     const successful: T[] = [];
@@ -317,7 +327,12 @@ export class BatchOperations {
     } = options;
 
     if (entities.length === 0) {
-      return this.createEmptyResult<T>(returnDetailedResults, startTime);
+      return this.createEmptyResult<T>(
+        returnDetailedResults,
+        startTime
+      ) as unknown as BatchOptions['returnDetailedResults'] extends true
+        ? BatchResult<T>
+        : SimpleBatchResult<T>;
     }
 
     const successful: T[] = [];
