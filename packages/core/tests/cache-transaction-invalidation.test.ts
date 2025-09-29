@@ -16,7 +16,6 @@ class AppCtx extends DbContext {
   public items!: DbSet<InstanceType<ReturnType<typeof defineEntity>['TItem']>>;
   constructor() {
     super({
-      connectionString: ':memory:',
       provider: new ProviderStub(':memory:'),
       performance: {
         enableEntityCache: true,

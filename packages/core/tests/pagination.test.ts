@@ -16,8 +16,7 @@ class PContext extends DbContext {
   public pitems!: DbSet<InstanceType<ReturnType<typeof defineEntities>['PItem']>>;
   constructor() {
     super({
-      provider: new ProviderStub(':memory:') as unknown as 'sqlite',
-      connectionString: ':memory:'
+      provider: new ProviderStub(':memory:')
     });
   }
 }

@@ -17,8 +17,7 @@ class MWCtx extends DbContext {
   constructor(middlewares: OrmMiddleware[]) {
     const { ProviderStub } = require('./_stubs/ProviderStub');
     super({
-      provider: new ProviderStub(':memory:', undefined, middlewares),
-      connectionString: ':memory:'
+      provider: new ProviderStub(':memory:', undefined, middlewares)
     });
   }
 }

@@ -32,7 +32,6 @@ describe('DbContext', () => {
     User = createUser();
 
     context = new TestDbContext({
-      connectionString: ':memory:',
       provider: new ProviderStub(':memory:') as unknown as 'sqlite'
     });
 

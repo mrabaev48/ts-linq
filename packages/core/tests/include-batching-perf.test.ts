@@ -30,7 +30,6 @@ class PerfCtx extends DbContext {
   public perfbooks!: { add: (b: PerfBook) => void };
   constructor(logger?: SqlLogger) {
     super({
-      connectionString: ':memory:',
       provider: new ProviderStub(':memory:', logger) as unknown as 'sqlite',
       logger
     });

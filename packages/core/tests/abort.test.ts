@@ -16,7 +16,6 @@ class Ctx extends DbContext {
   public a!: DbSet<A>;
   constructor() {
     super({
-      connectionString: ':memory:',
       provider: new ProviderStub(':memory:') as unknown as 'sqlite'
     });
   }
