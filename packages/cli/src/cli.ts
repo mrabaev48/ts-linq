@@ -309,6 +309,24 @@ function getFlag(argv: string[], flag: string): string | boolean | undefined {
   return undefined;
 }
 
+function validateEnv(required: string[]): boolean {
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length) {
+    console.error(`Missing required environment variables: ${missing.join(', ')}`);
+    return false;
+  }
+  return true;
+}
+
+async function printDiffFromSnapshot(provider: DatabaseProvider, file: string): Promise<void> {
+  const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
+  const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
+  const diff = compareSchemas(target, actual);
+  const dialect = resolveDialect(provider.providerLabel);
+  const rendered = generateMigrationFromDiff(diff, dialect);
+  for (const sql of rendered.up) console.log(sql);
+}
+
 async function main() {
   const [, , cmd, arg1, _arg2] = process.argv;
   const argv = process.argv.slice(2);
@@ -577,14 +595,9 @@ SQLITE_URL=file:app.db
       console.log(`Applied ${statements.length} seed statements from ${sqlFile}`);
     }
   } else if (cmd === 'validate:env') {
-    const required = ['NODE_ENV'];
-    const missing = required.filter((k) => !process.env[k]);
-    if (missing.length) {
-      console.error(`Missing required environment variables: ${missing.join(', ')}`);
-      process.exitCode = 2;
-    } else {
-      console.log('Environment validation: OK');
-    }
+    const ok = validateEnv(['NODE_ENV']);
+    if (!ok) process.exitCode = 2;
+    else console.log('Environment validation: OK');
   } else if (cmd === 'schema:export') {
     const out = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
     const snapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
@@ -597,12 +610,7 @@ SQLITE_URL=file:app.db
       console.error(`Snapshot file not found: ${file}`);
       process.exitCode = 2;
     } else {
-      const target = new SchemaSnapshotSerializer().deserialize(fs.readFileSync(file, 'utf8'));
-      const actual = await new SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
-      const diff = compareSchemas(target, actual);
-      const dialect = resolveDialect(provider.providerLabel);
-      const rendered = generateMigrationFromDiff(diff, dialect);
-      for (const sql of rendered.up) console.log(sql);
+      await printDiffFromSnapshot(provider, file);
     }
   } else if (cmd === 'schema:apply') {
     const file = arg1 || path.resolve(process.cwd(), 'schema.snapshot.json');
