@@ -1,0 +1,1 @@
+{"version":3,"file":"setup.js","sourceRoot":"","sources":["setup.ts"],"names":[],"mappings":";;AAAA,iDAAiD;AACjD,4BAA0B","sourcesContent":["// Глобальный setup для тестов (перенос из корня)\nimport 'reflect-metadata';\n\nexport {};\n"]}

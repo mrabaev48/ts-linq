@@ -14,10 +14,30 @@ function safeRequireOtel() {
     return undefined;
 }
 class OpenTelemetrySqlLogger {
-    constructor(serviceName = 'ts-linq') {
+    constructor(serviceName = 'ts-linq', options) {
         this.spanByTraceId = new Map();
+        this.maskSql = false;
+        this.maskPatterns = [];
         const otel = safeRequireOtel();
         this.tracer = otel?.trace.getTracer(serviceName);
+        this.maskSql = !!options?.maskSql;
+        this.maskPatterns = options?.maskPatterns ?? [];
+    }
+    mask(input) {
+        if (!this.maskSql)
+            return input;
+        let s = input;
+        // redact single- and double-quoted strings using safe regexps (no unmatched groups)
+        s = s
+            .replace(/'(?:[^']|''+)*'/g, "'[REDACTED]'")
+            .replace(/"(?:[^"\\]|\\.)*"/g, '"[REDACTED]"');
+        for (const re of this.maskPatterns) {
+            try {
+                s = s.replace(re, '[REDACTED]');
+            }
+            catch { }
+        }
+        return s;
     }
     queryStart(info) {
         if (!this.tracer)
@@ -25,7 +45,7 @@ class OpenTelemetrySqlLogger {
         const span = this.tracer.startSpan('db.query', {
             attributes: {
                 'db.system': info.provider || 'sql',
-                'db.statement': info.sql,
+                'db.statement': this.mask(info.sql),
                 'db.parameters': JSON.stringify(info.params ?? [])
             }
         });

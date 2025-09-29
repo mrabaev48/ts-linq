@@ -27,6 +27,7 @@
     "node_modules/**",
     "packages/*/dist/**",
     "packages/*/test-d/**",
+    "packages/**/tests/**/*.d.ts",
     "docs/**",
     "shop.db",
     "examples/**"

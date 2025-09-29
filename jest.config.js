@@ -93,6 +93,11 @@ module.exports = {
       displayName: 'mssql',
       testMatch: ['<rootDir>/packages/mssql/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/mssql/tsconfig.json' }] }
+    },
+    {
+      displayName: 'cli',
+      testMatch: ['<rootDir>/packages/cli/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/cli/tsconfig.json' }] }
     }
   ]
 };

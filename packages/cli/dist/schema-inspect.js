@@ -107,13 +107,23 @@ async function inspectTable(provider, label, table, schema) {
         const pkSet = new Set(pkCols.map((x) => x.column_name));
         for (const c of cols) {
             const raw = (c.udt_name || c.data_type || '').toLowerCase();
-            rows.push({ name: c.column_name, type: raw, nullable: c.is_nullable === 'YES', pk: pkSet.has(c.column_name) });
+            rows.push({
+                name: c.column_name,
+                type: raw,
+                nullable: c.is_nullable === 'YES',
+                pk: pkSet.has(c.column_name)
+            });
         }
     }
     else if (label === 'mysql') {
         const cols = await provider.executeQuery('SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_KEY FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? ORDER BY ORDINAL_POSITION', [table]);
         for (const c of cols)
-            rows.push({ name: c.COLUMN_NAME, type: c.DATA_TYPE, nullable: c.IS_NULLABLE === 'YES', pk: c.COLUMN_KEY === 'PRI' });
+            rows.push({
+                name: c.COLUMN_NAME,
+                type: c.DATA_TYPE,
+                nullable: c.IS_NULLABLE === 'YES',
+                pk: c.COLUMN_KEY === 'PRI'
+            });
     }
     else {
         const sch = schema || 'dbo';
@@ -121,7 +131,12 @@ async function inspectTable(provider, label, table, schema) {
         const pkCols = await provider.executeQuery("SELECT k.COLUMN_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS t JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k ON t.CONSTRAINT_NAME = k.CONSTRAINT_NAME AND t.TABLE_SCHEMA = k.TABLE_SCHEMA WHERE t.TABLE_SCHEMA = @p1 AND t.TABLE_NAME = @p2 AND t.CONSTRAINT_TYPE = 'PRIMARY KEY' ORDER BY k.ORDINAL_POSITION", [sch, table]);
         const pkSet = new Set(pkCols.map((x) => x.COLUMN_NAME));
         for (const c of cols)
-            rows.push({ name: c.COLUMN_NAME, type: c.DATA_TYPE, nullable: c.IS_NULLABLE === 'YES', pk: pkSet.has(c.COLUMN_NAME) });
+            rows.push({
+                name: c.COLUMN_NAME,
+                type: c.DATA_TYPE,
+                nullable: c.IS_NULLABLE === 'YES',
+                pk: pkSet.has(c.COLUMN_NAME)
+            });
     }
     return rows.map((r) => ({
         name: r.name,
