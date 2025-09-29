@@ -152,13 +152,13 @@
 
   - [x] Флаг `--with-migration` для автоматического создания начальной миграции ✅
 
-- [ ] **Entity Generation**
+- [x] **Entity Generation** ✅
 
   ```bash
   ts-linq generate entity User
   # Создает entity class с decorators
-  ts-linq generate entity User --from-table users
-  # Reverse engineering из существующей БД
+  ts-linq generate entity User --from-table users [--schema public]
+  # Reverse engineering из существующей БД (PK/nullable/types)
   ```
 
 - [ ] **Advanced Migration Commands**
