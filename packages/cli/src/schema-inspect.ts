@@ -2,36 +2,51 @@ import type { DatabaseProvider } from '@ts-linq/core';
 
 export function normalizeDbType(label: string, dbTypeRaw: string): string {
   const t = String(dbTypeRaw || '').toLowerCase();
-  if (label === 'sqlite') {
-    if (/int/.test(t)) return 'INTEGER';
-    if (/real|double|float/.test(t)) return 'REAL';
-    if (/blob/.test(t)) return 'BLOB';
-    if (/date|time/.test(t)) return 'DATETIME';
-    if (/bool/.test(t)) return 'BOOLEAN';
-    return 'TEXT';
+  switch (label) {
+    case 'sqlite':
+      return mapSqlite(t);
+    case 'postgresql':
+      return mapPostgres(t);
+    case 'mysql':
+      return mapMySql(t);
+    default:
+      return mapMssql(t);
   }
-  if (label === 'postgresql') {
-    if (/(?:small|big)?int|serial|bigserial/.test(t)) return 'INTEGER';
-    if (/numeric|decimal/.test(t)) return 'DECIMAL';
-    if (/double|real/.test(t)) return 'REAL';
-    if (/uuid/.test(t)) return 'UUID';
-    if (/jsonb?/.test(t)) return t.includes('jsonb') ? 'JSONB' : 'JSON';
-    if (/timestamp|timestamptz|date|time/.test(t)) return 'DATETIME';
-    if (/bool/.test(t)) return 'BOOLEAN';
-    if (/bytea/.test(t)) return 'BLOB';
-    return 'TEXT';
-  }
-  if (label === 'mysql') {
-    if (/int/.test(t)) return 'INTEGER';
-    if (/decimal|numeric/.test(t)) return 'DECIMAL';
-    if (/double|float/.test(t)) return 'REAL';
-    if (/json/.test(t)) return 'JSON';
-    if (/datetime|timestamp|date|time/.test(t)) return 'DATETIME';
-    if (/bool|tinyint\(1\)/.test(t)) return 'BOOLEAN';
-    if (/blob|binary|varbinary/.test(t)) return 'BLOB';
-    return 'TEXT';
-  }
-  // mssql
+}
+
+function mapSqlite(t: string): string {
+  if (/int/.test(t)) return 'INTEGER';
+  if (/real|double|float/.test(t)) return 'REAL';
+  if (/blob/.test(t)) return 'BLOB';
+  if (/date|time/.test(t)) return 'DATETIME';
+  if (/bool/.test(t)) return 'BOOLEAN';
+  return 'TEXT';
+}
+
+function mapPostgres(t: string): string {
+  if (/(?:small|big)?int|serial|bigserial/.test(t)) return 'INTEGER';
+  if (/numeric|decimal/.test(t)) return 'DECIMAL';
+  if (/double|real/.test(t)) return 'REAL';
+  if (/uuid/.test(t)) return 'UUID';
+  if (/jsonb?/.test(t)) return t.includes('jsonb') ? 'JSONB' : 'JSON';
+  if (/timestamp|timestamptz|date|time/.test(t)) return 'DATETIME';
+  if (/bool/.test(t)) return 'BOOLEAN';
+  if (/bytea/.test(t)) return 'BLOB';
+  return 'TEXT';
+}
+
+function mapMySql(t: string): string {
+  if (/int/.test(t)) return 'INTEGER';
+  if (/decimal|numeric/.test(t)) return 'DECIMAL';
+  if (/double|float/.test(t)) return 'REAL';
+  if (/json/.test(t)) return 'JSON';
+  if (/datetime|timestamp|date|time/.test(t)) return 'DATETIME';
+  if (/bool|tinyint\(1\)/.test(t)) return 'BOOLEAN';
+  if (/blob|binary|varbinary/.test(t)) return 'BLOB';
+  return 'TEXT';
+}
+
+function mapMssql(t: string): string {
   if (/int|bigint|smallint|tinyint/.test(t)) return 'INTEGER';
   if (/decimal|numeric|money|smallmoney/.test(t)) return 'DECIMAL';
   if (/float|real/.test(t)) return 'REAL';
