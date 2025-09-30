@@ -1,16 +1,16 @@
-import type { LogicalExpressionNode } from '../ast/Nodes';
+import type { ExpressionNode, LogicalExpressionNode } from '../ast/Nodes';
 import { LogicalOperator } from '../ast/Nodes';
 import type { SqlParameter } from '../../types';
-import { SqlVisitor } from '../ast/SqlVisitor';
 
 export class LogicalVisitor {
-  private readonly root = new SqlVisitor();
-
-  public visit(node: LogicalExpressionNode): { condition: string; parameters: SqlParameter[] } {
+  public visit(
+    node: LogicalExpressionNode,
+    visit: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] }
+  ): { condition: string; parameters: SqlParameter[] } {
     const parts: string[] = [];
     const params: SqlParameter[] = [];
     for (const expr of node.expressions) {
-      const result = this.root.toSql(expr);
+      const result = visit(expr);
       parts.push(result.condition);
       params.push(...result.parameters);
     }
