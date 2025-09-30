@@ -44,6 +44,39 @@ export class LazyLoadingProxy {
     this._logger = logger;
   }
 
+  // --- State helpers ------------------------------------------------------
+  private static getOrInitStateEntry(state: LazyLoadingState, propName: string) {
+    state[propName] ||= { isLoaded: false, isLoading: false };
+    return state[propName];
+  }
+
+  private static markLoading(
+    state: LazyLoadingState,
+    propName: string,
+    promise?: Promise<unknown>
+  ) {
+    const s = this.getOrInitStateEntry(state, propName);
+    s.isLoading = true;
+    s.loadingPromise = promise;
+  }
+
+  private static markLoaded(state: LazyLoadingState, propName: string) {
+    const s = this.getOrInitStateEntry(state, propName);
+    s.isLoaded = true;
+    s.isLoading = false;
+    delete s.loadingPromise;
+  }
+
+  private static resetLoading(state: LazyLoadingState, propName: string) {
+    const s = this.getOrInitStateEntry(state, propName);
+    s.isLoading = false;
+    delete s.loadingPromise;
+  }
+
+  private static defaultValueFor(relationship: RelationshipMetadata): unknown {
+    return relationship.type === 'one-to-many' ? [] : null;
+  }
+
   private static getLogger(): { warn(message: string, error?: unknown): void } {
     if (this._logger) return this._logger;
     return {
@@ -116,31 +149,31 @@ export class LazyLoadingProxy {
 
     const propName = String(prop);
     const relationship = metadata!.relationships.find((r) => r.propertyName === propName);
-    if (relationship && !state[propName].isLoaded && !state[propName].isLoading) {
-      state[propName].isLoading = true;
-      state[propName].loadingPromise = LazyLoadingProxy.loadRelationship(
-        target,
-        entityClass,
-        relationship,
-        provider
-      )
-        .then((result) => {
-          (target as Record<string, unknown>)[propName] = result;
-          state[propName].isLoaded = true;
-          state[propName].isLoading = false;
-          delete state[propName].loadingPromise;
-          return result;
-        })
-        .catch((error) => {
-          LazyLoadingProxy.getLogger().warn(`Failed to lazy load ${propName}:`, error);
-          state[propName].isLoading = false;
-          delete state[propName].loadingPromise;
-          return relationship.type === 'one-to-many' ? [] : null;
-        });
-      return state[propName].loadingPromise;
-    }
-    if (relationship && state[propName].isLoading) {
-      return state[propName].loadingPromise;
+    if (relationship) {
+      const s = this.getOrInitStateEntry(state, propName);
+      if (!s.isLoaded && !s.isLoading) {
+        const promise = LazyLoadingProxy.loadRelationship(
+          target,
+          entityClass,
+          relationship,
+          provider
+        )
+          .then((result) => {
+            (target as Record<string, unknown>)[propName] = result;
+            this.markLoaded(state, propName);
+            return result;
+          })
+          .catch((error) => {
+            LazyLoadingProxy.getLogger().warn(`Failed to lazy load ${propName}:`, error);
+            this.resetLoading(state, propName);
+            return this.defaultValueFor(relationship);
+          });
+        this.markLoading(state, propName, promise);
+        return promise;
+      }
+      if (s.isLoading) {
+        return s.loadingPromise;
+      }
     }
     return Reflect.get(target, prop, receiver);
   }
@@ -155,11 +188,7 @@ export class LazyLoadingProxy {
   ): boolean {
     const propName = String(prop);
     const relationship = metadata!.relationships.find((r) => r.propertyName === propName);
-    if (relationship) {
-      state[propName].isLoaded = true;
-      state[propName].isLoading = false;
-      delete state[propName].loadingPromise;
-    }
+    if (relationship) this.markLoaded(state, propName);
     return Reflect.set(target, prop, value, receiver as object);
   }
 
@@ -425,10 +454,7 @@ export class LazyLoadingProxy {
       (entity as Record<string, unknown>)[relationship.propertyName] =
         (byId.get(fk) as unknown) || null;
       const state = this.getLoadingState(entity);
-      if (state) {
-        state[relationship.propertyName].isLoaded = true;
-        state[relationship.propertyName].isLoading = false;
-      }
+      if (state) this.markLoaded(state, relationship.propertyName);
     }
   }
 
@@ -466,10 +492,7 @@ export class LazyLoadingProxy {
       (entity as Record<string, unknown>)[relationship.propertyName] =
         (grouped.get(parentId) as unknown) || [];
       const state = this.getLoadingState(entity);
-      if (state) {
-        state[relationship.propertyName].isLoaded = true;
-        state[relationship.propertyName].isLoading = false;
-      }
+      if (state) this.markLoaded(state, relationship.propertyName);
     }
   }
 

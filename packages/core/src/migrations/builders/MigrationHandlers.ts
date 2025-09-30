@@ -1,52 +1,29 @@
+// Re-export legacy API from split handlers for backwards compatibility
 import type { TableDiff, ColumnDef } from '../DiffTypes';
 import type { Dialect } from '../Dialect';
-import { q, mapType, formatValue, norm } from './SqlUtils';
-
-export function handleTableRename(td: TableDiff, dialect: Dialect, up: string[]): void {
-  if ((td as unknown as { renameTo?: string }).renameTo) {
-    const to = (td as unknown as { renameTo?: string }).renameTo as string;
-    switch (dialect) {
-      case 'postgresql':
-        up.push(`ALTER TABLE ${q(dialect, td.table)} RENAME TO ${q(dialect, to)}`);
-        break;
-      case 'mysql':
-        up.push(`RENAME TABLE ${q(dialect, td.table)} TO ${q(dialect, to)}`);
-        break;
-      case 'mssql':
-        up.push(`EXEC sp_rename '${td.table}', '${to}'`);
-        break;
-      default:
-        up.push(`ALTER TABLE ${q(dialect, td.table)} RENAME TO ${q(dialect, to)}`);
-    }
-  }
-}
-
-export function handleCreateTable(
-  td: TableDiff,
-  dialect: Dialect,
-  up: string[],
-  down: string[]
-): boolean {
-  if (!td.create) return false;
-  up.push(buildCreateTableSql(td, dialect));
-  if (td.create.indexes && td.create.indexes.length > 0) {
-    for (const idx of td.create.indexes) {
-      const uniq = idx.unique ? 'UNIQUE ' : '';
-      const cols = idx.columns.map((column) => q(dialect, column)).join(', ');
-      const name = q(dialect, idx.name);
-      const where = idx.where && dialect !== 'mysql' ? ` WHERE ${idx.where}` : '';
-      up.push(`CREATE ${uniq}INDEX ${name} ON ${q(dialect, td.create.name)} (${cols})${where}`);
-    }
-  }
-  down.push(`DROP TABLE ${q(dialect, td.create.name)}`);
-  return true;
-}
-
-export function handleDropTable(td: TableDiff, dialect: Dialect, up: string[]): boolean {
-  if (!td.drop) return false;
-  up.push(`DROP TABLE ${q(dialect, td.table)}`);
-  return true;
-}
+import { q, norm } from './SqlUtils';
+import {
+  renderColumn,
+  buildAddColumnSql,
+  buildDropColumnSql,
+  buildAlterTypeSql,
+  buildAlterNullSql
+} from './handlers/ColumnHandlers';
+import { buildAddFkSql } from './handlers/ForeignKeyHandlers';
+export {
+  renderColumn,
+  buildAddColumnSql,
+  buildDropColumnSql,
+  buildAlterTypeSql,
+  buildAlterNullSql
+} from './handlers/ColumnHandlers';
+export { buildInlineFkSql, buildAddFkSql, buildDropFkSql } from './handlers/ForeignKeyHandlers';
+export {
+  handleTableRename,
+  handleCreateTable,
+  handleDropTable,
+  buildCreateTableSql
+} from './handlers/TableHandlers';
 
 export function handleIndexCreates(td: TableDiff, dialect: Dialect, up: string[]): void {
   const ic = (
@@ -100,25 +77,7 @@ export function buildIndexColumnsList(
   return parts.join(', ');
 }
 
-export function handleIndexDrops(td: TableDiff, dialect: Dialect, up: string[]): void {
-  const id = (td as unknown as { indexDrops?: string[] }).indexDrops;
-  if (!id || id.length === 0) return;
-  for (const nameRaw of id) {
-    switch (dialect) {
-      case 'postgresql':
-        up.push(`DROP INDEX IF EXISTS ${q(dialect, nameRaw)}`);
-        break;
-      case 'mysql':
-        up.push(`ALTER TABLE ${q(dialect, td.table)} DROP INDEX ${q(dialect, nameRaw)}`);
-        break;
-      case 'mssql':
-        up.push(`DROP INDEX ${q(dialect, nameRaw)} ON ${q(dialect, td.table)}`);
-        break;
-      default:
-        up.push(`DROP INDEX IF EXISTS ${q(dialect, nameRaw)}`);
-    }
-  }
-}
+export { handleIndexDrops } from './handlers/IndexHandlers';
 
 export function handleFkCreates(td: TableDiff, dialect: Dialect, up: string[]): void {
   const fkc = (
@@ -142,11 +101,7 @@ export function handleFkCreates(td: TableDiff, dialect: Dialect, up: string[]): 
   }
 }
 
-export function handleFkDrops(td: TableDiff, dialect: Dialect, up: string[]): void {
-  const fkd = (td as unknown as { fkDrops?: string[] }).fkDrops;
-  if (!fkd || fkd.length === 0) return;
-  for (const nameRaw of fkd) up.push(buildDropFkSql(dialect, td.table, nameRaw));
-}
+export { handleFkDrops } from './handlers/ForeignKeyHandlers';
 
 export function handleColumnChanges(
   td: TableDiff,
@@ -338,190 +293,22 @@ export function hasTypeChanged(prev: ColumnDef | undefined, curr: ColumnDef): bo
   return !!prev && norm(prev.type) !== norm(curr.type);
 }
 
-export function handleColumnRenames(td: TableDiff, dialect: Dialect, up: string[]): void {
-  const rns = (td as unknown as { columnRenames?: Array<{ from: string; to: string }> })
-    .columnRenames;
-  if (!rns || rns.length === 0) return;
-  for (const rn of rns) {
-    if (!rn.from || !rn.to) continue;
-    switch (dialect) {
-      case 'postgresql':
-        up.push(
-          `ALTER TABLE ${q(dialect, td.table)} RENAME COLUMN ${q(dialect, rn.from)} TO ${q(dialect, rn.to)}`
-        );
-        break;
-      case 'mysql':
-        up.push(`-- MySQL requires full type for CHANGE COLUMN ${rn.from} -> ${rn.to}`);
-        break;
-      case 'mssql':
-        up.push(`EXEC sp_rename '${td.table}.${rn.from}', '${rn.to}', 'COLUMN'`);
-        break;
-      default:
-        up.push(`-- SQLite column rename requires pragma or rebuild: ${rn.from} -> ${rn.to}`);
-    }
-  }
-}
+export { handleColumnRenames } from './handlers/ColumnHandlers';
 
-export function buildCreateTableSql(td: TableDiff, dialect: Dialect): string {
-  const create = td.create!;
-  const cols = create.columns.map((c) => renderColumn(dialect, c));
-  if (create.primaryKeys && create.primaryKeys.length > 0)
-    cols.push(`PRIMARY KEY (${create.primaryKeys.map((pk) => q(dialect, pk)).join(', ')})`);
-  if (create.foreignKeys && create.foreignKeys.length > 0) {
-    for (const fk of create.foreignKeys) cols.push(buildInlineFkSql(dialect, fk));
-  }
-  return `CREATE TABLE IF NOT EXISTS ${q(dialect, create.name)} (${cols.join(', ')})`;
-}
+// moved to handlers/TableHandlers.ts
 
-export function buildInlineFkSql(
-  dialect: Dialect,
-  fk: {
-    name?: string;
-    columns: string[];
-    refTable: string;
-    refColumns: string[];
-    onDelete?: string;
-    onUpdate?: string;
-  }
-): string {
-  const name = fk.name ? `CONSTRAINT ${q(dialect, fk.name)} ` : '';
-  const colsList = fk.columns.map((c) => q(dialect, c)).join(', ');
-  const refCols = fk.refColumns.map((c) => q(dialect, c)).join(', ');
-  const onDel = fk.onDelete ? ` ON DELETE ${fk.onDelete}` : '';
-  const onUpd = fk.onUpdate ? ` ON UPDATE ${fk.onUpdate}` : '';
-  return `${name}FOREIGN KEY (${colsList}) REFERENCES ${q(dialect, fk.refTable)} (${refCols})${onDel}${onUpd}`;
-}
+// moved to handlers/ForeignKeyHandlers.ts
 
-export function buildAddFkSql(
-  dialect: Dialect,
-  table: string,
-  fk: {
-    name?: string;
-    columns: string[];
-    refTable: string;
-    refColumns: string[];
-    onDelete?: string;
-    onUpdate?: string;
-  }
-): string {
-  switch (dialect) {
-    case 'postgresql':
-    case 'mysql':
-    case 'mssql': {
-      const inline = buildInlineFkSql(dialect, fk);
-      return `ALTER TABLE ${q(dialect, table)} ADD ${inline}`;
-    }
-    default: {
-      const name = fk.name ? `CONSTRAINT ${q(dialect, fk.name)} ` : '';
-      const cols = fk.columns.join(', ');
-      const refCols = fk.refColumns.join(', ');
-      return `-- SQLite requires table rebuild to add FK: ${name}(${cols}) -> ${fk.refTable}(${refCols})`;
-    }
-  }
-}
+// moved to handlers/ForeignKeyHandlers.ts
 
-export function buildDropFkSql(dialect: Dialect, table: string, nameRaw: string): string {
-  switch (dialect) {
-    case 'postgresql':
-      return `ALTER TABLE ${q(dialect, table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`;
-    case 'mysql':
-      return `ALTER TABLE ${q(dialect, table)} DROP FOREIGN KEY ${q(dialect, nameRaw)}`;
-    case 'mssql':
-      return `ALTER TABLE ${q(dialect, table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`;
-    default:
-      return `-- SQLite requires table rebuild to drop FK: ${nameRaw}`;
-  }
-}
+// moved to handlers/ForeignKeyHandlers.ts
 
-export function renderColumn(dialect: Dialect, c: ColumnDef): string {
-  if (c.isComputed && c.computedExpression) {
-    switch (dialect) {
-      case 'postgresql':
-        return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${c.computedExpression}) STORED`;
-      case 'mysql': {
-        const kind = c.computedStorage === 'STORED' ? 'STORED' : 'VIRTUAL';
-        return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${c.computedExpression}) ${kind}`;
-      }
-      case 'mssql': {
-        const persisted = c.computedStorage === 'PERSISTED' ? ' PERSISTED' : '';
-        return `${q(dialect, c.name)} AS (${c.computedExpression})${persisted}`;
-      }
-      default: {
-        const kind = c.computedStorage === 'STORED' ? 'STORED' : 'VIRTUAL';
-        return `${q(dialect, c.name)} GENERATED ALWAYS AS (${c.computedExpression}) ${kind}`;
-      }
-    }
-  }
-  const dialectMap =
-    (c as { defaultExpressionDialect?: Record<string, string> }).defaultExpressionDialect || {};
-  const defExpr = dialectMap[dialect] || (c as { defaultExpression?: string }).defaultExpression;
-  const defSql = defExpr
-    ? ` DEFAULT ${defExpr}`
-    : c.defaultValue !== undefined
-      ? ' DEFAULT ' + formatValue(dialect, c.defaultValue)
-      : '';
-  return `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${defSql}`;
-}
+// moved to handlers/ColumnHandlers.ts
 
-export function buildAddColumnSql(
-  dialect: Dialect,
-  td: TableDiff,
-  name: string,
-  type: string,
-  nullable: boolean,
-  def?: unknown
-): string {
-  const table = q(dialect, td.table);
-  const col = q(dialect, name);
-  const typeSql = mapType(dialect, type);
-  const nn = nullable ? '' : ' NOT NULL';
-  const d = def !== undefined ? ` DEFAULT ${formatValue(dialect, def)}` : '';
-  const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
-  return `ALTER TABLE ${table} ${kw} ${col} ${typeSql}${nn}${d}`;
-}
+// moved to handlers/ColumnHandlers.ts
 
-export function buildDropColumnSql(dialect: Dialect, table: string, name: string): string {
-  if (dialect === 'sqlite') return `-- DROP COLUMN ${name} is not supported directly in SQLite`;
-  return `ALTER TABLE ${q(dialect, table)} DROP COLUMN ${q(dialect, name)}`;
-}
+// moved to handlers/ColumnHandlers.ts
 
-export function buildAlterTypeSql(
-  dialect: Dialect,
-  table: string,
-  name: string,
-  newType: string
-): string {
-  const tableName = q(dialect, table);
-  const columnName = q(dialect, name);
-  const mappedType = mapType(dialect, newType);
-  switch (dialect) {
-    case 'postgresql':
-      return `ALTER TABLE ${tableName} ALTER COLUMN ${columnName} TYPE ${mappedType}`;
-    case 'mysql':
-      return `ALTER TABLE ${tableName} MODIFY COLUMN ${columnName} ${mappedType}`;
-    case 'mssql':
-      return `ALTER TABLE ${tableName} ALTER COLUMN ${columnName} ${mappedType}`;
-    default:
-      return `-- ALTER TYPE not supported for sqlite; requires rebuild`;
-  }
-}
+// moved to handlers/ColumnHandlers.ts
 
-export function buildAlterNullSql(
-  dialect: Dialect,
-  table: string,
-  name: string,
-  nullable: boolean
-): string {
-  const tableName = q(dialect, table);
-  const columnName = q(dialect, name);
-  switch (dialect) {
-    case 'postgresql':
-      return `ALTER TABLE ${tableName} ALTER COLUMN ${columnName} ${nullable ? 'DROP NOT NULL' : 'SET NOT NULL'}`;
-    case 'mysql':
-      return `-- MySQL requires full type in MODIFY for nullability; include in type alter`;
-    case 'mssql':
-      return `-- MSSQL requires full type in ALTER COLUMN for nullability; include in type alter`;
-    default:
-      return `-- SQLite nullability alter requires rebuild`;
-  }
-}
+// moved to handlers/ColumnHandlers.ts
