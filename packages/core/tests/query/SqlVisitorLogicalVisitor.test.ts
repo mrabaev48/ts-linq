@@ -1,5 +1,6 @@
 import { SqlVisitor } from '../../src/query/ast/SqlVisitor';
 import type { ExpressionNode } from '../../src/query/ast/Nodes';
+import { LogicalOperator, ComparisonOperator } from '../../src/query/ast/Nodes';
 
 describe('SqlVisitor + LogicalVisitor', () => {
   const v = new SqlVisitor();
@@ -7,7 +8,7 @@ describe('SqlVisitor + LogicalVisitor', () => {
   test('binary expression', () => {
     const node: ExpressionNode = {
       type: 'BinaryExpression',
-      operator: '>=',
+      operator: ComparisonOperator.Gte,
       left: { type: 'Identifier', name: 'age' },
       right: { type: 'Literal', value: 18 }
     } as unknown as ExpressionNode;
@@ -19,27 +20,27 @@ describe('SqlVisitor + LogicalVisitor', () => {
   test('nested logical (age>=18 AND (name="A" OR name="B"))', () => {
     const node: ExpressionNode = {
       type: 'LogicalExpression',
-      operator: 0, // LogicalOperator.And
+      operator: LogicalOperator.And,
       expressions: [
         {
           type: 'BinaryExpression',
-          operator: '>=',
+          operator: ComparisonOperator.Gte,
           left: { type: 'Identifier', name: 'age' },
           right: { type: 'Literal', value: 18 }
         },
         {
           type: 'LogicalExpression',
-          operator: 1, // LogicalOperator.Or
+          operator: LogicalOperator.Or,
           expressions: [
             {
               type: 'BinaryExpression',
-              operator: '=',
+              operator: ComparisonOperator.Eq,
               left: { type: 'Identifier', name: 'name' },
               right: { type: 'Literal', value: 'A' }
             },
             {
               type: 'BinaryExpression',
-              operator: '=',
+              operator: ComparisonOperator.Eq,
               left: { type: 'Identifier', name: 'name' },
               right: { type: 'Literal', value: 'B' }
             }
