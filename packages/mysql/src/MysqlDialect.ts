@@ -22,46 +22,77 @@ export class MysqlDialect implements SqlDialect {
   ): { query: string; parameters: readonly SqlParameter[] } {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    let query = 'SELECT ';
-    if (options.distinct) query += 'DISTINCT ';
-    query += options.select && options.select.length ? options.select.join(', ') : '*';
-    query += ` FROM \`${options.from ?? metadata.tableName}\``;
-    if (options.joins && options.joins.length) {
-      for (const join of options.joins) {
-        query += ` ${join.type} JOIN \`${join.table}\``;
-        if (join.alias) query += ` AS ${join.alias}`;
-        query += ` ON ${join.on}`;
-      }
-    }
     const parameters: SqlParameter[] = [];
-    if (options.selectParams && options.selectParams.length) {
+    let query = this.buildSelectHead(options);
+    query += this.buildFromClause(options.from ?? metadata.tableName);
+    query += this.buildJoins(options);
+    this.collectSelectParams(parameters, options);
+    query += this.buildWhereClause(parameters, options);
+    query += this.buildGroupByHaving(parameters, options);
+    query += this.buildOrderBy(options);
+    query += this.buildLimitOffset(options);
+    return { query, parameters };
+  }
+
+  private buildSelectHead(options: QueryOptions): string {
+    let head = 'SELECT ';
+    if (options.distinct) head += 'DISTINCT ';
+    head += options.select && options.select.length ? options.select.join(', ') : '*';
+    return head;
+  }
+
+  private buildFromClause(tableName: string): string {
+    return ` FROM \`${tableName}\``;
+  }
+
+  private buildJoins(options: QueryOptions): string {
+    if (!options.joins || options.joins.length === 0) return '';
+    let out = '';
+    for (const join of options.joins) {
+      out += ` ${join.type} JOIN \`${join.table}\``;
+      if (join.alias) out += ` AS ${join.alias}`;
+      out += ` ON ${join.on}`;
+    }
+    return out;
+  }
+
+  private collectSelectParams(parameters: SqlParameter[], options: QueryOptions): void {
+    if (options.selectParams && options.selectParams.length)
       parameters.push(...options.selectParams);
+  }
+
+  private buildWhereClause(parameters: SqlParameter[], options: QueryOptions): string {
+    if (!options.where || options.where.length === 0) return '';
+    const whereClauses = options.where.map((w) => w.condition);
+    for (const w of options.where) parameters.push(...w.parameters);
+    return ` WHERE ${whereClauses.join(' AND ')}`;
+  }
+
+  private buildGroupByHaving(parameters: SqlParameter[], options: QueryOptions): string {
+    if (!options.groupBy) return '';
+    let sql = ` GROUP BY ${options.groupBy.columns.join(', ')}`;
+    if (options.groupBy.having) {
+      sql += ` HAVING ${options.groupBy.having.condition}`;
+      parameters.push(...options.groupBy.having.parameters);
     }
-    if (options.where && options.where.length > 0) {
-      const whereClauses = options.where.map((w) => w.condition);
-      query += ` WHERE ${whereClauses.join(' AND ')}`;
-      for (const where of options.where) parameters.push(...where.parameters);
-    }
-    if (options.groupBy) {
-      query += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-      if (options.groupBy.having) {
-        query += ` HAVING ${options.groupBy.having.condition}`;
-        parameters.push(...options.groupBy.having.parameters);
-      }
-    }
-    if (options.orderBy && options.orderBy.length > 0) {
-      const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
-      query += ` ORDER BY ${orderByClauses.join(', ')}`;
-    }
+    return sql;
+  }
+
+  private buildOrderBy(options: QueryOptions): string {
+    if (!options.orderBy || options.orderBy.length === 0) return '';
+    const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
+    return ` ORDER BY ${orderByClauses.join(', ')}`;
+  }
+
+  private buildLimitOffset(options: QueryOptions): string {
     const hasLimit = options.limit !== undefined && options.limit !== null;
     const hasOffset = options.offset !== undefined && options.offset !== null;
     if (hasLimit) {
-      query += ` LIMIT ${options.limit}`;
-      if (hasOffset) query += ` OFFSET ${options.offset}`;
-    } else if (hasOffset) {
-      // MySQL supports OFFSET only with LIMIT; emulate with large LIMIT
-      query += ` LIMIT 18446744073709551615 OFFSET ${options.offset}`;
+      return ` LIMIT ${options.limit}` + (hasOffset ? ` OFFSET ${options.offset}` : '');
     }
-    return { query, parameters };
+    if (hasOffset) {
+      return ` LIMIT 18446744073709551615 OFFSET ${options.offset}`;
+    }
+    return '';
   }
 }

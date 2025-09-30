@@ -1,5 +1,4 @@
 import type { EntityMetadata } from '@ts-linq/core';
-import { ColumnMetadata, SqlHelper } from '@ts-linq/core';
 
 export class PostgresDdlStrategy {
   public generateCreateTableSql(entityMetadata: EntityMetadata): string {
@@ -48,68 +47,74 @@ export class PostgresDdlStrategy {
       withParams?: Record<string, string | number | boolean>;
     }
   ): string {
-    if (index.collations) {
-      for (const k of Object.keys(index.collations)) {
-        const method = index.using || 'btree';
-        if (method !== 'btree') {
-          console.warn(
-            `Postgres: COLLATE is only meaningful with BTREE; using=${method} for index ${index.name}`
-          );
-          break;
-        }
-      }
-    }
+    this.warnIfCollationWithNonBtree(index);
     const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
     const concurrently = index.concurrently ? ' CONCURRENTLY' : '';
     const using = index.using ? ` USING ${index.using.toUpperCase()}` : '';
-    const parts: string[] = [];
-    for (const col of index.columns) {
-      const ord = index.orders?.[col];
-      const collation = index.collations?.[col] ? ` COLLATE ${index.collations[col]}` : '';
-      const nulls = index.nulls?.[col] ? ` NULLS ${index.nulls[col]}` : '';
-      parts.push(ord ? `"${col}" ${ord}${collation}${nulls}` : `"${col}"${collation}${nulls}`);
-    }
-    for (const expr of index.expressions || []) {
-      parts.push(`(${expr})`);
-    }
-    const columnsListSql = parts.join(', ');
+    const columnsListSql = this.buildIndexColumnsList(index);
     const whereSql = index.where ? ` WHERE ${index.where}` : '';
-    const withSql =
-      index.withParams && Object.keys(index.withParams).length > 0
-        ? ` WITH (${Object.entries(index.withParams)
-            .map(([k, v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`)
-            .join(', ')})`
-        : '';
+    const withSql = this.buildWithParams(index.withParams);
     return `CREATE ${uniqueKeyword}INDEX${concurrently} IF NOT EXISTS "${index.name}" ON "${table}"${using} (${columnsListSql})${withSql}${whereSql}`;
   }
 
-  public mapTypeToPg(type: string): string {
-    switch ((type || '').toUpperCase()) {
-      case 'TEXT':
-      case 'STRING':
-        return 'TEXT';
-      case 'INTEGER':
-      case 'NUMBER':
-        return 'INTEGER';
-      case 'REAL':
-      case 'FLOAT':
-      case 'DOUBLE':
-        return 'DOUBLE PRECISION';
-      case 'BOOLEAN':
-        return 'BOOLEAN';
-      case 'DATETIME':
-      case 'DATE':
-        return 'TIMESTAMPTZ';
-      case 'BLOB':
-        return 'BYTEA';
-      case 'UUID':
-        return 'UUID';
-      case 'JSONB':
-        return 'JSONB';
-      case 'JSON':
-        return 'JSON';
-      default:
-        return 'TEXT';
+  private warnIfCollationWithNonBtree(index: {
+    name: string;
+    using?: 'btree' | 'hash' | 'gin' | 'gist';
+    collations?: { [column: string]: string };
+  }): void {
+    const hasCollations = !!index.collations && Object.keys(index.collations).length > 0;
+    const method = index.using || 'btree';
+    if (hasCollations && method !== 'btree') {
+      console.warn(
+        `Postgres: COLLATE is only meaningful with BTREE; using=${method} for index ${index.name}`
+      );
     }
+  }
+
+  private buildIndexColumnsList(index: {
+    columns: string[];
+    orders?: { [column: string]: 'ASC' | 'DESC' };
+    collations?: { [column: string]: string };
+    nulls?: { [column: string]: 'FIRST' | 'LAST' };
+    expressions?: string[];
+  }): string {
+    const parts: string[] = [];
+    for (const col of index.columns) {
+      const ord = index.orders?.[col];
+      const coll = index.collations?.[col] ? ` COLLATE ${index.collations[col]}` : '';
+      const nulls = index.nulls?.[col] ? ` NULLS ${index.nulls[col]}` : '';
+      parts.push(ord ? `"${col}" ${ord}${coll}${nulls}` : `"${col}"${coll}${nulls}`);
+    }
+    for (const expr of index.expressions || []) parts.push(`(${expr})`);
+    return parts.join(', ');
+  }
+
+  private buildWithParams(withParams?: Record<string, string | number | boolean>): string {
+    if (!withParams || Object.keys(withParams).length === 0) return '';
+    const body = Object.entries(withParams)
+      .map(([k, v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`)
+      .join(', ');
+    return ` WITH (${body})`;
+  }
+
+  public mapTypeToPg(type: string): string {
+    const key = (type || '').toUpperCase();
+    const map: Record<string, string> = {
+      TEXT: 'TEXT',
+      STRING: 'TEXT',
+      INTEGER: 'INTEGER',
+      NUMBER: 'INTEGER',
+      REAL: 'DOUBLE PRECISION',
+      FLOAT: 'DOUBLE PRECISION',
+      DOUBLE: 'DOUBLE PRECISION',
+      BOOLEAN: 'BOOLEAN',
+      DATETIME: 'TIMESTAMPTZ',
+      DATE: 'TIMESTAMPTZ',
+      BLOB: 'BYTEA',
+      UUID: 'UUID',
+      JSONB: 'JSONB',
+      JSON: 'JSON'
+    };
+    return map[key] ?? 'TEXT';
   }
 }

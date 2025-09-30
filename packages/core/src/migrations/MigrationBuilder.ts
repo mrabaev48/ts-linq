@@ -197,6 +197,17 @@ export class MigrationBuilder {
 
   toDiff(): SchemaDiff {
     const tables: TableDiff[] = [];
+    this.collectCreates(tables);
+    this.collectDrops(tables);
+    const ensure = this.ensureTableFactory(tables);
+    this.collectColumnChanges(ensure);
+    this.collectIndexChanges(ensure);
+    this.collectForeignKeyChanges(ensure);
+    this.collectRenames(ensure);
+    return { tables } as SchemaDiff;
+  }
+
+  private collectCreates(tables: TableDiff[]): void {
     for (const [name, tb] of this.creates) {
       tables.push({
         table: name,
@@ -226,12 +237,15 @@ export class MigrationBuilder {
         }
       });
     }
-    for (const name of this.drops) {
-      tables.push({ table: name, drop: true });
-    }
-    // Column changes
+  }
+
+  private collectDrops(tables: TableDiff[]): void {
+    for (const name of this.drops) tables.push({ table: name, drop: true });
+  }
+
+  private ensureTableFactory(tables: TableDiff[]): (t: string) => TableDiff {
     const byTable = new Map<string, TableDiff>();
-    const ensure = (t: string): TableDiff => {
+    return (t: string): TableDiff => {
       let td = byTable.get(t);
       if (!td) {
         td = { table: t, columnChanges: [] } as TableDiff;
@@ -240,6 +254,9 @@ export class MigrationBuilder {
       }
       return td;
     };
+  }
+
+  private collectColumnChanges(ensure: (t: string) => TableDiff): void {
     for (const add of this.columnAdds) {
       ensure(add.table).columnChanges!.push({
         kind: 'add',
@@ -269,7 +286,9 @@ export class MigrationBuilder {
         column: { name: drop.name, type: 'TEXT', nullable: true }
       });
     }
-    // Index creates/drops
+  }
+
+  private collectIndexChanges(ensure: (t: string) => TableDiff): void {
     for (const indexCreate of this.indexCreates) {
       const tableDiff = ensure(indexCreate.table);
       tableDiff.indexCreates = tableDiff.indexCreates ?? [];
@@ -284,7 +303,9 @@ export class MigrationBuilder {
       tableDiff.indexDrops = tableDiff.indexDrops ?? [];
       tableDiff.indexDrops.push(indexDrop.name);
     }
-    // FK creates/drops
+  }
+
+  private collectForeignKeyChanges(ensure: (t: string) => TableDiff): void {
     for (const foreignKeyCreate of this.fkCreates) {
       const tableDiff = ensure(foreignKeyCreate.table);
       tableDiff.fkCreates = tableDiff.fkCreates ?? [];
@@ -295,17 +316,15 @@ export class MigrationBuilder {
       tableDiff.fkDrops = tableDiff.fkDrops ?? [];
       tableDiff.fkDrops.push(foreignKeyDrop.name);
     }
-    // Renames
-    for (const tableRename of this.tableRenames) {
-      const tableDiff = ensure(tableRename.from);
-      tableDiff.renameTo = tableRename.to;
-    }
+  }
+
+  private collectRenames(ensure: (t: string) => TableDiff): void {
+    for (const tableRename of this.tableRenames) ensure(tableRename.from).renameTo = tableRename.to;
     for (const columnRename of this.columnRenames) {
       const tableDiff = ensure(columnRename.table);
       tableDiff.columnRenames = tableDiff.columnRenames ?? [];
       tableDiff.columnRenames.push({ from: columnRename.from, to: columnRename.to });
     }
-    return { tables } as SchemaDiff;
   }
 
   toSql(dialect: Dialect): { up: string[]; down: string[] } {
