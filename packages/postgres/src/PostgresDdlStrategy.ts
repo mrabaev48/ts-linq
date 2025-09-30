@@ -1,6 +1,9 @@
 import type { EntityMetadata } from '@ts-linq/core';
 
+type LoggerPort = { warn(message: string): void };
+
 export class PostgresDdlStrategy {
+  constructor(private readonly logger?: LoggerPort) {}
   public generateCreateTableSql(entityMetadata: EntityMetadata): string {
     const columnSqls = entityMetadata.columns.map((column) => {
       if (column.isComputed && column.computedExpression) {
@@ -8,7 +11,7 @@ export class PostgresDdlStrategy {
         const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
           .computedStorage;
         if (storage && storage !== 'STORED') {
-          console.warn(
+          this.logger?.warn(
             `Postgres: computedStorage='${storage}' is not supported; coercing to STORED for ${column.columnName}`
           );
         }
@@ -48,13 +51,22 @@ export class PostgresDdlStrategy {
     }
   ): string {
     this.warnIfCollationWithNonBtree(index);
-    const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-    const concurrently = index.concurrently ? ' CONCURRENTLY' : '';
-    const using = index.using ? ` USING ${index.using.toUpperCase()}` : '';
+    const uniqueKeyword = this.buildUniqueKeyword(index);
+    const concurrently = this.buildConcurrently(index);
+    const using = this.buildUsing(index);
     const columnsListSql = this.buildIndexColumnsList(index);
-    const whereSql = index.where ? ` WHERE ${index.where}` : '';
     const withSql = this.buildWithParams(index.withParams);
-    return `CREATE ${uniqueKeyword}INDEX${concurrently} IF NOT EXISTS "${index.name}" ON "${table}"${using} (${columnsListSql})${withSql}${whereSql}`;
+    const whereSql = this.buildWhere(index);
+    return this.composeCreateIndexSql(
+      table,
+      index.name,
+      uniqueKeyword,
+      concurrently,
+      using,
+      columnsListSql,
+      withSql,
+      whereSql
+    );
   }
 
   private warnIfCollationWithNonBtree(index: {
@@ -65,7 +77,7 @@ export class PostgresDdlStrategy {
     const hasCollations = !!index.collations && Object.keys(index.collations).length > 0;
     const method = index.using || 'btree';
     if (hasCollations && method !== 'btree') {
-      console.warn(
+      this.logger?.warn(
         `Postgres: COLLATE is only meaningful with BTREE; using=${method} for index ${index.name}`
       );
     }
@@ -79,12 +91,7 @@ export class PostgresDdlStrategy {
     expressions?: string[];
   }): string {
     const parts: string[] = [];
-    for (const col of index.columns) {
-      const ord = index.orders?.[col];
-      const coll = index.collations?.[col] ? ` COLLATE ${index.collations[col]}` : '';
-      const nulls = index.nulls?.[col] ? ` NULLS ${index.nulls[col]}` : '';
-      parts.push(ord ? `"${col}" ${ord}${coll}${nulls}` : `"${col}"${coll}${nulls}`);
-    }
+    for (const col of index.columns) parts.push(this.formatIndexColumn(col, index));
     for (const expr of index.expressions || []) parts.push(`(${expr})`);
     return parts.join(', ');
   }
@@ -95,6 +102,49 @@ export class PostgresDdlStrategy {
       .map(([k, v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`)
       .join(', ');
     return ` WITH (${body})`;
+  }
+
+  private formatIndexColumn(
+    column: string,
+    index: {
+      orders?: { [column: string]: 'ASC' | 'DESC' };
+      collations?: { [column: string]: string };
+      nulls?: { [column: string]: 'FIRST' | 'LAST' };
+    }
+  ): string {
+    const ord = index.orders?.[column] ? ` ${index.orders[column]}` : '';
+    const coll = index.collations?.[column] ? ` COLLATE ${index.collations[column]}` : '';
+    const nulls = index.nulls?.[column] ? ` NULLS ${index.nulls[column]}` : '';
+    return `"${column}"${ord}${coll}${nulls}`;
+  }
+
+  private buildUniqueKeyword(index: { unique: boolean }): string {
+    return index.unique ? 'UNIQUE ' : '';
+  }
+
+  private buildConcurrently(index: { concurrently?: boolean }): string {
+    return index.concurrently ? ' CONCURRENTLY' : '';
+  }
+
+  private buildUsing(index: { using?: 'btree' | 'hash' | 'gin' | 'gist' }): string {
+    return index.using ? ` USING ${index.using.toUpperCase()}` : '';
+  }
+
+  private buildWhere(index: { where?: string }): string {
+    return index.where ? ` WHERE ${index.where}` : '';
+  }
+
+  private composeCreateIndexSql(
+    table: string,
+    name: string,
+    unique: string,
+    concurrently: string,
+    using: string,
+    columnsListSql: string,
+    withSql: string,
+    whereSql: string
+  ): string {
+    return `CREATE ${unique}INDEX${concurrently} IF NOT EXISTS "${name}" ON "${table}"${using} (${columnsListSql})${withSql}${whereSql}`;
   }
 
   public mapTypeToPg(type: string): string {
