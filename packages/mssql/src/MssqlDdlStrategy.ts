@@ -1,7 +1,10 @@
 import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
 import { SqlHelper } from '@ts-linq/core';
 
+type LoggerPort = { warn(message: string): void };
+
 export class MssqlDdlStrategy {
+  constructor(private readonly logger?: LoggerPort) {}
   public generateCreateTableSql(metadata: EntityMetadata): string {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
@@ -24,7 +27,7 @@ export class MssqlDdlStrategy {
       const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
         .computedStorage;
       if (storage && storage !== 'PERSISTED') {
-        console.warn(
+        this.logger?.warn(
           `MSSQL: computedStorage='${storage}' is not supported; use 'PERSISTED' or omit. Applying non-persisted computed for ${column.columnName}`
         );
       }
@@ -65,7 +68,7 @@ export class MssqlDdlStrategy {
     if ((index as unknown as { nulls?: Record<string, 'FIRST' | 'LAST'> }).nulls)
       unexpected.push('nulls');
     if (unexpected.length > 0) {
-      console.warn(
+      this.logger?.warn(
         `MSSQL: unsupported index options ignored for ${index.name}: ${unexpected.join(', ')}`
       );
     }

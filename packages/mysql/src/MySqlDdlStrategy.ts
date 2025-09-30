@@ -1,7 +1,10 @@
 import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
 import { SqlHelper } from '@ts-linq/core';
 
+type LoggerPort = { warn(message: string): void };
+
 export class MySqlDdlStrategy {
+  constructor(private readonly logger?: LoggerPort) {}
   public generateCreateTableSql(metadata: EntityMetadata): string {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
@@ -32,12 +35,12 @@ export class MySqlDdlStrategy {
   ): string {
     if (index.where) {
       // MySQL ignores partial WHERE in CREATE INDEX (requires functional equivalent)
-      console.warn(
+      this.logger?.warn(
         `MySQL: partial index WHERE is not supported and will be ignored for ${index.name}`
       );
     }
     if (index.nulls && Object.keys(index.nulls).length > 0) {
-      console.warn(
+      this.logger?.warn(
         `MySQL: NULLS FIRST/LAST is not supported and will be ignored for ${index.name}`
       );
     }
@@ -56,7 +59,7 @@ export class MySqlDdlStrategy {
       const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
         .computedStorage;
       if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
-        console.warn(
+        this.logger?.warn(
           `MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`
         );
       }
