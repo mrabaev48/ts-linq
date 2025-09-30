@@ -102,30 +102,19 @@ export class EntityLoader {
 
     for (const relationship of metadata.relationships) {
       if (!this.shouldInclude(relationship.propertyName, options.includes)) continue;
-      try {
-        const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
-        if (relationship.type === 'one-to-many') {
-          await this.loadOneToMany(
-            entity as unknown,
-            metadata,
-            relationship as unknown as {
-              propertyName: string;
-              foreignKey?: string;
-            },
-            entityClass as unknown as new () => unknown,
-            targetCtor as unknown as new () => unknown
-          );
-        } else {
-          await this.loadToOne(
-            entity as unknown,
-            relationship as unknown as { propertyName: string; foreignKey?: string },
-            targetCtor as unknown as new () => unknown,
-            { ...options, depth: depth - 1 }
-          );
-        }
-      } catch (error) {
-        this._logger?.warn(`Failed to load relationship ${relationship.propertyName}:`, error);
-      }
+      await this.loadRelationshipByType(
+        entity as unknown,
+        entityClass as unknown as new () => unknown,
+        metadata,
+        relationship as unknown as {
+          propertyName: string;
+          foreignKey?: string;
+          type: string;
+          targetEntity: Function | (() => Function);
+        },
+        options,
+        depth
+      );
     }
   }
 
@@ -144,27 +133,19 @@ export class EntityLoader {
 
     for (const relationship of metadata.relationships) {
       if (!this.shouldInclude(relationship.propertyName, options.includes)) continue;
-      const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => unknown;
-      if (relationship.type === 'one-to-many') {
-        await this.loadOneToManyBatched(
-          entities as unknown as unknown[],
-          { primaryKeys: metadata.primaryKeys },
-          relationship as unknown as { propertyName: string; foreignKey?: string },
-          entityClass as unknown as new () => unknown,
-          targetCtor as unknown as new () => unknown,
-          options,
-          depth
-        );
-      } else {
-        await this.loadToOneBatched(
-          entities as unknown as unknown[],
-          { columns: metadata.columns, primaryKeys: metadata.primaryKeys },
-          relationship as unknown as { propertyName: string; foreignKey?: string },
-          targetCtor as unknown as new () => unknown,
-          options,
-          depth
-        );
-      }
+      await this.loadRelationshipBatchedByType(
+        entities as unknown as unknown[],
+        entityClass as unknown as new () => unknown,
+        metadata,
+        relationship as unknown as {
+          propertyName: string;
+          foreignKey?: string;
+          type: string;
+          targetEntity: Function | (() => Function);
+        },
+        options,
+        depth
+      );
     }
   }
 
@@ -289,6 +270,70 @@ export class EntityLoader {
   }): string {
     const pkProp = meta.primaryKeys[0];
     return meta.columns.find((c) => c.propertyName === pkProp)?.columnName || pkProp;
+  }
+
+  private async loadRelationshipByType(
+    entity: unknown,
+    entityClass: new () => unknown,
+    metadata: { primaryKeys: string[] },
+    relationship: {
+      propertyName: string;
+      foreignKey?: string;
+      type: string;
+      targetEntity: Function | (() => Function);
+    },
+    options: LoadingOptions,
+    depth: number
+  ): Promise<void> {
+    try {
+      const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => unknown;
+      if (relationship.type === 'one-to-many') {
+        await this.loadOneToMany(entity, metadata, relationship, entityClass, targetCtor);
+      } else {
+        await this.loadToOne(entity, relationship, targetCtor, { ...options, depth: depth - 1 });
+      }
+    } catch (error) {
+      this._logger?.warn(`Failed to load relationship ${relationship.propertyName}:`, error);
+    }
+  }
+
+  private async loadRelationshipBatchedByType(
+    entities: unknown[],
+    entityClass: new () => unknown,
+    metadata: {
+      columns?: Array<{ propertyName: string; columnName: string }>;
+      primaryKeys: string[];
+    },
+    relationship: {
+      propertyName: string;
+      foreignKey?: string;
+      type: string;
+      targetEntity: Function | (() => Function);
+    },
+    options: LoadingOptions,
+    depth: number
+  ): Promise<void> {
+    const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => unknown;
+    if (relationship.type === 'one-to-many') {
+      await this.loadOneToManyBatched(
+        entities,
+        { primaryKeys: metadata.primaryKeys },
+        relationship,
+        entityClass,
+        targetCtor,
+        options,
+        depth
+      );
+      return;
+    }
+    await this.loadToOneBatched(
+      entities,
+      { columns: metadata.columns ?? [], primaryKeys: metadata.primaryKeys },
+      relationship,
+      targetCtor,
+      options,
+      depth
+    );
   }
 
   private async loadToOneBatched(

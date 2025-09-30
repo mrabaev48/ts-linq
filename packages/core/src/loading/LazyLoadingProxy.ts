@@ -43,6 +43,18 @@ export class LazyLoadingProxy {
   static setLogger(logger?: { warn(message: string, error?: unknown): void }): void {
     this._logger = logger;
   }
+
+  private static getLogger(): { warn(message: string, error?: unknown): void } {
+    if (this._logger) return this._logger;
+    return {
+      warn: (message: string, error?: unknown) => {
+        // Backward compatible fallback to console.warn for existing tests
+        // and environments where DI logger is not provided.
+        // eslint-disable-next-line no-console
+        console.warn(message, error);
+      }
+    };
+  }
   /**
    * Create a lazy loading proxy for an entity.
    * When navigation properties are accessed, they will be automatically loaded from the database.
@@ -120,7 +132,7 @@ export class LazyLoadingProxy {
           return result;
         })
         .catch((error) => {
-          LazyLoadingProxy._logger?.warn(`Failed to lazy load ${propName}:`, error);
+          LazyLoadingProxy.getLogger().warn(`Failed to lazy load ${propName}:`, error);
           state[propName].isLoading = false;
           delete state[propName].loadingPromise;
           return relationship.type === 'one-to-many' ? [] : null;
@@ -332,7 +344,7 @@ export class LazyLoadingProxy {
 
       case 'many-to-many': {
         // TODO: Implement many-to-many lazy loading
-        LazyLoadingProxy._logger?.warn('Many-to-many lazy loading not yet implemented');
+        LazyLoadingProxy.getLogger().warn('Many-to-many lazy loading not yet implemented');
         return [];
       }
 
