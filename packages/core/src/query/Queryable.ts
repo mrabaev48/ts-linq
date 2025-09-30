@@ -16,6 +16,8 @@ import { SqlVisitor } from './ast/SqlVisitor';
 import { QueryModel } from './QueryModel';
 import type { EntityLoader } from '../loading/EntityLoader';
 import { LoadingStrategy } from '../loading/LoadingStrategy';
+import { RowMaterializer } from './RowMaterializer';
+import { IncludePlanner } from './IncludePlanner';
 import type { EntityCacheLike } from '../utils/EntityCache';
 import { EntityCache } from '../utils/EntityCache';
 import type { CountCache } from './CountCache';
@@ -43,6 +45,8 @@ export class Queryable<T> {
   private _abortSignal?: AbortSignal;
   private _globalFilters?: GlobalFilter[];
   private _globalFilterApplier = new GlobalFilterApplier();
+  private _materializer!: RowMaterializer<T>;
+  private _includePlanner!: IncludePlanner<T>;
   // Internal storage for CTE info (used by providers that support WITH ...)
   private _cte?: CteDefinition;
   // Lightweight signature of WHERE clauses for fast count() cache keys
@@ -87,6 +91,13 @@ export class Queryable<T> {
       provider.providerLabel,
       performance?.sqlCache
     );
+    this._materializer = new RowMaterializer<T>(
+      this._entityClass,
+      this._provider,
+      this._entityCache,
+      this._performance
+    );
+    this._includePlanner = new IncludePlanner<T>(this._entityLoader, this._entityClass);
   }
 
   /** Clear global count() cache (used on transaction rollback to avoid stale values). */
@@ -672,15 +683,9 @@ export class Queryable<T> {
       sql.query,
       sql.parameters
     );
-    let entities = rows.map((row) => this.mapRowToEntity(row));
+    let entities = rows.map((row) => this._materializer.mapRowToEntity(row));
     entities = this.applyFallbackPredicates(entities);
-    if (this._entityLoader && this._includes.length > 0 && model.limit !== 1) {
-      await this._entityLoader.populateRelationshipsMany(entities, this._entityClass, {
-        strategy: LoadingStrategy.Eager,
-        includes: this._includes,
-        depth: 1
-      });
-    }
+    await this._includePlanner.populateIncludes(entities, this._includes, model.limit);
     return entities;
   }
 
