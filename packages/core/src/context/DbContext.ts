@@ -162,21 +162,13 @@ export abstract class DbContext {
    */
   public async saveChanges(): Promise<number> {
     const changes = this._changeTracker.getChanges();
+    if (!changes || changes.length === 0) return 0;
     this.prefillDefaults(changes);
-    const normalizedForValidation = changes.map((c) => ({
-      entity: c.entity as Record<string, unknown>,
-      entityClass: c.entityClass,
-      state: c.state,
-      originalValues: c.originalValues
-    }));
+    const normalizedForValidation = this.normalizeForValidation(changes);
     this.validateChanges(normalizedForValidation);
     let affectedRows = 0;
     for (const change of changes) {
-      const normalized = {
-        entity: change.entity as Record<string, unknown>,
-        entityClass: change.entityClass,
-        state: change.state
-      };
+      const normalized = this.normalizeChange(change);
       this.applyAudit(normalized);
       affectedRows += await this.processChange(normalized);
     }
@@ -474,6 +466,39 @@ export abstract class DbContext {
         }
       }
     }
+  }
+
+  private normalizeForValidation(
+    changes: Array<{
+      entity: object;
+      entityClass: Function;
+      state: string;
+      originalValues?: object;
+    }>
+  ): Array<{
+    entity: Record<string, unknown>;
+    entityClass: Function;
+    state: string;
+    originalValues?: object;
+  }> {
+    return changes.map((c) => ({
+      entity: c.entity as Record<string, unknown>,
+      entityClass: c.entityClass,
+      state: c.state,
+      originalValues: c.originalValues
+    }));
+  }
+
+  private normalizeChange(change: { entity: object; entityClass: Function; state: string }): {
+    entity: Record<string, unknown>;
+    entityClass: Function;
+    state: string;
+  } {
+    return {
+      entity: change.entity as Record<string, unknown>,
+      entityClass: change.entityClass,
+      state: change.state
+    };
   }
 
   private applyAudit(change: {
