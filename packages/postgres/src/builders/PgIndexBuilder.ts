@@ -1,4 +1,4 @@
-import type { Logger } from '@ts-linq/core';
+type LoggerLike = { warn(message: string, error?: unknown): void };
 
 export type PgIndexSpec = {
   name: string;
@@ -15,7 +15,7 @@ export type PgIndexSpec = {
 };
 
 export class PgIndexBuilder {
-  constructor(private readonly logger?: Logger) {}
+  constructor(private readonly logger?: LoggerLike) {}
 
   public buildCreateIndexSql(table: string, index: PgIndexSpec): string {
     if (!this.isValidIndexSpec(index)) {

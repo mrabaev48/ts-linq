@@ -6,6 +6,10 @@ import { LoadingStrategy } from '../loading/LoadingStrategy';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { LazyLoadingProxy } from '../loading/LazyLoadingProxy';
 import { DbSet } from './DbSet';
+import { InsertCommand } from './commands/InsertCommand';
+import { UpdateCommand } from './commands/UpdateCommand';
+import { DeleteCommand } from './commands/DeleteCommand';
+import { ChangeValidationService } from './services/ChangeValidationService';
 import type {
   DbContextOptions,
   PerformanceOptions,
@@ -57,6 +61,10 @@ export abstract class DbContext {
   private _validationOptions?: {
     translate?: (key: string, params?: Record<string, unknown>) => string;
   };
+  private _validationService!: ChangeValidationService;
+  private _insertCmd!: InsertCommand;
+  private _updateCmd!: UpdateCommand;
+  private _deleteCmd!: DeleteCommand;
   /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
   private _validationRulesCache: WeakMap<
     Function,
@@ -82,9 +90,20 @@ export abstract class DbContext {
     this._audit = options.audit;
     this._globalFilters = options.globalFilters;
     this._validationOptions = options.validation;
+    this._validationService = new ChangeValidationService(
+      this._validationOptions?.translate,
+      this._audit
+    );
 
     this._changeTracker = new ChangeTracker();
     this._entityLoader = new EntityLoader(this._provider);
+    this._insertCmd = new InsertCommand(this._provider, (c) => this.updateEntityCache(c));
+    this._updateCmd = new UpdateCommand(this._provider, (c) => this.updateEntityCache(c));
+    this._deleteCmd = new DeleteCommand(
+      this._provider,
+      (c) => this.handleSoftDelete(c),
+      (c) => this.removeFromEntityCache(c)
+    );
     // Initialize optional L2 entity cache
     if (options.performance?.enableEntityCache) {
       this._entityCache = new EntityCache(
@@ -165,7 +184,14 @@ export abstract class DbContext {
     if (!changes || changes.length === 0) return 0;
     this.prefillDefaults(changes);
     const normalizedForValidation = this.normalizeForValidation(changes);
-    this.validateChanges(normalizedForValidation);
+    this._validationService.validate(
+      normalizedForValidation as Array<{
+        entity: Record<string, unknown>;
+        entityClass: Function;
+        state: string;
+        originalValues?: object;
+      }>
+    );
     let affectedRows = 0;
     for (const change of changes) {
       const normalized = this.normalizeChange(change);
@@ -576,29 +602,21 @@ export abstract class DbContext {
     entity: Record<string, unknown>;
     entityClass: Function;
   }): Promise<void> {
-    // ensure entity is a record-like before provider call
-    if (!change.entity || typeof change.entity !== 'object') return;
-    await this._provider.insert(change.entity, change.entityClass);
-    this.updateEntityCache(change);
+    await this._insertCmd.execute(change);
   }
 
   private async applyUpdate(change: {
     entity: Record<string, unknown>;
     entityClass: Function;
   }): Promise<void> {
-    if (!change.entity || typeof change.entity !== 'object') return;
-    await this._provider.update(change.entity, change.entityClass);
-    this.updateEntityCache(change);
+    await this._updateCmd.execute(change);
   }
 
   private async applyDelete(change: {
     entity: Record<string, unknown>;
     entityClass: Function;
   }): Promise<boolean> {
-    if (await this.handleSoftDelete(change)) return true;
-    await this._provider.delete(change.entity, change.entityClass);
-    this.removeFromEntityCache(change);
-    return true;
+    return await this._deleteCmd.execute(change);
   }
 
   private async handleSoftDelete(change: {
