@@ -1,10 +1,14 @@
 import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
 import { SqlHelper } from '@ts-linq/core';
 
-import type { Logger } from '@ts-linq/core';
+type LoggerLike = { warn(message: string, error?: unknown): void };
+import { SQLiteIndexBuilder } from './builders/SQLiteIndexBuilder';
 
 export class SQLiteDdlStrategy {
-  constructor(private readonly logger?: Logger) {}
+  private readonly indexBuilder: SQLiteIndexBuilder;
+  constructor(private readonly logger?: LoggerLike) {
+    this.indexBuilder = new SQLiteIndexBuilder(logger);
+  }
   public generateCreateTableSql(metadata: EntityMetadata): string {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
@@ -48,17 +52,7 @@ export class SQLiteDdlStrategy {
       collations?: { [column: string]: string };
     }
   ): string {
-    const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-    const whereSql = index.where ? ` WHERE ${index.where}` : '';
-    const parts: string[] = [];
-    for (const c of index.columns) {
-      const ord = index.orders?.[c] ? ` ${index.orders[c]}` : '';
-      const collate = index.collations?.[c] ? ` COLLATE ${index.collations[c]}` : '';
-      parts.push(`${c}${ord}${collate}`);
-    }
-    for (const e of index.expressions || []) parts.push(`(${e})`);
-    const cols = parts.join(', ');
-    return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS ${index.name} ON ${tableName} (${cols})${whereSql}`;
+    return this.indexBuilder.buildCreateIndexSql(tableName, index);
   }
 
   public generateColumnDefinition(column: ColumnMetadata): string {
