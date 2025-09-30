@@ -1,10 +1,10 @@
 import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
 import { SqlHelper } from '@ts-linq/core';
 
-type LoggerPort = { warn(message: string): void };
+import type { Logger } from '@ts-linq/core';
 
 export class MssqlDdlStrategy {
-  constructor(private readonly logger?: LoggerPort) {}
+  constructor(private readonly logger?: Logger) {}
   public generateCreateTableSql(metadata: EntityMetadata): string {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);

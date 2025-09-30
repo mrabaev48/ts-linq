@@ -1,4 +1,4 @@
-type LoggerPort = { warn(message: string): void };
+import type { Logger } from '@ts-linq/core';
 
 export type PgIndexSpec = {
   name: string;
@@ -15,7 +15,7 @@ export type PgIndexSpec = {
 };
 
 export class PgIndexBuilder {
-  constructor(private readonly logger?: LoggerPort) {}
+  constructor(private readonly logger?: Logger) {}
 
   public buildCreateIndexSql(table: string, index: PgIndexSpec): string {
     if (!this.isValidIndexSpec(index)) {

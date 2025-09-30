@@ -1,13 +1,11 @@
-import type { EntityMetadata } from '@ts-linq/core';
+import type { EntityMetadata, Logger } from '@ts-linq/core';
 import type { PgIndexSpec } from './builders/PgIndexBuilder';
 import { PgIndexBuilder } from './builders/PgIndexBuilder';
-
-type LoggerPort = { warn(message: string): void };
 
 export class PostgresDdlStrategy {
   private readonly indexBuilder: PgIndexBuilder;
 
-  constructor(private readonly logger?: LoggerPort) {
+  constructor(private readonly logger?: Logger) {
     this.indexBuilder = new PgIndexBuilder(logger);
   }
   public generateCreateTableSql(entityMetadata: EntityMetadata): string {
