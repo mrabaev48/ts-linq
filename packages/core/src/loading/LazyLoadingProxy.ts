@@ -38,6 +38,11 @@ interface LazyLoadingState {
  * Automatically loads related entities when navigation properties are first accessed.
  */
 export class LazyLoadingProxy {
+  private static _logger?: { warn(message: string, error?: unknown): void };
+
+  static setLogger(logger?: { warn(message: string, error?: unknown): void }): void {
+    this._logger = logger;
+  }
   /**
    * Create a lazy loading proxy for an entity.
    * When navigation properties are accessed, they will be automatically loaded from the database.
@@ -115,7 +120,7 @@ export class LazyLoadingProxy {
           return result;
         })
         .catch((error) => {
-          console.warn(`Failed to lazy load ${propName}:`, error);
+          LazyLoadingProxy._logger?.warn(`Failed to lazy load ${propName}:`, error);
           state[propName].isLoading = false;
           delete state[propName].loadingPromise;
           return relationship.type === 'one-to-many' ? [] : null;
@@ -327,7 +332,7 @@ export class LazyLoadingProxy {
 
       case 'many-to-many': {
         // TODO: Implement many-to-many lazy loading
-        console.warn('Many-to-many lazy loading not yet implemented');
+        LazyLoadingProxy._logger?.warn('Many-to-many lazy loading not yet implemented');
         return [];
       }
 

@@ -1,7 +1,10 @@
 import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
 import { SqlHelper } from '@ts-linq/core';
 
+type LoggerPort = { warn(message: string): void };
+
 export class SQLiteDdlStrategy {
+  constructor(private readonly logger?: LoggerPort) {}
   public generateCreateTableSql(metadata: EntityMetadata): string {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
@@ -64,12 +67,12 @@ export class SQLiteDdlStrategy {
         .computedStorage;
       const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
       if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
-        console.warn(
+        this.logger?.warn(
           `SQLite: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); using ${kind} for ${column.columnName}`
         );
       }
       if (kind === 'STORED') {
-        console.warn(
+        this.logger?.warn(
           `SQLite: STORED generated columns require SQLite >= 3.31; falling back to VIRTUAL for ${column.columnName}`
         );
       }
