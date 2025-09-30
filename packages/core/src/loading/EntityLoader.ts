@@ -11,12 +11,17 @@ import { LazyLoadingProxy } from './LazyLoadingProxy';
 export class EntityLoader {
   private _provider: DatabaseProvider;
   private _defaultStrategy: LoadingStrategy = LoadingStrategy.Lazy;
+  private readonly _logger?: { warn(message: string, error?: unknown): void };
 
   /**
    * @param provider Database provider used for underlying queries.
    */
-  constructor(provider: DatabaseProvider) {
+  constructor(
+    provider: DatabaseProvider,
+    logger?: { warn(message: string, error?: unknown): void }
+  ) {
     this._provider = provider;
+    this._logger = logger;
   }
 
   /**
@@ -119,7 +124,7 @@ export class EntityLoader {
           );
         }
       } catch (error) {
-        console.warn(`Failed to load relationship ${relationship.propertyName}:`, error);
+        this._logger?.warn(`Failed to load relationship ${relationship.propertyName}:`, error);
       }
     }
   }
