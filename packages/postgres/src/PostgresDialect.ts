@@ -1,5 +1,9 @@
 import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/core';
+import { PgWhereEmitter } from './emitters/PgWhereEmitter';
+import { PgJoinEmitter } from './emitters/PgJoinEmitter';
+import { PgOrderEmitter } from './emitters/PgOrderEmitter';
+import { PgGroupEmitter } from './emitters/PgGroupEmitter';
 
 /**
  * PostgreSQL implementation of SqlDialect.
@@ -9,6 +13,10 @@ import { MetadataStorage } from '@ts-linq/core';
  * - Leaves identifier quoting to providers/metadata (table/column names are passed as-is)
  */
 export class PostgresDialect implements SqlDialect {
+  private readonly whereEmitter = new PgWhereEmitter();
+  private readonly joinEmitter = new PgJoinEmitter();
+  private readonly orderEmitter = new PgOrderEmitter();
+  private readonly groupEmitter = new PgGroupEmitter();
   public quoteIdentifier(identifier: string): string {
     return `"${identifier.replace(/"/g, '"')}`;
   }
@@ -27,11 +35,11 @@ export class PostgresDialect implements SqlDialect {
     let query = this.buildSelectHead(options);
     query = this.applyCte(query, options);
     query += this.buildFromClause(options.from ?? metadata.tableName);
-    query += this.buildJoins(options);
+    query += this.joinEmitter.emit(options);
     this.collectSelectParams(parameters, options);
-    query += this.buildWhereClause(parameters, options);
-    query += this.buildGroupByHaving(parameters, options);
-    query += this.buildOrderBy(options);
+    query += this.whereEmitter.emit(parameters, options);
+    query += this.groupEmitter.emit(parameters, options);
+    query += this.orderEmitter.emit(options);
     query += this.buildLimitOffset(options);
     query = this.numberPlaceholders(query, parameters.length);
     return { query, parameters };
