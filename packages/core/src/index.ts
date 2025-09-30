@@ -5,6 +5,7 @@
 
 // Core types
 export * from './types';
+export * from './types/Logger';
 
 // Decorators
 export * from './decorators/Entity';
