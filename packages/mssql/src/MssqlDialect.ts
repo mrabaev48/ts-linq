@@ -1,5 +1,9 @@
 import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/core';
+import { MssqlWhereEmitter } from './emitters/MssqlWhereEmitter';
+import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
+import { MssqlOrderEmitter } from './emitters/MssqlOrderEmitter';
+import { MssqlGroupEmitter } from './emitters/MssqlGroupEmitter';
 
 /**
  * MSSQL dialect for SELECT generation.
@@ -9,6 +13,10 @@ import { MetadataStorage } from '@ts-linq/core';
  * - Converts '?' placeholders to @p1..@pn for MSSQL parameter style
  */
 export class MssqlDialect implements SqlDialect {
+  private readonly whereEmitter = new MssqlWhereEmitter();
+  private readonly joinEmitter = new MssqlJoinEmitter();
+  private readonly orderEmitter = new MssqlOrderEmitter();
+  private readonly groupEmitter = new MssqlGroupEmitter();
   public quoteIdentifier(identifier: string): string {
     return `[${identifier.replace(/]/g, ']]')}]`;
   }
@@ -32,10 +40,10 @@ export class MssqlDialect implements SqlDialect {
     const hasOffset = options.offset !== undefined && options.offset !== null;
     const selectHead = this.buildSelectHead(options, hasLimit, hasOffset);
     let query = `${selectHead}${selectList} FROM [${options.from ?? metadata.tableName}]`;
-    query += this.buildJoins(options);
-    query += this.buildWhereClause(parameters, options);
-    query += this.buildGroupByHaving(parameters, options);
-    query += this.buildOrderBy(options);
+    query += this.joinEmitter.emit(options);
+    query += this.whereEmitter.emit(parameters, options);
+    query += this.groupEmitter.emit(parameters, options);
+    query += this.orderEmitter.emit(options);
     query += this.buildOffsetFetch(options, hasLimit, hasOffset);
     query = this.numberPlaceholders(query, parameters.length);
     return { query, parameters };
@@ -61,43 +69,6 @@ export class MssqlDialect implements SqlDialect {
     if (options.distinct) head += 'DISTINCT ';
     if (hasLimit && !hasOffset) head += `TOP (${options.limit}) `;
     return head;
-  }
-
-  private buildJoins(options: QueryOptions): string {
-    if (!options.joins || options.joins.length === 0) return '';
-    let out = '';
-    for (const join of options.joins) {
-      out += ` ${join.type} JOIN [${join.table}]`;
-      if (join.alias) out += ` AS ${join.alias}`;
-      out += ` ON ${join.on}`;
-    }
-    return out;
-  }
-
-  private buildWhereClause(parameters: SqlParameter[], options: QueryOptions): string {
-    if (!options.where || options.where.length === 0) return '';
-    const whereClauses = options.where.map((w) => w.condition);
-    for (const w of options.where) parameters.push(...w.parameters);
-    return ` WHERE ${whereClauses.join(' AND ')}`;
-  }
-
-  private buildGroupByHaving(parameters: SqlParameter[], options: QueryOptions): string {
-    if (!options.groupBy) return '';
-    let sql = '';
-    if (options.groupBy.columns && options.groupBy.columns.length > 0) {
-      sql += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-    }
-    if (options.groupBy.having) {
-      sql += ` HAVING ${options.groupBy.having.condition}`;
-      if (options.groupBy.having.parameters) parameters.push(...options.groupBy.having.parameters);
-    }
-    return sql;
-  }
-
-  private buildOrderBy(options: QueryOptions): string {
-    if (!options.orderBy || options.orderBy.length === 0) return '';
-    const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
-    return ` ORDER BY ${orderByClauses.join(', ')}`;
   }
 
   private buildOffsetFetch(options: QueryOptions, hasLimit: boolean, hasOffset: boolean): string {
