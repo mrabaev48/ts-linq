@@ -58,6 +58,7 @@ __exportStar(require("./DdlBuilder"), exports);
 // Loading
 __exportStar(require("./loading/LoadingStrategy"), exports);
 __exportStar(require("./loading/EntityLoader"), exports);
+__exportStar(require("./loading/LazyLoadingProxy"), exports);
 // Migrations
 __exportStar(require("./migrations/Migration"), exports);
 __exportStar(require("./migrations/MigrationRunner"), exports);

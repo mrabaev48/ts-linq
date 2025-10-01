@@ -34,6 +34,7 @@ export * from './DdlStrategy';
 export * from './DdlBuilder';
 export * from './loading/LoadingStrategy';
 export * from './loading/EntityLoader';
+export * from './loading/LazyLoadingProxy';
 export * from './migrations/Migration';
 export * from './migrations/MigrationRunner';
 export * from './migrations/DiffTypes';
