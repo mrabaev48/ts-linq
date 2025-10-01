@@ -13,6 +13,13 @@ export interface RelationshipOptions {
   foreignKey?: string;
   inverseSide?: string;
   cascade?: boolean;
+  through?: {
+    table: string;
+    sourceFk?: string;
+    targetFk?: string;
+    sourcePk?: string;
+    targetPk?: string;
+  };
 }
 
 function isStage3FieldContext(x: unknown): x is {
@@ -49,7 +56,8 @@ function defineRelationship(
         targetEntity: resolved,
         foreignKey: options?.foreignKey,
         inverseSide: options?.inverseSide,
-        cascade: options?.cascade || false
+        cascade: options?.cascade || false,
+        through: options?.through
       };
       MetadataStorage.addRelationship(ctor, relationship);
       const existing: RelationshipMetadata[] =
