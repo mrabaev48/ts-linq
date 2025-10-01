@@ -43,12 +43,9 @@ class SeedCommand {
         this.fsAdapter = fsAdapter;
         this.name = 'seed';
         this.describe = 'Выполняет SQL из файла для начального наполнения';
-        this.requiresProvider = true;
         this.aliases = ['db:seed'];
     }
-    async run(provider, argv) {
-        if (!provider)
-            throw new Error('Provider is required');
+    async runDb(provider, argv) {
         const sqlFile = argv[1] || path.resolve(process.cwd(), 'seeds.sql');
         if (!this.fsAdapter.exists(sqlFile)) {
             this.logger.error(`Seed file not found: ${sqlFile}`);

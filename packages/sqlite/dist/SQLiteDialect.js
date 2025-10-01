@@ -2,12 +2,22 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SQLiteDialect = void 0;
 const core_1 = require("@ts-linq/core");
+const SQLiteWhereEmitter_1 = require("./emitters/SQLiteWhereEmitter");
+const SQLiteJoinEmitter_1 = require("./emitters/SQLiteJoinEmitter");
+const SQLiteOrderEmitter_1 = require("./emitters/SQLiteOrderEmitter");
+const SQLiteGroupEmitter_1 = require("./emitters/SQLiteGroupEmitter");
 /**
  * SQLite implementation of SqlDialect.
  * Handles DISTINCT, WHERE (prebuilt), GROUP BY/HAVING, ORDER BY and LIMIT/OFFSET.
  * Adds SQLite-specific quirk: LIMIT -1 when OFFSET is provided without LIMIT.
  */
 class SQLiteDialect {
+    constructor() {
+        this.whereEmitter = new SQLiteWhereEmitter_1.SQLiteWhereEmitter();
+        this.joinEmitter = new SQLiteJoinEmitter_1.SQLiteJoinEmitter();
+        this.orderEmitter = new SQLiteOrderEmitter_1.SQLiteOrderEmitter();
+        this.groupEmitter = new SQLiteGroupEmitter_1.SQLiteGroupEmitter();
+    }
     quoteIdentifier(identifier) {
         return identifier;
     }
@@ -19,56 +29,41 @@ class SQLiteDialect {
         const metadata = core_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
-        let query = 'SELECT ';
-        if (options.distinct)
-            query += 'DISTINCT ';
-        query += options.select && options.select.length ? options.select.join(', ') : '*';
-        query += ` FROM ${options.from ?? metadata.tableName}`;
-        // JOINs
-        if (options.joins && options.joins.length > 0) {
-            for (const join of options.joins) {
-                query += ` ${join.type} JOIN ${join.table}`;
-                if (join.alias)
-                    query += ` AS ${join.alias}`;
-                query += ` ON ${join.on}`;
-            }
-        }
         const parameters = [];
-        if (options.selectParams && options.selectParams.length) {
+        let query = this.buildSelectHead(options);
+        query += this.buildFromClause(options.from ?? metadata.tableName);
+        query += this.joinEmitter.emit(options);
+        this.collectSelectParams(parameters, options);
+        query += this.whereEmitter.emit(parameters, options);
+        query += this.groupEmitter.emit(parameters, options);
+        query += this.orderEmitter.emit(options);
+        query += this.buildLimitOffset(options);
+        return { query, parameters };
+    }
+    buildSelectHead(options) {
+        let head = 'SELECT ';
+        if (options.distinct)
+            head += 'DISTINCT ';
+        head += options.select && options.select.length ? options.select.join(', ') : '*';
+        return head;
+    }
+    buildFromClause(tableName) {
+        return ` FROM ${tableName}`;
+    }
+    collectSelectParams(parameters, options) {
+        if (options.selectParams && options.selectParams.length)
             parameters.push(...options.selectParams);
-        }
-        // WHERE
-        if (options.where && options.where.length > 0) {
-            const whereClauses = options.where.map((whereClause) => whereClause.condition);
-            query += ` WHERE ${whereClauses.join(' AND ')}`;
-            for (const whereClause of options.where)
-                parameters.push(...whereClause.parameters);
-        }
-        // GROUP BY / HAVING
-        if (options.groupBy) {
-            query += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-            if (options.groupBy.having) {
-                query += ` HAVING ${options.groupBy.having.condition}`;
-                parameters.push(...options.groupBy.having.parameters);
-            }
-        }
-        // ORDER BY
-        if (options.orderBy && options.orderBy.length > 0) {
-            const orderByClauses = options.orderBy.map((orderBy) => `${orderBy.column} ${orderBy.direction}`);
-            query += ` ORDER BY ${orderByClauses.join(', ')}`;
-        }
-        // LIMIT/OFFSET quirks
+    }
+    buildLimitOffset(options) {
         const hasLimit = options.limit !== undefined && options.limit !== null;
         const hasOffset = options.offset !== undefined && options.offset !== null;
         if (hasLimit) {
-            query += ` LIMIT ${options.limit}`;
-            if (hasOffset)
-                query += ` OFFSET ${options.offset}`;
+            return ` LIMIT ${options.limit}` + (hasOffset ? ` OFFSET ${options.offset}` : '');
         }
-        else if (hasOffset) {
-            query += ` LIMIT -1 OFFSET ${options.offset}`;
+        if (hasOffset) {
+            return ` LIMIT -1 OFFSET ${options.offset}`;
         }
-        return { query, parameters };
+        return '';
     }
 }
 exports.SQLiteDialect = SQLiteDialect;

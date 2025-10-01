@@ -5,6 +5,10 @@ import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
  * Adds SQLite-specific quirk: LIMIT -1 when OFFSET is provided without LIMIT.
  */
 export declare class SQLiteDialect implements SqlDialect {
+    private readonly whereEmitter;
+    private readonly joinEmitter;
+    private readonly orderEmitter;
+    private readonly groupEmitter;
     quoteIdentifier(identifier: string): string;
     /** Build SQL for a SELECT based on normalized QueryOptions.
      * @param entityClass Entity constructor (for table name resolution)
@@ -14,5 +18,9 @@ export declare class SQLiteDialect implements SqlDialect {
         query: string;
         parameters: readonly SqlParameter[];
     };
+    private buildSelectHead;
+    private buildFromClause;
+    private collectSelectParams;
+    private buildLimitOffset;
 }
 //# sourceMappingURL=SQLiteDialect.d.ts.map

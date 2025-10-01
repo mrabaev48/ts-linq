@@ -6,6 +6,10 @@ import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
  * - Leaves '?' placeholders as-is (mysql2 supports positional params)
  */
 export declare class MysqlDialect implements SqlDialect {
+    private readonly whereEmitter;
+    private readonly joinEmitter;
+    private readonly orderEmitter;
+    private readonly groupEmitter;
     quoteIdentifier(identifier: string): string;
     /**
      * Build SELECT for MySQL based on normalized QueryOptions.
@@ -16,5 +20,9 @@ export declare class MysqlDialect implements SqlDialect {
         query: string;
         parameters: readonly SqlParameter[];
     };
+    private buildSelectHead;
+    private buildFromClause;
+    private collectSelectParams;
+    private buildLimitOffset;
 }
 //# sourceMappingURL=MysqlDialect.d.ts.map

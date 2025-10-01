@@ -1,4 +1,8 @@
 import { MetadataStorage } from '@ts-linq/core';
+import { PgWhereEmitter } from './emitters/PgWhereEmitter';
+import { PgJoinEmitter } from './emitters/PgJoinEmitter';
+import { PgOrderEmitter } from './emitters/PgOrderEmitter';
+import { PgGroupEmitter } from './emitters/PgGroupEmitter';
 /**
  * PostgreSQL implementation of SqlDialect.
  *
@@ -7,6 +11,12 @@ import { MetadataStorage } from '@ts-linq/core';
  * - Leaves identifier quoting to providers/metadata (table/column names are passed as-is)
  */
 export class PostgresDialect {
+    constructor() {
+        this.whereEmitter = new PgWhereEmitter();
+        this.joinEmitter = new PgJoinEmitter();
+        this.orderEmitter = new PgOrderEmitter();
+        this.groupEmitter = new PgGroupEmitter();
+    }
     quoteIdentifier(identifier) {
         return `"${identifier.replace(/"/g, '"')}`;
     }
@@ -19,56 +29,16 @@ export class PostgresDialect {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
-        let query = 'SELECT ';
-        if (options.distinct)
-            query += 'DISTINCT ';
-        query += options.select && options.select.length ? options.select.join(', ') : '*';
-        // Support CTE
-        if (options.cte) {
-            query = `WITH ${options.cte.name} AS (${options.cte.sql}) ` + query;
-        }
-        query += ` FROM "${options.from ?? metadata.tableName}"`;
-        if (options.joins && options.joins.length) {
-            for (const join of options.joins) {
-                query += ` ${join.type} JOIN "${join.table}"`;
-                if (join.alias)
-                    query += ` AS ${join.alias}`;
-                query += ` ON ${join.on}`;
-            }
-        }
         const parameters = [];
-        if (options.selectParams && options.selectParams.length) {
-            parameters.push(...options.selectParams);
-        }
-        if (options.where && options.where.length > 0) {
-            const whereClauses = options.where.map((whereClause) => whereClause.condition);
-            query += ` WHERE ${whereClauses.join(' AND ')}`;
-            for (const whereClause of options.where)
-                parameters.push(...whereClause.parameters);
-        }
-        if (options.groupBy) {
-            query += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-            if (options.groupBy.having) {
-                query += ` HAVING ${options.groupBy.having.condition}`;
-                parameters.push(...options.groupBy.having.parameters);
-            }
-        }
-        if (options.orderBy && options.orderBy.length > 0) {
-            const orderByClauses = options.orderBy.map((orderBy) => `${orderBy.column} ${orderBy.direction}`);
-            query += ` ORDER BY ${orderByClauses.join(', ')}`;
-        }
-        const hasLimit = options.limit !== undefined && options.limit !== null;
-        const hasOffset = options.offset !== undefined && options.offset !== null;
-        if (hasLimit) {
-            query += ` LIMIT ${options.limit}`;
-            if (hasOffset)
-                query += ` OFFSET ${options.offset}`;
-        }
-        else if (hasOffset) {
-            // Postgres allows OFFSET without LIMIT
-            query += ` OFFSET ${options.offset}`;
-        }
-        // Convert '?' placeholders to $1..$n (if any)
+        let query = this.buildSelectHead(options);
+        query = this.applyCte(query, options);
+        query += this.buildFromClause(options.from ?? metadata.tableName);
+        query += this.joinEmitter.emit(options);
+        this.collectSelectParams(parameters, options);
+        query += this.whereEmitter.emit(parameters, options);
+        query += this.groupEmitter.emit(parameters, options);
+        query += this.orderEmitter.emit(options);
+        query += this.buildLimitOffset(options);
         query = this.numberPlaceholders(query, parameters.length);
         return { query, parameters };
     }
@@ -81,6 +51,73 @@ export class PostgresDialect {
             index++;
             return `$${index}`;
         });
+    }
+    buildSelectHead(options) {
+        let head = 'SELECT ';
+        if (options.distinct)
+            head += 'DISTINCT ';
+        head += options.select && options.select.length ? options.select.join(', ') : '*';
+        return head;
+    }
+    applyCte(query, options) {
+        if (!options.cte)
+            return query;
+        return `WITH ${options.cte.name} AS (${options.cte.sql}) ` + query;
+    }
+    buildFromClause(tableName) {
+        return ` FROM "${tableName}"`;
+    }
+    buildJoins(options) {
+        if (!options.joins || options.joins.length === 0)
+            return '';
+        let out = '';
+        for (const join of options.joins) {
+            out += ` ${join.type} JOIN "${join.table}"`;
+            if (join.alias)
+                out += ` AS ${join.alias}`;
+            out += ` ON ${join.on}`;
+        }
+        return out;
+    }
+    collectSelectParams(parameters, options) {
+        if (options.selectParams && options.selectParams.length) {
+            parameters.push(...options.selectParams);
+        }
+    }
+    buildWhereClause(parameters, options) {
+        if (!options.where || options.where.length === 0)
+            return '';
+        const whereClauses = options.where.map((w) => w.condition);
+        for (const w of options.where)
+            parameters.push(...w.parameters);
+        return ` WHERE ${whereClauses.join(' AND ')}`;
+    }
+    buildGroupByHaving(parameters, options) {
+        if (!options.groupBy)
+            return '';
+        let sql = ` GROUP BY ${options.groupBy.columns.join(', ')}`;
+        if (options.groupBy.having) {
+            sql += ` HAVING ${options.groupBy.having.condition}`;
+            parameters.push(...options.groupBy.having.parameters);
+        }
+        return sql;
+    }
+    buildOrderBy(options) {
+        if (!options.orderBy || options.orderBy.length === 0)
+            return '';
+        const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
+        return ` ORDER BY ${orderByClauses.join(', ')}`;
+    }
+    buildLimitOffset(options) {
+        const hasLimit = options.limit !== undefined && options.limit !== null;
+        const hasOffset = options.offset !== undefined && options.offset !== null;
+        if (hasLimit) {
+            return ` LIMIT ${options.limit}` + (hasOffset ? ` OFFSET ${options.offset}` : '');
+        }
+        if (hasOffset) {
+            return ` OFFSET ${options.offset}`;
+        }
+        return '';
     }
 }
 //# sourceMappingURL=PostgresDialect.js.map

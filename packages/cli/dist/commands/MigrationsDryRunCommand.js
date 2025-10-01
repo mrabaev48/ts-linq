@@ -46,12 +46,9 @@ class MigrationsDryRunCommand {
         this.fsAdapter = fsAdapter;
         this.name = 'migration:dry-run';
         this.describe = 'Печатает SQL изменений между snapshot и БД (dry-run)';
-        this.requiresProvider = true;
         this.aliases = ['migrations:dry-run'];
     }
-    async run(provider, argv) {
-        if (!provider)
-            throw new Error('Provider is required');
+    async runDb(provider, argv) {
         const file = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
         if (!this.fsAdapter.exists(file)) {
             this.logger.error(`Snapshot file not found: ${file}`);

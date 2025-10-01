@@ -400,10 +400,9 @@ export abstract class DbContext {
     if (LazyLoadingProxy.isLazyProxy(entity)) {
       return LazyLoadingProxy.isRelationshipLoaded(entity, propertyName);
     }
-    // For non-proxy entities, check if property exists and is not undefined/null
+    // For non-proxy entities, check if property key exists (even if undefined/null)
     const record = entity as unknown as Record<string, unknown>;
-    const value = record[propertyName];
-    return value !== undefined && value !== null;
+    return propertyName in record;
   }
 
   // Removed string-based include API in favor of predicate-based include on Queryable
