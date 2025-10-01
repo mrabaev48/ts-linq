@@ -601,21 +601,21 @@ export abstract class DbContext {
     entity: Record<string, unknown>;
     entityClass: Function;
   }): Promise<void> {
-    await this._insertCmd.execute(change);
+    await this._insertCmd.execute({ ...change, state: 'added' });
   }
 
   private async applyUpdate(change: {
     entity: Record<string, unknown>;
     entityClass: Function;
   }): Promise<void> {
-    await this._updateCmd.execute(change);
+    await this._updateCmd.execute({ ...change, state: 'modified' });
   }
 
   private async applyDelete(change: {
     entity: Record<string, unknown>;
     entityClass: Function;
   }): Promise<boolean> {
-    return await this._deleteCmd.execute(change);
+    return await this._deleteCmd.execute({ ...change, state: 'deleted' });
   }
 
   private async handleSoftDelete(change: {
