@@ -48,16 +48,22 @@ async function main() {
         process.exitCode = 2;
         return;
     }
-    const provider = command.requiresProvider ? (0, provider_factory_1.createProviderFromEnv)() : null;
-    try {
-        if (provider)
+    // Determine command type: DbCommand vs Command
+    const maybeDb = command;
+    const isDbCommand = typeof maybeDb.runDb === 'function';
+    if (isDbCommand) {
+        const provider = (0, provider_factory_1.createProviderFromEnv)();
+        try {
             await provider.connect();
-        await command.run(provider, argv);
-    }
-    finally {
-        if (provider)
+            await maybeDb.runDb(provider, argv);
+        }
+        finally {
             await provider.disconnect();
+        }
+        return;
     }
+    const simple = command;
+    await simple.run(argv);
 }
 main().catch((err) => {
     console.error(err);

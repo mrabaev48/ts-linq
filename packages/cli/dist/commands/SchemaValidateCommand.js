@@ -46,12 +46,9 @@ class SchemaValidateCommand {
         this.fsAdapter = fsAdapter;
         this.name = 'schema:validate';
         this.describe = 'Проверяет, что БД соответствует snapshot';
-        this.requiresProvider = true;
         this.aliases = ['schema validate'];
     }
-    async run(provider, argv) {
-        if (!provider)
-            throw new Error('Provider is required');
+    async runDb(provider, argv) {
         const file = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
         if (!this.fsAdapter.exists(file)) {
             this.logger.error(`Snapshot file not found: ${file}`);

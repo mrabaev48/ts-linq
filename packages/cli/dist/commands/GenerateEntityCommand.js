@@ -48,12 +48,9 @@ class GenerateEntityCommand {
         this.template = template;
         this.name = 'generate:entity';
         this.describe = 'Генерирует сущность из имени или из таблицы';
-        this.requiresProvider = true;
         this.aliases = ['generate entity'];
     }
-    async run(provider, argv) {
-        if (!provider)
-            throw new Error('Provider is required');
+    async runDb(provider, argv) {
         const args = new ArgReader_1.ArgReader(argv);
         const rawName = (argv[2] || '').trim();
         if (!rawName) {

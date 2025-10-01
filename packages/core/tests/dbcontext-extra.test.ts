@@ -20,6 +20,7 @@ function providerStub(): jest.Mocked<DatabaseProvider> {
     providerLabel: 'sqlite',
     connect: jest.fn(async () => {}),
     disconnect: jest.fn(async () => {}),
+    createTable: jest.fn(async () => {}),
     beginTransaction: jest.fn(async () => {}),
     commitTransaction: jest.fn(async () => {}),
     rollbackTransaction: jest.fn(async () => {}),
@@ -53,6 +54,10 @@ describe('DbContext extra coverage', () => {
       isGenerated: true
     } as any);
     MetadataStorage.addPrimaryKey(E, 'id');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('ensureCreated connects and creates tables', async () => {
@@ -99,9 +104,9 @@ describe('DbContext extra coverage', () => {
   test('isLoaded: non-proxy checks property presence', () => {
     const provider = providerStub();
     const ctx = new TestContext({ provider });
-    const e = { a: 1 } as unknown as E;
-    expect(ctx.isLoaded(e, 'a' as any)).toBe(true);
-    expect(ctx.isLoaded(e, 'b' as any)).toBe(false);
+    const e = { a: 1 };
+    expect(ctx.isLoaded(e as any, 'a')).toBe(true);
+    expect(ctx.isLoaded(e as any, 'b')).toBe(false);
   });
 
   test('isLoaded: proxy delegates to LazyLoadingProxy', () => {

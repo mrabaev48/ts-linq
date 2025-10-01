@@ -1,5 +1,11 @@
 import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+type LoggerLike = {
+    warn(message: string, error?: unknown): void;
+};
 export declare class SQLiteDdlStrategy {
+    private readonly logger?;
+    private readonly indexBuilder;
+    constructor(logger?: LoggerLike | undefined);
     generateCreateTableSql(metadata: EntityMetadata): string;
     generateCreateIndexSql(tableName: string, index: {
         name: string;
@@ -17,4 +23,5 @@ export declare class SQLiteDdlStrategy {
     generateColumnDefinition(column: ColumnMetadata): string;
     mapTypeToSQLite(type: string): string;
 }
+export {};
 //# sourceMappingURL=SQLiteDdlStrategy.d.ts.map

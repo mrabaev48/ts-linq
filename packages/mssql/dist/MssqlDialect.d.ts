@@ -7,6 +7,10 @@ import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
  * - Converts '?' placeholders to @p1..@pn for MSSQL parameter style
  */
 export declare class MssqlDialect implements SqlDialect {
+    private readonly whereEmitter;
+    private readonly joinEmitter;
+    private readonly orderEmitter;
+    private readonly groupEmitter;
     quoteIdentifier(identifier: string): string;
     /**
      * Build a SELECT statement for MSSQL based on normalized QueryOptions.
@@ -20,5 +24,8 @@ export declare class MssqlDialect implements SqlDialect {
     };
     /** Replace '?' placeholders with @p1..@pn. */
     private numberPlaceholders;
+    private collectSelectParams;
+    private buildSelectHead;
+    private buildOffsetFetch;
 }
 //# sourceMappingURL=MssqlDialect.d.ts.map

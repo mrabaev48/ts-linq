@@ -45,12 +45,9 @@ class MigrationsStatusCommand {
         this.fsAdapter = fsAdapter;
         this.name = 'migration:status';
         this.describe = 'Показывает статус применённых/ожидающих миграций';
-        this.requiresProvider = true;
         this.aliases = ['migrations:status'];
     }
-    async run(provider, _argv) {
-        if (!provider)
-            throw new Error('Provider is required');
+    async runDb(provider, _argv) {
         const cfg = ((0, config_1.tryLoadConfig)(process.cwd()) || {});
         const migrationsDir = path.resolve(process.cwd(), cfg.migrations || 'migrations');
         const listLocal = () => {

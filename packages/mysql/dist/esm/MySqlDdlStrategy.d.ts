@@ -1,5 +1,11 @@
 import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+type LoggerLike = {
+    warn(message: string, error?: unknown): void;
+};
 export declare class MySqlDdlStrategy {
+    private readonly logger?;
+    private readonly indexBuilder;
+    constructor(logger?: LoggerLike | undefined);
     generateCreateTableSql(metadata: EntityMetadata): string;
     generateCreateIndexSql(table: string, index: {
         name: string;
@@ -19,4 +25,5 @@ export declare class MySqlDdlStrategy {
     generateColumnDefinition(column: ColumnMetadata): string;
     mapTypeToMySql(type: string): string;
 }
+export {};
 //# sourceMappingURL=MySqlDdlStrategy.d.ts.map
