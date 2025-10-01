@@ -393,7 +393,7 @@ export class LazyLoadingProxy {
         // Fetch target ids via join table
         const rows = await provider.executeQuery<{ id: unknown }>(
           `SELECT ${targetFk} as id FROM ${jt} WHERE ${sourceFk} = ?`,
-          [sourceId]
+          [sourceId as string | number | boolean | Date | null]
         );
         const ids = rows.map((r) => r.id).filter((v) => v !== undefined && v !== null);
         if (ids.length === 0) return [];
@@ -567,7 +567,7 @@ export class LazyLoadingProxy {
       `SELECT ${sourceFk} as s, ${targetFk} as t FROM ${jt} WHERE ${sourceFk} IN (${uniqueSourceIds
         .map(() => '?')
         .join(',')})`,
-      uniqueSourceIds
+      uniqueSourceIds as Array<string | number | boolean | Date | null>
     );
 
     const bySource = new Map<unknown, unknown[]>();

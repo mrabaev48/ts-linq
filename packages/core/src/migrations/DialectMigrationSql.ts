@@ -6,7 +6,8 @@ import { IndexesSqlBuilder } from './builders/IndexesSqlBuilder';
 import { ForeignKeysSqlBuilder } from './builders/ForeignKeysSqlBuilder';
 import { ColumnsSqlBuilder } from './builders/ColumnsSqlBuilder';
 
-// Dialect type moved to ./migrations/Dialect
+// Re-export Dialect for backward compatibility
+export type { Dialect };
 
 export function generateMigrationFromDiff(
   diff: SchemaDiff,

@@ -112,15 +112,31 @@ export function handleColumnChanges(
   if (!td.columnChanges || td.columnChanges.length === 0) return;
   for (const ch of td.columnChanges) {
     if (ch.kind === 'add') {
-      handleAddColumnChange(dialect, td, ch, up, down);
+      handleAddColumnChange(
+        dialect,
+        td,
+        ch as { kind: 'add'; column: ColumnDef; prev?: ColumnDef },
+        up,
+        down
+      );
       continue;
     }
     if (ch.kind === 'alter') {
-      handleAlterColumnChange(dialect, td, ch, up);
+      handleAlterColumnChange(
+        dialect,
+        td,
+        ch as { kind: 'alter'; column: ColumnDef; prev?: ColumnDef },
+        up
+      );
       continue;
     }
     if (ch.kind === 'drop') {
-      handleDropColumnChange(dialect, td, ch, up);
+      handleDropColumnChange(
+        dialect,
+        td,
+        ch as { kind: 'drop'; column: ColumnDef; prev?: ColumnDef },
+        up
+      );
     }
   }
 }

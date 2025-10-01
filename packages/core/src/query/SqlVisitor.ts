@@ -15,7 +15,8 @@ export class SqlVisitor {
    */
   public toSql(node: ExpressionNode): { condition: string; parameters: SqlParameter[] } {
     if (node.type === 'BinaryExpression') return this.binary.visit(node as BinaryExpressionNode);
-    if (node.type === 'LogicalExpression') return this.logical.visit(node as LogicalExpressionNode);
+    if (node.type === 'LogicalExpression')
+      return this.logical.visit(node as LogicalExpressionNode, this.toSql.bind(this));
     return { condition: '1=1', parameters: [] };
   }
 }
