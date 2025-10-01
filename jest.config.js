@@ -82,27 +82,27 @@ module.exports = {
     {
       displayName: 'sqlite',
       testMatch: ['<rootDir>/packages/sqlite/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/sqlite/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
     {
       displayName: 'postgres',
       testMatch: ['<rootDir>/packages/postgres/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/postgres/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
     {
       displayName: 'mysql',
       testMatch: ['<rootDir>/packages/mysql/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/mysql/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
     {
       displayName: 'mssql',
       testMatch: ['<rootDir>/packages/mssql/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/mssql/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
     {
       displayName: 'cli',
       testMatch: ['<rootDir>/packages/cli/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/packages/cli/tsconfig.json' }] }
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     }
   ]
 };
