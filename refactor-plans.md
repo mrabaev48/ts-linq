@@ -96,10 +96,14 @@
 - Дробные PR/коммиты по фазам, с тестами и обратной совместимостью.
 
 ## Следующие действия
+- [ГОТОВО] Реализовать many-to-many загрузку (lazy + batched) в EntityLoader/LazyLoadingProxy ✅
+- [ГОТОВО] Интеграционный тест m2m с реальной БД (SQLite) ✅
+- [ГОТОВО] Снизить complexity LazyLoadingProxy через SRP (extracting m2m helpers) ✅
 - Фаза 5: провести детальное профилирование (CPU/Heap) и зафиксировать отчёт по hot paths.
 - Фаза 5: подготовить примеры правил аларминга по p95/p99 и error rate (Alertmanager thresholds by env).
 - Выровнять линтер-правила тестов с production (подтверждено завершение Фазы 4).
 - Документация: расширить раздел PerformanceOptions (best practices по лимитам/TTL) и гайды по bench/profiling.
+- Продолжить покрытие тестами: DbSet, DdlBuilder, EntityLoader (не-m2m сценарии), Queryable cache/filters.
 
 ## Политика линтинга для тестов
 - Временно правила для `tests/**/*.ts` ослаблены через ESLint `overrides` (отключены строгие type-aware проверки: no-unsafe-*, require-await, ban-ts-comment и т.п.), чтобы ускорить рефакторинг ядра.
