@@ -131,6 +131,15 @@ export class EntityLoader {
     const depth = options.depth ?? 1;
     if (depth <= 0) return;
 
+    // Validate provided includes against metadata to fail fast on typos/mistakes
+    this.validateIncludes(
+      metadata as unknown as {
+        relationships: Array<{ propertyName: string }>;
+        target: { name: string };
+      },
+      options.includes
+    );
+
     for (const relationship of metadata.relationships) {
       if (!this.shouldInclude(relationship.propertyName, options.includes)) continue;
       await this.loadRelationshipBatchedByType(

@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+- Use only TypeScript 5 Stage 3 decorators (no legacy/experimental decorators).
+- Never use `any`. Always return strictly typed, production-grade code.
+- Follow SOLID and OOP principles.
+- Apply clean architecture and design patterns when relevant.
+- For SQL examples, prefer PostgreSQL syntax with parameter placeholders ($1, $2, ...).
+- Output minimal, correct, and idiomatic TypeScript.
+- Keep code modular and reusable for ORM framework.
+---
