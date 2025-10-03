@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Specs = exports.PredicateSpecification = exports.CompositeSpecification = void 0;
-const Nodes_1 = require("./ast/Nodes");
+const ast_1 = require("@ts-linq/ast");
 /** Composite specification combining child specs with a logical operator. */
 class CompositeSpecification {
     constructor(operator, specs) {
@@ -20,7 +20,7 @@ class CompositeSpecification {
         return node;
     }
     test(entity) {
-        if (this.operator === Nodes_1.LogicalOperator.And)
+        if (this.operator === ast_1.LogicalOperator.And)
             return this.specs.every((s) => s.test(entity));
         return this.specs.some((s) => s.test(entity));
     }
@@ -43,10 +43,10 @@ exports.PredicateSpecification = PredicateSpecification;
 /** Helper factory with logical combinators. */
 exports.Specs = {
     and(...specs) {
-        return new CompositeSpecification(Nodes_1.LogicalOperator.And, specs);
+        return new CompositeSpecification(ast_1.LogicalOperator.And, specs);
     },
     or(...specs) {
-        return new CompositeSpecification(Nodes_1.LogicalOperator.Or, specs);
+        return new CompositeSpecification(ast_1.LogicalOperator.Or, specs);
     }
 };
 //# sourceMappingURL=Specification.js.map

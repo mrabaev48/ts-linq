@@ -17,5 +17,4 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./ast/Nodes"), exports);
 __exportStar(require("./parser/PredicateParser"), exports);
 __exportStar(require("./specs/Specification"), exports);
-__exportStar(require("./Nodes"), exports);
 //# sourceMappingURL=index.js.map

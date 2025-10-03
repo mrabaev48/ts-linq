@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PredicateParser = void 0;
-const Nodes_1 = require("./ast/Nodes");
+const ast_1 = require("@ts-linq/ast");
 /**
  * Very lightweight parser that converts supported predicate functions
  * (e.g., a => a.price >= 10 && a.stock > 0) into a minimal AST
@@ -37,7 +37,7 @@ class PredicateParser {
             }
             const node = {
                 type: 'LogicalExpression',
-                operator: Nodes_1.LogicalOperator.And,
+                operator: ast_1.LogicalOperator.And,
                 expressions
             };
             return node;
@@ -49,11 +49,11 @@ class PredicateParser {
      */
     parseBinary(expr) {
         const patterns = [
-            { re: /\w+\.(\w+)\s*===?\s*(.+)/, op: Nodes_1.ComparisonOperator.Eq },
-            { re: /\w+\.(\w+)\s*>=\s*(.+)/, op: Nodes_1.ComparisonOperator.Gte },
-            { re: /\w+\.(\w+)\s*<=\s*(.+)/, op: Nodes_1.ComparisonOperator.Lte },
-            { re: /\w+\.(\w+)\s*>\s*(.+)/, op: Nodes_1.ComparisonOperator.Gt },
-            { re: /\w+\.(\w+)\s*<\s*(.+)/, op: Nodes_1.ComparisonOperator.Lt }
+            { re: /\w+\.(\w+)\s*===?\s*(.+)/, op: ast_1.ComparisonOperator.Eq },
+            { re: /\w+\.(\w+)\s*>=\s*(.+)/, op: ast_1.ComparisonOperator.Gte },
+            { re: /\w+\.(\w+)\s*<=\s*(.+)/, op: ast_1.ComparisonOperator.Lte },
+            { re: /\w+\.(\w+)\s*>\s*(.+)/, op: ast_1.ComparisonOperator.Gt },
+            { re: /\w+\.(\w+)\s*<\s*(.+)/, op: ast_1.ComparisonOperator.Lt }
         ];
         for (const { re, op } of patterns) {
             const match = expr.match(re);

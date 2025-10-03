@@ -25,7 +25,8 @@ __exportStar(require("./GlobalFilterApplier"), exports);
 __exportStar(require("./JoinPredicateParser"), exports);
 __exportStar(require("./PredicateParser"), exports);
 __exportStar(require("./QueryModel"), exports);
-__exportStar(require("./ast/Nodes"), exports);
+// AST типы и спецификации вынесены в @ts-linq/ast
+__exportStar(require("@ts-linq/ast"), exports);
 __exportStar(require("./ast/SqlVisitor"), exports);
 __exportStar(require("./spec/Specification"), exports);
 //# sourceMappingURL=index.js.map

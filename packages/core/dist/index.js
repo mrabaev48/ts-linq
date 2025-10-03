@@ -47,7 +47,7 @@ __exportStar(require("./query/GlobalFilterApplier"), exports);
 __exportStar(require("./query/JoinPredicateParser"), exports);
 __exportStar(require("./query/PredicateParser"), exports);
 __exportStar(require("./query/QueryModel"), exports);
-__exportStar(require("./query/ast/Nodes"), exports);
+__exportStar(require("@ts-linq/ast"), exports);
 __exportStar(require("./query/ast/SqlVisitor"), exports);
 __exportStar(require("./query/spec/Specification"), exports);
 __exportStar(require("./query/SqlFunctions"), exports);

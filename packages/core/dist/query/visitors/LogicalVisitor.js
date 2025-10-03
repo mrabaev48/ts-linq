@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LogicalVisitor = void 0;
-const Nodes_1 = require("../ast/Nodes");
+const ast_1 = require("@ts-linq/ast");
 class LogicalVisitor {
     visit(node, visit) {
         const parts = [];
@@ -11,7 +11,7 @@ class LogicalVisitor {
             parts.push(result.condition);
             params.push(...result.parameters);
         }
-        const joiner = node.operator === Nodes_1.LogicalOperator.And ? ' AND ' : ' OR ';
+        const joiner = node.operator === ast_1.LogicalOperator.And ? ' AND ' : ' OR ';
         return { condition: parts.join(joiner), parameters: params };
     }
 }
