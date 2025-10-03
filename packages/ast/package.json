@@ -1,0 +1,42 @@
+{
+  "name": "@ts-linq/ast",
+  "version": "1.0.0",
+  "description": "AST, парсеры и спецификации запросов для ts-linq",
+  "main": "./dist/index.js",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "gen:esm-entry": "node scripts/gen-esm-entry.cjs",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "orm",
+    "ast",
+    "parser",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.9.0"
+  }
+}

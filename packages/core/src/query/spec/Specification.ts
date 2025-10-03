@@ -1,5 +1,5 @@
-import type { ExpressionNode, LogicalExpressionNode } from '../ast/Nodes';
-import { LogicalOperator } from '../ast/Nodes';
+import type { ExpressionNode, LogicalExpressionNode } from '@ts-linq/ast';
+import { LogicalOperator } from '@ts-linq/ast';
 
 /**
  * Specification pattern: composable, testable business rules that can be

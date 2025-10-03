@@ -1,4 +1,4 @@
-import type { BinaryExpressionNode, ExpressionNode, LogicalExpressionNode } from './Nodes';
+import type { BinaryExpressionNode, ExpressionNode, LogicalExpressionNode } from '@ts-linq/ast';
 import type { SqlParameter } from '../types';
 import { BinaryVisitor } from './visitors/BinaryVisitor';
 import { LogicalVisitor } from './visitors/LogicalVisitor';

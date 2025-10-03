@@ -59,7 +59,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "reflect-metadata": "^0.2.2"
+    "reflect-metadata": "^0.2.2",
+    "@ts-linq/ast": "^1.0.0"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

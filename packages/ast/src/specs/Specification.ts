@@ -1,18 +1,16 @@
-import type { ExpressionNode, LogicalExpressionNode } from '@ts-linq/ast';
-import { LogicalOperator } from '@ts-linq/ast';
+import type { ExpressionNode, LogicalExpressionNode } from '../ast/Nodes';
+import { LogicalOperator } from '../ast/Nodes';
 
 /**
- * Specification pattern: composable, testable business rules that can be
- * converted to an expression tree for SQL generation when possible.
+ * Паттерн спецификаций: компонуемые, тестируемые бизнес-правила,
+ * которые при возможности конвертируются в дерево выражений для генерации SQL.
  */
 export interface Specification<T> {
-  /** Return AST representation for SQL generation or null when not supported. */
   toExpression(): ExpressionNode | null;
-  /** Evaluate rule in memory for fallback filtering. */
   test(entity: T): boolean;
 }
 
-/** Composite specification combining child specs with a logical operator. */
+/** Составная спецификация, объединяющая дочерние через логический оператор. */
 export class CompositeSpecification<T> implements Specification<T> {
   private readonly operator: LogicalOperator;
   private readonly specs: Array<Specification<T>>;
@@ -36,7 +34,7 @@ export class CompositeSpecification<T> implements Specification<T> {
   }
 }
 
-/** Leaf specification based on a predicate function with optional AST. */
+/** Листовая спецификация на основе предиката с опциональным AST. */
 export class PredicateSpecification<T> implements Specification<T> {
   private readonly predicate: (entity: T) => boolean;
   private readonly expression: ExpressionNode | null;
@@ -52,7 +50,7 @@ export class PredicateSpecification<T> implements Specification<T> {
   }
 }
 
-/** Helper factory with logical combinators. */
+/** Хелперы для логических комбинаторов. */
 export const Specs = {
   and<T>(...specs: Array<Specification<T>>): Specification<T> {
     return new CompositeSpecification<T>(LogicalOperator.And, specs);

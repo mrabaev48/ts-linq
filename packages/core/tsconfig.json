@@ -14,5 +14,6 @@
     "rootDir": "./src"
   },
   "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
+  "references": [{ "path": "../ast" }]
 }

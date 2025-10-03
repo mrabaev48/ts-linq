@@ -22,6 +22,7 @@
   },
   "files": [],
   "references": [
+    { "path": "packages/ast" },
     { "path": "packages/core" },
     { "path": "packages/sqlite" },
     { "path": "packages/postgres" },

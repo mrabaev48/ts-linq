@@ -17,6 +17,11 @@
       "import": "./packages/core/dist/index.esm.js",
       "require": "./packages/core/dist/index.js"
     },
+    "./ast": {
+      "types": "./packages/ast/dist/index.d.ts",
+      "import": "./packages/ast/dist/index.esm.js",
+      "require": "./packages/ast/dist/index.js"
+    },
     "./sqlite": {
       "types": "./packages/sqlite/dist/index.d.ts",
       "import": "./packages/sqlite/dist/index.esm.js",

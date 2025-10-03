@@ -1,4 +1,4 @@
-import type { BinaryExpressionNode } from '../ast/Nodes';
+import type { BinaryExpressionNode } from '@ts-linq/ast';
 import type { SqlParameter } from '../../types';
 
 export class BinaryVisitor {
