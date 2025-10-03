@@ -1,21 +1,34 @@
 import 'reflect-metadata';
 import fc from 'fast-check';
-import { PredicateParser } from '@ts-linq/ast';
-import type { ExpressionNode, BinaryExpressionNode, LogicalExpressionNode } from '@ts-linq/ast';
-import { ComparisonOperator, LogicalOperator } from '@ts-linq/ast';
+import { PredicateParser } from '../src';
+import type { ExpressionNode, BinaryExpressionNode, LogicalExpressionNode } from '../src';
+import { ComparisonOperator, LogicalOperator } from '../src';
 
 type Row = { price: number; stock: number };
 
+function isBinary(node: ExpressionNode): node is BinaryExpressionNode {
+  return (node as { type?: string }).type === 'BinaryExpression';
+}
+
+function isLogical(node: ExpressionNode): node is LogicalExpressionNode {
+  return (node as { type?: string }).type === 'LogicalExpression';
+}
+
 function evalAst(node: ExpressionNode, row: Row): boolean {
-  if (node.type === 'BinaryExpression') {
-    const n = node as BinaryExpressionNode;
-    const leftValue = (row as Record<string, unknown>)[n.left.name] as
-      | number
-      | string
-      | boolean
-      | null;
-    const rightValue = n.right.value;
-    switch (n.operator) {
+  if (isBinary(node)) {
+    let leftValue: number | string | boolean | null;
+    switch (node.left.name) {
+      case 'price':
+        leftValue = row.price;
+        break;
+      case 'stock':
+        leftValue = row.stock;
+        break;
+      default:
+        leftValue = null;
+    }
+    const rightValue = node.right.value;
+    switch (node.operator) {
       case ComparisonOperator.Eq:
         return leftValue === rightValue;
       case ComparisonOperator.Gte:
@@ -30,12 +43,11 @@ function evalAst(node: ExpressionNode, row: Row): boolean {
         return false;
     }
   }
-  if (node.type === 'LogicalExpression') {
-    const n = node as LogicalExpressionNode;
-    if (n.operator === LogicalOperator.And) {
-      return n.expressions.every((e) => evalAst(e, row));
+  if (isLogical(node)) {
+    if (node.operator === LogicalOperator.And) {
+      return node.expressions.every((e) => evalAst(e, row));
     }
-    return n.expressions.some((e) => evalAst(e, row));
+    return node.expressions.some((e) => evalAst(e, row));
   }
   return true;
 }
