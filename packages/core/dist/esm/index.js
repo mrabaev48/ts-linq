@@ -4,6 +4,7 @@
  */
 // Core types
 export * from './types';
+export * from './types/Logger';
 // Decorators
 export * from './decorators/Entity';
 export * from './decorators/Column';
@@ -41,6 +42,7 @@ export * from './DdlBuilder';
 // Loading
 export * from './loading/LoadingStrategy';
 export * from './loading/EntityLoader';
+export * from './loading/LazyLoadingProxy';
 // Migrations
 export * from './migrations/Migration';
 export * from './migrations/MigrationRunner';

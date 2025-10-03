@@ -7,6 +7,10 @@ const LoadingStrategy_1 = require("../loading/LoadingStrategy");
 const MetadataStorage_1 = require("../metadata/MetadataStorage");
 const LazyLoadingProxy_1 = require("../loading/LazyLoadingProxy");
 const DbSet_1 = require("./DbSet");
+const InsertCommand_1 = require("./commands/InsertCommand");
+const UpdateCommand_1 = require("./commands/UpdateCommand");
+const DeleteCommand_1 = require("./commands/DeleteCommand");
+const ChangeValidationService_1 = require("./services/ChangeValidationService");
 const types_1 = require("../types");
 const EntityCache_1 = require("../utils/EntityCache");
 function getOriginal(target) {
@@ -58,8 +62,12 @@ class DbContext {
         this._audit = options.audit;
         this._globalFilters = options.globalFilters;
         this._validationOptions = options.validation;
+        this._validationService = new ChangeValidationService_1.ChangeValidationService(this._validationOptions?.translate, this._audit);
         this._changeTracker = new ChangeTracker_1.ChangeTracker();
         this._entityLoader = new EntityLoader_1.EntityLoader(this._provider);
+        this._insertCmd = new InsertCommand_1.InsertCommand(this._provider, (c) => this.updateEntityCache(c));
+        this._updateCmd = new UpdateCommand_1.UpdateCommand(this._provider, (c) => this.updateEntityCache(c));
+        this._deleteCmd = new DeleteCommand_1.DeleteCommand(this._provider, (c) => this.handleSoftDelete(c), (c) => this.removeFromEntityCache(c));
         // Initialize optional L2 entity cache
         if (options.performance?.enableEntityCache) {
             this._entityCache = new EntityCache_1.EntityCache(options.performance.entityCacheSize ?? 10000, this._provider.loggerRef, this._provider.providerLabel);
@@ -128,103 +136,16 @@ class DbContext {
      */
     async saveChanges() {
         const changes = this._changeTracker.getChanges();
-        // Prefill DB defaults on Added entities to satisfy validation and keep entity consistent
-        for (const change of changes) {
-            if (change.state === 'added') {
-                const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
-                if (meta) {
-                    for (const col of meta.columns) {
-                        if (change.entity[col.propertyName] === undefined &&
-                            col.defaultValue !== undefined) {
-                            change.entity[col.propertyName] = col.defaultValue;
-                        }
-                    }
-                }
-            }
-        }
-        // Validate entities before persistence
-        this.validateChanges(changes);
+        if (!changes || changes.length === 0)
+            return 0;
+        this.prefillDefaults(changes);
+        const normalizedForValidation = this.normalizeForValidation(changes);
+        this._validationService.validate(normalizedForValidation);
         let affectedRows = 0;
         for (const change of changes) {
-            // Apply audit stamping before persistence
-            if (this._audit?.enabled) {
-                const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
-                if (meta) {
-                    const now = (this._audit.clock ?? (() => new Date()))();
-                    const createdAt = this._audit.timeColumns?.createdAt ?? 'createdAt';
-                    const updatedAt = this._audit.timeColumns?.updatedAt ?? 'updatedAt';
-                    const createdBy = this._audit.userColumns?.createdBy ?? 'createdBy';
-                    const updatedBy = this._audit.userColumns?.updatedBy ?? 'updatedBy';
-                    const currentUser = this._audit.getCurrentUserId?.();
-                    if (change.state === 'added') {
-                        if (meta.columns.some((c) => c.propertyName === createdAt))
-                            change.entity[createdAt] = now;
-                        if (meta.columns.some((c) => c.propertyName === createdBy) && currentUser !== undefined)
-                            change.entity[createdBy] =
-                                currentUser;
-                    }
-                    if (change.state === 'added' || change.state === 'modified') {
-                        if (meta.columns.some((c) => c.propertyName === updatedAt))
-                            change.entity[updatedAt] = now;
-                        if (meta.columns.some((c) => c.propertyName === updatedBy) && currentUser !== undefined)
-                            change.entity[updatedBy] =
-                                currentUser;
-                    }
-                }
-            }
-            switch (change.state) {
-                case 'added':
-                    await this._provider.insert(change.entity, change.entityClass);
-                    // update L2 cache
-                    if (this._entityCache) {
-                        const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
-                        const pk = meta?.primaryKeys[0];
-                        if (pk)
-                            this._entityCache.set(change.entityClass, change.entity[pk], change.entity);
-                    }
-                    affectedRows++;
-                    break;
-                case 'modified':
-                    await this._provider.update(change.entity, change.entityClass);
-                    if (this._entityCache) {
-                        const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
-                        const pk = meta?.primaryKeys[0];
-                        if (pk)
-                            this._entityCache.set(change.entityClass, change.entity[pk], change.entity);
-                    }
-                    affectedRows++;
-                    break;
-                case 'deleted':
-                    // Soft delete if enabled and entity has configured column, else hard delete
-                    if (this._softDelete?.enabled) {
-                        const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
-                        const flag = this._softDelete.column ?? 'isDeleted';
-                        const deletedAt = this._softDelete.deletedAtColumn ?? 'deletedAt';
-                        if (meta &&
-                            meta.columns.some((c) => c.propertyName === flag || c.columnName === flag)) {
-                            change.entity[flag] = true;
-                            if (meta.columns.some((c) => c.propertyName === deletedAt || c.columnName === deletedAt)) {
-                                change.entity[deletedAt] = new Date();
-                            }
-                            await this._provider.update(change.entity, change.entityClass);
-                            if (this._entityCache) {
-                                const pk = meta.primaryKeys[0];
-                                this._entityCache.set(change.entityClass, change.entity[pk], change.entity);
-                            }
-                            affectedRows++;
-                            break;
-                        }
-                    }
-                    await this._provider.delete(change.entity, change.entityClass);
-                    if (this._entityCache) {
-                        const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
-                        const pk = meta?.primaryKeys[0];
-                        if (pk)
-                            this._entityCache.remove(change.entityClass, change.entity[pk]);
-                    }
-                    affectedRows++;
-                    break;
-            }
+            const normalized = this.normalizeChange(change);
+            this.applyAudit(normalized);
+            affectedRows += await this.processChange(normalized);
         }
         this._changeTracker.acceptAllChanges();
         return affectedRows;
@@ -390,10 +311,9 @@ class DbContext {
         if (LazyLoadingProxy_1.LazyLoadingProxy.isLazyProxy(entity)) {
             return LazyLoadingProxy_1.LazyLoadingProxy.isRelationshipLoaded(entity, propertyName);
         }
-        // For non-proxy entities, check if property exists and is not undefined/null
+        // For non-proxy entities, check if property key exists (even if undefined/null)
         const record = entity;
-        const value = record[propertyName];
-        return value !== undefined && value !== null;
+        return propertyName in record;
     }
     // Removed string-based include API in favor of predicate-based include on Queryable
     /**
@@ -430,86 +350,141 @@ class DbContext {
             if (!meta)
                 continue;
             const audit = this._audit?.enabled ? this._audit : undefined;
-            const auditNames = audit
-                ? {
-                    createdAt: audit.timeColumns?.createdAt ?? 'createdAt',
-                    updatedAt: audit.timeColumns?.updatedAt ?? 'updatedAt',
-                    createdBy: audit.userColumns?.createdBy ?? 'createdBy',
-                    updatedBy: audit.userColumns?.updatedBy ?? 'updatedBy'
-                }
-                : undefined;
+            const auditNames = this.extractAuditNames(audit);
             for (const col of meta.columns) {
-                const value = change.entity[col.propertyName];
-                // Computed columns are read-only: disallow assignment on insert and modification of value
-                if (col.isComputed) {
-                    if (change.state === 'added') {
-                        if (value !== undefined) {
-                            errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be set on insert'));
-                        }
-                    }
-                    else if (change.state === 'modified' && change.originalValues) {
-                        const prev = change.originalValues[col.propertyName];
-                        if (value !== prev) {
-                            errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be updated'));
-                        }
-                    }
-                }
-                // Skip validation for auto-generated primary keys on Added entities
-                const isGeneratedPk = meta.primaryKeys.includes(col.propertyName) &&
-                    col.isGenerated &&
-                    change.state === 'added';
-                // Allow DB-level defaultValue to satisfy non-null on Added when undefined in entity
-                const hasDbDefault = col.defaultValue !== undefined && change.state === 'added';
-                // Allow audit stamping to satisfy non-null constraints (compat with audit)
-                const satisfiableByAudit = !!audit &&
-                    ((change.state === 'added' &&
-                        (col.propertyName === auditNames.createdAt ||
-                            col.propertyName === auditNames.createdBy) &&
-                        (col.propertyName === auditNames.createdAt || audit.getCurrentUserId !== undefined)) ||
-                        ((change.state === 'added' || change.state === 'modified') &&
-                            (col.propertyName === auditNames.updatedAt ||
-                                col.propertyName === auditNames.updatedBy) &&
-                            (col.propertyName === auditNames.updatedAt ||
-                                audit.getCurrentUserId !== undefined)));
-                if (!col.nullable &&
-                    (value === null || value === undefined) &&
-                    !isGeneratedPk &&
-                    !hasDbDefault &&
-                    !satisfiableByAudit) {
-                    errors.push(this.buildValidationDetail(meta, col.propertyName, 'Value cannot be null'));
-                }
-                if (col.length && typeof value === 'string' && value.length > col.length) {
-                    errors.push(this.buildValidationDetail(meta, col.propertyName, `Length exceeds ${col.length}`));
-                }
+                this.validateComputedColumn(meta, col, change, errors);
+                this.validateNullAndLength(meta, col, change, audit, auditNames, errors);
             }
-            // Conditional Validations (Stage-3 ValidIf) — run AFTER base checks
-            try {
-                const rules = this.getValidationRules(change.entityClass);
-                for (const rule of rules) {
-                    // Phase gating (onCreate / onUpdate / always)
-                    const phase = rule.phase || 'always';
-                    if (phase === 'onCreate' && change.state !== 'added')
-                        continue;
-                    if (phase === 'onUpdate' && change.state !== 'modified')
-                        continue;
-                    const ok = !!rule.predicate(change.entity);
-                    if (!ok) {
-                        const msgKey = rule.messageKey;
-                        const msgParams = rule.messageParams;
-                        const translated = msgKey && this._validationOptions?.translate
-                            ? this._validationOptions.translate(msgKey, msgParams)
-                            : undefined;
-                        const baseMsg = translated || rule.message || 'Validation rule failed';
-                        errors.push(this.buildValidationDetail(meta, rule.propertyName, baseMsg));
-                    }
-                }
-            }
-            catch {
-                /* ignore */
-            }
+            this.runConditionalValidations(change, meta, errors);
         }
         if (errors.length > 0)
             throw new types_1.ValidationError('Model validation failed', errors);
+    }
+    // ================= Helpers extracted from saveChanges =================
+    prefillDefaults(changes) {
+        for (const change of changes) {
+            if (change.state !== 'added')
+                continue;
+            const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
+            if (!meta)
+                continue;
+            for (const col of meta.columns) {
+                const record = change.entity;
+                if (record[col.propertyName] === undefined && col.defaultValue !== undefined) {
+                    record[col.propertyName] = col.defaultValue;
+                }
+            }
+        }
+    }
+    normalizeForValidation(changes) {
+        return changes.map((c) => ({
+            entity: c.entity,
+            entityClass: c.entityClass,
+            state: c.state,
+            originalValues: c.originalValues
+        }));
+    }
+    normalizeChange(change) {
+        return {
+            entity: change.entity,
+            entityClass: change.entityClass,
+            state: change.state
+        };
+    }
+    applyAudit(change) {
+        if (!this._audit?.enabled)
+            return;
+        const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
+        if (!meta)
+            return;
+        const names = this.extractAuditNames(this._audit);
+        if (!names)
+            return;
+        const now = (this._audit.clock ?? (() => new Date()))();
+        const currentUser = this._audit.getCurrentUserId?.();
+        if (change.state === 'added') {
+            this.applyCreatedAudit(meta, change.entity, names, now, currentUser);
+        }
+        if (change.state === 'added' || change.state === 'modified') {
+            this.applyUpdatedAudit(meta, change.entity, names, now, currentUser);
+        }
+    }
+    applyCreatedAudit(meta, entity, names, now, currentUser) {
+        if (this.hasProperty(meta, names.createdAt))
+            entity[names.createdAt] = now;
+        if (this.hasProperty(meta, names.createdBy) && currentUser !== undefined)
+            entity[names.createdBy] = currentUser;
+    }
+    applyUpdatedAudit(meta, entity, names, now, currentUser) {
+        if (this.hasProperty(meta, names.updatedAt))
+            entity[names.updatedAt] = now;
+        if (this.hasProperty(meta, names.updatedBy) && currentUser !== undefined)
+            entity[names.updatedBy] = currentUser;
+    }
+    hasProperty(meta, propertyName) {
+        return meta.columns.some((c) => c.propertyName === propertyName);
+    }
+    async processChange(change) {
+        switch (change.state) {
+            case 'added':
+                await this.applyInsert(change);
+                return 1;
+            case 'modified':
+                await this.applyUpdate(change);
+                return 1;
+            case 'deleted':
+                return (await this.applyDelete(change)) ? 1 : 0;
+            default:
+                return 0;
+        }
+    }
+    async applyInsert(change) {
+        await this._insertCmd.execute({ ...change, state: 'added' });
+    }
+    async applyUpdate(change) {
+        await this._updateCmd.execute({ ...change, state: 'modified' });
+    }
+    async applyDelete(change) {
+        return await this._deleteCmd.execute({ ...change, state: 'deleted' });
+    }
+    async handleSoftDelete(change) {
+        if (!this._softDelete?.enabled)
+            return false;
+        const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
+        if (!meta)
+            return false;
+        const flag = this._softDelete.column ?? 'isDeleted';
+        const deletedAt = this._softDelete.deletedAtColumn ?? 'deletedAt';
+        const hasFlag = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
+        if (!hasFlag)
+            return false;
+        change.entity[flag] = true;
+        const hasDeletedAt = meta.columns.some((c) => c.propertyName === deletedAt || c.columnName === deletedAt);
+        if (hasDeletedAt)
+            change.entity[deletedAt] = new Date();
+        await this._provider.update(change.entity, change.entityClass);
+        this.updateEntityCache(change);
+        return true;
+    }
+    updateEntityCache(change) {
+        if (!this._entityCache)
+            return;
+        const pk = this.getPrimaryKey(change.entityClass);
+        if (!pk)
+            return;
+        this._entityCache.set(change.entityClass, change.entity[pk], change.entity);
+    }
+    removeFromEntityCache(change) {
+        if (!this._entityCache)
+            return;
+        const pk = this.getPrimaryKey(change.entityClass);
+        if (!pk)
+            return;
+        this._entityCache.remove(change.entityClass, change.entity[pk]);
+    }
+    getPrimaryKey(entityClass) {
+        const meta = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
+        return meta?.primaryKeys[0];
     }
     /**
      * Retrieve cached validation rules for an entity class (Reflect metadata → cache).
@@ -521,6 +496,91 @@ class DbContext {
         const rules = (Reflect.getOwnMetadata('orm:validations', entityClass) || []).slice();
         this._validationRulesCache.set(entityClass, rules);
         return rules;
+    }
+    extractAuditNames(audit) {
+        if (!audit)
+            return undefined;
+        return {
+            createdAt: audit.timeColumns?.createdAt ?? 'createdAt',
+            updatedAt: audit.timeColumns?.updatedAt ?? 'updatedAt',
+            createdBy: audit.userColumns?.createdBy ?? 'createdBy',
+            updatedBy: audit.userColumns?.updatedBy ?? 'updatedBy'
+        };
+    }
+    validateComputedColumn(meta, col, change, errors) {
+        if (!col.isComputed)
+            return;
+        const value = change.entity[col.propertyName];
+        if (change.state === 'added') {
+            if (value !== undefined)
+                errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be set on insert'));
+            return;
+        }
+        if (change.state === 'modified' && change.originalValues) {
+            const prev = change.originalValues[col.propertyName];
+            if (value !== prev)
+                errors.push(this.buildValidationDetail(meta, col.propertyName, 'Computed column is read-only and cannot be updated'));
+        }
+    }
+    validateNullAndLength(meta, col, change, audit, auditNames, errors) {
+        const value = change.entity[col.propertyName];
+        const isGeneratedPk = this.isGeneratedPrimaryKey(meta, col, change);
+        const hasDbDefault = col.defaultValue !== undefined && change.state === 'added';
+        const satisfiableByAudit = this.canBeSatisfiedByAudit(audit, auditNames, change.state, col.propertyName);
+        if (!col.nullable &&
+            (value === null || value === undefined) &&
+            !isGeneratedPk &&
+            !hasDbDefault &&
+            !satisfiableByAudit) {
+            errors.push(this.buildValidationDetail(meta, col.propertyName, 'Value cannot be null'));
+        }
+        if (col.length && typeof value === 'string' && value.length > col.length) {
+            errors.push(this.buildValidationDetail(meta, col.propertyName, `Length exceeds ${col.length}`));
+        }
+    }
+    isGeneratedPrimaryKey(meta, col, change) {
+        return (!!meta &&
+            meta.primaryKeys.includes(col.propertyName) &&
+            !!col.isGenerated &&
+            change.state === 'added');
+    }
+    canBeSatisfiedByAudit(audit, auditNames, state, propertyName) {
+        if (!audit || !auditNames)
+            return false;
+        if (state === 'added' &&
+            (propertyName === auditNames.createdAt || propertyName === auditNames.createdBy)) {
+            return propertyName === auditNames.createdAt || audit.getCurrentUserId !== undefined;
+        }
+        if ((state === 'added' || state === 'modified') &&
+            (propertyName === auditNames.updatedAt || propertyName === auditNames.updatedBy)) {
+            return propertyName === auditNames.updatedAt || audit.getCurrentUserId !== undefined;
+        }
+        return false;
+    }
+    runConditionalValidations(change, meta, errors) {
+        try {
+            const rules = this.getValidationRules(change.entityClass);
+            for (const rule of rules) {
+                const phase = rule.phase || 'always';
+                if (phase === 'onCreate' && change.state !== 'added')
+                    continue;
+                if (phase === 'onUpdate' && change.state !== 'modified')
+                    continue;
+                const ok = !!rule.predicate(change.entity);
+                if (!ok) {
+                    const msgKey = rule.messageKey;
+                    const msgParams = rule.messageParams;
+                    const translated = msgKey && this._validationOptions?.translate
+                        ? this._validationOptions.translate(msgKey, msgParams)
+                        : undefined;
+                    const baseMsg = translated || rule.message || 'Validation rule failed';
+                    errors.push(this.buildValidationDetail(meta, rule.propertyName, baseMsg));
+                }
+            }
+        }
+        catch {
+            /* ignore */
+        }
     }
     buildValidationDetail(meta, property, message) {
         const table = meta?.tableName || 'unknown_table';

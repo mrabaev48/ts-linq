@@ -1,15 +1,9 @@
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import { SchemaSnapshotBuilder } from './SchemaSnapshot';
-import {
-  SQLiteSchemaInspector,
-  PostgresSchemaInspector,
-  MySqlSchemaInspector,
-  MssqlSchemaInspector
-} from './SchemaInspector';
-import type { SchemaSnapshot, TableSnapshot, ColumnDef, IndexDef } from './DiffTypes';
-import { compareSchemas } from './DiffTypes';
-import { generateMigrationFromDiff } from './DialectMigrationSql';
+import type { SchemaSnapshot, ColumnDef } from './DiffTypes';
+import { SchemaInspectionService } from './services/SchemaInspectionService';
+import { StepPlanner } from './services/StepPlanner';
 
 export interface MigrationStep {
   sql: string;
@@ -26,132 +20,12 @@ export class DiffMigrationGenerator {
   constructor(private provider: DatabaseProvider) {}
 
   public async generate(): Promise<MigrationStep[]> {
-    const steps: MigrationStep[] = [];
     const expected: SchemaSnapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
-    // Build actual snapshot depending on provider
-    const label = this.provider.providerLabel;
-    let actual: SchemaSnapshot;
-    if (label === 'sqlite') {
-      const inspector = new SQLiteSchemaInspector(this.provider);
-      const tableNames = await inspector.listTables();
-      const actualTables: TableSnapshot[] = [];
-      for (const tableName of tableNames) {
-        const info = await inspector.getTableInfo(tableName);
-        const indexes = await inspector.getIndexes(tableName);
-        actualTables.push({
-          name: tableName,
-          columns: info.columns.map((col) => ({
-            name: col.name,
-            type: this.normalizeType(col.type),
-            nullable: !col.notnull
-          })),
-          primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
-          indexes: indexes.map((i) => ({
-            name: i.name,
-            columns: i.columns,
-            unique: i.unique,
-            where: i.where
-          })),
-          foreignKeys: []
-        });
-      }
-      actual = { tables: actualTables };
-    } else {
-      // For non-SQLite: mirror expected columns/PKs, but fetch actual indexes via inspectors
-      const idxFetch = async (table: string): Promise<IndexDef[]> => {
-        if (label === 'postgresql') {
-          const ins = new PostgresSchemaInspector(this.provider);
-          const list = await ins.getIndexes(table);
-          return list.map((i) => ({
-            name: i.name,
-            columns: i.columns,
-            unique: i.unique,
-            where: i.where
-          }));
-        }
-        if (label === 'mysql') {
-          const ins = new MySqlSchemaInspector(this.provider);
-          const list = await ins.getIndexes(table);
-          return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique }));
-        }
-        if (label === 'mssql') {
-          const ins = new MssqlSchemaInspector(this.provider);
-          const list = await ins.getIndexes(table);
-          return list.map((i) => ({
-            name: i.name,
-            columns: i.columns,
-            unique: i.unique,
-            where: i.where
-          }));
-        }
-        return [];
-      };
-      const actualTables: TableSnapshot[] = [];
-      for (const t of expected.tables) {
-        const indexes = await idxFetch(t.name);
-        actualTables.push({
-          name: t.name,
-          columns: t.columns.map((c) => ({ name: c.name, type: c.type, nullable: c.nullable })),
-          primaryKeys: t.primaryKeys.slice(),
-          indexes,
-          foreignKeys: []
-        });
-      }
-      actual = { tables: actualTables };
-    }
-    const diff = compareSchemas(expected, actual);
-    const rendered = generateMigrationFromDiff(
-      diff,
-      label as 'sqlite' | 'postgresql' | 'mysql' | 'mssql'
-    );
-    return rendered.up.map((sql) => ({ sql }));
-  }
-
-  private buildCreateTableSql(table: string, columns: ColumnDef[], primaryKeys: string[]): string {
-    const colDefs = columns.map((c) => {
-      const type = this.mapType(c.type);
-      const nn = c.nullable ? '' : ' NOT NULL';
-      const def =
-        c.defaultValue !== undefined ? ` DEFAULT ${this.formatValue(c.defaultValue)}` : '';
-      const colName = c.name;
-      return `${colName} ${type}${nn}${def}`;
-    });
-    if (Array.isArray(primaryKeys) && primaryKeys.length > 0) {
-      colDefs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`);
-    }
-    return `CREATE TABLE IF NOT EXISTS ${table} (${colDefs.join(', ')})`;
-  }
-
-  private mapType(type: string): string {
-    switch (type.toUpperCase()) {
-      case 'INTEGER':
-      case 'NUMBER':
-        return 'INTEGER';
-      case 'REAL':
-      case 'FLOAT':
-      case 'DOUBLE':
-        return 'REAL';
-      case 'BOOLEAN':
-        return 'INTEGER';
-      case 'DATETIME':
-      case 'DATE':
-        return 'TEXT';
-      case 'BLOB':
-        return 'BLOB';
-      default:
-        return 'TEXT';
-    }
-  }
-
-  private normalizeType(type: string): string {
-    return this.mapType(type);
-  }
-
-  private formatValue(v: unknown): string {
-    if (v === null) return 'NULL';
-    if (typeof v === 'number') return String(v);
-    if (typeof v === 'boolean') return v ? '1' : '0';
-    if (v instanceof Date) return `'${v.toISOString()}'`;
-    return `'${String(v).replace(/'/g, "''")}'`;
+    const label = this.provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
+    const inspection = new SchemaInspectionService();
+    const actual: SchemaSnapshot = await inspection.buildActualSnapshot(this.provider, expected);
+    const planner = new StepPlanner();
+    const upSql = planner.plan(expected, actual, label);
+    return upSql.map((sql) => ({ sql }));
   }
 }

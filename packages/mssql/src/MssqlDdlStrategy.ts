@@ -1,7 +1,14 @@
 import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
 import { SqlHelper } from '@ts-linq/core';
 
+type LoggerLike = { warn(message: string, error?: unknown): void };
+import { MssqlIndexBuilder } from './builders/MssqlIndexBuilder';
+
 export class MssqlDdlStrategy {
+  private readonly indexBuilder: MssqlIndexBuilder;
+  constructor(private readonly logger?: LoggerLike) {
+    this.indexBuilder = new MssqlIndexBuilder(logger);
+  }
   public generateCreateTableSql(metadata: EntityMetadata): string {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
@@ -24,7 +31,7 @@ export class MssqlDdlStrategy {
       const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
         .computedStorage;
       if (storage && storage !== 'PERSISTED') {
-        console.warn(
+        this.logger?.warn(
           `MSSQL: computedStorage='${storage}' is not supported; use 'PERSISTED' or omit. Applying non-persisted computed for ${column.columnName}`
         );
       }
@@ -55,28 +62,7 @@ export class MssqlDdlStrategy {
       include?: string[];
     }
   ): string {
-    // MSSQL does not support expression-based columns in simple CREATE INDEX list
-    // Warn if caller passed unexpected props via type erasure
-    const unexpected: string[] = [];
-    if ((index as unknown as { expressions?: string[] }).expressions)
-      unexpected.push('expressions');
-    if ((index as unknown as { collations?: Record<string, string> }).collations)
-      unexpected.push('collations');
-    if ((index as unknown as { nulls?: Record<string, 'FIRST' | 'LAST'> }).nulls)
-      unexpected.push('nulls');
-    if (unexpected.length > 0) {
-      console.warn(
-        `MSSQL: unsupported index options ignored for ${index.name}: ${unexpected.join(', ')}`
-      );
-    }
-    const unique = index.unique ? 'UNIQUE ' : '';
-    const whereSql = index.where ? ` WHERE ${index.where}` : '';
-    const cols = index.columns
-      .map((c) => (index.orders?.[c] ? `${c} ${index.orders[c]}` : c))
-      .join(', ');
-    const include =
-      index.include && index.include.length > 0 ? ` INCLUDE (${index.include.join(', ')})` : '';
-    return `IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='${index.name}' AND object_id=OBJECT_ID('${tableName}')) CREATE ${unique}INDEX ${index.name} ON ${tableName} (${cols})${include}${whereSql}`;
+    return this.indexBuilder.buildCreateIndexSql(tableName, index);
   }
 
   public mapTypeToMssql(type: string): string {

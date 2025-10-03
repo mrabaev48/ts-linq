@@ -8,9 +8,10 @@ export class EntityLoader {
     /**
      * @param provider Database provider used for underlying queries.
      */
-    constructor(provider) {
+    constructor(provider, logger) {
         this._defaultStrategy = LoadingStrategy.Lazy;
         this._provider = provider;
+        this._logger = logger;
     }
     /**
      * Set the default loading strategy for operations.
@@ -62,82 +63,25 @@ export class EntityLoader {
      * Populate relationship properties on an entity according to options.
      */
     async loadRelationships(entity, entityClass, options) {
-        // Ensure decorator initializers run at least once for Stage-3 field decorators
-        try {
-            void new entityClass();
-        }
-        catch {
-            /* ignore */
-        }
+        this.ensureStage3Init(entityClass);
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;
         const depth = options.depth ?? 1;
         if (depth <= 0)
             return;
+        this.validateIncludes(metadata, options.includes);
         for (const relationship of metadata.relationships) {
-            if (options.includes) {
-                // Validate includes against metadata upfront
-                for (const inc of options.includes) {
-                    const exists = metadata.relationships.some((r) => r.propertyName === inc);
-                    if (!exists)
-                        throw new Error(`Invalid include '${inc}' for ${metadata.target.name}`);
-                }
-            }
-            const shouldInclude = !options.includes || options.includes.includes(relationship.propertyName);
-            if (!shouldInclude)
+            if (!this.shouldInclude(relationship.propertyName, options.includes))
                 continue;
-            try {
-                const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
-                switch (relationship.type) {
-                    case 'many-to-one':
-                    case 'one-to-one': {
-                        const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
-                        const foreignKeyValue = entity[foreignKeyName];
-                        if (foreignKeyValue === undefined || foreignKeyValue === null) {
-                            break;
-                        }
-                        const relatedEntity = await this.loadEntity(targetCtor, foreignKeyValue, { ...options, depth: depth - 1 });
-                        if (relatedEntity) {
-                            entity[relationship.propertyName] =
-                                relatedEntity;
-                        }
-                        break;
-                    }
-                    case 'one-to-many': {
-                        const parentPkProperty = metadata.primaryKeys[0];
-                        if (!parentPkProperty) {
-                            break;
-                        }
-                        const parentPkValue = entity[parentPkProperty];
-                        if (parentPkValue === undefined || parentPkValue === null) {
-                            break;
-                        }
-                        const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
-                        const relatedEntities = await this._provider.findWhere(targetCtor, {
-                            [foreignKeyName]: parentPkValue
-                        });
-                        entity[relationship.propertyName] =
-                            relatedEntities;
-                        break;
-                    }
-                }
-            }
-            catch (error) {
-                console.warn(`Failed to load relationship ${relationship.propertyName}:`, error);
-            }
+            await this.loadRelationshipByType(entity, entityClass, metadata, relationship, options, depth);
         }
     }
     /** Batched variant to reduce N+1 queries when loading many entities. */
     async loadRelationshipsBatched(entities, entityClass, options) {
         if (entities.length === 0)
             return;
-        try {
-            void new entityClass();
-        }
-        catch {
-            /* ignore */
-        }
+        this.ensureStage3Init(entityClass);
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;
@@ -145,76 +89,9 @@ export class EntityLoader {
         if (depth <= 0)
             return;
         for (const relationship of metadata.relationships) {
-            const shouldInclude = !options.includes || options.includes.includes(relationship.propertyName);
-            if (!shouldInclude)
+            if (!this.shouldInclude(relationship.propertyName, options.includes))
                 continue;
-            const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
-            switch (relationship.type) {
-                case 'many-to-one':
-                case 'one-to-one': {
-                    const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
-                    const fkValues = entities
-                        .map((e) => e[foreignKeyName])
-                        .filter((v) => v !== undefined && v !== null);
-                    const uniqueFkValues = Array.from(new Set(fkValues));
-                    if (uniqueFkValues.length === 0)
-                        break;
-                    const related = await this._provider.findWhereIn(targetCtor, metadata.columns.find((c) => c.propertyName === metadata.primaryKeys[0])?.columnName ||
-                        metadata.primaryKeys[0], uniqueFkValues);
-                    const byId = new Map();
-                    const targetMeta = MetadataStorage.getEntity(targetCtor);
-                    const targetPk = targetMeta?.primaryKeys[0];
-                    for (const relatedEntity of related)
-                        byId.set(relatedEntity[targetPk], relatedEntity);
-                    for (const entityItem of entities) {
-                        const fk = entityItem[foreignKeyName];
-                        if (fk !== undefined && fk !== null) {
-                            entityItem[relationship.propertyName] =
-                                byId.get(fk);
-                        }
-                    }
-                    // Recurse for next depth level on distinct related
-                    if (depth - 1 > 0) {
-                        await this.loadRelationshipsBatched(Array.from(byId.values()), targetCtor, {
-                            ...options,
-                            depth: depth - 1
-                        });
-                    }
-                    break;
-                }
-                case 'one-to-many': {
-                    const parentPkProperty = metadata.primaryKeys[0];
-                    if (!parentPkProperty)
-                        break;
-                    const parentIds = entities
-                        .map((e) => e[parentPkProperty])
-                        .filter((v) => v !== undefined && v !== null);
-                    const uniqueParentIds = Array.from(new Set(parentIds));
-                    if (uniqueParentIds.length === 0)
-                        break;
-                    const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
-                    const related = await this._provider.findWhereIn(targetCtor, foreignKeyName, uniqueParentIds);
-                    const grouped = new Map();
-                    for (const relatedEntity of related) {
-                        const key = relatedEntity[foreignKeyName];
-                        const arr = grouped.get(key) || [];
-                        arr.push(relatedEntity);
-                        grouped.set(key, arr);
-                    }
-                    for (const entityItem of entities) {
-                        const parentId = entityItem[parentPkProperty];
-                        entityItem[relationship.propertyName] =
-                            (grouped.get(parentId) || []);
-                    }
-                    if (depth - 1 > 0) {
-                        await this.loadRelationshipsBatched(related, targetCtor, {
-                            ...options,
-                            depth: depth - 1
-                        });
-                    }
-                    break;
-                }
-            }
+            await this.loadRelationshipBatchedByType(entities, entityClass, metadata, relationship, options, depth);
         }
     }
     /**
@@ -255,6 +132,131 @@ export class EntityLoader {
         const name = type.name || 'id';
         const camel = name.charAt(0).toLowerCase() + name.slice(1);
         return `${camel}Id`;
+    }
+    // ===== Helper methods extracted to reduce complexity =====
+    ensureStage3Init(entityClass) {
+        try {
+            void new entityClass();
+        }
+        catch {
+            /* ignore */
+        }
+    }
+    validateIncludes(metadata, includes) {
+        if (!includes)
+            return;
+        for (const inc of includes) {
+            const exists = metadata.relationships.some((r) => r.propertyName === inc);
+            if (!exists)
+                throw new Error(`Invalid include '${inc}' for ${metadata.target.name}`);
+        }
+    }
+    shouldInclude(property, includes) {
+        return !includes || includes.includes(property);
+    }
+    async loadToOne(entity, relationship, targetCtor, nextOptions) {
+        const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
+        const foreignKeyValue = entity[foreignKeyName];
+        if (foreignKeyValue === undefined || foreignKeyValue === null)
+            return;
+        const relatedEntity = await this.loadEntity(targetCtor, foreignKeyValue, nextOptions);
+        if (relatedEntity)
+            entity[relationship.propertyName] = relatedEntity;
+    }
+    async loadOneToMany(entity, metadata, relationship, entityClass, targetCtor) {
+        const parentPkProperty = metadata.primaryKeys[0];
+        if (!parentPkProperty)
+            return;
+        const parentPkValue = entity[parentPkProperty];
+        if (parentPkValue === undefined || parentPkValue === null)
+            return;
+        const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
+        const relatedEntities = await this._provider.findWhere(targetCtor, {
+            [foreignKeyName]: parentPkValue
+        });
+        entity[relationship.propertyName] = relatedEntities;
+    }
+    getPrimaryKeyColumnName(meta) {
+        const pkProp = meta.primaryKeys[0];
+        return meta.columns.find((c) => c.propertyName === pkProp)?.columnName || pkProp;
+    }
+    async loadRelationshipByType(entity, entityClass, metadata, relationship, options, depth) {
+        try {
+            const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
+            if (relationship.type === 'one-to-many') {
+                await this.loadOneToMany(entity, metadata, relationship, entityClass, targetCtor);
+            }
+            else {
+                await this.loadToOne(entity, relationship, targetCtor, { ...options, depth: depth - 1 });
+            }
+        }
+        catch (error) {
+            this._logger?.warn(`Failed to load relationship ${relationship.propertyName}:`, error);
+        }
+    }
+    async loadRelationshipBatchedByType(entities, entityClass, metadata, relationship, options, depth) {
+        const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
+        if (relationship.type === 'one-to-many') {
+            await this.loadOneToManyBatched(entities, { primaryKeys: metadata.primaryKeys }, relationship, entityClass, targetCtor, options, depth);
+            return;
+        }
+        await this.loadToOneBatched(entities, { columns: metadata.columns ?? [], primaryKeys: metadata.primaryKeys }, relationship, targetCtor, options, depth);
+    }
+    async loadToOneBatched(entities, meta, relationship, targetCtor, options, depth) {
+        const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
+        const fkValues = entities
+            .map((e) => e[foreignKeyName])
+            .filter((v) => v !== undefined && v !== null);
+        const uniqueFkValues = Array.from(new Set(fkValues));
+        if (uniqueFkValues.length === 0)
+            return;
+        const targetPkColumn = this.getPrimaryKeyColumnName(meta);
+        const related = await this._provider.findWhereIn(targetCtor, targetPkColumn, uniqueFkValues);
+        const byId = new Map();
+        const targetMeta = MetadataStorage.getEntity(targetCtor);
+        const targetPk = targetMeta?.primaryKeys[0];
+        for (const relatedEntity of related)
+            byId.set(relatedEntity[targetPk], relatedEntity);
+        for (const entityItem of entities) {
+            const fk = entityItem[foreignKeyName];
+            if (fk !== undefined && fk !== null)
+                entityItem[relationship.propertyName] = byId.get(fk);
+        }
+        if (depth - 1 > 0)
+            await this.loadRelationshipsBatched(Array.from(byId.values()), targetCtor, {
+                ...options,
+                depth: depth - 1
+            });
+    }
+    async loadOneToManyBatched(entities, meta, relationship, entityClass, targetCtor, options, depth) {
+        const parentPkProperty = meta.primaryKeys[0];
+        if (!parentPkProperty)
+            return;
+        const parentIds = entities
+            .map((e) => e[parentPkProperty])
+            .filter((v) => v !== undefined && v !== null);
+        const uniqueParentIds = Array.from(new Set(parentIds));
+        if (uniqueParentIds.length === 0)
+            return;
+        const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
+        const related = await this._provider.findWhereIn(targetCtor, foreignKeyName, uniqueParentIds);
+        const grouped = new Map();
+        for (const relatedEntity of related) {
+            const key = relatedEntity[foreignKeyName];
+            const arr = grouped.get(key) || [];
+            arr.push(relatedEntity);
+            grouped.set(key, arr);
+        }
+        for (const entityItem of entities) {
+            const parentId = entityItem[parentPkProperty];
+            entityItem[relationship.propertyName] = (grouped.get(parentId) ||
+                []);
+        }
+        if (depth - 1 > 0)
+            await this.loadRelationshipsBatched(related, targetCtor, {
+                ...options,
+                depth: depth - 1
+            });
     }
 }
 // DbSetWithIncludes was removed in favor of predicate-based include API on Queryable

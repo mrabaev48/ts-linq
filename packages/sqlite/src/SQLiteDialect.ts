@@ -6,6 +6,10 @@ import type {
   SqlParameter
 } from '@ts-linq/core';
 import { MetadataStorage, JoinClause } from '@ts-linq/core';
+import { SQLiteWhereEmitter } from './emitters/SQLiteWhereEmitter';
+import { SQLiteJoinEmitter } from './emitters/SQLiteJoinEmitter';
+import { SQLiteOrderEmitter } from './emitters/SQLiteOrderEmitter';
+import { SQLiteGroupEmitter } from './emitters/SQLiteGroupEmitter';
 
 /**
  * SQLite implementation of SqlDialect.
@@ -13,6 +17,10 @@ import { MetadataStorage, JoinClause } from '@ts-linq/core';
  * Adds SQLite-specific quirk: LIMIT -1 when OFFSET is provided without LIMIT.
  */
 export class SQLiteDialect implements SqlDialect {
+  private readonly whereEmitter = new SQLiteWhereEmitter();
+  private readonly joinEmitter = new SQLiteJoinEmitter();
+  private readonly orderEmitter = new SQLiteOrderEmitter();
+  private readonly groupEmitter = new SQLiteGroupEmitter();
   public quoteIdentifier(identifier: string): string {
     return identifier;
   }
@@ -26,58 +34,43 @@ export class SQLiteDialect implements SqlDialect {
   ): { query: string; parameters: readonly SqlParameter[] } {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    let query = 'SELECT ';
-    if (options.distinct) query += 'DISTINCT ';
-    query += options.select && options.select.length ? options.select.join(', ') : '*';
-    query += ` FROM ${options.from ?? metadata.tableName}`;
-
-    // JOINs
-    if (options.joins && options.joins.length > 0) {
-      for (const join of options.joins) {
-        query += ` ${join.type} JOIN ${join.table}`;
-        if (join.alias) query += ` AS ${join.alias}`;
-        query += ` ON ${join.on}`;
-      }
-    }
-
     const parameters: SqlParameter[] = [];
-    if (options.selectParams && options.selectParams.length) {
+    let query = this.buildSelectHead(options);
+    query += this.buildFromClause(options.from ?? metadata.tableName);
+    query += this.joinEmitter.emit(options);
+    this.collectSelectParams(parameters, options);
+    query += this.whereEmitter.emit(parameters, options);
+    query += this.groupEmitter.emit(parameters, options);
+    query += this.orderEmitter.emit(options);
+    query += this.buildLimitOffset(options);
+    return { query, parameters };
+  }
+
+  private buildSelectHead(options: QueryOptions): string {
+    let head = 'SELECT ';
+    if (options.distinct) head += 'DISTINCT ';
+    head += options.select && options.select.length ? options.select.join(', ') : '*';
+    return head;
+  }
+
+  private buildFromClause(tableName: string): string {
+    return ` FROM ${tableName}`;
+  }
+
+  private collectSelectParams(parameters: SqlParameter[], options: QueryOptions): void {
+    if (options.selectParams && options.selectParams.length)
       parameters.push(...options.selectParams);
-    }
+  }
 
-    // WHERE
-    if (options.where && options.where.length > 0) {
-      const whereClauses = options.where.map((whereClause: WhereClause) => whereClause.condition);
-      query += ` WHERE ${whereClauses.join(' AND ')}`;
-      for (const whereClause of options.where) parameters.push(...whereClause.parameters);
-    }
-
-    // GROUP BY / HAVING
-    if (options.groupBy) {
-      query += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-      if (options.groupBy.having) {
-        query += ` HAVING ${options.groupBy.having.condition}`;
-        parameters.push(...options.groupBy.having.parameters);
-      }
-    }
-
-    // ORDER BY
-    if (options.orderBy && options.orderBy.length > 0) {
-      const orderByClauses = options.orderBy.map(
-        (orderBy: OrderByClause) => `${orderBy.column} ${orderBy.direction}`
-      );
-      query += ` ORDER BY ${orderByClauses.join(', ')}`;
-    }
-
-    // LIMIT/OFFSET quirks
+  private buildLimitOffset(options: QueryOptions): string {
     const hasLimit = options.limit !== undefined && options.limit !== null;
     const hasOffset = options.offset !== undefined && options.offset !== null;
     if (hasLimit) {
-      query += ` LIMIT ${options.limit}`;
-      if (hasOffset) query += ` OFFSET ${options.offset}`;
-    } else if (hasOffset) {
-      query += ` LIMIT -1 OFFSET ${options.offset}`;
+      return ` LIMIT ${options.limit}` + (hasOffset ? ` OFFSET ${options.offset}` : '');
     }
-    return { query, parameters };
+    if (hasOffset) {
+      return ` LIMIT -1 OFFSET ${options.offset}`;
+    }
+    return '';
   }
 }

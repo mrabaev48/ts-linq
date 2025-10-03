@@ -1,9 +1,13 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-export interface Command {
+export interface BaseCommandInfo {
     readonly name: string;
     readonly describe: string;
-    readonly requiresProvider: boolean;
     readonly aliases?: string[];
-    run(provider: DatabaseProvider | null, argv: string[]): Promise<void>;
+}
+export interface Command extends BaseCommandInfo {
+    run(argv: string[]): Promise<void>;
+}
+export interface DbCommand extends BaseCommandInfo {
+    runDb(provider: DatabaseProvider, argv: string[]): Promise<void>;
 }
 //# sourceMappingURL=Command.d.ts.map

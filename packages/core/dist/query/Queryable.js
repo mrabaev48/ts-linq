@@ -7,7 +7,8 @@ const QueryBuilder_1 = require("./QueryBuilder");
 const PredicateParser_1 = require("./PredicateParser");
 const SqlVisitor_1 = require("./ast/SqlVisitor");
 const QueryModel_1 = require("./QueryModel");
-const LoadingStrategy_1 = require("../loading/LoadingStrategy");
+const RowMaterializer_1 = require("./RowMaterializer");
+const IncludePlanner_1 = require("./IncludePlanner");
 const JoinPredicateParser_1 = require("./JoinPredicateParser");
 const GlobalFilterApplier_1 = require("./GlobalFilterApplier");
 const metrics_safe_1 = require("metrics-safe");
@@ -37,6 +38,8 @@ class Queryable {
         this._globalFilters = globalFilters;
         this._externalCountCache = performance?.countCache;
         this._sqlBuilder = new QueryBuilder_1.QueryBuilder(provider.getDialect(), provider.loggerRef, provider.providerLabel, performance?.sqlCache);
+        this._materializer = new RowMaterializer_1.RowMaterializer(this._entityClass, this._provider, this._entityCache, this._performance);
+        this._includePlanner = new IncludePlanner_1.IncludePlanner(this._entityLoader, this._entityClass);
     }
     /** Clear global count() cache (used on transaction rollback to avoid stale values). */
     static clearCountCache() {
@@ -575,15 +578,9 @@ class Queryable {
         }
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, model);
         const rows = await this._provider.executeQuery(sql.query, sql.parameters);
-        let entities = rows.map((row) => this.mapRowToEntity(row));
+        let entities = rows.map((row) => this._materializer.mapRowToEntity(row));
         entities = this.applyFallbackPredicates(entities);
-        if (this._entityLoader && this._includes.length > 0 && model.limit !== 1) {
-            await this._entityLoader.populateRelationshipsMany(entities, this._entityClass, {
-                strategy: LoadingStrategy_1.LoadingStrategy.Eager,
-                includes: this._includes,
-                depth: 1
-            });
-        }
+        await this._includePlanner.populateIncludes(entities, this._includes, model.limit);
         return entities;
     }
     /** Extracts include property name from a lambda selector. */
@@ -653,72 +650,42 @@ class Queryable {
      */
     mapRowToEntity(row) {
         const metadata = MetadataStorage_1.MetadataStorage.getEntity(this._entityClass);
-        if (this._performance?.enableEntityCache &&
-            this._entityCache &&
-            metadata &&
-            metadata.primaryKeys.length > 0) {
-            const pkProp = metadata.primaryKeys[0];
-            const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
-            const idValue = pkCol
-                ? row[pkCol.columnName]
-                : row[pkProp];
-            const cached = this._entityCache.get(this._entityClass, idValue);
-            if (cached) {
-                this._provider.loggerRef?.cache?.({
-                    cache: 'entityL2',
-                    hit: true,
-                    provider: this._provider.providerLabel
-                });
+        if (this.shouldUseL2Cache(metadata)) {
+            const cached = this.tryGetFromCache(row, metadata);
+            if (cached)
                 return cached;
-            }
-            const entity = new this._entityClass();
-            for (const column of metadata.columns) {
-                const r = row;
-                const val = r.hasOwnProperty(column.columnName)
-                    ? r[column.columnName]
-                    : r[column.propertyName];
-                if (val !== undefined) {
-                    entity[column.propertyName] = this.convertValue(val, column.type);
-                }
-            }
-            this._entityCache.set(this._entityClass, idValue, entity);
-            this._provider.loggerRef?.cache?.({
-                cache: 'entityL2',
-                hit: false,
-                provider: this._provider.providerLabel
-            });
-            // optional size metric via duck-typed logger method if present
-            try {
-                this._provider.loggerRef?.cacheSize?.({
-                    cache: 'entityL2',
-                    size: this._entityCache.size?.() ?? -1,
-                    provider: this._provider.providerLabel
-                });
-            }
-            catch (e) {
-                try {
-                    const { warnIfLoggerDebug } = require('metrics-safe');
-                    warnIfLoggerDebug('notify:entityMaterialized', e);
-                }
-                catch {
-                    /* ignore */
-                }
-            }
-            // notify middleware via provider hook
-            try {
-                this._provider.notifyEntityMaterialized?.(entity, metadata);
-            }
-            catch (e) {
-                try {
-                    const { warnIfLoggerDebug } = require('metrics-safe');
-                    warnIfLoggerDebug('notify:entityMaterialized', e);
-                }
-                catch {
-                    /* ignore */
-                }
-            }
+            const entity = this.materializeEntity(row, metadata);
+            this.rememberInCache(row, metadata, entity);
+            this.notifyMaterialized(entity, metadata);
             return entity;
         }
+        const entity = this.materializeEntity(row, metadata || null);
+        this.notifyMaterialized(entity, metadata);
+        return entity;
+    }
+    shouldUseL2Cache(metadata) {
+        return (!!this._performance?.enableEntityCache &&
+            !!this._entityCache &&
+            !!metadata &&
+            metadata.primaryKeys.length > 0);
+    }
+    tryGetFromCache(row, metadata) {
+        const pkProp = metadata.primaryKeys[0];
+        const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
+        const idValue = pkCol
+            ? row[pkCol.columnName]
+            : row[pkProp];
+        const cached = this._entityCache.get(this._entityClass, idValue);
+        if (!cached)
+            return null;
+        this._provider.loggerRef?.cache?.({
+            cache: 'entityL2',
+            hit: true,
+            provider: this._provider.providerLabel
+        });
+        return cached;
+    }
+    materializeEntity(row, metadata) {
         const entity = new this._entityClass();
         if (metadata) {
             for (const column of metadata.columns) {
@@ -734,21 +701,39 @@ class Queryable {
         else {
             Object.assign(entity, row);
         }
-        // notify middleware via provider hook
+        return entity;
+    }
+    rememberInCache(row, metadata, entity) {
+        const pkProp = metadata.primaryKeys[0];
+        const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
+        const idValue = pkCol
+            ? row[pkCol.columnName]
+            : row[pkProp];
+        this._entityCache.set(this._entityClass, idValue, entity);
+        this._provider.loggerRef?.cache?.({
+            cache: 'entityL2',
+            hit: false,
+            provider: this._provider.providerLabel
+        });
+        try {
+            this._provider.loggerRef?.cacheSize?.({
+                cache: 'entityL2',
+                size: this._entityCache.size?.() ?? -1,
+                provider: this._provider.providerLabel
+            });
+        }
+        catch {
+            // ignore debug metric errors
+        }
+    }
+    notifyMaterialized(entity, metadata) {
         try {
             if (metadata)
                 this._provider.notifyEntityMaterialized?.(entity, metadata);
         }
-        catch (e) {
-            try {
-                const { warnIfLoggerDebug } = require('metrics-safe');
-                warnIfLoggerDebug('notify:entityMaterialized', e);
-            }
-            catch {
-                /* ignore */
-            }
+        catch {
+            // ignore debug metric errors
         }
-        return entity;
     }
     /**
      * Convert a primitive DB value to a runtime value according to column type.

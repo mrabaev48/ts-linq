@@ -1,5 +1,11 @@
 import type { EntityMetadata } from '@ts-linq/core';
+type LoggerLike = {
+    warn(message: string, error?: unknown): void;
+};
 export declare class PostgresDdlStrategy {
+    private readonly logger?;
+    private readonly indexBuilder;
+    constructor(logger?: LoggerLike | undefined);
     generateCreateTableSql(entityMetadata: EntityMetadata): string;
     generateCreateIndexSql(table: string, index: {
         name: string;
@@ -22,4 +28,5 @@ export declare class PostgresDdlStrategy {
     }): string;
     mapTypeToPg(type: string): string;
 }
+export {};
 //# sourceMappingURL=PostgresDdlStrategy.d.ts.map

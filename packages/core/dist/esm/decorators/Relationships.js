@@ -23,7 +23,8 @@ function defineRelationship(kind, targetEntity, options, targetOrValue, propOrCo
                 targetEntity: resolved,
                 foreignKey: options?.foreignKey,
                 inverseSide: options?.inverseSide,
-                cascade: options?.cascade || false
+                cascade: options?.cascade || false,
+                through: options?.through
             };
             MetadataStorage.addRelationship(ctor, relationship);
             const existing = Reflect.getOwnMetadata('orm:relationships', ctor) || [];

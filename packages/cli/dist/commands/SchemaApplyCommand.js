@@ -46,12 +46,9 @@ class SchemaApplyCommand {
         this.fsAdapter = fsAdapter;
         this.name = 'schema:apply';
         this.describe = 'Применяет отличия snapshot к БД';
-        this.requiresProvider = true;
         this.aliases = ['schema apply'];
     }
-    async run(provider, argv) {
-        if (!provider)
-            throw new Error('Provider is required');
+    async runDb(provider, argv) {
         const file = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
         const dryRun = !!(0, utils_1.getFlag)(argv, 'dry-run');
         const force = !!(0, utils_1.getFlag)(argv, 'force');

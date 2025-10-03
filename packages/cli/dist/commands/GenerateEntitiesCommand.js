@@ -48,12 +48,9 @@ class GenerateEntitiesCommand {
         this.template = template;
         this.name = 'generate:entities';
         this.describe = 'Генерирует сущности для всех таблиц схемы';
-        this.requiresProvider = true;
         this.aliases = ['generate entities'];
     }
-    async run(provider, argv) {
-        if (!provider)
-            throw new Error('Provider is required');
+    async runDb(provider, argv) {
         const args = new ArgReader_1.ArgReader(argv);
         const outDir = args.flag('dir') || path.join('src', 'entities');
         const schema = args.flag('schema') || undefined;

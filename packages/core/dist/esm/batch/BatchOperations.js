@@ -1,4 +1,6 @@
 import { MetadataStorage } from '../metadata/MetadataStorage';
+import { BatchPlan } from './BatchPlan';
+import { BatchExecutor } from './BatchExecutor';
 /**
  * Enhanced batch operations with optimizations for large datasets.
  * Provides bulk insert/update/delete operations that are much more efficient
@@ -8,6 +10,8 @@ export class BatchOperations {
     constructor(provider) {
         this.defaultBatchSize = 1000;
         this.provider = provider;
+        this.plan = new BatchPlan();
+        this.executor = new BatchExecutor(provider);
     }
     /**
      * Bulk insert entities using optimized SQL bulk insert statements.
@@ -22,28 +26,20 @@ export class BatchOperations {
         }
         const successful = [];
         const failed = [];
-        const chunks = this.chunkArray(entities, batchSize);
+        const chunks = this.plan.planChunks(entities, batchSize);
         let processed = 0;
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
             try {
-                if (useTransactions && !this.provider.inTransactionState) {
-                    await this.provider.beginTransaction();
-                }
-                const insertedChunk = await this.executeBulkInsert(chunk, metadata);
-                successful.push(...insertedChunk);
-                if (useTransactions && !this.provider.inTransactionState) {
-                    await this.provider.commitTransaction();
-                }
+                await this.executor.inTxn(useTransactions, async () => {
+                    const insertedChunk = await this.executeBulkInsert(chunk, metadata);
+                    successful.push(...insertedChunk);
+                });
                 processed += chunk.length;
                 onProgress?.(processed, entities.length);
             }
             catch (error) {
-                if (useTransactions && this.provider.inTransactionState) {
-                    await this.provider.rollbackTransaction();
-                }
                 if (continueOnError) {
-                    // Add all entities in this chunk as failed
                     for (const entity of chunk) {
                         failed.push({ entity, error: error });
                     }
@@ -85,25 +81,18 @@ export class BatchOperations {
         }
         const successful = [];
         const failed = [];
-        const chunks = this.chunkArray(entities, batchSize);
+        const chunks = this.plan.planChunks(entities, batchSize);
         let processed = 0;
         for (const chunk of chunks) {
             try {
-                if (useTransactions && !this.provider.inTransactionState) {
-                    await this.provider.beginTransaction();
-                }
-                const updatedChunk = await this.executeBulkUpdate(chunk, metadata);
-                successful.push(...updatedChunk);
-                if (useTransactions && !this.provider.inTransactionState) {
-                    await this.provider.commitTransaction();
-                }
+                await this.executor.inTxn(useTransactions, async () => {
+                    const updatedChunk = await this.executeBulkUpdate(chunk, metadata);
+                    successful.push(...updatedChunk);
+                });
                 processed += chunk.length;
                 onProgress?.(processed, entities.length);
             }
             catch (error) {
-                if (useTransactions && this.provider.inTransactionState) {
-                    await this.provider.rollbackTransaction();
-                }
                 if (continueOnError) {
                     for (const entity of chunk) {
                         failed.push({ entity, error: error });
@@ -146,25 +135,18 @@ export class BatchOperations {
         }
         let deletedCount = 0;
         let failedCount = 0;
-        const chunks = this.chunkArray(entities, batchSize);
+        const chunks = this.plan.planChunks(entities, batchSize);
         let processed = 0;
         for (const chunk of chunks) {
             try {
-                if (useTransactions && !this.provider.inTransactionState) {
-                    await this.provider.beginTransaction();
-                }
-                const deleted = await this.executeBulkDelete(chunk, metadata);
-                deletedCount += deleted;
-                if (useTransactions && !this.provider.inTransactionState) {
-                    await this.provider.commitTransaction();
-                }
+                await this.executor.inTxn(useTransactions, async () => {
+                    const deleted = await this.executeBulkDelete(chunk, metadata);
+                    deletedCount += deleted;
+                });
                 processed += chunk.length;
                 onProgress?.(processed, entities.length);
             }
             catch (error) {
-                if (useTransactions && this.provider.inTransactionState) {
-                    await this.provider.rollbackTransaction();
-                }
                 if (continueOnError) {
                     failedCount += chunk.length;
                     processed += chunk.length;
@@ -193,25 +175,18 @@ export class BatchOperations {
         }
         const successful = [];
         const failed = [];
-        const chunks = this.chunkArray(entities, batchSize);
+        const chunks = this.plan.planChunks(entities, batchSize);
         let processed = 0;
         for (const chunk of chunks) {
             try {
-                if (useTransactions && !this.provider.inTransactionState) {
-                    await this.provider.beginTransaction();
-                }
-                const upsertedChunk = await this.executeBulkUpsert(chunk, metadata);
-                successful.push(...upsertedChunk);
-                if (useTransactions && !this.provider.inTransactionState) {
-                    await this.provider.commitTransaction();
-                }
+                await this.executor.inTxn(useTransactions, async () => {
+                    const upsertedChunk = await this.executeBulkUpsert(chunk, metadata);
+                    successful.push(...upsertedChunk);
+                });
                 processed += chunk.length;
                 onProgress?.(processed, entities.length);
             }
             catch (error) {
-                if (useTransactions && this.provider.inTransactionState) {
-                    await this.provider.rollbackTransaction();
-                }
                 if (continueOnError) {
                     for (const entity of chunk) {
                         failed.push({ entity, error: error });
@@ -246,7 +221,6 @@ export class BatchOperations {
      * Execute optimized bulk insert using VALUES clause or provider-specific bulk insert.
      */
     async executeBulkInsert(entities, metadata) {
-        const dialect = this.provider.getDialect();
         // Try to use provider-specific bulk insert if available
         if (this.provider.insertMany && entities.length > 1) {
             // Use database-specific bulk operations if supported

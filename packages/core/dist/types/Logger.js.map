@@ -1,0 +1,1 @@
+{"version":3,"file":"Logger.js","sourceRoot":"","sources":["../../src/types/Logger.ts"],"names":[],"mappings":"","sourcesContent":["export interface Logger {\n  warn(message: string, error?: unknown): void;\n}\n"]}

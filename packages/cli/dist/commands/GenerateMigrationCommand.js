@@ -45,10 +45,9 @@ class GenerateMigrationCommand {
         this.builder = builder;
         this.name = 'generate:migration';
         this.describe = 'Создаёт файл миграции с шаблоном';
-        this.requiresProvider = false;
         this.aliases = ['generate migration'];
     }
-    async run(_provider, argv) {
+    run(argv) {
         const name = (argv[2] && argv[1] !== 'entity' ? argv[2] : argv[1] || 'Migration').replace(/\s+/g, '_');
         const ts = new Date()
             .toISOString()
@@ -60,6 +59,7 @@ class GenerateMigrationCommand {
         const template = this.builder.build(name, ts);
         this.fsAdapter.writeText(file, template);
         this.logger.info(`Created ${file}`);
+        return Promise.resolve();
     }
 }
 exports.GenerateMigrationCommand = GenerateMigrationCommand;
