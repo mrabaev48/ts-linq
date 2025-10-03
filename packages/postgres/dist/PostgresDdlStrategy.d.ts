@@ -2,6 +2,9 @@ import type { EntityMetadata } from '@ts-linq/core';
 type LoggerLike = {
     warn(message: string, error?: unknown): void;
 };
+/**
+ * @deprecated Use `PostgresDdlStrategy` from `@ts-linq/dialect-postgres` instead.
+ */
 export declare class PostgresDdlStrategy {
     private readonly logger?;
     private readonly indexBuilder;

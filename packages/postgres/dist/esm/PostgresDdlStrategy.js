@@ -1,4 +1,7 @@
 import { PgIndexBuilder } from './builders/PgIndexBuilder';
+/**
+ * @deprecated Use `PostgresDdlStrategy` from `@ts-linq/dialect-postgres` instead.
+ */
 export class PostgresDdlStrategy {
     constructor(logger) {
         this.logger = logger;

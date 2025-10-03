@@ -6,6 +6,9 @@ import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
  * - Converts positional placeholders from '?' to PostgreSQL-style $1..$n
  * - Leaves identifier quoting to providers/metadata (table/column names are passed as-is)
  */
+/**
+ * @deprecated Use `PostgresDialect` from `@ts-linq/dialect-postgres` instead.
+ */
 export declare class PostgresDialect implements SqlDialect {
     private readonly whereEmitter;
     private readonly joinEmitter;

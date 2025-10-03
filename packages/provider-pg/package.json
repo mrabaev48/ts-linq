@@ -1,0 +1,46 @@
+{
+  "name": "@ts-linq/provider-pg",
+  "version": "1.0.0",
+  "description": "PostgreSQL DatabaseProvider for ts-linq (pg driver)",
+  "main": "./dist/index.js",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "gen:esm-entry": "node scripts/gen-esm-entry.cjs",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@ts-linq/core": "^1.0.0",
+    "@ts-linq/dialect-postgres": "^1.0.0"
+  },
+  "peerDependencies": {
+    "pg": ">=8.7.0",
+    "typescript": ">=4.9.0"
+  },
+  "optionalDependencies": {
+    "pg": "^8.11.3",
+    "@types/pg": "^8.10.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  }
+}
+
+

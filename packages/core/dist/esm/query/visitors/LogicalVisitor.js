@@ -1,15 +1,5 @@
-import { LogicalOperator } from '@ts-linq/ast';
-export class LogicalVisitor {
-    visit(node, visit) {
-        const parts = [];
-        const params = [];
-        for (const expr of node.expressions) {
-            const result = visit(expr);
-            parts.push(result.condition);
-            params.push(...result.parameters);
-        }
-        const joiner = node.operator === LogicalOperator.And ? ' AND ' : ' OR ';
-        return { condition: parts.join(joiner), parameters: params };
-    }
-}
+/**
+ * @deprecated Use `@ts-linq/sql-visitor` directly: `import { LogicalVisitor } from '@ts-linq/sql-visitor'`.
+ */
+export { LogicalVisitor } from '@ts-linq/sql-visitor';
 //# sourceMappingURL=LogicalVisitor.js.map

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Specs = exports.PredicateSpecification = exports.CompositeSpecification = void 0;
 const Nodes_1 = require("../ast/Nodes");
-/** Составная спецификация, объединяющая дочерние через логический оператор. */
+/** Composite specification combining child specs with a logical operator. */
 class CompositeSpecification {
     constructor(operator, specs) {
         this.operator = operator;
@@ -26,7 +26,7 @@ class CompositeSpecification {
     }
 }
 exports.CompositeSpecification = CompositeSpecification;
-/** Листовая спецификация на основе предиката с опциональным AST. */
+/** Leaf specification based on a predicate function with optional AST. */
 class PredicateSpecification {
     constructor(predicate, expression) {
         this.predicate = predicate;
@@ -40,7 +40,7 @@ class PredicateSpecification {
     }
 }
 exports.PredicateSpecification = PredicateSpecification;
-/** Хелперы для логических комбинаторов. */
+/** Helper factory with logical combinators. */
 exports.Specs = {
     and(...specs) {
         return new CompositeSpecification(Nodes_1.LogicalOperator.And, specs);

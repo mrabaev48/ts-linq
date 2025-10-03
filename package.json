@@ -17,6 +17,16 @@
       "import": "./packages/core/dist/index.esm.js",
       "require": "./packages/core/dist/index.js"
     },
+    "./dialect-postgres": {
+      "types": "./packages/dialect-postgres/dist/index.d.ts",
+      "import": "./packages/dialect-postgres/dist/index.esm.js",
+      "require": "./packages/dialect-postgres/dist/index.js"
+    },
+    "./provider-pg": {
+      "types": "./packages/provider-pg/dist/index.d.ts",
+      "import": "./packages/provider-pg/dist/index.esm.js",
+      "require": "./packages/provider-pg/dist/index.js"
+    },
     "./sql-visitor": {
       "types": "./packages/sql-visitor/dist/index.d.ts",
       "import": "./packages/sql-visitor/dist/index.esm.js",

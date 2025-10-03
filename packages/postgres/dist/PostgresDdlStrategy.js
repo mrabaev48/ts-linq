@@ -2,6 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostgresDdlStrategy = void 0;
 const PgIndexBuilder_1 = require("./builders/PgIndexBuilder");
+/**
+ * @deprecated Use `PostgresDdlStrategy` from `@ts-linq/dialect-postgres` instead.
+ */
 class PostgresDdlStrategy {
     constructor(logger) {
         this.logger = logger;

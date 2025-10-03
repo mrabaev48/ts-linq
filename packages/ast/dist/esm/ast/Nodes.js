@@ -1,10 +1,10 @@
-/** Логические операторы для составных булевых выражений. */
+/** Logical operators used in compound boolean expressions. */
 export var LogicalOperator;
 (function (LogicalOperator) {
     LogicalOperator["And"] = "AND";
     LogicalOperator["Or"] = "OR";
 })(LogicalOperator || (LogicalOperator = {}));
-/** Операторы сравнения, поддерживаемые минимальным AST. */
+/** Comparison operators supported by the minimal AST. */
 export var ComparisonOperator;
 (function (ComparisonOperator) {
     ComparisonOperator["Eq"] = "=";

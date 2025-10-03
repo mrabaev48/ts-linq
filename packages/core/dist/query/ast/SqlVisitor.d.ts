@@ -1,18 +1,5 @@
-import type { ExpressionNode } from '@ts-linq/ast';
-import type { SqlParameter } from '../../types';
 /**
- * Visitor that turns a supported AST into a SQL WHERE fragment with parameters.
- * Does not quote identifiers; relies on upstream mapping to column names.
+ * @deprecated Use `@ts-linq/sql-visitor` directly: `import { SqlVisitor } from '@ts-linq/sql-visitor'`.
  */
-export declare class SqlVisitor {
-    private readonly binary;
-    private readonly logical;
-    /**
-     * Convert an AST node to a SQL WHERE fragment and parameters.
-     */
-    toSql(node: ExpressionNode): {
-        condition: string;
-        parameters: SqlParameter[];
-    };
-}
+export { SqlVisitor } from '@ts-linq/sql-visitor';
 //# sourceMappingURL=SqlVisitor.d.ts.map

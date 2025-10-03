@@ -17,8 +17,17 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.PostgresDialect = exports.PostgresProvider = void 0;
 // PostgreSQL-specific exports
-__exportStar(require("./PostgresProvider"), exports);
-__exportStar(require("./PostgresDialect"), exports);
+/**
+ * @deprecated Use `PostgresProvider` from `@ts-linq/provider-pg` instead.
+ */
+var provider_pg_1 = require("@ts-linq/provider-pg");
+Object.defineProperty(exports, "PostgresProvider", { enumerable: true, get: function () { return provider_pg_1.PostgresProvider; } });
+/**
+ * @deprecated Use `PostgresDialect` from `@ts-linq/dialect-postgres` instead.
+ */
+var dialect_postgres_1 = require("@ts-linq/dialect-postgres");
+Object.defineProperty(exports, "PostgresDialect", { enumerable: true, get: function () { return dialect_postgres_1.PostgresDialect; } });
 __exportStar(require("./PostgresDdlStrategy"), exports);
 //# sourceMappingURL=index.js.map

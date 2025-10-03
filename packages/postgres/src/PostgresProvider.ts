@@ -56,6 +56,9 @@ interface PgPoolLike {
  * - Convenience findWhere/findWhereIn APIs
  * - Basic value conversions for common types (JSON/JSONB/TIMESTAMPTZ)
  */
+/**
+ * @deprecated Use `PostgresProvider` from `@ts-linq/provider-pg` instead.
+ */
 export class PostgresProvider extends DatabaseProvider {
   private pool!: PgPoolLike;
   private qb: QueryBuilder;

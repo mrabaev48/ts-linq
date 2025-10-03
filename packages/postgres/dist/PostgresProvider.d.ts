@@ -10,6 +10,9 @@ import { DatabaseProvider } from '@ts-linq/core';
  * - Convenience findWhere/findWhereIn APIs
  * - Basic value conversions for common types (JSON/JSONB/TIMESTAMPTZ)
  */
+/**
+ * @deprecated Use `PostgresProvider` from `@ts-linq/provider-pg` instead.
+ */
 export declare class PostgresProvider extends DatabaseProvider {
     private pool;
     private qb;

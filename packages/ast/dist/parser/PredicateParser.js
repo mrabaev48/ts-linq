@@ -3,15 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PredicateParser = void 0;
 const Nodes_1 = require("../ast/Nodes");
 /**
- * Лёгкий парсер, который преобразует поддерживаемые предикаты-функции
- * (например, a => a.price >= 10 && a.stock > 0) в минимальный AST,
- * потребляемый посетителем SQL. Для неподдерживаемых/сложных выражений
- * возвращает null для fallback-фильтрации на клиенте.
+ * Lightweight parser that converts supported predicate functions
+ * (e.g., a => a.price >= 10 && a.stock > 0) into a minimal AST
+ * consumed by an SQL visitor. For unsupported/complex expressions,
+ * returns null so the caller can fall back to client-side filtering.
  */
 class PredicateParser {
     /**
-     * Попытаться распарсить предикат в минимальный AST.
-     * Вернуть null при обнаружении неподдерживаемых конструкций.
+     * Attempt to parse a predicate into a minimal AST.
+     * Return null when encountering unsupported constructs.
      */
     parse(predicate) {
         const str = predicate.toString();
@@ -42,7 +42,7 @@ class PredicateParser {
         return this.parseBinary(body);
     }
     /**
-     * Распарсить простое бинарное сравнение вида `a.price >= 10`.
+     * Parse a simple binary comparison like `a.price >= 10`.
      */
     parseBinary(expr) {
         const patterns = [
@@ -74,7 +74,7 @@ class PredicateParser {
         return null;
     }
     /**
-     * Распарсить литерал в JS-значение, которое понимает SQL-визитор.
+     * Parse a literal token into a JS value understood by the SQL visitor.
      */
     parseLiteral(raw) {
         if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {

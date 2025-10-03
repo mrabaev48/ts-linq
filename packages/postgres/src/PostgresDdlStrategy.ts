@@ -3,6 +3,9 @@ type LoggerLike = { warn(message: string, error?: unknown): void };
 import type { PgIndexSpec } from './builders/PgIndexBuilder';
 import { PgIndexBuilder } from './builders/PgIndexBuilder';
 
+/**
+ * @deprecated Use `PostgresDdlStrategy` from `@ts-linq/dialect-postgres` instead.
+ */
 export class PostgresDdlStrategy {
   private readonly indexBuilder: PgIndexBuilder;
 

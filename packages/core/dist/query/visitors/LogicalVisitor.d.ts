@@ -1,12 +1,5 @@
-import type { ExpressionNode, LogicalExpressionNode } from '@ts-linq/ast';
-import type { SqlParameter } from '../../types';
-export declare class LogicalVisitor {
-    visit(node: LogicalExpressionNode, visit: (n: ExpressionNode) => {
-        condition: string;
-        parameters: SqlParameter[];
-    }): {
-        condition: string;
-        parameters: SqlParameter[];
-    };
-}
+/**
+ * @deprecated Use `@ts-linq/sql-visitor` directly: `import { LogicalVisitor } from '@ts-linq/sql-visitor'`.
+ */
+export { LogicalVisitor } from '@ts-linq/sql-visitor';
 //# sourceMappingURL=LogicalVisitor.d.ts.map

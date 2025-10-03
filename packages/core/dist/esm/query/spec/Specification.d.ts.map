@@ -1,1 +1,1 @@
-{"version":3,"file":"Specification.d.ts","sourceRoot":"","sources":["../../../../src/query/spec/Specification.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,aAAa,EAAE,sBAAsB,EAAE,sBAAsB,EAAE,KAAK,EAAE,MAAM,cAAc,CAAC"}
+{"version":3,"file":"Specification.d.ts","sourceRoot":"","sources":["../../../../src/query/spec/Specification.ts"],"names":[],"mappings":"AAAA;;GAEG;AACH,OAAO,EAAE,aAAa,EAAE,sBAAsB,EAAE,sBAAsB,EAAE,KAAK,EAAE,MAAM,cAAc,CAAC"}

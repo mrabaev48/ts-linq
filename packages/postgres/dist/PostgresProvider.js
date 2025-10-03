@@ -29,6 +29,9 @@ catch (e) {
  * - Convenience findWhere/findWhereIn APIs
  * - Basic value conversions for common types (JSON/JSONB/TIMESTAMPTZ)
  */
+/**
+ * @deprecated Use `PostgresProvider` from `@ts-linq/provider-pg` instead.
+ */
 class PostgresProvider extends core_1.DatabaseProvider {
     /** Map a row object to a new entity instance using entity metadata and notify middleware. */
     mapRowToEntity(row, entityClass) {

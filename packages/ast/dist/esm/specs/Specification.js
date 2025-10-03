@@ -1,5 +1,5 @@
 import { LogicalOperator } from '../ast/Nodes';
-/** Составная спецификация, объединяющая дочерние через логический оператор. */
+/** Composite specification combining child specs with a logical operator. */
 export class CompositeSpecification {
     constructor(operator, specs) {
         this.operator = operator;
@@ -22,7 +22,7 @@ export class CompositeSpecification {
         return this.specs.some((s) => s.test(entity));
     }
 }
-/** Листовая спецификация на основе предиката с опциональным AST. */
+/** Leaf specification based on a predicate function with optional AST. */
 export class PredicateSpecification {
     constructor(predicate, expression) {
         this.predicate = predicate;
@@ -35,7 +35,7 @@ export class PredicateSpecification {
         return this.predicate(entity);
     }
 }
-/** Хелперы для логических комбинаторов. */
+/** Helper factory with logical combinators. */
 export const Specs = {
     and(...specs) {
         return new CompositeSpecification(LogicalOperator.And, specs);

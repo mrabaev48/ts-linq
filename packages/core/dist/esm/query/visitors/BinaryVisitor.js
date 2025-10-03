@@ -1,9 +1,5 @@
-export class BinaryVisitor {
-    visit(node) {
-        const column = node.left.name;
-        const value = node.right.value;
-        const op = node.operator;
-        return { condition: `${column} ${op} ?`, parameters: [value] };
-    }
-}
+/**
+ * @deprecated Use `@ts-linq/sql-visitor` directly: `import { BinaryVisitor } from '@ts-linq/sql-visitor'`.
+ */
+export { BinaryVisitor } from '@ts-linq/sql-visitor';
 //# sourceMappingURL=BinaryVisitor.js.map

@@ -1,1 +1,1 @@
-{"version":3,"file":"Nodes.js","sourceRoot":"","sources":["../../../../src/query/ast/Nodes.ts"],"names":[],"mappings":"AAAA,cAAc,cAAc,CAAC","sourcesContent":["export * from '@ts-linq/ast';\n"]}
+{"version":3,"file":"Nodes.js","sourceRoot":"","sources":["../../../../src/query/ast/Nodes.ts"],"names":[],"mappings":"AAAA;;GAEG;AACH,cAAc,cAAc,CAAC","sourcesContent":["/**\n * @deprecated Use `@ts-linq/ast` directly.\n */\nexport * from '@ts-linq/ast';\n"]}

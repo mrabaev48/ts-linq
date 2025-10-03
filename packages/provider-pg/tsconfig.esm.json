@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.esm.json",
+  "compilerOptions": {
+    "outDir": "./dist/esm",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "noEmit": false
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../dialect-postgres" }
+  ]
+}
+
+
