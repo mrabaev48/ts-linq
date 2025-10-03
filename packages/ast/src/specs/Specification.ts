@@ -2,15 +2,15 @@ import type { ExpressionNode, LogicalExpressionNode } from '../ast/Nodes';
 import { LogicalOperator } from '../ast/Nodes';
 
 /**
- * Паттерн спецификаций: компонуемые, тестируемые бизнес-правила,
- * которые при возможности конвертируются в дерево выражений для генерации SQL.
+ * Specification pattern: composable, testable business rules that can be
+ * converted into an expression tree for SQL generation when possible.
  */
 export interface Specification<T> {
   toExpression(): ExpressionNode | null;
   test(entity: T): boolean;
 }
 
-/** Составная спецификация, объединяющая дочерние через логический оператор. */
+/** Composite specification combining child specs with a logical operator. */
 export class CompositeSpecification<T> implements Specification<T> {
   private readonly operator: LogicalOperator;
   private readonly specs: Array<Specification<T>>;
@@ -34,7 +34,7 @@ export class CompositeSpecification<T> implements Specification<T> {
   }
 }
 
-/** Листовая спецификация на основе предиката с опциональным AST. */
+/** Leaf specification based on a predicate function with optional AST. */
 export class PredicateSpecification<T> implements Specification<T> {
   private readonly predicate: (entity: T) => boolean;
   private readonly expression: ExpressionNode | null;
@@ -50,7 +50,7 @@ export class PredicateSpecification<T> implements Specification<T> {
   }
 }
 
-/** Хелперы для логических комбинаторов. */
+/** Helper factory with logical combinators. */
 export const Specs = {
   and<T>(...specs: Array<Specification<T>>): Specification<T> {
     return new CompositeSpecification<T>(LogicalOperator.And, specs);

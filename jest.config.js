@@ -11,6 +11,8 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest'
   },
   moduleNameMapper: {
+    '^@ts-linq/ast$': '<rootDir>/packages/ast/src',
+    '^@ts-linq/ast/(.*)$': '<rootDir>/packages/ast/src/$1',
     '^@core/(.*)$': '<rootDir>/packages/core/src/$1',
     '^@src/(.*)$': '<rootDir>/$1',
     '^@ts-linq/sqlite$': '<rootDir>/packages/sqlite/src',
@@ -60,6 +62,11 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/packages/core/tests/setup.ts'],
   testTimeout: 10000,
   projects: [
+    {
+      displayName: 'ast',
+      testMatch: ['<rootDir>/packages/ast/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }] }
+    },
     {
       displayName: 'core',
       testMatch: ['<rootDir>/packages/core/{src,tests}/**/*.test.ts'],

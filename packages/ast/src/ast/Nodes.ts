@@ -1,10 +1,10 @@
-/** Логические операторы для составных булевых выражений. */
+/** Logical operators used in compound boolean expressions. */
 export enum LogicalOperator {
   And = 'AND',
   Or = 'OR'
 }
 
-/** Операторы сравнения, поддерживаемые минимальным AST. */
+/** Comparison operators supported by the minimal AST. */
 export enum ComparisonOperator {
   Eq = '=',
   Gt = '>',
@@ -13,7 +13,7 @@ export enum ComparisonOperator {
   Lte = '<='
 }
 
-/** Базовый интерфейс всех AST-узлов. */
+/** Base interface for all AST nodes. */
 export interface ExpressionNode {
   type: string;
 }

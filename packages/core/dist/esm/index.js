@@ -29,11 +29,9 @@ export * from './query/SqlDialect';
 export * from './query/CountCache';
 export * from './query/GlobalFilterApplier';
 export * from './query/JoinPredicateParser';
-export * from './query/PredicateParser';
 export * from './query/QueryModel';
-export * from './query/ast/Nodes';
+export * from '@ts-linq/ast';
 export * from './query/ast/SqlVisitor';
-export * from './query/spec/Specification';
 export * from './query/SqlFunctions';
 // Base provider abstractions
 export * from './DatabaseProvider';

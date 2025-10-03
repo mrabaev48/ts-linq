@@ -8,17 +8,17 @@ import type {
 import { ComparisonOperator, LogicalOperator } from '../ast/Nodes';
 
 /**
- * Лёгкий парсер, который преобразует поддерживаемые предикаты-функции
- * (например, a => a.price >= 10 && a.stock > 0) в минимальный AST,
- * потребляемый посетителем SQL. Для неподдерживаемых/сложных выражений
- * возвращает null для fallback-фильтрации на клиенте.
+ * Lightweight parser that converts supported predicate functions
+ * (e.g., a => a.price >= 10 && a.stock > 0) into a minimal AST
+ * consumed by an SQL visitor. For unsupported/complex expressions,
+ * returns null so the caller can fall back to client-side filtering.
  */
 export class PredicateParser<T> {
   private static readonly MAX_LENGTH = 500;
   private static readonly UNSUPPORTED_TOKENS = ['function', '=> {', 'return', '||', '??'];
   /**
-   * Попытаться распарсить предикат в минимальный AST.
-   * Вернуть null при обнаружении неподдерживаемых конструкций.
+   * Attempt to parse a predicate into a minimal AST.
+   * Return null when encountering unsupported constructs.
    */
   public parse(predicate: (entity: T) => boolean): ExpressionNode | null {
     const str = predicate.toString();
@@ -46,7 +46,7 @@ export class PredicateParser<T> {
   }
 
   /**
-   * Распарсить простое бинарное сравнение вида `a.price >= 10`.
+   * Parse a simple binary comparison like `a.price >= 10`.
    */
   private parseBinary(expr: string): BinaryExpressionNode | null {
     const patterns: Array<{ re: RegExp; op: ComparisonOperator }> = [
@@ -78,7 +78,7 @@ export class PredicateParser<T> {
   }
 
   /**
-   * Распарсить литерал в JS-значение, которое понимает SQL-визитор.
+   * Parse a literal token into a JS value understood by the SQL visitor.
    */
   private parseLiteral(raw: string): string | number | boolean | null | undefined {
     if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {

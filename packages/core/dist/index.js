@@ -45,11 +45,9 @@ __exportStar(require("./query/SqlDialect"), exports);
 __exportStar(require("./query/CountCache"), exports);
 __exportStar(require("./query/GlobalFilterApplier"), exports);
 __exportStar(require("./query/JoinPredicateParser"), exports);
-__exportStar(require("./query/PredicateParser"), exports);
 __exportStar(require("./query/QueryModel"), exports);
 __exportStar(require("@ts-linq/ast"), exports);
 __exportStar(require("./query/ast/SqlVisitor"), exports);
-__exportStar(require("./query/spec/Specification"), exports);
 __exportStar(require("./query/SqlFunctions"), exports);
 // Base provider abstractions
 __exportStar(require("./DatabaseProvider"), exports);

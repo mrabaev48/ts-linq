@@ -1,4 +1,4 @@
-import { LogicalOperator } from './ast/Nodes';
+import { LogicalOperator } from '@ts-linq/ast';
 /** Composite specification combining child specs with a logical operator. */
 export class CompositeSpecification {
     constructor(operator, specs) {

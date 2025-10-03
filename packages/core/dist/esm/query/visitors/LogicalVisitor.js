@@ -1,4 +1,4 @@
-import { LogicalOperator } from '../ast/Nodes';
+import { LogicalOperator } from '@ts-linq/ast';
 export class LogicalVisitor {
     visit(node, visit) {
         const parts = [];
