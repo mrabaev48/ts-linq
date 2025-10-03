@@ -44,25 +44,38 @@ class MigrationsValidateCommand {
         this.fsAdapter = fsAdapter;
         this.name = 'migration:validate';
         this.describe = 'Валидирует миграции: формат имен, дубликаты, порядок, наличие up/down';
-        this.requiresProvider = false;
         this.aliases = ['migrations:validate'];
     }
-    async run(_provider, _argv) {
-        const cfg = ((0, config_1.tryLoadConfig)(process.cwd()) || {});
-        const migrationsDir = path.resolve(process.cwd(), cfg.migrations || 'migrations');
+    run(_argv) {
+        const migrationsDir = this.resolveMigrationsDir();
         if (!this.fsAdapter.exists(migrationsDir)) {
             this.logger.warn?.(`Migrations directory not found: ${migrationsDir}`);
             process.exitCode = 2;
-            return;
+            return Promise.resolve();
         }
-        const files = this.fsAdapter
-            .readDir(migrationsDir)
-            .filter((f) => /\.(ts|js|mjs|cjs)$/.test(f))
-            .map((f) => ({ file: f, abs: path.join(migrationsDir, f) }));
-        const versionRe = /^(\d{14})_([A-Za-z0-9_]+)\.(?:ts|js|mjs|cjs)$/;
+        const files = this.readMigrationFiles(migrationsDir);
         const errors = [];
-        // 1) Имя и версия
-        const parsed = files
+        const parsed = this.parseFilenames(files, errors);
+        this.detectDuplicates(parsed, errors);
+        this.checkOrder(parsed, errors);
+        this.ensureTsSupport(parsed);
+        this.validateExports(parsed, errors);
+        this.report(errors);
+        return Promise.resolve();
+    }
+    resolveMigrationsDir() {
+        const cfg = ((0, config_1.tryLoadConfig)(process.cwd()) || {});
+        return path.resolve(process.cwd(), cfg.migrations || 'migrations');
+    }
+    readMigrationFiles(dir) {
+        return this.fsAdapter
+            .readDir(dir)
+            .filter((f) => /(\.ts|\.js|\.mjs|\.cjs)$/.test(f))
+            .map((f) => ({ file: f, abs: path.join(dir, f) }));
+    }
+    parseFilenames(files, errors) {
+        const versionRe = /^(\d{14})_([A-Za-z0-9_]+)\.(?:ts|js|mjs|cjs)$/;
+        return files
             .map(({ file, abs }) => {
             const m = versionRe.exec(file);
             if (!m) {
@@ -72,14 +85,16 @@ class MigrationsValidateCommand {
             return { file, abs, version: m[1], name: m[2] };
         })
             .filter((x) => !!x);
-        // 2) Дубликаты версий
+    }
+    detectDuplicates(parsed, errors) {
         const seen = new Set();
         for (const p of parsed) {
             if (seen.has(p.version))
                 errors.push(`Duplicate version: ${p.version}`);
             seen.add(p.version);
         }
-        // 3) Порядок по версии должен совпадать с сортировкой файлов по имени
+    }
+    checkOrder(parsed, errors) {
         const versionsSorted = [...parsed].sort((a, b) => a.version.localeCompare(b.version));
         const filesSorted = [...parsed].sort((a, b) => a.file.localeCompare(b.file));
         for (let i = 0; i < versionsSorted.length; i++) {
@@ -88,17 +103,19 @@ class MigrationsValidateCommand {
                 break;
             }
         }
-        // 4) Экспорты: класс с up/down и getVersion/getName
-        const needsTs = parsed.some((p) => p.file.endsWith('.ts'));
-        if (needsTs) {
-            try {
-                // eslint-disable-next-line @typescript-eslint/no-var-requires
-                require('ts-node/register/transpile-only');
-            }
-            catch {
-                // игнорируем, если нет в окружении
-            }
+    }
+    ensureTsSupport(parsed) {
+        if (!parsed.some((p) => p.file.endsWith('.ts')))
+            return;
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            require('ts-node/register/transpile-only');
         }
+        catch {
+            // ignore
+        }
+    }
+    validateExports(parsed, errors) {
         for (const p of parsed) {
             try {
                 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -113,8 +130,8 @@ class MigrationsValidateCommand {
                     errors.push(`Invalid export in ${p.file}: expected class`);
                     continue;
                 }
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                const inst = new exported();
+                const Ctor = exported;
+                const inst = new Ctor();
                 if (typeof inst.up !== 'function' || typeof inst.down !== 'function') {
                     errors.push(`Migration ${p.file} must implement up() and down()`);
                 }
@@ -131,6 +148,8 @@ class MigrationsValidateCommand {
                 errors.push(`Failed to load ${p.file}: ${e.message}`);
             }
         }
+    }
+    report(errors) {
         if (errors.length > 0) {
             this.logger.error('Migration validation failed:');
             for (const e of errors)
@@ -139,6 +158,7 @@ class MigrationsValidateCommand {
             return;
         }
         this.logger.info('Migrations validation: OK');
+        process.exitCode = 0;
     }
 }
 exports.MigrationsValidateCommand = MigrationsValidateCommand;

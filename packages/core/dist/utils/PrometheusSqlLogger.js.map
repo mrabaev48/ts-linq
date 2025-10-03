@@ -1,1 +1,0 @@
-{"version":3,"file":"PrometheusSqlLogger.js","sourceRoot":"","sources":["../../src/utils/PrometheusSqlLogger.ts"],"names":[],"mappings":";AAAA,2CAA2C","sourcesContent":["// Moved to package 'prometheus-sql-logger'\n"]}

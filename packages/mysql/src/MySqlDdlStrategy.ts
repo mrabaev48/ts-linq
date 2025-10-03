@@ -1,7 +1,14 @@
 import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
 import { SqlHelper } from '@ts-linq/core';
+import { MySqlIndexBuilder } from './builders/MySqlIndexBuilder';
+
+type LoggerLike = { warn(message: string, error?: unknown): void };
 
 export class MySqlDdlStrategy {
+  private readonly indexBuilder: MySqlIndexBuilder;
+  constructor(private readonly logger?: LoggerLike) {
+    this.indexBuilder = new MySqlIndexBuilder(logger);
+  }
   public generateCreateTableSql(metadata: EntityMetadata): string {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
@@ -30,25 +37,7 @@ export class MySqlDdlStrategy {
       mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
     }
   ): string {
-    if (index.where) {
-      // MySQL ignores partial WHERE in CREATE INDEX (requires functional equivalent)
-      console.warn(
-        `MySQL: partial index WHERE is not supported and will be ignored for ${index.name}`
-      );
-    }
-    if (index.nulls && Object.keys(index.nulls).length > 0) {
-      console.warn(
-        `MySQL: NULLS FIRST/LAST is not supported and will be ignored for ${index.name}`
-      );
-    }
-    // Warn on unsupported computed storage if encountered via DDL (rendering handled in column gen)
-    const parts: string[] = [];
-    for (const c of index.columns) parts.push(index.orders?.[c] ? `${c} ${index.orders[c]}` : c);
-    for (const e of index.expressions || []) parts.push(`(${e})`);
-    const cols = parts.join(', ');
-    const kind = index.mysqlType ? `${index.mysqlType} ` : index.unique ? 'UNIQUE ' : '';
-    const vis = index.mysqlVisibility ? ` ${index.mysqlVisibility}` : '';
-    return `CREATE ${kind}INDEX IF NOT EXISTS ${index.name} ON ${table} (${cols})${vis}`;
+    return this.indexBuilder.buildCreateIndexSql(table, index);
   }
 
   public generateColumnDefinition(column: ColumnMetadata): string {
@@ -56,7 +45,7 @@ export class MySqlDdlStrategy {
       const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
         .computedStorage;
       if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
-        console.warn(
+        this.logger?.warn(
           `MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`
         );
       }

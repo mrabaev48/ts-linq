@@ -44,15 +44,15 @@ class SchemaExportCommand {
         this.fsAdapter = fsAdapter;
         this.name = 'schema:export';
         this.describe = 'Экспортирует snapshot схемы из метаданных в файл';
-        this.requiresProvider = false;
         this.aliases = ['schema export'];
     }
-    async run(_provider, argv) {
+    run(argv) {
         const out = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
         const snapshot = new core_1.SchemaSnapshotBuilder().buildExpectedFromMetadata();
         const json = new core_1.SchemaSnapshotSerializer().serialize(snapshot);
         this.fsAdapter.writeText(out, json);
         this.logger.info(`Schema snapshot saved to ${out}`);
+        return Promise.resolve();
     }
 }
 exports.SchemaExportCommand = SchemaExportCommand;

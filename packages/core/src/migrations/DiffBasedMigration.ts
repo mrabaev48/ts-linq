@@ -13,47 +13,47 @@ export abstract class DiffBasedMigration extends Migration {
   protected abstract dialect(): Dialect;
   protected abstract diff(): Promise<SchemaDiff> | SchemaDiff;
   /** Hook before executing all UP statements. */
-  protected async beforeUp(_sqls: string[]): Promise<void> {}
+  protected beforeUp(_sqls: string[]): void {}
   /** Hook after executing all UP statements. */
-  protected async afterUp(_sqls: string[]): Promise<void> {}
+  protected afterUp(_sqls: string[]): void {}
   /** Hook before executing a single UP statement; return false to skip. */
-  protected async beforeUpStatement(_sql: string): Promise<boolean> {
+  protected beforeUpStatement(_sql: string): boolean {
     return true;
   }
   /** Hook after executing a single UP statement. */
-  protected async afterUpStatement(_sql: string): Promise<void> {}
+  protected afterUpStatement(_sql: string): void {}
   /** Hook before executing all DOWN statements. */
-  protected async beforeDown(_sqls: string[]): Promise<void> {}
+  protected beforeDown(_sqls: string[]): void {}
   /** Hook after executing all DOWN statements. */
-  protected async afterDown(_sqls: string[]): Promise<void> {}
+  protected afterDown(_sqls: string[]): void {}
   /** Hook before executing a single DOWN statement; return false to skip. */
-  protected async beforeDownStatement(_sql: string): Promise<boolean> {
+  protected beforeDownStatement(_sql: string): boolean {
     return true;
   }
   /** Hook after executing a single DOWN statement. */
-  protected async afterDownStatement(_sql: string): Promise<void> {}
+  protected afterDownStatement(_sql: string): void {}
 
   public async up(): Promise<void> {
     const schemaDiff = await this.diff();
     const { up } = generateMigrationFromDiff(schemaDiff, this.dialect());
-    await this.beforeUp(up);
+    this.beforeUp(up);
     for (const sql of up) {
-      if (!(await this.beforeUpStatement(sql))) continue;
+      if (!this.beforeUpStatement(sql)) continue;
       await this.provider.executeNonQuery(sql);
-      await this.afterUpStatement(sql);
+      this.afterUpStatement(sql);
     }
-    await this.afterUp(up);
+    this.afterUp(up);
   }
 
   public async down(): Promise<void> {
     const schemaDiff = await this.diff();
     const { down } = generateMigrationFromDiff(schemaDiff, this.dialect());
-    await this.beforeDown(down);
+    this.beforeDown(down);
     for (const sql of down) {
-      if (!(await this.beforeDownStatement(sql))) continue;
+      if (!this.beforeDownStatement(sql)) continue;
       await this.provider.executeNonQuery(sql);
-      await this.afterDownStatement(sql);
+      this.afterDownStatement(sql);
     }
-    await this.afterDown(down);
+    this.afterDown(down);
   }
 }

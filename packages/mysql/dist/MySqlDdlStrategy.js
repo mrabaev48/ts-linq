@@ -2,7 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MySqlDdlStrategy = void 0;
 const core_1 = require("@ts-linq/core");
+const MySqlIndexBuilder_1 = require("./builders/MySqlIndexBuilder");
 class MySqlDdlStrategy {
+    constructor(logger) {
+        this.logger = logger;
+        this.indexBuilder = new MySqlIndexBuilder_1.MySqlIndexBuilder(logger);
+    }
     generateCreateTableSql(metadata) {
         if (!metadata || !metadata.columns) {
             throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
@@ -15,30 +20,14 @@ class MySqlDdlStrategy {
         return `CREATE TABLE IF NOT EXISTS ${metadata.tableName} (${cols.join(', ')})`;
     }
     generateCreateIndexSql(table, index) {
-        if (index.where) {
-            // MySQL ignores partial WHERE in CREATE INDEX (requires functional equivalent)
-            console.warn(`MySQL: partial index WHERE is not supported and will be ignored for ${index.name}`);
-        }
-        if (index.nulls && Object.keys(index.nulls).length > 0) {
-            console.warn(`MySQL: NULLS FIRST/LAST is not supported and will be ignored for ${index.name}`);
-        }
-        // Warn on unsupported computed storage if encountered via DDL (rendering handled in column gen)
-        const parts = [];
-        for (const c of index.columns)
-            parts.push(index.orders?.[c] ? `${c} ${index.orders[c]}` : c);
-        for (const e of index.expressions || [])
-            parts.push(`(${e})`);
-        const cols = parts.join(', ');
-        const kind = index.mysqlType ? `${index.mysqlType} ` : index.unique ? 'UNIQUE ' : '';
-        const vis = index.mysqlVisibility ? ` ${index.mysqlVisibility}` : '';
-        return `CREATE ${kind}INDEX IF NOT EXISTS ${index.name} ON ${table} (${cols})${vis}`;
+        return this.indexBuilder.buildCreateIndexSql(table, index);
     }
     generateColumnDefinition(column) {
         if (column.isComputed && column.computedExpression) {
             const storage = column
                 .computedStorage;
             if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
-                console.warn(`MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`);
+                this.logger?.warn(`MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`);
             }
             const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
             return `${column.columnName} ${this.mapTypeToMySql(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;

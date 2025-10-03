@@ -2,7 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SQLiteDdlStrategy = void 0;
 const core_1 = require("@ts-linq/core");
+const SQLiteIndexBuilder_1 = require("./builders/SQLiteIndexBuilder");
 class SQLiteDdlStrategy {
+    constructor(logger) {
+        this.logger = logger;
+        this.indexBuilder = new SQLiteIndexBuilder_1.SQLiteIndexBuilder(logger);
+    }
     generateCreateTableSql(metadata) {
         if (!metadata || !metadata.columns) {
             throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
@@ -31,18 +36,7 @@ class SQLiteDdlStrategy {
         return `CREATE TABLE IF NOT EXISTS ${metadata.tableName} (${columns.join(', ')})`;
     }
     generateCreateIndexSql(tableName, index) {
-        const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-        const whereSql = index.where ? ` WHERE ${index.where}` : '';
-        const parts = [];
-        for (const c of index.columns) {
-            const ord = index.orders?.[c] ? ` ${index.orders[c]}` : '';
-            const collate = index.collations?.[c] ? ` COLLATE ${index.collations[c]}` : '';
-            parts.push(`${c}${ord}${collate}`);
-        }
-        for (const e of index.expressions || [])
-            parts.push(`(${e})`);
-        const cols = parts.join(', ');
-        return `CREATE ${uniqueKeyword}INDEX IF NOT EXISTS ${index.name} ON ${tableName} (${cols})${whereSql}`;
+        return this.indexBuilder.buildCreateIndexSql(tableName, index);
     }
     generateColumnDefinition(column) {
         if (column.isComputed && column.computedExpression) {
@@ -50,10 +44,10 @@ class SQLiteDdlStrategy {
                 .computedStorage;
             const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
             if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
-                console.warn(`SQLite: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); using ${kind} for ${column.columnName}`);
+                this.logger?.warn(`SQLite: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); using ${kind} for ${column.columnName}`);
             }
             if (kind === 'STORED') {
-                console.warn(`SQLite: STORED generated columns require SQLite >= 3.31; falling back to VIRTUAL for ${column.columnName}`);
+                this.logger?.warn(`SQLite: STORED generated columns require SQLite >= 3.31; falling back to VIRTUAL for ${column.columnName}`);
             }
             return `${column.columnName} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
         }

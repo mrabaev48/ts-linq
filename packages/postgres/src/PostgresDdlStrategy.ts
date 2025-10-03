@@ -1,7 +1,14 @@
 import type { EntityMetadata } from '@ts-linq/core';
-import { ColumnMetadata, SqlHelper } from '@ts-linq/core';
+type LoggerLike = { warn(message: string, error?: unknown): void };
+import type { PgIndexSpec } from './builders/PgIndexBuilder';
+import { PgIndexBuilder } from './builders/PgIndexBuilder';
 
 export class PostgresDdlStrategy {
+  private readonly indexBuilder: PgIndexBuilder;
+
+  constructor(private readonly logger?: LoggerLike) {
+    this.indexBuilder = new PgIndexBuilder(logger);
+  }
   public generateCreateTableSql(entityMetadata: EntityMetadata): string {
     const columnSqls = entityMetadata.columns.map((column) => {
       if (column.isComputed && column.computedExpression) {
@@ -9,7 +16,7 @@ export class PostgresDdlStrategy {
         const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
           .computedStorage;
         if (storage && storage !== 'STORED') {
-          console.warn(
+          this.logger?.warn(
             `Postgres: computedStorage='${storage}' is not supported; coercing to STORED for ${column.columnName}`
           );
         }
@@ -48,68 +55,29 @@ export class PostgresDdlStrategy {
       withParams?: Record<string, string | number | boolean>;
     }
   ): string {
-    if (index.collations) {
-      for (const k of Object.keys(index.collations)) {
-        const method = index.using || 'btree';
-        if (method !== 'btree') {
-          console.warn(
-            `Postgres: COLLATE is only meaningful with BTREE; using=${method} for index ${index.name}`
-          );
-          break;
-        }
-      }
-    }
-    const uniqueKeyword = index.unique ? 'UNIQUE ' : '';
-    const concurrently = index.concurrently ? ' CONCURRENTLY' : '';
-    const using = index.using ? ` USING ${index.using.toUpperCase()}` : '';
-    const parts: string[] = [];
-    for (const col of index.columns) {
-      const ord = index.orders?.[col];
-      const collation = index.collations?.[col] ? ` COLLATE ${index.collations[col]}` : '';
-      const nulls = index.nulls?.[col] ? ` NULLS ${index.nulls[col]}` : '';
-      parts.push(ord ? `"${col}" ${ord}${collation}${nulls}` : `"${col}"${collation}${nulls}`);
-    }
-    for (const expr of index.expressions || []) {
-      parts.push(`(${expr})`);
-    }
-    const columnsListSql = parts.join(', ');
-    const whereSql = index.where ? ` WHERE ${index.where}` : '';
-    const withSql =
-      index.withParams && Object.keys(index.withParams).length > 0
-        ? ` WITH (${Object.entries(index.withParams)
-            .map(([k, v]) => `${k}=${typeof v === 'string' ? `'${v}'` : String(v)}`)
-            .join(', ')})`
-        : '';
-    return `CREATE ${uniqueKeyword}INDEX${concurrently} IF NOT EXISTS "${index.name}" ON "${table}"${using} (${columnsListSql})${withSql}${whereSql}`;
+    return this.indexBuilder.buildCreateIndexSql(table, index as PgIndexSpec);
   }
 
+  // index helpers relocated to PgIndexBuilder
+
   public mapTypeToPg(type: string): string {
-    switch ((type || '').toUpperCase()) {
-      case 'TEXT':
-      case 'STRING':
-        return 'TEXT';
-      case 'INTEGER':
-      case 'NUMBER':
-        return 'INTEGER';
-      case 'REAL':
-      case 'FLOAT':
-      case 'DOUBLE':
-        return 'DOUBLE PRECISION';
-      case 'BOOLEAN':
-        return 'BOOLEAN';
-      case 'DATETIME':
-      case 'DATE':
-        return 'TIMESTAMPTZ';
-      case 'BLOB':
-        return 'BYTEA';
-      case 'UUID':
-        return 'UUID';
-      case 'JSONB':
-        return 'JSONB';
-      case 'JSON':
-        return 'JSON';
-      default:
-        return 'TEXT';
-    }
+    const key = (type || '').toUpperCase();
+    const map: Record<string, string> = {
+      TEXT: 'TEXT',
+      STRING: 'TEXT',
+      INTEGER: 'INTEGER',
+      NUMBER: 'INTEGER',
+      REAL: 'DOUBLE PRECISION',
+      FLOAT: 'DOUBLE PRECISION',
+      DOUBLE: 'DOUBLE PRECISION',
+      BOOLEAN: 'BOOLEAN',
+      DATETIME: 'TIMESTAMPTZ',
+      DATE: 'TIMESTAMPTZ',
+      BLOB: 'BYTEA',
+      UUID: 'UUID',
+      JSONB: 'JSONB',
+      JSON: 'JSON'
+    };
+    return map[key] ?? 'TEXT';
   }
 }

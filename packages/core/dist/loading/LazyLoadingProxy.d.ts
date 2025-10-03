@@ -19,81 +19,86 @@ export declare const LAZY_LOADING_STATE: unique symbol;
  * Interface for lazy loading state tracking
  */
 interface LazyLoadingState {
-  [propertyName: string]: {
-    isLoaded: boolean;
-    isLoading: boolean;
-    loadingPromise?: Promise<unknown>;
-  };
+    [propertyName: string]: {
+        isLoaded: boolean;
+        isLoading: boolean;
+        loadingPromise?: Promise<unknown>;
+    };
 }
 /**
  * Entity Framework-style lazy loading implementation using ES6 Proxies.
  * Automatically loads related entities when navigation properties are first accessed.
  */
 export declare class LazyLoadingProxy {
-  /**
-   * Create a lazy loading proxy for an entity.
-   * When navigation properties are accessed, they will be automatically loaded from the database.
-   */
-  static create<T extends object>(
-    entity: T,
-    entityClass: new () => T,
-    provider: DatabaseProvider
-  ): T;
-  /**
-   * Create lazy loading proxies for multiple entities.
-   */
-  static createMany<T extends object>(
-    entities: T[],
-    entityClass: new () => T,
-    provider: DatabaseProvider
-  ): T[];
-  /**
-   * Check if an entity is a lazy loading proxy.
-   */
-  static isLazyProxy(entity: unknown): boolean;
-  /**
-   * Get the original target entity from a lazy proxy.
-   */
-  static getTarget<T>(entity: T): T;
-  /**
-   * Get the loading state for a lazy proxy.
-   */
-  static getLoadingState(entity: unknown): LazyLoadingState | null;
-  /**
-   * Check if a specific relationship property is loaded.
-   */
-  static isRelationshipLoaded(entity: unknown, propertyName: string): boolean;
-  /**
-   * Preload specific relationships to avoid N+1 queries.
-   */
-  static preloadRelationships<T extends object>(
-    entities: T[],
-    entityClass: new () => T,
-    propertyNames: string[],
-    provider: DatabaseProvider
-  ): Promise<void>;
-  /**
-   * Load a single relationship for an entity.
-   */
-  private static loadRelationship;
-  /**
-   * Batch load relationships for multiple entities to avoid N+1 queries.
-   */
-  private static batchLoadRelationship;
-  /**
-   * Resolve a relationship target entity.
-   */
-  private static resolveTargetEntity;
-  /**
-   * Generate default foreign key name.
-   */
-  private static defaultForeignKeyFor;
+    private static _logger?;
+    static setLogger(logger?: {
+        warn(message: string, error?: unknown): void;
+    }): void;
+    private static getOrInitStateEntry;
+    private static markLoading;
+    private static markLoaded;
+    private static resetLoading;
+    private static defaultValueFor;
+    private static getLogger;
+    /**
+     * Create a lazy loading proxy for an entity.
+     * When navigation properties are accessed, they will be automatically loaded from the database.
+     */
+    static create<T extends object>(entity: T, entityClass: new () => T, provider: DatabaseProvider): T;
+    private static proxyGet;
+    private static proxySet;
+    private static proxyHas;
+    private static proxyOwnKeys;
+    private static proxyGetOwnPropertyDescriptor;
+    /**
+     * Create lazy loading proxies for multiple entities.
+     */
+    static createMany<T extends object>(entities: T[], entityClass: new () => T, provider: DatabaseProvider): T[];
+    /**
+     * Check if an entity is a lazy loading proxy.
+     */
+    static isLazyProxy(entity: unknown): boolean;
+    /**
+     * Get the original target entity from a lazy proxy.
+     */
+    static getTarget<T>(entity: T): T;
+    /**
+     * Get the loading state for a lazy proxy.
+     */
+    static getLoadingState(entity: unknown): LazyLoadingState | null;
+    /**
+     * Check if a specific relationship property is loaded.
+     */
+    static isRelationshipLoaded(entity: unknown, propertyName: string): boolean;
+    /**
+     * Preload specific relationships to avoid N+1 queries.
+     */
+    static preloadRelationships<T extends object>(entities: T[], entityClass: new () => T, propertyNames: string[], provider: DatabaseProvider): Promise<void>;
+    /**
+     * Load a single relationship for an entity.
+     */
+    private static loadRelationship;
+    /**
+     * Batch load relationships for multiple entities to avoid N+1 queries.
+     */
+    private static batchLoadRelationship;
+    private static batchLoadToOne;
+    private static batchLoadOneToMany;
+    private static batchLoadManyToMany;
+    /**
+     * Resolve a relationship target entity.
+     */
+    private static resolveTargetEntity;
+    /**
+     * Generate default foreign key name.
+     */
+    private static defaultForeignKeyFor;
 }
 /**
  * Type guard to check if an entity is a lazy loading proxy.
  */
 export declare function isLazyProxy<T>(entity: T): entity is T & {
-  [LAZY_LOADING_PROXY]: true;
+    [LAZY_LOADING_PROXY]: true;
 };
 /**
  * Get the original target from a lazy proxy.

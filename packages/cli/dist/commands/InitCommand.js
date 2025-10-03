@@ -40,9 +40,8 @@ class InitCommand {
     constructor() {
         this.name = 'init';
         this.describe = 'Инициализация проекта со скелетом ts-linq';
-        this.requiresProvider = false;
     }
-    async run(_provider, argv) {
+    run(argv) {
         const destArg = argv[1];
         const dest = path.resolve(process.cwd(), destArg || '.');
         if (destArg)
@@ -130,6 +129,7 @@ export class ${name} extends Migration {
             console.log(`Created ${migFile}`);
         }
         console.log(`Initialized ts-linq project at ${dest}`);
+        return Promise.resolve();
     }
 }
 exports.InitCommand = InitCommand;

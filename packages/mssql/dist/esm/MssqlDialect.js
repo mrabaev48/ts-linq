@@ -1,4 +1,8 @@
 import { MetadataStorage } from '@ts-linq/core';
+import { MssqlWhereEmitter } from './emitters/MssqlWhereEmitter';
+import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
+import { MssqlOrderEmitter } from './emitters/MssqlOrderEmitter';
+import { MssqlGroupEmitter } from './emitters/MssqlGroupEmitter';
 /**
  * MSSQL dialect for SELECT generation.
  *
@@ -7,6 +11,12 @@ import { MetadataStorage } from '@ts-linq/core';
  * - Converts '?' placeholders to @p1..@pn for MSSQL parameter style
  */
 export class MssqlDialect {
+    constructor() {
+        this.whereEmitter = new MssqlWhereEmitter();
+        this.joinEmitter = new MssqlJoinEmitter();
+        this.orderEmitter = new MssqlOrderEmitter();
+        this.groupEmitter = new MssqlGroupEmitter();
+    }
     quoteIdentifier(identifier) {
         return `[${identifier.replace(/]/g, ']]')}]`;
     }
@@ -21,59 +31,17 @@ export class MssqlDialect {
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const parameters = [];
-        if (options.selectParams && options.selectParams.length) {
-            parameters.push(...options.selectParams);
-        }
+        this.collectSelectParams(parameters, options);
         const selectList = options.select && options.select.length ? options.select.join(', ') : '*';
-        // For MSSQL, TOP must appear right after SELECT (before DISTINCT)
-        // If both DISTINCT and LIMIT are used, MSSQL supports SELECT DISTINCT TOP (n)
         const hasLimit = options.limit !== undefined && options.limit !== null;
         const hasOffset = options.offset !== undefined && options.offset !== null;
-        let selectHead = 'SELECT ';
-        if (options.distinct)
-            selectHead += 'DISTINCT ';
-        if (hasLimit && !hasOffset)
-            selectHead += `TOP (${options.limit}) `;
+        const selectHead = this.buildSelectHead(options, hasLimit, hasOffset);
         let query = `${selectHead}${selectList} FROM [${options.from ?? metadata.tableName}]`;
-        if (options.joins && options.joins.length > 0) {
-            for (const join of options.joins) {
-                query += ` ${join.type} JOIN [${join.table}]`;
-                if (join.alias)
-                    query += ` AS ${join.alias}`;
-                query += ` ON ${join.on}`;
-            }
-        }
-        if (options.where && options.where.length > 0) {
-            const whereClauses = options.where.map((w) => w.condition);
-            query += ` WHERE ${whereClauses.join(' AND ')}`;
-            for (const where of options.where)
-                parameters.push(...where.parameters);
-        }
-        // GROUP BY / HAVING
-        if (options.groupBy) {
-            if (options.groupBy.columns && options.groupBy.columns.length > 0) {
-                query += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-            }
-            if (options.groupBy.having) {
-                query += ` HAVING ${options.groupBy.having.condition}`;
-                if (options.groupBy.having.parameters)
-                    parameters.push(...options.groupBy.having.parameters);
-            }
-        }
-        if (options.orderBy && options.orderBy.length > 0) {
-            const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
-            query += ` ORDER BY ${orderByClauses.join(', ')}`;
-        }
-        // OFFSET/FETCH requires ORDER BY in MSSQL
-        if (hasOffset) {
-            if (!options.orderBy || options.orderBy.length === 0) {
-                // Provide deterministic ordering fallback when missing ORDER BY
-                query += ' ORDER BY (SELECT NULL)';
-            }
-            const fetchNext = hasLimit ? ` FETCH NEXT ${options.limit} ROWS ONLY` : '';
-            query += ` OFFSET ${options.offset} ROWS${fetchNext}`;
-        }
-        // Convert '?' placeholders to @p1..@pn
+        query += this.joinEmitter.emit(options);
+        query += this.whereEmitter.emit(parameters, options);
+        query += this.groupEmitter.emit(parameters, options);
+        query += this.orderEmitter.emit(options);
+        query += this.buildOffsetFetch(options, hasLimit, hasOffset);
         query = this.numberPlaceholders(query, parameters.length);
         return { query, parameters };
     }
@@ -86,6 +54,29 @@ export class MssqlDialect {
             index++;
             return `@p${index}`;
         });
+    }
+    collectSelectParams(parameters, options) {
+        if (options.selectParams && options.selectParams.length)
+            parameters.push(...options.selectParams);
+    }
+    buildSelectHead(options, hasLimit, hasOffset) {
+        let head = 'SELECT ';
+        if (options.distinct)
+            head += 'DISTINCT ';
+        if (hasLimit && !hasOffset)
+            head += `TOP (${options.limit}) `;
+        return head;
+    }
+    buildOffsetFetch(options, hasLimit, hasOffset) {
+        if (!hasOffset)
+            return '';
+        let sql = '';
+        if (!options.orderBy || options.orderBy.length === 0) {
+            sql += ' ORDER BY (SELECT NULL)';
+        }
+        const fetchNext = hasLimit ? ` FETCH NEXT ${options.limit} ROWS ONLY` : '';
+        sql += ` OFFSET ${options.offset} ROWS${fetchNext}`;
+        return sql;
     }
 }
 //# sourceMappingURL=MssqlDialect.js.map

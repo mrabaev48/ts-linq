@@ -20,6 +20,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 // Core types
 __exportStar(require("./types"), exports);
+__exportStar(require("./types/Logger"), exports);
 // Decorators
 __exportStar(require("./decorators/Entity"), exports);
 __exportStar(require("./decorators/Column"), exports);
@@ -57,6 +58,7 @@ __exportStar(require("./DdlBuilder"), exports);
 // Loading
 __exportStar(require("./loading/LoadingStrategy"), exports);
 __exportStar(require("./loading/EntityLoader"), exports);
+__exportStar(require("./loading/LazyLoadingProxy"), exports);
 // Migrations
 __exportStar(require("./migrations/Migration"), exports);
 __exportStar(require("./migrations/MigrationRunner"), exports);

@@ -5,47 +5,49 @@ import { generateMigrationFromDiff } from './DialectMigrationSql';
  * Subclasses provide diff() and dialect(), and this class implements up()/down().
  */
 export class DiffBasedMigration extends Migration {
-  /** Hook before executing all UP statements. */
-  async beforeUp(_sqls) {}
-  /** Hook after executing all UP statements. */
-  async afterUp(_sqls) {}
-  /** Hook before executing a single UP statement; return false to skip. */
-  async beforeUpStatement(_sql) {
-    return true;
-  }
-  /** Hook after executing a single UP statement. */
-  async afterUpStatement(_sql) {}
-  /** Hook before executing all DOWN statements. */
-  async beforeDown(_sqls) {}
-  /** Hook after executing all DOWN statements. */
-  async afterDown(_sqls) {}
-  /** Hook before executing a single DOWN statement; return false to skip. */
-  async beforeDownStatement(_sql) {
-    return true;
-  }
-  /** Hook after executing a single DOWN statement. */
-  async afterDownStatement(_sql) {}
-  async up() {
-    const schemaDiff = await this.diff();
-    const { up } = generateMigrationFromDiff(schemaDiff, this.dialect());
-    await this.beforeUp(up);
-    for (const sql of up) {
-      if (!(await this.beforeUpStatement(sql))) continue;
-      await this.provider.executeNonQuery(sql);
-      await this.afterUpStatement(sql);
+    /** Hook before executing all UP statements. */
+    beforeUp(_sqls) { }
+    /** Hook after executing all UP statements. */
+    afterUp(_sqls) { }
+    /** Hook before executing a single UP statement; return false to skip. */
+    beforeUpStatement(_sql) {
+        return true;
     }
-    await this.afterUp(up);
-  }
-  async down() {
-    const schemaDiff = await this.diff();
-    const { down } = generateMigrationFromDiff(schemaDiff, this.dialect());
-    await this.beforeDown(down);
-    for (const sql of down) {
-      if (!(await this.beforeDownStatement(sql))) continue;
-      await this.provider.executeNonQuery(sql);
-      await this.afterDownStatement(sql);
+    /** Hook after executing a single UP statement. */
+    afterUpStatement(_sql) { }
+    /** Hook before executing all DOWN statements. */
+    beforeDown(_sqls) { }
+    /** Hook after executing all DOWN statements. */
+    afterDown(_sqls) { }
+    /** Hook before executing a single DOWN statement; return false to skip. */
+    beforeDownStatement(_sql) {
+        return true;
     }
-    await this.afterDown(down);
-  }
+    /** Hook after executing a single DOWN statement. */
+    afterDownStatement(_sql) { }
+    async up() {
+        const schemaDiff = await this.diff();
+        const { up } = generateMigrationFromDiff(schemaDiff, this.dialect());
+        this.beforeUp(up);
+        for (const sql of up) {
+            if (!this.beforeUpStatement(sql))
+                continue;
+            await this.provider.executeNonQuery(sql);
+            this.afterUpStatement(sql);
+        }
+        this.afterUp(up);
+    }
+    async down() {
+        const schemaDiff = await this.diff();
+        const { down } = generateMigrationFromDiff(schemaDiff, this.dialect());
+        this.beforeDown(down);
+        for (const sql of down) {
+            if (!this.beforeDownStatement(sql))
+                continue;
+            await this.provider.executeNonQuery(sql);
+            this.afterDownStatement(sql);
+        }
+        this.afterDown(down);
+    }
 }
 //# sourceMappingURL=DiffBasedMigration.js.map

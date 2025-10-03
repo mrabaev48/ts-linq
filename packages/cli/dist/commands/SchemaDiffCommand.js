@@ -46,12 +46,9 @@ class SchemaDiffCommand {
         this.fsAdapter = fsAdapter;
         this.name = 'schema:diff';
         this.describe = 'Печатает SQL отличий между snapshot и фактической схемой';
-        this.requiresProvider = true;
         this.aliases = ['schema diff'];
     }
-    async run(provider, argv) {
-        if (!provider)
-            throw new Error('Provider is required');
+    async runDb(provider, argv) {
         const file = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
         if (!this.fsAdapter.exists(file)) {
             this.logger.error(`Snapshot file not found: ${file}`);

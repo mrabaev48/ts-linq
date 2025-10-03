@@ -113,41 +113,43 @@ class QueryBuilder {
     }
     /** Create a stable, lightweight cache key. */
     static buildCacheKey(entityClass, options) {
-        let key = entityClass.name;
-        key += '|s:' + (options.select ? options.select.join(',') : '');
-        if (options.where && options.where.length) {
-            key += '|w:';
-            for (const whereClause of options.where) {
-                key += whereClause.condition + '(' + (whereClause.parameters?.join('|') ?? '') + ')';
-            }
-        }
-        if (options.orderBy && options.orderBy.length) {
-            key += '|o:';
-            for (const orderBy of options.orderBy)
-                key += orderBy.column + ':' + orderBy.direction + ';';
-        }
-        if (options.groupBy) {
-            key += '|g:' + options.groupBy.columns.join(',');
-            if (options.groupBy.having)
-                key +=
-                    '{' +
-                        options.groupBy.having.condition +
-                        '(' +
-                        (options.groupBy.having.parameters?.join('|') ?? '') +
-                        ')}';
-        }
-        if (options.joins && options.joins.length) {
-            key += '|j:';
-            for (const joinClause of options.joins)
-                key += joinClause.type + ':' + joinClause.table + ':' + joinClause.on + ';';
-        }
+        const parts = [];
+        parts.push(entityClass.name);
+        parts.push('|s:', options.select ? options.select.join(',') : '');
+        if (options.where?.length)
+            parts.push('|w:', QueryBuilder.serializeWhere(options));
+        if (options.orderBy?.length)
+            parts.push('|o:', QueryBuilder.serializeOrderBy(options));
+        if (options.groupBy)
+            parts.push('|g:', QueryBuilder.serializeGroupBy(options));
+        if (options.joins?.length)
+            parts.push('|j:', QueryBuilder.serializeJoins(options));
         if (options.limit !== undefined)
-            key += '|l:' + options.limit;
+            parts.push('|l:', String(options.limit));
         if (options.offset !== undefined)
-            key += '|f:' + options.offset;
+            parts.push('|f:', String(options.offset));
         if (options.distinct)
-            key += '|d:1';
-        return key;
+            parts.push('|d:1');
+        return parts.join('');
+    }
+    static serializeWhere(options) {
+        return (options.where ?? [])
+            .map((w) => `${w.condition}(${w.parameters?.join('|') ?? ''})`)
+            .join('');
+    }
+    static serializeOrderBy(options) {
+        return (options.orderBy ?? []).map((o) => `${o.column}:${o.direction};`).join('');
+    }
+    static serializeGroupBy(options) {
+        const gb = options.groupBy;
+        const base = gb.columns.join(',');
+        if (!gb.having)
+            return base;
+        const hv = `{${gb.having.condition}(${gb.having.parameters?.join('|') ?? ''})}`;
+        return base + hv;
+    }
+    static serializeJoins(options) {
+        return (options.joins ?? []).map((j) => `${j.type}:${j.table}:${j.on};`).join('');
     }
     /** Store an item in the cache. */
     remember(key, value) {

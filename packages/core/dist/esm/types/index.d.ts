@@ -167,6 +167,19 @@ export interface RelationshipMetadata {
     inverseSide?: string;
     /** Cascade operations (insert/update/delete) when true. */
     cascade?: boolean;
+    /** Many-to-many join configuration (junction table and key columns). */
+    through?: {
+        /** Junction table name */
+        table: string;
+        /** FK column in junction table pointing to source entity (e.g., userId) */
+        sourceFk?: string;
+        /** FK column in junction table pointing to target entity (e.g., roleId) */
+        targetFk?: string;
+        /** Explicit source PK column name (fallback to metadata primary key) */
+        sourcePk?: string;
+        /** Explicit target PK column name (fallback to metadata primary key) */
+        targetPk?: string;
+    };
 }
 /**
  * Index definition for an entity.
