@@ -1,6 +1,5 @@
 import type { BinaryExpressionNode } from '@ts-linq/ast';
-
-export type SqlParameter = string | number | boolean | Date | Uint8Array | null;
+import type { SqlParameter } from '../types';
 
 export class BinaryVisitor {
   public visit(node: BinaryExpressionNode): { condition: string; parameters: SqlParameter[] } {

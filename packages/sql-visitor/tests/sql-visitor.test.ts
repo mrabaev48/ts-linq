@@ -1,6 +1,6 @@
-import { SqlVisitor } from '../../src/query/ast/SqlVisitor';
-import type { ExpressionNode } from '../../src/query/ast/Nodes';
-import { LogicalOperator, ComparisonOperator } from '../../src/query/ast/Nodes';
+import { SqlVisitor } from '../src';
+import type { ExpressionNode } from '@ts-linq/ast';
+import { LogicalOperator, ComparisonOperator } from '@ts-linq/ast';
 
 describe('SqlVisitor + LogicalVisitor', () => {
   const v = new SqlVisitor();

@@ -1,7 +1,7 @@
 import type { BinaryExpressionNode, ExpressionNode, LogicalExpressionNode } from '@ts-linq/ast';
 import { BinaryVisitor } from '../visitors/BinaryVisitor';
 import { LogicalVisitor } from '../visitors/LogicalVisitor';
-import type { SqlParameter } from '../visitors/BinaryVisitor';
+import type { SqlParameter } from '../types';
 
 export class SqlVisitor {
   private readonly binary = new BinaryVisitor();
