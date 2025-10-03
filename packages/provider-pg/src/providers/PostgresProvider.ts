@@ -10,9 +10,6 @@ import type {
 import {
   DatabaseProvider,
   OptimisticConcurrencyError,
-  UniqueConstraintError,
-  DatabaseError,
-  ForeignKeyConstraintError,
   MetadataStorage,
   QueryBuilder
 } from '@ts-linq/core';
@@ -21,11 +18,6 @@ import { PostgresDdlStrategy } from '@ts-linq/dialect-postgres';
 import type { PgPoolLike } from '../pg/PoolAdapter';
 import { createPgPool } from '../pg/PoolAdapter';
 import { mapPgError } from '../pg/ErrorMapper';
-
-interface PgQueryResult<T = unknown> {
-  rows: T[];
-  rowCount: number;
-}
 
 export class PostgresProvider extends DatabaseProvider {
   private pool!: PgPoolLike;

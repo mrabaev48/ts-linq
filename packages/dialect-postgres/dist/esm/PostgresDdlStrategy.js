@@ -21,8 +21,8 @@ export class PostgresDdlStrategy {
         });
         if (entityMetadata.primaryKeys.length > 0) {
             const primaryKeySql = entityMetadata.primaryKeys
-                .map((primaryKey) => `"${entityMetadata.columns.find((column) => column.propertyName === primaryKey)?.columnName ||
-                primaryKey}"`)
+                .map((primaryKey) => `"${entityMetadata.columns.find((column) => column.propertyName === primaryKey)
+                ?.columnName || primaryKey}"`)
                 .join(', ');
             columnSqls.push(`PRIMARY KEY (${primaryKeySql})`);
         }
