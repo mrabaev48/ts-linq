@@ -110,6 +110,11 @@ module.exports = {
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
     {
+      displayName: 'dialect-postgres',
+      testMatch: ['<rootDir>/packages/dialect-postgres/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
+    },
+    {
       displayName: 'provider-pg',
       testMatch: ['<rootDir>/packages/provider-pg/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
