@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import fc from 'fast-check';
 import { PredicateParser } from '@ts-linq/ast';
-import { SqlVisitor } from '@ts-linq/core/src/query/ast/SqlVisitor';
+import { SqlVisitor } from '@ts-linq/core/query/ast/SqlVisitor';
 
 type Row = { price: number; stock: number };
 
