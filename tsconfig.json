@@ -23,6 +23,7 @@
   "files": [],
   "references": [
     { "path": "packages/ast" },
+    { "path": "packages/sql-visitor" },
     { "path": "packages/core" },
     { "path": "packages/sqlite" },
     { "path": "packages/postgres" },

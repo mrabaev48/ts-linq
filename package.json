@@ -17,6 +17,11 @@
       "import": "./packages/core/dist/index.esm.js",
       "require": "./packages/core/dist/index.js"
     },
+    "./sql-visitor": {
+      "types": "./packages/sql-visitor/dist/index.d.ts",
+      "import": "./packages/sql-visitor/dist/index.esm.js",
+      "require": "./packages/sql-visitor/dist/index.js"
+    },
     "./ast": {
       "types": "./packages/ast/dist/index.d.ts",
       "import": "./packages/ast/dist/index.esm.js",

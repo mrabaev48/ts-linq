@@ -24,6 +24,8 @@ module.exports = {
     '^@ts-linq/sqlite/(.*)$': '<rootDir>/packages/sqlite/src/$1',
     '^@ts-linq/postgres/(.*)$': '<rootDir>/packages/postgres/src/$1',
     '^@ts-linq/mysql/(.*)$': '<rootDir>/packages/mysql/src/$1',
+    '^@ts-linq/sql-visitor$': '<rootDir>/packages/sql-visitor/src',
+    '^@ts-linq/sql-visitor/(.*)$': '<rootDir>/packages/sql-visitor/src/$1',
     '^@ts-linq/mssql/(.*)$': '<rootDir>/packages/mssql/src/$1',
     '^(\\.\\.\/)+src\/(.*)$': '<rootDir>/packages/core/src/$2',
     '^(\\.\\.\/)+context\/(.*)$': '<rootDir>/packages/core/src/context/$2',

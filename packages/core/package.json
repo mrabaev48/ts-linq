@@ -60,7 +60,8 @@
   "license": "ISC",
   "dependencies": {
     "reflect-metadata": "^0.2.2",
-    "@ts-linq/ast": "^1.0.0"
+    "@ts-linq/ast": "^1.0.0",
+    "@ts-linq/sql-visitor": "^1.0.0"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

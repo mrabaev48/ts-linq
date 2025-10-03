@@ -1,17 +1,12 @@
 import type { BinaryExpressionNode, ExpressionNode, LogicalExpressionNode } from '@ts-linq/ast';
-import type { SqlParameter } from '../../types';
-import { BinaryVisitor, LogicalVisitor } from '@ts-linq/sql-visitor';
+import { BinaryVisitor } from '../visitors/BinaryVisitor';
+import { LogicalVisitor } from '../visitors/LogicalVisitor';
+import type { SqlParameter } from '../visitors/BinaryVisitor';
 
-/**
- * Visitor that turns a supported AST into a SQL WHERE fragment with parameters.
- * Does not quote identifiers; relies on upstream mapping to column names.
- */
 export class SqlVisitor {
   private readonly binary = new BinaryVisitor();
   private readonly logical = new LogicalVisitor();
-  /**
-   * Convert an AST node to a SQL WHERE fragment and parameters.
-   */
+
   public toSql(node: ExpressionNode): { condition: string; parameters: SqlParameter[] } {
     if (node.type === 'BinaryExpression') return this.binary.visit(node as BinaryExpressionNode);
     if (node.type === 'LogicalExpression')
