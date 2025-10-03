@@ -1,13 +1,47 @@
 import 'reflect-metadata';
 import fc from 'fast-check';
 import { PredicateParser } from '@ts-linq/ast';
-import { SqlVisitor } from '../../core/src/query/ast/SqlVisitor';
+import type { ExpressionNode, BinaryExpressionNode, LogicalExpressionNode } from '@ts-linq/ast';
+import { ComparisonOperator, LogicalOperator } from '@ts-linq/ast';
 
 type Row = { price: number; stock: number };
 
-describe('Property-based: predicate SQL vs JS filtering', () => {
+function evalAst(node: ExpressionNode, row: Row): boolean {
+  if (node.type === 'BinaryExpression') {
+    const n = node as BinaryExpressionNode;
+    const leftValue = (row as Record<string, unknown>)[n.left.name] as
+      | number
+      | string
+      | boolean
+      | null;
+    const rightValue = n.right.value;
+    switch (n.operator) {
+      case ComparisonOperator.Eq:
+        return leftValue === rightValue;
+      case ComparisonOperator.Gte:
+        return (leftValue as number) >= (rightValue as number);
+      case ComparisonOperator.Lte:
+        return (leftValue as number) <= (rightValue as number);
+      case ComparisonOperator.Gt:
+        return (leftValue as number) > (rightValue as number);
+      case ComparisonOperator.Lt:
+        return (leftValue as number) < (rightValue as number);
+      default:
+        return false;
+    }
+  }
+  if (node.type === 'LogicalExpression') {
+    const n = node as LogicalExpressionNode;
+    if (n.operator === LogicalOperator.And) {
+      return n.expressions.every((e) => evalAst(e, row));
+    }
+    return n.expressions.some((e) => evalAst(e, row));
+  }
+  return true;
+}
+
+describe('Property-based: predicate AST vs JS semantics (no core dependency)', () => {
   const parser = new PredicateParser<Row>();
-  const visitor = new SqlVisitor();
 
   test('a => a.price >= X && a.stock > Y matches JS filter semantics when parsed', () => {
     fc.assert(
@@ -24,16 +58,10 @@ describe('Property-based: predicate SQL vs JS filtering', () => {
         (rows, X, Y) => {
           const pred = (a: Row) => a.price >= X && a.stock > Y;
           const ast = parser.parse(pred);
-          // Parser may return null for closure-captured constants; if null, we accept fallback.
           if (!ast) return true;
-          const { condition, parameters } = visitor.toSql(ast);
-          // Simulate SQL semantics using JS (>= and >)
           const js = rows.filter(pred);
-          // Simulate param binding and evaluation
-          const [pX, pY] = parameters as number[];
-          const sqlSim = rows.filter((r) => r.price >= pX && r.stock > pY);
-          // Both results should be equivalent in content and order
-          expect(sqlSim).toEqual(js);
+          const evalRes = rows.filter((r) => evalAst(ast, r));
+          expect(evalRes).toEqual(js);
           return true;
         }
       ),
