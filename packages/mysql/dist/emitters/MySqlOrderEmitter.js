@@ -1,13 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MySqlOrderEmitter = void 0;
-class MySqlOrderEmitter {
-    emit(options) {
-        if (!options.orderBy || options.orderBy.length === 0)
-            return '';
-        const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
-        return ` ORDER BY ${orderByClauses.join(', ')}`;
-    }
-}
-exports.MySqlOrderEmitter = MySqlOrderEmitter;
+/**
+ * @deprecated Use MySqlOrderEmitter from @ts-linq/dialect-mysql instead.
+ */
+var dialect_mysql_1 = require("@ts-linq/dialect-mysql");
+Object.defineProperty(exports, "MySqlOrderEmitter", { enumerable: true, get: function () { return dialect_mysql_1.MySqlOrderEmitter; } });
 //# sourceMappingURL=MySqlOrderEmitter.js.map

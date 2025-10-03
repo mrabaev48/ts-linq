@@ -22,6 +22,11 @@
       "import": "./packages/dialect-postgres/dist/index.esm.js",
       "require": "./packages/dialect-postgres/dist/index.js"
     },
+    "./dialect-mysql": {
+      "types": "./packages/dialect-mysql/dist/index.d.ts",
+      "import": "./packages/dialect-mysql/dist/index.esm.js",
+      "require": "./packages/dialect-mysql/dist/index.js"
+    },
     "./provider-pg": {
       "types": "./packages/provider-pg/dist/index.d.ts",
       "import": "./packages/provider-pg/dist/index.esm.js",

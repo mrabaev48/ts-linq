@@ -24,6 +24,8 @@ module.exports = {
     '^@ts-linq/sqlite/(.*)$': '<rootDir>/packages/sqlite/src/$1',
     '^@ts-linq/postgres/(.*)$': '<rootDir>/packages/postgres/src/$1',
     '^@ts-linq/mysql/(.*)$': '<rootDir>/packages/mysql/src/$1',
+    '^@ts-linq/dialect-mysql$': '<rootDir>/packages/dialect-mysql/src',
+    '^@ts-linq/dialect-mysql/(.*)$': '<rootDir>/packages/dialect-mysql/src/$1',
     '^@ts-linq/sql-visitor$': '<rootDir>/packages/sql-visitor/src',
     '^@ts-linq/sql-visitor/(.*)$': '<rootDir>/packages/sql-visitor/src/$1',
     '^@ts-linq/dialect-postgres$': '<rootDir>/packages/dialect-postgres/src',
@@ -115,6 +117,11 @@ module.exports = {
     {
       displayName: 'mysql',
       testMatch: ['<rootDir>/packages/mysql/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
+    },
+    {
+      displayName: 'dialect-mysql',
+      testMatch: ['<rootDir>/packages/dialect-mysql/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
     {

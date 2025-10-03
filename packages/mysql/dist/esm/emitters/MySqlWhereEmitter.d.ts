@@ -1,5 +1,6 @@
-import type { QueryOptions, SqlParameter } from '@ts-linq/core';
-export declare class MySqlWhereEmitter {
-    emit(parameters: SqlParameter[], options: QueryOptions): string;
-}
+/**
+ * @deprecated Use MySqlWhereEmitter from @ts-linq/dialect-mysql instead.
+ */
+export { MySqlWhereEmitter } from '@ts-linq/dialect-mysql';
+export {};
 //# sourceMappingURL=MySqlWhereEmitter.d.ts.map

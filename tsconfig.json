@@ -27,6 +27,8 @@
       "@ts-linq/sql-visitor/*": ["packages/sql-visitor/src/*"],
       "@ts-linq/dialect-postgres": ["packages/dialect-postgres/src"],
       "@ts-linq/dialect-postgres/*": ["packages/dialect-postgres/src/*"],
+      "@ts-linq/dialect-mysql": ["packages/dialect-mysql/src"],
+      "@ts-linq/dialect-mysql/*": ["packages/dialect-mysql/src/*"],
       "@ts-linq/provider-pg": ["packages/provider-pg/src"],
       "@ts-linq/provider-pg/*": ["packages/provider-pg/src/*"]
     }
@@ -36,6 +38,7 @@
     { "path": "packages/ast" },
     { "path": "packages/sql-visitor" },
     { "path": "packages/dialect-postgres" },
+    { "path": "packages/dialect-mysql" },
     { "path": "packages/provider-pg" },
     { "path": "packages/core" },
     { "path": "packages/sqlite" },

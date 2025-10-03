@@ -33,7 +33,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@ts-linq/core": "^1.0.0"
+    "@ts-linq/core": "^1.0.0",
+    "@ts-linq/dialect-mysql": "^1.0.0"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

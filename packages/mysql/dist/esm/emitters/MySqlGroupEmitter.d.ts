@@ -1,5 +1,6 @@
-import type { QueryOptions, SqlParameter } from '@ts-linq/core';
-export declare class MySqlGroupEmitter {
-    emit(parameters: SqlParameter[], options: QueryOptions): string;
-}
+/**
+ * @deprecated Use MySqlGroupEmitter from @ts-linq/dialect-mysql instead.
+ */
+export { MySqlGroupEmitter } from '@ts-linq/dialect-mysql';
+export {};
 //# sourceMappingURL=MySqlGroupEmitter.d.ts.map

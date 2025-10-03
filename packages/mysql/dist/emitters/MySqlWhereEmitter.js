@@ -1,15 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MySqlWhereEmitter = void 0;
-class MySqlWhereEmitter {
-    emit(parameters, options) {
-        if (!options.where || options.where.length === 0)
-            return '';
-        const whereClauses = options.where.map((w) => w.condition);
-        for (const w of options.where)
-            parameters.push(...w.parameters);
-        return ` WHERE ${whereClauses.join(' AND ')}`;
-    }
-}
-exports.MySqlWhereEmitter = MySqlWhereEmitter;
+/**
+ * @deprecated Use MySqlWhereEmitter from @ts-linq/dialect-mysql instead.
+ */
+var dialect_mysql_1 = require("@ts-linq/dialect-mysql");
+Object.defineProperty(exports, "MySqlWhereEmitter", { enumerable: true, get: function () { return dialect_mysql_1.MySqlWhereEmitter; } });
 //# sourceMappingURL=MySqlWhereEmitter.js.map

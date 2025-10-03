@@ -1,5 +1,6 @@
-import type { QueryOptions } from '@ts-linq/core';
-export declare class MySqlOrderEmitter {
-    emit(options: QueryOptions): string;
-}
+/**
+ * @deprecated Use MySqlOrderEmitter from @ts-linq/dialect-mysql instead.
+ */
+export { MySqlOrderEmitter } from '@ts-linq/dialect-mysql';
+export {};
 //# sourceMappingURL=MySqlOrderEmitter.d.ts.map
