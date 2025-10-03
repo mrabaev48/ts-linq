@@ -3,8 +3,10 @@ import { BinaryVisitor } from '../src';
 import type { BinaryExpressionNode } from '@ts-linq/ast';
 import { ComparisonOperator } from '@ts-linq/ast';
 
+// No parser usage here to keep test free from unsafe calls; build AST explicitly
+
 describe('BinaryVisitor', () => {
-  const v = new BinaryVisitor();
+  const v: BinaryVisitor = new BinaryVisitor();
 
   it('renders >= with numeric literal', () => {
     const node: BinaryExpressionNode = {
