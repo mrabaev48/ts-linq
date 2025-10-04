@@ -76,6 +76,7 @@ export class PostgresProvider extends DatabaseProvider {
   public async connect(): Promise<void> {
     this.pool = createPgPool(this.connectionString);
     this.isConnected = true;
+    await Promise.resolve();
   }
 
   public async disconnect(): Promise<void> {

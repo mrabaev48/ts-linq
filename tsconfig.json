@@ -31,6 +31,9 @@
       "@ts-linq/dialect-mysql/*": ["packages/dialect-mysql/src/*"],
       "@ts-linq/provider-pg": ["packages/provider-pg/src"],
       "@ts-linq/provider-pg/*": ["packages/provider-pg/src/*"]
+      ,
+      "@ts-linq/provider-mysql": ["packages/provider-mysql/src"],
+      "@ts-linq/provider-mysql/*": ["packages/provider-mysql/src/*"]
     }
   },
   "files": [],
@@ -40,6 +43,7 @@
     { "path": "packages/dialect-postgres" },
     { "path": "packages/dialect-mysql" },
     { "path": "packages/provider-pg" },
+    { "path": "packages/provider-mysql" },
     { "path": "packages/core" },
     { "path": "packages/sqlite" },
     { "path": "packages/postgres" },

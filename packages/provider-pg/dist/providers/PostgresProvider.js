@@ -49,6 +49,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     async connect() {
         this.pool = (0, PoolAdapter_1.createPgPool)(this.connectionString);
         this.isConnected = true;
+        await Promise.resolve();
     }
     async disconnect() {
         if (this.pool)

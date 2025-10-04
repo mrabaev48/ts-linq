@@ -115,6 +115,7 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Open a connection pool to PostgreSQL using the connection string. */
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async connect(): Promise<void> {
     if (!Pg) throw new Error('pg module is not installed');
     const { Pool } = Pg;

@@ -32,6 +32,11 @@
       "import": "./packages/provider-pg/dist/index.esm.js",
       "require": "./packages/provider-pg/dist/index.js"
     },
+    "./provider-mysql": {
+      "types": "./packages/provider-mysql/dist/index.d.ts",
+      "import": "./packages/provider-mysql/dist/index.esm.js",
+      "require": "./packages/provider-mysql/dist/index.js"
+    },
     "./sql-visitor": {
       "types": "./packages/sql-visitor/dist/index.d.ts",
       "import": "./packages/sql-visitor/dist/index.esm.js",
