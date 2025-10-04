@@ -74,6 +74,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
         }
     }
     /** Open a connection pool to PostgreSQL using the connection string. */
+    // eslint-disable-next-line @typescript-eslint/require-await
     async connect() {
         if (!Pg)
             throw new Error('pg module is not installed');

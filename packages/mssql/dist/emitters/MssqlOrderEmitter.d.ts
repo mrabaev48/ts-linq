@@ -1,5 +1,5 @@
-import type { QueryOptions } from '@ts-linq/core';
-export declare class MssqlOrderEmitter {
-    emit(options: QueryOptions): string;
-}
+/**
+ * @deprecated Use MssqlOrderEmitter from @ts-linq/dialect-mssql instead.
+ */
+export { MssqlOrderEmitter } from '@ts-linq/dialect-mssql';
 //# sourceMappingURL=MssqlOrderEmitter.d.ts.map

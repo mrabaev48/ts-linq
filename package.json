@@ -22,6 +22,11 @@
       "import": "./packages/dialect-postgres/dist/index.esm.js",
       "require": "./packages/dialect-postgres/dist/index.js"
     },
+    "./dialect-sqlite": {
+      "types": "./packages/dialect-sqlite/dist/index.d.ts",
+      "import": "./packages/dialect-sqlite/dist/index.esm.js",
+      "require": "./packages/dialect-sqlite/dist/index.js"
+    },
     "./dialect-mysql": {
       "types": "./packages/dialect-mysql/dist/index.d.ts",
       "import": "./packages/dialect-mysql/dist/index.esm.js",
@@ -41,6 +46,11 @@
       "types": "./packages/provider-mysql/dist/index.d.ts",
       "import": "./packages/provider-mysql/dist/index.esm.js",
       "require": "./packages/provider-mysql/dist/index.js"
+    },
+    "./provider-sqlite": {
+      "types": "./packages/provider-sqlite/dist/index.d.ts",
+      "import": "./packages/provider-sqlite/dist/index.esm.js",
+      "require": "./packages/provider-sqlite/dist/index.js"
     },
     "./provider-mssql": {
       "types": "./packages/provider-mssql/dist/index.d.ts",
@@ -128,9 +138,11 @@
     "test:types:core": "npm run build -w packages/core && tsd packages/core --files test-d/**/*.test-d.ts",
     "test:core": "jest --selectProjects core",
     "test:sqlite": "jest --selectProjects sqlite",
+    "test:dialect-sqlite": "jest --selectProjects dialect-sqlite",
     "test:postgres": "jest --selectProjects postgres",
     "test:mysql": "jest --selectProjects mysql",
     "test:provider-mssql": "jest --selectProjects provider-mssql",
+    "test:provider-sqlite": "jest --selectProjects provider-sqlite",
     "test:dialect-mssql": "jest --selectProjects dialect-mssql",
     "test:mssql": "jest --selectProjects mssql",
     "test:sqlite:db": "RUN_DB_TESTS=1 jest packages/sqlite/tests/*integration*.test.ts --runInBand --detectOpenHandles",

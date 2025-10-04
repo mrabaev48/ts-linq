@@ -1,6 +1,3 @@
-type LoggerLike = {
-    warn(message: string, error?: unknown): void;
-};
 export type SQLiteIndexSpec = {
     name: string;
     columns: string[];
@@ -14,10 +11,8 @@ export type SQLiteIndexSpec = {
         [column: string]: string;
     };
 };
-export declare class SQLiteIndexBuilder {
-    private readonly _logger?;
-    constructor(_logger?: LoggerLike | undefined);
-    buildCreateIndexSql(table: string, index: SQLiteIndexSpec): string;
-}
-export {};
+/**
+ * @deprecated Use SQLiteIndexBuilder from @ts-linq/dialect-sqlite instead.
+ */
+export { SQLiteIndexBuilder } from '@ts-linq/dialect-sqlite';
 //# sourceMappingURL=SQLiteIndexBuilder.d.ts.map

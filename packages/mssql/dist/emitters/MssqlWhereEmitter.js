@@ -1,15 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MssqlWhereEmitter = void 0;
-class MssqlWhereEmitter {
-    emit(parameters, options) {
-        if (!options.where || options.where.length === 0)
-            return '';
-        const whereClauses = options.where.map((w) => w.condition);
-        for (const w of options.where)
-            parameters.push(...w.parameters);
-        return ` WHERE ${whereClauses.join(' AND ')}`;
-    }
-}
-exports.MssqlWhereEmitter = MssqlWhereEmitter;
+/**
+ * @deprecated Use MssqlWhereEmitter from @ts-linq/dialect-mssql instead.
+ */
+var dialect_mssql_1 = require("@ts-linq/dialect-mssql");
+Object.defineProperty(exports, "MssqlWhereEmitter", { enumerable: true, get: function () { return dialect_mssql_1.MssqlWhereEmitter; } });
 //# sourceMappingURL=MssqlWhereEmitter.js.map

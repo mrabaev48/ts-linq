@@ -1,13 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MssqlOrderEmitter = void 0;
-class MssqlOrderEmitter {
-    emit(options) {
-        if (!options.orderBy || options.orderBy.length === 0)
-            return '';
-        const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
-        return ` ORDER BY ${orderByClauses.join(', ')}`;
-    }
-}
-exports.MssqlOrderEmitter = MssqlOrderEmitter;
+/**
+ * @deprecated Use MssqlOrderEmitter from @ts-linq/dialect-mssql instead.
+ */
+var dialect_mssql_1 = require("@ts-linq/dialect-mssql");
+Object.defineProperty(exports, "MssqlOrderEmitter", { enumerable: true, get: function () { return dialect_mssql_1.MssqlOrderEmitter; } });
 //# sourceMappingURL=MssqlOrderEmitter.js.map

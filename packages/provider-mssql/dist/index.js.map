@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":";;;AAAA,2DAA0D;AAAjD,8GAAA,aAAa,OAAA","sourcesContent":["export { MssqlProvider } from './providers/MssqlProvider';\n\n\n"]}

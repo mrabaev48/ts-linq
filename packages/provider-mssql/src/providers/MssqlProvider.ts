@@ -8,15 +8,30 @@ import type {
   SoftDeleteOptions,
   SqlDialect
 } from '@ts-linq/core';
-import { DatabaseProvider, OptimisticConcurrencyError, MetadataStorage, SqlHelper } from '@ts-linq/core';
-import { MssqlDialect } from '../../../dialect-mssql/src';
+import {
+  DatabaseProvider,
+  OptimisticConcurrencyError,
+  MetadataStorage,
+  SqlHelper
+} from '@ts-linq/core';
+import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import type { MssqlPoolLike, MssqlRequestLike } from '../mssql/PoolAdapter';
 import { createMssqlPool } from '../mssql/PoolAdapter';
 import { mapMssqlError } from '../mssql/ErrorMapper';
 
+interface MssqlTransactionLike {
+  begin(): Promise<void>;
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
+}
+interface MssqlModuleLike {
+  Transaction: new (pool: MssqlPoolLike) => MssqlTransactionLike;
+  Request: new (parent: MssqlPoolLike | MssqlTransactionLike) => MssqlRequestLike;
+}
+
 export class MssqlProvider extends DatabaseProvider {
   private pool: MssqlPoolLike | null = null;
-  private tx: { begin(): Promise<void>; commit(): Promise<void>; rollback(): Promise<void> } | null = null;
+  private tx: MssqlTransactionLike | null = null;
   private ddl = new (class DdlWrapper {})();
 
   constructor(
@@ -39,11 +54,19 @@ export class MssqlProvider extends DatabaseProvider {
 
   public async disconnect(): Promise<void> {
     if (this.tx) {
-      try { await this.tx.rollback(); } catch { /* ignore */ }
+      try {
+        await this.tx.rollback();
+      } catch {
+        /* ignore */
+      }
       this.tx = null;
     }
     if (this.pool) {
-      try { await this.pool.close(); } catch { /* ignore */ }
+      try {
+        await this.pool.close();
+      } catch {
+        /* ignore */
+      }
       this.pool = null;
     }
     this.isConnected = false;
@@ -62,12 +85,18 @@ export class MssqlProvider extends DatabaseProvider {
   public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const { sql, params, returningPk } = this.generateInsertSql(entity as Record<string, unknown>, metadata);
+    const { sql, params, returningPk } = this.generateInsertSql(
+      entity as Record<string, unknown>,
+      metadata
+    );
     const affected = await this.executeNonQuery(sql, params);
     if (affected > 0 && returningPk) {
-      const rows = await this.executeQuery<{ id: number }>('SELECT CAST(SCOPE_IDENTITY() AS INT) AS id');
+      const rows = await this.executeQuery<{ id: number }>(
+        'SELECT CAST(SCOPE_IDENTITY() AS INT) AS id'
+      );
       const id = rows && rows[0]?.id;
-      if (id !== undefined) (entity as Record<string, unknown>)[returningPk] = id as unknown as SqlParameter;
+      if (id !== undefined)
+        (entity as Record<string, unknown>)[returningPk] = id as unknown as SqlParameter;
     }
     return entity;
   }
@@ -76,7 +105,11 @@ export class MssqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const versionCol = metadata.columns.find((c) => c.isVersion);
-    const { sql, params } = this.generateUpdateSql(entity as Record<string, unknown>, metadata, versionCol);
+    const { sql, params } = this.generateUpdateSql(
+      entity as Record<string, unknown>,
+      metadata,
+      versionCol
+    );
     const affectedRows = await this.executeNonQuery(sql, params);
     if (affectedRows === 0) {
       if (versionCol) throw new OptimisticConcurrencyError();
@@ -104,23 +137,35 @@ export class MssqlProvider extends DatabaseProvider {
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const pk = metadata.primaryKeys;
     if (!pk.length) return this.insert(entity, entityClass);
-    const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
+    const updatable = metadata.columns.filter(
+      (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
+    );
     const sourceCols = metadata.columns.filter((c) => !c.isGenerated);
     const sourceSelect = sourceCols.map((c) => `? AS ${c.columnName}`).join(', ');
-    const onClause = pk.map((k) => {
-      const col = metadata.columns.find((c) => c.propertyName === k)!;
-      return `t.${col.columnName} = s.${col.columnName}`;
-    }).join(' AND ');
+    const onClause = pk
+      .map((k) => {
+        const col = metadata.columns.find((c) => c.propertyName === k)!;
+        return `t.${col.columnName} = s.${col.columnName}`;
+      })
+      .join(' AND ');
     const setClause = updatable.map((c) => `t.${c.columnName} = s.${c.columnName}`).join(', ');
     const insertCols = sourceCols.map((c) => c.columnName).join(', ');
     const insertVals = sourceCols.map((c) => `s.${c.columnName}`).join(', ');
-    const params: SqlParameter[] = sourceCols.map((c) => this.coerceToSqlParameter((entity as Record<string, unknown>)[c.propertyName]));
-    const sql = `MERGE ${metadata.tableName} AS t USING (SELECT ${sourceSelect}) AS s ON (${onClause}) ` + (setClause ? `WHEN MATCHED THEN UPDATE SET ${setClause} ` : '') + `WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals});`;
+    const params: SqlParameter[] = sourceCols.map((c) =>
+      this.coerceToSqlParameter((entity as Record<string, unknown>)[c.propertyName])
+    );
+    const sql =
+      `MERGE ${metadata.tableName} AS t USING (SELECT ${sourceSelect}) AS s ON (${onClause}) ` +
+      (setClause ? `WHEN MATCHED THEN UPDATE SET ${setClause} ` : '') +
+      `WHEN NOT MATCHED THEN INSERT (${insertCols}) VALUES (${insertVals});`;
     await this.executeNonQuery(sql, params);
     return entity;
   }
 
-  public async findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null> {
+  public async findById<T extends object>(
+    id: unknown,
+    entityClass: new () => T
+  ): Promise<T | null> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const pk = metadata.primaryKeys[0];
@@ -132,7 +177,9 @@ export class MssqlProvider extends DatabaseProvider {
       const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
       if (has) sql += ` AND ${flag} = 0`;
     }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, [this.coerceToSqlParameter(id)]);
+    const rows = await this.executeQuery<Record<string, unknown>>(sql, [
+      this.coerceToSqlParameter(id)
+    ]);
     if (rows.length === 0) return null;
     return this.mapRowToEntity(rows[0], entityClass);
   }
@@ -150,7 +197,10 @@ export class MssqlProvider extends DatabaseProvider {
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
-  public async findWhere<T extends object>(entityClass: new () => T, conditions: Record<string, unknown>): Promise<T[]> {
+  public async findWhere<T extends object>(
+    entityClass: new () => T,
+    conditions: Record<string, unknown>
+  ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
@@ -164,11 +214,17 @@ export class MssqlProvider extends DatabaseProvider {
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
-  public async findWhereIn<T extends object>(entityClass: new () => T, column: string, values: unknown[]): Promise<T[]> {
+  public async findWhereIn<T extends object>(
+    entityClass: new () => T,
+    column: string,
+    values: unknown[]
+  ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     if (!Array.isArray(values) || values.length === 0) return [];
-    const columnMeta = metadata.columns.find((c) => c.propertyName === column || c.columnName === column);
+    const columnMeta = metadata.columns.find(
+      (c) => c.propertyName === column || c.columnName === column
+    );
     const columnName = columnMeta ? columnMeta.columnName : column;
     const placeholders = values.map(() => '?').join(', ');
     let sql = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
@@ -182,20 +238,26 @@ export class MssqlProvider extends DatabaseProvider {
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
-  protected async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
+  protected async doExecuteQuery<T>(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<T[]> {
     if (!this.isConnected) await this.connect();
     const { sql: mapped, params: mappedParams } = prepareMssqlSql(sql, params || []);
     const req = this.getRequest();
     mappedParams.forEach((v, i) => req.input(`p${i + 1}`, v));
     try {
       const result = await req.query<T>(mapped);
-      return (result.recordset || []) as T[];
+      return result.recordset || [];
     } catch (e: unknown) {
       throw mapMssqlError(e);
     }
   }
 
-  protected async doExecuteNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
+  protected async doExecuteNonQuery(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<number> {
     if (!this.isConnected) await this.connect();
     const { sql: mapped, params: mappedParams } = prepareMssqlSql(sql, params || []);
     const req = this.getRequest();
@@ -212,10 +274,8 @@ export class MssqlProvider extends DatabaseProvider {
   public async beginTransaction(): Promise<void> {
     if (!this.isConnected) await this.connect();
     const m = safeRequireMssql();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    this.tx = new (m as any).Transaction(this.pool as any);
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    await (this.tx as { begin(): Promise<void> }).begin();
+    this.tx = new m.Transaction(this.pool!);
+    await this.tx.begin();
     this.inTransaction = true;
     this.logger?.transactionStart?.({ traceId: this.currentTraceId, provider: this.providerName });
   }
@@ -234,25 +294,34 @@ export class MssqlProvider extends DatabaseProvider {
     this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
   }
 
-  public getDialect(): SqlDialect { return new MssqlDialect(); }
+  public getDialect(): SqlDialect {
+    return new MssqlDialect();
+  }
 
   private getRequest(): MssqlRequestLike {
     const m = safeRequireMssql();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    return new (m as any).Request((this.tx || this.pool) as any) as unknown as MssqlRequestLike;
+    const parent = (this.tx ?? this.pool)!;
+    return new m.Request(parent);
   }
 
   private generateInsertSql(
     entity: Record<string, unknown>,
     metadata: EntityMetadata
   ): { sql: string; params: SqlParameter[]; returningPk?: string } {
-    const insertable = metadata.columns.filter((col) => !col.isGenerated || entity[col.propertyName] !== undefined);
+    const insertable = metadata.columns.filter(
+      (col) => !col.isGenerated || entity[col.propertyName] !== undefined
+    );
     const columnNames = insertable.map((c) => c.columnName);
     const placeholders = insertable.map(() => '?');
-    const params: SqlParameter[] = insertable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
+    const params: SqlParameter[] = insertable.map((c) =>
+      this.coerceToSqlParameter(entity[c.propertyName])
+    );
     const sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) VALUES (${placeholders.join(', ')})`;
     const firstPk = metadata.primaryKeys[0];
-    const returningPk = firstPk && metadata.columns.find((c) => c.propertyName === firstPk)?.isGenerated ? firstPk : undefined;
+    const returningPk =
+      firstPk && metadata.columns.find((c) => c.propertyName === firstPk)?.isGenerated
+        ? firstPk
+        : undefined;
     return { sql, params, returningPk };
   }
 
@@ -261,10 +330,14 @@ export class MssqlProvider extends DatabaseProvider {
     metadata: EntityMetadata,
     versionCol?: ColumnMetadata
   ): { sql: string; params: SqlParameter[] } {
-    const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+    const updatable = metadata.columns.filter(
+      (c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated
+    );
     if (updatable.length === 0) throw new Error(`No updatable columns for ${metadata.target.name}`);
     const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
-    const setParams: SqlParameter[] = updatable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
+    const setParams: SqlParameter[] = updatable.map((c) =>
+      this.coerceToSqlParameter(entity[c.propertyName])
+    );
     if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
     const whereClauses: string[] = [];
     const whereParams: SqlParameter[] = [];
@@ -302,7 +375,9 @@ export class MssqlProvider extends DatabaseProvider {
     if (metadata) {
       for (const column of metadata.columns) {
         if (Object.prototype.hasOwnProperty.call(row as object, column.columnName)) {
-          (entity as Record<string, unknown>)[column.propertyName] = (row as Record<string, unknown>)[column.columnName];
+          (entity as Record<string, unknown>)[column.propertyName] = (
+            row as Record<string, unknown>
+          )[column.columnName];
         }
       }
     } else {
@@ -332,17 +407,22 @@ export class MssqlProvider extends DatabaseProvider {
   }
 }
 
-function prepareMssqlSql(sql: string, params: readonly SqlParameter[]): { sql: string; params: SqlParameter[] } {
+function prepareMssqlSql(
+  sql: string,
+  params: readonly SqlParameter[]
+): { sql: string; params: SqlParameter[] } {
   if (!params || params.length === 0) return { sql, params: [] };
   let index = 0;
   const mapped = sql.replace(/\?/g, () => `@p${++index}`);
   return { sql: mapped, params: [...params] };
 }
 
-function safeRequireMssql(): unknown {
-  try { return require('mssql'); } catch (e) {
-    throw new Error('Package "mssql" is required for MssqlProvider. Install it with: npm install mssql');
+function safeRequireMssql(): MssqlModuleLike {
+  try {
+    return require('mssql') as MssqlModuleLike;
+  } catch (e) {
+    throw new Error(
+      'Package "mssql" is required for MssqlProvider. Install it with: npm install mssql'
+    );
   }
 }
-
-

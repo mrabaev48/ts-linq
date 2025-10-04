@@ -1,28 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SQLiteIndexBuilder = void 0;
-class SQLiteIndexBuilder {
-    constructor(_logger) {
-        this._logger = _logger;
-    }
-    buildCreateIndexSql(table, index) {
-        if (!index?.name || !Array.isArray(index.columns) || index.columns.length === 0) {
-            this._logger?.warn(`SQLite: invalid index spec for ${index?.name || '<unnamed>'}; skip`);
-            return '';
-        }
-        const unique = index.unique ? 'UNIQUE ' : '';
-        const whereSql = index.where ? ` WHERE ${index.where}` : '';
-        const parts = [];
-        for (const c of index.columns) {
-            const ord = index.orders?.[c] ? ` ${index.orders[c]}` : '';
-            const collate = index.collations?.[c] ? ` COLLATE ${index.collations[c]}` : '';
-            parts.push(`${c}${ord}${collate}`);
-        }
-        for (const e of index.expressions || [])
-            parts.push(`(${e})`);
-        const cols = parts.join(', ');
-        return `CREATE ${unique}INDEX IF NOT EXISTS ${index.name} ON ${table} (${cols})${whereSql}`;
-    }
-}
-exports.SQLiteIndexBuilder = SQLiteIndexBuilder;
+/**
+ * @deprecated Use SQLiteIndexBuilder from @ts-linq/dialect-sqlite instead.
+ */
+var dialect_sqlite_1 = require("@ts-linq/dialect-sqlite");
+Object.defineProperty(exports, "SQLiteIndexBuilder", { enumerable: true, get: function () { return dialect_sqlite_1.SQLiteIndexBuilder; } });
 //# sourceMappingURL=SQLiteIndexBuilder.js.map

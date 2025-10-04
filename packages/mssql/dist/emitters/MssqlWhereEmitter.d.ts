@@ -1,5 +1,5 @@
-import type { QueryOptions, SqlParameter } from '@ts-linq/core';
-export declare class MssqlWhereEmitter {
-    emit(parameters: SqlParameter[], options: QueryOptions): string;
-}
+/**
+ * @deprecated Use MssqlWhereEmitter from @ts-linq/dialect-mssql instead.
+ */
+export { MssqlWhereEmitter } from '@ts-linq/dialect-mssql';
 //# sourceMappingURL=MssqlWhereEmitter.d.ts.map

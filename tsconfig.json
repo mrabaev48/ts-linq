@@ -27,6 +27,8 @@
       "@ts-linq/sql-visitor/*": ["packages/sql-visitor/src/*"],
       "@ts-linq/dialect-postgres": ["packages/dialect-postgres/src"],
       "@ts-linq/dialect-postgres/*": ["packages/dialect-postgres/src/*"],
+      "@ts-linq/dialect-sqlite": ["packages/dialect-sqlite/src"],
+      "@ts-linq/dialect-sqlite/*": ["packages/dialect-sqlite/src/*"],
       "@ts-linq/dialect-mysql": ["packages/dialect-mysql/src"],
       "@ts-linq/dialect-mysql/*": ["packages/dialect-mysql/src/*"],
       "@ts-linq/dialect-mssql": ["packages/dialect-mssql/src"],
@@ -39,6 +41,9 @@
       ,
       "@ts-linq/provider-mssql": ["packages/provider-mssql/src"],
       "@ts-linq/provider-mssql/*": ["packages/provider-mssql/src/*"]
+      ,
+      "@ts-linq/provider-sqlite": ["packages/provider-sqlite/src"],
+      "@ts-linq/provider-sqlite/*": ["packages/provider-sqlite/src/*"]
     }
   },
   "files": [],
@@ -46,11 +51,13 @@
     { "path": "packages/ast" },
     { "path": "packages/sql-visitor" },
     { "path": "packages/dialect-postgres" },
+    { "path": "packages/dialect-sqlite" },
     { "path": "packages/dialect-mysql" },
     { "path": "packages/dialect-mssql" },
     { "path": "packages/provider-pg" },
     { "path": "packages/provider-mysql" },
     { "path": "packages/provider-mssql" },
+    { "path": "packages/provider-sqlite" },
     { "path": "packages/core" },
     { "path": "packages/sqlite" },
     { "path": "packages/postgres" },

@@ -1,21 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MssqlGroupEmitter = void 0;
-class MssqlGroupEmitter {
-    emit(parameters, options) {
-        if (!options.groupBy)
-            return '';
-        let sql = '';
-        if (options.groupBy.columns && options.groupBy.columns.length > 0) {
-            sql += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-        }
-        if (options.groupBy.having) {
-            sql += ` HAVING ${options.groupBy.having.condition}`;
-            if (options.groupBy.having.parameters)
-                parameters.push(...options.groupBy.having.parameters);
-        }
-        return sql;
-    }
-}
-exports.MssqlGroupEmitter = MssqlGroupEmitter;
+/**
+ * @deprecated Use MssqlGroupEmitter from @ts-linq/dialect-mssql instead.
+ */
+var dialect_mssql_1 = require("@ts-linq/dialect-mssql");
+Object.defineProperty(exports, "MssqlGroupEmitter", { enumerable: true, get: function () { return dialect_mssql_1.MssqlGroupEmitter; } });
 //# sourceMappingURL=MssqlGroupEmitter.js.map

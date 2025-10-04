@@ -1,7 +1,4 @@
 "use strict";
-/**
- * Microsoft SQL Server database provider for ts-linq ORM
- */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -17,7 +14,9 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// MSSQL-specific exports
+/**
+ * @deprecated Use packages from `@ts-linq/dialect-mssql` and `@ts-linq/provider-mssql` instead.
+ */
 __exportStar(require("./MssqlProvider"), exports);
 __exportStar(require("./MssqlDialect"), exports);
 __exportStar(require("./MssqlDdlStrategy"), exports);
