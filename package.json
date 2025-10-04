@@ -42,6 +42,11 @@
       "import": "./packages/provider-mysql/dist/index.esm.js",
       "require": "./packages/provider-mysql/dist/index.js"
     },
+    "./provider-mssql": {
+      "types": "./packages/provider-mssql/dist/index.d.ts",
+      "import": "./packages/provider-mssql/dist/index.esm.js",
+      "require": "./packages/provider-mssql/dist/index.js"
+    },
     "./sql-visitor": {
       "types": "./packages/sql-visitor/dist/index.d.ts",
       "import": "./packages/sql-visitor/dist/index.esm.js",
@@ -125,6 +130,7 @@
     "test:sqlite": "jest --selectProjects sqlite",
     "test:postgres": "jest --selectProjects postgres",
     "test:mysql": "jest --selectProjects mysql",
+    "test:provider-mssql": "jest --selectProjects provider-mssql",
     "test:dialect-mssql": "jest --selectProjects dialect-mssql",
     "test:mssql": "jest --selectProjects mssql",
     "test:sqlite:db": "RUN_DB_TESTS=1 jest packages/sqlite/tests/*integration*.test.ts --runInBand --detectOpenHandles",

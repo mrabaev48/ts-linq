@@ -36,6 +36,8 @@ module.exports = {
     '^@ts-linq/provider-pg/(.*)$': '<rootDir>/packages/provider-pg/src/$1',
     '^@ts-linq/provider-mysql$': '<rootDir>/packages/provider-mysql/src',
     '^@ts-linq/provider-mysql/(.*)$': '<rootDir>/packages/provider-mysql/src/$1',
+    '^@ts-linq/provider-mssql$': '<rootDir>/packages/provider-mssql/src',
+    '^@ts-linq/provider-mssql/(.*)$': '<rootDir>/packages/provider-mssql/src/$1',
     '^@ts-linq/mssql/(.*)$': '<rootDir>/packages/mssql/src/$1',
     '^(\\.\\.\/)+src\/(.*)$': '<rootDir>/packages/core/src/$2',
     '^(\\.\\.\/)+context\/(.*)$': '<rootDir>/packages/core/src/context/$2',
@@ -131,6 +133,11 @@ module.exports = {
     {
       displayName: 'mysql',
       testMatch: ['<rootDir>/packages/mysql/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
+    },
+    {
+      displayName: 'provider-mssql',
+      testMatch: ['<rootDir>/packages/provider-mssql/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
     {
