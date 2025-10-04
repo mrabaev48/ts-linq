@@ -1,7 +1,7 @@
 {
   "name": "@ts-linq/mssql",
   "version": "1.0.0",
-  "description": "Microsoft SQL Server database provider for ts-linq ORM",
+  "description": "DEPRECATED: use @ts-linq/dialect-mssql (and upcoming @ts-linq/provider-mssql). MSSQL package remains for backwards compatibility.",
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",
   "types": "./dist/index.d.ts",
@@ -34,7 +34,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@ts-linq/core": "^1.0.0"
+    "@ts-linq/core": "^1.0.0",
+    "@ts-linq/dialect-mssql": "^1.0.0"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

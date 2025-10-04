@@ -46,6 +46,8 @@ interface MssqlLike {
  * - Transaction management (begin/commit/rollback)
  * - Parameter style mapping (`?` → `@p1..@pn`)
  *
+ * @deprecated Use `@ts-linq/dialect-mssql` (and upcoming `@ts-linq/provider-mssql`) instead. This package remains for backwards compatibility and will be removed in a future major version.
+ *
  * @example
  * import 'reflect-metadata';
  * import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
