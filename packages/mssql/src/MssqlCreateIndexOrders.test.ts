@@ -1,4 +1,4 @@
-import { MssqlDdlStrategy } from './MssqlDdlStrategy';
+import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
 
 test('MSSQL: index with column orders', () => {
   const sql = new MssqlDdlStrategy().generateCreateIndexSql('Users', {

@@ -1,4 +1,4 @@
-import { MssqlDdlStrategy } from './MssqlDdlStrategy';
+import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
 
 test('MSSQL: filtered index with WHERE', () => {
   const ddl = new MssqlDdlStrategy().generateCreateIndexSql('Users', {

@@ -27,6 +27,11 @@
       "import": "./packages/dialect-mysql/dist/index.esm.js",
       "require": "./packages/dialect-mysql/dist/index.js"
     },
+    "./dialect-mssql": {
+      "types": "./packages/dialect-mssql/dist/index.d.ts",
+      "import": "./packages/dialect-mssql/dist/index.esm.js",
+      "require": "./packages/dialect-mssql/dist/index.js"
+    },
     "./provider-pg": {
       "types": "./packages/provider-pg/dist/index.d.ts",
       "import": "./packages/provider-pg/dist/index.esm.js",
@@ -85,6 +90,7 @@
     "build:mssql": "npm run build -w packages/mssql",
     "build:mysql": "npm run build -w packages/mysql",
     "build:postgres": "npm run build -w packages/postgres",
+    "build:dialect-mssql": "npm run build -w packages/dialect-mssql",
     "build:sqlite": "npm run build -w packages/sqlite",
     "build:providers": "npm run build -w packages/sqlite -w packages/postgres -w packages/mysql -w packages/mssql",
     "build:cli": "npm run build -w packages/cli",
@@ -119,6 +125,7 @@
     "test:sqlite": "jest --selectProjects sqlite",
     "test:postgres": "jest --selectProjects postgres",
     "test:mysql": "jest --selectProjects mysql",
+    "test:dialect-mssql": "jest --selectProjects dialect-mssql",
     "test:mssql": "jest --selectProjects mssql",
     "test:sqlite:db": "RUN_DB_TESTS=1 jest packages/sqlite/tests/*integration*.test.ts --runInBand --detectOpenHandles",
     "test:postgres:db": "RUN_DB_TESTS=1 jest packages/postgres/tests/*integration*.test.ts --runInBand --detectOpenHandles",

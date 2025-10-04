@@ -19,6 +19,8 @@ module.exports = {
     '^@ts-linq/postgres$': '<rootDir>/packages/postgres/src',
     '^@ts-linq/mysql$': '<rootDir>/packages/mysql/src',
     '^@ts-linq/mssql$': '<rootDir>/packages/mssql/src',
+    '^@ts-linq/dialect-mssql$': '<rootDir>/packages/dialect-mssql/src',
+    '^@ts-linq/dialect-mssql/(.*)$': '<rootDir>/packages/dialect-mssql/src/$1',
     '^@ts-linq/core$': '<rootDir>/packages/core/src',
     '^@ts-linq/core/(.*)$': '<rootDir>/packages/core/src/$1',
     '^@ts-linq/sqlite/(.*)$': '<rootDir>/packages/sqlite/src/$1',
@@ -139,6 +141,11 @@ module.exports = {
     {
       displayName: 'mssql',
       testMatch: ['<rootDir>/packages/mssql/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
+    },
+    {
+      displayName: 'dialect-mssql',
+      testMatch: ['<rootDir>/packages/dialect-mssql/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     },
     {

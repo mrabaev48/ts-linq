@@ -1,6 +1,6 @@
 import { MetadataStorage } from '@ts-linq/core';
 import type { ColumnMetadata, EntityMetadata } from '@ts-linq/core';
-import { MssqlDdlStrategy } from './MssqlDdlStrategy';
+import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
 
 class SnapUser {
   id!: number;
