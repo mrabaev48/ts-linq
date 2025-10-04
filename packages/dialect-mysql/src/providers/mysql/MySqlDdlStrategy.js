@@ -1,9 +1,12 @@
-import { SqlHelper } from '@ts-linq/core';
-import { MySqlIndexBuilder } from './builders/MySqlIndexBuilder';
-export class MySqlDdlStrategy {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MySqlDdlStrategy = void 0;
+const core_1 = require("@ts-linq/core");
+const MySqlIndexBuilder_1 = require("./builders/MySqlIndexBuilder");
+class MySqlDdlStrategy {
     constructor(logger) {
         this.logger = logger;
-        this.indexBuilder = new MySqlIndexBuilder(logger);
+        this.indexBuilder = new MySqlIndexBuilder_1.MySqlIndexBuilder(logger);
     }
     generateCreateTableSql(metadata) {
         if (!metadata || !metadata.columns) {
@@ -38,7 +41,7 @@ export class MySqlDdlStrategy {
             def += ` DEFAULT ${column.defaultExpression}`;
         }
         else if (column.defaultValue !== undefined) {
-            def += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
+            def += ` DEFAULT ${core_1.SqlHelper.formatValue(column.defaultValue)}`;
         }
         return def;
     }
@@ -66,4 +69,5 @@ export class MySqlDdlStrategy {
         }
     }
 }
+exports.MySqlDdlStrategy = MySqlDdlStrategy;
 //# sourceMappingURL=MySqlDdlStrategy.js.map

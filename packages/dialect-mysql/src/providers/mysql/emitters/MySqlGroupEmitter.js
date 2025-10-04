@@ -1,4 +1,7 @@
-export class MySqlGroupEmitter {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MySqlGroupEmitter = void 0;
+class MySqlGroupEmitter {
     emit(parameters, options) {
         if (!options.groupBy)
             return '';
@@ -10,4 +13,5 @@ export class MySqlGroupEmitter {
         return sql;
     }
 }
+exports.MySqlGroupEmitter = MySqlGroupEmitter;
 //# sourceMappingURL=MySqlGroupEmitter.js.map

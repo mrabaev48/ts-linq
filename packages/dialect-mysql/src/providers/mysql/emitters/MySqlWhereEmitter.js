@@ -1,4 +1,7 @@
-export class MySqlWhereEmitter {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MySqlWhereEmitter = void 0;
+class MySqlWhereEmitter {
     emit(parameters, options) {
         if (!options.where || options.where.length === 0)
             return '';
@@ -8,4 +11,5 @@ export class MySqlWhereEmitter {
         return ` WHERE ${whereClauses.join(' AND ')}`;
     }
 }
+exports.MySqlWhereEmitter = MySqlWhereEmitter;
 //# sourceMappingURL=MySqlWhereEmitter.js.map

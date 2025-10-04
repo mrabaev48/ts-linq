@@ -1,8 +1,8 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { SQLiteProvider } from '@ts-linq/sqlite';
-import { PostgresProvider } from '@ts-linq/postgres';
-import { MySqlProvider } from '@ts-linq/mysql';
-import { MssqlProvider } from '@ts-linq/mssql';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+import { PostgresProvider } from '@ts-linq/provider-pg';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
+import { MssqlProvider } from '@ts-linq/provider-mssql';
 
 export function createProviderFromEnv(): DatabaseProvider {
   const kind = (process.env.DB_PROVIDER || 'sqlite').toLowerCase();

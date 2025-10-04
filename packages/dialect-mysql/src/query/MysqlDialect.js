@@ -1,20 +1,23 @@
-import { MetadataStorage } from '@ts-linq/core';
-import { MySqlWhereEmitter } from '../providers/mysql/emitters/MySqlWhereEmitter';
-import { MySqlJoinEmitter } from '../providers/mysql/emitters/MySqlJoinEmitter';
-import { MySqlOrderEmitter } from '../providers/mysql/emitters/MySqlOrderEmitter';
-import { MySqlGroupEmitter } from '../providers/mysql/emitters/MySqlGroupEmitter';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MysqlDialect = void 0;
+const core_1 = require("@ts-linq/core");
+const MySqlWhereEmitter_1 = require("../providers/mysql/emitters/MySqlWhereEmitter");
+const MySqlJoinEmitter_1 = require("../providers/mysql/emitters/MySqlJoinEmitter");
+const MySqlOrderEmitter_1 = require("../providers/mysql/emitters/MySqlOrderEmitter");
+const MySqlGroupEmitter_1 = require("../providers/mysql/emitters/MySqlGroupEmitter");
 /**
  * MySQL dialect for SELECT generation.
  *
  * - Uses LIMIT and OFFSET (LIMIT n OFFSET m)
  * - Leaves '?' placeholders as-is (mysql2 supports positional params)
  */
-export class MysqlDialect {
+class MysqlDialect {
     constructor() {
-        this.whereEmitter = new MySqlWhereEmitter();
-        this.joinEmitter = new MySqlJoinEmitter();
-        this.orderEmitter = new MySqlOrderEmitter();
-        this.groupEmitter = new MySqlGroupEmitter();
+        this.whereEmitter = new MySqlWhereEmitter_1.MySqlWhereEmitter();
+        this.joinEmitter = new MySqlJoinEmitter_1.MySqlJoinEmitter();
+        this.orderEmitter = new MySqlOrderEmitter_1.MySqlOrderEmitter();
+        this.groupEmitter = new MySqlGroupEmitter_1.MySqlGroupEmitter();
     }
     quoteIdentifier(identifier) {
         return `\`${identifier.replace(/`/g, '``')}\``;
@@ -25,7 +28,7 @@ export class MysqlDialect {
      * @param options Normalized query options (select/where/order/joins/group/limit/offset)
      */
     buildSelect(entityClass, options) {
-        const metadata = MetadataStorage.getEntity(entityClass);
+        const metadata = core_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const parameters = [];
@@ -65,4 +68,5 @@ export class MysqlDialect {
         return '';
     }
 }
+exports.MysqlDialect = MysqlDialect;
 //# sourceMappingURL=MysqlDialect.js.map

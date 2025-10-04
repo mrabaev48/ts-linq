@@ -9,5 +9,11 @@
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests"],
-  "references": [{ "path": "../core" }, { "path": "../sqlite" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../provider-pg" },
+    { "path": "../provider-mysql" },
+    { "path": "../provider-mssql" },
+    { "path": "../provider-sqlite" }
+  ]
 }

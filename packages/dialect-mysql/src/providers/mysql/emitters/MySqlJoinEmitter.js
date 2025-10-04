@@ -1,4 +1,7 @@
-export class MySqlJoinEmitter {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MySqlJoinEmitter = void 0;
+class MySqlJoinEmitter {
     emit(options) {
         if (!options.joins || options.joins.length === 0)
             return '';
@@ -12,4 +15,5 @@ export class MySqlJoinEmitter {
         return out;
     }
 }
+exports.MySqlJoinEmitter = MySqlJoinEmitter;
 //# sourceMappingURL=MySqlJoinEmitter.js.map

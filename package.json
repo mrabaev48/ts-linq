@@ -67,8 +67,7 @@
       "types": "./packages/ast/dist/index.d.ts",
       "import": "./packages/ast/dist/index.esm.js",
       "require": "./packages/ast/dist/index.js"
-    },
-    
+    }
   },
   "files": [
     "packages/*/dist/**/*",
@@ -84,9 +83,7 @@
     "build:tsc": "tsc -b",
     "build:tsc:watch": "tsc -b -w",
     "build:core": "npm run build -w packages/core",
-    
     "build:dialect-mssql": "npm run build -w packages/dialect-mssql",
-    
     "build:cli": "npm run build -w packages/cli",
     "build:composite-sql-logger": "npm run build -w packages/composite-sql-logger",
     "build:metrics-safe": "npm run build -w packages/metrics-safe",
@@ -116,13 +113,10 @@
     "size:bundle": "rollup -c && node size-tests/print-sizes.mjs",
     "test:types:core": "npm run build -w packages/core && tsd packages/core --files test-d/**/*.test-d.ts",
     "test:core": "jest --selectProjects core",
-    
     "test:dialect-sqlite": "jest --selectProjects dialect-sqlite",
-    
     "test:provider-mssql": "jest --selectProjects provider-mssql",
     "test:provider-sqlite": "jest --selectProjects provider-sqlite",
     "test:dialect-mssql": "jest --selectProjects dialect-mssql",
-    
     "test:db:all": "RUN_DB_TESTS=1 jest packages/**/tests/*integration*.test.ts --runInBand --detectOpenHandles"
   },
   "keywords": [

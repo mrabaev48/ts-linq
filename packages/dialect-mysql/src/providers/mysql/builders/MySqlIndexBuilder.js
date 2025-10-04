@@ -1,4 +1,7 @@
-export class MySqlIndexBuilder {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MySqlIndexBuilder = void 0;
+class MySqlIndexBuilder {
     constructor(logger) {
         this.logger = logger;
     }
@@ -42,4 +45,5 @@ export class MySqlIndexBuilder {
         return parts.join(', ');
     }
 }
+exports.MySqlIndexBuilder = MySqlIndexBuilder;
 //# sourceMappingURL=MySqlIndexBuilder.js.map
