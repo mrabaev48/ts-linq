@@ -1,1 +1,0 @@
-{"version":3,"file":"MySqlWhereEmitter.js","sourceRoot":"","sources":["../../src/emitters/MySqlWhereEmitter.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,wDAA2D;AAAlD,kHAAA,iBAAiB,OAAA","sourcesContent":["/**\n * @deprecated Use MySqlWhereEmitter from @ts-linq/dialect-mysql instead.\n */\nexport { MySqlWhereEmitter } from '@ts-linq/dialect-mysql';\nexport {};\n"]}

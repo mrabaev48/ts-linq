@@ -1,1 +1,0 @@
-{"version":3,"file":"SQLiteDialect.js","sourceRoot":"","sources":["../src/SQLiteDialect.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,0DAAwD;AAA/C,+GAAA,aAAa,OAAA","sourcesContent":["/**\n * @deprecated Use SQLiteDialect from @ts-linq/dialect-sqlite instead.\n */\nexport { SQLiteDialect } from '@ts-linq/dialect-sqlite';\n"]}

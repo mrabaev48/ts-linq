@@ -1,1 +1,0 @@
-{"version":3,"file":"MssqlDialect.js","sourceRoot":"","sources":["../src/MssqlDialect.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,wDAAsD;AAA7C,6GAAA,YAAY,OAAA","sourcesContent":["/**\n * @deprecated Use MssqlDialect from @ts-linq/dialect-mssql instead.\n */\nexport { MssqlDialect } from '@ts-linq/dialect-mssql';\n"]}

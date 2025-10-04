@@ -1,1 +1,0 @@
-{"version":3,"file":"MySqlJoinEmitter.js","sourceRoot":"","sources":["../../src/emitters/MySqlJoinEmitter.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,wDAA0D;AAAjD,iHAAA,gBAAgB,OAAA","sourcesContent":["/**\n * @deprecated Use MySqlJoinEmitter from @ts-linq/dialect-mysql instead.\n */\nexport { MySqlJoinEmitter } from '@ts-linq/dialect-mysql';\nexport {};\n"]}

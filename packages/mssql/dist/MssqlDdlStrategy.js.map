@@ -1,1 +1,0 @@
-{"version":3,"file":"MssqlDdlStrategy.js","sourceRoot":"","sources":["../src/MssqlDdlStrategy.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,wDAA0D;AAAjD,iHAAA,gBAAgB,OAAA","sourcesContent":["/**\n * @deprecated Use MssqlDdlStrategy from @ts-linq/dialect-mssql instead.\n */\nexport { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';\n"]}

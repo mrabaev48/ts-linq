@@ -1,1 +1,0 @@
-{"version":3,"file":"MySqlIndexBuilder.js","sourceRoot":"","sources":["../../src/builders/MySqlIndexBuilder.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,wDAA2D;AAAlD,kHAAA,iBAAiB,OAAA","sourcesContent":["/**\n * @deprecated Use MySqlIndexBuilder from @ts-linq/dialect-mysql instead.\n */\nexport { MySqlIndexBuilder } from '@ts-linq/dialect-mysql';\nexport {};\n"]}

@@ -68,26 +68,7 @@
       "import": "./packages/ast/dist/index.esm.js",
       "require": "./packages/ast/dist/index.js"
     },
-    "./sqlite": {
-      "types": "./packages/sqlite/dist/index.d.ts",
-      "import": "./packages/sqlite/dist/index.esm.js",
-      "require": "./packages/sqlite/dist/index.js"
-    },
-    "./postgres": {
-      "types": "./packages/postgres/dist/index.d.ts",
-      "import": "./packages/postgres/dist/index.esm.js",
-      "require": "./packages/postgres/dist/index.js"
-    },
-    "./mysql": {
-      "types": "./packages/mysql/dist/index.d.ts",
-      "import": "./packages/mysql/dist/index.esm.js",
-      "require": "./packages/mysql/dist/index.js"
-    },
-    "./mssql": {
-      "types": "./packages/mssql/dist/index.d.ts",
-      "import": "./packages/mssql/dist/index.esm.js",
-      "require": "./packages/mssql/dist/index.js"
-    }
+    
   },
   "files": [
     "packages/*/dist/**/*",
@@ -103,12 +84,9 @@
     "build:tsc": "tsc -b",
     "build:tsc:watch": "tsc -b -w",
     "build:core": "npm run build -w packages/core",
-    "build:mssql": "npm run build -w packages/mssql",
-    "build:mysql": "npm run build -w packages/mysql",
-    "build:postgres": "npm run build -w packages/postgres",
+    
     "build:dialect-mssql": "npm run build -w packages/dialect-mssql",
-    "build:sqlite": "npm run build -w packages/sqlite",
-    "build:providers": "npm run build -w packages/sqlite -w packages/postgres -w packages/mysql -w packages/mssql",
+    
     "build:cli": "npm run build -w packages/cli",
     "build:composite-sql-logger": "npm run build -w packages/composite-sql-logger",
     "build:metrics-safe": "npm run build -w packages/metrics-safe",
@@ -138,18 +116,13 @@
     "size:bundle": "rollup -c && node size-tests/print-sizes.mjs",
     "test:types:core": "npm run build -w packages/core && tsd packages/core --files test-d/**/*.test-d.ts",
     "test:core": "jest --selectProjects core",
-    "test:sqlite": "jest --selectProjects sqlite",
+    
     "test:dialect-sqlite": "jest --selectProjects dialect-sqlite",
-    "test:postgres": "jest --selectProjects postgres",
-    "test:mysql": "jest --selectProjects mysql",
+    
     "test:provider-mssql": "jest --selectProjects provider-mssql",
     "test:provider-sqlite": "jest --selectProjects provider-sqlite",
     "test:dialect-mssql": "jest --selectProjects dialect-mssql",
-    "test:mssql": "jest --selectProjects mssql",
-    "test:sqlite:db": "RUN_DB_TESTS=1 jest packages/sqlite/tests/*integration*.test.ts --runInBand --detectOpenHandles",
-    "test:postgres:db": "RUN_DB_TESTS=1 jest packages/postgres/tests/*integration*.test.ts --runInBand --detectOpenHandles",
-    "test:mysql:db": "RUN_DB_TESTS=1 jest packages/mysql/tests/*integration*.test.ts --runInBand --detectOpenHandles",
-    "test:mssql:db": "RUN_DB_TESTS=1 jest packages/mssql/tests/*integration*.test.ts --runInBand --detectOpenHandles",
+    
     "test:db:all": "RUN_DB_TESTS=1 jest packages/**/tests/*integration*.test.ts --runInBand --detectOpenHandles"
   },
   "keywords": [

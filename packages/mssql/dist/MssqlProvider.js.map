@@ -1,1 +1,0 @@
-{"version":3,"file":"MssqlProvider.js","sourceRoot":"","sources":["../src/MssqlProvider.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,0DAAwD;AAA/C,+GAAA,aAAa,OAAA","sourcesContent":["/**\n * @deprecated Use MssqlProvider from @ts-linq/provider-mssql instead.\n */\nexport { MssqlProvider } from '@ts-linq/provider-mssql';\n"]}

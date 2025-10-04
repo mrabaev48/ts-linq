@@ -1,1 +1,0 @@
-{"version":3,"file":"MssqlJoinEmitter.js","sourceRoot":"","sources":["../../src/emitters/MssqlJoinEmitter.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,wDAA0D;AAAjD,iHAAA,gBAAgB,OAAA","sourcesContent":["/**\n * @deprecated Use MssqlJoinEmitter from @ts-linq/dialect-mssql instead.\n */\nexport { MssqlJoinEmitter } from '@ts-linq/dialect-mssql';\n"]}

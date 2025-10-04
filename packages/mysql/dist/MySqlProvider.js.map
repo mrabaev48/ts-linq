@@ -1,1 +1,0 @@
-{"version":3,"file":"MySqlProvider.js","sourceRoot":"","sources":["../src/MySqlProvider.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,0DAAwD;AAA/C,+GAAA,aAAa,OAAA","sourcesContent":["/**\n * @deprecated Use MySqlProvider from @ts-linq/provider-mysql instead.\n */\nexport { MySqlProvider } from '@ts-linq/provider-mysql';\n"]}

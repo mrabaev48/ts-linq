@@ -1,1 +1,0 @@
-{"version":3,"file":"MySqlDdlStrategy.js","sourceRoot":"","sources":["../src/MySqlDdlStrategy.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,wDAA0D;AAAjD,iHAAA,gBAAgB,OAAA","sourcesContent":["/**\n * @deprecated Use MySqlDdlStrategy from @ts-linq/dialect-mysql instead.\n */\nexport { MySqlDdlStrategy } from '@ts-linq/dialect-mysql';\nexport {};\n"]}

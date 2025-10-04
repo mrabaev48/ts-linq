@@ -1,1 +1,0 @@
-{"version":3,"file":"MySqlOrderEmitter.js","sourceRoot":"","sources":["../../src/emitters/MySqlOrderEmitter.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,wDAA2D;AAAlD,kHAAA,iBAAiB,OAAA","sourcesContent":["/**\n * @deprecated Use MySqlOrderEmitter from @ts-linq/dialect-mysql instead.\n */\nexport { MySqlOrderEmitter } from '@ts-linq/dialect-mysql';\nexport {};\n"]}

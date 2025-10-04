@@ -1,1 +1,0 @@
-{"version":3,"file":"MssqlOrderEmitter.js","sourceRoot":"","sources":["../../src/emitters/MssqlOrderEmitter.ts"],"names":[],"mappings":";;;AAAA;;GAEG;AACH,wDAA2D;AAAlD,kHAAA,iBAAiB,OAAA","sourcesContent":["/**\n * @deprecated Use MssqlOrderEmitter from @ts-linq/dialect-mssql instead.\n */\nexport { MssqlOrderEmitter } from '@ts-linq/dialect-mssql';\n"]}
