@@ -1,13 +1,27 @@
 import { MetadataStorage, QueryBuilder, type QueryOptions } from '@ts-linq/core';
 import { SQLiteDialect } from '../src';
 
-class U { id!: number; name!: string }
+class U {
+  id!: number;
+  name!: string;
+}
 
 beforeEach(() => {
   MetadataStorage.getInstance().clear();
   MetadataStorage.addEntity(U, 'users');
-  MetadataStorage.addColumn(U, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true });
-  MetadataStorage.addColumn(U, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false });
+  MetadataStorage.addColumn(U, {
+    propertyName: 'id',
+    columnName: 'id',
+    type: 'INTEGER',
+    nullable: false,
+    isGenerated: true
+  });
+  MetadataStorage.addColumn(U, {
+    propertyName: 'name',
+    columnName: 'name',
+    type: 'TEXT',
+    nullable: false
+  });
   MetadataStorage.addPrimaryKey(U, 'id');
 });
 
@@ -22,5 +36,3 @@ test('limit with offset renders both', () => {
   const built = qb.generateSql(U as any, { select: ['id'], limit: 5, offset: 3 } as any);
   expect(built.query).toContain('LIMIT 5 OFFSET 3');
 });
-
-

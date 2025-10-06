@@ -1,5 +1,11 @@
 import 'reflect-metadata';
-import { DbContext, MetadataStorage, ValidationError, ValidIfOf, RequiredIfOf } from '@ts-linq/core';
+import {
+  DbContext,
+  MetadataStorage,
+  ValidationError,
+  ValidIfOf,
+  RequiredIfOf
+} from '@ts-linq/core';
 import type { ColumnMetadata } from '@ts-linq/core';
 import { PostgresProvider } from '@ts-linq/provider-pg';
 
@@ -34,14 +40,22 @@ describe('[integration][postgres] Conditional Validation with real DB', () => {
     MetadataStorage.addPrimaryKey(Article, 'id');
     RequiredIfOf<Article>((a: Article) => a.status === 'published', 'Title required for published')(
       undefined as unknown as object,
-      { kind: 'field', name: 'title', addInitializer: (fn: (this: unknown) => void) => fn.call(Article.prototype) } as any
+      {
+        kind: 'field',
+        name: 'title',
+        addInitializer: (fn: (this: unknown) => void) => fn.call(Article.prototype)
+      } as any
     );
     ValidIfOf<Article>(
       (a: Article) => a.status !== 'published' || (a.title || '').includes(' '),
       'Title must contain space when published'
     )(
       undefined as unknown as object,
-      { kind: 'field', name: 'title', addInitializer: (fn: (this: unknown) => void) => fn.call(Article.prototype) } as any
+      {
+        kind: 'field',
+        name: 'title',
+        addInitializer: (fn: (this: unknown) => void) => fn.call(Article.prototype)
+      } as any
     );
   });
 
@@ -68,5 +82,3 @@ describe('[integration][postgres] Conditional Validation with real DB', () => {
     await ctx.dispose();
   });
 });
-
-

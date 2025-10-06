@@ -42,5 +42,3 @@ d('[integration][mssql] locks (UPDLOCK/HOLDLOCK)', () => {
     }
   });
 });
-
-

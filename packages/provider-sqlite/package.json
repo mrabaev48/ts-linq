@@ -12,7 +12,9 @@
       "require": "./dist/index.js"
     }
   },
-  "files": ["dist/**/*"],
+  "files": [
+    "dist/**/*"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
@@ -39,5 +41,3 @@
     "sqlite3": "^5.1.7"
   }
 }
-
-

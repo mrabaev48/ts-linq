@@ -30,5 +30,3 @@ d('[integration][mysql] upsert (ON DUPLICATE KEY UPDATE)', () => {
     }
   });
 });
-
-

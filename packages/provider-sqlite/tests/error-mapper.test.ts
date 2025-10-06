@@ -15,5 +15,3 @@ test('maps unique constraint to UniqueConstraintError', () => {
 test('maps unknown to DatabaseError', () => {
   expect(mapSqliteError({ code: 'X', message: 'x' })).toBeInstanceOf(DatabaseError);
 });
-
-

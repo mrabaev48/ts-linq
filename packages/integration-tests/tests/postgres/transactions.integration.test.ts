@@ -32,5 +32,3 @@ d('[integration][postgres] transactions', () => {
     }
   });
 });
-
-

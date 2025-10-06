@@ -10,8 +10,13 @@ export class SQLiteDialect implements SqlDialect {
   private readonly joinEmitter = new SQLiteJoinEmitter();
   private readonly orderEmitter = new SQLiteOrderEmitter();
   private readonly groupEmitter = new SQLiteGroupEmitter();
-  public quoteIdentifier(identifier: string): string { return identifier; }
-  public buildSelect<T>(entityClass: new () => T, options: QueryOptions): { query: string; parameters: readonly SqlParameter[] } {
+  public quoteIdentifier(identifier: string): string {
+    return identifier;
+  }
+  public buildSelect<T>(
+    entityClass: new () => T,
+    options: QueryOptions
+  ): { query: string; parameters: readonly SqlParameter[] } {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const parameters: SqlParameter[] = [];
@@ -31,8 +36,12 @@ export class SQLiteDialect implements SqlDialect {
     head += options.select && options.select.length ? options.select.join(', ') : '*';
     return head;
   }
-  private buildFromClause(tableName: string): string { return ` FROM ${tableName}`; }
-  private collectSelectParams(parameters: SqlParameter[], options: QueryOptions): void { if (options.selectParams?.length) parameters.push(...options.selectParams); }
+  private buildFromClause(tableName: string): string {
+    return ` FROM ${tableName}`;
+  }
+  private collectSelectParams(parameters: SqlParameter[], options: QueryOptions): void {
+    if (options.selectParams?.length) parameters.push(...options.selectParams);
+  }
   private buildLimitOffset(options: QueryOptions): string {
     const hasLimit = options.limit !== undefined && options.limit !== null;
     const hasOffset = options.offset !== undefined && options.offset !== null;
@@ -41,5 +50,3 @@ export class SQLiteDialect implements SqlDialect {
     return '';
   }
 }
-
-

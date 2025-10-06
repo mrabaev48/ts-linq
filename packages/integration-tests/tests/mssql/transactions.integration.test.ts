@@ -13,13 +13,15 @@ d('[integration][mssql] transactions', () => {
       );
 
       await p.beginTransaction();
-      await p.executeNonQuery("INSERT INTO [dbo].[tx_items]([name]) VALUES(@p1)", ['a']);
+      await p.executeNonQuery('INSERT INTO [dbo].[tx_items]([name]) VALUES(@p1)', ['a']);
       await p.commitTransaction();
-      const afterCommit = await p.executeQuery<{ name: string }>('SELECT [name] FROM [dbo].[tx_items]');
+      const afterCommit = await p.executeQuery<{ name: string }>(
+        'SELECT [name] FROM [dbo].[tx_items]'
+      );
       expect(afterCommit.length).toBe(1);
 
       await p.beginTransaction();
-      await p.executeNonQuery("INSERT INTO [dbo].[tx_items]([name]) VALUES(@p1)", ['b']);
+      await p.executeNonQuery('INSERT INTO [dbo].[tx_items]([name]) VALUES(@p1)', ['b']);
       await p.rollbackTransaction();
       const afterRollback = await p.executeQuery<{ name: string }>(
         "SELECT [name] FROM [dbo].[tx_items] WHERE [name]='b'"
@@ -27,10 +29,10 @@ d('[integration][mssql] transactions', () => {
       expect(afterRollback.length).toBe(0);
     } finally {
       try {
-        await p.executeNonQuery('IF OBJECT_ID(N"dbo.tx_items", N"U") IS NOT NULL DROP TABLE [dbo].[tx_items]');
+        await p.executeNonQuery(
+          'IF OBJECT_ID(N"dbo.tx_items", N"U") IS NOT NULL DROP TABLE [dbo].[tx_items]'
+        );
       } catch {}
     }
   });
 });
-
-

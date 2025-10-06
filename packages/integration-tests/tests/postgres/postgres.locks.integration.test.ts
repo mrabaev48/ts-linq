@@ -106,5 +106,3 @@ d('[integration][postgres] locks and concurrency', () => {
     }
   });
 });
-
-

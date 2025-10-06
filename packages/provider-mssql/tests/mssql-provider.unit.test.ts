@@ -1,7 +1,10 @@
 import { MssqlProvider } from '../src';
 import { MetadataStorage, type ColumnMetadata, type EntityMetadata } from '@ts-linq/core';
 
-class E { id!: number; name!: string }
+class E {
+  id!: number;
+  name!: string;
+}
 
 beforeEach(() => {
   MetadataStorage.getInstance().clear();
@@ -29,5 +32,3 @@ test('connect/disconnect toggles isConnected', async () => {
   // доступ к флагу через protected getter недоступен; проверим косвенно через disconnect без подключения
   await expect(p.disconnect()).resolves.toBeUndefined();
 });
-
-

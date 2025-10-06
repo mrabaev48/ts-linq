@@ -40,5 +40,3 @@ d('[integration][mysql] isolation (REPEATABLE READ vs READ COMMITTED)', () => {
     }
   });
 });
-
-

@@ -1,66 +1,60 @@
 export class CompositeSqlLogger {
-    constructor(...delegates) {
-        this.delegates = delegates.filter(Boolean);
+  constructor(...delegates) {
+    this.delegates = delegates.filter(Boolean);
+  }
+  queryStart(info) {
+    for (const d of this.delegates) {
+      try {
+        d.queryStart?.(info);
+      } catch {
+        /* swallow */
+      }
     }
-    queryStart(info) {
-        for (const d of this.delegates) {
-            try {
-                d.queryStart?.(info);
-            }
-            catch {
-                /* swallow */
-            }
-        }
+  }
+  queryEnd(info) {
+    for (const d of this.delegates) {
+      try {
+        d.queryEnd?.(info);
+      } catch {
+        /* swallow */
+      }
     }
-    queryEnd(info) {
-        for (const d of this.delegates) {
-            try {
-                d.queryEnd?.(info);
-            }
-            catch {
-                /* swallow */
-            }
-        }
+  }
+  retry(info) {
+    for (const d of this.delegates) {
+      try {
+        d.retry?.(info);
+      } catch {
+        /* swallow */
+      }
     }
-    retry(info) {
-        for (const d of this.delegates) {
-            try {
-                d.retry?.(info);
-            }
-            catch {
-                /* swallow */
-            }
-        }
+  }
+  transactionStart(info) {
+    for (const d of this.delegates) {
+      try {
+        d.transactionStart?.(info);
+      } catch {
+        /* swallow */
+      }
     }
-    transactionStart(info) {
-        for (const d of this.delegates) {
-            try {
-                d.transactionStart?.(info);
-            }
-            catch {
-                /* swallow */
-            }
-        }
+  }
+  transactionEnd(info) {
+    for (const d of this.delegates) {
+      try {
+        d.transactionEnd?.(info);
+      } catch {
+        /* swallow */
+      }
     }
-    transactionEnd(info) {
-        for (const d of this.delegates) {
-            try {
-                d.transactionEnd?.(info);
-            }
-            catch {
-                /* swallow */
-            }
-        }
+  }
+  cache(info) {
+    for (const d of this.delegates) {
+      try {
+        d.cache?.(info);
+      } catch {
+        /* swallow */
+      }
     }
-    cache(info) {
-        for (const d of this.delegates) {
-            try {
-                d.cache?.(info);
-            }
-            catch {
-                /* swallow */
-            }
-        }
-    }
+  }
 }
 //# sourceMappingURL=CompositeSqlLogger.js.map

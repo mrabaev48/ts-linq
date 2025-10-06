@@ -47,5 +47,3 @@ d('[integration][mysql] migration round-trip (diff → apply → no diff)', () =
     }
   });
 });
-
-

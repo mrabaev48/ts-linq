@@ -50,7 +50,8 @@ module.exports = {
     '^(\\.\\.\/)+migrations\\/(.*)$': '<rootDir>/packages/core/src/migrations/$2',
     '^(\\.\\.\/)+utils\\/(.*)$': '<rootDir>/packages/core/src/utils/$2',
     // other
-    '^\\.\\.\\/src\\/utils\\/PrometheusSqlLogger$': '<rootDir>/packages/prometheus-sql-logger/src/logger/PrometheusSqlLogger'
+    '^\\.\\.\\/src\\/utils\\/PrometheusSqlLogger$':
+      '<rootDir>/packages/prometheus-sql-logger/src/logger/PrometheusSqlLogger'
   },
   collectCoverageFrom: [
     'packages/**/src/**/*.ts',
@@ -65,24 +66,41 @@ module.exports = {
     {
       displayName: 'ast',
       testMatch: ['<rootDir>/packages/ast/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }] }
+      transform: {
+        '^.+\\.ts$': [
+          'ts-jest',
+          { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }
+        ]
+      }
     },
     {
       displayName: 'sql-visitor',
       testMatch: ['<rootDir>/packages/sql-visitor/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }] }
+      transform: {
+        '^.+\\.ts$': [
+          'ts-jest',
+          { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }
+        ]
+      }
     },
     {
       displayName: 'core',
       testMatch: ['<rootDir>/packages/core/{src,tests}/**/*.test.ts'],
-      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }] }
+      transform: {
+        '^.+\\.ts$': [
+          'ts-jest',
+          { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }
+        ]
+      }
     },
     ...(includeIntegration
       ? [
           {
             displayName: 'db',
             testMatch: ['<rootDir>/packages/integration-tests/tests/**/*.test.ts'],
-            setupFilesAfterEnv: ['<rootDir>/packages/integration-tests/tests/db/setup-containers.ts'],
+            setupFilesAfterEnv: [
+              '<rootDir>/packages/integration-tests/tests/db/setup-containers.ts'
+            ],
             transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
           }
         ]

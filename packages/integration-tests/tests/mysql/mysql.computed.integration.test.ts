@@ -49,5 +49,3 @@ describe('MySQL computed column (integration)', () => {
     await provider.disconnect();
   });
 });
-
-

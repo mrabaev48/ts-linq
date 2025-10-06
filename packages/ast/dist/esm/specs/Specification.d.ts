@@ -5,28 +5,28 @@ import { LogicalOperator } from '../ast/Nodes';
  * converted into an expression tree for SQL generation when possible.
  */
 export interface Specification<T> {
-    toExpression(): ExpressionNode | null;
-    test(entity: T): boolean;
+  toExpression(): ExpressionNode | null;
+  test(entity: T): boolean;
 }
 /** Composite specification combining child specs with a logical operator. */
 export declare class CompositeSpecification<T> implements Specification<T> {
-    private readonly operator;
-    private readonly specs;
-    constructor(operator: LogicalOperator, specs: Array<Specification<T>>);
-    toExpression(): ExpressionNode | null;
-    test(entity: T): boolean;
+  private readonly operator;
+  private readonly specs;
+  constructor(operator: LogicalOperator, specs: Array<Specification<T>>);
+  toExpression(): ExpressionNode | null;
+  test(entity: T): boolean;
 }
 /** Leaf specification based on a predicate function with optional AST. */
 export declare class PredicateSpecification<T> implements Specification<T> {
-    private readonly predicate;
-    private readonly expression;
-    constructor(predicate: (entity: T) => boolean, expression: ExpressionNode | null);
-    toExpression(): ExpressionNode | null;
-    test(entity: T): boolean;
+  private readonly predicate;
+  private readonly expression;
+  constructor(predicate: (entity: T) => boolean, expression: ExpressionNode | null);
+  toExpression(): ExpressionNode | null;
+  test(entity: T): boolean;
 }
 /** Helper factory with logical combinators. */
 export declare const Specs: {
-    and<T>(...specs: Array<Specification<T>>): Specification<T>;
-    or<T>(...specs: Array<Specification<T>>): Specification<T>;
+  and<T>(...specs: Array<Specification<T>>): Specification<T>;
+  or<T>(...specs: Array<Specification<T>>): Specification<T>;
 };
 //# sourceMappingURL=Specification.d.ts.map

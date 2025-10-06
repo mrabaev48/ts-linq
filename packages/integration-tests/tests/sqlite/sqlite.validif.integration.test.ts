@@ -1,5 +1,11 @@
 import 'reflect-metadata';
-import { DbContext, MetadataStorage, ValidationError, ValidIfOf, RequiredIfOf } from '@ts-linq/core';
+import {
+  DbContext,
+  MetadataStorage,
+  ValidationError,
+  ValidIfOf,
+  RequiredIfOf
+} from '@ts-linq/core';
 import type { ColumnMetadata } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 
@@ -28,14 +34,22 @@ describe('[integration][sqlite] Conditional Validation with real DB', () => {
     MetadataStorage.addPrimaryKey(Post, 'id');
     RequiredIfOf<Post>((p: Post) => p.status === 'published', 'Title required for published')(
       undefined as unknown as object,
-      { kind: 'field', name: 'title', addInitializer: (fn: (this: unknown) => void) => fn.call(Post.prototype) } as any
+      {
+        kind: 'field',
+        name: 'title',
+        addInitializer: (fn: (this: unknown) => void) => fn.call(Post.prototype)
+      } as any
     );
     ValidIfOf<Post>(
       (p: Post) => p.status !== 'published' || (p.title || '').includes(' '),
       'Title must contain space when published'
     )(
       undefined as unknown as object,
-      { kind: 'field', name: 'title', addInitializer: (fn: (this: unknown) => void) => fn.call(Post.prototype) } as any
+      {
+        kind: 'field',
+        name: 'title',
+        addInitializer: (fn: (this: unknown) => void) => fn.call(Post.prototype)
+      } as any
     );
   });
 
@@ -62,5 +76,3 @@ describe('[integration][sqlite] Conditional Validation with real DB', () => {
     await ctx.dispose();
   });
 });
-
-

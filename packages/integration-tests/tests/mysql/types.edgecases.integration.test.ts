@@ -21,9 +21,9 @@ d('[integration][types][mysql] DECIMAL/date', () => {
       );
       expect(rows[0].amount).toBe('1234.56');
     } finally {
-      try { await p.executeNonQuery('DROP TABLE IF EXISTS `edge_types`'); } catch {}
+      try {
+        await p.executeNonQuery('DROP TABLE IF EXISTS `edge_types`');
+      } catch {}
     }
   });
 });
-
-

@@ -14,5 +14,3 @@ export class SQLiteGroupEmitter {
     return sql;
   }
 }
-
-

@@ -8,10 +8,5 @@
     "noEmit": false
   },
   "include": ["src/**/*"],
-  "references": [
-    { "path": "../core" },
-    { "path": "../dialect-postgres" }
-  ]
+  "references": [{ "path": "../core" }, { "path": "../dialect-postgres" }]
 }
-
-

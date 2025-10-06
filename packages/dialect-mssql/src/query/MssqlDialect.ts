@@ -68,5 +68,3 @@ export class MssqlDialect implements SqlDialect {
     return sql;
   }
 }
-
-

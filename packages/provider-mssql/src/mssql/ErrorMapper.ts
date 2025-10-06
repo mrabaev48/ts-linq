@@ -7,5 +7,3 @@ export function mapMssqlError(err: unknown): Error {
   if (number === 2627 || number === 2601) return new UniqueConstraintError(message, String(number));
   return new DatabaseError(message, String(number));
 }
-
-

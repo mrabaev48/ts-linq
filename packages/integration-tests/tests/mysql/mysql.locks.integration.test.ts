@@ -39,5 +39,3 @@ d('[integration][mysql] locks (no NOWAIT)', () => {
     }
   });
 });
-
-

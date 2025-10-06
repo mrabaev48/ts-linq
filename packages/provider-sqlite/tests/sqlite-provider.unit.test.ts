@@ -1,7 +1,10 @@
 import { SQLiteProvider } from '../src';
 import { MetadataStorage, type ColumnMetadata } from '@ts-linq/core';
 
-class E { id!: number; name!: string }
+class E {
+  id!: number;
+  name!: string;
+}
 
 beforeEach(() => {
   MetadataStorage.getInstance().clear();
@@ -19,5 +22,3 @@ test('connect/disconnect does not throw on :memory:', async () => {
   await p.connect();
   await p.disconnect();
 });
-
-

@@ -12,5 +12,3 @@ test('maps unknown to DatabaseError', () => {
   const e = mapMssqlError({ number: 1, message: 'x' });
   expect(e).toBeInstanceOf(DatabaseError);
 });
-
-

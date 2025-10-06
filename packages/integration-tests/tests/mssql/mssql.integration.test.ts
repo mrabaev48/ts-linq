@@ -11,5 +11,3 @@ describe('MssqlProvider integration (smoke)', () => {
     await provider.disconnect();
   });
 });
-
-

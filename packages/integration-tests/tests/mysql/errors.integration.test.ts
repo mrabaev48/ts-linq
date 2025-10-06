@@ -11,16 +11,26 @@ myD('[integration][mysql] error mapping', () => {
     try {
       await p.executeNonQuery('DROP TABLE IF EXISTS `child`');
       await p.executeNonQuery('DROP TABLE IF EXISTS `parent`');
-      await p.executeNonQuery('CREATE TABLE `parent`(id INT AUTO_INCREMENT PRIMARY KEY, u TEXT NOT NULL, UNIQUE KEY uq_u (u(255)))');
-      await p.executeNonQuery('CREATE TABLE `child`(id INT AUTO_INCREMENT PRIMARY KEY, pid INT NOT NULL, CONSTRAINT fk_p FOREIGN KEY (pid) REFERENCES `parent`(id))');
+      await p.executeNonQuery(
+        'CREATE TABLE `parent`(id INT AUTO_INCREMENT PRIMARY KEY, u TEXT NOT NULL, UNIQUE KEY uq_u (u(255)))'
+      );
+      await p.executeNonQuery(
+        'CREATE TABLE `child`(id INT AUTO_INCREMENT PRIMARY KEY, pid INT NOT NULL, CONSTRAINT fk_p FOREIGN KEY (pid) REFERENCES `parent`(id))'
+      );
       await p.executeNonQuery('INSERT INTO `parent`(u) VALUES(?)', ['x']);
-      await expect(p.executeNonQuery('INSERT INTO `parent`(u) VALUES(?)', ['x'] as unknown as never)).rejects.toBeInstanceOf(UniqueConstraintError);
-      await expect(p.executeNonQuery('INSERT INTO `child`(pid) VALUES(?)', [9999] as unknown as never)).rejects.toBeInstanceOf(ForeignKeyConstraintError);
+      await expect(
+        p.executeNonQuery('INSERT INTO `parent`(u) VALUES(?)', ['x'] as unknown as never)
+      ).rejects.toBeInstanceOf(UniqueConstraintError);
+      await expect(
+        p.executeNonQuery('INSERT INTO `child`(pid) VALUES(?)', [9999] as unknown as never)
+      ).rejects.toBeInstanceOf(ForeignKeyConstraintError);
     } finally {
-      try { await p.executeNonQuery('DROP TABLE IF EXISTS `child`'); } catch {}
-      try { await p.executeNonQuery('DROP TABLE IF EXISTS `parent`'); } catch {}
+      try {
+        await p.executeNonQuery('DROP TABLE IF EXISTS `child`');
+      } catch {}
+      try {
+        await p.executeNonQuery('DROP TABLE IF EXISTS `parent`');
+      } catch {}
     }
   });
 });
-
-

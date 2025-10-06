@@ -1,7 +1,10 @@
 import type { DatabaseProvider } from '../../DatabaseProvider';
 import type { SchemaSnapshot } from '../DiffTypes';
 export declare class SchemaInspectionService {
-    buildActualSnapshot(provider: DatabaseProvider, expected: SchemaSnapshot): Promise<SchemaSnapshot>;
-    private normalizeType;
+  buildActualSnapshot(
+    provider: DatabaseProvider,
+    expected: SchemaSnapshot
+  ): Promise<SchemaSnapshot>;
+  private normalizeType;
 }
 //# sourceMappingURL=SchemaInspectionService.d.ts.map

@@ -54,5 +54,3 @@ export async function stopDbContainers() {
   mysql = null;
   mssql = null;
 }
-
-

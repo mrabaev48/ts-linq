@@ -12,5 +12,3 @@ export class SQLiteJoinEmitter {
     return out;
   }
 }
-
-

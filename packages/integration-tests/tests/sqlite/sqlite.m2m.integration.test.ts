@@ -15,5 +15,3 @@ describe('SQLite M2M basics (integration)', () => {
     await p.disconnect();
   });
 });
-
-

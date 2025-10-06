@@ -12,5 +12,3 @@ export class MssqlJoinEmitter {
     return out;
   }
 }
-
-

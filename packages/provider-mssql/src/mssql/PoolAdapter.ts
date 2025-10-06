@@ -13,7 +13,7 @@ export interface MssqlRequestLike {
 
 export function createMssqlPool(connectionString: string): MssqlPoolLike {
   const mssql = safeRequireMssql();
-  return new mssql.ConnectionPool(connectionString) as unknown as MssqlPoolLike;
+  return new mssql.ConnectionPool(connectionString) as MssqlPoolLike;
 }
 
 function safeRequireMssql(): {
@@ -26,5 +26,3 @@ function safeRequireMssql(): {
     throw new Error('Package "mssql" is required. Install it with: npm install mssql');
   }
 }
-
-

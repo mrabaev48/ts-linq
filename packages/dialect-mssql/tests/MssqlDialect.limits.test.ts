@@ -1,13 +1,27 @@
 import { MetadataStorage, QueryBuilder, type QueryOptions } from '@ts-linq/core';
 import { MssqlDialect } from '../src';
 
-class U { id!: number; name!: string }
+class U {
+  id!: number;
+  name!: string;
+}
 
 beforeEach(() => {
   MetadataStorage.getInstance().clear();
   MetadataStorage.addEntity(U, 'Users');
-  MetadataStorage.addColumn(U, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true });
-  MetadataStorage.addColumn(U, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false });
+  MetadataStorage.addColumn(U, {
+    propertyName: 'id',
+    columnName: 'id',
+    type: 'INTEGER',
+    nullable: false,
+    isGenerated: true
+  });
+  MetadataStorage.addColumn(U, {
+    propertyName: 'name',
+    columnName: 'name',
+    type: 'TEXT',
+    nullable: false
+  });
   MetadataStorage.addPrimaryKey(U, 'id');
 });
 
@@ -23,5 +37,3 @@ test('offset with order fallback and fetch next', () => {
   expect(built.query).toContain('ORDER BY (SELECT NULL)');
   expect(built.query).toContain('OFFSET 5 ROWS FETCH NEXT 3 ROWS ONLY');
 });
-
-

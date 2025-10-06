@@ -4,8 +4,14 @@ import fs from 'node:fs';
 
 describe('SQLiteProvider integration (smoke)', () => {
   const dbPath = path.join(process.cwd(), 'size-tests', 'tmp', 'test.db');
-  beforeAll(() => { fs.mkdirSync(path.dirname(dbPath), { recursive: true }); });
-  afterAll(() => { try { fs.unlinkSync(dbPath); } catch {} });
+  beforeAll(() => {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  });
+  afterAll(() => {
+    try {
+      fs.unlinkSync(dbPath);
+    } catch {}
+  });
   it('connects and runs simple query', async () => {
     const provider = new SQLiteProvider(dbPath);
     await provider.connect();
@@ -14,5 +20,3 @@ describe('SQLiteProvider integration (smoke)', () => {
     await provider.disconnect();
   });
 });
-
-

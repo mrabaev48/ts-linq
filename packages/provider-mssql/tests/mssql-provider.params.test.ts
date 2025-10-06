@@ -1,7 +1,11 @@
 import { MssqlProvider } from '../src';
 import { MetadataStorage, type ColumnMetadata, type EntityMetadata } from '@ts-linq/core';
 
-class E { id!: number; a!: number; b!: string }
+class E {
+  id!: number;
+  a!: number;
+  b!: string;
+}
 
 beforeEach(() => {
   MetadataStorage.getInstance().clear();
@@ -21,10 +25,14 @@ test('parameter mapping ? -> @pN on executeNonQuery', async () => {
   p.isConnected = true;
   const records: any[] = [];
   // @ts-expect-error
-  p['getRequest'] = () => ({ input: (_n: string, _v: unknown) => ({ input: () => ({}) }), query: async (sql: string) => { records.push(sql); return { rowsAffected: [1] }; } });
+  p['getRequest'] = () => ({
+    input: (_n: string, _v: unknown) => ({ input: () => ({}) }),
+    query: async (sql: string) => {
+      records.push(sql);
+      return { rowsAffected: [1] };
+    }
+  });
   await p.executeNonQuery('UPDATE t SET a=? WHERE id=?', [10, 1]);
   expect(records[0]).toContain('@p1');
   expect(records[0]).toContain('@p2');
 });
-
-

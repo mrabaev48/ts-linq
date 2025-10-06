@@ -19,9 +19,24 @@ d('[integration][postgres] migration round-trip (diff → apply → no diff)', (
 
       MetadataStorage.getInstance().clear();
       MetadataStorage.addEntity(RUser, 'rt_users');
-      MetadataStorage.addColumn(RUser, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false });
-      MetadataStorage.addColumn(RUser, { propertyName: 'email', columnName: 'email', type: 'TEXT', nullable: false });
-      MetadataStorage.addColumn(RUser, { propertyName: 'createdAt', columnName: 'created_at', type: 'TIMESTAMP', nullable: false });
+      MetadataStorage.addColumn(RUser, {
+        propertyName: 'id',
+        columnName: 'id',
+        type: 'INTEGER',
+        nullable: false
+      });
+      MetadataStorage.addColumn(RUser, {
+        propertyName: 'email',
+        columnName: 'email',
+        type: 'TEXT',
+        nullable: false
+      });
+      MetadataStorage.addColumn(RUser, {
+        propertyName: 'createdAt',
+        columnName: 'created_at',
+        type: 'TIMESTAMP',
+        nullable: false
+      });
       MetadataStorage.addPrimaryKey(RUser, 'id');
 
       const gen1 = new DiffMigrationGenerator(p as any);
@@ -33,9 +48,9 @@ d('[integration][postgres] migration round-trip (diff → apply → no diff)', (
       const steps2 = await gen2.generate();
       expect(steps2.length).toBe(0);
     } finally {
-      try { await p.executeNonQuery('DROP TABLE IF EXISTS "rt_users"'); } catch {}
+      try {
+        await p.executeNonQuery('DROP TABLE IF EXISTS "rt_users"');
+      } catch {}
     }
   });
 });
-
-

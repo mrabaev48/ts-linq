@@ -22,7 +22,9 @@ export class SQLiteDdlStrategy {
       if (metadata.primaryKeys.length === 1) {
         const pkColumn = metadata.columns.find((c) => c.propertyName === metadata.primaryKeys[0]);
         if (pkColumn && pkColumn.isGenerated && this.mapTypeToSQLite(pkColumn.type) === 'INTEGER') {
-          const pkIndex = metadata.columns.findIndex((c) => c.propertyName === metadata.primaryKeys[0]);
+          const pkIndex = metadata.columns.findIndex(
+            (c) => c.propertyName === metadata.primaryKeys[0]
+          );
           columns[pkIndex] += ' PRIMARY KEY AUTOINCREMENT';
         } else {
           columns.push(`PRIMARY KEY (${primaryKeyColumns.join(', ')})`);
@@ -35,26 +37,43 @@ export class SQLiteDdlStrategy {
   }
   public generateCreateIndexSql(
     tableName: string,
-    index: { name: string; columns: string[]; unique: boolean; where?: string; orders?: { [column: string]: 'ASC' | 'DESC' }; expressions?: string[]; collations?: { [column: string]: string } }
+    index: {
+      name: string;
+      columns: string[];
+      unique: boolean;
+      where?: string;
+      orders?: { [column: string]: 'ASC' | 'DESC' };
+      expressions?: string[];
+      collations?: { [column: string]: string };
+    }
   ): string {
     return this.indexBuilder.buildCreateIndexSql(tableName, index);
   }
   public generateColumnDefinition(column: ColumnMetadata): string {
     if (column.isComputed && column.computedExpression) {
-      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' }).computedStorage;
+      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
+        .computedStorage;
       const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
-      if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') this.logger?.warn(`SQLite: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); using ${kind} for ${column.columnName}`);
-      if (kind === 'STORED') this.logger?.warn(`SQLite: STORED generated columns require SQLite >= 3.31; falling back to VIRTUAL for ${column.columnName}`);
+      if (storage && storage !== 'STORED' && storage !== 'VIRTUAL')
+        this.logger?.warn(
+          `SQLite: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); using ${kind} for ${column.columnName}`
+        );
+      if (kind === 'STORED')
+        this.logger?.warn(
+          `SQLite: STORED generated columns require SQLite >= 3.31; falling back to VIRTUAL for ${column.columnName}`
+        );
       return `${column.columnName} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
     }
     let definition = `${column.columnName} ${this.mapTypeToSQLite(column.type)}`;
     if (column.length) definition += `(${column.length})`;
-    const isIntegerAutoincPk = column.isGenerated && this.mapTypeToSQLite(column.type) === 'INTEGER';
+    const isIntegerAutoincPk =
+      column.isGenerated && this.mapTypeToSQLite(column.type) === 'INTEGER';
     if (!isIntegerAutoincPk) {
       if (!column.nullable) definition += ' NOT NULL';
       const defExpr = (column as { defaultExpression?: string }).defaultExpression;
       if (defExpr) definition += ` DEFAULT ${defExpr}`;
-      else if (column.defaultValue !== undefined) definition += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
+      else if (column.defaultValue !== undefined)
+        definition += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
     }
     return definition;
   }
@@ -82,5 +101,3 @@ export class SQLiteDdlStrategy {
     }
   }
 }
-
-

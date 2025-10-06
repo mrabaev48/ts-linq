@@ -22,5 +22,3 @@ describe('MssqlProvider CRUD (smoke)', () => {
     await p.disconnect();
   });
 });
-
-

@@ -29,5 +29,3 @@ d('[integration][postgres] INSERT/UPDATE RETURNING', () => {
     }
   });
 });
-
-

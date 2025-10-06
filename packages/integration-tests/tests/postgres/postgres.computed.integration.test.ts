@@ -44,5 +44,3 @@ describe('Postgres computed column (integration)', () => {
     await provider.disconnect();
   });
 });
-
-

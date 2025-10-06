@@ -24,17 +24,34 @@ class AppCtx extends DbContext {
 describe('SQLite branded ID integration', () => {
   beforeAll(() => {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-    try { fs.unlinkSync(dbPath); } catch {}
+    try {
+      fs.unlinkSync(dbPath);
+    } catch {}
   });
   afterAll(() => {
-    try { fs.unlinkSync(dbPath); } catch {}
+    try {
+      fs.unlinkSync(dbPath);
+    } catch {}
   });
 
   test('insert and find by branded id and findByIds', async () => {
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(User, 'Users');
-    MetadataStorage.addColumn(User, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false, isGenerated: true, isBranded: true, brand: 'User' });
-    MetadataStorage.addColumn(User, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: false });
+    MetadataStorage.addColumn(User, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false,
+      isGenerated: true,
+      isBranded: true,
+      brand: 'User'
+    });
+    MetadataStorage.addColumn(User, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: false
+    });
     MetadataStorage.addPrimaryKey(User, 'id');
 
     const ctx = new AppCtx(dbPath);
@@ -54,5 +71,3 @@ describe('SQLite branded ID integration', () => {
     await ctx.dispose();
   });
 });
-
-

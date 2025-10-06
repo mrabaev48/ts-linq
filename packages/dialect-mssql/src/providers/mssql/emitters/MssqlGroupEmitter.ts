@@ -14,5 +14,3 @@ export class MssqlGroupEmitter {
     return sql;
   }
 }
-
-

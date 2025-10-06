@@ -24,7 +24,12 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build"
   },
-  "keywords": ["orm", "mysql", "provider", "typescript"],
+  "keywords": [
+    "orm",
+    "mysql",
+    "provider",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -43,5 +48,3 @@
     "@types/node": "^24.3.0"
   }
 }
-
-

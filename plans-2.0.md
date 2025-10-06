@@ -250,7 +250,6 @@
 - [ ] Gitleaks workflow (сканирование секретов) — запланировано
 - [x] Size budget gate: `npm run size:bundle` в CI ✅
 
-
 ---
 
 ## Фаза 2: Advanced Type System & API (6-8 недель)

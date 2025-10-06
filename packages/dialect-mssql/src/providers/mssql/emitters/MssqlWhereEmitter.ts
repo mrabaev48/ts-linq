@@ -8,5 +8,3 @@ export class MssqlWhereEmitter {
     return ` WHERE ${whereClauses.join(' AND ')}`;
   }
 }
-
-

@@ -9,7 +9,9 @@ pgDescribe('[integration][postgres] JSONB operations', () => {
     await p.connect();
     try {
       await p.executeNonQuery('DROP TABLE IF EXISTS "pg_jsonb"');
-      await p.executeNonQuery('CREATE TABLE IF NOT EXISTS "pg_jsonb"(id SERIAL PRIMARY KEY, data JSONB NOT NULL)');
+      await p.executeNonQuery(
+        'CREATE TABLE IF NOT EXISTS "pg_jsonb"(id SERIAL PRIMARY KEY, data JSONB NOT NULL)'
+      );
       await p.executeNonQuery(`INSERT INTO "pg_jsonb"(data) VALUES($1)`, [
         { a: { b: 1 }, tags: ['x', 'y'] } as unknown as never
       ]);
@@ -30,5 +32,3 @@ pgDescribe('[integration][postgres] JSONB operations', () => {
     }
   });
 });
-
-

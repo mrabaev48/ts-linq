@@ -11,5 +11,3 @@ describe('MySqlProvider integration (smoke)', () => {
     await provider.disconnect();
   });
 });
-
-

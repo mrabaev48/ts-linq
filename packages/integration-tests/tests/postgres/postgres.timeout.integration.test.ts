@@ -18,5 +18,3 @@ d('[integration][postgres] statement timeout', () => {
     }
   });
 });
-
-

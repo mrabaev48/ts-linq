@@ -22,5 +22,3 @@ describe('MySqlProvider CRUD (smoke)', () => {
     await p.disconnect();
   });
 });
-
-

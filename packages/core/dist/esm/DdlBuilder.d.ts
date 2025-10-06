@@ -5,13 +5,13 @@ import type { DdlStrategy } from './DdlStrategy';
  * in a consistent, testable way.
  */
 export declare class DdlBuilder {
-    private readonly strategy;
-    constructor(strategy: DdlStrategy);
-    buildCreateTableSql(metadata: EntityMetadata): string;
-    buildCreateIndexesSql(metadata: EntityMetadata): string[];
-    buildAll(metadata: EntityMetadata): {
-        tableSql: string;
-        indexSqls: string[];
-    };
+  private readonly strategy;
+  constructor(strategy: DdlStrategy);
+  buildCreateTableSql(metadata: EntityMetadata): string;
+  buildCreateIndexesSql(metadata: EntityMetadata): string[];
+  buildAll(metadata: EntityMetadata): {
+    tableSql: string;
+    indexSqls: string[];
+  };
 }
 //# sourceMappingURL=DdlBuilder.d.ts.map

@@ -47,5 +47,3 @@ const runJson = process.env.MYSQL_JSON === '1';
     }
   });
 });
-
-

@@ -29,5 +29,3 @@ d('[integration][types][pg] DECIMAL/UUID/date', () => {
     }
   });
 });
-
-

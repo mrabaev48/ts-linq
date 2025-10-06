@@ -7,15 +7,10 @@
   },
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "project": [
-      "./tsconfig.eslint.json"
-    ],
+    "project": ["./tsconfig.eslint.json"],
     "sourceType": "module"
   },
-  "plugins": [
-    "@typescript-eslint",
-    "prettier"
-  ],
+  "plugins": ["@typescript-eslint", "prettier"],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -37,21 +32,11 @@
     "no-console": [
       "warn",
       {
-        "allow": [
-          "warn",
-          "error",
-          "log"
-        ]
+        "allow": ["warn", "error", "log"]
       }
     ],
-    "complexity": [
-      "warn",
-      15
-    ],
-    "max-lines-per-function": [
-      "warn",
-      120
-    ],
+    "complexity": ["warn", 15],
+    "max-lines-per-function": ["warn", 120],
     "prefer-const": "warn",
     "no-prototype-builtins": "off",
     "no-constant-condition": "off",
@@ -81,9 +66,7 @@
   },
   "overrides": [
     {
-      "files": [
-        "src/**/*.ts"
-      ],
+      "files": ["src/**/*.ts"],
       "rules": {
         "@typescript-eslint/no-unsafe-assignment": "warn",
         "@typescript-eslint/no-unsafe-call": "warn",
@@ -93,15 +76,9 @@
       }
     },
     {
-      "files": [
-        "tests/**/*.ts",
-        "**/*.test.ts",
-        "**/*.spec.ts"
-      ],
+      "files": ["tests/**/*.ts", "**/*.test.ts", "**/*.spec.ts"],
       "rules": {
-        "no-console": [
-          "off"
-        ],
+        "no-console": ["off"],
         "@typescript-eslint/no-unsafe-assignment": "warn",
         "@typescript-eslint/no-unsafe-call": "warn",
         "@typescript-eslint/no-unsafe-member-access": "warn",
@@ -116,10 +93,7 @@
           }
         ],
         "@typescript-eslint/consistent-type-imports": "warn",
-        "max-lines-per-function": [
-          "warn",
-          200
-        ]
+        "max-lines-per-function": ["warn", 200]
       }
     }
   ]

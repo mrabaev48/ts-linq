@@ -8,5 +8,3 @@ export class SQLiteWhereEmitter {
     return ` WHERE ${whereClauses.join(' AND ')}`;
   }
 }
-
-

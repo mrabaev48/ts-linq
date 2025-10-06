@@ -58,5 +58,3 @@ describe('SQLite computed column (integration)', () => {
     await provider.disconnect();
   });
 });
-
-

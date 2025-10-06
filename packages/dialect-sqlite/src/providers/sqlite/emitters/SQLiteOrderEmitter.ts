@@ -7,5 +7,3 @@ export class SQLiteOrderEmitter {
     return ` ORDER BY ${orderByClauses.join(', ')}`;
   }
 }
-
-

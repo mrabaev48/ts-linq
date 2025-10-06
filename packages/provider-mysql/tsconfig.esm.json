@@ -9,10 +9,5 @@
     "noEmit": false
   },
   "include": ["src/**/*"],
-  "references": [
-    { "path": "../core" },
-    { "path": "../dialect-mysql" }
-  ]
+  "references": [{ "path": "../core" }, { "path": "../dialect-mysql" }]
 }
-
-

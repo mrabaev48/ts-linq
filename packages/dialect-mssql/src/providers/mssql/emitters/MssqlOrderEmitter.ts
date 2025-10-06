@@ -7,5 +7,3 @@ export class MssqlOrderEmitter {
     return ` ORDER BY ${orderByClauses.join(', ')}`;
   }
 }
-
-

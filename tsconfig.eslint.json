@@ -1,10 +1,11 @@
 {
   "extends": "./tsconfig.json",
-  "include": [
-    "packages/*/src/**/*",
-    "packages/*/tests/**/*",
-    "examples/**/*",
-    "bench/**/*"
-  ],
-  "exclude": ["dist", "node_modules", "packages/*/dist/**/*", "packages/*/test-d/**/*"]
+  "include": ["packages/*/src/**/*", "packages/*/tests/**/*", "examples/**/*", "bench/**/*"],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "packages/*/dist/**/*",
+    "packages/*/test-d/**/*",
+    "packages/*/src/**/*.d.ts"
+  ]
 }

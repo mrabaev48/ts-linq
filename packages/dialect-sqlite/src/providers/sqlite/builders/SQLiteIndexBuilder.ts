@@ -31,5 +31,3 @@ export class SQLiteIndexBuilder {
     return `CREATE ${unique}INDEX IF NOT EXISTS ${index.name} ON ${table} (${cols})${whereSql}`;
   }
 }
-
-

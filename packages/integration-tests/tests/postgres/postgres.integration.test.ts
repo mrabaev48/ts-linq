@@ -15,5 +15,3 @@ describe('PostgresProvider integration (smoke)', () => {
     await provider.disconnect();
   });
 });
-
-

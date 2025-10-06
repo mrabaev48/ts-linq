@@ -13,5 +13,3 @@ if (!fs.existsSync(esmIndex)) {
 const content = "export * from './esm/index.js';\nexport { default } from './esm/index.js';\n";
 fs.writeFileSync(outFile, content);
 console.log(`Generated ${path.relative(process.cwd(), outFile)}`);
-
-

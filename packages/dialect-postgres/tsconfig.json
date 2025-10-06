@@ -8,9 +8,5 @@
     "noEmit": false
   },
   "include": ["src/**/*"],
-  "references": [
-    { "path": "../core" }
-  ]
+  "references": [{ "path": "../core" }]
 }
-
-
