@@ -42,4 +42,11 @@ describe('MemcachedCountCacheAdapter', () => {
     cache.clear();
     expect(cache.get('k')).toBeUndefined();
   });
+
+  test('hashKeys stores hashed count key in backend', async () => {
+    const client = new FakeMemjs();
+    const cache = new MemcachedCountCacheAdapter(client, { hashKeys: true });
+    cache.set('Product|count|[]', { value: 1, ts: Date.now() });
+    expect(cache.get('Product|count|[]')?.value).toBe(1);
+  });
 });

@@ -396,6 +396,8 @@ export interface PerformanceOptions {
   sqlCache?: SqlCache;
   /** Optional external count cache implementation. */
   countCache?: CountCache;
+  /** Optional namespace included in cache keys for isolation (tenant/schema/etc). */
+  cacheNamespace?: string;
 }
 
 /**
