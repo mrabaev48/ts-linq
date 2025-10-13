@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import type { SqlCache } from '../query/SqlCache';
 import type { CountCache } from '../query/CountCache';
+import type { EntityCacheLike } from '../utils/EntityCache';
 import type { DatabaseProvider } from '../DatabaseProvider';
 
 /**
@@ -385,6 +386,8 @@ export interface PerformanceOptions {
   enableEntityCache?: boolean;
   /** Maximum L2 cache size. Default: 10000. */
   entityCacheSize?: number;
+  /** Optional external L2 entity cache adapter. Overrides in-memory cache when provided. */
+  entityCache?: EntityCacheLike;
   /** Enable count() result caching for pagination. Default: false. */
   enableCountCache?: boolean;
   /** TTL for count() cache entries in milliseconds. Default: 0 (no TTL, disabled unless enableCountCache). */

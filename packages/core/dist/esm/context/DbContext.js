@@ -67,7 +67,9 @@ export class DbContext {
         this._deleteCmd = new DeleteCommand(this._provider, (c) => this.handleSoftDelete(c), (c) => this.removeFromEntityCache(c));
         // Initialize optional L2 entity cache
         if (options.performance?.enableEntityCache) {
-            this._entityCache = new EntityCache(options.performance.entityCacheSize ?? 10000, this._provider.loggerRef, this._provider.providerLabel);
+            this._entityCache =
+                options.performance.entityCache ??
+                    new EntityCache(options.performance.entityCacheSize ?? 10000, this._provider.loggerRef, this._provider.providerLabel);
         }
         // Store performance options for downstream consumers
         this._performanceOptions = options.performance;
