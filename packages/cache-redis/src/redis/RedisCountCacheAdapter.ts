@@ -50,4 +50,22 @@ export class RedisCountCacheAdapter implements CountCache {
   clear(): void {
     this.shadow.clear();
   }
+
+  invalidateBy(matcher: (key: string) => boolean): number {
+    let removed = 0;
+    for (const k of Array.from(this.shadow.keys())) {
+      if (matcher(k)) {
+        this.shadow.delete(k);
+        removed++;
+        void (async () => {
+          try {
+            await this.client.del(this.k(k));
+          } catch {
+            /* ignore */
+          }
+        })();
+      }
+    }
+    return removed;
+  }
 }

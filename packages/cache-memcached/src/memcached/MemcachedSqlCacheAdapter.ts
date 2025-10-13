@@ -59,4 +59,22 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
   size(): number {
     return this.shadow.size;
   }
+
+  invalidateBy(matcher: (key: string) => boolean): number {
+    let removed = 0;
+    for (const k of Array.from(this.shadow.keys())) {
+      if (matcher(k)) {
+        this.shadow.delete(k);
+        removed++;
+        void (async () => {
+          try {
+            await this.client.delete(this.k(k));
+          } catch {
+            /* ignore */
+          }
+        })();
+      }
+    }
+    return removed;
+  }
 }

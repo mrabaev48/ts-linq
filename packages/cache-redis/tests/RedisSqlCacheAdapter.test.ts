@@ -41,4 +41,14 @@ describe('RedisSqlCacheAdapter', () => {
     cache.clear();
     expect(cache.size()).toBe(0);
   });
+
+  test('invalidateBy removes matching keys from shadow and backend', async () => {
+    const client = new FakeRedis();
+    const cache = new RedisSqlCacheAdapter(client);
+    cache.set('Product|s:|w:x', { query: 'Q1', parameters: [] });
+    cache.set('Order|s:|w:y', { query: 'Q2', parameters: [] });
+    const removed = cache.invalidateBy((k) => k.startsWith('Product|'));
+    expect(removed).toBe(1);
+    expect(cache.get('Product|s:|w:x')).toBeUndefined();
+  });
 });

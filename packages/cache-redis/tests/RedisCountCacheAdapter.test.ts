@@ -32,4 +32,14 @@ describe('RedisCountCacheAdapter', () => {
     cache.clear();
     expect(cache.get('a')).toBeUndefined();
   });
+
+  test('invalidateBy removes matching count keys', async () => {
+    const client = new FakeRedis();
+    const cache = new RedisCountCacheAdapter(client);
+    cache.set('Product|count|[]', { value: 1, ts: Date.now() });
+    cache.set('Order|count|[]', { value: 2, ts: Date.now() });
+    const removed = cache.invalidateBy((k) => k.startsWith('Product|count|'));
+    expect(removed).toBe(1);
+    expect(cache.get('Product|count|[]')).toBeUndefined();
+  });
 });
