@@ -26,6 +26,7 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
   private readonly shadowTtlMs?: number;
   private readonly hashKeys: boolean;
   private readonly shadow = new Map<string, { value: SqlCacheEntry; ts: number }>();
+  private _metrics = { requests: 0, hits: 0, misses: 0, evictions: 0, invalidations: 0 };
 
   constructor(client: MemjsClientLike, options?: MemcachedSqlCacheOptions) {
     this.client = client;
@@ -51,12 +52,18 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
   }
 
   get(key: string): SqlCacheEntry | undefined {
+    this._metrics.requests++;
     const entry = this.shadow.get(key);
     if (!entry) return undefined;
     if (this.shadowTtlMs && this.shadowTtlMs > 0 && Date.now() - entry.ts > this.shadowTtlMs) {
       this.shadow.delete(key);
+      this._metrics.misses++;
       return undefined;
     }
+    this._metrics.hits++;
+    // LRU touch
+    this.shadow.delete(key);
+    this.shadow.set(key, { value: entry.value, ts: entry.ts });
     return { query: entry.value.query, parameters: [...entry.value.parameters] };
   }
 
@@ -80,7 +87,9 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
   }
 
   clear(): void {
+    const removed = this.shadow.size;
     this.shadow.clear();
+    this._metrics.invalidations += removed;
   }
 
   size(): number {
@@ -101,9 +110,28 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
             console.warn('[MemcachedSqlCacheAdapter] delete failed', { key: this.k(k) });
           }
         })();
+        this._metrics.invalidations++;
       }
     }
     return removed;
+  }
+
+  public getMetrics(): {
+    currentSize: number;
+    totalRequests?: number;
+    hits?: number;
+    misses?: number;
+    evictions?: number;
+    invalidations?: number;
+  } {
+    return {
+      currentSize: this.shadow.size,
+      totalRequests: this._metrics.requests,
+      hits: this._metrics.hits,
+      misses: this._metrics.misses,
+      evictions: this._metrics.evictions,
+      invalidations: this._metrics.invalidations
+    };
   }
 
   private ensureCapacity(): void {
@@ -111,6 +139,7 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
       const first = this.shadow.keys().next().value;
       if (first === undefined) break;
       this.shadow.delete(first);
+      this._metrics.evictions++;
       void (async () => {
         try {
           await this.client.delete(this.k(first));

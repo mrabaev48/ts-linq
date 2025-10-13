@@ -26,6 +26,7 @@ export class MemcachedCountCacheAdapter implements CountCache {
   private readonly shadowTtlMs?: number;
   private readonly hashKeys: boolean;
   private readonly shadow = new Map<string, { value: CountCacheEntry; ts: number }>();
+  private _metrics = { requests: 0, hits: 0, misses: 0, evictions: 0, invalidations: 0 };
 
   constructor(client: MemjsClientLike, options?: MemcachedCountCacheOptions) {
     this.client = client;
@@ -51,12 +52,18 @@ export class MemcachedCountCacheAdapter implements CountCache {
   }
 
   get(key: string): CountCacheEntry | undefined {
+    this._metrics.requests++;
     const entry = this.shadow.get(key);
     if (!entry) return undefined;
     if (this.shadowTtlMs && this.shadowTtlMs > 0 && Date.now() - entry.ts > this.shadowTtlMs) {
       this.shadow.delete(key);
+      this._metrics.misses++;
       return undefined;
     }
+    this._metrics.hits++;
+    // LRU touch
+    this.shadow.delete(key);
+    this.shadow.set(key, { value: entry.value, ts: entry.ts });
     return { value: entry.value.value, ts: entry.value.ts };
   }
 
@@ -77,7 +84,9 @@ export class MemcachedCountCacheAdapter implements CountCache {
   }
 
   clear(): void {
+    const removed = this.shadow.size;
     this.shadow.clear();
+    this._metrics.invalidations += removed;
   }
 
   invalidateBy(matcher: (key: string) => boolean): number {
@@ -94,6 +103,7 @@ export class MemcachedCountCacheAdapter implements CountCache {
             console.warn('[MemcachedCountCacheAdapter] delete failed', { key: this.k(k) });
           }
         })();
+        this._metrics.invalidations++;
       }
     }
     return removed;
@@ -104,6 +114,7 @@ export class MemcachedCountCacheAdapter implements CountCache {
       const first = this.shadow.keys().next().value;
       if (first === undefined) break;
       this.shadow.delete(first);
+      this._metrics.evictions++;
       void (async () => {
         try {
           await this.client.delete(this.k(first));
@@ -118,5 +129,16 @@ export class MemcachedCountCacheAdapter implements CountCache {
     let hash = 5381;
     for (let i = 0; i < key.length; i++) hash = (hash * 33) ^ key.charCodeAt(i);
     return (hash >>> 0).toString(16);
+  }
+
+  public getMetrics() {
+    return {
+      currentSize: this.shadow.size,
+      totalRequests: this._metrics.requests,
+      hits: this._metrics.hits,
+      misses: this._metrics.misses,
+      evictions: this._metrics.evictions,
+      invalidations: this._metrics.invalidations
+    };
   }
 }

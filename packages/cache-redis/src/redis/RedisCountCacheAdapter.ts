@@ -6,12 +6,23 @@ export interface RedisClientLike {
   del(key: string): Promise<unknown> | unknown;
 }
 
+export interface RedisSubscriberLike {
+  subscribe(channel: string, handler: (message: string) => void): Promise<unknown> | unknown;
+}
+
+export interface RedisPublisherLike {
+  publish(channel: string, message: string): Promise<unknown> | unknown;
+}
+
 export interface RedisCountCacheOptions {
   ttlSeconds?: number;
   keyPrefix?: string;
   shadowMaxSize?: number;
   shadowTtlMs?: number;
   hashKeys?: boolean;
+  pubSubChannel?: string;
+  subscriber?: RedisSubscriberLike;
+  publisher?: RedisPublisherLike;
 }
 
 export class RedisCountCacheAdapter implements CountCache {
@@ -21,7 +32,10 @@ export class RedisCountCacheAdapter implements CountCache {
   private readonly shadowMaxSize: number;
   private readonly shadowTtlMs?: number;
   private readonly hashKeys: boolean;
+  private readonly pubSubChannel?: string;
+  private readonly publisher?: RedisPublisherLike;
   private readonly shadow = new Map<string, { value: CountCacheEntry; ts: number }>();
+  private _metrics = { requests: 0, hits: 0, misses: 0, evictions: 0, invalidations: 0 };
 
   constructor(client: RedisClientLike, options?: RedisCountCacheOptions) {
     this.client = client;
@@ -30,6 +44,21 @@ export class RedisCountCacheAdapter implements CountCache {
     this.shadowMaxSize = options?.shadowMaxSize ?? 2000;
     this.shadowTtlMs = options?.shadowTtlMs ?? 0;
     this.hashKeys = options?.hashKeys ?? false;
+    this.pubSubChannel = options?.pubSubChannel;
+    this.publisher = options?.publisher;
+    const sub = options?.subscriber;
+    if (this.pubSubChannel && sub) {
+      sub.subscribe(this.pubSubChannel, (message: string) => {
+        try {
+          const msg = JSON.parse(message) as { t: 'del' | 'clear'; k?: string };
+          if (msg.t === 'clear') {
+            this.shadow.clear();
+            return;
+          }
+          if (msg.t === 'del' && msg.k) this.shadow.delete(msg.k);
+        } catch {}
+      });
+    }
   }
 
   private k(key: string): string {
@@ -38,12 +67,18 @@ export class RedisCountCacheAdapter implements CountCache {
   }
 
   get(key: string): CountCacheEntry | undefined {
+    this._metrics.requests++;
     const entry = this.shadow.get(key);
     if (!entry) return undefined;
     if (this.shadowTtlMs && this.shadowTtlMs > 0 && Date.now() - entry.ts > this.shadowTtlMs) {
       this.shadow.delete(key);
+      this._metrics.misses++;
       return undefined;
     }
+    this._metrics.hits++;
+    // LRU touch
+    this.shadow.delete(key);
+    this.shadow.set(key, { value: entry.value, ts: entry.ts });
     return { value: entry.value.value, ts: entry.value.ts };
   }
 
@@ -67,6 +102,9 @@ export class RedisCountCacheAdapter implements CountCache {
 
   clear(): void {
     this.shadow.clear();
+    if (this.pubSubChannel && this.publisher)
+      void this.publisher.publish(this.pubSubChannel, JSON.stringify({ t: 'clear' }));
+    // invalidations add size of previous map; not tracked precisely here
   }
 
   invalidateBy(matcher: (key: string) => boolean): number {
@@ -83,6 +121,9 @@ export class RedisCountCacheAdapter implements CountCache {
             console.warn('[RedisCountCacheAdapter] delete failed', { key: this.k(k) });
           }
         })();
+        if (this.pubSubChannel && this.publisher)
+          void this.publisher.publish(this.pubSubChannel, JSON.stringify({ t: 'del', k }));
+        this._metrics.invalidations++;
       }
     }
     return removed;
@@ -93,6 +134,7 @@ export class RedisCountCacheAdapter implements CountCache {
       const first = this.shadow.keys().next().value;
       if (first === undefined) break;
       this.shadow.delete(first);
+      this._metrics.evictions++;
       void (async () => {
         try {
           await this.client.del(this.k(first));
@@ -101,6 +143,17 @@ export class RedisCountCacheAdapter implements CountCache {
         }
       })();
     }
+  }
+
+  public getMetrics() {
+    return {
+      currentSize: this.shadow.size,
+      totalRequests: this._metrics.requests,
+      hits: this._metrics.hits,
+      misses: this._metrics.misses,
+      evictions: this._metrics.evictions,
+      invalidations: this._metrics.invalidations
+    };
   }
 
   private h(key: string): string {

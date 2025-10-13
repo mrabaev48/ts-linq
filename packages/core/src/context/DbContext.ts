@@ -116,6 +116,8 @@ export abstract class DbContext {
     }
     // Store performance options for downstream consumers
     this._performanceOptions = options.performance;
+    // Apply configurable IN() chunk size into loader
+    this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize);
     this._loadingDefaults = options.loading || {};
 
     // Apply loading strategy from options or keep default
@@ -402,6 +404,50 @@ export abstract class DbContext {
             extCount.invalidateBy((k) => k.includes(`|count|`) && k.includes(`${name}|`));
           }
         }
+      } catch {
+        /* ignore */
+      }
+    },
+    reportMetrics: (): void => {
+      try {
+        const qb = require('../query/QueryBuilder') as {
+          QueryBuilder: new (...args: any[]) => any;
+        };
+        const sqlCache = (this as unknown as { _sqlBuilder?: { getCacheMetrics?: () => any } })
+          ._sqlBuilder;
+        const sqlMetrics = sqlCache?.getCacheMetrics?.();
+        const countCache = this._performanceOptions?.countCache;
+        const countMetrics = countCache?.getMetrics?.();
+        const logger = this._provider.loggerRef as unknown as {
+          cacheSize?: (p: {
+            cache: 'sqlGen' | 'count' | 'entityL2';
+            size: number;
+            provider?: string;
+          }) => void;
+          cache?: (p: {
+            cache: 'sqlGen' | 'count' | 'entityL2';
+            hit: boolean;
+            provider?: string;
+          }) => void;
+        };
+        if (sqlMetrics)
+          logger?.cacheSize?.({
+            cache: 'sqlGen',
+            size: sqlMetrics.currentSize ?? -1,
+            provider: this._provider.providerLabel
+          });
+        if (countMetrics)
+          logger?.cacheSize?.({
+            cache: 'count',
+            size: countMetrics.currentSize ?? -1,
+            provider: this._provider.providerLabel
+          });
+        if (this._entityCache)
+          logger?.cacheSize?.({
+            cache: 'entityL2',
+            size: this._entityCache.size?.() ?? -1,
+            provider: this._provider.providerLabel
+          });
       } catch {
         /* ignore */
       }
