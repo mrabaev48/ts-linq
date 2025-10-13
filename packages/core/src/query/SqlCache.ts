@@ -17,7 +17,9 @@ export class InMemorySqlCache implements SqlCache {
   private store = new Map<string, SqlCacheEntry>();
   constructor(private maxSize: number = 1000) {}
   get(key: string): SqlCacheEntry | undefined {
-    return this.store.get(key);
+    const hit = this.store.get(key);
+    if (!hit) return undefined;
+    return { query: hit.query, parameters: [...hit.parameters] };
   }
   set(key: string, value: SqlCacheEntry): void {
     if (this.store.size >= this.maxSize) {
