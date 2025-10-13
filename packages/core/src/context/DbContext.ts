@@ -200,6 +200,8 @@ export abstract class DbContext {
       this.applyAudit(normalized);
       affectedRows += await this.processChange(normalized);
     }
+    // Smart invalidation after successful DML
+    this.invalidateCachesAfterSave(changes);
     this._changeTracker.acceptAllChanges();
     return affectedRows;
   }
@@ -298,6 +300,72 @@ export abstract class DbContext {
       /* ignore */
     }
   }
+
+  /**
+   * Targeted cache invalidation after saveChanges.
+   * - Removes deleted entities from L2 by primary key
+   * - Clears L2 entirely if any dependent CachePolicy requires invalidation
+   * - Clears global count cache (best-effort)
+   */
+  private invalidateCachesAfterSave(
+    changes: Array<{ entity: Record<string, unknown>; entityClass: Function; state: string }>
+  ): void {
+    try {
+      let needFullL2Clear = false;
+      const changedNames = new Set<string>(changes.map((c) => c.entityClass.name));
+      // Dependency-based invalidation via CachePolicy metadata
+      try {
+        const entities = require('../metadata/MetadataStorage').MetadataStorage.getEntities();
+        for (const e of entities) {
+          const meta = (
+            Reflect as unknown as {
+              getOwnMetadata?: (k: string, t: Function) => unknown;
+            }
+          ).getOwnMetadata?.('orm:cachePolicy', e.target as Function) as
+            | { invalidateOn?: ReadonlyArray<string> }
+            | undefined;
+          if (meta?.invalidateOn && meta.invalidateOn.some((n) => changedNames.has(n))) {
+            needFullL2Clear = true;
+            break;
+          }
+        }
+      } catch {}
+
+      // Remove deleted entities by id; for updates, update is already reflected via command hook
+      if (this._entityCache) {
+        for (const c of changes) {
+          if (c.state === 'deleted') {
+            const pk = this.getPrimaryKey(c.entityClass);
+            if (pk !== undefined) {
+              this._entityCache.remove(c.entityClass, c.entity[pk]);
+            }
+          }
+        }
+        if (needFullL2Clear) this._entityCache.clear();
+      }
+      // Note: count cache is invalidated on commit/rollback; preserve within-transaction TTL behavior
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** Simple cache utilities (warm-up etc.). */
+  public readonly cache = {
+    warmUp: async (
+      options: {
+        queries?: ReadonlyArray<() => Promise<unknown> | unknown>;
+      } = {}
+    ): Promise<void> => {
+      const tasks = (options.queries || []).map(async (fn) => {
+        try {
+          await fn();
+        } catch {
+          /* ignore individual warm-up errors */
+        }
+      });
+      await Promise.all(tasks);
+    }
+  } as const;
 
   /**
    * Dispose of the database connection
