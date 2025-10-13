@@ -84,7 +84,15 @@ export declare class LazyLoadingProxy {
     private static batchLoadRelationship;
     private static batchLoadToOne;
     private static batchLoadOneToMany;
+    private static loadManyToMany;
+    private static fetchTargetIdsFromJunction;
+    private static getColumnNameForPk;
     private static batchLoadManyToMany;
+    private static extractSourceIds;
+    private static fetchJunctionMappings;
+    private static assignEmptyCollections;
+    private static fetchAndMapTargets;
+    private static assignManyToManyCollections;
     /**
      * Resolve a relationship target entity.
      */
