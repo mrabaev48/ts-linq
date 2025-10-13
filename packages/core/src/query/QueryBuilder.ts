@@ -186,4 +186,17 @@ export class QueryBuilder {
   private getFromCache(key: string): SqlCacheEntry | undefined {
     return this._cache.get(key);
   }
+
+  /**
+   * Targeted invalidation helper: remove cached SQL entries for the given entity name.
+   */
+  public static invalidateForEntity(entityName: string): number {
+    const matcher = (k: string) => k.startsWith(entityName + '|');
+    const cache = QueryBuilder._defaultCache as unknown as {
+      invalidateBy?: (m: (k: string) => boolean) => number;
+    };
+    return cache.invalidateBy
+      ? cache.invalidateBy(matcher)
+      : (QueryBuilder._defaultCache.clear(), 0);
+  }
 }

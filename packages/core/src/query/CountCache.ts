@@ -7,6 +7,8 @@ export interface CountCache {
   get(key: string): CountCacheEntry | undefined;
   set(key: string, entry: CountCacheEntry): void;
   clear(): void;
+  /** Optional targeted invalidation. Should return number of removed entries. */
+  invalidateBy?(matcher: (key: string) => boolean): number;
 }
 
 /** In-memory CountCache with TTL and max size (FIFO eviction). */
@@ -34,5 +36,15 @@ export class InMemoryCountCache implements CountCache {
   }
   clear(): void {
     this.store.clear();
+  }
+  invalidateBy(matcher: (key: string) => boolean): number {
+    let removed = 0;
+    for (const k of Array.from(this.store.keys())) {
+      if (matcher(k)) {
+        this.store.delete(k);
+        removed++;
+      }
+    }
+    return removed;
   }
 }

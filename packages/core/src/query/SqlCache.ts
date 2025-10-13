@@ -10,6 +10,8 @@ export interface SqlCache {
   set(key: string, value: SqlCacheEntry): void;
   clear(): void;
   size(): number;
+  /** Optional targeted invalidation. Should return number of removed entries. */
+  invalidateBy?(matcher: (key: string) => boolean): number;
 }
 
 /** Simple in-memory FIFO SqlCache with max size. */
@@ -33,5 +35,15 @@ export class InMemorySqlCache implements SqlCache {
   }
   size(): number {
     return this.store.size;
+  }
+  invalidateBy(matcher: (key: string) => boolean): number {
+    let removed = 0;
+    for (const k of Array.from(this.store.keys())) {
+      if (matcher(k)) {
+        this.store.delete(k);
+        removed++;
+      }
+    }
+    return removed;
   }
 }

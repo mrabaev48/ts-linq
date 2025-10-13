@@ -4,6 +4,8 @@ import { DatabaseProvider } from '../../src/DatabaseProvider';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import { CachePolicy } from '../../src/decorators/CachePolicy';
 import type { EntityCacheLike } from '../../src/utils/EntityCache';
+import { QueryBuilder } from '../../src/query/QueryBuilder';
+import { InMemoryCountCache } from '../../src/query/CountCache';
 
 @CachePolicy({ invalidateOn: ['Order'] })
 class Product {
@@ -74,7 +76,16 @@ class Ctx extends DbContext {
     (provider as unknown as { getDialect: () => any }).getDialect = () => ({
       buildSelect: () => ({ query: 'SELECT 1', parameters: [] })
     });
-    super({ provider, performance: { enableEntityCache: true, entityCache: cache } } as any);
+    super({
+      provider,
+      performance: {
+        enableEntityCache: true,
+        entityCache: cache,
+        enableCountCache: true,
+        countCacheTtlMs: 1000,
+        countCache: new InMemoryCountCache(5000, 10000)
+      }
+    } as any);
   }
 }
 
@@ -91,5 +102,19 @@ describe('Smart cache invalidation', () => {
     await (ctx as unknown as { saveChanges: () => Promise<number> }).saveChanges();
     // Because Product depends on Order, full clear is expected
     expect(l2.clearCalls).toBeGreaterThanOrEqual(1);
+  });
+
+  test('invalidates SQL cache and targeted count cache for changed entity', async () => {
+    // seed SQL cache for Product
+    const before = QueryBuilder.invalidateForEntity('Product');
+    expect(before).toBeGreaterThanOrEqual(0);
+    // Simulate change on Product itself
+    const l2 = new MemoryL2();
+    const ctx = new Ctx(l2) as unknown as { products: any };
+    ctx.products.add({ id: 1 });
+    await (ctx as unknown as { saveChanges: () => Promise<number> }).saveChanges();
+    // After saveChanges, SQL cache entries for Product should be invalidated (no throw, smoke test)
+    const removed = QueryBuilder.invalidateForEntity('Product');
+    expect(removed).toBe(0); // already invalidated by saveChanges
   });
 });

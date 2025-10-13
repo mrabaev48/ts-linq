@@ -343,7 +343,27 @@ export abstract class DbContext {
         }
         if (needFullL2Clear) this._entityCache.clear();
       }
-      // Note: count cache is invalidated on commit/rollback; preserve within-transaction TTL behavior
+      // Targeted SQL cache invalidation by entity name
+      try {
+        const qb = require('../query/QueryBuilder') as {
+          QueryBuilder: { invalidateForEntity: (name: string) => number };
+        };
+        for (const name of changedNames) qb.QueryBuilder.invalidateForEntity(name);
+      } catch {
+        /* ignore */
+      }
+      // Targeted Count cache invalidation by entity name prefix
+      try {
+        const extCount: { invalidateBy?: (m: (k: string) => boolean) => number } | undefined =
+          this._performanceOptions?.countCache;
+        if (extCount?.invalidateBy) {
+          for (const name of changedNames) {
+            extCount.invalidateBy((k) => k.startsWith(name + '|count|'));
+          }
+        }
+      } catch {
+        /* ignore */
+      }
     } catch {
       /* ignore */
     }
