@@ -398,6 +398,8 @@ export interface PerformanceOptions {
   countCache?: CountCache;
   /** Optional namespace included in cache keys for isolation (tenant/schema/etc). */
   cacheNamespace?: string;
+  /** Max size for IN() чанка при батч‑оптимизациях (по умолчанию 1000). */
+  inClauseChunkSize?: number;
 }
 
 /**

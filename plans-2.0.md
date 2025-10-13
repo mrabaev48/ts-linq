@@ -519,27 +519,40 @@
 
 **Задачи:**
 
-- [ ] **Distributed Cache Support**
+- [x] **Distributed Cache Support** ✅
 
   ```typescript
-  // Redis/Memcached adapters
-  const redisCache = new RedisCacheAdapter({
-    host: 'localhost',
-    port: 6379,
-    ttl: 3600
-  });
+  // Пакеты-адаптеры (вынесены из core)
+  import { RedisSqlCacheAdapter, RedisCountCacheAdapter } from '@ts-linq/cache-redis';
+  import { MemcachedSqlCacheAdapter, MemcachedCountCacheAdapter } from '@ts-linq/cache-memcached';
 
-  const ctx = new DbContext({
-    provider: 'postgresql',
-    cache: {
-      l1: new InMemoryCache({ maxSize: 1000 }),
-      l2: redisCache,
-      sql: redisCache
+  const sqlCache = new RedisSqlCacheAdapter({
+    shadowMaxSize: 10_000,
+    shadowTtlMs: 60_000,
+    hashKeys: true,
+    pubSub: { channel: 'tslinq:cache:inv' }
+  });
+  const countCache = new RedisCountCacheAdapter({ shadowMaxSize: 10_000, shadowTtlMs: 60_000, hashKeys: true });
+
+  const ctx = new AppDbContext({
+    provider,
+    performance: {
+      enableEntityCache: true,
+      enableCountCache: true,
+      countCacheTtlMs: 60_000,
+      sqlCache,
+      countCache,
+      cacheNamespace: 'app-A' // для изоляции ключей между окружениями/тенантами
     }
   });
   ```
 
-- [ ] **Smart Cache Invalidation**
+  - Внешние адаптеры: `@ts-linq/cache-redis`, `@ts-linq/cache-memcached` (write‑through + shadow LRU/TTL, hashKeys, метрики, безопасное логирование ошибок бэкенда).
+  - Интерфейсы `SqlCache`/`CountCache` расширены: `invalidateBy(matcher)` и `getMetrics()`.
+  - Инъекция внешнего L2: `PerformanceOptions.entityCache?: EntityCacheLike`.
+  - Ключи SQL/Count включают `providerLabel` и `cacheNamespace`.
+
+- [x] **Smart Cache Invalidation** ✅
 
   ```typescript
   // Автоматическая инвалидация по зависимостям
@@ -550,8 +563,12 @@
     orders!: Order[];
   }
   ```
+  - Инвалидация L2/SQL/Count на `saveChanges()` (commit/rollback aware), с учётом зависимостей из `@CachePolicy`.
+  - Таргетинг: `SqlCache.invalidateBy`, `CountCache.invalidateBy`, `QueryBuilder.invalidateForEntity(name)`.
+  - Batch‑API: `ctx.cache.invalidateByEntity([...])`.
+  - Покрыто unit‑тестами: транзакционные сценарии, зависимости, таргетинг.
 
-- [ ] **Cache Warming Strategies**
+- [x] **Cache Warming Strategies** ✅
 
   ```typescript
   // Предзагрузка популярных данных
@@ -563,6 +580,7 @@
     ]
   });
   ```
+  - Реализован `ctx.cache.warmUp(...)` + агрегатор метрик `ctx.cache.reportMetrics()`.
 
 - [ ] **Cross-Query Optimization**
   ```typescript
@@ -575,6 +593,15 @@
 
 **Приоритет**: P1 (Высокий)
 **Временные затраты**: 2.5 недели
+
+#### Сделано в рамках 3.1 (детали реализации)
+
+- Single‑flight для `Queryable.count()` (дедупликация конкурентных запросов).
+- Логирование событий cache hit/miss: `logger.cache({ cache: 'count'|'entityL2' })`; SQL‑кэш логирует из `QueryBuilder`.
+- Redis Pub/Sub инвалидация для синхронизации shadow‑кэшей между инстансами.
+- Shadow‑кэши в адаптерах: LRU‑эвикция, опциональный TTL, безопасные варнинги при ошибках записи/удаления.
+- Метрики кэшей (requests/hits/misses/evictions/invalidations) + единый интерфейс `getMetrics()` и агрегация в `DbContext`.
+- Тесты для новых адаптеров/ядра размещены в `packages/*/tests/` и покрывают инвалидацию, warm‑up, hashKeys, метрики и логирование.
 
 ### 3.2 Connection Management & Resilience
 

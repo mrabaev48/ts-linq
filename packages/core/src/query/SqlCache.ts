@@ -12,6 +12,15 @@ export interface SqlCache {
   size(): number;
   /** Optional targeted invalidation. Should return number of removed entries. */
   invalidateBy?(matcher: (key: string) => boolean): number;
+  /** Optional metrics exposure for monitoring. */
+  getMetrics?(): {
+    currentSize: number;
+    totalRequests?: number;
+    hits?: number;
+    misses?: number;
+    evictions?: number;
+    invalidations?: number;
+  };
 }
 
 /** Simple in-memory FIFO SqlCache with max size. */

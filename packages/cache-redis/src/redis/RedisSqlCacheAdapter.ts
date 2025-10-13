@@ -6,6 +6,14 @@ export interface RedisClientLike {
   del(key: string): Promise<unknown> | unknown;
 }
 
+export interface RedisSubscriberLike {
+  subscribe(channel: string, handler: (message: string) => void): Promise<unknown> | unknown;
+}
+
+export interface RedisPublisherLike {
+  publish(channel: string, message: string): Promise<unknown> | unknown;
+}
+
 export interface RedisSqlCacheOptions {
   /** Optional TTL in seconds for SQL entries. If undefined, no TTL is set. */
   ttlSeconds?: number;
@@ -19,6 +27,12 @@ export interface RedisSqlCacheOptions {
   shadowTtlMs?: number;
   /** Hash keys before storing in backend (shadow keeps original). Default: false. */
   hashKeys?: boolean;
+  /** Optional pub/sub channel for invalidation broadcast. */
+  pubSubChannel?: string;
+  /** Optional subscriber to receive invalidation messages. */
+  subscriber?: RedisSubscriberLike;
+  /** Optional publisher to send invalidation messages. */
+  publisher?: RedisPublisherLike;
 }
 
 export class RedisSqlCacheAdapter implements SqlCache {
@@ -29,6 +43,8 @@ export class RedisSqlCacheAdapter implements SqlCache {
   private readonly shadowMaxSize: number;
   private readonly shadowTtlMs?: number;
   private readonly hashKeys: boolean;
+  private readonly pubSubChannel?: string;
+  private readonly publisher?: RedisPublisherLike;
   private readonly shadow = new Map<string, { value: SqlCacheEntry; ts: number }>();
 
   constructor(client: RedisClientLike, options?: RedisSqlCacheOptions) {
@@ -39,6 +55,25 @@ export class RedisSqlCacheAdapter implements SqlCache {
     this.shadowMaxSize = options?.shadowMaxSize ?? 2000;
     this.shadowTtlMs = options?.shadowTtlMs ?? 0;
     this.hashKeys = options?.hashKeys ?? false;
+    this.pubSubChannel = options?.pubSubChannel;
+    this.publisher = options?.publisher;
+    const sub = options?.subscriber;
+    if (this.pubSubChannel && sub) {
+      sub.subscribe(this.pubSubChannel, (message: string) => {
+        try {
+          const msg = JSON.parse(message) as { t: 'del' | 'clear'; k?: string };
+          if (msg.t === 'clear') {
+            this.shadow.clear();
+            return;
+          }
+          if (msg.t === 'del' && msg.k) {
+            this.shadow.delete(msg.k);
+          }
+        } catch {
+          /* ignore malformed */
+        }
+      });
+    }
   }
 
   private k(key: string): string {
@@ -53,6 +88,9 @@ export class RedisSqlCacheAdapter implements SqlCache {
       this.shadow.delete(key);
       return undefined;
     }
+    // LRU: move to end
+    this.shadow.delete(key);
+    this.shadow.set(key, { value: entry.value, ts: entry.ts });
     return { query: entry.value.query, parameters: [...entry.value.parameters] };
   }
 
@@ -82,6 +120,9 @@ export class RedisSqlCacheAdapter implements SqlCache {
 
   clear(): void {
     this.shadow.clear();
+    if (this.pubSubChannel && this.publisher) {
+      void this.publisher.publish(this.pubSubChannel, JSON.stringify({ t: 'clear' }));
+    }
   }
 
   // Not efficient to compute remotely; return -1 to indicate external cache without local size.
@@ -103,6 +144,9 @@ export class RedisSqlCacheAdapter implements SqlCache {
             console.warn('[RedisSqlCacheAdapter] delete failed', { key: this.k(k) });
           }
         })();
+        if (this.pubSubChannel && this.publisher) {
+          void this.publisher.publish(this.pubSubChannel, JSON.stringify({ t: 'del', k }));
+        }
       }
     }
     return removed;

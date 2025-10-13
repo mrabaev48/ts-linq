@@ -549,6 +549,11 @@ export class Queryable<T> {
           provider: this._provider.providerLabel,
           ttl: ttl > 0
         });
+        this._provider.loggerRef?.cache?.({
+          cache: 'count',
+          hit: true,
+          provider: this._provider.providerLabel
+        });
         return hit.value;
       }
       const pending = this.executeCountQuery(metadata.tableName);
@@ -580,6 +585,11 @@ export class Queryable<T> {
         provider: this._provider.providerLabel
       });
       safeCache(this._provider.loggerRef, {
+        cache: 'count',
+        hit: false,
+        provider: this._provider.providerLabel
+      });
+      this._provider.loggerRef?.cache?.({
         cache: 'count',
         hit: false,
         provider: this._provider.providerLabel
@@ -807,7 +817,14 @@ export class Queryable<T> {
       ? (row as Record<string, unknown>)[pkCol.columnName]
       : (row as Record<string, unknown>)[pkProp];
     const cached = this._entityCache!.get<T>(this._entityClass, idValue);
-    if (!cached) return null;
+    if (!cached) {
+      this._provider.loggerRef?.cache?.({
+        cache: 'entityL2',
+        hit: false,
+        provider: this._provider.providerLabel
+      });
+      return null;
+    }
     this._provider.loggerRef?.cache?.({
       cache: 'entityL2',
       hit: true,
