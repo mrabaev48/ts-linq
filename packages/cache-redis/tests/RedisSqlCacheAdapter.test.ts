@@ -1,4 +1,4 @@
-import { RedisSqlCacheAdapter } from '../RedisSqlCacheAdapter';
+import { RedisSqlCacheAdapter } from '../src/redis/RedisSqlCacheAdapter';
 import type { SqlCacheEntry } from '@ts-linq/core';
 
 class FakeRedis {
@@ -27,7 +27,6 @@ describe('RedisSqlCacheAdapter', () => {
     expect(got).toBeDefined();
     expect(got?.query).toBe('SELECT 1');
 
-    // Ensure backend has payload
     const raw = await client.get('tslnq:sql:k1');
     expect(raw).toBeTruthy();
     const parsed = JSON.parse(raw as string) as SqlCacheEntry;

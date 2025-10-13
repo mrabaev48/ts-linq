@@ -1,4 +1,4 @@
-import { MemcachedCountCacheAdapter } from '../MemcachedCountCacheAdapter';
+import { MemcachedCountCacheAdapter } from '../src/memcached/MemcachedCountCacheAdapter';
 
 class FakeMemjs {
   private m = new Map<string, Buffer>();

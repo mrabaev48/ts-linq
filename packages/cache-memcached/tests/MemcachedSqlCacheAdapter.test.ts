@@ -1,4 +1,4 @@
-import { MemcachedSqlCacheAdapter } from '../MemcachedSqlCacheAdapter';
+import { MemcachedSqlCacheAdapter } from '../src/memcached/MemcachedSqlCacheAdapter';
 import type { SqlCacheEntry } from '@ts-linq/core';
 
 class FakeMemjs {

@@ -1,4 +1,4 @@
-import { RedisCountCacheAdapter } from '../RedisCountCacheAdapter';
+import { RedisCountCacheAdapter } from '../src/redis/RedisCountCacheAdapter';
 import type { CountCacheEntry } from '@ts-linq/core';
 
 class FakeRedis {
