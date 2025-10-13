@@ -384,6 +384,27 @@ export abstract class DbContext {
         }
       });
       await Promise.all(tasks);
+    },
+    invalidateByEntity: (entityNames: ReadonlyArray<string>): void => {
+      try {
+        const qb = require('../query/QueryBuilder') as {
+          QueryBuilder: { invalidateForEntity: (name: string) => number };
+        };
+        for (const name of entityNames) qb.QueryBuilder.invalidateForEntity(name);
+      } catch {
+        /* ignore */
+      }
+      try {
+        const extCount: { invalidateBy?: (m: (k: string) => boolean) => number } | undefined =
+          this._performanceOptions?.countCache;
+        if (extCount?.invalidateBy) {
+          for (const name of entityNames) {
+            extCount.invalidateBy((k) => k.includes(`|count|`) && k.includes(`${name}|`));
+          }
+        }
+      } catch {
+        /* ignore */
+      }
     }
   } as const;
 

@@ -15,6 +15,7 @@ export interface MemcachedSqlCacheOptions {
   keyPrefix?: string;
   shadowMaxSize?: number;
   shadowTtlMs?: number;
+  hashKeys?: boolean;
 }
 
 export class MemcachedSqlCacheAdapter implements SqlCache {
@@ -23,6 +24,7 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
   private readonly keyPrefix: string;
   private readonly shadowMaxSize: number;
   private readonly shadowTtlMs?: number;
+  private readonly hashKeys: boolean;
   private readonly shadow = new Map<string, { value: SqlCacheEntry; ts: number }>();
 
   constructor(client: MemjsClientLike, options?: MemcachedSqlCacheOptions) {
@@ -31,10 +33,12 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
     this.keyPrefix = options?.keyPrefix ?? 'tslnq:sql:';
     this.shadowMaxSize = options?.shadowMaxSize ?? 2000;
     this.shadowTtlMs = options?.shadowTtlMs ?? 0;
+    this.hashKeys = options?.hashKeys ?? false;
   }
 
   private k(key: string): string {
-    return this.keyPrefix + key;
+    const candidate = this.hashKeys ? this.h(key) : key;
+    return this.keyPrefix + candidate;
   }
 
   private decode(b: Buffer | null): string | null {
@@ -115,5 +119,11 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
         }
       })();
     }
+  }
+
+  private h(key: string): string {
+    let hash = 5381;
+    for (let i = 0; i < key.length; i++) hash = (hash * 33) ^ key.charCodeAt(i);
+    return (hash >>> 0).toString(16);
   }
 }

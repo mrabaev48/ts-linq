@@ -41,6 +41,8 @@ export class Queryable<T> {
   private _sqlBuilder: QueryBuilder;
   private static _countCache: Map<string, { value: number; ts: number }> = new Map();
   private static readonly _COUNT_CACHE_MAX = 2000;
+  // Single-flight deduplication for concurrent count() calls
+  private static _inflightCounts: Map<string, Promise<number>> = new Map();
   private _externalCountCache?: CountCache;
   private _abortSignal?: AbortSignal;
   private _globalFilters?: GlobalFilter[];
@@ -89,7 +91,8 @@ export class Queryable<T> {
       provider.getDialect(),
       provider.loggerRef,
       provider.providerLabel,
-      performance?.sqlCache
+      performance?.sqlCache,
+      performance?.cacheNamespace
     );
     this._materializer = new RowMaterializer<T>(
       this._entityClass,
@@ -530,6 +533,8 @@ export class Queryable<T> {
     if (!metadata) throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
     if (this._performance?.enableCountCache) {
       const key = this.buildCountCacheKey(metadata.tableName);
+      const inflight = Queryable._inflightCounts.get(key);
+      if (inflight) return inflight;
       const ttl = this._performance.countCacheTtlMs ?? 0;
       const hit = this._externalCountCache?.get(key) ?? Queryable._countCache.get(key);
       if (hit && (ttl <= 0 || Date.now() - hit.ts <= ttl)) {
@@ -546,7 +551,14 @@ export class Queryable<T> {
         });
         return hit.value;
       }
-      const value = await this.executeCountQuery(metadata.tableName);
+      const pending = this.executeCountQuery(metadata.tableName);
+      Queryable._inflightCounts.set(key, pending);
+      let value: number;
+      try {
+        value = await pending;
+      } finally {
+        Queryable._inflightCounts.delete(key);
+      }
       const entry = { value, ts: Date.now() };
       if (this._externalCountCache) this._externalCountCache.set(key, entry);
       else {
@@ -578,7 +590,9 @@ export class Queryable<T> {
   }
 
   private buildCountCacheKey(table: string): string {
-    return `${this._entityClass.name}|count|${table}|${this._whereSignature}`;
+    const provider = this._provider?.providerLabel ? `${this._provider.providerLabel}|` : '';
+    const ns = this._performance?.cacheNamespace ? `${this._performance.cacheNamespace}|` : '';
+    return `${ns}${provider}${this._entityClass.name}|count|${table}|${this._whereSignature}`;
   }
 
   private async executeCountQuery(table: string): Promise<number> {

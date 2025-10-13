@@ -11,6 +11,7 @@ export interface RedisCountCacheOptions {
   keyPrefix?: string;
   shadowMaxSize?: number;
   shadowTtlMs?: number;
+  hashKeys?: boolean;
 }
 
 export class RedisCountCacheAdapter implements CountCache {
@@ -19,6 +20,7 @@ export class RedisCountCacheAdapter implements CountCache {
   private readonly keyPrefix: string;
   private readonly shadowMaxSize: number;
   private readonly shadowTtlMs?: number;
+  private readonly hashKeys: boolean;
   private readonly shadow = new Map<string, { value: CountCacheEntry; ts: number }>();
 
   constructor(client: RedisClientLike, options?: RedisCountCacheOptions) {
@@ -27,10 +29,12 @@ export class RedisCountCacheAdapter implements CountCache {
     this.keyPrefix = options?.keyPrefix ?? 'tslnq:cnt:';
     this.shadowMaxSize = options?.shadowMaxSize ?? 2000;
     this.shadowTtlMs = options?.shadowTtlMs ?? 0;
+    this.hashKeys = options?.hashKeys ?? false;
   }
 
   private k(key: string): string {
-    return this.keyPrefix + key;
+    const candidate = this.hashKeys ? this.h(key) : key;
+    return this.keyPrefix + candidate;
   }
 
   get(key: string): CountCacheEntry | undefined {
@@ -97,5 +101,11 @@ export class RedisCountCacheAdapter implements CountCache {
         }
       })();
     }
+  }
+
+  private h(key: string): string {
+    let hash = 5381;
+    for (let i = 0; i < key.length; i++) hash = (hash * 33) ^ key.charCodeAt(i);
+    return (hash >>> 0).toString(16);
   }
 }

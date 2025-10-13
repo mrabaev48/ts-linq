@@ -17,6 +17,8 @@ export interface RedisSqlCacheOptions {
   shadowMaxSize?: number;
   /** Optional local shadow cache TTL in ms. Default: 0 (no TTL). */
   shadowTtlMs?: number;
+  /** Hash keys before storing in backend (shadow keeps original). Default: false. */
+  hashKeys?: boolean;
 }
 
 export class RedisSqlCacheAdapter implements SqlCache {
@@ -26,6 +28,7 @@ export class RedisSqlCacheAdapter implements SqlCache {
   private readonly writeThrough: boolean;
   private readonly shadowMaxSize: number;
   private readonly shadowTtlMs?: number;
+  private readonly hashKeys: boolean;
   private readonly shadow = new Map<string, { value: SqlCacheEntry; ts: number }>();
 
   constructor(client: RedisClientLike, options?: RedisSqlCacheOptions) {
@@ -35,10 +38,12 @@ export class RedisSqlCacheAdapter implements SqlCache {
     this.writeThrough = options?.writeThrough ?? true;
     this.shadowMaxSize = options?.shadowMaxSize ?? 2000;
     this.shadowTtlMs = options?.shadowTtlMs ?? 0;
+    this.hashKeys = options?.hashKeys ?? false;
   }
 
   private k(key: string): string {
-    return this.keyPrefix + key;
+    const candidate = this.hashKeys ? this.h(key) : key;
+    return this.keyPrefix + candidate;
   }
 
   get(key: string): SqlCacheEntry | undefined {
@@ -117,5 +122,13 @@ export class RedisSqlCacheAdapter implements SqlCache {
         }
       })();
     }
+  }
+
+  private h(key: string): string {
+    // Lightweight non-crypto hash (djb2) to keep bundle small
+    let hash = 5381;
+    for (let i = 0; i < key.length; i++) hash = (hash * 33) ^ key.charCodeAt(i);
+    // Convert to unsigned 32-bit and hex
+    return (hash >>> 0).toString(16);
   }
 }

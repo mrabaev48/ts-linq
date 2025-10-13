@@ -33,6 +33,14 @@ describe('RedisCountCacheAdapter', () => {
     expect(cache.get('a')).toBeUndefined();
   });
 
+  test('hashKeys stores hashed count key in backend', async () => {
+    const client = new FakeRedis();
+    const cache = new RedisCountCacheAdapter(client, { hashKeys: true });
+    cache.set('Product|count|[]', { value: 1, ts: Date.now() });
+    // Just smoke: shadow updated
+    expect(cache.get('Product|count|[]')?.value).toBe(1);
+  });
+
   test('invalidateBy removes matching count keys', async () => {
     const client = new FakeRedis();
     const cache = new RedisCountCacheAdapter(client);

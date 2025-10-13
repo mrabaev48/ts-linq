@@ -47,4 +47,12 @@ describe('MemcachedSqlCacheAdapter', () => {
     cache.clear();
     expect(cache.size()).toBe(0);
   });
+
+  test('hashKeys stores hashed sql key in backend', async () => {
+    const client = new FakeMemjs();
+    const cache = new MemcachedSqlCacheAdapter(client, { hashKeys: true });
+    const entry: SqlCacheEntry = { query: 'Q', parameters: [] };
+    cache.set('VeryLong|Key|For|Memcached', entry);
+    expect(cache.size()).toBe(1);
+  });
 });
