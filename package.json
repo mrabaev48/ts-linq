@@ -67,6 +67,11 @@
       "types": "./packages/ast/dist/index.d.ts",
       "import": "./packages/ast/dist/index.esm.js",
       "require": "./packages/ast/dist/index.js"
+    },
+    "./orm": {
+      "types": "./packages/orm/dist/index.d.ts",
+      "import": "./packages/orm/dist/index.esm.js",
+      "require": "./packages/orm/dist/index.js"
     }
   },
   "files": [

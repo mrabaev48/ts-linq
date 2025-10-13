@@ -29,6 +29,10 @@ module.exports = {
     // core
     '^@ts-linq/core$': '<rootDir>/packages/core/src',
     '^@ts-linq/core/(.*)$': '<rootDir>/packages/core/src/$1',
+    '^@ts-linq/orm$': '<rootDir>/packages/orm/src',
+    '^@ts-linq/orm/(.*)$': '<rootDir>/packages/orm/src/$1',
+    '^@ts-linq/orm$': '<rootDir>/packages/orm/src',
+    '^@ts-linq/orm/(.*)$': '<rootDir>/packages/orm/src/$1',
     // providers
     '^@ts-linq/provider-pg$': '<rootDir>/packages/provider-pg/src',
     '^@ts-linq/provider-pg/(.*)$': '<rootDir>/packages/provider-pg/src/$1',
@@ -41,6 +45,7 @@ module.exports = {
     // core relative fallbacks used across packages
     '^(\\.\\.\/)+src\\/(.*)$': '<rootDir>/packages/core/src/$2',
     '^(\\.\\.\/)+context\\/(.*)$': '<rootDir>/packages/core/src/context/$2',
+    '^@ts-linq/core/context/(.*)$': '<rootDir>/packages/core/src/context/$1',
     '^(\\.\\.\/)+metadata\\/(.*)$': '<rootDir>/packages/core/src/metadata/$2',
     '^(\\.\\.\/)+types$': '<rootDir>/packages/core/src/types',
     '^(\\.\\.\/)+types\\/(.*)$': '<rootDir>/packages/core/src/types/$2',
@@ -92,6 +97,17 @@ module.exports = {
           { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }
         ]
       }
+    },
+    {
+      displayName: 'orm',
+      testMatch: ['<rootDir>/packages/orm/{src,tests}/**/*.test.ts'],
+      transform: {
+        '^.+\\.ts$': [
+          'ts-jest',
+          { tsconfig: '<rootDir>/tsconfig.stage3.json', diagnostics: false, isolatedModules: true }
+        ]
+      },
+      setupFilesAfterEnv: ['<rootDir>/packages/core/tests/setup.ts']
     },
     ...(includeIntegration
       ? [

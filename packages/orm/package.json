@@ -1,0 +1,21 @@
+{
+  "name": "@ts-linq/orm",
+  "version": "0.1.0",
+  "private": false,
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b && node scripts/gen-esm-entry.cjs",
+    "build:tsc": "tsc -b"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.2.2"
+  },
+  "peerDependencies": {
+    "@ts-linq/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "@ts-linq/core": "^1.0.0"
+  }
+}

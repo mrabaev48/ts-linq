@@ -47,6 +47,7 @@
   "references": [
     { "path": "packages/ast" },
     { "path": "packages/sql-visitor" },
+    { "path": "packages/orm" },
     { "path": "packages/dialect-postgres" },
     { "path": "packages/dialect-sqlite" },
     { "path": "packages/dialect-mysql" },

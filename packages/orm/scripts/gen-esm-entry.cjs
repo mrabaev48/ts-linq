@@ -1,0 +1,1 @@
+const fs=require("fs");const p=require("path");const src=p.resolve(__dirname,"../dist/index.js");const dst=p.resolve(__dirname,"../dist/index.esm.js");if(fs.existsSync(src)){fs.copyFileSync(src,dst);}

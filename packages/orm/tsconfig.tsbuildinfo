@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/batch/batchexecutor.ts","./src/batch/batchplan.ts","./src/change-tracking/changetracker.ts","./src/context/dbcontext.ts","./src/context/dbset.ts","./src/loading/entityloader.ts","./src/loading/lazyloadingproxy.ts","./src/loading/loadingstrategy.ts","./src/loading/index.ts"],"version":"5.9.2"}

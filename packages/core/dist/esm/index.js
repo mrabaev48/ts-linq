@@ -14,11 +14,7 @@ export * from './decorators/ValidIf';
 // Metadata
 export * from './metadata/MetadataStorage';
 export * from './metadata/EntityMetadata';
-// Change tracking
-export * from './change-tracking/ChangeTracker';
-// Context and DbSet
-export * from './context/DbContext';
-export * from './context/DbSet';
+// Note: DbContext/DbSet/ChangeTracker/Loading/Batch moved to @ts-linq/orm
 // Query building
 export * from './query/Queryable';
 export * from './query/TypedQueryable';
@@ -37,10 +33,6 @@ export * from './query/SqlFunctions';
 export * from './DatabaseProvider';
 export * from './DdlStrategy';
 export * from './DdlBuilder';
-// Loading
-export * from './loading/LoadingStrategy';
-export * from './loading/EntityLoader';
-export * from './loading/LazyLoadingProxy';
 // Migrations
 export * from './migrations/Migration';
 export * from './migrations/MigrationRunner';
