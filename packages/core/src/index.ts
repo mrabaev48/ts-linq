@@ -13,6 +13,7 @@ export * from './decorators/Column';
 export * from './decorators/PrimaryKey';
 export * from './decorators/Relationships';
 export * from './decorators/ValidIf';
+export * from './decorators/CachePolicy';
 
 // Metadata
 export * from './metadata/MetadataStorage';
