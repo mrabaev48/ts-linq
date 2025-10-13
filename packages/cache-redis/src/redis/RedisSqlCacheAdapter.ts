@@ -13,6 +13,10 @@ export interface RedisSqlCacheOptions {
   keyPrefix?: string;
   /** If true (default), write-through to Redis on set(). */
   writeThrough?: boolean;
+  /** Optional local shadow cache max size (entries). Default: 2000. */
+  shadowMaxSize?: number;
+  /** Optional local shadow cache TTL in ms. Default: 0 (no TTL). */
+  shadowTtlMs?: number;
 }
 
 export class RedisSqlCacheAdapter implements SqlCache {
@@ -20,13 +24,17 @@ export class RedisSqlCacheAdapter implements SqlCache {
   private readonly ttlSeconds?: number;
   private readonly keyPrefix: string;
   private readonly writeThrough: boolean;
-  private readonly shadow = new Map<string, SqlCacheEntry>();
+  private readonly shadowMaxSize: number;
+  private readonly shadowTtlMs?: number;
+  private readonly shadow = new Map<string, { value: SqlCacheEntry; ts: number }>();
 
   constructor(client: RedisClientLike, options?: RedisSqlCacheOptions) {
     this.client = client;
     this.ttlSeconds = options?.ttlSeconds;
     this.keyPrefix = options?.keyPrefix ?? 'tslnq:sql:';
     this.writeThrough = options?.writeThrough ?? true;
+    this.shadowMaxSize = options?.shadowMaxSize ?? 2000;
+    this.shadowTtlMs = options?.shadowTtlMs ?? 0;
   }
 
   private k(key: string): string {
@@ -34,11 +42,21 @@ export class RedisSqlCacheAdapter implements SqlCache {
   }
 
   get(key: string): SqlCacheEntry | undefined {
-    return this.shadow.get(key);
+    const entry = this.shadow.get(key);
+    if (!entry) return undefined;
+    if (this.shadowTtlMs && this.shadowTtlMs > 0 && Date.now() - entry.ts > this.shadowTtlMs) {
+      this.shadow.delete(key);
+      return undefined;
+    }
+    return { query: entry.value.query, parameters: [...entry.value.parameters] };
   }
 
   set(key: string, value: SqlCacheEntry): void {
-    this.shadow.set(key, { query: value.query, parameters: [...value.parameters] });
+    this.ensureCapacity();
+    this.shadow.set(key, {
+      value: { query: value.query, parameters: [...value.parameters] },
+      ts: Date.now()
+    });
     if (!this.writeThrough) return;
     const payload = JSON.stringify({ query: value.query, parameters: value.parameters });
     // Fire-and-forget write-through
@@ -49,8 +67,10 @@ export class RedisSqlCacheAdapter implements SqlCache {
         } else {
           await this.client.set(this.k(key), payload);
         }
-      } catch {
-        // ignore write errors; shadow still serves
+      } catch (e) {
+        // best-effort logging to not fail prod path
+        // eslint-disable-next-line no-console
+        console.warn('[RedisSqlCacheAdapter] write-through failed', { key: this.k(key) });
       }
     })();
   }
@@ -73,12 +93,29 @@ export class RedisSqlCacheAdapter implements SqlCache {
         void (async () => {
           try {
             await this.client.del(this.k(k));
-          } catch {
-            /* ignore */
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[RedisSqlCacheAdapter] delete failed', { key: this.k(k) });
           }
         })();
       }
     }
     return removed;
+  }
+
+  private ensureCapacity(): void {
+    while (this.shadow.size >= this.shadowMaxSize) {
+      const first = this.shadow.keys().next().value;
+      if (first === undefined) break;
+      this.shadow.delete(first);
+      // best-effort remote clean
+      void (async () => {
+        try {
+          await this.client.del(this.k(first));
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   }
 }
