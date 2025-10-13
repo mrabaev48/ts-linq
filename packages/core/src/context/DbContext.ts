@@ -232,6 +232,8 @@ export abstract class DbContext {
       (
         require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }
       ).Queryable.clearCountCache();
+      // Smart invalidation: clear L2 cache for entities that declare dependencies
+      this.invalidateCachesOnCommit();
       if (this._entityCache) {
         const { safeCacheSize } = require('metrics-safe') as {
           safeCacheSize: (
@@ -278,6 +280,20 @@ export abstract class DbContext {
       (
         require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }
       ).Queryable.clearCountCache();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /**
+   * Smart invalidation hook executed on successful commit.
+   * Current implementation clears entire L2 cache; later can be refined per-entity via metadata.
+   */
+  private invalidateCachesOnCommit(): void {
+    try {
+      if (this._entityCache) this._entityCache.clear();
+      // Future: inspect changeTracker changes and Reflect.getMetadata('orm:cachePolicy', entity)
+      // to perform targeted invalidation per-entity/table.
     } catch {
       /* ignore */
     }
