@@ -17,6 +17,17 @@ class FakeMemjs {
 }
 
 describe('MemcachedSqlCacheAdapter', () => {
+  test('invalidateBy removes matching sql keys', async () => {
+    const client = new FakeMemjs();
+    const cache = new MemcachedSqlCacheAdapter(client);
+    const entry: SqlCacheEntry = { query: 'Q', parameters: [] };
+    cache.set('Product|s:|w:x', entry);
+    cache.set('Order|s:|w:y', entry);
+    const removed = cache.invalidateBy((k) => k.startsWith('Product|'));
+    expect(removed).toBe(1);
+    expect(cache.get('Product|s:|w:x')).toBeUndefined();
+  });
+
   test('stores and retrieves via shadow map and writes through', async () => {
     const client = new FakeMemjs();
     const cache = new MemcachedSqlCacheAdapter(client, { ttlSeconds: 1 });
