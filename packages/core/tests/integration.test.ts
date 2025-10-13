@@ -161,7 +161,7 @@ describe('Integration Tests', () => {
 
       // Update - Modify user
       foundUser!.name = 'John Updated';
-      context.set(User).update(foundUser!);
+      context.set(User).update(foundUser);
       await context.saveChanges();
 
       const allUsersAfterUpdate = await context.set(User).toArray();

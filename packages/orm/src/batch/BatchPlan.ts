@@ -7,5 +7,3 @@ export class BatchPlan {
     return chunks;
   }
 }
-
-
