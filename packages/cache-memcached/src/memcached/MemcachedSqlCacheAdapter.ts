@@ -13,18 +13,24 @@ export interface MemjsClientLike {
 export interface MemcachedSqlCacheOptions {
   ttlSeconds?: number;
   keyPrefix?: string;
+  shadowMaxSize?: number;
+  shadowTtlMs?: number;
 }
 
 export class MemcachedSqlCacheAdapter implements SqlCache {
   private readonly client: MemjsClientLike;
   private readonly ttlSeconds?: number;
   private readonly keyPrefix: string;
-  private readonly shadow = new Map<string, SqlCacheEntry>();
+  private readonly shadowMaxSize: number;
+  private readonly shadowTtlMs?: number;
+  private readonly shadow = new Map<string, { value: SqlCacheEntry; ts: number }>();
 
   constructor(client: MemjsClientLike, options?: MemcachedSqlCacheOptions) {
     this.client = client;
     this.ttlSeconds = options?.ttlSeconds;
     this.keyPrefix = options?.keyPrefix ?? 'tslnq:sql:';
+    this.shadowMaxSize = options?.shadowMaxSize ?? 2000;
+    this.shadowTtlMs = options?.shadowTtlMs ?? 0;
   }
 
   private k(key: string): string {
@@ -41,15 +47,32 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
   }
 
   get(key: string): SqlCacheEntry | undefined {
-    return this.shadow.get(key);
+    const entry = this.shadow.get(key);
+    if (!entry) return undefined;
+    if (this.shadowTtlMs && this.shadowTtlMs > 0 && Date.now() - entry.ts > this.shadowTtlMs) {
+      this.shadow.delete(key);
+      return undefined;
+    }
+    return { query: entry.value.query, parameters: [...entry.value.parameters] };
   }
 
   set(key: string, value: SqlCacheEntry): void {
-    this.shadow.set(key, { query: value.query, parameters: [...value.parameters] });
+    this.ensureCapacity();
+    this.shadow.set(key, {
+      value: { query: value.query, parameters: [...value.parameters] },
+      ts: Date.now()
+    });
     const payload = JSON.stringify({ query: value.query, parameters: value.parameters });
     const options =
       this.ttlSeconds && this.ttlSeconds > 0 ? { expires: this.ttlSeconds } : undefined;
-    void this.client.set(this.k(key), payload, options);
+    void (async () => {
+      try {
+        await this.client.set(this.k(key), payload, options);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[MemcachedSqlCacheAdapter] write-through failed', { key: this.k(key) });
+      }
+    })();
   }
 
   clear(): void {
@@ -69,12 +92,28 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
         void (async () => {
           try {
             await this.client.delete(this.k(k));
-          } catch {
-            /* ignore */
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[MemcachedSqlCacheAdapter] delete failed', { key: this.k(k) });
           }
         })();
       }
     }
     return removed;
+  }
+
+  private ensureCapacity(): void {
+    while (this.shadow.size >= this.shadowMaxSize) {
+      const first = this.shadow.keys().next().value;
+      if (first === undefined) break;
+      this.shadow.delete(first);
+      void (async () => {
+        try {
+          await this.client.delete(this.k(first));
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   }
 }

@@ -9,18 +9,24 @@ export interface RedisClientLike {
 export interface RedisCountCacheOptions {
   ttlSeconds?: number;
   keyPrefix?: string;
+  shadowMaxSize?: number;
+  shadowTtlMs?: number;
 }
 
 export class RedisCountCacheAdapter implements CountCache {
   private readonly client: RedisClientLike;
   private readonly ttlSeconds?: number;
   private readonly keyPrefix: string;
-  private readonly shadow = new Map<string, CountCacheEntry>();
+  private readonly shadowMaxSize: number;
+  private readonly shadowTtlMs?: number;
+  private readonly shadow = new Map<string, { value: CountCacheEntry; ts: number }>();
 
   constructor(client: RedisClientLike, options?: RedisCountCacheOptions) {
     this.client = client;
     this.ttlSeconds = options?.ttlSeconds;
     this.keyPrefix = options?.keyPrefix ?? 'tslnq:cnt:';
+    this.shadowMaxSize = options?.shadowMaxSize ?? 2000;
+    this.shadowTtlMs = options?.shadowTtlMs ?? 0;
   }
 
   private k(key: string): string {
@@ -28,11 +34,18 @@ export class RedisCountCacheAdapter implements CountCache {
   }
 
   get(key: string): CountCacheEntry | undefined {
-    return this.shadow.get(key);
+    const entry = this.shadow.get(key);
+    if (!entry) return undefined;
+    if (this.shadowTtlMs && this.shadowTtlMs > 0 && Date.now() - entry.ts > this.shadowTtlMs) {
+      this.shadow.delete(key);
+      return undefined;
+    }
+    return { value: entry.value.value, ts: entry.value.ts };
   }
 
   set(key: string, entry: CountCacheEntry): void {
-    this.shadow.set(key, { value: entry.value, ts: entry.ts });
+    this.ensureCapacity();
+    this.shadow.set(key, { value: { value: entry.value, ts: entry.ts }, ts: Date.now() });
     const payload = JSON.stringify(entry);
     void (async () => {
       try {
@@ -41,8 +54,9 @@ export class RedisCountCacheAdapter implements CountCache {
         } else {
           await this.client.set(this.k(key), payload);
         }
-      } catch {
-        // ignore
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[RedisCountCacheAdapter] write-through failed', { key: this.k(key) });
       }
     })();
   }
@@ -60,12 +74,28 @@ export class RedisCountCacheAdapter implements CountCache {
         void (async () => {
           try {
             await this.client.del(this.k(k));
-          } catch {
-            /* ignore */
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[RedisCountCacheAdapter] delete failed', { key: this.k(k) });
           }
         })();
       }
     }
     return removed;
+  }
+
+  private ensureCapacity(): void {
+    while (this.shadow.size >= this.shadowMaxSize) {
+      const first = this.shadow.keys().next().value;
+      if (first === undefined) break;
+      this.shadow.delete(first);
+      void (async () => {
+        try {
+          await this.client.del(this.k(first));
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
   }
 }
