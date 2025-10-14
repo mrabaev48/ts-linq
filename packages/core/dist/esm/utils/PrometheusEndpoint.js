@@ -1,4 +1,5 @@
 import * as http from 'http';
+import { logInternalError } from './InternalLogger';
 function safeRequirePromClient() {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -6,8 +7,8 @@ function safeRequirePromClient() {
         if (pc && pc.register && typeof pc.register.metrics === 'function')
             return pc;
     }
-    catch {
-        /* ignore */
+    catch (e) {
+        logInternalError('PrometheusEndpoint.safeRequirePromClient', e);
     }
     return undefined;
 }
@@ -35,6 +36,7 @@ export async function startPrometheusServer(options) {
             })
                 .catch((e) => {
                 const message = e?.message || String(e);
+                logInternalError('PrometheusEndpoint.server.metrics', e);
                 res.statusCode = 500;
                 res.setHeader('Content-Type', 'text/plain; charset=utf-8');
                 res.end(`# metrics error: ${message}`);

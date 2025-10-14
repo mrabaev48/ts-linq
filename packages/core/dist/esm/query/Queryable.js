@@ -10,6 +10,7 @@ import { IncludePlanner } from './IncludePlanner';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { safeCache, safeCacheEvicted, safeCacheSize } from 'metrics-safe';
+import { logInternalError } from '../utils/InternalLogger';
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
  * in a QueryModel and delegates SQL generation to QueryBuilder.
@@ -643,7 +644,8 @@ export class Queryable {
                     if (data && data.length >= 0)
                         return data.length;
                 }
-                catch {
+                catch (e) {
+                    logInternalError('hedged.startFallback.fetch', e);
                     continue;
                 }
             }
@@ -673,7 +675,9 @@ export class Queryable {
                         succeeded: true
                     });
                 }
-                catch { }
+                catch (e) {
+                    logInternalError('hedged.select.hedgedWin', e);
+                }
                 return winner.n;
             }
             return await primaryPromise;
@@ -906,7 +910,9 @@ export class Queryable {
                         fallback: winner.label || 'unknown'
                     });
                 }
-                catch { }
+                catch (e) {
+                    logInternalError('hedged.select.hedgedWin', e);
+                }
                 this._provider.loggerRef?.fallback?.({
                     provider: this._provider.providerLabel,
                     fallback: winner.label || 'unknown',
