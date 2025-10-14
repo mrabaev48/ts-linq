@@ -65,6 +65,46 @@ class CompositeSqlLogger {
             }
         }
     }
+    connectionHealth(info) {
+        for (const d of this.delegates) {
+            try {
+                d.connectionHealth?.(info);
+            }
+            catch {
+                /* swallow */
+            }
+        }
+    }
+    circuit(info) {
+        for (const d of this.delegates) {
+            try {
+                d.circuit?.(info);
+            }
+            catch {
+                /* swallow */
+            }
+        }
+    }
+    fallback(info) {
+        for (const d of this.delegates) {
+            try {
+                d.fallback?.(info);
+            }
+            catch {
+                /* swallow */
+            }
+        }
+    }
+    hedgedWin(info) {
+        for (const d of this.delegates) {
+            try {
+                d.hedgedWin?.(info);
+            }
+            catch {
+                /* swallow */
+            }
+        }
+    }
 }
 exports.CompositeSqlLogger = CompositeSqlLogger;
 //# sourceMappingURL=CompositeSqlLogger.js.map

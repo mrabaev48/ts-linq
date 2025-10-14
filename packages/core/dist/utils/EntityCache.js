@@ -2,6 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityCache = void 0;
 const metrics_safe_1 = require("metrics-safe");
+const InternalLogger_1 = require("./InternalLogger");
+/**
+ * Simple in-memory FIFO cache for entities keyed by `<EntityName>|<id>`.
+ * Intended as a best-effort level-2 cache to reduce allocations and mapping work.
+ */
 class EntityCache {
     /**
      * @param maxSize Maximum number of cached items before FIFO eviction.
@@ -34,8 +39,8 @@ class EntityCache {
                 try {
                     (0, metrics_safe_1.safeCacheEvicted)(this._logger, { cache: 'entityL2', provider: this._providerLabel });
                 }
-                catch {
-                    /* ignore */
+                catch (e) {
+                    (0, InternalLogger_1.logInternalError)('EntityCache.safeCacheEvicted', e);
                 }
             }
         }

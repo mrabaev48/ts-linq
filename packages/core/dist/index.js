@@ -27,6 +27,7 @@ __exportStar(require("./decorators/Column"), exports);
 __exportStar(require("./decorators/PrimaryKey"), exports);
 __exportStar(require("./decorators/Relationships"), exports);
 __exportStar(require("./decorators/ValidIf"), exports);
+__exportStar(require("./decorators/CachePolicy"), exports);
 // Metadata
 __exportStar(require("./metadata/MetadataStorage"), exports);
 __exportStar(require("./metadata/EntityMetadata"), exports);
@@ -51,6 +52,8 @@ __exportStar(require("./query/ast/Nodes"), exports);
 __exportStar(require("./query/ast/SqlVisitor"), exports);
 __exportStar(require("./query/spec/Specification"), exports);
 __exportStar(require("./query/SqlFunctions"), exports);
+__exportStar(require("./query/fallbacks/MemoryFallback"), exports);
+__exportStar(require("./query/fallbacks/ReplicaFallback"), exports);
 // Base provider abstractions
 __exportStar(require("./DatabaseProvider"), exports);
 __exportStar(require("./DdlStrategy"), exports);
@@ -73,4 +76,6 @@ __exportStar(require("./migrations/SchemaSnapshot"), exports);
 __exportStar(require("./utils/SqlHelper"), exports);
 __exportStar(require("./utils/RetryPolicies"), exports);
 __exportStar(require("./utils/EntityCache"), exports);
+__exportStar(require("./utils/InternalLogger"), exports);
+__exportStar(require("./utils/PrometheusEndpoint"), exports);
 //# sourceMappingURL=index.js.map

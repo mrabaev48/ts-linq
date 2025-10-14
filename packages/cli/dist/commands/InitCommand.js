@@ -39,7 +39,7 @@ const utils_1 = require("../utils");
 class InitCommand {
     constructor() {
         this.name = 'init';
-        this.describe = 'Инициализация проекта со скелетом ts-linq';
+        this.describe = 'Initialize a project with ts-linq skeleton';
     }
     run(argv) {
         const destArg = argv[1];

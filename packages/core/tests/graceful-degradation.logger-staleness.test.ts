@@ -45,5 +45,3 @@ describe('Graceful Degradation - staleness logging', () => {
     expect(last?.fallback).toBe('replica');
   });
 });
-
-

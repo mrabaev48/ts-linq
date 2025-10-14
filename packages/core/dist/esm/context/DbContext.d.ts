@@ -77,6 +77,26 @@ export declare abstract class DbContext {
      */
     rollbackTransaction(): Promise<void>;
     /**
+     * Smart invalidation hook executed on successful commit.
+     * Current implementation clears entire L2 cache; later can be refined per-entity via metadata.
+     */
+    private invalidateCachesOnCommit;
+    /**
+     * Targeted cache invalidation after saveChanges.
+     * - Removes deleted entities from L2 by primary key
+     * - Clears L2 entirely if any dependent CachePolicy requires invalidation
+     * - Clears global count cache (best-effort)
+     */
+    private invalidateCachesAfterSave;
+    /** Simple cache utilities (warm-up etc.). */
+    readonly cache: {
+        readonly warmUp: (options?: {
+            queries?: ReadonlyArray<() => Promise<unknown> | unknown>;
+        }) => Promise<void>;
+        readonly invalidateByEntity: (entityNames: ReadonlyArray<string>) => void;
+        readonly reportMetrics: () => void;
+    };
+    /**
      * Dispose of the database connection
      */
     dispose(): Promise<void>;

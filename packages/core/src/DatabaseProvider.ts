@@ -12,6 +12,7 @@ import type {
 } from './types';
 import { CircuitOpenError } from './types';
 import type { SqlDialect } from './query/SqlDialect';
+import { logInternalError } from './utils/InternalLogger';
 
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -381,8 +382,8 @@ export abstract class DatabaseProvider {
     for (const mw of this.middlewares) {
       try {
         await mw.beforeExecute?.(info);
-      } catch {
-        /* ignore middleware errors */
+      } catch (e) {
+        logInternalError('DatabaseProvider.beforeExecute.middleware', e);
       }
     }
   }
@@ -404,8 +405,8 @@ export abstract class DatabaseProvider {
     for (const mw of this.middlewares) {
       try {
         await mw.afterExecute?.(info);
-      } catch {
-        /* ignore middleware errors */
+      } catch (e) {
+        logInternalError('DatabaseProvider.afterExecute.middleware', e);
       }
     }
   }
@@ -420,8 +421,8 @@ export abstract class DatabaseProvider {
     for (const mw of this.middlewares) {
       try {
         await mw.entityMaterialized?.(info);
-      } catch {
-        /* ignore middleware errors */
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyEntityMaterialized.middleware', e);
       }
     }
   }

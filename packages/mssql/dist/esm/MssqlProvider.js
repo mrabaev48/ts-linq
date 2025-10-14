@@ -38,8 +38,8 @@ import { MssqlDdlStrategy } from './MssqlDdlStrategy';
  */
 export class MssqlProvider extends DatabaseProvider {
     /** Create provider with MSSQL connection string. */
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy);
+    constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
+        super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
         this.pool = null;
         this.tx = null;
         this.ddl = new MssqlDdlStrategy();
@@ -50,12 +50,34 @@ export class MssqlProvider extends DatabaseProvider {
         if (this.isConnected)
             return;
         const mssql = safeRequireMssql();
-        this.pool = new mssql.ConnectionPool(this.connectionString);
+        // Map generic pool options into mssql.ConnectionPool config if available
+        const opts = this.poolOptions || {};
+        const config = { connectionString: this.connectionString };
+        if (typeof opts.max === 'number')
+            config.pool = { ...config.pool, max: opts.max };
+        if (typeof opts.min === 'number')
+            config.pool = { ...config.pool, min: opts.min };
+        if (typeof opts.idleTimeoutMs === 'number')
+            config.pool = { ...config.pool, idleTimeoutMillis: opts.idleTimeoutMs };
+        if (typeof opts.acquireTimeoutMs === 'number')
+            config.pool = { ...config.pool, acquireTimeoutMillis: opts.acquireTimeoutMs };
+        if (typeof opts.connectionTimeoutMs === 'number')
+            config.connectionTimeout = opts.connectionTimeoutMs;
+        this.pool = new mssql.ConnectionPool(config);
         await this.pool.connect();
         this.isConnected = true;
+        // Health checks
+        this.startHealthChecks(async () => {
+            const started = Date.now();
+            const req = new mssql.Request(this.pool);
+            const sql = this.healthCheck?.testQuery || 'SELECT 1';
+            await req.query(sql);
+            return Date.now() - started;
+        });
     }
     /** Close transaction (if any) and dispose the pool. */
     async disconnect() {
+        this.stopHealthChecks();
         if (this.tx) {
             try {
                 await this.tx.rollback();

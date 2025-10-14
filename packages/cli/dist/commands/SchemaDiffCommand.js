@@ -45,7 +45,7 @@ class SchemaDiffCommand {
         this.logger = logger;
         this.fsAdapter = fsAdapter;
         this.name = 'schema:diff';
-        this.describe = 'Печатает SQL отличий между snapshot и фактической схемой';
+        this.describe = 'Prints SQL differences between snapshot and actual schema';
         this.aliases = ['schema diff'];
     }
     async runDb(provider, argv) {

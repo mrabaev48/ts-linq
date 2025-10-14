@@ -9,15 +9,16 @@ export class QueryBuilder {
      * Create a QueryBuilder that delegates SQL generation to a dialect.
      * @param dialect SqlDialect implementation (default: SQLiteDialect)
      */
-    constructor(dialect, logger, providerName, cache) {
+    constructor(dialect, logger, providerName, cache, namespace) {
         this._dialect = dialect;
         this._logger = logger;
         this._providerName = providerName;
         this._cache = cache ?? QueryBuilder._defaultCache;
+        this._namespace = namespace;
     }
     /** Generate SQL from QueryOptions with enhanced caching. */
     generateSql(entityClass, options) {
-        const key = QueryBuilder.buildCacheKey(entityClass, options);
+        const key = QueryBuilder.buildCacheKey(entityClass, options, this._providerName, this._namespace);
         const hit = this.getFromCache(key);
         if (hit) {
             this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
@@ -109,8 +110,12 @@ export class QueryBuilder {
         };
     }
     /** Create a stable, lightweight cache key. */
-    static buildCacheKey(entityClass, options) {
+    static buildCacheKey(entityClass, options, providerName, namespace) {
         const parts = [];
+        if (namespace)
+            parts.push(namespace, '|');
+        if (providerName)
+            parts.push(providerName, '|');
         parts.push(entityClass.name);
         parts.push('|s:', options.select ? options.select.join(',') : '');
         if (options.where?.length)
@@ -159,6 +164,16 @@ export class QueryBuilder {
     }
     getFromCache(key) {
         return this._cache.get(key);
+    }
+    /**
+     * Targeted invalidation helper: remove cached SQL entries for the given entity name.
+     */
+    static invalidateForEntity(entityName) {
+        const matcher = (k) => k.startsWith(entityName + '|');
+        const cache = QueryBuilder._defaultCache;
+        return cache.invalidateBy
+            ? cache.invalidateBy(matcher)
+            : (QueryBuilder._defaultCache.clear(), 0);
     }
 }
 /** Default enhanced cache instance */

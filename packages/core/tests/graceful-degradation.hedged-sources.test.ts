@@ -19,7 +19,10 @@ describe('Hedged sources filtering', () => {
 
   it('uses only sources listed in hedged.sources', async () => {
     class Slow extends ProviderStub {
-      protected async doExecuteQuery<T>(sql: string, params: readonly unknown[] = []): Promise<T[]> {
+      protected async doExecuteQuery<T>(
+        sql: string,
+        params: readonly unknown[] = []
+      ): Promise<T[]> {
         await new Promise((r) => setTimeout(r, 25));
         return await super.doExecuteQuery<T>(sql, params as never);
       }
@@ -53,5 +56,3 @@ describe('Hedged sources filtering', () => {
     expect(res.map((x) => x.name)).toEqual(['R']);
   });
 });
-
-

@@ -61,6 +61,57 @@ export interface DbContextOptions {
         translate?: (key: string, params?: Record<string, unknown>) => string;
     };
 }
+/** Generic connection pool options (provider-agnostic). */
+export interface ConnectionPoolOptions {
+    /** Minimum number of pooled connections to keep. */
+    min?: number;
+    /** Maximum number of pooled connections. */
+    max?: number;
+    /** Idle connection timeout in milliseconds. */
+    idleTimeoutMs?: number;
+    /** Timeout for acquiring a connection from the pool in milliseconds. */
+    acquireTimeoutMs?: number;
+    /** Initial connection timeout in milliseconds (provider specific). */
+    connectionTimeoutMs?: number;
+}
+/** Connection health check scheduler options. */
+export interface ConnectionHealthCheckOptions {
+    /** Enable periodic health checks (lightweight ping). */
+    enabled?: boolean;
+    /** Interval between checks, in milliseconds. Default: 60000. */
+    intervalMs?: number;
+    /** Max allowed time for a single ping before considering unhealthy. */
+    timeoutMs?: number;
+    /** Optional SQL used for ping; defaults to provider-specific 'SELECT 1'. */
+    testQuery?: string;
+    /** Optional backoff: min interval when healthy (ms). */
+    minIntervalMs?: number;
+    /** Optional backoff: max interval when degraded/unhealthy (ms). */
+    maxIntervalMs?: number;
+    /** Failures to mark as degraded. Default: 3. */
+    degradeAfterFailures?: number;
+    /** Failures to mark as unhealthy (opens breaker). Default: 6. */
+    unhealthyAfterFailures?: number;
+}
+/** Circuit Breaker finite states. */
+export type CircuitState = 'closed' | 'open' | 'half-open';
+/**
+ * Circuit Breaker options.
+ * - failureThreshold: consecutive failures to open the circuit
+ * - openDurationMs: time to keep circuit open before allowing half-open probes
+ * - halfOpenMaxCalls: concurrent probes allowed in half-open state
+ * - countTransientOnly: when true, count only transient errors towards failures
+ */
+export interface CircuitBreakerOptions {
+    /** Enable/disable circuit breaker entirely (default: true). */
+    enabled?: boolean;
+    failureThreshold?: number;
+    openDurationMs?: number;
+    /** Maximum cap for open duration with backoff (default: 300000 ms). */
+    maxOpenDurationMs?: number;
+    halfOpenMaxCalls?: number;
+    countTransientOnly?: boolean;
+}
 /**
  * Options for controlling entity loading behavior.
  */
@@ -369,6 +420,12 @@ export interface PerformanceOptions {
     sqlCache?: SqlCache;
     /** Optional external count cache implementation. */
     countCache?: CountCache;
+    /** Optional namespace included in cache keys for isolation (tenant/schema/etc). */
+    cacheNamespace?: string;
+    /** Max size for an IN() chunk during batch optimizations (default 1000). */
+    inClauseChunkSize?: number;
+    /** Optional fallback policy for graceful degradation. */
+    fallbackPolicy?: FallbackPolicy;
 }
 /**
  * Default loading settings configured at the context level.
@@ -412,7 +469,16 @@ export interface CacheInfo {
     cache: 'sqlGen' | 'entityL2' | 'count';
     hit: boolean;
     provider?: string;
+    /** True when hit was served from TTL-bound entry (e.g., count cache with TTL). */
+    ttl?: boolean;
 }
+export interface ConnectionHealthInfo {
+    healthy: boolean;
+    latencyMs?: number;
+    provider?: string;
+    status?: ConnectionHealthStatus;
+}
+export type ConnectionHealthStatus = 'healthy' | 'degraded' | 'unhealthy';
 export interface SqlLogger {
     /** Called right before a query is executed. */
     queryStart?(info: QueryStartInfo): void;
@@ -426,6 +492,18 @@ export interface SqlLogger {
     transactionEnd?(info: TransactionInfo): void;
     /** Cache metric hook: records hits/misses for specific caches. */
     cache?(info: CacheInfo): void;
+    /** Optional hook for connection health reports. */
+    connectionHealth?(info: ConnectionHealthInfo): void;
+    /** Optional hook for circuit breaker state transitions. */
+    circuit?(info: CircuitEventInfo): void;
+    /** Optional hook for graceful degradation fallback attempts/results. */
+    fallback?(info: FallbackInfo): void;
+    /** Optional hook for hedged-request wins (fallback beat primary). */
+    hedgedWin?(info: {
+        provider?: string;
+        operation: string;
+        fallback: string;
+    }): void;
 }
 /** Factory for creating SqlLogger per provider to satisfy DIP. */
 export interface SqlLoggerFactory {
@@ -448,6 +526,100 @@ export interface RetryDecisionInfo {
     sql?: string;
     params?: readonly SqlParameter[];
     provider?: string;
+}
+/** Circuit breaker event for logger hooks. */
+export interface CircuitEventInfo {
+    state: CircuitState;
+    provider?: string;
+    failures?: number;
+    reason?: string;
+    halfOpenInFlight?: number;
+}
+/** Information about a fallback attempt for logging/metrics. */
+export interface FallbackInfo {
+    /** Logical name of primary provider that failed. */
+    provider?: string;
+    /** Label of the fallback source (e.g., replica, memory). */
+    fallback: string;
+    /** True when this record represents an attempt; false may be used for summaries. */
+    attempted: boolean;
+    /** Whether the fallback succeeded. Present only after attempt. */
+    succeeded?: boolean;
+    /** Optional error captured when attempt failed. */
+    error?: Error;
+    /** When true, indicates fallback was skipped due to throttling. */
+    throttled?: boolean;
+    /** True when data is potentially stale (e.g., from replica). */
+    isStale?: boolean;
+    /** Optional timestamp (ms since epoch) when data snapshot is valid (as-of). */
+    asOf?: number;
+    /** Optional explicit source label for metrics/tracing. */
+    source?: string;
+}
+/** Request passed to a fallback source to resolve data for a failed query. */
+export interface FallbackRequest<T> {
+    /** Entity constructor for the query. */
+    entity: new () => T;
+    /** SQL text that was intended for the primary provider. */
+    sql: string;
+    /** Positional SQL parameters. */
+    params: readonly SqlParameter[];
+}
+/** Custom fallback source contract for graceful degradation. */
+export interface QueryFallback<T> {
+    /** Human-readable label for metrics (e.g., 'replica', 'memory'). */
+    readonly label: string;
+    /**
+     * Return alternative data when the primary provider fails. Return null to skip (try next fallback).
+     * Implementations must be side-effect free and read-only.
+     */
+    fetch(request: FallbackRequest<T>): Promise<ReadonlyArray<T> | null> | ReadonlyArray<T> | null;
+    /** Optional server-side count for performance; if not provided, client will length(). */
+    fetchCount?(request: FallbackRequest<T>): Promise<number | null> | number | null;
+}
+/** What operations are eligible for fallback. */
+export type FallbackOperation = 'select' | 'count' | 'first' | 'single' | 'any' | 'aggregate';
+/** Source selector names for policy. */
+export type FallbackSource = 'replica' | 'memory' | string;
+/** Rate limiting/throttling options for fallback usage. */
+export interface FallbackThrottleOptions {
+    /** Max fallback attempts per process per minute. */
+    maxPerMinute?: number;
+    /** Min spacing between fallbacks (ms). */
+    minIntervalMs?: number;
+    /** Optional jitter (0..1) applied to minInterval to reduce sync herd. */
+    jitterRatio?: number;
+}
+/** Read freshness constraints for replica fallbacks. */
+export interface FreshnessConstraints {
+    /** Maximum allowed replication lag in milliseconds. */
+    maxReplicationLagMs?: number;
+    /** Require read-only connection semantics. */
+    requireReadOnly?: boolean;
+}
+/** Policy controlling when and how graceful degradation is applied. */
+export interface FallbackPolicy {
+    /** Enable or disable fallback globally (default: true). */
+    enabled?: boolean;
+    /** Allowed operations for fallback. Default: ['select','count','first','single','any','aggregate']. */
+    allowOps?: ReadonlyArray<FallbackOperation>;
+    /** Preferred source order (labels). Default: declared order in Queryable.fallbackTo(). */
+    sources?: ReadonlyArray<FallbackSource>;
+    /** Rate limiting options to avoid thundering herds. */
+    throttle?: FallbackThrottleOptions;
+    /** Freshness constraints primarily for replicas. */
+    freshness?: FreshnessConstraints;
+    /** Hedged-requests configuration (race primary vs fallback after short delay). */
+    hedged?: {
+        /** Enable hedged requests for eligible operations (e.g., 'select', 'count'). */
+        enabled?: boolean;
+        /** Delay before starting fallback race (ms). Typical range 5..50ms. */
+        delayMs?: number;
+        /** Optional subset/priority of sources to use for hedging. */
+        sources?: ReadonlyArray<FallbackSource>;
+    };
+    /** Whether to allow executing include() population on fallback results. */
+    allowIncludesOnFallback?: 'none' | 'attempt';
 }
 /** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */
 export interface OrmMiddleware {
@@ -512,6 +684,10 @@ export declare class ValidationError extends Error {
 /** Optimistic concurrency violation error. */
 export declare class OptimisticConcurrencyError extends DatabaseError {
     constructor(message?: string, code?: string);
+}
+/** Thrown when a call is short-circuited due to an open circuit. */
+export declare class CircuitOpenError extends Error {
+    constructor(message?: string);
 }
 /** Known engine-specific error code aliases (best-effort). */
 export type SqliteErrorCode = 'SQLITE_CONSTRAINT' | 'SQLITE_CONSTRAINT_UNIQUE' | 'SQLITE_CONSTRAINT_FOREIGNKEY' | 'SQLITE_CONSTRAINT_TRIGGER' | string;

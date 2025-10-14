@@ -42,7 +42,7 @@ class SeedCommand {
         this.logger = logger;
         this.fsAdapter = fsAdapter;
         this.name = 'seed';
-        this.describe = 'Выполняет SQL из файла для начального наполнения';
+        this.describe = 'Executes SQL from a file to seed initial data';
         this.aliases = ['db:seed'];
     }
     async runDb(provider, argv) {

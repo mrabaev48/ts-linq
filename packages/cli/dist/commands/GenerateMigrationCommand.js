@@ -44,7 +44,7 @@ class GenerateMigrationCommand {
         this.fsAdapter = fsAdapter;
         this.builder = builder;
         this.name = 'generate:migration';
-        this.describe = 'Создаёт файл миграции с шаблоном';
+        this.describe = 'Creates a migration file from a template';
         this.aliases = ['generate migration'];
     }
     run(argv) {

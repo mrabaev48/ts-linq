@@ -502,6 +502,8 @@ export interface CacheInfo {
   cache: 'sqlGen' | 'entityL2' | 'count';
   hit: boolean;
   provider?: string;
+  /** True when hit was served from TTL-bound entry (e.g., count cache with TTL). */
+  ttl?: boolean;
 }
 
 export interface ConnectionHealthInfo {
@@ -532,6 +534,8 @@ export interface SqlLogger {
   circuit?(info: CircuitEventInfo): void;
   /** Optional hook for graceful degradation fallback attempts/results. */
   fallback?(info: FallbackInfo): void;
+  /** Optional hook for hedged-request wins (fallback beat primary). */
+  hedgedWin?(info: { provider?: string; operation: string; fallback: string }): void;
 }
 
 /** Factory for creating SqlLogger per provider to satisfy DIP. */

@@ -2,8 +2,8 @@ import { DatabaseProvider, OptimisticConcurrencyError, MetadataStorage, SqlHelpe
 import { MysqlDialect } from './MysqlDialect';
 import { MySqlDdlStrategy } from './MySqlDdlStrategy';
 export class MySqlProvider extends DatabaseProvider {
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy);
+    constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
+        super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
         this.pool = null;
         this.ddl = new MySqlDdlStrategy();
         this.providerName = 'mysql';
@@ -12,10 +12,29 @@ export class MySqlProvider extends DatabaseProvider {
         if (this.isConnected)
             return;
         const mysql = safeRequireMysql2();
-        this.pool = mysql.createPool(this.connectionString);
+        const opts = this.poolOptions || {};
+        // Map generic pool options to mysql2 pool options when available
+        const mysqlConfig = { uri: this.connectionString };
+        if (typeof opts.max === 'number')
+            mysqlConfig.connectionLimit = opts.max;
+        if (typeof opts.acquireTimeoutMs === 'number')
+            mysqlConfig.acquireTimeout = opts.acquireTimeoutMs;
+        if (typeof opts.connectionTimeoutMs === 'number')
+            mysqlConfig.connectTimeout = opts.connectionTimeoutMs;
+        // Note: mysql2 uses waitForConnections/queueLimit; idle timeout is managed by server or 'idleTimeout' in some forks
+        this.pool = mysql.createPool(mysqlConfig);
         this.isConnected = true;
+        // Health checks
+        this.startHealthChecks(async () => {
+            const started = Date.now();
+            const pool = this.pool;
+            const sql = this.healthCheck?.testQuery || 'SELECT 1';
+            await pool.query(sql);
+            return Date.now() - started;
+        });
     }
     async disconnect() {
+        this.stopHealthChecks();
         if (this.pool) {
             await this.pool.end();
             this.pool = null;

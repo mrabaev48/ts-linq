@@ -2,6 +2,7 @@ import type { DatabaseProvider } from '../DatabaseProvider';
 import type { PerformanceOptions, Result, GlobalFilter } from '../types';
 import type { EntityLoader } from '../loading/EntityLoader';
 import type { EntityCacheLike } from '../utils/EntityCache';
+import type { QueryFallback, FallbackPolicy } from '../types';
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
  * in a QueryModel and delegates SQL generation to QueryBuilder.
@@ -18,12 +19,14 @@ export declare class Queryable<T> {
     private _sqlBuilder;
     private static _countCache;
     private static readonly _COUNT_CACHE_MAX;
+    private static _inflightCounts;
     private _externalCountCache?;
     private _abortSignal?;
     private _globalFilters?;
     private _globalFilterApplier;
     private _materializer;
     private _includePlanner;
+    private _fallbacks;
     private _cte?;
     private _whereSignature;
     private static readonly REGEX_SINGLE_PROP;
@@ -37,6 +40,9 @@ export declare class Queryable<T> {
     private static _selectorPropsCache;
     private static _keySelectorCache;
     private static _includePropCache;
+    private static _fallbackWindowStart;
+    private static _fallbackUsedInWindow;
+    private static _fallbackLastAttemptAt;
     /**
      * Create a new Queryable bound to an entity type and provider.
      * @param entityClass Entity constructor.
@@ -70,6 +76,13 @@ export declare class Queryable<T> {
      * const cheap = await context.products.where(p => p.price < 100).toArray();
      */
     where(predicate: (entity: T) => boolean): Queryable<T>;
+    /**
+     * Register a graceful-degradation fallback source to be used when the primary provider is unavailable.
+     * Fallbacks are tried in the order they are registered until one succeeds.
+     */
+    fallbackTo(source: QueryFallback<T>): Queryable<T>;
+    /** Configure per-query fallback policy overrides. */
+    withFallbackPolicy(policy: Partial<FallbackPolicy>): Queryable<T>;
     /** Add EXISTS (subquery) predicate. */
     whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T>;
     /** Add IN (subquery) predicate for a column. */
@@ -212,6 +225,12 @@ export declare class Queryable<T> {
     count(): Promise<number>;
     private buildCountCacheKey;
     private executeCountQuery;
+    /** Build COUNT SQL and params from a query model in a single pass. */
+    private buildCountSqlAndParams;
+    /** Sequential fallback for count(): server-count if available, else SELECT length. */
+    private tryFallbackCountSequential;
+    /** Race primary COUNT with delayed fallback count (server-side if available). */
+    private racePrimaryWithFallbackCount;
     /** Returns true if at least one row matches the query.
      * @example
      * const exists = await context.products.where(p => p.name === 'Laptop').any();
@@ -223,6 +242,18 @@ export declare class Queryable<T> {
     private applyFallbackPredicates;
     /** Executes provided model, maps rows to entities and applies fallback predicates. */
     private executeAndMaterialize;
+    /** Decide whether a caught error qualifies for graceful degradation. */
+    private isDegradableError;
+    private isOpAllowedForFallback;
+    private handlePrimaryRows;
+    private handleFallbackEntities;
+    private tryFallbackSelectSequential;
+    /** Race primary query with a delayed fallback request; returns the earlier result. */
+    private racePrimaryWithFallback;
+    /** Select hedged fallbacks based on policy-specified source labels. */
+    private getHedgedFallbacks;
+    /** Try to pass fallback throttle constraints; returns false when fallback should be skipped. */
+    private tryEnterFallbackThrottle;
     /** Extracts include property name from a lambda selector. */
     private extractIncludeProperty;
     /**

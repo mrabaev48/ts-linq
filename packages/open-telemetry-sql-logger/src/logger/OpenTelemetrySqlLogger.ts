@@ -1,4 +1,5 @@
 import type { SqlLogger, SqlParameter } from '@ts-linq/core';
+import { logInternalError } from '@ts-linq/core';
 
 interface OtelLike {
   trace: {
@@ -19,8 +20,8 @@ function safeRequireOtel(): OtelLike | undefined {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const otel = require('@opentelemetry/api') as OtelLike;
     if (otel && otel.trace && typeof otel.trace.getTracer === 'function') return otel;
-  } catch {
-    /* ignore */
+  } catch (e) {
+    logInternalError('OpenTelemetrySqlLogger.safeRequireOtel', e);
   }
   return undefined;
 }
@@ -53,7 +54,9 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
     for (const re of this.maskPatterns) {
       try {
         s = s.replace(re, '[REDACTED]');
-      } catch {}
+      } catch (e) {
+        logInternalError('OpenTelemetrySqlLogger.mask.replace', e);
+      }
     }
     return s;
   }

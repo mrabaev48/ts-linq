@@ -43,7 +43,7 @@ class MigrationsValidateCommand {
         this.logger = logger;
         this.fsAdapter = fsAdapter;
         this.name = 'migration:validate';
-        this.describe = 'Валидирует миграции: формат имен, дубликаты, порядок, наличие up/down';
+        this.describe = 'Validates migrations: name format, duplicates, order, presence of up/down';
         this.aliases = ['migrations:validate'];
     }
     run(_argv) {

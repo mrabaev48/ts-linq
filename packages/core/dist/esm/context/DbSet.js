@@ -87,8 +87,37 @@ export class DbSet {
         }
         const pk = metadata.primaryKeys[0];
         const column = metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk;
-        // Delegate to provider for efficient IN query
-        return await this._provider.findWhereIn(this._entityClass, column, ids);
+        // Cross-query optimization: deduplicate and chunk large IN lists
+        const uniqueIds = Array.from(new Set(ids));
+        if (uniqueIds.length === 0)
+            return [];
+        const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
+        if (uniqueIds.length <= chunkSize) {
+            return await this._provider.findWhereIn(this._entityClass, column, uniqueIds);
+        }
+        const aggregated = [];
+        const total = uniqueIds.length;
+        let chunks = 0;
+        for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+            const chunk = uniqueIds.slice(i, i + chunkSize);
+            const part = await this._provider.findWhereIn(this._entityClass, column, chunk);
+            aggregated.push(...part);
+            chunks++;
+        }
+        try {
+            this._provider.loggerRef?.crossQuery?.({
+                op: 'IN-chunk',
+                chunks,
+                size: total,
+                entity: this._entityClass.name || 'Unknown',
+                column,
+                provider: this._provider.providerLabel
+            });
+        }
+        catch {
+            /* ignore */
+        }
+        return aggregated;
     }
     /**
      * Type-safe IN query by entity property. Maps property to column via metadata.
@@ -102,7 +131,37 @@ export class DbSet {
             ? metadata.columns.find((c) => c.propertyName === property || c.columnName === property)
                 ?.columnName || String(property)
             : String(property);
-        return await this._provider.findWhereIn(this._entityClass, columnName, values);
+        // Cross-query optimization: deduplicate inputs and split into chunks
+        const uniqueValues = Array.from(new Set(values));
+        if (uniqueValues.length === 0)
+            return [];
+        const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
+        if (uniqueValues.length <= chunkSize) {
+            return await this._provider.findWhereIn(this._entityClass, columnName, uniqueValues);
+        }
+        const aggregated = [];
+        const total = uniqueValues.length;
+        let chunks = 0;
+        for (let i = 0; i < uniqueValues.length; i += chunkSize) {
+            const chunk = uniqueValues.slice(i, i + chunkSize);
+            const part = await this._provider.findWhereIn(this._entityClass, columnName, chunk);
+            aggregated.push(...part);
+            chunks++;
+        }
+        try {
+            this._provider.loggerRef?.crossQuery?.({
+                op: 'IN-chunk',
+                chunks,
+                size: total,
+                entity: this._entityClass.name || 'Unknown',
+                column: columnName,
+                provider: this._provider.providerLabel
+            });
+        }
+        catch {
+            /* ignore */
+        }
+        return aggregated;
     }
     /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */
     where(predicate) {
@@ -253,4 +312,6 @@ export class DbSet {
         return entities;
     }
 }
+// Default chunk size; can be overridden via PerformanceOptions.inClauseChunkSize
+DbSet.DEFAULT_IN_CHUNK_SIZE = 1000;
 //# sourceMappingURL=DbSet.js.map

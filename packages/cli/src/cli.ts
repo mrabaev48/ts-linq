@@ -15,6 +15,7 @@ import { MigrationsDryRunCommand } from './commands/MigrationsDryRunCommand';
 import { MigrationsRollbackCommand } from './commands/MigrationsRollbackCommand';
 import { MigrationsValidateCommand } from './commands/MigrationsValidateCommand';
 import { SeedCommand } from './commands/SeedCommand';
+import { MetricsServeCommand } from './commands/MetricsServeCommand';
 //
 import { CommandRegistry } from './CommandRegistry';
 import type { Command, DbCommand } from './commands/Command';
@@ -39,7 +40,8 @@ async function main() {
     new MigrationsDryRunCommand(),
     new MigrationsRollbackCommand(),
     new MigrationsValidateCommand(),
-    new SeedCommand()
+    new SeedCommand(),
+    new MetricsServeCommand()
   ]);
   const command = registry.get(cmdName);
   if (!command) {

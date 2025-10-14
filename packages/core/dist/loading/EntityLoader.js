@@ -13,8 +13,14 @@ class EntityLoader {
      */
     constructor(provider, logger) {
         this._defaultStrategy = LoadingStrategy_1.LoadingStrategy.Lazy;
+        this._inChunkSize = 1000;
         this._provider = provider;
         this._logger = logger;
+    }
+    /** Configure IN() chunk size from PerformanceOptions. */
+    setInChunkSize(size) {
+        if (typeof size === 'number' && size > 0)
+            this._inChunkSize = size;
     }
     /**
      * Set the default loading strategy for operations.
@@ -216,7 +222,36 @@ class EntityLoader {
         if (uniqueFkValues.length === 0)
             return;
         const targetPkColumn = this.getPrimaryKeyColumnName(meta);
-        const related = await this._provider.findWhereIn(targetCtor, targetPkColumn, uniqueFkValues);
+        // Chunk large IN lists to avoid parameter limits
+        const chunkSize = this._inChunkSize;
+        let related = [];
+        if (uniqueFkValues.length <= chunkSize) {
+            related = await this._provider.findWhereIn(targetCtor, targetPkColumn, uniqueFkValues);
+        }
+        else {
+            const acc = [];
+            let chunks = 0;
+            for (let i = 0; i < uniqueFkValues.length; i += chunkSize) {
+                const chunk = uniqueFkValues.slice(i, i + chunkSize);
+                const part = await this._provider.findWhereIn(targetCtor, targetPkColumn, chunk);
+                acc.push(...part);
+                chunks++;
+            }
+            related = acc;
+            try {
+                this._provider.loggerRef?.crossQuery?.({
+                    op: 'IN-chunk',
+                    chunks,
+                    size: uniqueFkValues.length,
+                    entity: targetCtor.name || 'Unknown',
+                    column: targetPkColumn,
+                    provider: this._provider.providerLabel
+                });
+            }
+            catch {
+                /* ignore */
+            }
+        }
         const byId = new Map();
         const targetMeta = MetadataStorage_1.MetadataStorage.getEntity(targetCtor);
         const targetPk = targetMeta?.primaryKeys[0];
@@ -244,7 +279,36 @@ class EntityLoader {
         if (uniqueParentIds.length === 0)
             return;
         const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
-        const related = await this._provider.findWhereIn(targetCtor, foreignKeyName, uniqueParentIds);
+        // Chunk large IN lists to avoid parameter limits
+        const chunkSize2 = this._inChunkSize;
+        let related = [];
+        if (uniqueParentIds.length <= chunkSize2) {
+            related = await this._provider.findWhereIn(targetCtor, foreignKeyName, uniqueParentIds);
+        }
+        else {
+            const acc = [];
+            let chunks = 0;
+            for (let i = 0; i < uniqueParentIds.length; i += chunkSize2) {
+                const chunk = uniqueParentIds.slice(i, i + chunkSize2);
+                const part = await this._provider.findWhereIn(targetCtor, foreignKeyName, chunk);
+                acc.push(...part);
+                chunks++;
+            }
+            related = acc;
+            try {
+                this._provider.loggerRef?.crossQuery?.({
+                    op: 'IN-chunk',
+                    chunks,
+                    size: uniqueParentIds.length,
+                    entity: targetCtor.name || 'Unknown',
+                    column: foreignKeyName,
+                    provider: this._provider.providerLabel
+                });
+            }
+            catch {
+                /* ignore */
+            }
+        }
         const grouped = new Map();
         for (const relatedEntity of related) {
             const key = relatedEntity[foreignKeyName];
