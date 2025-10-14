@@ -5,10 +5,13 @@ import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { QueryFallback, FallbackRequest } from '../src/types';
 
-@Entity()
-class A {
-  @PrimaryKey({ autoIncrement: true }) id!: number;
-  @Column() name!: string;
+function defineA() {
+  @Entity()
+  class A {
+    @PrimaryKey({ autoIncrement: true }) id!: number;
+    @Column() name!: string;
+  }
+  return A;
 }
 
 describe('Hedged sources filtering', () => {
@@ -21,6 +24,7 @@ describe('Hedged sources filtering', () => {
         return await super.doExecuteQuery<T>(sql, params as never);
       }
     }
+    const A = defineA();
     const provider = new Slow(':memory:');
     const fastReplica: QueryFallback<A> = {
       label: 'replica',
