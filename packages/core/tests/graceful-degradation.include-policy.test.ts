@@ -36,6 +36,10 @@ describe('Graceful Degradation - include policy', () => {
       }
     };
 
+    await provider.connect();
+    await provider.createTable(MetadataStorage.getEntity(User)!);
+    await provider.createTable(MetadataStorage.getEntity(Post)!);
+
     const q = new Queryable(User, provider)
       .fallbackTo(fb)
       .withFallbackPolicy({ allowIncludesOnFallback: 'none' });
@@ -53,6 +57,10 @@ describe('Graceful Degradation - include policy', () => {
         return fallbackRows;
       }
     };
+
+    await provider.connect();
+    await provider.createTable(MetadataStorage.getEntity(User)!);
+    await provider.createTable(MetadataStorage.getEntity(Post)!);
 
     const q = new Queryable(User, provider)
       .fallbackTo(fb)

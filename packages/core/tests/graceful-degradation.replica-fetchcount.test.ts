@@ -35,7 +35,9 @@ describe('ReplicaFallback.fetchCount', () => {
 
     // Ensure metadata is registered for E
     await provider.connect();
-    await provider.createTable(MetadataStorage.getEntity(E)!);
+    // ProviderStub.createTable ожидает EntityMetadata, поэтому возьмём из стораджа
+    const meta = MetadataStorage.getEntity(E)!;
+    await provider.createTable(meta);
 
     const q = new Queryable(E, provider).fallbackTo(fb).withFallbackPolicy({ allowOps: ['count'] });
     const n = await q.count();
@@ -58,7 +60,8 @@ describe('ReplicaFallback.fetchCount', () => {
     } as QueryFallback<E>;
 
     await provider.connect();
-    await provider.createTable(MetadataStorage.getEntity(E)!);
+    const meta2 = MetadataStorage.getEntity(E)!;
+    await provider.createTable(meta2);
 
     const q = new Queryable(E, provider).fallbackTo(fb).withFallbackPolicy({ allowOps: ['count'] });
     const n = await q.count();
