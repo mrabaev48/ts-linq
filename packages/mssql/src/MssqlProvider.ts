@@ -6,7 +6,9 @@ import type {
   SqlParameter,
   OrmMiddleware,
   SoftDeleteOptions,
-  SqlDialect
+  SqlDialect,
+  ConnectionPoolOptions,
+  ConnectionHealthCheckOptions
 } from '@ts-linq/core';
 import {
   DatabaseProvider,
@@ -81,9 +83,11 @@ export class MssqlProvider extends DatabaseProvider {
     logger?: SqlLogger,
     middlewares?: OrmMiddleware[],
     softDelete?: SoftDeleteOptions,
-    retryPolicy?: RetryPolicy
+    retryPolicy?: RetryPolicy,
+    poolOptions?: ConnectionPoolOptions,
+    healthCheck?: ConnectionHealthCheckOptions
   ) {
-    super(connectionString, logger, middlewares, softDelete, retryPolicy);
+    super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
     this.providerName = 'mssql';
   }
 
@@ -91,13 +95,39 @@ export class MssqlProvider extends DatabaseProvider {
   public async connect(): Promise<void> {
     if (this.isConnected) return;
     const mssql = safeRequireMssql();
-    this.pool = new mssql.ConnectionPool(this.connectionString);
+    // Map generic pool options into mssql.ConnectionPool config if available
+    const opts = this.poolOptions || {};
+    const config: Record<string, unknown> = { connectionString: this.connectionString };
+    if (typeof opts.max === 'number') config.pool = { ...(config.pool as object), max: opts.max };
+    if (typeof opts.min === 'number') config.pool = { ...(config.pool as object), min: opts.min };
+    if (typeof opts.idleTimeoutMs === 'number')
+      config.pool = { ...(config.pool as object), idleTimeoutMillis: opts.idleTimeoutMs };
+    if (typeof opts.acquireTimeoutMs === 'number')
+      config.pool = { ...(config.pool as object), acquireTimeoutMillis: opts.acquireTimeoutMs };
+    if (typeof opts.connectionTimeoutMs === 'number')
+      config.connectionTimeout = opts.connectionTimeoutMs;
+    this.pool = new (
+      mssql as unknown as { ConnectionPool: new (cfg: unknown) => MssqlConnectionPoolLike }
+    ).ConnectionPool(config);
     await this.pool.connect();
     this.isConnected = true;
+    // Health checks
+    this.startHealthChecks(async () => {
+      const started = Date.now();
+      const req = new (
+        mssql as unknown as {
+          Request: new (parent: MssqlTransactionLike | MssqlConnectionPoolLike) => MssqlRequestLike;
+        }
+      ).Request(this.pool!);
+      const sql = this.healthCheck?.testQuery || 'SELECT 1';
+      await req.query(sql);
+      return Date.now() - started;
+    });
   }
 
   /** Close transaction (if any) and dispose the pool. */
   public async disconnect(): Promise<void> {
+    this.stopHealthChecks();
     if (this.tx) {
       try {
         await this.tx.rollback();

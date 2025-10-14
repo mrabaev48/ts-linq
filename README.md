@@ -795,6 +795,58 @@ const logger: SqlLogger = {
 const ctx = new AppDbContext({ connectionString: ':memory:', provider: 'sqlite', logger });
 ```
 
+#### Connection Pooling & Health-Check (ENV)
+
+Опции пула и health-check можно настроить через ENV (CLI factory) или через конструктор провайдера:
+
+ENV (CLI):
+
+```bash
+# Pool
+export DB_POOL_MIN=2
+export DB_POOL_MAX=20
+export DB_POOL_IDLE_MS=30000
+export DB_POOL_ACQUIRE_MS=5000
+export DB_CONN_TIMEOUT_MS=10000
+
+# Health-check
+export DB_HEALTH_ENABLED=true
+export DB_HEALTH_INTERVAL_MS=60000
+export DB_HEALTH_TIMEOUT_MS=5000
+export DB_HEALTH_TEST_QUERY='SELECT 1'
+# Backoff/статусы
+export DB_HEALTH_MIN_INTERVAL_MS=1000
+export DB_HEALTH_MAX_INTERVAL_MS=10000
+export DB_HEALTH_DEGRADE_AFTER=3
+export DB_HEALTH_UNHEALTHY_AFTER=6
+```
+
+Конструктор провайдера (прямой вызов):
+
+```ts
+import { PostgresProvider } from '@ts-linq/postgres';
+import { ConnectionPoolOptions, ConnectionHealthCheckOptions } from '@ts-linq/core';
+
+const pool: ConnectionPoolOptions = {
+  min: 2,
+  max: 20,
+  idleTimeoutMs: 30000,
+  acquireTimeoutMs: 5000,
+  connectionTimeoutMs: 10000
+};
+const health: ConnectionHealthCheckOptions = {
+  enabled: true,
+  testQuery: 'SELECT 1',
+  timeoutMs: 5000,
+  minIntervalMs: 1000,
+  maxIntervalMs: 10000,
+  degradeAfterFailures: 3,
+  unhealthyAfterFailures: 6
+};
+
+const provider = new PostgresProvider(process.env.POSTGRES_URL!, undefined, undefined, undefined, undefined, pool, health);
+```
+
 Composite логгеры (композиция Prometheus + OTEL или других):
 
 ```ts
@@ -883,6 +935,19 @@ sum(rate(db_retry_total[5m]))
 
 # Active transactions gauge by provider
 db_active_transactions
+
+# Health-check
+# Health status (1/0) by provider and status label (healthy/degraded/unhealthy)
+db_connection_health
+
+# Health-check latency (p95)
+histogram_quantile(0.95, sum by (le, provider, status) (rate(db_connection_latency_ms_bucket[5m])))
+
+# Connection degraded gauge (1 when provider is degraded)
+db_connection_degraded
+
+# Status transitions rate
+sum by (provider, from, to) (rate(db_connection_status_transitions_total[5m]))
 ```
 
 Dashboard hints:

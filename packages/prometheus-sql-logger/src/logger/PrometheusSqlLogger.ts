@@ -47,6 +47,11 @@ export class PrometheusSqlLogger implements SqlLogger {
   private countCacheTtlHits?: PromCounter;
   private countCacheHardHits?: PromCounter;
   private cacheEvictions?: PromCounter;
+  private connectionHealthGauge?: PromGauge;
+  private connectionLatency?: PromHistogram;
+  private connectionDegradedGauge?: PromGauge;
+  private connectionStatusTransitions?: PromCounter;
+  private lastConnectionStatus: Map<string, string> = new Map();
   private maskSql: boolean = false;
   private maskPatterns: ReadonlyArray<RegExp> = [];
 
@@ -130,6 +135,31 @@ export class PrometheusSqlLogger implements SqlLogger {
       name: `${this.prefix}db_cache_evictions_total`,
       help: 'DB cache evictions due to capacity limits',
       labelNames: ['cache', 'provider']
+    });
+
+    // Health metrics
+    if (this.client.Gauge) {
+      this.connectionHealthGauge = new this.client.Gauge({
+        name: `${this.prefix}db_connection_health`,
+        help: 'DB connection health status (1 healthy, 0 unhealthy)',
+        labelNames: ['provider', 'status']
+      });
+      this.connectionDegradedGauge = new this.client.Gauge({
+        name: `${this.prefix}db_connection_degraded`,
+        help: 'DB connection degraded status (1 degraded, 0 otherwise)',
+        labelNames: ['provider']
+      });
+    }
+    this.connectionLatency = new this.client.Histogram({
+      name: `${this.prefix}db_connection_latency_ms`,
+      help: 'DB health-check ping latency (ms)',
+      labelNames: ['provider', 'status'],
+      buckets
+    });
+    this.connectionStatusTransitions = new this.client.Counter({
+      name: `${this.prefix}db_connection_status_transitions_total`,
+      help: 'DB connection health status transitions',
+      labelNames: ['provider', 'from', 'to']
     });
   }
 
@@ -248,6 +278,56 @@ export class PrometheusSqlLogger implements SqlLogger {
       this.cacheEvictions
         .labels({ cache: info.cache, provider: info.provider || 'unknown' })
         .inc(1);
+    } catch {}
+  }
+
+  public connectionHealth?(info: {
+    healthy: boolean;
+    latencyMs?: number;
+    provider?: string;
+    status?: string;
+  }): void {
+    if (!this.enabled || (!this.connectionHealthGauge && !this.connectionLatency)) return;
+    const provider = info.provider || 'unknown';
+    const status = info.status || (info.healthy ? 'healthy' : 'unhealthy');
+    this.setHealthGauge(provider, status, info.healthy);
+    this.observeHealthLatency(provider, status, info.latencyMs);
+    this.setDegradedGauge(provider, status);
+    this.recordStatusTransition(provider, status);
+  }
+
+  private setHealthGauge(provider: string, status: string, healthy: boolean): void {
+    try {
+      if (this.connectionHealthGauge) {
+        this.connectionHealthGauge.set?.({ provider, status }, healthy ? 1 : 0);
+      }
+    } catch {}
+  }
+
+  private observeHealthLatency(provider: string, status: string, latencyMs?: number): void {
+    try {
+      if (this.connectionLatency && typeof latencyMs === 'number') {
+        this.connectionLatency.labels({ provider, status }).observe(Math.max(0, latencyMs));
+      }
+    } catch {}
+  }
+
+  private setDegradedGauge(provider: string, status: string): void {
+    try {
+      if (this.connectionDegradedGauge) {
+        this.connectionDegradedGauge.set?.({ provider }, status === 'degraded' ? 1 : 0);
+      }
+    } catch {}
+  }
+
+  private recordStatusTransition(provider: string, status: string): void {
+    try {
+      if (!this.connectionStatusTransitions) return;
+      const prev = this.lastConnectionStatus.get(provider);
+      if (prev && prev !== status) {
+        this.connectionStatusTransitions.labels({ provider, from: prev, to: status }).inc(1);
+      }
+      this.lastConnectionStatus.set(provider, status);
     } catch {}
   }
 

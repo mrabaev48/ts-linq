@@ -582,7 +582,7 @@
   ```
   - Реализован `ctx.cache.warmUp(...)` + агрегатор метрик `ctx.cache.reportMetrics()`.
 
-- [ ] **Cross-Query Optimization**
+- [x] **Cross-Query Optimization** ✅
   ```typescript
   // Batch optimization для N+1 queries
   const users = await ctx.users.toArray();
@@ -590,6 +590,10 @@
     .where((o) => o.userId.in(users.map((u) => u.id))) // Автоматическая оптимизация
     .toArray();
   ```
+  - Дедупликация и чанкинг IN-списков (по умолчанию 1000).
+  - Настройка размера чанка: `PerformanceOptions.inClauseChunkSize`.
+  - Логирование событий `crossQuery`: `{ op: 'IN-chunk', chunks, size, entity, column }`.
+  - Покрытие тестами: `DbSet` (чанкинг IN) и `EntityLoader` (batched include).
 
 **Приоритет**: P1 (Высокий)
 **Временные затраты**: 2.5 недели
@@ -609,20 +613,22 @@
 
 **Задачи:**
 
-- [ ] **Advanced Connection Pooling**
+- [x] **Advanced Connection Pooling** ✅
 
-  ```typescript
-  const pool = new ConnectionPool({
-    min: 2,
-    max: 20,
-    idleTimeoutMs: 30000,
-    healthCheck: {
-      enabled: true,
-      intervalMs: 60000,
-      timeoutMs: 5000
-    }
-  });
-  ```
+  Реализовано:
+
+  - Core:
+    - Введены `ConnectionPoolOptions`, `ConnectionHealthCheckOptions` (строго типизированы).
+    - `DatabaseProvider` принимает `poolOptions`/`healthCheck`, выполняет немедленный ping, поддерживает backoff с джиттером и статусы `healthy | degraded | unhealthy`.
+  - Providers:
+    - Postgres/MySQL/MSSQL — маппинг generic опций на драйверы; поддержка `healthCheck.testQuery`.
+  - CLI:
+    - ENV → опции пула/health: `DB_POOL_MIN|MAX|IDLE_MS|ACQUIRE_MS|DB_CONN_TIMEOUT_MS`, `DB_HEALTH_ENABLED|INTERVAL_MS|TIMEOUT_MS|TEST_QUERY|MIN_INTERVAL_MS|MAX_INTERVAL_MS|DEGRADE_AFTER|UNHEALTHY_AFTER`.
+  - Tests:
+    - core: юнит‑тест шедулера (fake timers, timeout/degraded/unhealthy/backoff).
+    - cli: тест маппинга ENV → опции провайдера.
+  - Docs:
+    - README: раздел по ENV и примеры конфигурации.
 
 - [ ] **Circuit Breaker Pattern**
 
@@ -643,17 +649,19 @@
   const users = await ctx.users.fallbackTo(memoryCache).fallbackTo(readOnlyReplica).toArray();
   ```
 
-- [ ] **Connection Health Monitoring**
+- [x] **Connection Health Monitoring** ✅
   ```typescript
   // Метрики здоровья соединений
-  ctx.on('connectionHealth', (event) => {
-    metrics.gauge('db.connection.health', event.healthy ? 1 : 0);
-    metrics.gauge('db.connection.latency', event.latencyMs);
-  });
+  // События через SqlLogger (hook): connectionHealth({ healthy, latencyMs, status, provider })
+  // PrometheusSqlLogger публикует метрики:
+  // - db_connection_health (Gauge, labels: provider,status)
+  // - db_connection_latency_ms (Histogram, labels: provider,status)
+  // - db_connection_degraded (Gauge, label: provider)
+  // - db_connection_status_transitions_total (Counter, labels: provider,from,to)
   ```
 
 **Приоритет**: P1 (Высокий)
-**Временные затраты**: 1.5 недели
+**Временные затраты**: 1.5 недели (выполнено)
 
 ### 3.3 Performance Monitoring & Optimization
 

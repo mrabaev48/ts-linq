@@ -4,7 +4,9 @@ import type {
   RetryPolicy,
   SqlLogger,
   SoftDeleteOptions,
-  SqlParameter
+  SqlParameter,
+  ConnectionPoolOptions,
+  ConnectionHealthCheckOptions
 } from './types';
 import type { SqlDialect } from './query/SqlDialect';
 
@@ -25,6 +27,15 @@ export abstract class DatabaseProvider {
   protected retryPolicy?: RetryPolicy;
   /** Logical provider name for logging/metrics (sqlite|postgresql|mysql|mssql|unknown). */
   protected providerName: string = 'unknown';
+  /** Optional generic pool options forwarded to the underlying driver. */
+  protected poolOptions?: ConnectionPoolOptions;
+  /** Optional connection health-check scheduler options. */
+  protected healthCheck?: ConnectionHealthCheckOptions;
+  /** Health-check timer handle (if enabled). */
+  private healthTimer?: ReturnType<typeof setInterval>;
+  /** Current health status and failure counter for backoff. */
+  private healthFailures: number = 0;
+  private healthStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
 
   /**
    * Create a provider with a given connection string.
@@ -35,13 +46,17 @@ export abstract class DatabaseProvider {
     logger?: SqlLogger,
     middlewares?: OrmMiddleware[],
     softDelete?: SoftDeleteOptions,
-    retryPolicy?: RetryPolicy
+    retryPolicy?: RetryPolicy,
+    poolOptions?: ConnectionPoolOptions,
+    healthCheck?: ConnectionHealthCheckOptions
   ) {
     this.connectionString = connectionString;
     this.logger = logger;
     this.middlewares = middlewares;
     this.softDelete = softDelete;
     this.retryPolicy = retryPolicy;
+    this.poolOptions = poolOptions;
+    this.healthCheck = healthCheck;
   }
 
   /** Connect to the database. */
@@ -335,5 +350,80 @@ export abstract class DatabaseProvider {
   /** Expose logger instance for downstream components. */
   public get loggerRef(): SqlLogger | undefined {
     return this.logger;
+  }
+
+  /**
+   * Start periodic connection health checks if enabled.
+   * Providers should call this after establishing a pool.
+   */
+  protected startHealthChecks(runPing: () => Promise<number>): void {
+    if (!this.healthCheck?.enabled) return;
+    const minI = this.healthCheck.minIntervalMs ?? this.healthCheck.intervalMs ?? 60000;
+    const maxI = this.healthCheck.maxIntervalMs ?? Math.max(minI * 4, 60000);
+    const degradeN = this.healthCheck.degradeAfterFailures ?? 3;
+    const unhealthyN = this.healthCheck.unhealthyAfterFailures ?? 6;
+    const scheduleNext = (delay: number) => {
+      if (this.healthTimer) clearInterval(this.healthTimer);
+      this.healthTimer = setInterval(runOnce, delay);
+    };
+    const runOnce = async () => {
+      try {
+        const timeoutMs = this.healthCheck?.timeoutMs;
+        const started = Date.now();
+        const pingPromise = runPing();
+        const timed =
+          typeof timeoutMs === 'number' && timeoutMs > 0
+            ? Promise.race([
+                pingPromise,
+                new Promise<number>((_, rej) =>
+                  setTimeout(() => rej(new Error('health-timeout')), timeoutMs)
+                )
+              ])
+            : pingPromise;
+        const latency = await timed;
+        const elapsed = latency ?? Date.now() - started;
+        this.healthFailures = 0;
+        this.healthStatus = 'healthy';
+        this.logger?.connectionHealth?.({
+          healthy: true,
+          latencyMs: elapsed,
+          provider: this.providerName,
+          status: this.healthStatus
+        });
+        scheduleNext(minI);
+      } catch {
+        this.healthFailures += 1;
+        this.healthStatus =
+          this.healthFailures >= unhealthyN
+            ? 'unhealthy'
+            : this.healthFailures >= degradeN
+              ? 'degraded'
+              : 'healthy';
+        this.logger?.connectionHealth?.({
+          healthy: false,
+          provider: this.providerName,
+          status: this.healthStatus
+        });
+        // Exponential backoff within [minI, maxI]
+        const attempt = Math.min(this.healthFailures, 10);
+        const base = Math.min(minI * Math.pow(2, attempt - 1), maxI);
+        const jitter = Math.floor(Math.random() * Math.floor(base * 0.1));
+        const next = Math.min(base + jitter, maxI);
+        scheduleNext(next);
+      }
+    };
+    scheduleNext(minI);
+    // Run first check immediately (non-blocking)
+    void (async () => {
+      await runOnce();
+    })();
+  }
+
+  /** Stop health check scheduler when disconnecting. */
+  protected stopHealthChecks(): void {
+    if (this.healthTimer) {
+      clearInterval(this.healthTimer);
+      this.healthTimer = undefined;
+    }
   }
 }
