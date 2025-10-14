@@ -101,6 +101,27 @@ export interface ConnectionHealthCheckOptions {
   unhealthyAfterFailures?: number;
 }
 
+/** Circuit Breaker finite states. */
+export type CircuitState = 'closed' | 'open' | 'half-open';
+
+/**
+ * Circuit Breaker options.
+ * - failureThreshold: consecutive failures to open the circuit
+ * - openDurationMs: time to keep circuit open before allowing half-open probes
+ * - halfOpenMaxCalls: concurrent probes allowed in half-open state
+ * - countTransientOnly: when true, count only transient errors towards failures
+ */
+export interface CircuitBreakerOptions {
+  /** Enable/disable circuit breaker entirely (default: true). */
+  enabled?: boolean;
+  failureThreshold?: number;
+  openDurationMs?: number;
+  /** Maximum cap for open duration with backoff (default: 300000 ms). */
+  maxOpenDurationMs?: number;
+  halfOpenMaxCalls?: number;
+  countTransientOnly?: boolean;
+}
+
 /**
  * Options for controlling entity loading behavior.
  */
@@ -505,6 +526,8 @@ export interface SqlLogger {
   cache?(info: CacheInfo): void;
   /** Optional hook for connection health reports. */
   connectionHealth?(info: ConnectionHealthInfo): void;
+  /** Optional hook for circuit breaker state transitions. */
+  circuit?(info: CircuitEventInfo): void;
 }
 
 /** Factory for creating SqlLogger per provider to satisfy DIP. */
@@ -530,6 +553,15 @@ export interface RetryDecisionInfo {
   sql?: string;
   params?: readonly SqlParameter[];
   provider?: string;
+}
+
+/** Circuit breaker event for logger hooks. */
+export interface CircuitEventInfo {
+  state: CircuitState;
+  provider?: string;
+  failures?: number;
+  reason?: string;
+  halfOpenInFlight?: number;
 }
 
 /** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */
@@ -603,6 +635,14 @@ export class OptimisticConcurrencyError extends DatabaseError {
   constructor(message: string = 'Optimistic concurrency check failed', code?: string) {
     super(message, code);
     this.name = 'OptimisticConcurrencyError';
+  }
+}
+
+/** Thrown when a call is short-circuited due to an open circuit. */
+export class CircuitOpenError extends Error {
+  constructor(message: string = 'Circuit is open; call short-circuited') {
+    super(message);
+    this.name = 'CircuitOpenError';
   }
 }
 

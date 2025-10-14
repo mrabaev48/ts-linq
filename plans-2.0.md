@@ -630,17 +630,27 @@
   - Docs:
     - README: раздел по ENV и примеры конфигурации.
 
-- [ ] **Circuit Breaker Pattern**
+- [x] **Circuit Breaker Pattern** ✅
 
-  ```typescript
-  const circuitBreaker = new CircuitBreaker({
-    failureThreshold: 5,
-    timeout: 30000,
-    resetTimeout: 60000,
-    onOpen: () => logger.warn('Circuit breaker opened'),
-    onHalfOpen: () => logger.info('Circuit breaker half-open')
-  });
-  ```
+Реализовано:
+
+- Core:
+  - `CircuitBreakerOptions`: `enabled`, `failureThreshold`, `openDurationMs`, `maxOpenDurationMs`, `halfOpenMaxCalls`, `countTransientOnly`.
+  - Состояния: `closed` → `open` → `half-open` (short‑circuit в open; ограниченные пробы в half‑open).
+  - Экспоненциальный backoff длительности open до `maxOpenDurationMs`, сброс при успешной пробе.
+  - Интеграция с health‑check: авто‑open при `unhealthy`, авто‑close при `healthy`.
+  - API: `configureCircuit(...)`, `configureConnection({ pool, health })`, `forceOpen(reason, durationMs?)`, `manualReset(reason?)`, геттер `circuitStateLabel`.
+- DatabaseProvider: пред‑проверка брейкера в `executeWithRetry`, учёт неудач, отключение ретраев в half‑open.
+- SqlLogger: новый хук `circuit(info)` для событий состояний.
+- PrometheusSqlLogger: метрики
+  - `db_circuit_transitions_total{provider,from,to}`
+  - `db_circuit_open_total{provider,reason}`
+  - `db_circuit_state{provider}` (0|0.5|1)
+  - `db_circuit_half_open_inflight{provider}`
+  - `db_circuit_failures{provider}`
+- CLI: конфигурация через ENV `DB_CB_*` (`ENABLED`, `THRESHOLD`, `OPEN_MS`, `MAX_OPEN_MS`, `HALFOPEN_MAX_CALLS`, `COUNT_TRANSIENT_ONLY`).
+- Docs: README (ENV, метрики, PromQL, прод‑чек‑лист), Grafana дашборд `docs/grafana/ts-linq-db-dashboard.json` (импортируемый JSON).
+- Tests: юнит‑тесты поведения (открытие/half‑open/закрытие), конкурентные пробы `halfOpenMaxCalls`.
 
 - [ ] **Graceful Degradation**
 

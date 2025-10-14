@@ -6,8 +6,11 @@ import type {
   SoftDeleteOptions,
   SqlParameter,
   ConnectionPoolOptions,
-  ConnectionHealthCheckOptions
+  ConnectionHealthCheckOptions,
+  CircuitBreakerOptions,
+  CircuitState
 } from './types';
+import { CircuitOpenError } from './types';
 import type { SqlDialect } from './query/SqlDialect';
 
 /**
@@ -31,11 +34,19 @@ export abstract class DatabaseProvider {
   protected poolOptions?: ConnectionPoolOptions;
   /** Optional connection health-check scheduler options. */
   protected healthCheck?: ConnectionHealthCheckOptions;
+  /** Optional circuit breaker options. */
+  protected circuitOptions?: CircuitBreakerOptions;
   /** Health-check timer handle (if enabled). */
   private healthTimer?: ReturnType<typeof setInterval>;
   /** Current health status and failure counter for backoff. */
   private healthFailures: number = 0;
   private healthStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
+  /** Circuit breaker state. */
+  private circuitState: CircuitState = 'closed';
+  private circuitFailures: number = 0;
+  private circuitOpenedAt?: number;
+  private halfOpenInFlight: number = 0;
+  private circuitOpenBackoffExp: number = 0;
 
   /**
    * Create a provider with a given connection string.
@@ -48,7 +59,8 @@ export abstract class DatabaseProvider {
     softDelete?: SoftDeleteOptions,
     retryPolicy?: RetryPolicy,
     poolOptions?: ConnectionPoolOptions,
-    healthCheck?: ConnectionHealthCheckOptions
+    healthCheck?: ConnectionHealthCheckOptions,
+    circuitOptions?: CircuitBreakerOptions
   ) {
     this.connectionString = connectionString;
     this.logger = logger;
@@ -57,6 +69,7 @@ export abstract class DatabaseProvider {
     this.retryPolicy = retryPolicy;
     this.poolOptions = poolOptions;
     this.healthCheck = healthCheck;
+    this.circuitOptions = circuitOptions;
   }
 
   /** Connect to the database. */
@@ -173,6 +186,8 @@ export abstract class DatabaseProvider {
     sql: string,
     params: readonly SqlParameter[]
   ): Promise<T> {
+    // Circuit breaker pre-check (short-circuit before any logging/instrumentation)
+    this.preCheckCircuit();
     const maxAttempts = 3;
     const baseDelayMs = 50;
     const startedAt = Date.now();
@@ -185,8 +200,13 @@ export abstract class DatabaseProvider {
     this.lastExecuteStartedAt = startedAt;
     await this.beforeExecute(sql, params);
     let attempt = 0;
-    // Do not retry within an explicit transaction
-    const allowRetry = !this.inTransaction;
+    // Do not retry within an explicit transaction; also avoid retrying in half-open
+    const allowRetry = !this.inTransaction && this.circuitState === 'closed';
+    // Track half-open probe usage to enforce concurrency cap
+    let decrementHalfOpenOnExit = false;
+    if (this.circuitState === 'half-open') {
+      decrementHalfOpenOnExit = true;
+    }
     while (true) {
       try {
         const result = await fn();
@@ -204,6 +224,14 @@ export abstract class DatabaseProvider {
           provider: this.providerName
         });
         await this.afterExecute(sql, params, result);
+        // Success path: reset circuit if needed
+        if (this.circuitState === 'half-open') {
+          this.transitionCircuit('closed', 'probe succeeded');
+        }
+        this.circuitFailures = 0;
+        if (decrementHalfOpenOnExit) {
+          this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
+        }
         return result;
       } catch (error) {
         attempt++;
@@ -217,6 +245,27 @@ export abstract class DatabaseProvider {
           provider: this.providerName
         });
         const isTransient = this.isTransientError(error);
+        // Circuit breaker failure accounting
+        const countOnlyTransient = this.circuitOptions?.countTransientOnly ?? true;
+        const shouldCountFailure = !countOnlyTransient || isTransient;
+        if (shouldCountFailure) this.circuitFailures++;
+        // If in half-open, immediate open on first failure
+        if (this.circuitState === 'half-open') {
+          this.openCircuit('half-open probe failed');
+          if (decrementHalfOpenOnExit) {
+            this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
+          }
+          throw error;
+        }
+        // If in closed and threshold exceeded, open circuit
+        const threshold = Math.max(1, this.circuitOptions?.failureThreshold ?? 5);
+        if (this.circuitState === 'closed' && this.circuitFailures >= threshold) {
+          this.openCircuit('failure threshold reached');
+          if (decrementHalfOpenOnExit) {
+            this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
+          }
+          throw error;
+        }
         const should = this.retryPolicy
           ? (this.retryPolicy.shouldRetryEx?.({
               error,
@@ -228,6 +277,9 @@ export abstract class DatabaseProvider {
             }) ?? this.retryPolicy.shouldRetry(error, attempt, this.inTransaction))
           : isTransient;
         if (!allowRetry || !should || attempt >= maxAttempts) {
+          if (decrementHalfOpenOnExit) {
+            this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
+          }
           throw error;
         }
         const jitter = Math.floor(Math.random() * 25);
@@ -256,6 +308,63 @@ export abstract class DatabaseProvider {
       message.includes('too many connections') ||
       message.includes('econnreset')
     );
+  }
+  /** Circuit breaker: short-circuit if open or move to half-open if cooldown elapsed. */
+  private preCheckCircuit(): void {
+    const enabled = this.circuitOptions?.enabled ?? true;
+    if (!enabled) return;
+    if (this.circuitState === 'open') {
+      const now = Date.now();
+      const openSince = this.circuitOpenedAt ?? now;
+      const baseOpen = Math.max(1000, this.circuitOptions?.openDurationMs ?? 30000);
+      const cap = Math.max(baseOpen, this.circuitOptions?.maxOpenDurationMs ?? 300000);
+      const factor = Math.min(6, Math.max(0, this.circuitOpenBackoffExp));
+      const openDuration = Math.min(baseOpen * Math.pow(2, factor), cap);
+      if (now - openSince < openDuration) {
+        throw new CircuitOpenError();
+      }
+      // Cooldown elapsed → move to half-open
+      this.transitionCircuit('half-open', 'cooldown elapsed');
+      this.halfOpenInFlight = 0;
+    }
+    if (this.circuitState === 'half-open') {
+      const maxProbes = Math.max(1, this.circuitOptions?.halfOpenMaxCalls ?? 1);
+      if (this.halfOpenInFlight >= maxProbes) {
+        throw new CircuitOpenError('Half-open probes limit reached');
+      }
+      this.halfOpenInFlight += 1;
+    }
+  }
+  private openCircuit(reason: string): void {
+    this.circuitState = 'open';
+    this.circuitOpenedAt = Date.now();
+    this.circuitOpenBackoffExp = Math.min(6, this.circuitOpenBackoffExp + 1);
+    this.logger?.circuit?.({
+      state: 'open',
+      provider: this.providerName,
+      failures: this.circuitFailures,
+      reason,
+      halfOpenInFlight: this.halfOpenInFlight
+    });
+  }
+  private transitionCircuit(state: CircuitState, reason: string): void {
+    this.circuitState = state;
+    if (state === 'closed') {
+      this.circuitFailures = 0;
+      this.circuitOpenedAt = undefined;
+      this.halfOpenInFlight = 0;
+      this.circuitOpenBackoffExp = 0;
+    }
+    if (state === 'open') {
+      this.circuitOpenedAt = Date.now();
+    }
+    this.logger?.circuit?.({
+      state,
+      provider: this.providerName,
+      failures: this.circuitFailures,
+      reason,
+      halfOpenInFlight: this.halfOpenInFlight
+    });
   }
   /** Provider-specific implementation of non-query execution. */
   protected abstract doExecuteNonQuery(
@@ -338,6 +447,16 @@ export abstract class DatabaseProvider {
     return this.inTransaction;
   }
 
+  /** Current circuit breaker state (for diagnostics/tests). */
+  public get circuitStateLabel(): CircuitState {
+    return this.circuitState;
+  }
+
+  /** Update circuit breaker options at runtime. */
+  public configureCircuit(options: CircuitBreakerOptions): void {
+    this.circuitOptions = { ...this.circuitOptions, ...options };
+  }
+
   /** Soft delete configuration if enabled. */
   public get softDeleteOptions(): SoftDeleteOptions | undefined {
     return this.softDelete;
@@ -350,6 +469,15 @@ export abstract class DatabaseProvider {
   /** Expose logger instance for downstream components. */
   public get loggerRef(): SqlLogger | undefined {
     return this.logger;
+  }
+
+  /** Configure connection pool and health-check options at runtime. */
+  public configureConnection(options: {
+    pool?: ConnectionPoolOptions;
+    health?: ConnectionHealthCheckOptions;
+  }): void {
+    this.poolOptions = options.pool ?? this.poolOptions;
+    this.healthCheck = options.health ?? this.healthCheck;
   }
 
   /**
@@ -390,6 +518,10 @@ export abstract class DatabaseProvider {
           provider: this.providerName,
           status: this.healthStatus
         });
+        // If previously unhealthy opened circuit, close when back to healthy
+        if (this.circuitState !== 'closed') {
+          this.transitionCircuit('closed', 'health restored');
+        }
         scheduleNext(minI);
       } catch {
         this.healthFailures += 1;
@@ -404,6 +536,10 @@ export abstract class DatabaseProvider {
           provider: this.providerName,
           status: this.healthStatus
         });
+        // Auto-open circuit when unhealthy
+        if (this.healthStatus === 'unhealthy') {
+          this.openCircuit('health unhealthy');
+        }
         // Exponential backoff within [minI, maxI]
         const attempt = Math.min(this.healthFailures, 10);
         const base = Math.min(minI * Math.pow(2, attempt - 1), maxI);
@@ -425,5 +561,19 @@ export abstract class DatabaseProvider {
       clearInterval(this.healthTimer);
       this.healthTimer = undefined;
     }
+  }
+
+  /** Force-open the circuit for a specified duration (ms). */
+  public forceOpen(reason: string, durationMs?: number): void {
+    this.openCircuit(reason || 'manual open');
+    if (typeof durationMs === 'number' && durationMs > 0) {
+      this.circuitOpenedAt =
+        Date.now() - (this.circuitOptions?.openDurationMs ?? 30000) + durationMs;
+    }
+  }
+
+  /** Manually reset circuit to closed state. */
+  public manualReset(reason: string = 'manual reset'): void {
+    this.transitionCircuit('closed', reason);
   }
 }

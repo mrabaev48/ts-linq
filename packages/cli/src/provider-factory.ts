@@ -1,7 +1,8 @@
 import type {
   ConnectionHealthCheckOptions,
   ConnectionPoolOptions,
-  DatabaseProvider
+  DatabaseProvider,
+  CircuitBreakerOptions
 } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
 import { PostgresProvider } from '@ts-linq/postgres';
@@ -27,59 +28,54 @@ function isMs(kind: string): boolean {
 function createPg(): DatabaseProvider {
   const url = process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('POSTGRES_URL/DATABASE_URL is required for DB_PROVIDER=postgresql');
-  const { pool, health } = readPoolAndHealthFromEnv();
-  return new PostgresProvider(
-    url,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    pool,
-    health
-  ) as unknown as DatabaseProvider;
+  const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
+  const provider = new PostgresProvider(url) as unknown as DatabaseProvider;
+  if (pool || health) provider.configureConnection({ pool, health });
+  if (circuit) provider.configureCircuit(circuit);
+  return provider;
 }
 
 function createMy(): DatabaseProvider {
   const url = process.env.MYSQL_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('MYSQL_URL/DATABASE_URL is required for DB_PROVIDER=mysql');
-  const { pool, health } = readPoolAndHealthFromEnv();
-  return new MySqlProvider(
-    url,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    pool,
-    health
-  ) as unknown as DatabaseProvider;
+  const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
+  const provider = new MySqlProvider(url) as unknown as DatabaseProvider;
+  if (pool || health) provider.configureConnection({ pool, health });
+  if (circuit) provider.configureCircuit(circuit);
+  return provider;
 }
 
 function createMs(): DatabaseProvider {
   const url = process.env.MSSQL_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('MSSQL_URL/DATABASE_URL is required for DB_PROVIDER=mssql');
-  const { pool, health } = readPoolAndHealthFromEnv();
-  return new MssqlProvider(
-    url,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    pool,
-    health
-  ) as unknown as DatabaseProvider;
+  const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
+  const provider = new MssqlProvider(url) as unknown as DatabaseProvider;
+  if (pool || health) provider.configureConnection({ pool, health });
+  if (circuit) provider.configureCircuit(circuit);
+  return provider;
 }
 
 function createSqlite(): DatabaseProvider {
   const conn = process.env.SQLITE_URL || ':memory:';
-  return new SQLiteProvider(conn) as unknown as DatabaseProvider;
+  const provider = new SQLiteProvider(conn) as unknown as DatabaseProvider;
+  const { circuit } = readPoolHealthCircuitFromEnv();
+  if (circuit) provider.configureCircuit(circuit);
+  return provider;
 }
 
-function readPoolAndHealthFromEnv(): {
+function readPoolHealthCircuitFromEnv(): {
   pool?: ConnectionPoolOptions;
   health?: ConnectionHealthCheckOptions;
+  circuit?: CircuitBreakerOptions;
 } {
+  const pool = readPoolFromEnv();
+  const health = readHealthFromEnv();
+  const circuit = readCircuitFromEnv();
+  return { pool, health, circuit };
+}
+
+function readPoolFromEnv(): ConnectionPoolOptions | undefined {
   const pool: ConnectionPoolOptions = {};
-  const health: ConnectionHealthCheckOptions = {};
   if (process.env.DB_POOL_MIN) pool.min = Number(process.env.DB_POOL_MIN);
   if (process.env.DB_POOL_MAX) pool.max = Number(process.env.DB_POOL_MAX);
   if (process.env.DB_POOL_IDLE_MS) pool.idleTimeoutMs = Number(process.env.DB_POOL_IDLE_MS);
@@ -87,6 +83,11 @@ function readPoolAndHealthFromEnv(): {
     pool.acquireTimeoutMs = Number(process.env.DB_POOL_ACQUIRE_MS);
   if (process.env.DB_CONN_TIMEOUT_MS)
     pool.connectionTimeoutMs = Number(process.env.DB_CONN_TIMEOUT_MS);
+  return isEmpty(pool) ? undefined : pool;
+}
+
+function readHealthFromEnv(): ConnectionHealthCheckOptions | undefined {
+  const health: ConnectionHealthCheckOptions = {};
   if (process.env.DB_HEALTH_ENABLED) health.enabled = process.env.DB_HEALTH_ENABLED === 'true';
   if (process.env.DB_HEALTH_INTERVAL_MS)
     health.intervalMs = Number(process.env.DB_HEALTH_INTERVAL_MS);
@@ -100,9 +101,23 @@ function readPoolAndHealthFromEnv(): {
     health.degradeAfterFailures = Number(process.env.DB_HEALTH_DEGRADE_AFTER);
   if (process.env.DB_HEALTH_UNHEALTHY_AFTER)
     health.unhealthyAfterFailures = Number(process.env.DB_HEALTH_UNHEALTHY_AFTER);
-  return { pool: isEmpty(pool) ? undefined : pool, health: isEmpty(health) ? undefined : health };
+  return isEmpty(health) ? undefined : health;
 }
 
-function isEmpty(obj: Record<string, unknown>): boolean {
-  return Object.keys(obj).length === 0;
+function readCircuitFromEnv(): CircuitBreakerOptions | undefined {
+  const circuit: CircuitBreakerOptions = {};
+  if (process.env.DB_CB_ENABLED) circuit.enabled = process.env.DB_CB_ENABLED === 'true';
+  if (process.env.DB_CB_THRESHOLD) circuit.failureThreshold = Number(process.env.DB_CB_THRESHOLD);
+  if (process.env.DB_CB_OPEN_MS) circuit.openDurationMs = Number(process.env.DB_CB_OPEN_MS);
+  if (process.env.DB_CB_MAX_OPEN_MS)
+    circuit.maxOpenDurationMs = Number(process.env.DB_CB_MAX_OPEN_MS);
+  if (process.env.DB_CB_HALFOPEN_MAX_CALLS)
+    circuit.halfOpenMaxCalls = Number(process.env.DB_CB_HALFOPEN_MAX_CALLS);
+  if (process.env.DB_CB_COUNT_TRANSIENT_ONLY)
+    circuit.countTransientOnly = process.env.DB_CB_COUNT_TRANSIENT_ONLY === 'true';
+  return isEmpty(circuit) ? undefined : circuit;
+}
+
+function isEmpty(obj: object): boolean {
+  return Object.keys(obj as Record<string, unknown>).length === 0;
 }
