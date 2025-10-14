@@ -30,8 +30,17 @@ function createPg(): DatabaseProvider {
   const url = process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('POSTGRES_URL/DATABASE_URL is required for DB_PROVIDER=postgresql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  const provider = new PostgresProvider(url) as unknown as DatabaseProvider;
-  if (pool || health) provider.configureConnection({ pool, health });
+  // Конструкторы провайдеров поддерживают pool/health в конце аргументов
+  const provider =
+    (new PostgresProvider(
+      url,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      pool,
+      health
+    ) as unknown as DatabaseProvider);
   if (circuit) provider.configureCircuit(circuit);
   return provider;
 }
@@ -40,8 +49,16 @@ function createMy(): DatabaseProvider {
   const url = process.env.MYSQL_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('MYSQL_URL/DATABASE_URL is required for DB_PROVIDER=mysql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  const provider = new MySqlProvider(url) as unknown as DatabaseProvider;
-  if (pool || health) provider.configureConnection({ pool, health });
+  const provider =
+    (new MySqlProvider(
+      url,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      pool,
+      health
+    ) as unknown as DatabaseProvider);
   if (circuit) provider.configureCircuit(circuit);
   return provider;
 }
@@ -50,8 +67,16 @@ function createMs(): DatabaseProvider {
   const url = process.env.MSSQL_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('MSSQL_URL/DATABASE_URL is required for DB_PROVIDER=mssql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  const provider = new MssqlProvider(url) as unknown as DatabaseProvider;
-  if (pool || health) provider.configureConnection({ pool, health });
+  const provider =
+    (new MssqlProvider(
+      url,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      pool,
+      health
+    ) as unknown as DatabaseProvider);
   if (circuit) provider.configureCircuit(circuit);
   return provider;
 }
