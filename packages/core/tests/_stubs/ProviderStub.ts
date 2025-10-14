@@ -349,7 +349,7 @@ export class ProviderStub extends DatabaseProvider {
     const tableName = mFrom[1];
     let rows = (this.data.get(tableName) || []).slice();
     if (this.softDelete?.enabled && this.softDelete.column) {
-      // Всегда скрываем мягко удалённые строки для простоты юнит-тестов
+      // Always hide soft-deleted rows for unit-test simplicity
       rows = rows.filter((r) => !r[this.softDelete!.column]);
     }
 

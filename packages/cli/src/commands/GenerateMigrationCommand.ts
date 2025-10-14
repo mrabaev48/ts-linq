@@ -8,7 +8,7 @@ import { MigrationTemplateBuilder } from '../generators/MigrationTemplateBuilder
 
 export class GenerateMigrationCommand implements Command {
   public readonly name = 'generate:migration';
-  public readonly describe = 'Создаёт файл миграции с шаблоном';
+  public readonly describe = 'Creates a migration file from a template';
   public readonly aliases = ['generate migration'];
 
   public constructor(

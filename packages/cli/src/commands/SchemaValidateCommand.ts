@@ -15,7 +15,7 @@ import { NodeFs } from '../adapters/NodeFs';
 
 export class SchemaValidateCommand implements DbCommand {
   public readonly name = 'schema:validate';
-  public readonly describe = 'Проверяет, что БД соответствует snapshot';
+  public readonly describe = 'Validates that DB matches the snapshot';
   public readonly aliases = ['schema validate'];
 
   public constructor(

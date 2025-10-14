@@ -12,7 +12,7 @@ import { ArgReader } from '../services/ArgReader';
 
 export class GenerateEntitiesCommand implements DbCommand {
   public readonly name = 'generate:entities';
-  public readonly describe = 'Генерирует сущности для всех таблиц схемы';
+  public readonly describe = 'Generates entities for all tables of the schema';
   public readonly aliases = ['generate entities'];
 
   public constructor(

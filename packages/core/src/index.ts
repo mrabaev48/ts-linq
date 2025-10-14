@@ -13,6 +13,7 @@ export * from './decorators/Column';
 export * from './decorators/PrimaryKey';
 export * from './decorators/Relationships';
 export * from './decorators/ValidIf';
+export * from './decorators/CachePolicy';
 
 // Metadata
 export * from './metadata/MetadataStorage';
@@ -41,6 +42,8 @@ export * from './query/ast/Nodes';
 export * from './query/ast/SqlVisitor';
 export * from './query/spec/Specification';
 export * from './query/SqlFunctions';
+export * from './query/fallbacks/MemoryFallback';
+export * from './query/fallbacks/ReplicaFallback';
 
 // Base provider abstractions
 export * from './DatabaseProvider';

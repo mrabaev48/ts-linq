@@ -12,7 +12,7 @@ import { tryLoadConfig } from '../config';
 export class MigrationsRollbackCommand implements DbCommand {
   public readonly name = 'migration:rollback';
   public readonly describe =
-    'Откатить последние миграции (--steps=N) или до версии (--to=YYYYMMDDHHmmss)';
+    'Rollback last migrations (--steps=N) or to a version (--to=YYYYMMDDHHmmss)';
   public readonly aliases = ['migrations:rollback'];
 
   public constructor(

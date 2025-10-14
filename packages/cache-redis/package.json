@@ -1,0 +1,53 @@
+{
+  "name": "@ts-linq/cache-redis",
+  "version": "1.0.0",
+  "description": "Redis adapters for ts-linq caches (SqlCache, CountCache)",
+  "main": "./dist/index.js",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "gen:esm-entry": "node scripts/gen-esm-entry.cjs",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "orm",
+    "cache",
+    "redis",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ts-linq/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  },
+  "peerDependencies": {
+    "ioredis": ">=5.0.0",
+    "redis": ">=4.0.0",
+    "typescript": ">=4.9.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": { "optional": true },
+    "redis": { "optional": true }
+  }
+}
+
+

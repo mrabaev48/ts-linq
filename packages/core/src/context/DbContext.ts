@@ -106,14 +106,18 @@ export abstract class DbContext {
     );
     // Initialize optional L2 entity cache
     if (options.performance?.enableEntityCache) {
-      this._entityCache = new EntityCache(
-        options.performance.entityCacheSize ?? 10000,
-        this._provider.loggerRef,
-        this._provider.providerLabel
-      );
+      this._entityCache =
+        options.performance.entityCache ??
+        new EntityCache(
+          options.performance.entityCacheSize ?? 10000,
+          this._provider.loggerRef,
+          this._provider.providerLabel
+        );
     }
     // Store performance options for downstream consumers
     this._performanceOptions = options.performance;
+    // Apply configurable IN() chunk size into loader
+    this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize);
     this._loadingDefaults = options.loading || {};
 
     // Apply loading strategy from options or keep default
@@ -198,6 +202,8 @@ export abstract class DbContext {
       this.applyAudit(normalized);
       affectedRows += await this.processChange(normalized);
     }
+    // Smart invalidation after successful DML
+    this.invalidateCachesAfterSave(changes);
     this._changeTracker.acceptAllChanges();
     return affectedRows;
   }
@@ -230,6 +236,8 @@ export abstract class DbContext {
       (
         require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }
       ).Queryable.clearCountCache();
+      // Smart invalidation: clear L2 cache for entities that declare dependencies
+      this.invalidateCachesOnCommit();
       if (this._entityCache) {
         const { safeCacheSize } = require('metrics-safe') as {
           safeCacheSize: (
@@ -280,6 +288,171 @@ export abstract class DbContext {
       /* ignore */
     }
   }
+
+  /**
+   * Smart invalidation hook executed on successful commit.
+   * Current implementation clears entire L2 cache; later can be refined per-entity via metadata.
+   */
+  private invalidateCachesOnCommit(): void {
+    try {
+      if (this._entityCache) this._entityCache.clear();
+      // Future: inspect changeTracker changes and Reflect.getMetadata('orm:cachePolicy', entity)
+      // to perform targeted invalidation per-entity/table.
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /**
+   * Targeted cache invalidation after saveChanges.
+   * - Removes deleted entities from L2 by primary key
+   * - Clears L2 entirely if any dependent CachePolicy requires invalidation
+   * - Clears global count cache (best-effort)
+   */
+  private invalidateCachesAfterSave(
+    changes: Array<{ entity: Record<string, unknown>; entityClass: Function; state: string }>
+  ): void {
+    try {
+      let needFullL2Clear = false;
+      const changedNames = new Set<string>(changes.map((c) => c.entityClass.name));
+      // Dependency-based invalidation via CachePolicy metadata
+      try {
+        const entities = require('../metadata/MetadataStorage').MetadataStorage.getEntities();
+        for (const e of entities) {
+          const meta = (
+            Reflect as unknown as {
+              getOwnMetadata?: (k: string, t: Function) => unknown;
+            }
+          ).getOwnMetadata?.('orm:cachePolicy', e.target as Function) as
+            | { invalidateOn?: ReadonlyArray<string> }
+            | undefined;
+          if (meta?.invalidateOn && meta.invalidateOn.some((n) => changedNames.has(n))) {
+            needFullL2Clear = true;
+            break;
+          }
+        }
+      } catch {}
+
+      // Remove deleted entities by id; for updates, update is already reflected via command hook
+      if (this._entityCache) {
+        for (const c of changes) {
+          if (c.state === 'deleted') {
+            const pk = this.getPrimaryKey(c.entityClass);
+            if (pk !== undefined) {
+              this._entityCache.remove(c.entityClass, c.entity[pk]);
+            }
+          }
+        }
+        if (needFullL2Clear) this._entityCache.clear();
+      }
+      // Targeted SQL cache invalidation by entity name
+      try {
+        const qb = require('../query/QueryBuilder') as {
+          QueryBuilder: { invalidateForEntity: (name: string) => number };
+        };
+        for (const name of changedNames) qb.QueryBuilder.invalidateForEntity(name);
+      } catch {
+        /* ignore */
+      }
+      // Targeted Count cache invalidation by entity name prefix
+      try {
+        const extCount: { invalidateBy?: (m: (k: string) => boolean) => number } | undefined =
+          this._performanceOptions?.countCache;
+        if (extCount?.invalidateBy) {
+          for (const name of changedNames) {
+            extCount.invalidateBy((k) => k.startsWith(name + '|count|'));
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** Simple cache utilities (warm-up etc.). */
+  public readonly cache = {
+    warmUp: async (
+      options: {
+        queries?: ReadonlyArray<() => Promise<unknown> | unknown>;
+      } = {}
+    ): Promise<void> => {
+      const tasks = (options.queries || []).map(async (fn) => {
+        try {
+          await fn();
+        } catch {
+          /* ignore individual warm-up errors */
+        }
+      });
+      await Promise.all(tasks);
+    },
+    invalidateByEntity: (entityNames: ReadonlyArray<string>): void => {
+      try {
+        const qb = require('../query/QueryBuilder') as {
+          QueryBuilder: { invalidateForEntity: (name: string) => number };
+        };
+        for (const name of entityNames) qb.QueryBuilder.invalidateForEntity(name);
+      } catch {
+        /* ignore */
+      }
+      try {
+        const extCount: { invalidateBy?: (m: (k: string) => boolean) => number } | undefined =
+          this._performanceOptions?.countCache;
+        if (extCount?.invalidateBy) {
+          for (const name of entityNames) {
+            extCount.invalidateBy((k) => k.includes(`|count|`) && k.includes(`${name}|`));
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    reportMetrics: (): void => {
+      try {
+        const qb = require('../query/QueryBuilder') as {
+          QueryBuilder: new (...args: any[]) => any;
+        };
+        const sqlCache = (this as unknown as { _sqlBuilder?: { getCacheMetrics?: () => any } })
+          ._sqlBuilder;
+        const sqlMetrics = sqlCache?.getCacheMetrics?.();
+        const countCache = this._performanceOptions?.countCache;
+        const countMetrics = countCache?.getMetrics?.();
+        const logger = this._provider.loggerRef as unknown as {
+          cacheSize?: (p: {
+            cache: 'sqlGen' | 'count' | 'entityL2';
+            size: number;
+            provider?: string;
+          }) => void;
+          cache?: (p: {
+            cache: 'sqlGen' | 'count' | 'entityL2';
+            hit: boolean;
+            provider?: string;
+          }) => void;
+        };
+        if (sqlMetrics)
+          logger?.cacheSize?.({
+            cache: 'sqlGen',
+            size: sqlMetrics.currentSize ?? -1,
+            provider: this._provider.providerLabel
+          });
+        if (countMetrics)
+          logger?.cacheSize?.({
+            cache: 'count',
+            size: countMetrics.currentSize ?? -1,
+            provider: this._provider.providerLabel
+          });
+        if (this._entityCache)
+          logger?.cacheSize?.({
+            cache: 'entityL2',
+            size: this._entityCache.size?.() ?? -1,
+            provider: this._provider.providerLabel
+          });
+      } catch {
+        /* ignore */
+      }
+    }
+  } as const;
 
   /**
    * Dispose of the database connection

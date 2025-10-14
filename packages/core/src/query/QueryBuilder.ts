@@ -16,23 +16,36 @@ export class QueryBuilder {
   private _dialect: SqlDialect;
   private _logger?: SqlLogger;
   private _providerName?: string;
+  private _namespace?: string;
   private _cache: SqlCache;
   /**
    * Create a QueryBuilder that delegates SQL generation to a dialect.
    * @param dialect SqlDialect implementation (default: SQLiteDialect)
    */
-  constructor(dialect: SqlDialect, logger?: SqlLogger, providerName?: string, cache?: SqlCache) {
+  constructor(
+    dialect: SqlDialect,
+    logger?: SqlLogger,
+    providerName?: string,
+    cache?: SqlCache,
+    namespace?: string
+  ) {
     this._dialect = dialect;
     this._logger = logger;
     this._providerName = providerName;
     this._cache = cache ?? QueryBuilder._defaultCache;
+    this._namespace = namespace;
   }
   /** Generate SQL from QueryOptions with enhanced caching. */
   public generateSql<T>(
     entityClass: new () => T,
     options: QueryOptions
   ): { query: string; parameters: readonly SqlParameter[] } {
-    const key = QueryBuilder.buildCacheKey(entityClass, options);
+    const key = QueryBuilder.buildCacheKey(
+      entityClass,
+      options,
+      this._providerName,
+      this._namespace
+    );
     const hit = this.getFromCache(key);
     if (hit) {
       this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
@@ -134,8 +147,15 @@ export class QueryBuilder {
   }
 
   /** Create a stable, lightweight cache key. */
-  private static buildCacheKey<T>(entityClass: new () => T, options: QueryOptions): string {
+  private static buildCacheKey<T>(
+    entityClass: new () => T,
+    options: QueryOptions,
+    providerName?: string,
+    namespace?: string
+  ): string {
     const parts: string[] = [];
+    if (namespace) parts.push(namespace, '|');
+    if (providerName) parts.push(providerName, '|');
     parts.push(entityClass.name);
     parts.push('|s:', options.select ? options.select.join(',') : '');
     if (options.where?.length) parts.push('|w:', QueryBuilder.serializeWhere(options));
@@ -185,5 +205,18 @@ export class QueryBuilder {
 
   private getFromCache(key: string): SqlCacheEntry | undefined {
     return this._cache.get(key);
+  }
+
+  /**
+   * Targeted invalidation helper: remove cached SQL entries for the given entity name.
+   */
+  public static invalidateForEntity(entityName: string): number {
+    const matcher = (k: string) => k.startsWith(entityName + '|');
+    const cache = QueryBuilder._defaultCache as unknown as {
+      invalidateBy?: (m: (k: string) => boolean) => number;
+    };
+    return cache.invalidateBy
+      ? cache.invalidateBy(matcher)
+      : (QueryBuilder._defaultCache.clear(), 0);
   }
 }

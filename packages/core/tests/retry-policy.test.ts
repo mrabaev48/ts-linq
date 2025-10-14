@@ -48,7 +48,7 @@ describe('Provider retry policy', () => {
     const p = new FlakyProvider(1);
     await p.connect();
     await p.beginTransaction();
-    // В транзакции doExecuteNonQuery отдаст 1 без ретраев — поэтому симулируем ошибку через spy
+    // In a transaction doExecuteNonQuery returns 1 without retries — simulate error via spy
     const pobj = p as unknown as { doExecuteNonQuery: (...args: unknown[]) => unknown };
     const spy = jest.spyOn(pobj, 'doExecuteNonQuery').mockImplementation(() => {
       const err: Error & { message: string } = new Error('deadlock');

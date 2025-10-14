@@ -22,6 +22,8 @@ export class DbSet<T extends object> {
   private _entityCache: EntityCacheLike | undefined;
   private _performance: PerformanceOptions | undefined;
   private _globalFilters: GlobalFilter[] | undefined;
+  // Default chunk size; can be overridden via PerformanceOptions.inClauseChunkSize
+  private static readonly DEFAULT_IN_CHUNK_SIZE = 1000;
 
   constructor(
     entityClass: new () => T,
@@ -128,8 +130,54 @@ export class DbSet<T extends object> {
     }
     const pk = metadata.primaryKeys[0];
     const column = metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk;
-    // Delegate to provider for efficient IN query
-    return await this._provider.findWhereIn(this._entityClass, column, ids as unknown as unknown[]);
+    // Cross-query optimization: deduplicate and chunk large IN lists
+    const uniqueIds = Array.from(new Set(ids as unknown as unknown[]));
+    if (uniqueIds.length === 0) return [];
+    const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
+    if (uniqueIds.length <= chunkSize) {
+      return await this._provider.findWhereIn(
+        this._entityClass,
+        column,
+        uniqueIds as unknown as unknown[]
+      );
+    }
+    const aggregated: T[] = [];
+    const total = uniqueIds.length;
+    let chunks = 0;
+    for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+      const chunk = uniqueIds.slice(i, i + chunkSize);
+      const part = await this._provider.findWhereIn(
+        this._entityClass,
+        column,
+        chunk as unknown as unknown[]
+      );
+      aggregated.push(...part);
+      chunks++;
+    }
+    try {
+      (
+        this._provider.loggerRef as unknown as {
+          crossQuery?: (p: {
+            op: 'IN-chunk';
+            chunks: number;
+            size: number;
+            entity: string;
+            column: string;
+            provider?: string;
+          }) => void;
+        }
+      )?.crossQuery?.({
+        op: 'IN-chunk',
+        chunks,
+        size: total,
+        entity: (this._entityClass as unknown as { name?: string }).name || 'Unknown',
+        column,
+        provider: this._provider.providerLabel
+      });
+    } catch {
+      /* ignore */
+    }
+    return aggregated;
   }
 
   /**
@@ -146,11 +194,54 @@ export class DbSet<T extends object> {
       ? metadata.columns.find((c) => c.propertyName === property || c.columnName === property)
           ?.columnName || String(property)
       : String(property);
-    return await this._provider.findWhereIn(
-      this._entityClass as unknown as new () => T,
-      columnName,
-      values as unknown as unknown[]
-    );
+    // Cross-query optimization: deduplicate inputs and split into chunks
+    const uniqueValues = Array.from(new Set(values as unknown as unknown[]));
+    if (uniqueValues.length === 0) return [];
+    const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
+    if (uniqueValues.length <= chunkSize) {
+      return await this._provider.findWhereIn(
+        this._entityClass as unknown as new () => T,
+        columnName,
+        uniqueValues as unknown as unknown[]
+      );
+    }
+    const aggregated: T[] = [];
+    const total = uniqueValues.length;
+    let chunks = 0;
+    for (let i = 0; i < uniqueValues.length; i += chunkSize) {
+      const chunk = uniqueValues.slice(i, i + chunkSize);
+      const part = await this._provider.findWhereIn(
+        this._entityClass as unknown as new () => T,
+        columnName,
+        chunk as unknown as unknown[]
+      );
+      aggregated.push(...part);
+      chunks++;
+    }
+    try {
+      (
+        this._provider.loggerRef as unknown as {
+          crossQuery?: (p: {
+            op: 'IN-chunk';
+            chunks: number;
+            size: number;
+            entity: string;
+            column: string;
+            provider?: string;
+          }) => void;
+        }
+      )?.crossQuery?.({
+        op: 'IN-chunk',
+        chunks,
+        size: total,
+        entity: (this._entityClass as unknown as { name?: string }).name || 'Unknown',
+        column: columnName,
+        provider: this._provider.providerLabel
+      });
+    } catch {
+      /* ignore */
+    }
+    return aggregated;
   }
 
   /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */

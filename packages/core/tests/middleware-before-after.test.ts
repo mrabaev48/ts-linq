@@ -43,7 +43,7 @@ describe('Middleware beforeExecute/afterExecute', () => {
     };
     const ctx = new MWCtx2([mw]);
     await ctx.ensureCreated();
-    // откроем и закроем транзакцию для генерации traceId
+    // open and close a transaction to generate traceId
     await ctx.beginTransaction();
     await ctx.commitTransaction();
     const a = new MWB();
