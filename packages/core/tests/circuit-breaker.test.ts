@@ -11,12 +11,14 @@ class FlakyProvider extends ProviderStub {
     // tune circuit options for fast tests
     (this as unknown as { circuitOptions: unknown }).circuitOptions = {
       failureThreshold: 2,
-      openDurationMs: openMs,
+      openDurationMs: 1000,
+      maxOpenDurationMs: 1000,
       halfOpenMaxCalls: 1,
       countTransientOnly: true
     } as {
       failureThreshold?: number;
       openDurationMs?: number;
+      maxOpenDurationMs?: number;
       halfOpenMaxCalls?: number;
       countTransientOnly?: boolean;
     };
@@ -52,7 +54,7 @@ describe('Circuit Breaker', () => {
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeTruthy();
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeInstanceOf(CircuitOpenError);
     // wait for cooldown to allow half-open probe
-    await new Promise((r) => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, 1100));
     // remainingFails is 0 now → probe succeeds → circuit closes
     await expect(p.executeNonQuery('UPDATE t SET a=1')).resolves.toBe(0);
     // next calls should be allowed (closed)
