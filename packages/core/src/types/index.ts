@@ -67,6 +67,40 @@ export interface DbContextOptions {
   };
 }
 
+/** Generic connection pool options (provider-agnostic). */
+export interface ConnectionPoolOptions {
+  /** Minimum number of pooled connections to keep. */
+  min?: number;
+  /** Maximum number of pooled connections. */
+  max?: number;
+  /** Idle connection timeout in milliseconds. */
+  idleTimeoutMs?: number;
+  /** Timeout for acquiring a connection from the pool in milliseconds. */
+  acquireTimeoutMs?: number;
+  /** Initial connection timeout in milliseconds (provider specific). */
+  connectionTimeoutMs?: number;
+}
+
+/** Connection health check scheduler options. */
+export interface ConnectionHealthCheckOptions {
+  /** Enable periodic health checks (lightweight ping). */
+  enabled?: boolean;
+  /** Interval between checks, in milliseconds. Default: 60000. */
+  intervalMs?: number;
+  /** Max allowed time for a single ping before considering unhealthy. */
+  timeoutMs?: number;
+  /** Optional SQL used for ping; defaults to provider-specific 'SELECT 1'. */
+  testQuery?: string;
+  /** Optional backoff: min interval when healthy (ms). */
+  minIntervalMs?: number;
+  /** Optional backoff: max interval when degraded/unhealthy (ms). */
+  maxIntervalMs?: number;
+  /** Failures to mark as degraded. Default: 3. */
+  degradeAfterFailures?: number;
+  /** Failures to mark as unhealthy (opens breaker). Default: 6. */
+  unhealthyAfterFailures?: number;
+}
+
 /**
  * Options for controlling entity loading behavior.
  */
@@ -447,6 +481,15 @@ export interface CacheInfo {
   provider?: string;
 }
 
+export interface ConnectionHealthInfo {
+  healthy: boolean;
+  latencyMs?: number;
+  provider?: string;
+  status?: ConnectionHealthStatus;
+}
+
+export type ConnectionHealthStatus = 'healthy' | 'degraded' | 'unhealthy';
+
 export interface SqlLogger {
   /** Called right before a query is executed. */
   queryStart?(info: QueryStartInfo): void;
@@ -460,6 +503,8 @@ export interface SqlLogger {
   transactionEnd?(info: TransactionInfo): void;
   /** Cache metric hook: records hits/misses for specific caches. */
   cache?(info: CacheInfo): void;
+  /** Optional hook for connection health reports. */
+  connectionHealth?(info: ConnectionHealthInfo): void;
 }
 
 /** Factory for creating SqlLogger per provider to satisfy DIP. */
