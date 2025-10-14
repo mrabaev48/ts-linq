@@ -15,7 +15,9 @@ class Item {
 }
 
 class Ctx extends DbContext {
-  public items = this.set(Item);
+  public get items() {
+    return this.set(Item);
+  }
   constructor() {
     super({ provider: new ProviderStub(':mem:'), performance: { inClauseChunkSize: 500 } } as any);
   }

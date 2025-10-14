@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { ProviderStub } from './_stubs/ProviderStub';
-import { CircuitOpenError } from '../../src/types';
+import { CircuitOpenError } from '../src/types';
 
 class FlakyProviderConcurrent extends ProviderStub {
   private remainingFails: number;

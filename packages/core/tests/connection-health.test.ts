@@ -83,9 +83,9 @@ describe('DatabaseProvider health-check scheduler', () => {
       return 1;
     });
 
-    jest.advanceTimersByTime(120);
-    // Let the interval callback finish
-    await Promise.resolve();
+    jest.advanceTimersByTime(200);
+    // Дадим промисам стечь полностью
+    await new Promise((r) => setImmediate(r));
     expect(called).toBeGreaterThan(0);
     expect(events.length).toBeGreaterThan(0);
     expect(events[0].healthy).toBe(true);
@@ -108,12 +108,12 @@ describe('DatabaseProvider health-check scheduler', () => {
     // Never resolves -> should timeout
     p.start(() => new Promise<number>(() => {}));
 
-    jest.advanceTimersByTime(20);
-    await Promise.resolve();
+    jest.advanceTimersByTime(25);
+    await new Promise((r) => setImmediate(r));
     expect(events.some((e) => e.healthy === false)).toBe(true);
     // Next run with backoff
-    jest.advanceTimersByTime(50);
-    await Promise.resolve();
+    jest.advanceTimersByTime(60);
+    await new Promise((r) => setImmediate(r));
     expect(events.filter((e) => e.healthy === false).length).toBeGreaterThanOrEqual(2);
     p.stop();
   });
