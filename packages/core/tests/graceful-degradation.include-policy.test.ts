@@ -5,19 +5,22 @@ import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { QueryFallback, FallbackRequest } from '../src/types';
 
-@Entity()
-class User {
-  @PrimaryKey({ autoIncrement: true }) id!: number;
-  @Column() name!: string;
-  @OneToMany(() => Post, { foreignKey: 'userId' }) posts!: Post[];
-}
+function defineEntities() {
+  @Entity()
+  class User {
+    @PrimaryKey({ autoIncrement: true }) id!: number;
+    @Column() name!: string;
+    @OneToMany(() => Post, { foreignKey: 'userId' }) posts!: Post[];
+  }
 
-@Entity()
-class Post {
-  @PrimaryKey({ autoIncrement: true }) id!: number;
-  @Column() title!: string;
-  @Column() userId!: number;
-  @ManyToOne(() => User, { foreignKey: 'userId' }) user!: User;
+  @Entity()
+  class Post {
+    @PrimaryKey({ autoIncrement: true }) id!: number;
+    @Column() title!: string;
+    @Column() userId!: number;
+    @ManyToOne(() => User, { foreignKey: 'userId' }) user!: User;
+  }
+  return { User, Post };
 }
 
 describe('Graceful Degradation - include policy', () => {
@@ -26,6 +29,7 @@ describe('Graceful Degradation - include policy', () => {
   });
 
   it("allowIncludesOnFallback='none' does not attempt include", async () => {
+    const { User, Post } = defineEntities();
     const provider = new ProviderStub(':memory:');
     // Only fallback will be used; provider rows not required
     const fallbackRows = [Object.assign(new User(), { id: 1, name: 'U' })];
@@ -49,6 +53,7 @@ describe('Graceful Degradation - include policy', () => {
   });
 
   it("allowIncludesOnFallback='attempt' tries to include and ignores errors", async () => {
+    const { User, Post } = defineEntities();
     const provider = new ProviderStub(':memory:');
     const fallbackRows = [Object.assign(new User(), { id: 1, name: 'U' })];
     const fb: QueryFallback<User> = {

@@ -5,10 +5,13 @@ import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { QueryFallback, FallbackRequest } from '../src/types';
 
-@Entity()
-class E {
-  @PrimaryKey({ autoIncrement: true }) id!: number;
-  @Column() name!: string;
+function defineE() {
+  @Entity()
+  class E {
+    @PrimaryKey({ autoIncrement: true }) id!: number;
+    @Column() name!: string;
+  }
+  return E;
 }
 
 describe('ReplicaFallback.fetchCount', () => {
@@ -17,6 +20,7 @@ describe('ReplicaFallback.fetchCount', () => {
   });
 
   it('uses server-side fetchCount when available', async () => {
+    const E = defineE();
     const provider = new (class P extends ProviderStub {
       protected async doExecuteQuery<T>(): Promise<T[]> {
         throw new Error('connection timeout');
@@ -45,6 +49,7 @@ describe('ReplicaFallback.fetchCount', () => {
   });
 
   it('falls back to SELECT length when fetchCount not provided', async () => {
+    const E = defineE();
     const provider = new (class P extends ProviderStub {
       protected async doExecuteQuery<T>(): Promise<T[]> {
         throw new Error('connection timeout');
