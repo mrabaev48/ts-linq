@@ -130,6 +130,7 @@
 - [x] MSSQL: UPDLOCK/HOLDLOCK конфликт, квазиснапшот через HOLDLOCK ✅
 - [x] Round‑trip миграции (diff → apply → нет diff) для PG/MySQL/MSSQL/SQLite ✅
 - [x] Маппинг ошибок UNIQUE/FK (PG/MySQL/MSSQL) ✅
+ - [x] CLI smoke для `metrics:serve` ✅
 
 #### Структура тестов и конфигурация (добавлено)
 
@@ -176,6 +177,17 @@
   ts-linq schema diff              # Показать diff между моделями и БД
   ts-linq schema validate          # Validate schema consistency
   ts-linq schema export --format=sql   # Export current schema
+  ```
+
+- [x] **Metrics Commands** ✅
+
+  ```bash
+  ts-linq metrics:serve [port] [/path]
+  # Примеры:
+  ts-linq metrics:serve           # эпемерный порт, путь /metrics
+  ts-linq metrics:serve 9464      # порт 9464, путь /metrics
+  ts-linq metrics:serve /m        # эпемерный порт, путь /m
+  ts-linq metrics:serve 9464 /m   # порт 9464, путь /m
   ```
 
 - [ ] **Configuration Management** ✅
@@ -228,7 +240,7 @@
 #### Покрытие тестами CLI (новое)
 
 - [x] Проект CLI добавлен в Jest `projects` ✅
-- [x] Покрыты команды: `schema:export/diff/validate/apply`, `seed` ✅
+- [x] Покрыты команды: `schema:export/diff/validate/apply`, `seed`, `metrics:serve` (smoke) ✅
 - [x] Покрыты генераторы: `EntityTemplateBuilder`, `MigrationTemplateBuilder` ✅
 - [x] Покрыты сервисы и хелперы: `ArgReader`, `utils`, `schema-inspect` ✅
 - [x] Покрыты инфраструктура: `CommandRegistry`, `ConsoleLogger`, `NodeFs` ✅
@@ -567,6 +579,7 @@
   - Таргетинг: `SqlCache.invalidateBy`, `CountCache.invalidateBy`, `QueryBuilder.invalidateForEntity(name)`.
   - Batch‑API: `ctx.cache.invalidateByEntity([...])`.
   - Покрыто unit‑тестами: транзакционные сценарии, зависимости, таргетинг.
+  - Централизованный internal‑логгер для «поглощённых» ошибок: `logInternalError(context, error)`; включается `TSL_INTERNAL_DEBUG=1`.
 
 - [x] **Cache Warming Strategies** ✅
 
@@ -692,17 +705,20 @@
 
 **Задачи:**
 
-- [ ] **Enhanced Metrics Collection**
+- [x] **Enhanced Metrics Collection** ✅
 
   ```typescript
   // Детальные метрики производительности
-  interface QueryMetrics {
-    sql: string;
-    duration: number;
-    rowsAffected: number;
-    cacheHit: boolean;
-    executionPlan?: any;
-  }
+  // Реализовано в рамках Prometheus/OpenTelemetry логгеров и безопасных вызовов MetricsSafe.
+  // Новые метрики (Prometheus):
+  // - db_query_duration_ms (Histogram)
+  // - db_transactions_total (Counter)
+  // - db_cache_requests_total / db_cache_hits_total / db_cache_evictions_total (Counters)
+  // - db_cache_size (Gauge) для sqlGen/count/entityL2
+  // - db_connection_health / db_connection_latency_ms / db_connection_status_transitions_total (Gauge/Histogram/Counter)
+  // - db_circuit_* (circuit breaker: state/open/transitions/failures)
+  // - db_fallback_* (attempts/success/throttled) и db_hedged_wins_total
+  // CLI: `metrics:serve` поднимает HTTP эндпоинт `/metrics`.
   ```
 
 - [ ] **Query Performance Analysis**
