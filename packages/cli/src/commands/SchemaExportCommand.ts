@@ -8,7 +8,7 @@ import { NodeFs } from '../adapters/NodeFs';
 
 export class SchemaExportCommand implements Command {
   public readonly name = 'schema:export';
-  public readonly describe = 'Экспортирует snapshot схемы из метаданных в файл';
+  public readonly describe = 'Exports schema snapshot from metadata to a file';
   public readonly aliases = ['schema export'];
 
   public constructor(

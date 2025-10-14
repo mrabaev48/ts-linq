@@ -9,7 +9,7 @@ import { tryLoadConfig } from '../config';
 export class MigrationsValidateCommand implements Command {
   public readonly name = 'migration:validate';
   public readonly describe =
-    'Валидирует миграции: формат имен, дубликаты, порядок, наличие up/down';
+    'Validates migrations: name format, duplicates, order, presence of up/down';
   public readonly aliases = ['migrations:validate'];
 
   public constructor(

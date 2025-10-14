@@ -79,7 +79,7 @@ describe('DatabaseProvider health-check scheduler', () => {
       return 1;
     });
 
-    // подождём немного реального времени для выполнения runOnce() и первого интервала
+    // Wait a bit of real time to allow runOnce() and the first interval to execute
     await new Promise((r) => setTimeout(r, 120));
     expect(called).toBeGreaterThan(0);
     expect(events.length).toBeGreaterThan(0);

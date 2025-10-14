@@ -31,14 +31,14 @@ d('[integration][postgres] locks and concurrency', () => {
         lockedId as unknown as never
       ]);
 
-      // NOWAIT должно упасть
+      // NOWAIT should fail
       await expect(
         p2.executeQuery(`SELECT id FROM "items_lock" WHERE id = $1 FOR UPDATE NOWAIT`, [
           lockedId as unknown as never
         ])
       ).rejects.toBeInstanceOf(DatabaseError);
 
-      // SKIP LOCKED должен вернуть другие строки
+      // SKIP LOCKED should return other rows
       const rest = await p2.executeQuery<{ id: number }>(
         `SELECT id FROM "items_lock" FOR UPDATE SKIP LOCKED`
       );

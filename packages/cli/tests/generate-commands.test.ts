@@ -38,7 +38,7 @@ describe('generate commands', () => {
   it('generate:entity creates file', async () => {
     const fs = new MemFs();
     const cmd = new GenerateEntityCommand(new ConsoleLogger() as any, fs as any);
-    // Команда ожидает имя в argv[2]
+    // Command expects name in argv[2]
     await cmd.runDb(new ProviderStub() as unknown as DatabaseProvider, [
       'generate:entity',
       '(ignored)',

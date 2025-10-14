@@ -8,7 +8,7 @@ import { NodeFs } from '../adapters/NodeFs';
 
 export class SeedCommand implements DbCommand {
   public readonly name = 'seed';
-  public readonly describe = 'Выполняет SQL из файла для начального наполнения';
+  public readonly describe = 'Executes SQL from a file to seed initial data';
   public readonly aliases = ['db:seed'];
 
   public constructor(

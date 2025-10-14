@@ -50,12 +50,12 @@ describe('Parameterization (SQL-injection safety) property-based', () => {
             ]
           } as any;
           const built = qb.generateSql(Z as any, opts);
-          // Проверяем, что используются плейсхолдеры нужного типа и их ровно 2
+          // Ensure placeholders of correct type are used and exactly two of them
           const q = built.query;
           const expectedParams = 2;
-          // В запросе не должно быть одинарных кавычек (никаких инлайновых литералов)
+          // No single quotes in SQL (no inlined literals)
           expect(q).not.toContain("'");
-          // И фактически переданные параметры сохранены отдельно
+          // And actual parameters are provided separately
           expect((built.parameters as unknown[]).length).toBe(expectedParams);
         }
       }),

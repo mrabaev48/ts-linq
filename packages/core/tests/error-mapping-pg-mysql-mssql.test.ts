@@ -4,7 +4,7 @@ import { PostgresProvider } from '@ts-linq/postgres';
 import { MySqlProvider } from '@ts-linq/mysql';
 import { MssqlProvider } from '@ts-linq/mssql';
 
-// Эти тесты используют фейки-провайдеры (без реальных клиентов), чтобы проверить, что уникальные ограничения пробрасываются как UniqueConstraintError
+// These tests use fake providers (no real clients) to verify unique constraints map to UniqueConstraintError
 
 class PgFake extends PostgresProvider {
   public async connect() {

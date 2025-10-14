@@ -39,7 +39,7 @@ describe('ReplicaFallback.fetchCount', () => {
 
     // Ensure metadata is registered for E
     await provider.connect();
-    // ProviderStub.createTable ожидает EntityMetadata, поэтому возьмём из стораджа
+    // ProviderStub.createTable expects EntityMetadata; fetch it from the storage
     const meta = MetadataStorage.getEntity(E)!;
     await provider.createTable(meta);
 

@@ -15,7 +15,7 @@ import { NodeFs } from '../adapters/NodeFs';
 
 export class SchemaDiffCommand implements DbCommand {
   public readonly name = 'schema:diff';
-  public readonly describe = 'Печатает SQL отличий между snapshot и фактической схемой';
+  public readonly describe = 'Prints SQL differences between snapshot and actual schema';
   public readonly aliases = ['schema diff'];
 
   public constructor(

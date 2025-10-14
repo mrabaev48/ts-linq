@@ -2,9 +2,9 @@ import 'reflect-metadata';
 import fc from 'fast-check';
 
 /**
- * Property-based тест: keyset-пагинация должна возвращать строго возрастающие ключи
- * и не пропускать/не дублировать элементы при последовательных вызовах.
- * Здесь проверяем чистую модель (не БД): упорядоченный массив и симуляция keyset.
+ * Property-based test: keyset pagination should return strictly increasing keys
+ * and not skip/duplicate items between sequential calls.
+ * Here we validate a pure model (no DB): ordered array + keyset simulation.
  */
 describe('Property-based: keyset pagination correctness', () => {
   test('monotonic keyset yields contiguous, non-duplicated chunks', () => {
@@ -31,7 +31,7 @@ describe('Property-based: keyset pagination correctness', () => {
             after = page[page.length - 1];
           }
 
-          // seen — это ровно префикс последовательности unique
+          // seen is exactly a prefix of the unique sequence
           for (let k = 0; k < seen.length; k++) expect(seen[k]).toBe(unique[k]);
           return true;
         }

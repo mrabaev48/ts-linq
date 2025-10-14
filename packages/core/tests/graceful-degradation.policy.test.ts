@@ -16,7 +16,7 @@ function defineEntity() {
 
 class FailingProvider extends ProviderStub {
   protected async doExecuteQuery<T>(): Promise<T[]> {
-    // Simулируем деградируемую ошибку соединения
+    // Simulate a degradable connection error
     throw new Error('connection timeout');
   }
 }

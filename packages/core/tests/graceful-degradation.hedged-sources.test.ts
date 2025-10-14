@@ -40,7 +40,7 @@ describe('Hedged sources filtering', () => {
       }
     };
 
-    // Разрешаем только 'replica' в гонке — должен победить fastReplica
+    // Allow only 'replica' in the race — fastReplica should win
     await provider.connect();
     const meta = MetadataStorage.getEntity(A)!;
     await provider.createTable(meta);

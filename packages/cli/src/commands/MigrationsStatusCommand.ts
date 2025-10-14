@@ -10,7 +10,7 @@ import { NodeFs } from '../adapters/NodeFs';
 
 export class MigrationsStatusCommand implements DbCommand {
   public readonly name = 'migration:status';
-  public readonly describe = 'Показывает статус применённых/ожидающих миграций';
+  public readonly describe = 'Shows status of applied/pending migrations';
   public readonly aliases = ['migrations:status'];
 
   public constructor(

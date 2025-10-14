@@ -7,7 +7,7 @@ describe('ChangeValidationService', () => {
   class E {}
 
   beforeEach(() => {
-    // Сбрасываем метаданные между тестами
+    // Reset metadata between tests
     (MetadataStorage as unknown as { getInstance: () => MetadataStorage }).getInstance().clear();
   });
 
@@ -151,7 +151,7 @@ describe('ChangeValidationService', () => {
       nullable: true
     } as any);
 
-    // Добавляем «правило» в metadata
+    // Add a "rule" to metadata
     const rules = [
       {
         propertyName: 'name',
