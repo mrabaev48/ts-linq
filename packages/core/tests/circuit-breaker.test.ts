@@ -46,13 +46,13 @@ describe('Circuit Breaker', () => {
   });
 
   test('moves to half-open after cooldown and closes on successful probe', async () => {
-    const p = new FlakyProvider(2, 30);
+    const p = new FlakyProvider(2, 50);
     // open the circuit
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeTruthy();
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeTruthy();
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeInstanceOf(CircuitOpenError);
     // wait for cooldown to allow half-open probe
-    await new Promise((r) => setTimeout(r, 80));
+    await new Promise((r) => setTimeout(r, 120));
     // remainingFails is 0 now → probe succeeds → circuit closes
     await expect(p.executeNonQuery('UPDATE t SET a=1')).resolves.toBe(0);
     // next calls should be allowed (closed)
