@@ -950,6 +950,31 @@ db_connection_degraded
 sum by (provider, from, to) (rate(db_connection_status_transitions_total[5m]))
 ```
 
+CLI: запуск эндпоинта метрик
+
+```bash
+# Установите prom-client в вашем приложении (опционально для сбора метрик)
+npm i prom-client --save
+
+# Запустить встроенный HTTP-сервер метрик (по умолчанию порт 0 и путь /metrics)
+npx ts-linq metrics:serve --port 9000 --path /metrics
+
+# Или просто указать порт позиционным аргументом
+npx ts-linq metrics:serve 9000
+```
+
+- Если `prom-client` не установлен, экспонирование будет работать, но вернёт заглушку `# prom-client is not installed`.
+- Экземпляры логгера `PrometheusSqlLogger` автоматически начнут публиковать метрики, если `prom-client` доступен в рантайме.
+- Собираемые метрики включают:
+  - db_query_total, db_query_duration_ms_bucket, db_error_total, db_retry_total
+  - db_active_transactions (Gauge)
+  - db_cache_hits_total, db_cache_misses_total, db_cache_size, db_cache_evictions_total
+  - db_count_cache_ttl_hits_total, db_count_cache_hard_hits_total
+  - db_connection_health, db_connection_latency_ms_bucket, db_connection_degraded, db_connection_status_transitions_total
+  - db_circuit_state, db_circuit_open_total, db_circuit_transitions_total, db_circuit_half_open_inflight, db_circuit_failures
+  - db_fallback_attempts_total, db_fallback_success_total, db_fallback_failures_total, db_fallback_throttled_total
+  - db_hedged_wins_total
+
 Dashboard hints:
 
 - Overview: query rate, error rate, p50/p95 latency (by provider), active transactions.

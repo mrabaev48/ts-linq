@@ -6,7 +6,7 @@ export declare class SchemaValidateCommand implements DbCommand {
     private readonly logger;
     private readonly fsAdapter;
     readonly name = "schema:validate";
-    readonly describe = "\u041F\u0440\u043E\u0432\u0435\u0440\u044F\u0435\u0442, \u0447\u0442\u043E \u0411\u0414 \u0441\u043E\u043E\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0443\u0435\u0442 snapshot";
+    readonly describe = "Validates that DB matches the snapshot";
     readonly aliases: string[];
     constructor(logger?: Logger, fsAdapter?: FileSystem);
     runDb(provider: DatabaseProvider, argv: string[]): Promise<void>;

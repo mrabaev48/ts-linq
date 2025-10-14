@@ -56,7 +56,10 @@ describe('ReplicaFallback.fetchCount', () => {
       }
     })(':memory:');
 
-    const rows = [Object.assign(new E(), { id: 1, name: 'a' }), Object.assign(new E(), { id: 2, name: 'b' })];
+    const rows = [
+      Object.assign(new E(), { id: 1, name: 'a' }),
+      Object.assign(new E(), { id: 2, name: 'b' })
+    ];
     const fb: QueryFallback<E> = {
       label: 'replica',
       async fetch(_req: FallbackRequest<E>) {
@@ -73,5 +76,3 @@ describe('ReplicaFallback.fetchCount', () => {
     expect(n).toBe(2);
   });
 });
-
-

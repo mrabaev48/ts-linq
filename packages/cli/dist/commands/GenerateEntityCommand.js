@@ -47,7 +47,7 @@ class GenerateEntityCommand {
         this.fsAdapter = fsAdapter;
         this.template = template;
         this.name = 'generate:entity';
-        this.describe = 'Генерирует сущность из имени или из таблицы';
+        this.describe = 'Generates an entity from a name or from a table';
         this.aliases = ['generate entity'];
     }
     async runDb(provider, argv) {

@@ -44,7 +44,7 @@ class MigrationsStatusCommand {
         this.logger = logger;
         this.fsAdapter = fsAdapter;
         this.name = 'migration:status';
-        this.describe = 'Показывает статус применённых/ожидающих миграций';
+        this.describe = 'Shows status of applied/pending migrations';
         this.aliases = ['migrations:status'];
     }
     async runDb(provider, _argv) {

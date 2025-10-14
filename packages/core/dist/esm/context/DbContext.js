@@ -45,6 +45,72 @@ export class DbContext {
         this._loadingDefaults = {};
         /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
         this._validationRulesCache = new WeakMap();
+        /** Simple cache utilities (warm-up etc.). */
+        this.cache = {
+            warmUp: async (options = {}) => {
+                const tasks = (options.queries || []).map(async (fn) => {
+                    try {
+                        await fn();
+                    }
+                    catch {
+                        /* ignore individual warm-up errors */
+                    }
+                });
+                await Promise.all(tasks);
+            },
+            invalidateByEntity: (entityNames) => {
+                try {
+                    const qb = require('../query/QueryBuilder');
+                    for (const name of entityNames)
+                        qb.QueryBuilder.invalidateForEntity(name);
+                }
+                catch {
+                    /* ignore */
+                }
+                try {
+                    const extCount = this._performanceOptions?.countCache;
+                    if (extCount?.invalidateBy) {
+                        for (const name of entityNames) {
+                            extCount.invalidateBy((k) => k.includes(`|count|`) && k.includes(`${name}|`));
+                        }
+                    }
+                }
+                catch {
+                    /* ignore */
+                }
+            },
+            reportMetrics: () => {
+                try {
+                    const qb = require('../query/QueryBuilder');
+                    const sqlCache = this._sqlBuilder;
+                    const sqlMetrics = sqlCache?.getCacheMetrics?.();
+                    const countCache = this._performanceOptions?.countCache;
+                    const countMetrics = countCache?.getMetrics?.();
+                    const logger = this._provider.loggerRef;
+                    if (sqlMetrics)
+                        logger?.cacheSize?.({
+                            cache: 'sqlGen',
+                            size: sqlMetrics.currentSize ?? -1,
+                            provider: this._provider.providerLabel
+                        });
+                    if (countMetrics)
+                        logger?.cacheSize?.({
+                            cache: 'count',
+                            size: countMetrics.currentSize ?? -1,
+                            provider: this._provider.providerLabel
+                        });
+                    if (this._entityCache)
+                        logger?.cacheSize?.({
+                            cache: 'entityL2',
+                            size: this._entityCache.size?.() ?? -1,
+                            provider: this._provider.providerLabel
+                        });
+                }
+                catch {
+                    /* ignore */
+                }
+            }
+        };
         // Initialize database provider from options
         this._provider = options.provider;
         this._softDelete = options.softDelete;
@@ -73,6 +139,8 @@ export class DbContext {
         }
         // Store performance options for downstream consumers
         this._performanceOptions = options.performance;
+        // Apply configurable IN() chunk size into loader
+        this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize);
         this._loadingDefaults = options.loading || {};
         // Apply loading strategy from options or keep default
         if (this._loadingDefaults.strategy) {
@@ -146,6 +214,13 @@ export class DbContext {
             this.applyAudit(normalized);
             affectedRows += await this.processChange(normalized);
         }
+        // Smart invalidation after successful DML
+        const normalizedForInvalidation = normalizedForValidation.map((c) => ({
+            entity: c.entity,
+            entityClass: c.entityClass,
+            state: c.state
+        }));
+        this.invalidateCachesAfterSave(normalizedForInvalidation);
         this._changeTracker.acceptAllChanges();
         return affectedRows;
     }
@@ -174,6 +249,8 @@ export class DbContext {
         // This is a coarse-grained approach since count cache is global
         try {
             require('../query/Queryable').Queryable.clearCountCache();
+            // Smart invalidation: clear L2 cache for entities that declare dependencies
+            this.invalidateCachesOnCommit();
             if (this._entityCache) {
                 const { safeCacheSize } = require('metrics-safe');
                 safeCacheSize(this._provider.loggerRef, {
@@ -209,6 +286,82 @@ export class DbContext {
         }
         try {
             require('../query/Queryable').Queryable.clearCountCache();
+        }
+        catch {
+            /* ignore */
+        }
+    }
+    /**
+     * Smart invalidation hook executed on successful commit.
+     * Current implementation clears entire L2 cache; later can be refined per-entity via metadata.
+     */
+    invalidateCachesOnCommit() {
+        try {
+            if (this._entityCache)
+                this._entityCache.clear();
+            // Future: inspect changeTracker changes and Reflect.getMetadata('orm:cachePolicy', entity)
+            // to perform targeted invalidation per-entity/table.
+        }
+        catch {
+            /* ignore */
+        }
+    }
+    /**
+     * Targeted cache invalidation after saveChanges.
+     * - Removes deleted entities from L2 by primary key
+     * - Clears L2 entirely if any dependent CachePolicy requires invalidation
+     * - Clears global count cache (best-effort)
+     */
+    invalidateCachesAfterSave(changes) {
+        try {
+            let needFullL2Clear = false;
+            const changedNames = new Set(changes.map((c) => c.entityClass.name));
+            // Dependency-based invalidation via CachePolicy metadata
+            try {
+                const entities = require('../metadata/MetadataStorage').MetadataStorage.getEntities();
+                for (const e of entities) {
+                    const meta = Reflect.getOwnMetadata?.('orm:cachePolicy', e.target);
+                    if (meta?.invalidateOn && meta.invalidateOn.some((n) => changedNames.has(n))) {
+                        needFullL2Clear = true;
+                        break;
+                    }
+                }
+            }
+            catch { }
+            // Remove deleted entities by id; for updates, update is already reflected via command hook
+            if (this._entityCache) {
+                for (const c of changes) {
+                    if (c.state === 'deleted') {
+                        const pk = this.getPrimaryKey(c.entityClass);
+                        if (pk !== undefined) {
+                            this._entityCache.remove(c.entityClass, c.entity[pk]);
+                        }
+                    }
+                }
+                if (needFullL2Clear)
+                    this._entityCache.clear();
+            }
+            // Targeted SQL cache invalidation by entity name
+            try {
+                const qb = require('../query/QueryBuilder');
+                for (const name of changedNames)
+                    qb.QueryBuilder.invalidateForEntity(name);
+            }
+            catch {
+                /* ignore */
+            }
+            // Targeted Count cache invalidation by entity name prefix
+            try {
+                const extCount = this._performanceOptions?.countCache;
+                if (extCount?.invalidateBy) {
+                    for (const name of changedNames) {
+                        extCount.invalidateBy((k) => k.startsWith(name + '|count|'));
+                    }
+                }
+            }
+            catch {
+                /* ignore */
+            }
         }
         catch {
             /* ignore */

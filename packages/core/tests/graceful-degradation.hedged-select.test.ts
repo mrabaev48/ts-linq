@@ -90,5 +90,3 @@ describe('Graceful Degradation - hedged select', () => {
     expect(rows.map((r) => r.name)).toEqual(['P1', 'P2']);
   });
 });
-
-

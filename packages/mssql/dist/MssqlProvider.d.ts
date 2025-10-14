@@ -1,4 +1,4 @@
-import type { EntityMetadata, SqlLogger, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlDialect } from '@ts-linq/core';
+import type { EntityMetadata, SqlLogger, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlDialect, ConnectionPoolOptions, ConnectionHealthCheckOptions } from '@ts-linq/core';
 import { DatabaseProvider } from '@ts-linq/core';
 /**
  * Microsoft SQL Server provider based on the `mssql` package.
@@ -40,7 +40,7 @@ export declare class MssqlProvider extends DatabaseProvider {
     private tx;
     private ddl;
     /** Create provider with MSSQL connection string. */
-    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[], softDelete?: SoftDeleteOptions, retryPolicy?: RetryPolicy);
+    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[], softDelete?: SoftDeleteOptions, retryPolicy?: RetryPolicy, poolOptions?: ConnectionPoolOptions, healthCheck?: ConnectionHealthCheckOptions);
     /** Open a connection pool to MSSQL server. */
     connect(): Promise<void>;
     /** Close transaction (if any) and dispose the pool. */

@@ -1,0 +1,1 @@
+{"version":3,"file":"CachePolicy.d.ts","sourceRoot":"","sources":["../../../src/decorators/CachePolicy.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,kBAAkB;IACjC,8EAA8E;IAC9E,GAAG,CAAC,EAAE,MAAM,CAAC;IACb,6EAA6E;IAC7E,YAAY,CAAC,EAAE,aAAa,CAAC,MAAM,CAAC,CAAC;CACtC;AAED;;;GAGG;AACH,wBAAgB,WAAW,CAAC,OAAO,EAAE,kBAAkB,GAAG,cAAc,CAUvE"}

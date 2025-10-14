@@ -13,12 +13,19 @@ export interface MemjsClientLike {
 export interface MemcachedSqlCacheOptions {
     ttlSeconds?: number;
     keyPrefix?: string;
+    shadowMaxSize?: number;
+    shadowTtlMs?: number;
+    hashKeys?: boolean;
 }
 export declare class MemcachedSqlCacheAdapter implements SqlCache {
     private readonly client;
     private readonly ttlSeconds?;
     private readonly keyPrefix;
+    private readonly shadowMaxSize;
+    private readonly shadowTtlMs?;
+    private readonly hashKeys;
     private readonly shadow;
+    private _metrics;
     constructor(client: MemjsClientLike, options?: MemcachedSqlCacheOptions);
     private k;
     private decode;
@@ -26,5 +33,16 @@ export declare class MemcachedSqlCacheAdapter implements SqlCache {
     set(key: string, value: SqlCacheEntry): void;
     clear(): void;
     size(): number;
+    invalidateBy(matcher: (key: string) => boolean): number;
+    getMetrics(): {
+        currentSize: number;
+        totalRequests?: number;
+        hits?: number;
+        misses?: number;
+        evictions?: number;
+        invalidations?: number;
+    };
+    private ensureCapacity;
+    private h;
 }
 //# sourceMappingURL=MemcachedSqlCacheAdapter.d.ts.map

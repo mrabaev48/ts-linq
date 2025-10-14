@@ -1,4 +1,5 @@
 import type { SqlCache, SqlCacheEntry } from '@ts-linq/core';
+import { logInternalError } from '@ts-linq/core';
 
 export interface RedisClientLike {
   get(key: string): Promise<string | null> | string | null;
@@ -69,8 +70,8 @@ export class RedisSqlCacheAdapter implements SqlCache {
           if (msg.t === 'del' && msg.k) {
             this.shadow.delete(msg.k);
           }
-        } catch {
-          /* ignore malformed */
+        } catch (e) {
+          logInternalError('RedisSqlCacheAdapter.subscriber.message', e);
         }
       });
     }
@@ -111,9 +112,7 @@ export class RedisSqlCacheAdapter implements SqlCache {
           await this.client.set(this.k(key), payload);
         }
       } catch (e) {
-        // best-effort logging to not fail prod path
-        // eslint-disable-next-line no-console
-        console.warn('[RedisSqlCacheAdapter] write-through failed', { key: this.k(key) });
+        logInternalError('RedisSqlCacheAdapter.writeThrough', e);
       }
     })();
   }
@@ -140,8 +139,7 @@ export class RedisSqlCacheAdapter implements SqlCache {
           try {
             await this.client.del(this.k(k));
           } catch (e) {
-            // eslint-disable-next-line no-console
-            console.warn('[RedisSqlCacheAdapter] delete failed', { key: this.k(k) });
+            logInternalError('RedisSqlCacheAdapter.invalidate.delete', e);
           }
         })();
         if (this.pubSubChannel && this.publisher) {
@@ -161,8 +159,8 @@ export class RedisSqlCacheAdapter implements SqlCache {
       void (async () => {
         try {
           await this.client.del(this.k(first));
-        } catch {
-          /* ignore */
+        } catch (e) {
+          logInternalError('RedisSqlCacheAdapter.ensureCapacity.delete', e);
         }
       })();
     }

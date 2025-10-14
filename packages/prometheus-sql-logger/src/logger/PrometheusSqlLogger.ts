@@ -329,12 +329,17 @@ export class PrometheusSqlLogger implements SqlLogger {
     cache: 'sqlGen' | 'entityL2' | 'count';
     hit: boolean;
     provider?: string;
+    ttl?: boolean;
   }): void {
     if (!this.enabled || !this.client) return;
     const provider = info.provider || 'unknown';
     try {
       if (info.hit) this.cacheHits?.labels({ cache: info.cache, provider }).inc(1);
       else this.cacheMisses?.labels({ cache: info.cache, provider }).inc(1);
+      if (info.cache === 'count') {
+        if (info.hit && info.ttl === true) this.countCacheTtlHits?.labels({ provider }).inc(1);
+        if (info.hit && info.ttl === false) this.countCacheHardHits?.labels({ provider }).inc(1);
+      }
     } catch {}
   }
 
@@ -357,6 +362,19 @@ export class PrometheusSqlLogger implements SqlLogger {
     try {
       this.cacheEvictions
         .labels({ cache: info.cache, provider: info.provider || 'unknown' })
+        .inc(1);
+    } catch {}
+  }
+
+  public hedgedWin?(info: { provider?: string; operation: string; fallback: string }): void {
+    if (!this.enabled || !this.client || !this.hedgedWins) return;
+    try {
+      this.hedgedWins
+        .labels({
+          provider: info.provider || 'unknown',
+          operation: info.operation,
+          fallback: info.fallback
+        })
         .inc(1);
     } catch {}
   }

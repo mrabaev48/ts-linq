@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OptimisticConcurrencyError = exports.ValidationError = exports.ForeignKeyConstraintError = exports.UniqueConstraintError = exports.DatabaseError = exports.err = exports.ok = exports.JoinType = exports.LoadingStrategy = exports.EntityState = void 0;
+exports.CircuitOpenError = exports.OptimisticConcurrencyError = exports.ValidationError = exports.ForeignKeyConstraintError = exports.UniqueConstraintError = exports.DatabaseError = exports.err = exports.ok = exports.JoinType = exports.LoadingStrategy = exports.EntityState = void 0;
 exports.unbrandId = unbrandId;
 exports.brandId = brandId;
 exports.isBrandedId = isBrandedId;
@@ -83,6 +83,14 @@ class OptimisticConcurrencyError extends DatabaseError {
     }
 }
 exports.OptimisticConcurrencyError = OptimisticConcurrencyError;
+/** Thrown when a call is short-circuited due to an open circuit. */
+class CircuitOpenError extends Error {
+    constructor(message = 'Circuit is open; call short-circuited') {
+        super(message);
+        this.name = 'CircuitOpenError';
+    }
+}
+exports.CircuitOpenError = CircuitOpenError;
 /**
  * Extract the underlying value from a branded type.
  * Useful when interfacing with external APIs that don't use branded types.
