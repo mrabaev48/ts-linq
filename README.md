@@ -1456,3 +1456,70 @@ sum(increase(db_retry_total[5m])) > 100
 # 5) Деградация health-check'а
 sum by (provider)(db_connection_degraded{provider!=""}) == 1
 ```
+
+## Graceful Degradation (Fallback, Hedged, Throttle)
+
+Ключевые понятия:
+- Fallback: чтение из альтернативного источника (реплика/память) при ошибках соединения/таймаутах.
+- Hedged: «гонка» — через короткий delay запускается копия запроса к реплике; берётся победитель.
+- Throttle: ограничение частоты fallback, чтобы не перегружать реплики/кэши.
+
+### Быстрый старт
+
+```ts
+import { AppDbContext } from './app/DbContext';
+import { createProviderFromEnv, readFallbackPolicyFromEnv } from '@ts-linq/cli/src/provider-factory';
+
+const provider = createProviderFromEnv();
+const fallbackPolicy = readFallbackPolicyFromEnv();
+
+const ctx = new AppDbContext({
+  provider,
+  performance: { fallbackPolicy }
+});
+```
+
+### ENV
+
+```dotenv
+DB_FALLBACK_ENABLED=true
+DB_FALLBACK_ALLOW_OPS=select,count
+DB_FALLBACK_SOURCES=replica,memory
+# Throttle
+DB_FALLBACK_THROTTLE_MIN_MS=50
+DB_FALLBACK_THROTTLE_MAX_PER_MIN=300
+DB_FALLBACK_THROTTLE_JITTER=0.2
+# Hedged
+DB_FALLBACK_HEDGED_ENABLED=true
+DB_FALLBACK_HEDGED_DELAY_MS=10
+DB_FALLBACK_HEDGED_SOURCES=replica
+# Include на fallback
+DB_FALLBACK_INCLUDES=attempt   # none | attempt
+```
+
+### Метрики и PromQL
+
+Метрики:
+- db_fallback_attempts_total{provider,fallback}
+- db_fallback_success_total{provider,fallback}
+- db_fallback_throttled_total{provider}
+- db_hedged_wins_total{provider,operation,fallback}
+
+Примеры PromQL:
+
+```promql
+# Доля fallback среди запросов
+sum by (provider)(rate(db_fallback_attempts_total[5m])) / sum by (provider)(rate(db_query_total[5m]))
+
+# Успешность fallback
+sum by (provider)(rate(db_fallback_success_total[5m])) / sum by (provider)(rate(db_fallback_attempts_total[5m]))
+
+# Throttled‑ratio
+sum by (provider)(rate(db_fallback_throttled_total[5m]))
+
+# Hedged wins
+sum by (provider,fallback)(rate(db_hedged_wins_total[5m]))
+
+# p95 длительности
+histogram_quantile(0.95, sum by (le,provider)(rate(db_query_duration_ms_bucket[5m])))
+```

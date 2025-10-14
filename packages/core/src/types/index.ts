@@ -455,6 +455,8 @@ export interface PerformanceOptions {
   cacheNamespace?: string;
   /** Max size for IN() чанка при батч‑оптимизациях (по умолчанию 1000). */
   inClauseChunkSize?: number;
+  /** Optional fallback policy for graceful degradation. */
+  fallbackPolicy?: FallbackPolicy;
 }
 
 /**
@@ -528,6 +530,8 @@ export interface SqlLogger {
   connectionHealth?(info: ConnectionHealthInfo): void;
   /** Optional hook for circuit breaker state transitions. */
   circuit?(info: CircuitEventInfo): void;
+  /** Optional hook for graceful degradation fallback attempts/results. */
+  fallback?(info: FallbackInfo): void;
 }
 
 /** Factory for creating SqlLogger per provider to satisfy DIP. */
@@ -562,6 +566,100 @@ export interface CircuitEventInfo {
   failures?: number;
   reason?: string;
   halfOpenInFlight?: number;
+}
+
+/** Information about a fallback attempt for logging/metrics. */
+export interface FallbackInfo {
+  /** Logical name of primary provider that failed. */
+  provider?: string;
+  /** Label of the fallback source (e.g., replica, memory). */
+  fallback: string;
+  /** True when this record represents an attempt; false may be used for summaries. */
+  attempted: boolean;
+  /** Whether the fallback succeeded. Present only after attempt. */
+  succeeded?: boolean;
+  /** Optional error captured when attempt failed. */
+  error?: Error;
+  /** When true, indicates fallback was skipped due to throttling. */
+  throttled?: boolean;
+  /** True when data is potentially stale (e.g., from replica). */
+  isStale?: boolean;
+  /** Optional timestamp (ms since epoch) when data snapshot is valid (as-of). */
+  asOf?: number;
+  /** Optional explicit source label for metrics/tracing. */
+  source?: string;
+}
+
+/** Request passed to a fallback source to resolve data for a failed query. */
+export interface FallbackRequest<T> {
+  /** Entity constructor for the query. */
+  entity: new () => T;
+  /** SQL text that was intended for the primary provider. */
+  sql: string;
+  /** Positional SQL parameters. */
+  params: readonly SqlParameter[];
+}
+
+/** Custom fallback source contract for graceful degradation. */
+export interface QueryFallback<T> {
+  /** Human-readable label for metrics (e.g., 'replica', 'memory'). */
+  readonly label: string;
+  /**
+   * Return alternative data when the primary provider fails. Return null to skip (try next fallback).
+   * Implementations must be side-effect free and read-only.
+   */
+  fetch(request: FallbackRequest<T>): Promise<ReadonlyArray<T> | null> | ReadonlyArray<T> | null;
+  /** Optional server-side count for performance; if not provided, client will length(). */
+  fetchCount?(request: FallbackRequest<T>): Promise<number | null> | number | null;
+}
+
+/** What operations are eligible for fallback. */
+export type FallbackOperation = 'select' | 'count' | 'first' | 'single' | 'any' | 'aggregate';
+
+/** Source selector names for policy. */
+export type FallbackSource = 'replica' | 'memory' | string;
+
+/** Rate limiting/throttling options for fallback usage. */
+export interface FallbackThrottleOptions {
+  /** Max fallback attempts per process per minute. */
+  maxPerMinute?: number;
+  /** Min spacing between fallbacks (ms). */
+  minIntervalMs?: number;
+  /** Optional jitter (0..1) applied to minInterval to reduce sync herd. */
+  jitterRatio?: number;
+}
+
+/** Read freshness constraints for replica fallbacks. */
+export interface FreshnessConstraints {
+  /** Maximum allowed replication lag in milliseconds. */
+  maxReplicationLagMs?: number;
+  /** Require read-only connection semantics. */
+  requireReadOnly?: boolean;
+}
+
+/** Policy controlling when and how graceful degradation is applied. */
+export interface FallbackPolicy {
+  /** Enable or disable fallback globally (default: true). */
+  enabled?: boolean;
+  /** Allowed operations for fallback. Default: ['select','count','first','single','any','aggregate']. */
+  allowOps?: ReadonlyArray<FallbackOperation>;
+  /** Preferred source order (labels). Default: declared order in Queryable.fallbackTo(). */
+  sources?: ReadonlyArray<FallbackSource>;
+  /** Rate limiting options to avoid thundering herds. */
+  throttle?: FallbackThrottleOptions;
+  /** Freshness constraints primarily for replicas. */
+  freshness?: FreshnessConstraints;
+  /** Hedged-requests configuration (race primary vs fallback after short delay). */
+  hedged?: {
+    /** Enable hedged requests for eligible operations (e.g., 'select', 'count'). */
+    enabled?: boolean;
+    /** Delay before starting fallback race (ms). Typical range 5..50ms. */
+    delayMs?: number;
+    /** Optional subset/priority of sources to use for hedging. */
+    sources?: ReadonlyArray<FallbackSource>;
+  };
+  /** Whether to allow executing include() population on fallback results. */
+  allowIncludesOnFallback?: 'none' | 'attempt';
 }
 
 /** Middleware hooks for cross-cutting concerns (tracing, metrics, etc.). */
