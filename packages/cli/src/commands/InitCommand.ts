@@ -4,7 +4,7 @@ import type { Command } from './Command';
 
 export class InitCommand implements Command {
   public readonly name = 'init';
-  public readonly describe = 'Инициализация проекта со скелетом ts-linq';
+  public readonly describe = 'Initialize a project with ts-linq skeleton';
   public run(argv: string[]): Promise<void> {
     const destArg = argv[1];
     const dest = path.resolve(process.cwd(), destArg || '.');

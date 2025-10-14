@@ -6,7 +6,9 @@ import type {
   OrmMiddleware,
   SoftDeleteOptions,
   SqlParameter,
-  SqlDialect
+  SqlDialect,
+  ConnectionPoolOptions,
+  ConnectionHealthCheckOptions
 } from '@ts-linq/core';
 import {
   DatabaseProvider,
@@ -62,20 +64,42 @@ export class MySqlProvider extends DatabaseProvider {
     logger?: SqlLogger,
     middlewares?: OrmMiddleware[],
     softDelete?: SoftDeleteOptions,
-    retryPolicy?: RetryPolicy
+    retryPolicy?: RetryPolicy,
+    poolOptions?: ConnectionPoolOptions,
+    healthCheck?: ConnectionHealthCheckOptions
   ) {
-    super(connectionString, logger, middlewares, softDelete, retryPolicy);
+    super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
     this.providerName = 'mysql';
   }
 
   public async connect(): Promise<void> {
     if (this.isConnected) return;
     const mysql = safeRequireMysql2();
-    this.pool = mysql.createPool(this.connectionString);
+    const opts = this.poolOptions || {};
+    // Map generic pool options to mysql2 pool options when available
+    const mysqlConfig: Record<string, unknown> = { uri: this.connectionString };
+    if (typeof opts.max === 'number') mysqlConfig.connectionLimit = opts.max;
+    if (typeof opts.acquireTimeoutMs === 'number')
+      mysqlConfig.acquireTimeout = opts.acquireTimeoutMs;
+    if (typeof opts.connectionTimeoutMs === 'number')
+      mysqlConfig.connectTimeout = opts.connectionTimeoutMs;
+    // Note: mysql2 uses waitForConnections/queueLimit; idle timeout is managed by server or 'idleTimeout' in some forks
+    this.pool = (mysql as unknown as { createPool: (config: unknown) => MySqlPoolLike }).createPool(
+      mysqlConfig
+    );
     this.isConnected = true;
+    // Health checks
+    this.startHealthChecks(async () => {
+      const started = Date.now();
+      const pool = this.pool as MySqlPoolLike;
+      const sql = this.healthCheck?.testQuery || 'SELECT 1';
+      await pool.query(sql);
+      return Date.now() - started;
+    });
   }
 
   public async disconnect(): Promise<void> {
+    this.stopHealthChecks();
     if (this.pool) {
       await this.pool.end();
       this.pool = null;

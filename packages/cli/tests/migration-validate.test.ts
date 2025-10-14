@@ -64,6 +64,6 @@ describe('migration:validate', () => {
     process.exitCode = 0;
   });
 
-  // Note: проверка несоответствия порядка версий и имён не добавляется,
-  // так как имена начинаются с версии и сортировки совпадают по определению.
+  // Note: we don't check mismatch between version order and names,
+  // since names start with version and sorting matches by definition.
 });

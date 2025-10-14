@@ -26,8 +26,8 @@ d('[integration][mysql] locks (SKIP LOCKED analog via NOWAIT not available)', ()
         lockedId as unknown as never
       ]);
 
-      // В MySQL нет NOWAIT, попытка немедленного второго FOR UPDATE на ту же строку будет ждать — тестируем, что клиент вернёт ошибку по таймауту, если включён на уровне клиента (может зависеть от конфигурации)
-      // Поэтому мягкая проверка: второй запрос не вернёт заблокированную строку при попытке SKIP LOCKED недоступен.
+      // MySQL has no NOWAIT; immediate second FOR UPDATE on the same row waits — we assert client would timeout if configured.
+      // Thus a soft check: the second query should not return the locked row when SKIP LOCKED is unavailable.
       const other = await p2.executeQuery<{ id: number }>(
         'SELECT id FROM `items_lock` WHERE id <> ? FOR UPDATE',
         [lockedId as unknown as never]

@@ -519,27 +519,40 @@
 
 **Задачи:**
 
-- [ ] **Distributed Cache Support**
+- [x] **Distributed Cache Support** ✅
 
   ```typescript
-  // Redis/Memcached adapters
-  const redisCache = new RedisCacheAdapter({
-    host: 'localhost',
-    port: 6379,
-    ttl: 3600
-  });
+  // Пакеты-адаптеры (вынесены из core)
+  import { RedisSqlCacheAdapter, RedisCountCacheAdapter } from '@ts-linq/cache-redis';
+  import { MemcachedSqlCacheAdapter, MemcachedCountCacheAdapter } from '@ts-linq/cache-memcached';
 
-  const ctx = new DbContext({
-    provider: 'postgresql',
-    cache: {
-      l1: new InMemoryCache({ maxSize: 1000 }),
-      l2: redisCache,
-      sql: redisCache
+  const sqlCache = new RedisSqlCacheAdapter({
+    shadowMaxSize: 10_000,
+    shadowTtlMs: 60_000,
+    hashKeys: true,
+    pubSub: { channel: 'tslinq:cache:inv' }
+  });
+  const countCache = new RedisCountCacheAdapter({ shadowMaxSize: 10_000, shadowTtlMs: 60_000, hashKeys: true });
+
+  const ctx = new AppDbContext({
+    provider,
+    performance: {
+      enableEntityCache: true,
+      enableCountCache: true,
+      countCacheTtlMs: 60_000,
+      sqlCache,
+      countCache,
+      cacheNamespace: 'app-A' // для изоляции ключей между окружениями/тенантами
     }
   });
   ```
 
-- [ ] **Smart Cache Invalidation**
+  - Внешние адаптеры: `@ts-linq/cache-redis`, `@ts-linq/cache-memcached` (write‑through + shadow LRU/TTL, hashKeys, метрики, безопасное логирование ошибок бэкенда).
+  - Интерфейсы `SqlCache`/`CountCache` расширены: `invalidateBy(matcher)` и `getMetrics()`.
+  - Инъекция внешнего L2: `PerformanceOptions.entityCache?: EntityCacheLike`.
+  - Ключи SQL/Count включают `providerLabel` и `cacheNamespace`.
+
+- [x] **Smart Cache Invalidation** ✅
 
   ```typescript
   // Автоматическая инвалидация по зависимостям
@@ -550,8 +563,12 @@
     orders!: Order[];
   }
   ```
+  - Инвалидация L2/SQL/Count на `saveChanges()` (commit/rollback aware), с учётом зависимостей из `@CachePolicy`.
+  - Таргетинг: `SqlCache.invalidateBy`, `CountCache.invalidateBy`, `QueryBuilder.invalidateForEntity(name)`.
+  - Batch‑API: `ctx.cache.invalidateByEntity([...])`.
+  - Покрыто unit‑тестами: транзакционные сценарии, зависимости, таргетинг.
 
-- [ ] **Cache Warming Strategies**
+- [x] **Cache Warming Strategies** ✅
 
   ```typescript
   // Предзагрузка популярных данных
@@ -563,8 +580,9 @@
     ]
   });
   ```
+  - Реализован `ctx.cache.warmUp(...)` + агрегатор метрик `ctx.cache.reportMetrics()`.
 
-- [ ] **Cross-Query Optimization**
+- [x] **Cross-Query Optimization** ✅
   ```typescript
   // Batch optimization для N+1 queries
   const users = await ctx.users.toArray();
@@ -572,9 +590,22 @@
     .where((o) => o.userId.in(users.map((u) => u.id))) // Автоматическая оптимизация
     .toArray();
   ```
+  - Дедупликация и чанкинг IN-списков (по умолчанию 1000).
+  - Настройка размера чанка: `PerformanceOptions.inClauseChunkSize`.
+  - Логирование событий `crossQuery`: `{ op: 'IN-chunk', chunks, size, entity, column }`.
+  - Покрытие тестами: `DbSet` (чанкинг IN) и `EntityLoader` (batched include).
 
 **Приоритет**: P1 (Высокий)
 **Временные затраты**: 2.5 недели
+
+#### Сделано в рамках 3.1 (детали реализации)
+
+- Single‑flight для `Queryable.count()` (дедупликация конкурентных запросов).
+- Логирование событий cache hit/miss: `logger.cache({ cache: 'count'|'entityL2' })`; SQL‑кэш логирует из `QueryBuilder`.
+- Redis Pub/Sub инвалидация для синхронизации shadow‑кэшей между инстансами.
+- Shadow‑кэши в адаптерах: LRU‑эвикция, опциональный TTL, безопасные варнинги при ошибках записи/удаления.
+- Метрики кэшей (requests/hits/misses/evictions/invalidations) + единый интерфейс `getMetrics()` и агрегация в `DbContext`.
+- Тесты для новых адаптеров/ядра размещены в `packages/*/tests/` и покрывают инвалидацию, warm‑up, hashKeys, метрики и логирование.
 
 ### 3.2 Connection Management & Resilience
 
@@ -582,51 +613,78 @@
 
 **Задачи:**
 
-- [ ] **Advanced Connection Pooling**
+- [x] **Advanced Connection Pooling** ✅
 
-  ```typescript
-  const pool = new ConnectionPool({
-    min: 2,
-    max: 20,
-    idleTimeoutMs: 30000,
-    healthCheck: {
-      enabled: true,
-      intervalMs: 60000,
-      timeoutMs: 5000
-    }
-  });
-  ```
+  Реализовано:
 
-- [ ] **Circuit Breaker Pattern**
+  - Core:
+    - Введены `ConnectionPoolOptions`, `ConnectionHealthCheckOptions` (строго типизированы).
+    - `DatabaseProvider` принимает `poolOptions`/`healthCheck`, выполняет немедленный ping, поддерживает backoff с джиттером и статусы `healthy | degraded | unhealthy`.
+  - Providers:
+    - Postgres/MySQL/MSSQL — маппинг generic опций на драйверы; поддержка `healthCheck.testQuery`.
+  - CLI:
+    - ENV → опции пула/health: `DB_POOL_MIN|MAX|IDLE_MS|ACQUIRE_MS|DB_CONN_TIMEOUT_MS`, `DB_HEALTH_ENABLED|INTERVAL_MS|TIMEOUT_MS|TEST_QUERY|MIN_INTERVAL_MS|MAX_INTERVAL_MS|DEGRADE_AFTER|UNHEALTHY_AFTER`.
+  - Tests:
+    - core: юнит‑тест шедулера (fake timers, timeout/degraded/unhealthy/backoff).
+    - cli: тест маппинга ENV → опции провайдера.
+  - Docs:
+    - README: раздел по ENV и примеры конфигурации.
 
-  ```typescript
-  const circuitBreaker = new CircuitBreaker({
-    failureThreshold: 5,
-    timeout: 30000,
-    resetTimeout: 60000,
-    onOpen: () => logger.warn('Circuit breaker opened'),
-    onHalfOpen: () => logger.info('Circuit breaker half-open')
-  });
-  ```
+- [x] **Circuit Breaker Pattern** ✅
 
-- [ ] **Graceful Degradation**
+Реализовано:
+
+- Core:
+  - `CircuitBreakerOptions`: `enabled`, `failureThreshold`, `openDurationMs`, `maxOpenDurationMs`, `halfOpenMaxCalls`, `countTransientOnly`.
+  - Состояния: `closed` → `open` → `half-open` (short‑circuit в open; ограниченные пробы в half‑open).
+  - Экспоненциальный backoff длительности open до `maxOpenDurationMs`, сброс при успешной пробе.
+  - Интеграция с health‑check: авто‑open при `unhealthy`, авто‑close при `healthy`.
+  - API: `configureCircuit(...)`, `configureConnection({ pool, health })`, `forceOpen(reason, durationMs?)`, `manualReset(reason?)`, геттер `circuitStateLabel`.
+- DatabaseProvider: пред‑проверка брейкера в `executeWithRetry`, учёт неудач, отключение ретраев в half‑open.
+- SqlLogger: новый хук `circuit(info)` для событий состояний.
+- PrometheusSqlLogger: метрики
+  - `db_circuit_transitions_total{provider,from,to}`
+  - `db_circuit_open_total{provider,reason}`
+  - `db_circuit_state{provider}` (0|0.5|1)
+  - `db_circuit_half_open_inflight{provider}`
+  - `db_circuit_failures{provider}`
+- CLI: конфигурация через ENV `DB_CB_*` (`ENABLED`, `THRESHOLD`, `OPEN_MS`, `MAX_OPEN_MS`, `HALFOPEN_MAX_CALLS`, `COUNT_TRANSIENT_ONLY`).
+- Docs: README (ENV, метрики, PromQL, прод‑чек‑лист), Grafana дашборд `docs/grafana/ts-linq-db-dashboard.json` (импортируемый JSON).
+- Tests: юнит‑тесты поведения (открытие/half‑open/закрытие), конкурентные пробы `halfOpenMaxCalls`.
+
+- [x] **Graceful Degradation** ✅
 
   ```typescript
   // Fallback стратегии при недоступности БД
   const users = await ctx.users.fallbackTo(memoryCache).fallbackTo(readOnlyReplica).toArray();
   ```
 
-- [ ] **Connection Health Monitoring**
+  Реализовано:
+  - API: `Queryable.fallbackTo(...)`, `withFallbackPolicy(...)` (per‑query overrides)
+  - Политика: `PerformanceOptions.fallbackPolicy` (allowOps, sources, freshness, throttle, hedged, allowIncludesOnFallback)
+  - Throttle: `minIntervalMs`, `maxPerMinute`, `jitterRatio` + метрика throttled
+  - Hedged: гонка primary vs fallback (SELECT и COUNT), выбор источников `hedged.sources`
+  - COUNT: серверный `fetchCount` в `ReplicaFallback` (fallback), иначе длина SELECT
+  - Include на fallback: policy `allowIncludesOnFallback: 'none' | 'attempt'`
+  - Staleness: логгеру передаются `isStale/asOf/source` при успехе fallback
+  - Метрики (PrometheusSqlLogger): `db_fallback_attempts_total`, `db_fallback_success_total`, `db_fallback_throttled_total`, `db_hedged_wins_total`
+  - CLI/ENV: чтение политики из ENV (`readFallbackPolicyFromEnv`) — allowOps/sources/throttle/hedged/includes
+  - Документация: раздел README (fallback/hedged/throttle + PromQL примеры)
+  - Тесты: policy (allowOps), throttle (minInterval/maxPerMinute), hedged count (победа fallback)
+
+- [x] **Connection Health Monitoring** ✅
   ```typescript
   // Метрики здоровья соединений
-  ctx.on('connectionHealth', (event) => {
-    metrics.gauge('db.connection.health', event.healthy ? 1 : 0);
-    metrics.gauge('db.connection.latency', event.latencyMs);
-  });
+  // События через SqlLogger (hook): connectionHealth({ healthy, latencyMs, status, provider })
+  // PrometheusSqlLogger публикует метрики:
+  // - db_connection_health (Gauge, labels: provider,status)
+  // - db_connection_latency_ms (Histogram, labels: provider,status)
+  // - db_connection_degraded (Gauge, label: provider)
+  // - db_connection_status_transitions_total (Counter, labels: provider,from,to)
   ```
 
 **Приоритет**: P1 (Высокий)
-**Временные затраты**: 1.5 недели
+**Временные затраты**: 1.5 недели (выполнено)
 
 ### 3.3 Performance Monitoring & Optimization
 

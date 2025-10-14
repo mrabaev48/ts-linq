@@ -82,7 +82,7 @@ describe('SqlLoggerFactory integration', () => {
       }
     ).provider.executeQuery('SELECT 1');
     expect((f1.create as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(1);
-    // Второй factory может не вызываться, если первый уже создал логгер для провайдера
+    // Second factory may not be invoked if the first already created a logger for provider
     expect((f2.create as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(0);
   });
 });

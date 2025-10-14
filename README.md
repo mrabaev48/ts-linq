@@ -795,6 +795,58 @@ const logger: SqlLogger = {
 const ctx = new AppDbContext({ connectionString: ':memory:', provider: 'sqlite', logger });
 ```
 
+#### Connection Pooling & Health-Check (ENV)
+
+Опции пула и health-check можно настроить через ENV (CLI factory) или через конструктор провайдера:
+
+ENV (CLI):
+
+```bash
+# Pool
+export DB_POOL_MIN=2
+export DB_POOL_MAX=20
+export DB_POOL_IDLE_MS=30000
+export DB_POOL_ACQUIRE_MS=5000
+export DB_CONN_TIMEOUT_MS=10000
+
+# Health-check
+export DB_HEALTH_ENABLED=true
+export DB_HEALTH_INTERVAL_MS=60000
+export DB_HEALTH_TIMEOUT_MS=5000
+export DB_HEALTH_TEST_QUERY='SELECT 1'
+# Backoff/статусы
+export DB_HEALTH_MIN_INTERVAL_MS=1000
+export DB_HEALTH_MAX_INTERVAL_MS=10000
+export DB_HEALTH_DEGRADE_AFTER=3
+export DB_HEALTH_UNHEALTHY_AFTER=6
+```
+
+Конструктор провайдера (прямой вызов):
+
+```ts
+import { PostgresProvider } from '@ts-linq/postgres';
+import { ConnectionPoolOptions, ConnectionHealthCheckOptions } from '@ts-linq/core';
+
+const pool: ConnectionPoolOptions = {
+  min: 2,
+  max: 20,
+  idleTimeoutMs: 30000,
+  acquireTimeoutMs: 5000,
+  connectionTimeoutMs: 10000
+};
+const health: ConnectionHealthCheckOptions = {
+  enabled: true,
+  testQuery: 'SELECT 1',
+  timeoutMs: 5000,
+  minIntervalMs: 1000,
+  maxIntervalMs: 10000,
+  degradeAfterFailures: 3,
+  unhealthyAfterFailures: 6
+};
+
+const provider = new PostgresProvider(process.env.POSTGRES_URL!, undefined, undefined, undefined, undefined, pool, health);
+```
+
 Composite логгеры (композиция Prometheus + OTEL или других):
 
 ```ts
@@ -883,6 +935,19 @@ sum(rate(db_retry_total[5m]))
 
 # Active transactions gauge by provider
 db_active_transactions
+
+# Health-check
+# Health status (1/0) by provider and status label (healthy/degraded/unhealthy)
+db_connection_health
+
+# Health-check latency (p95)
+histogram_quantile(0.95, sum by (le, provider, status) (rate(db_connection_latency_ms_bucket[5m])))
+
+# Connection degraded gauge (1 when provider is degraded)
+db_connection_degraded
+
+# Status transitions rate
+sum by (provider, from, to) (rate(db_connection_status_transitions_total[5m]))
 ```
 
 Dashboard hints:
@@ -1181,3 +1246,280 @@ SQLITE_URL="file:./dev.sqlite" npx ts-node src/bin/ts-linq-cli.ts seed ./seeds.s
 
 - Переменная окружения `SQLITE_URL` указывает строку подключения. По умолчанию `:memory:`.
 - Команда `rollback` для дифф-подхода не поддерживается: используйте сгенерированные миграции с явными `down()` шагами.
+
+## Circuit Breaker
+
+Ts-Linq ORM поддерживает Circuit Breaker на уровне `DatabaseProvider` для повышения устойчивости при массовых сбоях БД и предотвращения каскадных отказов.
+
+- Состояния: `closed` → `open` → `half-open` → `closed`.
+- В `open` все вызовы short-circuit'ятся с ошибкой `CircuitOpenError` до истечения `openDurationMs`.
+- По истечении интервала — состояние `half-open` и допускаются ограниченные пробные вызовы.
+- Успех в `half-open` закрывает брейкер; ошибка — снова открывает на интервал.
+
+### Опции
+
+```ts
+export interface CircuitBreakerOptions {
+  enabled?: boolean;          // включить/выключить (по умолчанию true)
+  failureThreshold?: number;  // порог последовательных ошибок для открытия (по умолчанию 5)
+  openDurationMs?: number;    // длительность open до half-open (по умолчанию 30000)
+  halfOpenMaxCalls?: number;  // число параллельных проб в half-open (по умолчанию 1)
+  countTransientOnly?: boolean; // учитывать только транзиентные ошибки (по умолчанию true)
+}
+```
+
+### Подключение
+
+Вы можете передать опции при создании провайдера (конструктор `DatabaseProvider` принимает `circuitOptions` последним параметром в конкретных провайдерах) или настроить их в рантайме:
+
+```ts
+provider.configureCircuit({ failureThreshold: 3, openDurationMs: 15000 });
+```
+
+Текущее состояние доступно через геттер:
+
+```ts
+const state = provider.circuitStateLabel; // 'closed' | 'open' | 'half-open'
+```
+
+### Поведение и ретраи
+
+- Ретраи не выполняются в транзакциях.
+- В `half-open` ретраи отключены — любая ошибка мгновенно возвращает состояние `open`.
+- Счётчик неудач сбрасывается при успешном выполнении запроса.
+
+### Логирование и метрики
+
+Добавлен хук логгера `circuit(info)`, куда репортятся переходы состояний. В Prometheus-логгере доступны новые метрики:
+
+- `db_circuit_transitions_total{provider,from,to}` — количество переходов состояний.
+- `db_circuit_open_total{provider,reason}` — количество открытий брейкера по причинам.
+
+Для включения Prometheus-метрик используйте пакет `@ts-linq/prometheus-sql-logger` и добавьте его в фабрику логгеров.
+
+### Prometheus интеграция (пример)
+
+```ts
+import express from 'express';
+import { SQLiteProvider } from '@ts-linq/sqlite';
+import { PrometheusSqlLogger } from '@ts-linq/prometheus-sql-logger';
+
+// 1) Создаём прометей-логгер (рекомендуется маскировать SQL)
+const promLogger = new PrometheusSqlLogger('app_', { maskSql: true });
+
+// 2) Передаём логгер провайдеру
+const provider = new SQLiteProvider(':memory:', promLogger);
+
+// 3) Экспонируем /metrics (prom-client регистрируется глобально)
+const prom = require('prom-client');
+const app = express();
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', prom.register.contentType);
+  res.end(await prom.register.metrics());
+});
+app.listen(9464, () => console.log('Prometheus on :9464/metrics'));
+```
+
+Доступные метрики брейкера:
+
+- `db_circuit_transitions_total{provider,from,to}`
+- `db_circuit_open_total{provider,reason}`
+- `db_circuit_state{provider}` — 0 (closed), 0.5 (half-open), 1 (open)
+- `db_circuit_half_open_inflight{provider}`
+- `db_circuit_failures{provider}`
+
+Примеры простых алертов (PromQL):
+
+```promql
+sum by (provider)(db_circuit_state{provider!=""}) == 1
+  # → ALERT: CircuitOpen
+
+increase(db_circuit_open_total[5m]) > 0
+  # → ALERT: FrequentCircuitOpen
+```
+
+### Быстрый чек-лист продакшена
+
+- Таймауты клиента/драйвера:
+  - Query timeout (на уровне драйвера/БД) и `DB_CONN_TIMEOUT_MS` установлены.
+  - Пул: `DB_POOL_MIN/MAX`, `DB_POOL_IDLE_MS`, `DB_POOL_ACQUIRE_MS` заданы под нагрузку.
+- Health-check:
+  - `DB_HEALTH_ENABLED=true`, корректные `INTERVAL_MS`/`TIMEOUT_MS`.
+  - `DEGRADE_AFTER`/`UNHEALTHY_AFTER` согласованы с SLO.
+- Circuit Breaker:
+  - `DB_CB_ENABLED=true`, `DB_CB_THRESHOLD` 5–10, `DB_CB_OPEN_MS` 15–60c, `DB_CB_MAX_OPEN_MS` 5–10м.
+  - `DB_CB_HALFOPEN_MAX_CALLS` = 1–2; `DB_CB_COUNT_TRANSIENT_ONLY=true`.
+  - Описан runbook для `manualReset`/`forceOpen` в инцидентах.
+- Ретраи:
+  - Использовать backoff стратегию; ретраи выключены в транзакциях (по умолчанию).
+  - Не ретраить функциональные ошибки (констрейнты).
+- Метрики/логирование:
+  - Подключён `PrometheusSqlLogger`, /metrics защищён (auth/ip-list/front-proxy).
+  - Дашборды: error rate, p95/99 latency, retries, circuit state/open events, health status.
+- Алерты (минимум):
+  - FrequentCircuitOpen, LongOpenState, ErrorRate>5%, RetrySpike, HealthDegraded.
+- Нагрузочное/хаос‑тестирование:
+  - Подтвердить, что брейкер открывается/закрывается ожидаемо; ретраи не ломают SLA.
+
+### Grafana дашборд
+
+Готовая панель лежит в `docs/grafana/ts-linq-db-dashboard.json`.
+
+Импорт:
+
+1. Откройте Grafana → Dashboards → Import.
+2. Вставьте содержимое файла или укажите путь/URL, нажмите Import.
+3. Убедитесь, что datasource Prometheus выбран корректно.
+
+### Рекомендованные настройки для продакшена
+
+- **enabled**: true
+- **failureThreshold**: 5–10 (зависит от частоты запросов и SLA)
+- **openDurationMs**: 15000–60000 (15–60 c)
+- **maxOpenDurationMs**: 300000–600000 (5–10 мин) — для backoff
+- **halfOpenMaxCalls**: 1–2 (чаще 1 для консервативной проверки)
+- **countTransientOnly**: true (не учитывать функциональные ошибки)
+
+Замечание: длительность `open` растёт экспоненциально до `maxOpenDurationMs` при повторных открытиях, и сбрасывается при успешном восстановлении.
+
+### Конфигурация через ENV/CLI
+
+Поддерживаются переменные окружения для настройки Circuit Breaker при создании провайдера через CLI-фабрику:
+
+- `DB_CB_ENABLED=true|false`
+- `DB_CB_THRESHOLD=5`
+- `DB_CB_OPEN_MS=30000`
+- `DB_CB_MAX_OPEN_MS=300000`
+- `DB_CB_HALFOPEN_MAX_CALLS=1`
+- `DB_CB_COUNT_TRANSIENT_ONLY=true|false`
+
+Они читаются в `packages/cli/src/provider-factory.ts` и применяются через `provider.configureCircuit(...)` после инициализации.
+
+Пример `.env` для CLI/приложения:
+
+```dotenv
+# Провайдер БД
+DB_PROVIDER=postgresql
+DATABASE_URL=postgres://user:pass@host:5432/db
+
+# Пул соединений
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+DB_POOL_IDLE_MS=30000
+DB_POOL_ACQUIRE_MS=10000
+DB_CONN_TIMEOUT_MS=5000
+
+# Health-check
+DB_HEALTH_ENABLED=true
+DB_HEALTH_INTERVAL_MS=60000
+DB_HEALTH_TIMEOUT_MS=2000
+DB_HEALTH_MIN_INTERVAL_MS=15000
+DB_HEALTH_MAX_INTERVAL_MS=120000
+DB_HEALTH_DEGRADE_AFTER=3
+DB_HEALTH_UNHEALTHY_AFTER=6
+
+# Circuit Breaker
+DB_CB_ENABLED=true
+DB_CB_THRESHOLD=6
+DB_CB_OPEN_MS=30000
+DB_CB_MAX_OPEN_MS=300000
+DB_CB_HALFOPEN_MAX_CALLS=1
+DB_CB_COUNT_TRANSIENT_ONLY=true
+```
+
+### Причины событий брейкера (reason)
+
+Причины могут использоваться для алертов и диагностики:
+
+- `failure threshold reached` — превышен порог неудач;
+- `half-open probe failed` — пробный вызов в half-open завершился ошибкой;
+- `cooldown elapsed` — переход в half-open после выдержки интервала;
+- `health unhealthy` — открытие из-за статуса соединения unhealthy;
+- `probe succeeded` — успешная проба, переход в closed;
+- `manual open` / `manual reset` — ручное управление.
+
+### Рекомендуемые SLO-алерты (PromQL)
+
+```promql
+# 1) Частые открытия брейкера за период
+increase(db_circuit_open_total[5m]) > 0
+
+# 2) Длительное нахождение в open-состоянии (по провайдеру)
+max_over_time(db_circuit_state[10m]) == 1
+
+# 3) Ошибки запросов (error rate) — пример на все операции
+sum(rate(db_error_total[5m])) / sum(rate(db_query_total[5m])) > 0.05
+
+# 4) Повышенное количество ретраев (симптом деградации)
+sum(increase(db_retry_total[5m])) > 100
+
+# 5) Деградация health-check'а
+sum by (provider)(db_connection_degraded{provider!=""}) == 1
+```
+
+## Graceful Degradation (Fallback, Hedged, Throttle)
+
+Ключевые понятия:
+- Fallback: чтение из альтернативного источника (реплика/память) при ошибках соединения/таймаутах.
+- Hedged: «гонка» — через короткий delay запускается копия запроса к реплике; берётся победитель.
+- Throttle: ограничение частоты fallback, чтобы не перегружать реплики/кэши.
+
+### Быстрый старт
+
+```ts
+import { AppDbContext } from './app/DbContext';
+import { createProviderFromEnv, readFallbackPolicyFromEnv } from '@ts-linq/cli/src/provider-factory';
+
+const provider = createProviderFromEnv();
+const fallbackPolicy = readFallbackPolicyFromEnv();
+
+const ctx = new AppDbContext({
+  provider,
+  performance: { fallbackPolicy }
+});
+```
+
+### ENV
+
+```dotenv
+DB_FALLBACK_ENABLED=true
+DB_FALLBACK_ALLOW_OPS=select,count
+DB_FALLBACK_SOURCES=replica,memory
+# Throttle
+DB_FALLBACK_THROTTLE_MIN_MS=50
+DB_FALLBACK_THROTTLE_MAX_PER_MIN=300
+DB_FALLBACK_THROTTLE_JITTER=0.2
+# Hedged
+DB_FALLBACK_HEDGED_ENABLED=true
+DB_FALLBACK_HEDGED_DELAY_MS=10
+DB_FALLBACK_HEDGED_SOURCES=replica
+# Include на fallback
+DB_FALLBACK_INCLUDES=attempt   # none | attempt
+```
+
+### Метрики и PromQL
+
+Метрики:
+- db_fallback_attempts_total{provider,fallback}
+- db_fallback_success_total{provider,fallback}
+- db_fallback_throttled_total{provider}
+- db_hedged_wins_total{provider,operation,fallback}
+
+Примеры PromQL:
+
+```promql
+# Доля fallback среди запросов
+sum by (provider)(rate(db_fallback_attempts_total[5m])) / sum by (provider)(rate(db_query_total[5m]))
+
+# Успешность fallback
+sum by (provider)(rate(db_fallback_success_total[5m])) / sum by (provider)(rate(db_fallback_attempts_total[5m]))
+
+# Throttled‑ratio
+sum by (provider)(rate(db_fallback_throttled_total[5m]))
+
+# Hedged wins
+sum by (provider,fallback)(rate(db_hedged_wins_total[5m]))
+
+# p95 длительности
+histogram_quantile(0.95, sum by (le,provider)(rate(db_query_duration_ms_bucket[5m])))
+```

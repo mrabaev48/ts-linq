@@ -15,7 +15,7 @@ import { NodeFs } from '../adapters/NodeFs';
 
 export class SchemaApplyCommand implements DbCommand {
   public readonly name = 'schema:apply';
-  public readonly describe = 'Применяет отличия snapshot к БД';
+  public readonly describe = 'Applies snapshot differences to the database';
   public readonly aliases = ['schema apply'];
 
   public constructor(

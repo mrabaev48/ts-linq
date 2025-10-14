@@ -17,6 +17,8 @@ module.exports = {
     '^@ts-linq/postgres$': '<rootDir>/packages/postgres/src',
     '^@ts-linq/mysql$': '<rootDir>/packages/mysql/src',
     '^@ts-linq/mssql$': '<rootDir>/packages/mssql/src',
+    '^@ts-linq/cache-redis$': '<rootDir>/packages/cache-redis/src',
+    '^@ts-linq/cache-memcached$': '<rootDir>/packages/cache-memcached/src',
     '^@ts-linq/core$': '<rootDir>/packages/core/src',
     '^@ts-linq/core/(.*)$': '<rootDir>/packages/core/src/$1',
     '^@ts-linq/sqlite/(.*)$': '<rootDir>/packages/sqlite/src/$1',
@@ -102,6 +104,16 @@ module.exports = {
     {
       displayName: 'cli',
       testMatch: ['<rootDir>/packages/cli/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
+    },
+    {
+      displayName: 'cache-redis',
+      testMatch: ['<rootDir>/packages/cache-redis/{src,tests}/**/*.test.ts'],
+      transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
+    },
+    {
+      displayName: 'cache-memcached',
+      testMatch: ['<rootDir>/packages/cache-memcached/{src,tests}/**/*.test.ts'],
       transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.stage3.json' }] }
     }
   ]
