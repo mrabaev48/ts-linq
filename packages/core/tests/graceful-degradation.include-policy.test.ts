@@ -49,9 +49,9 @@ describe('Graceful Degradation - include policy', () => {
       .withFallbackPolicy({ allowIncludesOnFallback: 'none' });
 
     const res = await q.include((u) => (u as unknown as { posts: Post[] }).posts).toArray();
-    // Поскольку выборка идёт из fallback, ensure rows присутствуют
+    // Since selection uses fallback, ensure rows are present
     expect(Array.isArray(res)).toBe(true);
-    // Fallback может вернуть 0..N, важно что не упало и include не пытается работать
+    // Fallback may return 0..N; important that it doesn't crash and include is not attempted
     expect(res.length).toBeGreaterThanOrEqual(0);
     expect(Array.isArray(res)).toBe(true);
     expect(res.length).toBeGreaterThanOrEqual(0);

@@ -42,5 +42,5 @@ describe('schema:apply negative', () => {
     expect(process.exitCode).toBe(2);
   });
 
-  // destructive сценарий проверяется в отдельном тесте с моками core (schema-apply-destructive.test.ts)
+  // Destructive scenario is tested separately with core mocks (schema-apply-destructive.test.ts)
 });

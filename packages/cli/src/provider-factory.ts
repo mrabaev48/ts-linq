@@ -30,7 +30,7 @@ function createPg(): DatabaseProvider {
   const url = process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('POSTGRES_URL/DATABASE_URL is required for DB_PROVIDER=postgresql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  // Конструкторы провайдеров поддерживают pool/health в конце аргументов
+  // Provider constructors accept pool/health as the last arguments
   const provider =
     (new PostgresProvider(
       url,

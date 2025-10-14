@@ -15,7 +15,7 @@ import { NodeFs } from '../adapters/NodeFs';
 
 export class MigrationsDryRunCommand implements DbCommand {
   public readonly name = 'migration:dry-run';
-  public readonly describe = 'Печатает SQL изменений между snapshot и БД (dry-run)';
+  public readonly describe = 'Prints SQL changes between snapshot and DB (dry-run)';
   public readonly aliases = ['migrations:dry-run'];
 
   public constructor(

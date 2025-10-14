@@ -33,16 +33,16 @@ describe('Graceful Degradation Throttle', () => {
       .fallbackTo(new MemoryFallback(() => memory))
       .withFallbackPolicy({ throttle: { minIntervalMs: 10 }, allowOps: ['select'] });
 
-    // Первый вызов — пройдет по fallback
+    // First call — should pass via fallback
     const ok1 = await base.toArray();
     expect(ok1.length).toBe(1);
 
-    // Второй сразу — из-за джиттера/интервала может иногда пройти. Гарантированно ждём меньше интервала
-    // и ожидаем блокировку: пробуем два быстрых вызова подряд
+    // Second immediately — due to jitter/interval it may sometimes pass. We try two fast calls
+    // back-to-back to ensure throttling kicks in
     const p1 = base.toArray();
     const p2 = base.toArray();
     const results = await Promise.allSettled([p1, p2]);
-    // Должен быть хотя бы один reject из-за троттлинга
+    // There should be at least one rejection due to throttling
     expect(results.some((r) => r.status === 'rejected')).toBe(true);
   });
 
@@ -57,7 +57,7 @@ describe('Graceful Degradation Throttle', () => {
     const ok = await base.toArray();
     expect(ok.length).toBe(1);
 
-    // Вторая попытка в том же окне — заблокирована
+    // Second attempt within the same window — blocked
     await expect(base.toArray()).rejects.toThrow(/connection/i);
   });
 });

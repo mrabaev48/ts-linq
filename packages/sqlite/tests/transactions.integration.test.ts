@@ -1,6 +1,6 @@
 import { SQLiteProvider } from '@ts-linq/sqlite';
 
-const d = describe; // sqlite in-memory всегда доступен
+const d = describe; // sqlite in-memory is always available
 
 d('[integration][sqlite] transactions', () => {
   test('commit persists, rollback reverts', async () => {

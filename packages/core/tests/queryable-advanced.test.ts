@@ -112,7 +112,7 @@ describe('Queryable advanced', () => {
     const c2 = await q.where((e) => e.age >= 21).count();
     const after = provider.getBuildCalls();
     expect(c1).toBe(c2);
-    expect(after).toBe(before); // диалект не вызывался повторно для count
+    expect(after).toBe(before); // dialect not called again for count
   });
 
   it('external count cache is used and updated', async () => {
@@ -132,7 +132,7 @@ describe('Queryable advanced', () => {
     const second = await qExt.where((e) => (e as any).age >= 21).count();
     const afterCalls = provider.getBuildCalls();
     expect(first).toBe(second);
-    expect(afterCalls).toBe(beforeCalls); // внешний кэш предотвращает повторную постройку/выполнение
+    expect(afterCalls).toBe(beforeCalls); // external cache prevents rebuild/execute
   });
 
   it('external count cache TTL expiration triggers new count call', async () => {
@@ -181,19 +181,19 @@ describe('Queryable advanced', () => {
   });
 
   it('global filters: soft delete is applied and query executes', async () => {
-    // Подготовим метаданные soft-delete колонки
+    // Prepare metadata for soft-delete column
     const meta = MetadataStorage.getEntity(E)!;
     meta.columns.push({
       propertyName: 'isDeleted',
       columnName: 'isDeleted',
       type: 'INTEGER'
     } as any);
-    // Добавим явный глобальный фильтр по age
+    // Add an explicit global filter by age
     const gf: GlobalFilter = {
       entity: E,
       where: { condition: 'age >= 22', parameters: [] }
     };
-    // Сконструируем Queryable с глобальными фильтрами и softDelete
+    // Construct Queryable with global filters and softDelete
     const qWithFilters = new Queryable(
       E,
       Object.assign(provider, { softDelete: { enabled: true, column: 'isDeleted' } }),
@@ -218,7 +218,7 @@ describe('Queryable advanced', () => {
   });
 
   it('groupBy().having() attaches HAVING clause without throwing', async () => {
-    // Мы не проверяем SQL рендер, а лишь что цепочка не падает
+    // We do not test SQL rendering, only that the chain doesn't crash
     const res = await q
       .groupBy((e) => (e as any).age)
       .having((e) => (e as any).age >= 21)
@@ -252,7 +252,7 @@ describe('Queryable advanced', () => {
     await new Queryable(E, provider).where((e) => (e as any).age >= 22).toArray();
     const after = provider.getBuildCalls();
     expect(mid).toBeGreaterThan(before);
-    expect(after).toBe(mid); // кэш сработал, повторного билда нет
+    expect(after).toBe(mid); // cache hit, no rebuild
   });
 
   it('SQL generation cache: miss when query differs', async () => {
@@ -260,7 +260,7 @@ describe('Queryable advanced', () => {
     await new Queryable(E, provider).where((e) => (e as any).age >= 21).toArray();
     await new Queryable(E, provider).where((e) => (e as any).age >= 23).toArray();
     const after = provider.getBuildCalls();
-    expect(after).toBeGreaterThan(before + 0); // минимум один дополнительный билд
+    expect(after).toBeGreaterThan(before + 0); // at least one additional build
   });
 
   it('keysetPaginate returns nextAfter and respects after (using age)', async () => {

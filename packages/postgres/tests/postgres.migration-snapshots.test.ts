@@ -63,7 +63,7 @@ describe('PostgreSQL DDL snapshots (MigrationBuilder → SQL)', () => {
     mb.renameColumn('users', 'name', 'full_name');
 
     // Force advanced properties through internal shapes by altering builder diff directly would be invasive.
-    // Вместо этого проверяем высокоуровневый baseline для CREATE/DROP/RENAME, которые уже покрывают Postgres диалектные ветки.
+    // Instead, verify a high-level baseline for CREATE/DROP/RENAME which already covers Postgres dialect branches.
     const sql = mb.toSql('postgresql' as any);
     const text = normalize(sql.up);
     expect(text).toContain('CREATE UNIQUE INDEX "idx_users_email_active" ON "users" ("email")');

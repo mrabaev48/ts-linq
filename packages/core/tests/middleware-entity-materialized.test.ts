@@ -48,7 +48,7 @@ describe('Middleware entityMaterialized hook', () => {
       .orderBy((x) => x.id)
       .toArray();
     expect(rows).toHaveLength(2);
-    // entityMaterialized может быть асинхронным — подождём микротаск-тик
+    // entityMaterialized can be async — wait a microtask tick
     await new Promise((res) => setTimeout(res, 0));
     expect(seen.map((e) => e.name).sort()).toEqual(['A', 'B']);
     await ctx.dispose();
