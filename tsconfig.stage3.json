@@ -1,10 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "decorators": true,
-    "experimentalDecorators": false,
-    "emitDecoratorMetadata": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "target": "ES2022",
-    "useDefineForClassFields": false
+    "useDefineForClassFields": false,
+    "isolatedModules": true
   }
 }

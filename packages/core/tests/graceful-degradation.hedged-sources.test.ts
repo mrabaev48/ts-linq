@@ -37,6 +37,8 @@ describe('Hedged sources filtering', () => {
     };
 
     // Разрешаем только 'replica' в гонке — должен победить fastReplica
+    await provider.connect();
+    await provider.createTable(MetadataStorage.getEntity(A)!);
     const q = new Queryable(A, provider)
       .fallbackTo(fastReplica)
       .fallbackTo(slowMemory)

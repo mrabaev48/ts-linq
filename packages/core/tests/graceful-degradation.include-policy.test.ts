@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Entity, Column, PrimaryKey } from '../src';
+import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
@@ -9,6 +9,7 @@ import type { QueryFallback, FallbackRequest } from '../src/types';
 class User {
   @PrimaryKey({ autoIncrement: true }) id!: number;
   @Column() name!: string;
+  @OneToMany(() => Post, { foreignKey: 'userId' }) posts!: Post[];
 }
 
 @Entity()
@@ -16,6 +17,7 @@ class Post {
   @PrimaryKey({ autoIncrement: true }) id!: number;
   @Column() title!: string;
   @Column() userId!: number;
+  @ManyToOne(() => User, { foreignKey: 'userId' }) user!: User;
 }
 
 describe('Graceful Degradation - include policy', () => {
@@ -60,5 +62,3 @@ describe('Graceful Degradation - include policy', () => {
     expect(res.length).toBe(1);
   });
 });
-
-
