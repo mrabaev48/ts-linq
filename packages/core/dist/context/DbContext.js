@@ -357,8 +357,8 @@ class DbContext {
             if (needFullClear)
                 this._entityCache.clear();
         }
-        catch {
-            /* ignore */
+        catch (e) {
+            (0, InternalLogger_1.logInternalError)('DbContext.removeDeletedFromEntityCache', e);
         }
     }
     invalidateSqlCacheByNames(changedNames) {

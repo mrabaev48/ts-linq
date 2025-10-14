@@ -1,4 +1,5 @@
 import { CircuitOpenError } from './types';
+import { logInternalError } from './utils/InternalLogger';
 /**
  * Abstract base class for database providers. Concrete providers must
  * implement all abstract methods to support connections, CRUD operations,
@@ -295,8 +296,8 @@ export class DatabaseProvider {
             try {
                 await mw.beforeExecute?.(info);
             }
-            catch {
-                /* ignore middleware errors */
+            catch (e) {
+                logInternalError('DatabaseProvider.beforeExecute.middleware', e);
             }
         }
     }
@@ -316,8 +317,8 @@ export class DatabaseProvider {
             try {
                 await mw.afterExecute?.(info);
             }
-            catch {
-                /* ignore middleware errors */
+            catch (e) {
+                logInternalError('DatabaseProvider.afterExecute.middleware', e);
             }
         }
     }
@@ -330,8 +331,8 @@ export class DatabaseProvider {
             try {
                 await mw.entityMaterialized?.(info);
             }
-            catch {
-                /* ignore middleware errors */
+            catch (e) {
+                logInternalError('DatabaseProvider.notifyEntityMaterialized.middleware', e);
             }
         }
     }

@@ -88,6 +88,10 @@ export declare abstract class DbContext {
      * - Clears global count cache (best-effort)
      */
     private invalidateCachesAfterSave;
+    private computeNeedFullL2Clear;
+    private removeDeletedFromEntityCache;
+    private invalidateSqlCacheByNames;
+    private invalidateCountCacheByNames;
     /** Simple cache utilities (warm-up etc.). */
     readonly cache: {
         readonly warmUp: (options?: {

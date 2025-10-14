@@ -1,4 +1,5 @@
 import { safeCacheEvicted } from 'metrics-safe';
+import { logInternalError } from './InternalLogger';
 export class EntityCache {
     /**
      * @param maxSize Maximum number of cached items before FIFO eviction.
@@ -31,8 +32,8 @@ export class EntityCache {
                 try {
                     safeCacheEvicted(this._logger, { cache: 'entityL2', provider: this._providerLabel });
                 }
-                catch {
-                    /* ignore */
+                catch (e) {
+                    logInternalError('EntityCache.safeCacheEvicted', e);
                 }
             }
         }

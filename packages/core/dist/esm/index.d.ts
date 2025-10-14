@@ -50,5 +50,6 @@ export * from './migrations/SchemaSnapshot';
 export * from './utils/SqlHelper';
 export * from './utils/RetryPolicies';
 export * from './utils/EntityCache';
+export * from './utils/InternalLogger';
 export * from './utils/PrometheusEndpoint';
 //# sourceMappingURL=index.d.ts.map

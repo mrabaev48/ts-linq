@@ -1,8 +1,14 @@
-import type { EntityCacheLike } from './EntityCache';
 /**
  * Simple in-memory FIFO cache for entities keyed by `<EntityName>|<id>`.
  * Intended as a best-effort level-2 cache to reduce allocations and mapping work.
  */
+export interface EntityCacheLike {
+    get<T>(entityClass: Function, id: unknown): T | undefined;
+    set<T>(entityClass: Function, id: unknown, entity: T): void;
+    remove(entityClass: Function, id: unknown): void;
+    clear(): void;
+    size?(): number;
+}
 export declare class EntityCache implements EntityCacheLike {
     private _store;
     private _maxSize;

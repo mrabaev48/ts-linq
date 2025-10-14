@@ -10,6 +10,7 @@ import { DeleteCommand } from './commands/DeleteCommand';
 import { ChangeValidationService } from './services/ChangeValidationService';
 import { ok, err, ValidationError } from '../types';
 import { EntityCache } from '../utils/EntityCache';
+import { logInternalError } from '../utils/InternalLogger';
 function getOriginal(target) {
     try {
         const gm = Reflect
@@ -52,8 +53,8 @@ export class DbContext {
                     try {
                         await fn();
                     }
-                    catch {
-                        /* ignore individual warm-up errors */
+                    catch (e) {
+                        logInternalError('DbContext.cache.warmUp.task', e);
                     }
                 });
                 await Promise.all(tasks);
@@ -64,8 +65,8 @@ export class DbContext {
                     for (const name of entityNames)
                         qb.QueryBuilder.invalidateForEntity(name);
                 }
-                catch {
-                    /* ignore */
+                catch (e) {
+                    logInternalError('DbContext.cache.invalidateByEntity.sqlCache', e);
                 }
                 try {
                     const extCount = this._performanceOptions?.countCache;
@@ -75,13 +76,12 @@ export class DbContext {
                         }
                     }
                 }
-                catch {
-                    /* ignore */
+                catch (e) {
+                    logInternalError('DbContext.cache.invalidateByEntity.countCache', e);
                 }
             },
             reportMetrics: () => {
                 try {
-                    const qb = require('../query/QueryBuilder');
                     const sqlCache = this._sqlBuilder;
                     const sqlMetrics = sqlCache?.getCacheMetrics?.();
                     const countCache = this._performanceOptions?.countCache;
@@ -106,8 +106,8 @@ export class DbContext {
                             provider: this._provider.providerLabel
                         });
                 }
-                catch {
-                    /* ignore */
+                catch (e) {
+                    logInternalError('DbContext.cache.reportMetrics', e);
                 }
             }
         };
@@ -260,8 +260,8 @@ export class DbContext {
                 });
             }
         }
-        catch {
-            /* ignore */
+        catch (e) {
+            logInternalError('DbContext.commitTransaction.invalidateCaches', e);
         }
     }
     /**
@@ -280,15 +280,15 @@ export class DbContext {
                     provider: this._provider.providerLabel
                 });
             }
-            catch {
-                /* ignore */
+            catch (e) {
+                logInternalError('DbContext.rollbackTransaction.entityCacheClear', e);
             }
         }
         try {
             require('../query/Queryable').Queryable.clearCountCache();
         }
-        catch {
-            /* ignore */
+        catch (e) {
+            logInternalError('DbContext.rollbackTransaction.countCacheClear', e);
         }
     }
     /**
@@ -302,8 +302,8 @@ export class DbContext {
             // Future: inspect changeTracker changes and Reflect.getMetadata('orm:cachePolicy', entity)
             // to perform targeted invalidation per-entity/table.
         }
-        catch {
-            /* ignore */
+        catch (e) {
+            logInternalError('DbContext.invalidateCachesOnCommit', e);
         }
     }
     /**
@@ -314,57 +314,71 @@ export class DbContext {
      */
     invalidateCachesAfterSave(changes) {
         try {
-            let needFullL2Clear = false;
             const changedNames = new Set(changes.map((c) => c.entityClass.name));
-            // Dependency-based invalidation via CachePolicy metadata
-            try {
-                const entities = require('../metadata/MetadataStorage').MetadataStorage.getEntities();
-                for (const e of entities) {
-                    const meta = Reflect.getOwnMetadata?.('orm:cachePolicy', e.target);
-                    if (meta?.invalidateOn && meta.invalidateOn.some((n) => changedNames.has(n))) {
-                        needFullL2Clear = true;
-                        break;
-                    }
+            const needFullL2Clear = this.computeNeedFullL2Clear(changedNames);
+            this.removeDeletedFromEntityCache(changes, needFullL2Clear);
+            this.invalidateSqlCacheByNames(changedNames);
+            this.invalidateCountCacheByNames(changedNames);
+        }
+        catch (e) {
+            logInternalError('DbContext.invalidateCachesAfterSave', e);
+        }
+    }
+    computeNeedFullL2Clear(changedNames) {
+        try {
+            const entities = require('../metadata/MetadataStorage').MetadataStorage.getEntities();
+            for (const e of entities) {
+                const meta = Reflect.getOwnMetadata?.('orm:cachePolicy', e.target);
+                if (meta?.invalidateOn && meta.invalidateOn.some((n) => changedNames.has(n))) {
+                    return true;
                 }
-            }
-            catch { }
-            // Remove deleted entities by id; for updates, update is already reflected via command hook
-            if (this._entityCache) {
-                for (const c of changes) {
-                    if (c.state === 'deleted') {
-                        const pk = this.getPrimaryKey(c.entityClass);
-                        if (pk !== undefined) {
-                            this._entityCache.remove(c.entityClass, c.entity[pk]);
-                        }
-                    }
-                }
-                if (needFullL2Clear)
-                    this._entityCache.clear();
-            }
-            // Targeted SQL cache invalidation by entity name
-            try {
-                const qb = require('../query/QueryBuilder');
-                for (const name of changedNames)
-                    qb.QueryBuilder.invalidateForEntity(name);
-            }
-            catch {
-                /* ignore */
-            }
-            // Targeted Count cache invalidation by entity name prefix
-            try {
-                const extCount = this._performanceOptions?.countCache;
-                if (extCount?.invalidateBy) {
-                    for (const name of changedNames) {
-                        extCount.invalidateBy((k) => k.startsWith(name + '|count|'));
-                    }
-                }
-            }
-            catch {
-                /* ignore */
             }
         }
         catch {
             /* ignore */
+        }
+        return false;
+    }
+    removeDeletedFromEntityCache(changes, needFullClear) {
+        if (!this._entityCache)
+            return;
+        try {
+            for (const c of changes) {
+                if (c.state === 'deleted') {
+                    const pk = this.getPrimaryKey(c.entityClass);
+                    if (pk !== undefined) {
+                        this._entityCache.remove(c.entityClass, c.entity[pk]);
+                    }
+                }
+            }
+            if (needFullClear)
+                this._entityCache.clear();
+        }
+        catch (e) {
+            logInternalError('DbContext.removeDeletedFromEntityCache', e);
+        }
+    }
+    invalidateSqlCacheByNames(changedNames) {
+        try {
+            const qb = require('../query/QueryBuilder');
+            for (const name of changedNames)
+                qb.QueryBuilder.invalidateForEntity(name);
+        }
+        catch (e) {
+            logInternalError('DbContext.invalidateCachesAfterSave.sqlCache', e);
+        }
+    }
+    invalidateCountCacheByNames(changedNames) {
+        try {
+            const extCount = this._performanceOptions?.countCache;
+            if (!extCount?.invalidateBy)
+                return;
+            for (const name of changedNames) {
+                extCount.invalidateBy((k) => k.startsWith(name + '|count|'));
+            }
+        }
+        catch (e) {
+            logInternalError('DbContext.invalidateCachesAfterSave.countCache', e);
         }
     }
     /**
