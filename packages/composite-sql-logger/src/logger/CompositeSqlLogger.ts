@@ -4,7 +4,8 @@ import type {
   QueryEndInfo,
   RetryInfo,
   TransactionInfo,
-  CacheInfo
+  CacheInfo,
+  CircuitEventInfo
 } from '@ts-linq/core';
 
 export class CompositeSqlLogger implements SqlLogger {
@@ -61,6 +62,15 @@ export class CompositeSqlLogger implements SqlLogger {
     for (const d of this.delegates) {
       try {
         d.cache?.(info);
+      } catch {
+        /* swallow */
+      }
+    }
+  }
+  circuit(info: CircuitEventInfo): void {
+    for (const d of this.delegates) {
+      try {
+        d.circuit?.(info);
       } catch {
         /* swallow */
       }

@@ -54,6 +54,11 @@ export class PrometheusSqlLogger implements SqlLogger {
   private lastConnectionStatus: Map<string, string> = new Map();
   private maskSql: boolean = false;
   private maskPatterns: ReadonlyArray<RegExp> = [];
+  private circuitTransitions?: PromCounter;
+  private circuitOpenTotal?: PromCounter;
+  private circuitStateGauge?: PromGauge;
+  private circuitHalfOpenInFlight?: PromGauge;
+  private circuitFailuresGauge?: PromGauge;
 
   constructor(namespace: string, options?: PrometheusLoggerOptions) {
     this.prefix = options?.prefix ?? '';
@@ -63,30 +68,37 @@ export class PrometheusSqlLogger implements SqlLogger {
     if (!this.client) return;
     this.enabled = true;
     const buckets = options?.bucketsMs ?? [5, 10, 20, 50, 100, 200, 500, 1000, 2000];
+    this.initQueryMetrics(buckets);
+    this.initCacheMetrics();
+    this.initHealthMetrics(buckets);
+    this.initCircuitMetrics();
+  }
+
+  private initQueryMetrics(buckets: number[]): void {
     const labelNames = ['provider', 'operation', 'entity', 'success'];
-    this.queryTotal = new this.client.Counter({
+    this.queryTotal = new this.client!.Counter({
       name: `${this.prefix}db_query_total`,
       help: 'Total DB queries',
       labelNames
     });
-    this.queryDuration = new this.client.Histogram({
+    this.queryDuration = new this.client!.Histogram({
       name: `${this.prefix}db_query_duration_ms`,
       help: 'DB query duration (ms)',
       labelNames,
       buckets
     });
-    this.errorTotal = new this.client.Counter({
+    this.errorTotal = new this.client!.Counter({
       name: `${this.prefix}db_error_total`,
       help: 'Total DB errors',
       labelNames: ['provider', 'operation', 'entity', 'error_type']
     });
-    this.retryTotal = new this.client.Counter({
+    this.retryTotal = new this.client!.Counter({
       name: `${this.prefix}db_retry_total`,
       help: 'Total DB retry attempts',
       labelNames: ['provider', 'operation', 'entity']
     });
-    if (this.client.Gauge) {
-      const gauge = new this.client.Gauge({
+    if (this.client!.Gauge) {
+      const gauge = new this.client!.Gauge({
         name: `${this.prefix}db_active_transactions`,
         help: 'Active DB transactions',
         labelNames: ['provider']
@@ -104,63 +116,97 @@ export class PrometheusSqlLogger implements SqlLogger {
         }
       };
     }
-    this.cacheHits = new this.client.Counter({
+  }
+
+  private initCacheMetrics(): void {
+    this.cacheHits = new this.client!.Counter({
       name: `${this.prefix}db_cache_hits_total`,
       help: 'DB cache hits',
       labelNames: ['cache', 'provider']
     });
-    this.cacheMisses = new this.client.Counter({
+    this.cacheMisses = new this.client!.Counter({
       name: `${this.prefix}db_cache_misses_total`,
       help: 'DB cache misses',
       labelNames: ['cache', 'provider']
     });
-    this.countCacheTtlHits = new this.client.Counter({
+    this.countCacheTtlHits = new this.client!.Counter({
       name: `${this.prefix}db_count_cache_ttl_hits_total`,
       help: 'Count cache TTL hits',
       labelNames: ['provider']
     });
-    this.countCacheHardHits = new this.client.Counter({
+    this.countCacheHardHits = new this.client!.Counter({
       name: `${this.prefix}db_count_cache_hard_hits_total`,
       help: 'Count cache hard hits (external or no TTL)',
       labelNames: ['provider']
     });
-    if (this.client.Gauge) {
-      this.cacheSizeGauge = new this.client.Gauge({
+    if (this.client!.Gauge) {
+      this.cacheSizeGauge = new this.client!.Gauge({
         name: `${this.prefix}db_cache_size`,
         help: 'DB cache size (items)',
         labelNames: ['cache', 'provider']
       });
     }
-    this.cacheEvictions = new this.client.Counter({
+    this.cacheEvictions = new this.client!.Counter({
       name: `${this.prefix}db_cache_evictions_total`,
       help: 'DB cache evictions due to capacity limits',
       labelNames: ['cache', 'provider']
     });
+  }
 
-    // Health metrics
-    if (this.client.Gauge) {
-      this.connectionHealthGauge = new this.client.Gauge({
+  private initHealthMetrics(buckets: number[]): void {
+    if (this.client!.Gauge) {
+      this.connectionHealthGauge = new this.client!.Gauge({
         name: `${this.prefix}db_connection_health`,
         help: 'DB connection health status (1 healthy, 0 unhealthy)',
         labelNames: ['provider', 'status']
       });
-      this.connectionDegradedGauge = new this.client.Gauge({
+      this.connectionDegradedGauge = new this.client!.Gauge({
         name: `${this.prefix}db_connection_degraded`,
         help: 'DB connection degraded status (1 degraded, 0 otherwise)',
         labelNames: ['provider']
       });
     }
-    this.connectionLatency = new this.client.Histogram({
+    this.connectionLatency = new this.client!.Histogram({
       name: `${this.prefix}db_connection_latency_ms`,
       help: 'DB health-check ping latency (ms)',
       labelNames: ['provider', 'status'],
       buckets
     });
-    this.connectionStatusTransitions = new this.client.Counter({
+    this.connectionStatusTransitions = new this.client!.Counter({
       name: `${this.prefix}db_connection_status_transitions_total`,
       help: 'DB connection health status transitions',
       labelNames: ['provider', 'from', 'to']
     });
+  }
+
+  private initCircuitMetrics(): void {
+    this.circuitTransitions = new this.client!.Counter({
+      name: `${this.prefix}db_circuit_transitions_total`,
+      help: 'DB circuit breaker state transitions',
+      labelNames: ['provider', 'from', 'to']
+    });
+    this.circuitOpenTotal = new this.client!.Counter({
+      name: `${this.prefix}db_circuit_open_total`,
+      help: 'DB circuit opened events',
+      labelNames: ['provider', 'reason']
+    });
+    if (this.client!.Gauge) {
+      this.circuitStateGauge = new this.client!.Gauge({
+        name: `${this.prefix}db_circuit_state`,
+        help: 'DB circuit state (0 closed, 0.5 half-open, 1 open)',
+        labelNames: ['provider']
+      });
+      this.circuitHalfOpenInFlight = new this.client!.Gauge({
+        name: `${this.prefix}db_circuit_half_open_inflight`,
+        help: 'DB circuit half-open in-flight probes',
+        labelNames: ['provider']
+      });
+      this.circuitFailuresGauge = new this.client!.Gauge({
+        name: `${this.prefix}db_circuit_failures`,
+        help: 'DB circuit consecutive failures counter',
+        labelNames: ['provider']
+      });
+    }
   }
 
   public queryStart(_info?: {
@@ -294,6 +340,37 @@ export class PrometheusSqlLogger implements SqlLogger {
     this.observeHealthLatency(provider, status, info.latencyMs);
     this.setDegradedGauge(provider, status);
     this.recordStatusTransition(provider, status);
+  }
+
+  public circuit?(info: {
+    state: 'closed' | 'open' | 'half-open';
+    provider?: string;
+    failures?: number;
+    reason?: string;
+    halfOpenInFlight?: number;
+  }): void {
+    if (!this.enabled || !this.client) return;
+    const provider = info.provider || 'unknown';
+    try {
+      const prev = this.lastConnectionStatus.get(`circuit:${provider}`);
+      if (prev && prev !== info.state) {
+        this.circuitTransitions?.labels({ provider, from: prev, to: info.state }).inc(1);
+      }
+      this.lastConnectionStatus.set(`circuit:${provider}`, info.state);
+      if (info.state === 'open') {
+        const reason = info.reason || 'unknown';
+        this.circuitOpenTotal?.labels({ provider, reason }).inc(1);
+      }
+      // state gauge
+      const v = info.state === 'open' ? 1 : info.state === 'half-open' ? 0.5 : 0;
+      this.circuitStateGauge?.set?.({ provider }, v);
+      if (typeof info.halfOpenInFlight === 'number') {
+        this.circuitHalfOpenInFlight?.set?.({ provider }, info.halfOpenInFlight);
+      }
+      if (typeof info.failures === 'number') {
+        this.circuitFailuresGauge?.set?.({ provider }, info.failures);
+      }
+    } catch {}
   }
 
   private setHealthGauge(provider: string, status: string, healthy: boolean): void {
