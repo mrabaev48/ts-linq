@@ -54,14 +54,10 @@ class TestProvider extends DatabaseProvider {
 
 describe('DatabaseProvider health-check scheduler', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.spyOn(global, 'setInterval');
-    jest.spyOn(global, 'setTimeout');
+    jest.restoreAllMocks();
   });
 
   afterEach(() => {
-    jest.clearAllTimers();
-    jest.useRealTimers();
     jest.restoreAllMocks();
   });
 
@@ -73,7 +69,7 @@ describe('DatabaseProvider health-check scheduler', () => {
     const pool: ConnectionPoolOptions | undefined = { max: 5 };
     const hc: ConnectionHealthCheckOptions | undefined = {
       enabled: true,
-      intervalMs: 100,
+      intervalMs: 50,
       timeoutMs: 1000
     };
     const p = new TestProvider('dummy', logger, undefined, undefined, undefined, pool, hc);
@@ -83,10 +79,8 @@ describe('DatabaseProvider health-check scheduler', () => {
       return 1;
     });
 
-    jest.advanceTimersByTime(500);
-    // Дадим промисам стечь полностью (несколько тиков)
-    await new Promise((r) => setImmediate(r));
-    await new Promise((r) => setImmediate(r));
+    // подождём немного реального времени для выполнения runOnce() и первого интервала
+    await new Promise((r) => setTimeout(r, 120));
     expect(called).toBeGreaterThan(0);
     expect(events.length).toBeGreaterThan(0);
     expect(events[0].healthy).toBe(true);
@@ -99,7 +93,7 @@ describe('DatabaseProvider health-check scheduler', () => {
     const logger: SqlLogger = { connectionHealth: (e) => events.push({ healthy: e.healthy }) };
     const hc: ConnectionHealthCheckOptions | undefined = {
       enabled: true,
-      minIntervalMs: 10,
+      minIntervalMs: 20,
       maxIntervalMs: 100,
       degradeAfterFailures: 1,
       unhealthyAfterFailures: 2,
@@ -109,12 +103,10 @@ describe('DatabaseProvider health-check scheduler', () => {
     // Never resolves -> should timeout
     p.start(() => new Promise<number>(() => {}));
 
-    jest.advanceTimersByTime(50);
-    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setTimeout(r, 60));
     expect(events.some((e) => e.healthy === false)).toBe(true);
     // Next run with backoff
-    jest.advanceTimersByTime(120);
-    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setTimeout(r, 140));
     expect(events.filter((e) => e.healthy === false).length).toBeGreaterThanOrEqual(2);
     p.stop();
   }, 15000);
