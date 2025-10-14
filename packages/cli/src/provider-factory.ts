@@ -2,7 +2,8 @@ import type {
   ConnectionHealthCheckOptions,
   ConnectionPoolOptions,
   DatabaseProvider,
-  CircuitBreakerOptions
+  CircuitBreakerOptions,
+  FallbackPolicy
 } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
 import { PostgresProvider } from '@ts-linq/postgres';
@@ -116,6 +117,43 @@ function readCircuitFromEnv(): CircuitBreakerOptions | undefined {
   if (process.env.DB_CB_COUNT_TRANSIENT_ONLY)
     circuit.countTransientOnly = process.env.DB_CB_COUNT_TRANSIENT_ONLY === 'true';
   return isEmpty(circuit) ? undefined : circuit;
+}
+
+/**
+ * Read Graceful Degradation fallback policy from environment variables.
+ * Consumers can pass the returned policy into DbContext PerformanceOptions.
+ */
+export function readFallbackPolicyFromEnv(): FallbackPolicy | undefined {
+  const policy: FallbackPolicy = {} as FallbackPolicy;
+  if (process.env.DB_FALLBACK_ENABLED) policy.enabled = process.env.DB_FALLBACK_ENABLED === 'true';
+  if (process.env.DB_FALLBACK_ALLOW_OPS)
+    policy.allowOps = process.env.DB_FALLBACK_ALLOW_OPS.split(',').map((s) =>
+      s.trim()
+    ) as unknown as FallbackPolicy['allowOps'];
+  if (process.env.DB_FALLBACK_SOURCES)
+    policy.sources = process.env.DB_FALLBACK_SOURCES.split(',').map((s) => s.trim());
+  // Throttle
+  const throttle: NonNullable<FallbackPolicy['throttle']> = {};
+  if (process.env.DB_FALLBACK_THROTTLE_MIN_MS)
+    throttle.minIntervalMs = Number(process.env.DB_FALLBACK_THROTTLE_MIN_MS);
+  if (process.env.DB_FALLBACK_THROTTLE_MAX_PER_MIN)
+    throttle.maxPerMinute = Number(process.env.DB_FALLBACK_THROTTLE_MAX_PER_MIN);
+  if (process.env.DB_FALLBACK_THROTTLE_JITTER)
+    throttle.jitterRatio = Number(process.env.DB_FALLBACK_THROTTLE_JITTER);
+  if (!isEmpty(throttle)) policy.throttle = throttle;
+  // Hedged
+  const hedged: NonNullable<FallbackPolicy['hedged']> = {};
+  if (process.env.DB_FALLBACK_HEDGED_ENABLED)
+    hedged.enabled = process.env.DB_FALLBACK_HEDGED_ENABLED === 'true';
+  if (process.env.DB_FALLBACK_HEDGED_DELAY_MS)
+    hedged.delayMs = Number(process.env.DB_FALLBACK_HEDGED_DELAY_MS);
+  if (process.env.DB_FALLBACK_HEDGED_SOURCES)
+    hedged.sources = process.env.DB_FALLBACK_HEDGED_SOURCES.split(',').map((s) => s.trim());
+  if (!isEmpty(hedged)) policy.hedged = hedged;
+  // Includes
+  if (process.env.DB_FALLBACK_INCLUDES)
+    policy.allowIncludesOnFallback = process.env.DB_FALLBACK_INCLUDES as 'none' | 'attempt';
+  return isEmpty(policy) ? undefined : policy;
 }
 
 function isEmpty(obj: object): boolean {

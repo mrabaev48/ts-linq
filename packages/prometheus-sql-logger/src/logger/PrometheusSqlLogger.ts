@@ -59,6 +59,11 @@ export class PrometheusSqlLogger implements SqlLogger {
   private circuitStateGauge?: PromGauge;
   private circuitHalfOpenInFlight?: PromGauge;
   private circuitFailuresGauge?: PromGauge;
+  private fallbackAttempts?: PromCounter;
+  private fallbackSuccess?: PromCounter;
+  private fallbackFailures?: PromCounter;
+  private fallbackThrottled?: PromCounter;
+  private hedgedWins?: PromCounter;
 
   constructor(namespace: string, options?: PrometheusLoggerOptions) {
     this.prefix = options?.prefix ?? '';
@@ -72,6 +77,7 @@ export class PrometheusSqlLogger implements SqlLogger {
     this.initCacheMetrics();
     this.initHealthMetrics(buckets);
     this.initCircuitMetrics();
+    this.initFallbackMetrics();
   }
 
   private initQueryMetrics(buckets: number[]): void {
@@ -207,6 +213,34 @@ export class PrometheusSqlLogger implements SqlLogger {
         labelNames: ['provider']
       });
     }
+  }
+
+  private initFallbackMetrics(): void {
+    this.fallbackAttempts = new this.client!.Counter({
+      name: `${this.prefix}db_fallback_attempts_total`,
+      help: 'Total graceful-degradation fallback attempts',
+      labelNames: ['provider', 'fallback']
+    });
+    this.fallbackSuccess = new this.client!.Counter({
+      name: `${this.prefix}db_fallback_success_total`,
+      help: 'Successful graceful-degradation fallbacks',
+      labelNames: ['provider', 'fallback']
+    });
+    this.fallbackFailures = new this.client!.Counter({
+      name: `${this.prefix}db_fallback_failures_total`,
+      help: 'Failed graceful-degradation fallbacks',
+      labelNames: ['provider', 'fallback', 'error_type']
+    });
+    this.fallbackThrottled = new this.client!.Counter({
+      name: `${this.prefix}db_fallback_throttled_total`,
+      help: 'Fallback attempts skipped due to throttling',
+      labelNames: ['provider']
+    });
+    this.hedgedWins = new this.client!.Counter({
+      name: `${this.prefix}db_hedged_wins_total`,
+      help: 'Hedged requests where fallback beat primary',
+      labelNames: ['provider', 'operation', 'fallback']
+    });
   }
 
   public queryStart(_info?: {
@@ -369,6 +403,37 @@ export class PrometheusSqlLogger implements SqlLogger {
       }
       if (typeof info.failures === 'number') {
         this.circuitFailuresGauge?.set?.({ provider }, info.failures);
+      }
+    } catch {}
+  }
+
+  public fallback?(info: {
+    provider?: string;
+    fallback: string;
+    attempted: boolean;
+    succeeded?: boolean;
+    error?: Error;
+    throttled?: boolean;
+    isStale?: boolean;
+    asOf?: number;
+    source?: string;
+  }): void {
+    if (!this.enabled || !this.client) return;
+    const provider = info.provider || 'unknown';
+    try {
+      if (info.throttled) {
+        this.fallbackThrottled?.labels({ provider }).inc(1);
+        return;
+      }
+      if (info.attempted)
+        this.fallbackAttempts?.labels({ provider, fallback: info.fallback }).inc(1);
+      if (info.succeeded === true) {
+        this.fallbackSuccess?.labels({ provider, fallback: info.fallback }).inc(1);
+      } else if (info.succeeded === false) {
+        const errType = info.error?.name || 'Error';
+        this.fallbackFailures
+          ?.labels({ provider, fallback: info.fallback, error_type: errType })
+          .inc(1);
       }
     } catch {}
   }

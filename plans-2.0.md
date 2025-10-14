@@ -652,12 +652,25 @@
 - Docs: README (ENV, метрики, PromQL, прод‑чек‑лист), Grafana дашборд `docs/grafana/ts-linq-db-dashboard.json` (импортируемый JSON).
 - Tests: юнит‑тесты поведения (открытие/half‑open/закрытие), конкурентные пробы `halfOpenMaxCalls`.
 
-- [ ] **Graceful Degradation**
+- [x] **Graceful Degradation** ✅
 
   ```typescript
   // Fallback стратегии при недоступности БД
   const users = await ctx.users.fallbackTo(memoryCache).fallbackTo(readOnlyReplica).toArray();
   ```
+
+  Реализовано:
+  - API: `Queryable.fallbackTo(...)`, `withFallbackPolicy(...)` (per‑query overrides)
+  - Политика: `PerformanceOptions.fallbackPolicy` (allowOps, sources, freshness, throttle, hedged, allowIncludesOnFallback)
+  - Throttle: `minIntervalMs`, `maxPerMinute`, `jitterRatio` + метрика throttled
+  - Hedged: гонка primary vs fallback (SELECT и COUNT), выбор источников `hedged.sources`
+  - COUNT: серверный `fetchCount` в `ReplicaFallback` (fallback), иначе длина SELECT
+  - Include на fallback: policy `allowIncludesOnFallback: 'none' | 'attempt'`
+  - Staleness: логгеру передаются `isStale/asOf/source` при успехе fallback
+  - Метрики (PrometheusSqlLogger): `db_fallback_attempts_total`, `db_fallback_success_total`, `db_fallback_throttled_total`, `db_hedged_wins_total`
+  - CLI/ENV: чтение политики из ENV (`readFallbackPolicyFromEnv`) — allowOps/sources/throttle/hedged/includes
+  - Документация: раздел README (fallback/hedged/throttle + PromQL примеры)
+  - Тесты: policy (allowOps), throttle (minInterval/maxPerMinute), hedged count (победа fallback)
 
 - [x] **Connection Health Monitoring** ✅
   ```typescript
