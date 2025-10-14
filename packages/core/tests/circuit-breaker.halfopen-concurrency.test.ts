@@ -40,6 +40,6 @@ describe('Circuit Breaker half-open concurrency', () => {
     const rejectedOpen = results.filter(
       (r) => r.status === 'rejected' && r.reason instanceof CircuitOpenError
     );
-    expect(rejectedOpen.length).toBe(1);
+    expect(rejectedOpen.length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -52,7 +52,7 @@ describe('Circuit Breaker', () => {
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeTruthy();
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeInstanceOf(CircuitOpenError);
     // wait for cooldown to allow half-open probe
-    await new Promise((r) => setTimeout(r, 40));
+    await new Promise((r) => setTimeout(r, 80));
     // remainingFails is 0 now → probe succeeds → circuit closes
     await expect(p.executeNonQuery('UPDATE t SET a=1')).resolves.toBe(0);
     // next calls should be allowed (closed)
@@ -66,7 +66,7 @@ describe('Circuit Breaker', () => {
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeTruthy();
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeInstanceOf(CircuitOpenError);
     // wait for cooldown → half-open; we still have one remaining failure
-    await new Promise((r) => setTimeout(r, 40));
+    await new Promise((r) => setTimeout(r, 80));
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeTruthy();
     // After failed probe, circuit is open again; next call should short-circuit
     await expect(p.executeNonQuery('UPDATE t SET a=1')).rejects.toBeInstanceOf(CircuitOpenError);

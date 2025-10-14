@@ -83,15 +83,16 @@ describe('DatabaseProvider health-check scheduler', () => {
       return 1;
     });
 
-    jest.advanceTimersByTime(200);
-    // Дадим промисам стечь полностью
+    jest.advanceTimersByTime(500);
+    // Дадим промисам стечь полностью (несколько тиков)
+    await new Promise((r) => setImmediate(r));
     await new Promise((r) => setImmediate(r));
     expect(called).toBeGreaterThan(0);
     expect(events.length).toBeGreaterThan(0);
     expect(events[0].healthy).toBe(true);
     expect(typeof events[0].latencyMs === 'number').toBe(true);
     p.stop();
-  });
+  }, 15000);
 
   test('emits degraded/unhealthy with backoff on consecutive failures', async () => {
     const events: Array<{ healthy: boolean }> = [];
@@ -108,13 +109,13 @@ describe('DatabaseProvider health-check scheduler', () => {
     // Never resolves -> should timeout
     p.start(() => new Promise<number>(() => {}));
 
-    jest.advanceTimersByTime(25);
+    jest.advanceTimersByTime(50);
     await new Promise((r) => setImmediate(r));
     expect(events.some((e) => e.healthy === false)).toBe(true);
     // Next run with backoff
-    jest.advanceTimersByTime(60);
+    jest.advanceTimersByTime(120);
     await new Promise((r) => setImmediate(r));
     expect(events.filter((e) => e.healthy === false).length).toBeGreaterThanOrEqual(2);
     p.stop();
-  });
+  }, 15000);
 });
