@@ -605,7 +605,9 @@ export abstract class DatabaseProvider {
     const unhealthyN = this.healthCheck.unhealthyAfterFailures ?? 6;
     const scheduleNext = (delay: number) => {
       if (this.healthTimer) clearInterval(this.healthTimer);
-      this.healthTimer = setInterval(runOnce, delay);
+      this.healthTimer = setInterval(() => {
+        void runOnce();
+      }, delay);
     };
     const runOnce = async () => {
       try {
