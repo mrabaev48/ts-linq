@@ -1166,6 +1166,22 @@ Benchmarks & profiling:
 - Multi: `npm run bench:multi` (env: `POSTGRES_URL`, `MYSQL_URL`, `BENCH_PROVIDERS=sqlite,postgresql,mysql`, `BENCH_FORMAT=csv|json`)
 - Profiling: `npm run bench:profile:cpu`, `npm run bench:profile:heap` (Node CPU/Heap profiles)
 - Memory: `npm run bench:memory` (потоковая выборка памяти и Prometheus-гейджи)
+- Comprehensive: `npm run bench:comprehensive`  (ENV: `BENCH_PROVIDERS`, `BENCH_ROWS`, `BENCH_ITERS`, `BENCH_OUT`, `BENCH_FORMAT`)
+- Compare results: `npm run bench:compare -- --base bench-results/v1.0.0.json --current bench-results/current.json` (ENV: `BENCH_COMPARE_FORMAT=markdown|csv|json`, `BENCH_COMPARE_TOLERANCE=2`)
+- Stress: `npm run bench:stress` (ENV: `STRESS_DURATION_MS`, `STRESS_WPS`, `STRESS_RPS`, `STRESS_READERS`, `STRESS_WRITERS`)
+
+Example end-to-end:
+
+```bash
+# 1) Run comprehensive suite across providers and save JSON
+BENCH_PROVIDERS=sqlite,postgresql BENCH_ROWS=10000 BENCH_ITERS=2000 BENCH_OUT=bench-results/current.json npm run bench:comprehensive
+
+# 2) Compare with baseline
+npm run bench:compare -- --base bench-results/v1.0.0.json --current bench-results/current.json
+
+# 3) Stress test (15s by default)
+STRESS_DURATION_MS=20000 STRESS_WPS=150 STRESS_RPS=300 npm run bench:stress
+```
 
 ### Memory Profiling
 
