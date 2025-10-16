@@ -8,7 +8,9 @@ import type {
   ConnectionPoolOptions,
   ConnectionHealthCheckOptions,
   CircuitBreakerOptions,
-  CircuitState
+  CircuitState,
+  QueryPerformanceAnalysisOptions,
+  QueryAnalysisInfo
 } from './types';
 import { CircuitOpenError } from './types';
 import type { SqlDialect } from './query/SqlDialect';
@@ -48,6 +50,11 @@ export abstract class DatabaseProvider {
   private circuitOpenedAt?: number;
   private halfOpenInFlight: number = 0;
   private circuitOpenBackoffExp: number = 0;
+  /** Optional query performance analysis configuration. */
+  protected analysis?: QueryPerformanceAnalysisOptions;
+  /** Internal accounting for analysis rate limiting. */
+  private analysisEventsWindowStartMs?: number;
+  private analysisEventsInWindow: number = 0;
 
   /**
    * Create a provider with a given connection string.
@@ -224,6 +231,7 @@ export abstract class DatabaseProvider {
               : undefined,
           provider: this.providerName
         });
+        await this.maybeAnalyzeQuery({ sql, params, durationMs });
         await this.afterExecute(sql, params, result);
         // Success path: reset circuit if needed
         if (this.circuitState === 'half-open') {
@@ -245,6 +253,7 @@ export abstract class DatabaseProvider {
           error: error as Error,
           provider: this.providerName
         });
+        await this.maybeAnalyzeQuery({ sql, params, durationMs, error: error as Error });
         const isTransient = this.isTransientError(error);
         // Circuit breaker failure accounting
         const countOnlyTransient = this.circuitOptions?.countTransientOnly ?? true;
@@ -297,6 +306,109 @@ export abstract class DatabaseProvider {
         // next attempt
       }
     }
+  }
+
+  /** Configure query performance analysis at runtime. */
+  public configureQueryAnalysis(options?: QueryPerformanceAnalysisOptions): void {
+    this.analysis = { ...this.analysis, ...options };
+  }
+
+  /** Provider hook: obtain an EXPLAIN plan for a given SQL if supported. */
+  protected async getExplainPlan(
+    _sql: string,
+    _params: readonly SqlParameter[]
+  ): Promise<unknown | undefined> {
+    // Default: not supported in base class
+    return undefined;
+  }
+
+  /** Emit analysis event when thresholds are exceeded. */
+  private async maybeAnalyzeQuery(info: {
+    sql: string;
+    params: readonly SqlParameter[];
+    durationMs: number;
+    error?: Error;
+  }): Promise<void> {
+    const cfg = this.analysis;
+    if (!cfg?.enabled) return;
+    // only SELECT if configured
+    const onlySelect = cfg.onlySelect ?? true;
+    if (onlySelect && !/^\s*SELECT\b/i.test(info.sql)) return;
+    // sampling
+    const rate = Math.max(0, Math.min(1, cfg.sampleRate ?? 1));
+    if (rate < 1 && Math.random() > rate) return;
+    // rate limiting per minute
+    const now = Date.now();
+    const windowStart = this.analysisEventsWindowStartMs ?? now;
+    const perMinute = Math.max(1, cfg.rateLimitPerMinute ?? 120);
+    if (now - windowStart >= 60_000) {
+      this.analysisEventsWindowStartMs = now;
+      this.analysisEventsInWindow = 0;
+    }
+    if (this.analysisEventsInWindow >= perMinute) return;
+    this.analysisEventsInWindow += 1;
+    const explainT = cfg.explainThresholdMs ?? 500;
+    const slowT = cfg.slowQueryThresholdMs ?? 1000;
+    const needExplain = info.durationMs >= explainT && !info.error && !this.inTransaction;
+    let plan: unknown | undefined;
+    if (needExplain) {
+      try {
+        const timeoutMs = Math.max(1, cfg.explainTimeoutMs ?? 1000);
+        const timed = Promise.race([
+          this.getExplainPlan(info.sql, info.params),
+          new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), timeoutMs))
+        ]);
+        plan = await timed;
+      } catch (e) {
+        logInternalError('DatabaseProvider.maybeAnalyzeQuery.explain', e);
+      }
+    }
+    // size limit on plan (stringifiable only)
+    const maxChars = Math.max(1024, cfg.maxExplainChars ?? 65536);
+    const safePlan = (() => {
+      if (plan === undefined || plan === null) return plan;
+      try {
+        const s = typeof plan === 'string' ? plan : JSON.stringify(plan);
+        if (s.length <= maxChars) return plan;
+        return s.slice(0, maxChars);
+      } catch {
+        return plan;
+      }
+    })();
+    const payload: QueryAnalysisInfo = {
+      sql: info.sql,
+      params: info.params,
+      durationMs: info.durationMs,
+      provider: this.providerName,
+      slow: info.durationMs >= slowT,
+      explainPlan: safePlan,
+      recommendations: cfg.recommendations ? this.deriveRecommendations(plan) : undefined
+    };
+    try {
+      // Prefer dedicated hook if logger implements it; otherwise fallback to middleware afterExecute users
+      (this.logger as unknown as { analysis?: (i: QueryAnalysisInfo) => void })?.analysis?.(
+        payload
+      );
+      // Also notify middlewares if they expose analysis
+      if (this.middlewares && this.middlewares.length > 0) {
+        for (const mw of this.middlewares) {
+          try {
+            (mw as unknown as { analysis?: (i: QueryAnalysisInfo) => void }).analysis?.(payload);
+          } catch (e) {
+            logInternalError('DatabaseProvider.maybeAnalyzeQuery.middleware', e);
+          }
+        }
+      }
+    } catch (e) {
+      logInternalError('DatabaseProvider.maybeAnalyzeQuery.logger', e);
+    }
+  }
+
+  /** Heuristic recommendations from provider-agnostic plans. */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private deriveRecommendations(_plan: unknown | undefined): ReadonlyArray<string> | undefined {
+    // Minimal placeholder: concrete providers can override getExplainPlan with richer structures
+    return undefined;
   }
 
   /** Basic transient error classifier. Providers may override for accuracy. */

@@ -392,6 +392,24 @@ export class PostgresProvider extends DatabaseProvider {
     }
   }
 
+  /** Obtain PostgreSQL EXPLAIN (FORMAT JSON) plan when possible. */
+  protected async getExplainPlan(
+    sql: string,
+    params: readonly SqlParameter[]
+  ): Promise<unknown | undefined> {
+    try {
+      const explainSql = `EXPLAIN (FORMAT JSON) ${sql}`;
+      const rows = await this.doExecuteQuery<Record<string, unknown>>(explainSql, params);
+      const first = rows && rows[0];
+      if (!first) return undefined;
+      // Typical shape: { 'QUERY PLAN': [ { Plan: {...} } ] }
+      const key = Object.keys(first).find((k) => k.toUpperCase().includes('QUERY PLAN'));
+      return key ? first[key] : first;
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Begin a transaction (sets a trace id for logging). */
   public async beginTransaction(): Promise<void> {
     if (this.inTransaction) throw new Error('Transaction already in progress');

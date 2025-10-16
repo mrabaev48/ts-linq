@@ -103,4 +103,33 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
       this.spanByTraceId.delete(info.traceId);
     }
   }
+
+  analysis?(info: {
+    sql: string;
+    params: readonly SqlParameter[];
+    durationMs: number;
+    provider?: string;
+    slow?: boolean;
+    explainPlan?: unknown;
+    recommendations?: ReadonlyArray<string>;
+  }): void {
+    try {
+      const span = this.tracer?.startSpan('db.query.analysis', {
+        attributes: {
+          'db.system': info.provider || 'sql',
+          'db.analysis.duration_ms': info.durationMs,
+          'db.analysis.slow': !!info.slow,
+          'db.analysis.explain': info.explainPlan ? 'true' : 'false'
+        }
+      });
+      if (!span) return;
+      if (info.recommendations && info.recommendations.length > 0) {
+        span.setAttribute('db.analysis.recommendations', JSON.stringify(info.recommendations));
+      }
+      // Do not attach SQL text here to avoid duplication and sensitive data; rely on db.statement in query span
+      span.end();
+    } catch (e) {
+      logInternalError('OpenTelemetrySqlLogger.analysis', e);
+    }
+  }
 }

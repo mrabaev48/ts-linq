@@ -117,6 +117,21 @@ export abstract class DbContext {
     }
     // Store performance options for downstream consumers
     this._performanceOptions = options.performance;
+    // Propagate query performance analysis options into provider if available
+    try {
+      const analysis = options.performance?.analysis;
+      if (
+        analysis &&
+        typeof (this._provider as unknown as { configureQueryAnalysis?: (o: unknown) => void })
+          .configureQueryAnalysis === 'function'
+      ) {
+        (
+          this._provider as unknown as { configureQueryAnalysis: (o: unknown) => void }
+        ).configureQueryAnalysis(analysis as unknown);
+      }
+    } catch {
+      /* ignore */
+    }
     // Apply configurable IN() chunk size into loader
     this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize);
     this._loadingDefaults = options.loading || {};
