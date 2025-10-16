@@ -775,16 +775,26 @@
   });
   ```
 
-- [ ] **Memory Profiling**
+- [x] **Memory Profiling** ✅
 
-  ```typescript
-  // Отслеживание memory leaks
-  const profiler = new MemoryProfiler({
-    enableGC: true,
-    trackAllocations: true,
-    heapDumpThreshold: 0.9
-  });
-  ```
+```typescript
+// Отслеживание memory leaks и публикация метрик
+import { MemoryProfiler } from '@ts-linq/metrics-safe';
+import { PrometheusSqlLogger } from '@ts-linq/prometheus-sql-logger';
+
+const profiler = new MemoryProfiler({
+  enableGC: true,
+  trackAllocations: true,
+  heapDumpThreshold: 0.9,
+  sampleIntervalMs: 10_000
+});
+profiler.start();
+
+const prom = new PrometheusSqlLogger('app_', { memory: { profiler } });
+const ctx = new AppDbContext({ provider, connectionString, logger: prom, diagnostics: { memoryProfiler: profiler } });
+```
+
+Экспортируются метрики: `db_memory_rss_bytes`, `db_memory_heap_total_bytes`, `db_memory_heap_used_bytes`, `db_memory_external_bytes`, `db_memory_array_buffers_bytes`, `db_memory_heap_pressure`, `db_memory_alive_allocations`.
 
 - [ ] **Benchmark Suite Enhancement**
   ```bash

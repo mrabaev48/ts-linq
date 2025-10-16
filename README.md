@@ -1165,6 +1165,60 @@ Benchmarks & profiling:
 - Quick: `npm run bench` (SQLite)
 - Multi: `npm run bench:multi` (env: `POSTGRES_URL`, `MYSQL_URL`, `BENCH_PROVIDERS=sqlite,postgresql,mysql`, `BENCH_FORMAT=csv|json`)
 - Profiling: `npm run bench:profile:cpu`, `npm run bench:profile:heap` (Node CPU/Heap profiles)
+- Memory: `npm run bench:memory` (потоковая выборка памяти и Prometheus-гейджи)
+
+### Memory Profiling
+
+Для сбора метрик памяти и обнаружения потенциальных утечек доступен легковесный профайлер памяти и интеграция с Prometheus.
+
+Подключение профайлера и метрик:
+
+```ts
+import { MemoryProfiler } from '@ts-linq/metrics-safe';
+import { PrometheusSqlLogger } from '@ts-linq/prometheus-sql-logger';
+
+const profiler = new MemoryProfiler({
+  enableGC: true,           // при наличии --expose-gc вызовет global.gc() перед сэмплом
+  trackAllocations: true,   // включает FinalizationRegistry учёт «живых» аллокаций
+  heapDumpThreshold: 0.9,   // делает heap snapshot при давлении >= 90%
+  sampleIntervalMs: 10_000  // периодичность сэмплов
+});
+profiler.start();
+
+// Prometheus логгер будет публиковать гейджи памяти по сэмплам профайлера
+const prom = new PrometheusSqlLogger('app_', { memory: { profiler }, maskSql: true });
+
+const ctx = new AppDbContext({
+  provider: 'sqlite',
+  connectionString: ':memory:',
+  logger: prom,
+  diagnostics: { memoryProfiler: profiler } // контекст управляет lifecycle (start/stop)
+});
+```
+
+Экспортируемые метрики Prometheus:
+
+- `db_memory_rss_bytes`
+- `db_memory_heap_total_bytes`
+- `db_memory_heap_used_bytes`
+- `db_memory_external_bytes`
+- `db_memory_array_buffers_bytes`
+- `db_memory_heap_pressure` (0..1)
+- `db_memory_alive_allocations` (если включён tracking)
+
+Снимок heap:
+
+```ts
+// вручную
+await profiler.takeHeapSnapshot();
+// автоматически по порогу heapDumpThreshold
+```
+
+Быстрый бенч профилирования памяти:
+
+```bash
+npm run bench:memory
+```
 
 Best Practices (PerformanceOptions & metrics):
 

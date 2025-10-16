@@ -65,6 +65,8 @@ export interface DbContextOptions {
     /** Translate a message key with optional parameters into a localized message. */
     translate?: (key: string, params?: Record<string, unknown>) => string;
   };
+  /** Optional diagnostics hooks and profilers. */
+  diagnostics?: DiagnosticsOptions;
 }
 
 /** Generic connection pool options (provider-agnostic). */
@@ -120,6 +122,37 @@ export interface CircuitBreakerOptions {
   maxOpenDurationMs?: number;
   halfOpenMaxCalls?: number;
   countTransientOnly?: boolean;
+}
+
+/** Read-only memory sample for diagnostics. */
+export interface MemorySampleInfo {
+  timestampMs: number;
+  rssBytes: number;
+  heapTotalBytes: number;
+  heapUsedBytes: number;
+  externalBytes: number;
+  arrayBuffersBytes: number;
+  /** Ratio heapUsed/heapTotal in [0..1]. */
+  heapPressure: number;
+}
+
+/** Minimal profiler contract to integrate external memory profilers without coupling. */
+export interface MemoryProfilerLike {
+  /** Subscribe to new memory samples; returns an unsubscribe function. */
+  onSample(listener: (sample: MemorySampleInfo) => void): () => void;
+  /** Number of currently alive tracked allocations, if supported. */
+  getAliveAllocations?(): number;
+  /** Start/stop periodic sampling (optional). */
+  start?(): void;
+  stop?(): void;
+  /** Take an immediate sample (optional). */
+  sample?(allowGc?: boolean): Promise<MemorySampleInfo> | MemorySampleInfo;
+}
+
+/** Diagnostics hooks and profilers. */
+export interface DiagnosticsOptions {
+  /** External memory profiler instance. */
+  memoryProfiler?: MemoryProfilerLike;
 }
 
 /**

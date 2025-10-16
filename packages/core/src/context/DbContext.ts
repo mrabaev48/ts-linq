@@ -19,6 +19,7 @@ import type {
   AuditOptions,
   GlobalFilter
 } from '../types';
+import type { DiagnosticsOptions, MemoryProfilerLike } from '../types';
 import { ok, err, ValidationError } from '../types';
 import type { EntityCacheLike } from '../utils/EntityCache';
 import { EntityCache } from '../utils/EntityCache';
@@ -59,6 +60,8 @@ export abstract class DbContext {
   private _softDelete?: SoftDeleteOptions;
   private _audit?: AuditOptions;
   private _globalFilters?: GlobalFilter[];
+  private _diagnostics?: DiagnosticsOptions;
+  private _memoryProfiler?: MemoryProfilerLike;
   private _validationOptions?: {
     translate?: (key: string, params?: Record<string, unknown>) => string;
   };
@@ -90,6 +93,17 @@ export abstract class DbContext {
     }
     this._audit = options.audit;
     this._globalFilters = options.globalFilters;
+    this._diagnostics = options.diagnostics;
+    // Start external memory profiler if provided
+    try {
+      const mp = this._diagnostics?.memoryProfiler;
+      if (mp) {
+        this._memoryProfiler = mp;
+        mp.start?.();
+      }
+    } catch (e) {
+      logInternalError('DbContext.constructor.memoryProfiler.start', e);
+    }
     this._validationOptions = options.validation;
     this._validationService = new ChangeValidationService(
       this._validationOptions?.translate,
@@ -501,6 +515,12 @@ export abstract class DbContext {
    */
   public async dispose(): Promise<void> {
     await this._provider.disconnect();
+    // Stop external memory profiler if started
+    try {
+      this._memoryProfiler?.stop?.();
+    } catch (e) {
+      logInternalError('DbContext.dispose.memoryProfiler.stop', e);
+    }
   }
 
   /**

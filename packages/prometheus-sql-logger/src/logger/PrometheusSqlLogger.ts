@@ -19,6 +19,21 @@ interface PromClientLike {
   Gauge?: new (cfg: Record<string, unknown>) => PromGauge;
 }
 
+type MemoryProfilerLike = {
+  onSample(
+    listener: (s: {
+      timestampMs: number;
+      rssBytes: number;
+      heapTotalBytes: number;
+      heapUsedBytes: number;
+      externalBytes: number;
+      arrayBuffersBytes: number;
+      heapPressure: number;
+    }) => void
+  ): () => void;
+  getAliveAllocations?(): number;
+};
+
 export interface PrometheusLoggerOptions {
   prefix?: string;
   bucketsMs?: number[];
@@ -27,6 +42,10 @@ export interface PrometheusLoggerOptions {
   maskSql?: boolean;
   /** Custom patterns to redact from SQL text (replaced by [REDACTED]) */
   maskPatterns?: ReadonlyArray<RegExp>;
+  /** Optional memory profiling integration */
+  memory?: {
+    profiler?: MemoryProfilerLike;
+  };
 }
 
 export class PrometheusSqlLogger implements SqlLogger {
@@ -67,6 +86,15 @@ export class PrometheusSqlLogger implements SqlLogger {
   private analysisSlowTotal?: PromCounter;
   private analysisExplainedTotal?: PromCounter;
   private analysisDuration?: PromHistogram;
+  // Memory metrics
+  private memRssGauge?: PromGauge;
+  private memHeapTotalGauge?: PromGauge;
+  private memHeapUsedGauge?: PromGauge;
+  private memExternalGauge?: PromGauge;
+  private memArrayBuffersGauge?: PromGauge;
+  private memHeapPressureGauge?: PromGauge;
+  private memAliveAllocationsGauge?: PromGauge;
+  private detachMemory?: () => void;
 
   constructor(namespace: string, options?: PrometheusLoggerOptions) {
     this.prefix = options?.prefix ?? '';
@@ -82,6 +110,7 @@ export class PrometheusSqlLogger implements SqlLogger {
     this.initCircuitMetrics();
     this.initFallbackMetrics();
     this.initAnalysisMetrics(buckets);
+    this.initMemoryMetrics(options?.memory?.profiler);
   }
 
   private initQueryMetrics(buckets: number[]): void {
@@ -264,6 +293,57 @@ export class PrometheusSqlLogger implements SqlLogger {
       help: 'Hedged requests where fallback beat primary',
       labelNames: ['provider', 'operation', 'fallback']
     });
+  }
+
+  private initMemoryMetrics(profiler?: MemoryProfilerLike): void {
+    if (!this.client || !this.client.Gauge) return;
+    // Gauges are process-wide; no labels to avoid duplication/cardinality
+    this.memRssGauge = new this.client.Gauge({
+      name: `${this.prefix}db_memory_rss_bytes`,
+      help: 'Process RSS memory usage (bytes)'
+    });
+    this.memHeapTotalGauge = new this.client.Gauge({
+      name: `${this.prefix}db_memory_heap_total_bytes`,
+      help: 'V8 heap total (bytes)'
+    });
+    this.memHeapUsedGauge = new this.client.Gauge({
+      name: `${this.prefix}db_memory_heap_used_bytes`,
+      help: 'V8 heap used (bytes)'
+    });
+    this.memExternalGauge = new this.client.Gauge({
+      name: `${this.prefix}db_memory_external_bytes`,
+      help: 'External memory (bytes)'
+    });
+    this.memArrayBuffersGauge = new this.client.Gauge({
+      name: `${this.prefix}db_memory_array_buffers_bytes`,
+      help: 'ArrayBuffers memory (bytes)'
+    });
+    this.memHeapPressureGauge = new this.client.Gauge({
+      name: `${this.prefix}db_memory_heap_pressure`,
+      help: 'Heap pressure ratio (0..1)'
+    });
+    this.memAliveAllocationsGauge = new this.client.Gauge({
+      name: `${this.prefix}db_memory_alive_allocations`,
+      help: 'Tracked alive allocations (FinalizationRegistry-based)'
+    });
+
+    if (profiler) {
+      this.detachMemory = profiler.onSample((s) => {
+        try {
+          this.memRssGauge?.set?.({}, s.rssBytes);
+          this.memHeapTotalGauge?.set?.({}, s.heapTotalBytes);
+          this.memHeapUsedGauge?.set?.({}, s.heapUsedBytes);
+          this.memExternalGauge?.set?.({}, s.externalBytes);
+          this.memArrayBuffersGauge?.set?.({}, s.arrayBuffersBytes);
+          this.memHeapPressureGauge?.set?.({}, s.heapPressure);
+          const alive =
+            typeof profiler.getAliveAllocations === 'function'
+              ? profiler.getAliveAllocations()
+              : undefined;
+          if (typeof alive === 'number') this.memAliveAllocationsGauge?.set?.({}, alive);
+        } catch {}
+      });
+    }
   }
 
   public queryStart(_info?: {
