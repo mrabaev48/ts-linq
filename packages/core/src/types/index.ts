@@ -457,6 +457,8 @@ export interface PerformanceOptions {
   inClauseChunkSize?: number;
   /** Optional fallback policy for graceful degradation. */
   fallbackPolicy?: FallbackPolicy;
+  /** Optional query performance analysis configuration. */
+  analysis?: QueryPerformanceAnalysisOptions;
 }
 
 /**
@@ -536,6 +538,8 @@ export interface SqlLogger {
   fallback?(info: FallbackInfo): void;
   /** Optional hook for hedged-request wins (fallback beat primary). */
   hedgedWin?(info: { provider?: string; operation: string; fallback: string }): void;
+  /** Optional hook for query performance analysis events. */
+  analysis?(info: QueryAnalysisInfo): void;
 }
 
 /** Factory for creating SqlLogger per provider to satisfy DIP. */
@@ -551,6 +555,47 @@ export interface RetryPolicy {
   getDelayMs(attempt: number): number;
   /** Extended decision hook with richer context (optional, non-breaking). */
   shouldRetryEx?(info: RetryDecisionInfo): boolean;
+}
+
+/** Options controlling automatic query performance analysis. */
+export interface QueryPerformanceAnalysisOptions {
+  /** Enable analysis; default: false. */
+  enabled?: boolean;
+  /** Consider a query slow if duration >= threshold (ms). Default: 1000. */
+  slowQueryThresholdMs?: number;
+  /** Run EXPLAIN when duration >= this value (ms). Default: 500. */
+  explainThresholdMs?: number;
+  /** Attach lightweight recommendations derived from plan heuristics. Default: true. */
+  recommendations?: boolean;
+  /** Sample analyzed queries with probability in [0,1]. Default: 1 (no sampling). */
+  sampleRate?: number;
+  /** Hard cap of analysis events per minute per provider instance. Default: 120. */
+  rateLimitPerMinute?: number;
+  /** Timeout for collecting EXPLAIN (ms). Default: 1000. */
+  explainTimeoutMs?: number;
+  /** Max chars to keep from serialized plan; oversize plans are truncated. Default: 65536. */
+  maxExplainChars?: number;
+  /** Analyze only SELECT statements when true. Default: true. */
+  onlySelect?: boolean;
+}
+
+/** Detailed analysis info reported to loggers/middlewares. */
+export interface QueryAnalysisInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  durationMs: number;
+  provider?: string;
+  /** True if duration exceeded slow threshold. */
+  slow?: boolean;
+  /** Optional textual plan or JSON depending on provider support. */
+  explainPlan?: unknown;
+  /** Optional best-effort list of hints derived from the plan. */
+  recommendations?: ReadonlyArray<string>;
+}
+
+/** Optional hook for receiving query analysis events. */
+export interface QueryAnalysisLogger {
+  analysis?(info: QueryAnalysisInfo): void;
 }
 
 /** Context passed to advanced retry decision hooks. */
@@ -682,6 +727,8 @@ export interface OrmMiddleware {
     error?: Error;
   }): void | Promise<void>;
   entityMaterialized?(info: { entity: object; metadata?: EntityMetadata }): void | Promise<void>;
+  /** Optional hook for receiving query analysis events. */
+  analysis?(info: QueryAnalysisInfo): void | Promise<void>;
 }
 
 /**

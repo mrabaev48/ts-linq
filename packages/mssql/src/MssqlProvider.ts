@@ -365,6 +365,36 @@ export class MssqlProvider extends DatabaseProvider {
     }
   }
 
+  /** Obtain SQL Server execution plan via SHOWPLAN_TEXT (best-effort, non-executing). */
+  protected async getExplainPlan(
+    sql: string,
+    params: readonly SqlParameter[]
+  ): Promise<unknown | undefined> {
+    try {
+      if (!this.isConnected) await this.connect();
+      const mssql = safeRequireMssql();
+      const request = new mssql.Request(this.tx || this.pool!);
+      params.forEach((value, i) => request.input(`p${i + 1}`, value));
+      try {
+        await request.batch('SET SHOWPLAN_TEXT ON;');
+        const res = await request.query(sql);
+        await request.batch('SET SHOWPLAN_TEXT OFF;');
+        return res.recordset;
+      } catch {
+        try {
+          await request.batch('SET SHOWPLAN_XML ON;');
+          const res = await request.query(sql);
+          await request.batch('SET SHOWPLAN_XML OFF;');
+          return res.recordset;
+        } catch {
+          return undefined;
+        }
+      }
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Begin a database transaction. */
   public async beginTransaction(): Promise<void> {
     if (!this.isConnected) await this.connect();

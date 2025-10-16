@@ -64,6 +64,9 @@ export class PrometheusSqlLogger implements SqlLogger {
   private fallbackFailures?: PromCounter;
   private fallbackThrottled?: PromCounter;
   private hedgedWins?: PromCounter;
+  private analysisSlowTotal?: PromCounter;
+  private analysisExplainedTotal?: PromCounter;
+  private analysisDuration?: PromHistogram;
 
   constructor(namespace: string, options?: PrometheusLoggerOptions) {
     this.prefix = options?.prefix ?? '';
@@ -78,6 +81,7 @@ export class PrometheusSqlLogger implements SqlLogger {
     this.initHealthMetrics(buckets);
     this.initCircuitMetrics();
     this.initFallbackMetrics();
+    this.initAnalysisMetrics(buckets);
   }
 
   private initQueryMetrics(buckets: number[]): void {
@@ -213,6 +217,25 @@ export class PrometheusSqlLogger implements SqlLogger {
         labelNames: ['provider']
       });
     }
+  }
+
+  private initAnalysisMetrics(buckets: number[]): void {
+    this.analysisSlowTotal = new this.client!.Counter({
+      name: `${this.prefix}db_analysis_slow_total`,
+      help: 'Total slow queries detected by analyzer',
+      labelNames: ['provider', 'entity']
+    });
+    this.analysisExplainedTotal = new this.client!.Counter({
+      name: `${this.prefix}db_analysis_explained_total`,
+      help: 'Total queries with explain plan collected',
+      labelNames: ['provider', 'entity']
+    });
+    this.analysisDuration = new this.client!.Histogram({
+      name: `${this.prefix}db_analysis_duration_ms`,
+      help: 'Observed duration of analyzed queries (ms)',
+      labelNames: ['provider', 'entity'],
+      buckets
+    });
   }
 
   private initFallbackMetrics(): void {
@@ -523,6 +546,28 @@ export class PrometheusSqlLogger implements SqlLogger {
     m = up.match(/^UPDATE\s+([A-Z0-9_"`\[\]]+)/);
     if (m && m[1]) return this.cleanIdentifier(m[1]);
     return undefined;
+  }
+
+  public analysis?(info: {
+    sql: string;
+    params: readonly SqlParameter[];
+    durationMs: number;
+    provider?: string;
+    slow?: boolean;
+    explainPlan?: unknown;
+    recommendations?: ReadonlyArray<string>;
+  }): void {
+    if (!this.enabled || !this.client) return;
+    const sql = this.maskIfNeeded(info.sql);
+    const entity = this.parseEntity(sql) || 'unknown';
+    const provider = info.provider || 'unknown';
+    try {
+      if (typeof info.durationMs === 'number' && this.analysisDuration) {
+        this.analysisDuration.labels({ provider, entity }).observe(Math.max(0, info.durationMs));
+      }
+      if (info.slow) this.analysisSlowTotal?.labels({ provider, entity }).inc(1);
+      if (info.explainPlan) this.analysisExplainedTotal?.labels({ provider, entity }).inc(1);
+    } catch {}
   }
   private cleanIdentifier(id: string): string {
     return id.replace(/^["`\[]|["`\]]$/g, '');

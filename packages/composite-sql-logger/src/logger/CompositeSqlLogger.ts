@@ -7,7 +7,8 @@ import type {
   CacheInfo,
   CircuitEventInfo,
   ConnectionHealthInfo,
-  FallbackInfo
+  FallbackInfo,
+  QueryAnalysisInfo
 } from '@ts-linq/core';
 
 export class CompositeSqlLogger implements SqlLogger {
@@ -116,6 +117,16 @@ export class CompositeSqlLogger implements SqlLogger {
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[CompositeSqlLogger] hedgedWin delegate error', e);
+      }
+    }
+  }
+  analysis(info: QueryAnalysisInfo): void {
+    for (const d of this.delegates) {
+      try {
+        (d as unknown as { analysis?: (i: QueryAnalysisInfo) => void }).analysis?.(info);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[CompositeSqlLogger] analysis delegate error', e);
       }
     }
   }

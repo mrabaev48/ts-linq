@@ -282,6 +282,28 @@ export class MySqlProvider extends DatabaseProvider {
     }
   }
 
+  /** Obtain MySQL EXPLAIN plan (JSON where supported) */
+  protected async getExplainPlan(
+    sql: string,
+    params: readonly SqlParameter[]
+  ): Promise<unknown | undefined> {
+    try {
+      // Prefer EXPLAIN FORMAT=JSON for MySQL 5.7+/8.0+, fallback to plain EXPLAIN
+      const explainJson = `EXPLAIN FORMAT=JSON ${sql}`;
+      try {
+        const rows = await this.doExecuteQuery<Record<string, unknown>>(explainJson, params);
+        const first = rows && rows[0];
+        if (first) return first;
+      } catch {
+        /* fall back */
+      }
+      const rows = await this.doExecuteQuery<Record<string, unknown>>(`EXPLAIN ${sql}`, params);
+      return rows;
+    } catch {
+      return undefined;
+    }
+  }
+
   public async beginTransaction(): Promise<void> {
     if (!this.isConnected) await this.connect();
     const pool = this.pool as MySqlPoolLike;

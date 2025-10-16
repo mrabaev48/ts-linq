@@ -721,14 +721,57 @@
   // CLI: `metrics:serve` поднимает HTTP эндпоинт `/metrics`.
   ```
 
-- [ ] **Query Performance Analysis**
+- [x] **Query Performance Analysis** ✅
+
+  Реализовано автоматическое выявление медленных запросов, сбор планов выполнения и публикация событий/метрик в логгеры.
+
+  - Опции (`PerformanceOptions.analysis`):
+    - `enabled` — включение анализа
+    - `slowQueryThresholdMs` — порог «медленного» запроса
+    - `explainThresholdMs` — порог для сбора EXPLAIN
+    - `recommendations` — включить рекомендации (эвристики)
+    - `sampleRate` — сэмплирование (0..1)
+    - `rateLimitPerMinute` — лимит событий в минуту (per‑instance)
+    - `explainTimeoutMs` — таймаут получения плана
+    - `maxExplainChars` — ограничение размера плана (обрезка)
+    - `onlySelect` — анализировать только SELECT (по умолчанию true)
+
+  - Интеграция:
+    - Триггер после `queryEnd` в `DatabaseProvider` (анализ не выполняется внутри транзакций)
+    - EXPLAIN per‑provider:
+      - PostgreSQL: `EXPLAIN (FORMAT JSON) ...`
+      - MySQL: `EXPLAIN FORMAT=JSON ...` с фолбэком на `EXPLAIN`
+      - SQLite: `EXPLAIN QUERY PLAN ...`
+      - MSSQL: `SET SHOWPLAN_TEXT/XML ON` (best‑effort)
+    - Проброс событий `analysis` в `SqlLogger` и `OrmMiddleware` (hook)
+    - `CompositeSqlLogger` пробрасывает `analysis` всем делегатам
+
+  - Логгеры:
+    - PrometheusSqlLogger:
+      - `db_analysis_slow_total{provider,entity}`
+      - `db_analysis_explained_total{provider,entity}`
+      - `db_analysis_duration_ms{provider,entity}` (Histogram)
+    - OpenTelemetrySqlLogger:
+      - спан `db.query.analysis` с атрибутами: `db.analysis.duration_ms`, `db.analysis.slow`, `db.analysis.explain`, `db.analysis.recommendations`
+
+  Пример конфигурации:
 
   ```typescript
-  // Автоматический анализ медленных запросов
-  const analyzer = new QueryAnalyzer({
-    slowQueryThreshold: 1000, // ms
-    explainThreshold: 500,
-    recommendations: true
+  const ctx = new AppDbContext({
+    provider,
+    performance: {
+      analysis: {
+        enabled: true,
+        slowQueryThresholdMs: 1000,
+        explainThresholdMs: 500,
+        recommendations: true,
+        sampleRate: 0.5,
+        rateLimitPerMinute: 120,
+        explainTimeoutMs: 1000,
+        maxExplainChars: 65536,
+        onlySelect: true
+      }
+    }
   });
   ```
 
