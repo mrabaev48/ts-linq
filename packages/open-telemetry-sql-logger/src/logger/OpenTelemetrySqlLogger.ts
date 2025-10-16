@@ -1,4 +1,5 @@
 import type { SqlLogger, SqlParameter } from '@ts-linq/core';
+import { logInternalError } from '@ts-linq/core';
 
 interface OtelLike {
   trace: {
@@ -19,8 +20,8 @@ function safeRequireOtel(): OtelLike | undefined {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const otel = require('@opentelemetry/api') as OtelLike;
     if (otel && otel.trace && typeof otel.trace.getTracer === 'function') return otel;
-  } catch {
-    /* ignore */
+  } catch (e) {
+    logInternalError('OpenTelemetrySqlLogger.safeRequireOtel', e);
   }
   return undefined;
 }
@@ -53,7 +54,9 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
     for (const re of this.maskPatterns) {
       try {
         s = s.replace(re, '[REDACTED]');
-      } catch {}
+      } catch (e) {
+        logInternalError('OpenTelemetrySqlLogger.mask.replace', e);
+      }
     }
     return s;
   }
@@ -98,6 +101,35 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
     } finally {
       span.end();
       this.spanByTraceId.delete(info.traceId);
+    }
+  }
+
+  analysis?(info: {
+    sql: string;
+    params: readonly SqlParameter[];
+    durationMs: number;
+    provider?: string;
+    slow?: boolean;
+    explainPlan?: unknown;
+    recommendations?: ReadonlyArray<string>;
+  }): void {
+    try {
+      const span = this.tracer?.startSpan('db.query.analysis', {
+        attributes: {
+          'db.system': info.provider || 'sql',
+          'db.analysis.duration_ms': info.durationMs,
+          'db.analysis.slow': !!info.slow,
+          'db.analysis.explain': info.explainPlan ? 'true' : 'false'
+        }
+      });
+      if (!span) return;
+      if (info.recommendations && info.recommendations.length > 0) {
+        span.setAttribute('db.analysis.recommendations', JSON.stringify(info.recommendations));
+      }
+      // Do not attach SQL text here to avoid duplication and sensitive data; rely on db.statement in query span
+      span.end();
+    } catch (e) {
+      logInternalError('OpenTelemetrySqlLogger.analysis', e);
     }
   }
 }

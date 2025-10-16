@@ -29,6 +29,16 @@ class InMemoryCountCache {
     clear() {
         this.store.clear();
     }
+    invalidateBy(matcher) {
+        let removed = 0;
+        for (const k of Array.from(this.store.keys())) {
+            if (matcher(k)) {
+                this.store.delete(k);
+                removed++;
+            }
+        }
+        return removed;
+    }
 }
 exports.InMemoryCountCache = InMemoryCountCache;
 //# sourceMappingURL=CountCache.js.map

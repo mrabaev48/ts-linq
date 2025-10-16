@@ -12,4 +12,6 @@ export * from './QueryModel';
 export * from './ast/Nodes';
 export * from './ast/SqlVisitor';
 export * from './spec/Specification';
+export * from './fallbacks/MemoryFallback';
+export * from './fallbacks/ReplicaFallback';
 //# sourceMappingURL=index.d.ts.map

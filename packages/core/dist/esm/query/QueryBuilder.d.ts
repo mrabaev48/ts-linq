@@ -13,12 +13,13 @@ export declare class QueryBuilder {
     private _dialect;
     private _logger?;
     private _providerName?;
+    private _namespace?;
     private _cache;
     /**
      * Create a QueryBuilder that delegates SQL generation to a dialect.
      * @param dialect SqlDialect implementation (default: SQLiteDialect)
      */
-    constructor(dialect: SqlDialect, logger?: SqlLogger, providerName?: string, cache?: SqlCache);
+    constructor(dialect: SqlDialect, logger?: SqlLogger, providerName?: string, cache?: SqlCache, namespace?: string);
     /** Generate SQL from QueryOptions with enhanced caching. */
     generateSql<T>(entityClass: new () => T, options: QueryOptions): {
         query: string;
@@ -54,5 +55,9 @@ export declare class QueryBuilder {
     /** Store an item in the cache. */
     private remember;
     private getFromCache;
+    /**
+     * Targeted invalidation helper: remove cached SQL entries for the given entity name.
+     */
+    static invalidateForEntity(entityName: string): number;
 }
 //# sourceMappingURL=QueryBuilder.d.ts.map

@@ -43,7 +43,7 @@ class SchemaExportCommand {
         this.logger = logger;
         this.fsAdapter = fsAdapter;
         this.name = 'schema:export';
-        this.describe = 'Экспортирует snapshot схемы из метаданных в файл';
+        this.describe = 'Exports schema snapshot from metadata to a file';
         this.aliases = ['schema export'];
     }
     run(argv) {

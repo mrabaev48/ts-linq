@@ -45,7 +45,7 @@ class MigrationsDryRunCommand {
         this.logger = logger;
         this.fsAdapter = fsAdapter;
         this.name = 'migration:dry-run';
-        this.describe = 'Печатает SQL изменений между snapshot и БД (dry-run)';
+        this.describe = 'Prints SQL changes between snapshot and DB (dry-run)';
         this.aliases = ['migrations:dry-run'];
     }
     async runDb(provider, argv) {

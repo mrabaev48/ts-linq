@@ -24,6 +24,7 @@ import type { CountCache } from './CountCache';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { safeCache, safeCacheEvicted, safeCacheSize } from 'metrics-safe';
+import { logInternalError } from '../utils/InternalLogger';
 import type {
   FallbackRequest,
   QueryFallback,
@@ -762,7 +763,8 @@ export class Queryable<T> {
           }
           const data = await fb.fetch(req);
           if (data && data.length >= 0) return (data as unknown as unknown[]).length;
-        } catch {
+        } catch (e) {
+          logInternalError('hedged.startFallback.fetch', e);
           continue;
         }
       }
@@ -777,7 +779,24 @@ export class Queryable<T> {
         fallbackCountPromise.then((n) => ({ k: 'f', n }) as const)
       ]);
       if (winner.k === 'p') return winner.n;
-      if (typeof winner.n === 'number' && winner.n >= 0) return winner.n;
+      if (typeof winner.n === 'number' && winner.n >= 0) {
+        try {
+          this._provider.loggerRef?.hedgedWin?.({
+            provider: this._provider.providerLabel,
+            operation: 'count',
+            fallback: 'unknown'
+          });
+          this._provider.loggerRef?.fallback?.({
+            provider: this._provider.providerLabel,
+            fallback: 'unknown',
+            attempted: true,
+            succeeded: true
+          });
+        } catch (e) {
+          logInternalError('hedged.select.hedgedWin', e);
+        }
+        return winner.n;
+      }
       return await primaryPromise;
     } catch {
       return null;
@@ -1041,7 +1060,9 @@ export class Queryable<T> {
             operation: 'select',
             fallback: winner.label || 'unknown'
           });
-        } catch {}
+        } catch (e) {
+          logInternalError('hedged.select.hedgedWin', e);
+        }
         this._provider.loggerRef?.fallback?.({
           provider: this._provider.providerLabel,
           fallback: winner.label || 'unknown',

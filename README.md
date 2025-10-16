@@ -950,6 +950,31 @@ db_connection_degraded
 sum by (provider, from, to) (rate(db_connection_status_transitions_total[5m]))
 ```
 
+CLI: запуск эндпоинта метрик
+
+```bash
+# Установите prom-client в вашем приложении (опционально для сбора метрик)
+npm i prom-client --save
+
+# Запустить встроенный HTTP-сервер метрик (по умолчанию порт 0 и путь /metrics)
+npx ts-linq metrics:serve --port 9000 --path /metrics
+
+# Или просто указать порт позиционным аргументом
+npx ts-linq metrics:serve 9000
+```
+
+- Если `prom-client` не установлен, экспонирование будет работать, но вернёт заглушку `# prom-client is not installed`.
+- Экземпляры логгера `PrometheusSqlLogger` автоматически начнут публиковать метрики, если `prom-client` доступен в рантайме.
+- Собираемые метрики включают:
+  - db_query_total, db_query_duration_ms_bucket, db_error_total, db_retry_total
+  - db_active_transactions (Gauge)
+  - db_cache_hits_total, db_cache_misses_total, db_cache_size, db_cache_evictions_total
+  - db_count_cache_ttl_hits_total, db_count_cache_hard_hits_total
+  - db_connection_health, db_connection_latency_ms_bucket, db_connection_degraded, db_connection_status_transitions_total
+  - db_circuit_state, db_circuit_open_total, db_circuit_transitions_total, db_circuit_half_open_inflight, db_circuit_failures
+  - db_fallback_attempts_total, db_fallback_success_total, db_fallback_failures_total, db_fallback_throttled_total
+  - db_hedged_wins_total
+
 Dashboard hints:
 
 - Overview: query rate, error rate, p50/p95 latency (by provider), active transactions.
@@ -1140,6 +1165,76 @@ Benchmarks & profiling:
 - Quick: `npm run bench` (SQLite)
 - Multi: `npm run bench:multi` (env: `POSTGRES_URL`, `MYSQL_URL`, `BENCH_PROVIDERS=sqlite,postgresql,mysql`, `BENCH_FORMAT=csv|json`)
 - Profiling: `npm run bench:profile:cpu`, `npm run bench:profile:heap` (Node CPU/Heap profiles)
+- Memory: `npm run bench:memory` (потоковая выборка памяти и Prometheus-гейджи)
+- Comprehensive: `npm run bench:comprehensive`  (ENV: `BENCH_PROVIDERS`, `BENCH_ROWS`, `BENCH_ITERS`, `BENCH_OUT`, `BENCH_FORMAT`)
+- Compare results: `npm run bench:compare -- --base bench-results/v1.0.0.json --current bench-results/current.json` (ENV: `BENCH_COMPARE_FORMAT=markdown|csv|json`, `BENCH_COMPARE_TOLERANCE=2`)
+- Stress: `npm run bench:stress` (ENV: `STRESS_DURATION_MS`, `STRESS_WPS`, `STRESS_RPS`, `STRESS_READERS`, `STRESS_WRITERS`)
+
+Example end-to-end:
+
+```bash
+# 1) Run comprehensive suite across providers and save JSON
+BENCH_PROVIDERS=sqlite,postgresql BENCH_ROWS=10000 BENCH_ITERS=2000 BENCH_OUT=bench-results/current.json npm run bench:comprehensive
+
+# 2) Compare with baseline
+npm run bench:compare -- --base bench-results/v1.0.0.json --current bench-results/current.json
+
+# 3) Stress test (15s by default)
+STRESS_DURATION_MS=20000 STRESS_WPS=150 STRESS_RPS=300 npm run bench:stress
+```
+
+### Memory Profiling
+
+Для сбора метрик памяти и обнаружения потенциальных утечек доступен легковесный профайлер памяти и интеграция с Prometheus.
+
+Подключение профайлера и метрик:
+
+```ts
+import { MemoryProfiler } from '@ts-linq/metrics-safe';
+import { PrometheusSqlLogger } from '@ts-linq/prometheus-sql-logger';
+
+const profiler = new MemoryProfiler({
+  enableGC: true,           // при наличии --expose-gc вызовет global.gc() перед сэмплом
+  trackAllocations: true,   // включает FinalizationRegistry учёт «живых» аллокаций
+  heapDumpThreshold: 0.9,   // делает heap snapshot при давлении >= 90%
+  sampleIntervalMs: 10_000  // периодичность сэмплов
+});
+profiler.start();
+
+// Prometheus логгер будет публиковать гейджи памяти по сэмплам профайлера
+const prom = new PrometheusSqlLogger('app_', { memory: { profiler }, maskSql: true });
+
+const ctx = new AppDbContext({
+  provider: 'sqlite',
+  connectionString: ':memory:',
+  logger: prom,
+  diagnostics: { memoryProfiler: profiler } // контекст управляет lifecycle (start/stop)
+});
+```
+
+Экспортируемые метрики Prometheus:
+
+- `db_memory_rss_bytes`
+- `db_memory_heap_total_bytes`
+- `db_memory_heap_used_bytes`
+- `db_memory_external_bytes`
+- `db_memory_array_buffers_bytes`
+- `db_memory_heap_pressure` (0..1)
+- `db_memory_alive_allocations` (если включён tracking)
+
+Снимок heap:
+
+```ts
+// вручную
+await profiler.takeHeapSnapshot();
+// автоматически по порогу heapDumpThreshold
+```
+
+Быстрый бенч профилирования памяти:
+
+```bash
+npm run bench:memory
+```
 
 Best Practices (PerformanceOptions & metrics):
 

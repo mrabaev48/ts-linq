@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getPrometheusMetrics = getPrometheusMetrics;
 exports.startPrometheusServer = startPrometheusServer;
 const http = __importStar(require("http"));
+const InternalLogger_1 = require("./InternalLogger");
 function safeRequirePromClient() {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -43,8 +44,8 @@ function safeRequirePromClient() {
         if (pc && pc.register && typeof pc.register.metrics === 'function')
             return pc;
     }
-    catch {
-        /* ignore */
+    catch (e) {
+        (0, InternalLogger_1.logInternalError)('PrometheusEndpoint.safeRequirePromClient', e);
     }
     return undefined;
 }
@@ -72,6 +73,7 @@ async function startPrometheusServer(options) {
             })
                 .catch((e) => {
                 const message = e?.message || String(e);
+                (0, InternalLogger_1.logInternalError)('PrometheusEndpoint.server.metrics', e);
                 res.statusCode = 500;
                 res.setHeader('Content-Type', 'text/plain; charset=utf-8');
                 res.end(`# metrics error: ${message}`);

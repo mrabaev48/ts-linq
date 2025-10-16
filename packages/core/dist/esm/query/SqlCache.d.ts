@@ -8,6 +8,17 @@ export interface SqlCache {
     set(key: string, value: SqlCacheEntry): void;
     clear(): void;
     size(): number;
+    /** Optional targeted invalidation. Should return number of removed entries. */
+    invalidateBy?(matcher: (key: string) => boolean): number;
+    /** Optional metrics exposure for monitoring. */
+    getMetrics?(): {
+        currentSize: number;
+        totalRequests?: number;
+        hits?: number;
+        misses?: number;
+        evictions?: number;
+        invalidations?: number;
+    };
 }
 /** Simple in-memory FIFO SqlCache with max size. */
 export declare class InMemorySqlCache implements SqlCache {
@@ -18,5 +29,6 @@ export declare class InMemorySqlCache implements SqlCache {
     set(key: string, value: SqlCacheEntry): void;
     clear(): void;
     size(): number;
+    invalidateBy(matcher: (key: string) => boolean): number;
 }
 //# sourceMappingURL=SqlCache.d.ts.map

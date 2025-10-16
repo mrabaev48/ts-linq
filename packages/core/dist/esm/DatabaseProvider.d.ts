@@ -1,4 +1,4 @@
-import type { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions, SqlParameter } from './types';
+import type { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions, SqlParameter, ConnectionPoolOptions, ConnectionHealthCheckOptions, CircuitBreakerOptions, CircuitState } from './types';
 import type { SqlDialect } from './query/SqlDialect';
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -17,11 +17,28 @@ export declare abstract class DatabaseProvider {
     protected retryPolicy?: RetryPolicy;
     /** Logical provider name for logging/metrics (sqlite|postgresql|mysql|mssql|unknown). */
     protected providerName: string;
+    /** Optional generic pool options forwarded to the underlying driver. */
+    protected poolOptions?: ConnectionPoolOptions;
+    /** Optional connection health-check scheduler options. */
+    protected healthCheck?: ConnectionHealthCheckOptions;
+    /** Optional circuit breaker options. */
+    protected circuitOptions?: CircuitBreakerOptions;
+    /** Health-check timer handle (if enabled). */
+    private healthTimer?;
+    /** Current health status and failure counter for backoff. */
+    private healthFailures;
+    private healthStatus;
+    /** Circuit breaker state. */
+    private circuitState;
+    private circuitFailures;
+    private circuitOpenedAt?;
+    private halfOpenInFlight;
+    private circuitOpenBackoffExp;
     /**
      * Create a provider with a given connection string.
      * @param connectionString Provider-specific connection string.
      */
-    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[], softDelete?: SoftDeleteOptions, retryPolicy?: RetryPolicy);
+    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[], softDelete?: SoftDeleteOptions, retryPolicy?: RetryPolicy, poolOptions?: ConnectionPoolOptions, healthCheck?: ConnectionHealthCheckOptions, circuitOptions?: CircuitBreakerOptions);
     /** Connect to the database. */
     abstract connect(): Promise<void>;
     /** Disconnect from the database and release resources. */
@@ -65,6 +82,10 @@ export declare abstract class DatabaseProvider {
     private executeWithRetry;
     /** Basic transient error classifier. Providers may override for accuracy. */
     protected isTransientError(error: unknown): boolean;
+    /** Circuit breaker: short-circuit if open or move to half-open if cooldown elapsed. */
+    private preCheckCircuit;
+    private openCircuit;
+    private transitionCircuit;
     /** Provider-specific implementation of non-query execution. */
     protected abstract doExecuteNonQuery(sql: string, params?: readonly SqlParameter[]): Promise<number>;
     /** Called before each execute; override for logging/instrumentation. */
@@ -89,11 +110,31 @@ export declare abstract class DatabaseProvider {
      * Whether a transaction is currently in progress.
      */
     get inTransactionState(): boolean;
+    /** Current circuit breaker state (for diagnostics/tests). */
+    get circuitStateLabel(): CircuitState;
+    /** Update circuit breaker options at runtime. */
+    configureCircuit(options: CircuitBreakerOptions): void;
     /** Soft delete configuration if enabled. */
     get softDeleteOptions(): SoftDeleteOptions | undefined;
     /** Expose provider label for metrics/loggers. */
     get providerLabel(): string;
     /** Expose logger instance for downstream components. */
     get loggerRef(): SqlLogger | undefined;
+    /** Configure connection pool and health-check options at runtime. */
+    configureConnection(options: {
+        pool?: ConnectionPoolOptions;
+        health?: ConnectionHealthCheckOptions;
+    }): void;
+    /**
+     * Start periodic connection health checks if enabled.
+     * Providers should call this after establishing a pool.
+     */
+    protected startHealthChecks(runPing: () => Promise<number>): void;
+    /** Stop health check scheduler when disconnecting. */
+    protected stopHealthChecks(): void;
+    /** Force-open the circuit for a specified duration (ms). */
+    forceOpen(reason: string, durationMs?: number): void;
+    /** Manually reset circuit to closed state. */
+    manualReset(reason?: string): void;
 }
 //# sourceMappingURL=DatabaseProvider.d.ts.map
