@@ -796,13 +796,20 @@ const ctx = new AppDbContext({ provider, connectionString, logger: prom, diagnos
 
 Экспортируются метрики: `db_memory_rss_bytes`, `db_memory_heap_total_bytes`, `db_memory_heap_used_bytes`, `db_memory_external_bytes`, `db_memory_array_buffers_bytes`, `db_memory_heap_pressure`, `db_memory_alive_allocations`.
 
-- [ ] **Benchmark Suite Enhancement**
+- [x] **Benchmark Suite Enhancement** ✅
   ```bash
   npm run bench:comprehensive  # Полный набор бенчмарков
   npm run bench:compare v1.0.0 # Сравнение с предыдущей версией
   npm run bench:stress         # Stress testing
   npm run bench:memory         # Memory usage profiling
   ```
+
+  Детали:
+  - Реализованы скрипты: `bench/comprehensive.ts`, `bench/compare.ts`, `bench/stress.ts`, дополнен `bench/memory.ts`.
+  - Конфигурация через ENV: `BENCH_PROVIDERS`, `BENCH_ROWS`, `BENCH_ITERS`, `BENCH_OUT`, `BENCH_FORMAT`, `BENCH_COMPARE_FORMAT`, `BENCH_COMPARE_TOLERANCE`, `STRESS_*`.
+  - Вывод: стабильный JSON (для артефактов/сравнения) и CSV/Markdown (для быстрой инспекции).
+  - Сценарии: select(10), count(), offset и keyset пагинация, DML micro (insert+delete), прогрев.
+  - Стресс: конкурентные читатели/писатели, метрики throughput и ошибок.
 
 **Приоритет**: P2 (Средний)
 **Временные затраты**: 2 недели
