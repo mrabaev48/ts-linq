@@ -45,7 +45,7 @@ class SchemaValidateCommand {
         this.logger = logger;
         this.fsAdapter = fsAdapter;
         this.name = 'schema:validate';
-        this.describe = 'Проверяет, что БД соответствует snapshot';
+        this.describe = 'Validates that DB matches the snapshot';
         this.aliases = ['schema validate'];
     }
     async runDb(provider, argv) {

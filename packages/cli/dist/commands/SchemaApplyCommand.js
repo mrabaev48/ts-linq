@@ -45,7 +45,7 @@ class SchemaApplyCommand {
         this.logger = logger;
         this.fsAdapter = fsAdapter;
         this.name = 'schema:apply';
-        this.describe = 'Применяет отличия snapshot к БД';
+        this.describe = 'Applies snapshot differences to the database';
         this.aliases = ['schema apply'];
     }
     async runDb(provider, argv) {

@@ -44,7 +44,7 @@ class MigrationsRollbackCommand {
         this.logger = logger;
         this.fsAdapter = fsAdapter;
         this.name = 'migration:rollback';
-        this.describe = 'Откатить последние миграции (--steps=N) или до версии (--to=YYYYMMDDHHmmss)';
+        this.describe = 'Rollback last migrations (--steps=N) or to a version (--to=YYYYMMDDHHmmss)';
         this.aliases = ['migrations:rollback'];
     }
     async runDb(provider, argv) {

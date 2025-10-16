@@ -28,4 +28,6 @@ __exportStar(require("./QueryModel"), exports);
 __exportStar(require("./ast/Nodes"), exports);
 __exportStar(require("./ast/SqlVisitor"), exports);
 __exportStar(require("./spec/Specification"), exports);
+__exportStar(require("./fallbacks/MemoryFallback"), exports);
+__exportStar(require("./fallbacks/ReplicaFallback"), exports);
 //# sourceMappingURL=index.js.map

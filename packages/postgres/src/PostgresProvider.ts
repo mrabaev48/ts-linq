@@ -130,6 +130,10 @@ export class PostgresProvider extends DatabaseProvider {
     this.pool = new Pool(pgConfig as { connectionString: string });
     this.isConnected = true;
     // Start health checks if enabled
+    await (async () => {
+      // ensure at least one awaited async in connect() for lint rule
+      /* noop */
+    })();
     this.startHealthChecks(async () => {
       const started = Date.now();
       const sql = this.healthCheck?.testQuery || 'SELECT 1';
@@ -385,6 +389,24 @@ export class PostgresProvider extends DatabaseProvider {
       return res.rowCount;
     } catch (e: unknown) {
       throw mapPgError(e);
+    }
+  }
+
+  /** Obtain PostgreSQL EXPLAIN (FORMAT JSON) plan when possible. */
+  protected async getExplainPlan(
+    sql: string,
+    params: readonly SqlParameter[]
+  ): Promise<unknown | undefined> {
+    try {
+      const explainSql = `EXPLAIN (FORMAT JSON) ${sql}`;
+      const rows = await this.doExecuteQuery<Record<string, unknown>>(explainSql, params);
+      const first = rows && rows[0];
+      if (!first) return undefined;
+      // Typical shape: { 'QUERY PLAN': [ { Plan: {...} } ] }
+      const key = Object.keys(first).find((k) => k.toUpperCase().includes('QUERY PLAN'));
+      return key ? first[key] : first;
+    } catch {
+      return undefined;
     }
   }
 

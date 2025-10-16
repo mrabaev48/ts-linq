@@ -45,8 +45,8 @@ export class PostgresProvider extends DatabaseProvider {
         this.notifyEntityMaterialized(entity, meta);
         return entity;
     }
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy);
+    constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
+        super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
         this.ddl = new PostgresDdlStrategy();
         this.qb = new QueryBuilder(this.getDialect());
         this.providerName = 'postgresql';
@@ -72,11 +72,28 @@ export class PostgresProvider extends DatabaseProvider {
         if (!Pg)
             throw new Error('pg module is not installed');
         const { Pool } = Pg;
-        this.pool = new Pool({ connectionString: this.connectionString });
+        const poolOpts = this.poolOptions || {};
+        // Map generic pool options to pg.Pool config when available
+        const pgConfig = { connectionString: this.connectionString };
+        if (typeof poolOpts.max === 'number')
+            pgConfig.max = poolOpts.max;
+        if (typeof poolOpts.idleTimeoutMs === 'number')
+            pgConfig.idleTimeoutMillis = poolOpts.idleTimeoutMs;
+        if (typeof poolOpts.connectionTimeoutMs === 'number')
+            pgConfig.connectionTimeoutMillis = poolOpts.connectionTimeoutMs;
+        this.pool = new Pool(pgConfig);
         this.isConnected = true;
+        // Start health checks if enabled
+        this.startHealthChecks(async () => {
+            const started = Date.now();
+            const sql = this.healthCheck?.testQuery || 'SELECT 1';
+            await this.pool.query(sql);
+            return Date.now() - started;
+        });
     }
     /** Gracefully dispose of the connection pool. */
     async disconnect() {
+        this.stopHealthChecks();
         if (this.pool)
             await this.pool.end();
         this.isConnected = false;

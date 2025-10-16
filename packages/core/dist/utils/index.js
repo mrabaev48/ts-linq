@@ -18,4 +18,5 @@ __exportStar(require("./SqlHelper"), exports);
 __exportStar(require("./RetryPolicies"), exports);
 __exportStar(require("./EntityCache"), exports);
 __exportStar(require("./IndexOptionsBuilder"), exports);
+__exportStar(require("./PrometheusEndpoint"), exports);
 //# sourceMappingURL=index.js.map

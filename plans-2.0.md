@@ -130,6 +130,7 @@
 - [x] MSSQL: UPDLOCK/HOLDLOCK конфликт, квазиснапшот через HOLDLOCK ✅
 - [x] Round‑trip миграции (diff → apply → нет diff) для PG/MySQL/MSSQL/SQLite ✅
 - [x] Маппинг ошибок UNIQUE/FK (PG/MySQL/MSSQL) ✅
+ - [x] CLI smoke для `metrics:serve` ✅
 
 #### Структура тестов и конфигурация (добавлено)
 
@@ -176,6 +177,17 @@
   ts-linq schema diff              # Показать diff между моделями и БД
   ts-linq schema validate          # Validate schema consistency
   ts-linq schema export --format=sql   # Export current schema
+  ```
+
+- [x] **Metrics Commands** ✅
+
+  ```bash
+  ts-linq metrics:serve [port] [/path]
+  # Примеры:
+  ts-linq metrics:serve           # эпемерный порт, путь /metrics
+  ts-linq metrics:serve 9464      # порт 9464, путь /metrics
+  ts-linq metrics:serve /m        # эпемерный порт, путь /m
+  ts-linq metrics:serve 9464 /m   # порт 9464, путь /m
   ```
 
 - [ ] **Configuration Management** ✅
@@ -228,7 +240,7 @@
 #### Покрытие тестами CLI (новое)
 
 - [x] Проект CLI добавлен в Jest `projects` ✅
-- [x] Покрыты команды: `schema:export/diff/validate/apply`, `seed` ✅
+- [x] Покрыты команды: `schema:export/diff/validate/apply`, `seed`, `metrics:serve` (smoke) ✅
 - [x] Покрыты генераторы: `EntityTemplateBuilder`, `MigrationTemplateBuilder` ✅
 - [x] Покрыты сервисы и хелперы: `ArgReader`, `utils`, `schema-inspect` ✅
 - [x] Покрыты инфраструктура: `CommandRegistry`, `ConsoleLogger`, `NodeFs` ✅
@@ -567,6 +579,7 @@
   - Таргетинг: `SqlCache.invalidateBy`, `CountCache.invalidateBy`, `QueryBuilder.invalidateForEntity(name)`.
   - Batch‑API: `ctx.cache.invalidateByEntity([...])`.
   - Покрыто unit‑тестами: транзакционные сценарии, зависимости, таргетинг.
+  - Централизованный internal‑логгер для «поглощённых» ошибок: `logInternalError(context, error)`; включается `TSL_INTERNAL_DEBUG=1`.
 
 - [x] **Cache Warming Strategies** ✅
 
@@ -692,48 +705,111 @@
 
 **Задачи:**
 
-- [ ] **Enhanced Metrics Collection**
+- [x] **Enhanced Metrics Collection** ✅
 
   ```typescript
   // Детальные метрики производительности
-  interface QueryMetrics {
-    sql: string;
-    duration: number;
-    rowsAffected: number;
-    cacheHit: boolean;
-    executionPlan?: any;
-  }
+  // Реализовано в рамках Prometheus/OpenTelemetry логгеров и безопасных вызовов MetricsSafe.
+  // Новые метрики (Prometheus):
+  // - db_query_duration_ms (Histogram)
+  // - db_transactions_total (Counter)
+  // - db_cache_requests_total / db_cache_hits_total / db_cache_evictions_total (Counters)
+  // - db_cache_size (Gauge) для sqlGen/count/entityL2
+  // - db_connection_health / db_connection_latency_ms / db_connection_status_transitions_total (Gauge/Histogram/Counter)
+  // - db_circuit_* (circuit breaker: state/open/transitions/failures)
+  // - db_fallback_* (attempts/success/throttled) и db_hedged_wins_total
+  // CLI: `metrics:serve` поднимает HTTP эндпоинт `/metrics`.
   ```
 
-- [ ] **Query Performance Analysis**
+- [x] **Query Performance Analysis** ✅
+
+  Реализовано автоматическое выявление медленных запросов, сбор планов выполнения и публикация событий/метрик в логгеры.
+
+  - Опции (`PerformanceOptions.analysis`):
+    - `enabled` — включение анализа
+    - `slowQueryThresholdMs` — порог «медленного» запроса
+    - `explainThresholdMs` — порог для сбора EXPLAIN
+    - `recommendations` — включить рекомендации (эвристики)
+    - `sampleRate` — сэмплирование (0..1)
+    - `rateLimitPerMinute` — лимит событий в минуту (per‑instance)
+    - `explainTimeoutMs` — таймаут получения плана
+    - `maxExplainChars` — ограничение размера плана (обрезка)
+    - `onlySelect` — анализировать только SELECT (по умолчанию true)
+
+  - Интеграция:
+    - Триггер после `queryEnd` в `DatabaseProvider` (анализ не выполняется внутри транзакций)
+    - EXPLAIN per‑provider:
+      - PostgreSQL: `EXPLAIN (FORMAT JSON) ...`
+      - MySQL: `EXPLAIN FORMAT=JSON ...` с фолбэком на `EXPLAIN`
+      - SQLite: `EXPLAIN QUERY PLAN ...`
+      - MSSQL: `SET SHOWPLAN_TEXT/XML ON` (best‑effort)
+    - Проброс событий `analysis` в `SqlLogger` и `OrmMiddleware` (hook)
+    - `CompositeSqlLogger` пробрасывает `analysis` всем делегатам
+
+  - Логгеры:
+    - PrometheusSqlLogger:
+      - `db_analysis_slow_total{provider,entity}`
+      - `db_analysis_explained_total{provider,entity}`
+      - `db_analysis_duration_ms{provider,entity}` (Histogram)
+    - OpenTelemetrySqlLogger:
+      - спан `db.query.analysis` с атрибутами: `db.analysis.duration_ms`, `db.analysis.slow`, `db.analysis.explain`, `db.analysis.recommendations`
+
+  Пример конфигурации:
 
   ```typescript
-  // Автоматический анализ медленных запросов
-  const analyzer = new QueryAnalyzer({
-    slowQueryThreshold: 1000, // ms
-    explainThreshold: 500,
-    recommendations: true
+  const ctx = new AppDbContext({
+    provider,
+    performance: {
+      analysis: {
+        enabled: true,
+        slowQueryThresholdMs: 1000,
+        explainThresholdMs: 500,
+        recommendations: true,
+        sampleRate: 0.5,
+        rateLimitPerMinute: 120,
+        explainTimeoutMs: 1000,
+        maxExplainChars: 65536,
+        onlySelect: true
+      }
+    }
   });
   ```
 
-- [ ] **Memory Profiling**
+- [x] **Memory Profiling** ✅
 
-  ```typescript
-  // Отслеживание memory leaks
-  const profiler = new MemoryProfiler({
-    enableGC: true,
-    trackAllocations: true,
-    heapDumpThreshold: 0.9
-  });
-  ```
+```typescript
+// Отслеживание memory leaks и публикация метрик
+import { MemoryProfiler } from '@ts-linq/metrics-safe';
+import { PrometheusSqlLogger } from '@ts-linq/prometheus-sql-logger';
 
-- [ ] **Benchmark Suite Enhancement**
+const profiler = new MemoryProfiler({
+  enableGC: true,
+  trackAllocations: true,
+  heapDumpThreshold: 0.9,
+  sampleIntervalMs: 10_000
+});
+profiler.start();
+
+const prom = new PrometheusSqlLogger('app_', { memory: { profiler } });
+const ctx = new AppDbContext({ provider, connectionString, logger: prom, diagnostics: { memoryProfiler: profiler } });
+```
+
+Экспортируются метрики: `db_memory_rss_bytes`, `db_memory_heap_total_bytes`, `db_memory_heap_used_bytes`, `db_memory_external_bytes`, `db_memory_array_buffers_bytes`, `db_memory_heap_pressure`, `db_memory_alive_allocations`.
+
+- [x] **Benchmark Suite Enhancement** ✅
   ```bash
   npm run bench:comprehensive  # Полный набор бенчмарков
   npm run bench:compare v1.0.0 # Сравнение с предыдущей версией
   npm run bench:stress         # Stress testing
   npm run bench:memory         # Memory usage profiling
   ```
+
+  Детали:
+  - Реализованы скрипты: `bench/comprehensive.ts`, `bench/compare.ts`, `bench/stress.ts`, дополнен `bench/memory.ts`.
+  - Конфигурация через ENV: `BENCH_PROVIDERS`, `BENCH_ROWS`, `BENCH_ITERS`, `BENCH_OUT`, `BENCH_FORMAT`, `BENCH_COMPARE_FORMAT`, `BENCH_COMPARE_TOLERANCE`, `STRESS_*`.
+  - Вывод: стабильный JSON (для артефактов/сравнения) и CSV/Markdown (для быстрой инспекции).
+  - Сценарии: select(10), count(), offset и keyset пагинация, DML micro (insert+delete), прогрев.
+  - Стресс: конкурентные читатели/писатели, метрики throughput и ошибок.
 
 **Приоритет**: P2 (Средний)
 **Временные затраты**: 2 недели

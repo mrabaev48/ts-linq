@@ -8,7 +8,10 @@ class InMemorySqlCache {
         this.store = new Map();
     }
     get(key) {
-        return this.store.get(key);
+        const hit = this.store.get(key);
+        if (!hit)
+            return undefined;
+        return { query: hit.query, parameters: [...hit.parameters] };
     }
     set(key, value) {
         if (this.store.size >= this.maxSize) {
@@ -23,6 +26,16 @@ class InMemorySqlCache {
     }
     size() {
         return this.store.size;
+    }
+    invalidateBy(matcher) {
+        let removed = 0;
+        for (const k of Array.from(this.store.keys())) {
+            if (matcher(k)) {
+                this.store.delete(k);
+                removed++;
+            }
+        }
+        return removed;
     }
 }
 exports.InMemorySqlCache = InMemorySqlCache;

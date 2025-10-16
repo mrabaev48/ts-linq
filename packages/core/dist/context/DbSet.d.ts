@@ -19,6 +19,7 @@ export declare class DbSet<T extends object> {
     private _entityCache;
     private _performance;
     private _globalFilters;
+    private static readonly DEFAULT_IN_CHUNK_SIZE;
     constructor(entityClass: new () => T, provider: DatabaseProvider, changeTracker: ChangeTracker, entityLoader?: EntityLoader, entityCache?: EntityCacheLike, performance?: PerformanceOptions, globalFilters?: GlobalFilter[]);
     /** Add an entity to be inserted */
     add(entity: T): T;

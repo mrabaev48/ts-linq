@@ -1,9 +1,9 @@
-import type { EntityMetadata, SqlLogger, RetryPolicy, OrmMiddleware, SoftDeleteOptions, SqlParameter, SqlDialect } from '@ts-linq/core';
+import type { EntityMetadata, SqlLogger, RetryPolicy, OrmMiddleware, SoftDeleteOptions, SqlParameter, SqlDialect, ConnectionPoolOptions, ConnectionHealthCheckOptions } from '@ts-linq/core';
 import { DatabaseProvider } from '@ts-linq/core';
 export declare class MySqlProvider extends DatabaseProvider {
     private pool;
     private ddl;
-    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[], softDelete?: SoftDeleteOptions, retryPolicy?: RetryPolicy);
+    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[], softDelete?: SoftDeleteOptions, retryPolicy?: RetryPolicy, poolOptions?: ConnectionPoolOptions, healthCheck?: ConnectionHealthCheckOptions);
     connect(): Promise<void>;
     disconnect(): Promise<void>;
     createTable(entity: EntityMetadata): Promise<void>;

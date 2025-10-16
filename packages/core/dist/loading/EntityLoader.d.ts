@@ -9,12 +9,15 @@ export declare class EntityLoader {
     private _provider;
     private _defaultStrategy;
     private readonly _logger?;
+    private _inChunkSize;
     /**
      * @param provider Database provider used for underlying queries.
      */
     constructor(provider: DatabaseProvider, logger?: {
         warn(message: string, error?: unknown): void;
     });
+    /** Configure IN() chunk size from PerformanceOptions. */
+    setInChunkSize(size?: number): void;
     /**
      * Set the default loading strategy for operations.
      */

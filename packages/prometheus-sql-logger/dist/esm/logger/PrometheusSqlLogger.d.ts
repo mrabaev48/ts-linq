@@ -44,9 +44,29 @@ export declare class PrometheusSqlLogger implements SqlLogger {
     private countCacheTtlHits?;
     private countCacheHardHits?;
     private cacheEvictions?;
+    private connectionHealthGauge?;
+    private connectionLatency?;
+    private connectionDegradedGauge?;
+    private connectionStatusTransitions?;
+    private lastConnectionStatus;
     private maskSql;
     private maskPatterns;
+    private circuitTransitions?;
+    private circuitOpenTotal?;
+    private circuitStateGauge?;
+    private circuitHalfOpenInFlight?;
+    private circuitFailuresGauge?;
+    private fallbackAttempts?;
+    private fallbackSuccess?;
+    private fallbackFailures?;
+    private fallbackThrottled?;
+    private hedgedWins?;
     constructor(namespace: string, options?: PrometheusLoggerOptions);
+    private initQueryMetrics;
+    private initCacheMetrics;
+    private initHealthMetrics;
+    private initCircuitMetrics;
+    private initFallbackMetrics;
     queryStart(_info?: {
         sql: string;
         params: readonly SqlParameter[];
@@ -81,6 +101,7 @@ export declare class PrometheusSqlLogger implements SqlLogger {
         cache: 'sqlGen' | 'entityL2' | 'count';
         hit: boolean;
         provider?: string;
+        ttl?: boolean;
     }): void;
     cacheSize?(info: {
         cache: 'sqlGen' | 'entityL2' | 'count';
@@ -91,6 +112,39 @@ export declare class PrometheusSqlLogger implements SqlLogger {
         cache: 'sqlGen' | 'entityL2' | 'count';
         provider?: string;
     }): void;
+    hedgedWin?(info: {
+        provider?: string;
+        operation: string;
+        fallback: string;
+    }): void;
+    connectionHealth?(info: {
+        healthy: boolean;
+        latencyMs?: number;
+        provider?: string;
+        status?: string;
+    }): void;
+    circuit?(info: {
+        state: 'closed' | 'open' | 'half-open';
+        provider?: string;
+        failures?: number;
+        reason?: string;
+        halfOpenInFlight?: number;
+    }): void;
+    fallback?(info: {
+        provider?: string;
+        fallback: string;
+        attempted: boolean;
+        succeeded?: boolean;
+        error?: Error;
+        throttled?: boolean;
+        isStale?: boolean;
+        asOf?: number;
+        source?: string;
+    }): void;
+    private setHealthGauge;
+    private observeHealthLatency;
+    private setDegradedGauge;
+    private recordStatusTransition;
     private safeRequirePromClient;
     private maskIfNeeded;
     private parseOperation;

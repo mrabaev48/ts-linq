@@ -70,6 +70,13 @@ export class OptimisticConcurrencyError extends DatabaseError {
         this.name = 'OptimisticConcurrencyError';
     }
 }
+/** Thrown when a call is short-circuited due to an open circuit. */
+export class CircuitOpenError extends Error {
+    constructor(message = 'Circuit is open; call short-circuited') {
+        super(message);
+        this.name = 'CircuitOpenError';
+    }
+}
 /**
  * Extract the underlying value from a branded type.
  * Useful when interfacing with external APIs that don't use branded types.

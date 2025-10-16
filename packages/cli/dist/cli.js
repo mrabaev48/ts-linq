@@ -17,6 +17,7 @@ const MigrationsDryRunCommand_1 = require("./commands/MigrationsDryRunCommand");
 const MigrationsRollbackCommand_1 = require("./commands/MigrationsRollbackCommand");
 const MigrationsValidateCommand_1 = require("./commands/MigrationsValidateCommand");
 const SeedCommand_1 = require("./commands/SeedCommand");
+const MetricsServeCommand_1 = require("./commands/MetricsServeCommand");
 //
 const CommandRegistry_1 = require("./CommandRegistry");
 const provider_factory_1 = require("./provider-factory");
@@ -37,7 +38,8 @@ async function main() {
         new MigrationsDryRunCommand_1.MigrationsDryRunCommand(),
         new MigrationsRollbackCommand_1.MigrationsRollbackCommand(),
         new MigrationsValidateCommand_1.MigrationsValidateCommand(),
-        new SeedCommand_1.SeedCommand()
+        new SeedCommand_1.SeedCommand(),
+        new MetricsServeCommand_1.MetricsServeCommand()
     ]);
     const command = registry.get(cmdName);
     if (!command) {

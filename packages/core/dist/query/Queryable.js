@@ -7,11 +7,13 @@ const QueryBuilder_1 = require("./QueryBuilder");
 const PredicateParser_1 = require("./PredicateParser");
 const SqlVisitor_1 = require("./ast/SqlVisitor");
 const QueryModel_1 = require("./QueryModel");
+// LoadingStrategy not used directly here; keep imports minimal
 const RowMaterializer_1 = require("./RowMaterializer");
 const IncludePlanner_1 = require("./IncludePlanner");
 const JoinPredicateParser_1 = require("./JoinPredicateParser");
 const GlobalFilterApplier_1 = require("./GlobalFilterApplier");
 const metrics_safe_1 = require("metrics-safe");
+const InternalLogger_1 = require("../utils/InternalLogger");
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
  * in a QueryModel and delegates SQL generation to QueryBuilder.
@@ -28,6 +30,7 @@ class Queryable {
         this._fallbackPredicates = [];
         this._includes = [];
         this._globalFilterApplier = new GlobalFilterApplier_1.GlobalFilterApplier();
+        this._fallbacks = [];
         // Lightweight signature of WHERE clauses for fast count() cache keys
         this._whereSignature = '[]';
         this._entityClass = entityClass;
@@ -37,9 +40,19 @@ class Queryable {
         this._performance = performance;
         this._globalFilters = globalFilters;
         this._externalCountCache = performance?.countCache;
-        this._sqlBuilder = new QueryBuilder_1.QueryBuilder(provider.getDialect(), provider.loggerRef, provider.providerLabel, performance?.sqlCache);
+        this._sqlBuilder = new QueryBuilder_1.QueryBuilder(provider.getDialect(), provider.loggerRef, provider.providerLabel, performance?.sqlCache, performance?.cacheNamespace);
         this._materializer = new RowMaterializer_1.RowMaterializer(this._entityClass, this._provider, this._entityCache, this._performance);
         this._includePlanner = new IncludePlanner_1.IncludePlanner(this._entityLoader, this._entityClass);
+        // Initialize fallback policy defaults
+        if (!this._performance?.fallbackPolicy?.allowOps) {
+            const defaults = {
+                allowOps: ['select', 'count', 'first', 'single', 'any', 'aggregate']
+            };
+            this._performance = {
+                ...this._performance,
+                fallbackPolicy: { ...defaults, ...(this._performance?.fallbackPolicy || {}) }
+            };
+        }
     }
     /** Clear global count() cache (used on transaction rollback to avoid stale values). */
     static clearCountCache() {
@@ -52,6 +65,10 @@ class Queryable {
         clonedQueryable._model = this._model.clone();
         // preserve where signature for accurate count cache keys
         clonedQueryable._whereSignature = this._whereSignature;
+        // preserve includes, fallbacks and client-side predicates
+        clonedQueryable._includes = [...this._includes];
+        clonedQueryable._fallbacks = [...this._fallbacks];
+        clonedQueryable._fallbackPredicates = [...this._fallbackPredicates];
         return clonedQueryable;
     }
     /**
@@ -84,6 +101,24 @@ class Queryable {
     where(predicate) {
         this.addWhereOrFallback(predicate);
         return this;
+    }
+    /**
+     * Register a graceful-degradation fallback source to be used when the primary provider is unavailable.
+     * Fallbacks are tried in the order they are registered until one succeeds.
+     */
+    fallbackTo(source) {
+        this._fallbacks.push(source);
+        return this;
+    }
+    /** Configure per-query fallback policy overrides. */
+    withFallbackPolicy(policy) {
+        const cloned = this.clone();
+        const base = cloned._performance?.fallbackPolicy || {};
+        cloned._performance = {
+            ...cloned._performance,
+            fallbackPolicy: { ...base, ...policy }
+        };
+        return cloned;
     }
     /** Add EXISTS (subquery) predicate. */
     whereExists(subquery) {
@@ -133,6 +168,10 @@ class Queryable {
         const selectorStr = selector.toString();
         const properties = this.extractPropertiesFromSelector(selectorStr);
         next._model.select = properties;
+        // propagate fallbacks so projections also degrade gracefully
+        next._fallbacks = [
+            ...(this._fallbacks || [])
+        ];
         return next;
     }
     /**
@@ -427,6 +466,9 @@ class Queryable {
             throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
         if (this._performance?.enableCountCache) {
             const key = this.buildCountCacheKey(metadata.tableName);
+            const inflight = Queryable._inflightCounts.get(key);
+            if (inflight)
+                return inflight;
             const ttl = this._performance.countCacheTtlMs ?? 0;
             const hit = this._externalCountCache?.get(key) ?? Queryable._countCache.get(key);
             if (hit && (ttl <= 0 || Date.now() - hit.ts <= ttl)) {
@@ -441,9 +483,22 @@ class Queryable {
                     provider: this._provider.providerLabel,
                     ttl: ttl > 0
                 });
+                this._provider.loggerRef?.cache?.({
+                    cache: 'count',
+                    hit: true,
+                    provider: this._provider.providerLabel
+                });
                 return hit.value;
             }
-            const value = await this.executeCountQuery(metadata.tableName);
+            const pending = this.executeCountQuery(metadata.tableName);
+            Queryable._inflightCounts.set(key, pending);
+            let value;
+            try {
+                value = await pending;
+            }
+            finally {
+                Queryable._inflightCounts.delete(key);
+            }
             const entry = { value, ts: Date.now() };
             if (this._externalCountCache)
                 this._externalCountCache.set(key, entry);
@@ -470,34 +525,169 @@ class Queryable {
                 hit: false,
                 provider: this._provider.providerLabel
             });
+            this._provider.loggerRef?.cache?.({
+                cache: 'count',
+                hit: false,
+                provider: this._provider.providerLabel
+            });
             return value;
         }
         return this.executeCountQuery(metadata.tableName);
     }
     buildCountCacheKey(table) {
-        return `${this._entityClass.name}|count|${table}|${this._whereSignature}`;
+        const provider = this._provider?.providerLabel ? `${this._provider.providerLabel}|` : '';
+        const ns = this._performance?.cacheNamespace ? `${this._performance.cacheNamespace}|` : '';
+        return `${ns}${provider}${this._entityClass.name}|count|${table}|${this._whereSignature}`;
     }
     async executeCountQuery(table) {
-        let query = `SELECT COUNT(*) as count FROM ${table}`;
-        const parameters = [];
         const queryModel = this._model.clone();
         this.applyGlobalFiltersToModel(queryModel);
+        const { sql: query, params: parameters } = this.buildCountSqlAndParams(queryModel, table);
+        // Hedged count race if enabled
+        const hedge = this._performance?.fallbackPolicy?.hedged;
+        if (hedge?.enabled && this._fallbacks.length > 0 && this.isOpAllowedForFallback('count')) {
+            const hedged = await this.racePrimaryWithFallbackCount(query, parameters, queryModel);
+            if (hedged !== null)
+                return hedged;
+        }
+        try {
+            const results = await this._provider.executeQuery(query, parameters);
+            return results[0]?.count ?? 0;
+        }
+        catch (error) {
+            if (!this.isDegradableError(error) || this._fallbacks.length === 0)
+                throw error;
+            if (!this.tryEnterFallbackThrottle())
+                throw error;
+            const n = await this.tryFallbackCountSequential(queryModel);
+            if (n !== null)
+                return n;
+            throw error;
+        }
+    }
+    /** Build COUNT SQL and params from a query model in a single pass. */
+    buildCountSqlAndParams(queryModel, table) {
+        const tableName = table;
+        let sql = `SELECT COUNT(*) as count FROM ${tableName}`;
+        const params = [];
         if (queryModel.where && queryModel.where.length > 0) {
-            // Build WHERE and parameters in a single pass to reduce allocations
-            let isFirstCondition = true;
-            query += ' WHERE ';
-            for (const whereClause of queryModel.where) {
-                if (!isFirstCondition)
-                    query += ' AND ';
-                isFirstCondition = false;
-                query += whereClause.condition;
-                const clauseParams = whereClause.parameters;
-                for (let paramIndex = 0; paramIndex < clauseParams.length; paramIndex++)
-                    parameters.push(clauseParams[paramIndex]);
+            let first = true;
+            sql += ' WHERE ';
+            for (const wc of queryModel.where) {
+                if (!first)
+                    sql += ' AND ';
+                first = false;
+                sql += wc.condition;
+                for (let i = 0; i < wc.parameters.length; i++)
+                    params.push(wc.parameters[i]);
             }
         }
-        const results = await this._provider.executeQuery(query, parameters);
-        return results[0]?.count ?? 0;
+        return { sql, params };
+    }
+    /** Sequential fallback for count(): server-count if available, else SELECT length. */
+    async tryFallbackCountSequential(queryModel) {
+        const normal = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
+        const req = {
+            entity: this._entityClass,
+            sql: normal.query,
+            params: normal.parameters
+        };
+        for (const fb of this._fallbacks) {
+            try {
+                this._provider.loggerRef?.fallback?.({
+                    provider: this._provider.providerLabel,
+                    fallback: fb.label,
+                    attempted: true
+                });
+                if (typeof fb.fetchCount === 'function') {
+                    const n = await fb.fetchCount(req);
+                    if (typeof n === 'number')
+                        return n;
+                }
+                const data = await fb.fetch(req);
+                if (data && data.length >= 0)
+                    return data.length;
+            }
+            catch (fbErr) {
+                this._provider.loggerRef?.fallback?.({
+                    provider: this._provider.providerLabel,
+                    fallback: fb.label,
+                    attempted: true,
+                    succeeded: false,
+                    error: fbErr
+                });
+                continue;
+            }
+        }
+        return null;
+    }
+    /** Race primary COUNT with delayed fallback count (server-side if available). */
+    async racePrimaryWithFallbackCount(countSql, params, queryModel) {
+        const hedge = this._performance?.fallbackPolicy?.hedged;
+        if (!hedge?.enabled)
+            return null;
+        const normal = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
+        const req = {
+            entity: this._entityClass,
+            sql: normal.query,
+            params: normal.parameters
+        };
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const fallbacks = this.getHedgedFallbacks();
+        const fallbackCountPromise = (async () => {
+            await sleep(Math.max(0, hedge.delayMs ?? 15));
+            for (const fb of fallbacks) {
+                try {
+                    if (typeof fb.fetchCount === 'function') {
+                        const n = await fb.fetchCount(req);
+                        if (typeof n === 'number')
+                            return n;
+                    }
+                    const data = await fb.fetch(req);
+                    if (data && data.length >= 0)
+                        return data.length;
+                }
+                catch (e) {
+                    (0, InternalLogger_1.logInternalError)('hedged.startFallback.fetch', e);
+                    continue;
+                }
+            }
+            return -1;
+        })();
+        try {
+            const primaryPromise = this._provider
+                .executeQuery(countSql, params)
+                .then((rows) => rows[0]?.count ?? 0);
+            const winner = await Promise.race([
+                primaryPromise.then((n) => ({ k: 'p', n })),
+                fallbackCountPromise.then((n) => ({ k: 'f', n }))
+            ]);
+            if (winner.k === 'p')
+                return winner.n;
+            if (typeof winner.n === 'number' && winner.n >= 0) {
+                try {
+                    this._provider.loggerRef?.hedgedWin?.({
+                        provider: this._provider.providerLabel,
+                        operation: 'count',
+                        fallback: 'unknown'
+                    });
+                    this._provider.loggerRef?.fallback?.({
+                        provider: this._provider.providerLabel,
+                        fallback: 'unknown',
+                        attempted: true,
+                        succeeded: true
+                    });
+                }
+                catch (e) {
+                    (0, InternalLogger_1.logInternalError)('hedged.select.hedgedWin', e);
+                }
+                return winner.n;
+            }
+            return await primaryPromise;
+        }
+        catch {
+            return null;
+        }
     }
     /** Returns true if at least one row matches the query.
      * @example
@@ -577,11 +767,220 @@ class Queryable {
             model.cte = this._cte;
         }
         const sql = this._sqlBuilder.generateFromModel(this._entityClass, model);
-        const rows = await this._provider.executeQuery(sql.query, sql.parameters);
+        // Hedged requests: optionally race fallback after a short delay
+        const hedge = this._performance?.fallbackPolicy?.hedged;
+        if (hedge?.enabled && this._fallbacks.length > 0 && this.isOpAllowedForFallback('select')) {
+            const winner = await this.racePrimaryWithFallback(() => this._provider.executeQuery(sql.query, sql.parameters), sql, hedge.delayMs ?? 15, this.getHedgedFallbacks());
+            if (winner.source === 'primary') {
+                return await this.handlePrimaryRows(model, winner.rows);
+            }
+            else {
+                return await this.handleFallbackEntities(winner.rows.slice(), winner.label || 'unknown', model);
+            }
+        }
+        try {
+            const rows = await this._provider.executeQuery(sql.query, sql.parameters);
+            return await this.handlePrimaryRows(model, rows);
+        }
+        catch (error) {
+            if (!this.isOpAllowedForFallback('select'))
+                throw error;
+            if (!this.isDegradableError(error) || this._fallbacks.length === 0)
+                throw error;
+            if (!this.tryEnterFallbackThrottle())
+                throw error;
+            const entities = await this.tryFallbackSelectSequential(sql, model);
+            if (entities)
+                return entities;
+            // Exhausted fallbacks; rethrow original error
+            throw error;
+        }
+    }
+    /** Decide whether a caught error qualifies for graceful degradation. */
+    isDegradableError(error) {
+        if (!error)
+            return false;
+        const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+        return (message.includes('circuit') ||
+            message.includes('timeout') ||
+            message.includes('connection') ||
+            message.includes('too many connections') ||
+            message.includes('econnreset'));
+    }
+    isOpAllowedForFallback(op) {
+        const allow = this._performance?.fallbackPolicy?.allowOps;
+        return !allow || allow.includes(op);
+    }
+    async handlePrimaryRows(model, rows) {
         let entities = rows.map((row) => this._materializer.mapRowToEntity(row));
         entities = this.applyFallbackPredicates(entities);
         await this._includePlanner.populateIncludes(entities, this._includes, model.limit);
         return entities;
+    }
+    async handleFallbackEntities(entities, label, model) {
+        entities = this.applyFallbackPredicates(entities);
+        if (this._performance?.fallbackPolicy?.allowIncludesOnFallback === 'attempt') {
+            try {
+                await this._includePlanner.populateIncludes(entities, this._includes, model.limit);
+            }
+            catch { }
+        }
+        this._provider.loggerRef?.fallback?.({
+            provider: this._provider.providerLabel,
+            fallback: label,
+            attempted: true,
+            succeeded: true,
+            isStale: true,
+            asOf: Date.now(),
+            source: label
+        });
+        return entities;
+    }
+    async tryFallbackSelectSequential(sql, model) {
+        const req = {
+            entity: this._entityClass,
+            sql: sql.query,
+            params: sql.parameters
+        };
+        for (const fb of this._fallbacks) {
+            try {
+                this._provider.loggerRef?.fallback?.({
+                    provider: this._provider.providerLabel,
+                    fallback: fb.label,
+                    attempted: true
+                });
+                const data = await fb.fetch(req);
+                if (data && data.length >= 0) {
+                    return await this.handleFallbackEntities(data.slice(), fb.label, model);
+                }
+            }
+            catch (fbErr) {
+                this._provider.loggerRef?.fallback?.({
+                    provider: this._provider.providerLabel,
+                    fallback: fb.label,
+                    attempted: true,
+                    succeeded: false,
+                    error: fbErr
+                });
+                continue;
+            }
+        }
+        return null;
+    }
+    /** Race primary query with a delayed fallback request; returns the earlier result. */
+    async racePrimaryWithFallback(primary, sql, delayMs, fallbacks) {
+        let fallbackStarted = false;
+        const req = {
+            entity: this._entityClass,
+            sql: sql.query,
+            params: sql.parameters
+        };
+        const startFallback = async () => {
+            fallbackStarted = true;
+            for (const fb of fallbacks) {
+                try {
+                    const data = await fb.fetch(req);
+                    if (data && data.length >= 0)
+                        return { rows: data, label: fb.label };
+                }
+                catch {
+                    continue;
+                }
+            }
+            // no data
+            return { rows: [], label: 'none' };
+        };
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const fallbackPromise = (async () => {
+            await sleep(Math.max(0, delayMs));
+            return await startFallback();
+        })();
+        try {
+            const primaryPromise = primary();
+            const winner = await Promise.race([
+                primaryPromise.then((rows) => ({ k: 'p', rows })),
+                fallbackPromise.then((v) => ({ k: 'f', rows: v.rows, label: v.label }))
+            ]);
+            if (winner.k === 'p') {
+                return { source: 'primary', rows: winner.rows };
+            }
+            else {
+                // record hedged win
+                try {
+                    this._provider.loggerRef?.hedgedWin?.({
+                        provider: this._provider.providerLabel,
+                        operation: 'select',
+                        fallback: winner.label || 'unknown'
+                    });
+                }
+                catch (e) {
+                    (0, InternalLogger_1.logInternalError)('hedged.select.hedgedWin', e);
+                }
+                this._provider.loggerRef?.fallback?.({
+                    provider: this._provider.providerLabel,
+                    fallback: winner.label || 'unknown',
+                    attempted: true,
+                    succeeded: true
+                });
+                return { source: 'fallback', rows: winner.rows, label: winner.label || 'unknown' };
+            }
+        }
+        catch {
+            // If primary failed early and fallback not started yet, await fallback fully
+            if (!fallbackStarted) {
+                const v = await startFallback();
+                return { source: 'fallback', rows: v.rows, label: v.label };
+            }
+            throw new Error('hedged failed');
+        }
+    }
+    /** Select hedged fallbacks based on policy-specified source labels. */
+    getHedgedFallbacks() {
+        const src = this._performance?.fallbackPolicy?.hedged?.sources;
+        if (!src || src.length === 0)
+            return this._fallbacks;
+        const wanted = new Set(src);
+        return this._fallbacks.filter((fb) => wanted.has(fb.label));
+    }
+    /** Try to pass fallback throttle constraints; returns false when fallback should be skipped. */
+    tryEnterFallbackThrottle() {
+        const throttle = this._performance?.fallbackPolicy?.throttle;
+        if (!throttle)
+            return true;
+        const now = Date.now();
+        // minInterval guard
+        const minInterval = Math.max(0, throttle.minIntervalMs ?? 0);
+        const jitter = Math.max(0, Math.min(1, throttle.jitterRatio ?? 0));
+        const effectiveInterval = minInterval > 0 && jitter > 0
+            ? Math.floor(minInterval * (1 + Math.random() * jitter))
+            : minInterval;
+        if (minInterval > 0) {
+            const since = now - Queryable._fallbackLastAttemptAt;
+            if (since < effectiveInterval) {
+                // emit throttled metric if available
+                this._provider.loggerRef?.fallback?.({
+                    provider: this._provider.providerLabel,
+                    fallback: 'n/a',
+                    attempted: false,
+                    throttled: true
+                });
+                return false;
+            }
+        }
+        // window counter guard (60s)
+        const maxPerMinute = Math.max(0, throttle.maxPerMinute ?? 0);
+        if (maxPerMinute > 0) {
+            const windowMs = 60000;
+            if (now - Queryable._fallbackWindowStart >= windowMs) {
+                Queryable._fallbackWindowStart = now;
+                Queryable._fallbackUsedInWindow = 0;
+            }
+            if (Queryable._fallbackUsedInWindow >= maxPerMinute)
+                return false;
+            Queryable._fallbackUsedInWindow += 1;
+        }
+        Queryable._fallbackLastAttemptAt = now;
+        return true;
     }
     /** Extracts include property name from a lambda selector. */
     extractIncludeProperty(selector) {
@@ -676,8 +1075,14 @@ class Queryable {
             ? row[pkCol.columnName]
             : row[pkProp];
         const cached = this._entityCache.get(this._entityClass, idValue);
-        if (!cached)
+        if (!cached) {
+            this._provider.loggerRef?.cache?.({
+                cache: 'entityL2',
+                hit: false,
+                provider: this._provider.providerLabel
+            });
             return null;
+        }
         this._provider.loggerRef?.cache?.({
             cache: 'entityL2',
             hit: true,
@@ -917,6 +1322,8 @@ class Queryable {
 exports.Queryable = Queryable;
 Queryable._countCache = new Map();
 Queryable._COUNT_CACHE_MAX = 2000;
+// Single-flight deduplication for concurrent count() calls
+Queryable._inflightCounts = new Map();
 // Predicates and parsing optimizations
 Queryable.REGEX_SINGLE_PROP = /=>\s*\w+\.(\w+)/;
 Queryable.REGEX_OBJECT = /=>\s*\(\s*\{([^}]+)\}\s*\)/;
@@ -929,4 +1336,8 @@ Queryable.SELECTOR_CACHE_MAX = 1000;
 Queryable._selectorPropsCache = new Map();
 Queryable._keySelectorCache = new Map();
 Queryable._includePropCache = new Map();
+// Global fallback throttle state (per-process)
+Queryable._fallbackWindowStart = 0;
+Queryable._fallbackUsedInWindow = 0;
+Queryable._fallbackLastAttemptAt = 0;
 //# sourceMappingURL=Queryable.js.map

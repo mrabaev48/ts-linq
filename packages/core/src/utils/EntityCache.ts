@@ -1,4 +1,5 @@
 import { safeCacheEvicted } from 'metrics-safe';
+import { logInternalError } from './InternalLogger';
 
 /**
  * Simple in-memory FIFO cache for entities keyed by `<EntityName>|<id>`.
@@ -11,7 +12,6 @@ export interface EntityCacheLike {
   clear(): void;
   size?(): number;
 }
-
 export class EntityCache implements EntityCacheLike {
   private _store: Map<string, unknown> = new Map();
   private _maxSize: number;
@@ -48,8 +48,8 @@ export class EntityCache implements EntityCacheLike {
         this._store.delete(firstKey);
         try {
           safeCacheEvicted(this._logger, { cache: 'entityL2', provider: this._providerLabel });
-        } catch {
-          /* ignore */
+        } catch (e) {
+          logInternalError('EntityCache.safeCacheEvicted', e);
         }
       }
     }

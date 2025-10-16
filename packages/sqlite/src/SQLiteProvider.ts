@@ -335,6 +335,22 @@ export class SQLiteProvider extends DatabaseProvider {
     });
   }
 
+  /** Obtain SQLite EXPLAIN QUERY PLAN output when supported. */
+  protected async getExplainPlan(
+    sql: string,
+    params: readonly SqlParameter[]
+  ): Promise<unknown | undefined> {
+    try {
+      if (!this.db) return undefined;
+      // SQLite supports `EXPLAIN QUERY PLAN <sql>` for SELECTs and some others
+      const explainSql = `EXPLAIN QUERY PLAN ${sql}`;
+      const rows = await this.doExecuteQuery<Record<string, unknown>>(explainSql, params);
+      return rows;
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Begin a SQLite transaction. */
   public async beginTransaction(): Promise<void> {
     if (this.inTransaction) {

@@ -1,4 +1,5 @@
 import * as http from 'http';
+import { logInternalError } from './InternalLogger';
 
 interface PromClientRegisterLike {
   contentType: string;
@@ -15,8 +16,8 @@ function safeRequirePromClient(): PromClientWithRegisterLike | undefined {
     const pc = require('prom-client');
     if (pc && pc.register && typeof pc.register.metrics === 'function')
       return pc as PromClientWithRegisterLike;
-  } catch {
-    /* ignore */
+  } catch (e) {
+    logInternalError('PrometheusEndpoint.safeRequirePromClient', e);
   }
   return undefined;
 }
@@ -52,6 +53,7 @@ export async function startPrometheusServer(options?: {
         })
         .catch((e) => {
           const message = (e as Error)?.message || String(e);
+          logInternalError('PrometheusEndpoint.server.metrics', e);
           res.statusCode = 500;
           res.setHeader('Content-Type', 'text/plain; charset=utf-8');
           res.end(`# metrics error: ${message}`);

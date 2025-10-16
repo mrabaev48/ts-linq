@@ -47,7 +47,7 @@ class GenerateEntitiesCommand {
         this.fsAdapter = fsAdapter;
         this.template = template;
         this.name = 'generate:entities';
-        this.describe = 'Генерирует сущности для всех таблиц схемы';
+        this.describe = 'Generates entities for all tables of the schema';
         this.aliases = ['generate entities'];
     }
     async runDb(provider, argv) {
