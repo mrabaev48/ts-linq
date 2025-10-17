@@ -1,5 +1,4 @@
-import 'reflect-metadata';
-import { PostgresProvider } from '@ts-linq/postgres';
+import { PostgresProvider } from '@ts-linq/provider-postgres';
 import { generateMigrationFromDiff } from '../src/migrations/DialectMigrationSql';
 
 const PG_URL = process.env.POSTGRES_URL;

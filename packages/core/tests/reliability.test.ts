@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import type { SqlLogger, SqlParameter } from '../src/types';
 import { PredicateParser } from '../src/query/PredicateParser';

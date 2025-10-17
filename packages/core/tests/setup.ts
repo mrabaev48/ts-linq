@@ -1,4 +1,4 @@
 // Global setup for tests (moved from root)
-import 'reflect-metadata';
+// Stage-3 decorators: No reflect-metadata needed
 
 export {};

@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
 import { Entity } from '../src/decorators/Entity';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';

@@ -1,7 +1,6 @@
-import 'reflect-metadata';
 import { Migration } from '../src/migrations/Migration';
 import { MigrationRunner } from '../src/migrations/MigrationRunner';
-import { SQLiteProvider } from '@ts-linq/sqlite';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 
 class TestMigration001 extends Migration {
   protected name = 'CreateUsersTable';

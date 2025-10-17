@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
 
 describe('DbContext provider selection', () => {

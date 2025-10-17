@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { Entity, Column, PrimaryKey, MetadataStorage, OrmMiddleware, SqlParameter } from '../src';
 import { ProviderStub } from './_stubs/ProviderStub';
 

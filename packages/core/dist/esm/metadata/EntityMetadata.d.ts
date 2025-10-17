@@ -1,4 +1,4 @@
-import type { ColumnMetadata, RelationshipMetadata, IndexMetadata, EntityMetadata } from '../types';
+import type { ColumnMetadata, RelationshipMetadata, IndexMetadata, EntityMetadata, ValidationRule } from '../types';
 /**
  * Builder for incrementally constructing `EntityMetadata` while decorators
  * are being applied. The built metadata describes table name, columns,
@@ -31,6 +31,10 @@ export declare class EntityMetadataBuilder {
      * Add an index definition to the entity.
      */
     addIndex(index: IndexMetadata): this;
+    /**
+     * Add a validation rule to the entity.
+     */
+    addValidationRule(rule: ValidationRule): this;
     /**
      * Finalize and return the constructed `EntityMetadata` object.
      */

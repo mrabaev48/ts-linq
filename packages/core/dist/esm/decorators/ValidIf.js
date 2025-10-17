@@ -1,4 +1,4 @@
-import 'reflect-metadata';
+import { MetadataStorage } from '../metadata/MetadataStorage';
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
 }
@@ -13,8 +13,7 @@ export function ValidIf(predicate, message, options) {
             const ctor = this?.constructor;
             if (!ctor)
                 return;
-            const existing = Reflect.getOwnMetadata('orm:validations', ctor) || [];
-            existing.push({
+            MetadataStorage.addValidationRule(ctor, {
                 propertyName: name,
                 predicate,
                 message,
@@ -22,7 +21,6 @@ export function ValidIf(predicate, message, options) {
                 messageKey: options?.messageKey,
                 messageParams: options?.messageParams
             });
-            Reflect.defineMetadata('orm:validations', existing, ctor);
         });
     };
 }
@@ -43,7 +41,6 @@ export function RequiredIfOf(condition, message) {
             const ctor = this?.constructor;
             if (!ctor)
                 return;
-            const existing = Reflect.getOwnMetadata('orm:validations', ctor) || [];
             const predicate = (entity) => {
                 const e = entity;
                 if (!condition(e))
@@ -57,12 +54,11 @@ export function RequiredIfOf(condition, message) {
                     return v.length > 0;
                 return true;
             };
-            existing.push({
+            MetadataStorage.addValidationRule(ctor, {
                 propertyName: propName,
                 predicate,
                 message: message || `${propName} is required`
             });
-            Reflect.defineMetadata('orm:validations', existing, ctor);
         });
     };
 }
@@ -77,7 +73,6 @@ export function MinLengthOf(min, message) {
             const ctor = this?.constructor;
             if (!ctor)
                 return;
-            const existing = Reflect.getOwnMetadata('orm:validations', ctor) || [];
             const predicate = (entity) => {
                 const v = entity[propName];
                 if (v === null || v === undefined)
@@ -86,12 +81,11 @@ export function MinLengthOf(min, message) {
                     return v.length >= min;
                 return true;
             };
-            existing.push({
+            MetadataStorage.addValidationRule(ctor, {
                 propertyName: propName,
                 predicate,
                 message: message || `Length must be >= ${min}`
             });
-            Reflect.defineMetadata('orm:validations', existing, ctor);
         });
     };
 }
@@ -106,7 +100,6 @@ export function MaxLengthOf(max, message) {
             const ctor = this?.constructor;
             if (!ctor)
                 return;
-            const existing = Reflect.getOwnMetadata('orm:validations', ctor) || [];
             const predicate = (entity) => {
                 const v = entity[propName];
                 if (v === null || v === undefined)
@@ -115,12 +108,11 @@ export function MaxLengthOf(max, message) {
                     return v.length <= max;
                 return true;
             };
-            existing.push({
+            MetadataStorage.addValidationRule(ctor, {
                 propertyName: propName,
                 predicate,
                 message: message || `Length must be <= ${max}`
             });
-            Reflect.defineMetadata('orm:validations', existing, ctor);
         });
     };
 }
@@ -135,7 +127,6 @@ export function PatternOf(regex, message) {
             const ctor = this?.constructor;
             if (!ctor)
                 return;
-            const existing = Reflect.getOwnMetadata('orm:validations', ctor) || [];
             const predicate = (entity) => {
                 const v = entity[propName];
                 if (v === null || v === undefined)
@@ -144,8 +135,7 @@ export function PatternOf(regex, message) {
                     return regex.test(v);
                 return true;
             };
-            existing.push({ propertyName: propName, predicate, message: message || `Invalid format` });
-            Reflect.defineMetadata('orm:validations', existing, ctor);
+            MetadataStorage.addValidationRule(ctor, { propertyName: propName, predicate, message: message || `Invalid format` });
         });
     };
 }
@@ -160,7 +150,6 @@ export function RangeOf(min, max, message) {
             const ctor = this?.constructor;
             if (!ctor)
                 return;
-            const existing = Reflect.getOwnMetadata('orm:validations', ctor) || [];
             const predicate = (entity) => {
                 const v = entity[propName];
                 if (v === null || v === undefined)
@@ -173,8 +162,7 @@ export function RangeOf(min, max, message) {
                 }
                 return true;
             };
-            existing.push({ propertyName: propName, predicate, message: message || `Out of range` });
-            Reflect.defineMetadata('orm:validations', existing, ctor);
+            MetadataStorage.addValidationRule(ctor, { propertyName: propName, predicate, message: message || `Out of range` });
         });
     };
 }

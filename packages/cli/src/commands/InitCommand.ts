@@ -19,7 +19,6 @@ export class InitCommand implements Command {
     "strict": true,
     "skipLibCheck": true,
     "useDefineForClassFields": true,
-    "emitDecoratorMetadata": true,
     "sourceMap": true,
     "outDir": "dist",
     "baseUrl": ".",
@@ -40,18 +39,20 @@ export class InitCommand implements Command {
 
     const userEntity = `import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 
-@Entity('users')
+@Entity({ name: 'users' })
 export class User {
-  @PrimaryKey()
+  @PrimaryKey({ type: 'INTEGER', autoIncrement: true })
   public id!: number;
 
-  @Column()
+  @Column({ type: 'TEXT', nullable: false })
   public name!: string;
+
+  @Column({ type: 'DATETIME', nullable: false })
+  public createdAt!: Date;
 }
 `;
 
-    const dbContext = `import 'reflect-metadata';
-import { DbContext } from '@ts-linq/core';
+    const dbContext = `import { DbContext } from '@ts-linq/core';
 import { SQLiteProvider } from '@ts-linq/sqlite';
 
 export class AppDbContext extends DbContext {

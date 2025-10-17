@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';

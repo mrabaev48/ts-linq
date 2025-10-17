@@ -1,17 +1,16 @@
-import 'reflect-metadata';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { Entity, Column, PrimaryKey, OneToMany } from '../src';
 import { ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../src/types';
 
 @Entity()
 class MetadataTestEntity {
-  @PrimaryKey({ autoIncrement: true })
+  @PrimaryKey({ type: 'INTEGER', autoIncrement: true })
   id!: number;
 
-  @Column({ nullable: false })
+  @Column({ type: 'TEXT', nullable: false })
   name!: string;
 
-  @Column()
+  @Column({ type: 'TEXT' })
   email!: string;
 
   @OneToMany(() => MetadataRelatedEntity)
@@ -20,10 +19,10 @@ class MetadataTestEntity {
 
 @Entity({ name: 'custom_related_table' })
 class MetadataRelatedEntity {
-  @PrimaryKey()
+  @PrimaryKey({ type: 'INTEGER' })
   id!: number;
 
-  @Column()
+  @Column({ type: 'TEXT' })
   title!: string;
 }
 
@@ -54,7 +53,7 @@ describe('MetadataStorage', () => {
       expect(testEntityMetadata!.target).toBe(MetadataTestEntity);
 
       expect(relatedEntityMetadata).toBeDefined();
-      // For stage-3, table name should be from decorator
+      // Stage-3: Table name comes from @Entity({ name: '...' }) decorator
       expect(relatedEntityMetadata!.tableName).toBe('custom_related_table');
       expect(relatedEntityMetadata!.target).toBe(MetadataRelatedEntity);
     });

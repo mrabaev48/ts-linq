@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { PredicateParser } from '../src/query/PredicateParser';
 import type { ExpressionNode } from '../src/query/ast/Nodes';
 

@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { ChangeValidationService } from '../../../src/context/services/ChangeValidationService';
 import { MetadataStorage } from '../../../src/metadata/MetadataStorage';
 import { ValidationError } from '../../../src/types';

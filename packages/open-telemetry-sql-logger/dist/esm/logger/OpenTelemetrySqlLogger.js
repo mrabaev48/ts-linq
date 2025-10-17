@@ -1,3 +1,4 @@
+import { logInternalError } from '@ts-linq/core';
 function safeRequireOtel() {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -5,8 +6,8 @@ function safeRequireOtel() {
         if (otel && otel.trace && typeof otel.trace.getTracer === 'function')
             return otel;
     }
-    catch {
-        /* ignore */
+    catch (e) {
+        logInternalError('OpenTelemetrySqlLogger.safeRequireOtel', e);
     }
     return undefined;
 }
@@ -30,7 +31,9 @@ export class OpenTelemetrySqlLogger {
             try {
                 s = s.replace(re, '[REDACTED]');
             }
-            catch { }
+            catch (e) {
+                logInternalError('OpenTelemetrySqlLogger.mask.replace', e);
+            }
         }
         return s;
     }
@@ -65,6 +68,28 @@ export class OpenTelemetrySqlLogger {
         finally {
             span.end();
             this.spanByTraceId.delete(info.traceId);
+        }
+    }
+    analysis(info) {
+        try {
+            const span = this.tracer?.startSpan('db.query.analysis', {
+                attributes: {
+                    'db.system': info.provider || 'sql',
+                    'db.analysis.duration_ms': info.durationMs,
+                    'db.analysis.slow': !!info.slow,
+                    'db.analysis.explain': info.explainPlan ? 'true' : 'false'
+                }
+            });
+            if (!span)
+                return;
+            if (info.recommendations && info.recommendations.length > 0) {
+                span.setAttribute('db.analysis.recommendations', JSON.stringify(info.recommendations));
+            }
+            // Do not attach SQL text here to avoid duplication and sensitive data; rely on db.statement in query span
+            span.end();
+        }
+        catch (e) {
+            logInternalError('OpenTelemetrySqlLogger.analysis', e);
         }
     }
 }

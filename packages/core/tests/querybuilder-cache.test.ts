@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { QueryBuilder } from '../src/query/QueryBuilder';
 import type { SqlDialect } from '../src/query/SqlDialect';
 import type { QueryOptions, SqlParameter, CacheInfo } from '../src/types';
@@ -40,7 +39,6 @@ describe('QueryBuilder cache metrics', () => {
   });
 });
 
-import 'reflect-metadata';
 
 class DialectStub implements SqlDialect {
   public calls = 0;

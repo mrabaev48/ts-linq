@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 export declare function ValidIf(predicate: (entity: unknown) => boolean, message?: string, options?: {
     phase?: 'onCreate' | 'onUpdate' | 'always';
     messageKey?: string;

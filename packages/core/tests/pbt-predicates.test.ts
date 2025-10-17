@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import fc from 'fast-check';
 import { PredicateParser } from '../src/query/PredicateParser';
 import { SqlVisitor } from '../src/query/ast/SqlVisitor';

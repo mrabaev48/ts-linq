@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import type { SchemaSnapshot } from '../src/migrations/DiffTypes';
 import { compareSchemas } from '../src/migrations/DiffTypes';
 

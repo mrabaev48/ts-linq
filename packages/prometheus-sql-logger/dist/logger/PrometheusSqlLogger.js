@@ -20,6 +20,8 @@ class PrometheusSqlLogger {
         this.initHealthMetrics(buckets);
         this.initCircuitMetrics();
         this.initFallbackMetrics();
+        this.initAnalysisMetrics(buckets);
+        this.initMemoryMetrics(options?.memory?.profiler);
     }
     initQueryMetrics(buckets) {
         const labelNames = ['provider', 'operation', 'entity', 'success'];
@@ -154,6 +156,24 @@ class PrometheusSqlLogger {
             });
         }
     }
+    initAnalysisMetrics(buckets) {
+        this.analysisSlowTotal = new this.client.Counter({
+            name: `${this.prefix}db_analysis_slow_total`,
+            help: 'Total slow queries detected by analyzer',
+            labelNames: ['provider', 'entity']
+        });
+        this.analysisExplainedTotal = new this.client.Counter({
+            name: `${this.prefix}db_analysis_explained_total`,
+            help: 'Total queries with explain plan collected',
+            labelNames: ['provider', 'entity']
+        });
+        this.analysisDuration = new this.client.Histogram({
+            name: `${this.prefix}db_analysis_duration_ms`,
+            help: 'Observed duration of analyzed queries (ms)',
+            labelNames: ['provider', 'entity'],
+            buckets
+        });
+    }
     initFallbackMetrics() {
         this.fallbackAttempts = new this.client.Counter({
             name: `${this.prefix}db_fallback_attempts_total`,
@@ -180,6 +200,57 @@ class PrometheusSqlLogger {
             help: 'Hedged requests where fallback beat primary',
             labelNames: ['provider', 'operation', 'fallback']
         });
+    }
+    initMemoryMetrics(profiler) {
+        if (!this.client || !this.client.Gauge)
+            return;
+        // Gauges are process-wide; no labels to avoid duplication/cardinality
+        this.memRssGauge = new this.client.Gauge({
+            name: `${this.prefix}db_memory_rss_bytes`,
+            help: 'Process RSS memory usage (bytes)'
+        });
+        this.memHeapTotalGauge = new this.client.Gauge({
+            name: `${this.prefix}db_memory_heap_total_bytes`,
+            help: 'V8 heap total (bytes)'
+        });
+        this.memHeapUsedGauge = new this.client.Gauge({
+            name: `${this.prefix}db_memory_heap_used_bytes`,
+            help: 'V8 heap used (bytes)'
+        });
+        this.memExternalGauge = new this.client.Gauge({
+            name: `${this.prefix}db_memory_external_bytes`,
+            help: 'External memory (bytes)'
+        });
+        this.memArrayBuffersGauge = new this.client.Gauge({
+            name: `${this.prefix}db_memory_array_buffers_bytes`,
+            help: 'ArrayBuffers memory (bytes)'
+        });
+        this.memHeapPressureGauge = new this.client.Gauge({
+            name: `${this.prefix}db_memory_heap_pressure`,
+            help: 'Heap pressure ratio (0..1)'
+        });
+        this.memAliveAllocationsGauge = new this.client.Gauge({
+            name: `${this.prefix}db_memory_alive_allocations`,
+            help: 'Tracked alive allocations (FinalizationRegistry-based)'
+        });
+        if (profiler) {
+            this.detachMemory = profiler.onSample((s) => {
+                try {
+                    this.memRssGauge?.set?.({}, s.rssBytes);
+                    this.memHeapTotalGauge?.set?.({}, s.heapTotalBytes);
+                    this.memHeapUsedGauge?.set?.({}, s.heapUsedBytes);
+                    this.memExternalGauge?.set?.({}, s.externalBytes);
+                    this.memArrayBuffersGauge?.set?.({}, s.arrayBuffersBytes);
+                    this.memHeapPressureGauge?.set?.({}, s.heapPressure);
+                    const alive = typeof profiler.getAliveAllocations === 'function'
+                        ? profiler.getAliveAllocations()
+                        : undefined;
+                    if (typeof alive === 'number')
+                        this.memAliveAllocationsGauge?.set?.({}, alive);
+                }
+                catch { }
+            });
+        }
     }
     queryStart(_info) { }
     queryEnd(info) {
@@ -428,6 +499,23 @@ class PrometheusSqlLogger {
         if (m && m[1])
             return this.cleanIdentifier(m[1]);
         return undefined;
+    }
+    analysis(info) {
+        if (!this.enabled || !this.client)
+            return;
+        const sql = this.maskIfNeeded(info.sql);
+        const entity = this.parseEntity(sql) || 'unknown';
+        const provider = info.provider || 'unknown';
+        try {
+            if (typeof info.durationMs === 'number' && this.analysisDuration) {
+                this.analysisDuration.labels({ provider, entity }).observe(Math.max(0, info.durationMs));
+            }
+            if (info.slow)
+                this.analysisSlowTotal?.labels({ provider, entity }).inc(1);
+            if (info.explainPlan)
+                this.analysisExplainedTotal?.labels({ provider, entity }).inc(1);
+        }
+        catch { }
     }
     cleanIdentifier(id) {
         return id.replace(/^["`\[]|["`\]]$/g, '');

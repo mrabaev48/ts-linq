@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { generateMigrationFromDiff } from '../src/migrations/DialectMigrationSql';
 import type { SchemaDiff } from '../src/migrations/DiffTypes';
 

@@ -29,7 +29,8 @@ export class ChangeValidationService {
         const cached = this.rulesCache.get(entityClass);
         if (cached)
             return cached;
-        const rules = (Reflect.getOwnMetadata('orm:validations', entityClass) || []).slice();
+        // Stage-3: Use MetadataStorage instead of Reflect API
+        const rules = MetadataStorage.getValidationRules(entityClass).slice();
         this.rulesCache.set(entityClass, rules);
         return rules;
     }

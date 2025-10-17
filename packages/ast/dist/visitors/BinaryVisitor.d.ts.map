@@ -1,0 +1,1 @@
+{"version":3,"file":"BinaryVisitor.d.ts","sourceRoot":"","sources":["../../src/visitors/BinaryVisitor.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,oBAAoB,EAAE,MAAM,cAAc,CAAC;AACzD,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAEnD,qBAAa,aAAa;IACjB,KAAK,CAAC,IAAI,EAAE,oBAAoB,GAAG;QAAE,SAAS,EAAE,MAAM,CAAC;QAAC,UAAU,EAAE,YAAY,EAAE,CAAA;KAAE;CAM5F"}

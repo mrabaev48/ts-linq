@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { QueryBuilder } from '../src/query/QueryBuilder';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import type { SqlDialect } from '../src/query/SqlDialect';

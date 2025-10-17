@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 export interface ComputedColumnOptions {
     /** SQL expression for the computed column (provider-agnostic as possible). */
     expression: string;

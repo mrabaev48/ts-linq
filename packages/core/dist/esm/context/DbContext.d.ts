@@ -29,6 +29,8 @@ export declare abstract class DbContext {
     private _softDelete?;
     private _audit?;
     private _globalFilters?;
+    private _diagnostics?;
+    private _memoryProfiler?;
     private _validationOptions?;
     private _validationService;
     private _insertCmd;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenTelemetrySqlLogger = void 0;
+const core_1 = require("@ts-linq/core");
 function safeRequireOtel() {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -8,8 +9,8 @@ function safeRequireOtel() {
         if (otel && otel.trace && typeof otel.trace.getTracer === 'function')
             return otel;
     }
-    catch {
-        /* ignore */
+    catch (e) {
+        (0, core_1.logInternalError)('OpenTelemetrySqlLogger.safeRequireOtel', e);
     }
     return undefined;
 }
@@ -33,7 +34,9 @@ class OpenTelemetrySqlLogger {
             try {
                 s = s.replace(re, '[REDACTED]');
             }
-            catch { }
+            catch (e) {
+                (0, core_1.logInternalError)('OpenTelemetrySqlLogger.mask.replace', e);
+            }
         }
         return s;
     }
@@ -68,6 +71,28 @@ class OpenTelemetrySqlLogger {
         finally {
             span.end();
             this.spanByTraceId.delete(info.traceId);
+        }
+    }
+    analysis(info) {
+        try {
+            const span = this.tracer?.startSpan('db.query.analysis', {
+                attributes: {
+                    'db.system': info.provider || 'sql',
+                    'db.analysis.duration_ms': info.durationMs,
+                    'db.analysis.slow': !!info.slow,
+                    'db.analysis.explain': info.explainPlan ? 'true' : 'false'
+                }
+            });
+            if (!span)
+                return;
+            if (info.recommendations && info.recommendations.length > 0) {
+                span.setAttribute('db.analysis.recommendations', JSON.stringify(info.recommendations));
+            }
+            // Do not attach SQL text here to avoid duplication and sensitive data; rely on db.statement in query span
+            span.end();
+        }
+        catch (e) {
+            (0, core_1.logInternalError)('OpenTelemetrySqlLogger.analysis', e);
         }
     }
 }

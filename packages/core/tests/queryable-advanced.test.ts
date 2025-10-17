@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { Queryable } from '../src/query/Queryable';
 import { InMemoryCountCache } from '../src/query/CountCache';

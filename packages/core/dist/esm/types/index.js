@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 /**
  * Core types and metadata contracts used across the ORM.
  */

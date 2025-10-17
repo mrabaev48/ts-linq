@@ -1,5 +1,4 @@
-import 'reflect-metadata';
-import { SQLiteProvider } from '@ts-linq/sqlite';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
 import type { SqlParameter } from '../src/types';
 

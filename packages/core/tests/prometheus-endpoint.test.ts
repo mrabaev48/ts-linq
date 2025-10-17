@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { startPrometheusServer, getPrometheusMetrics } from '../src/utils/PrometheusEndpoint';
 
 class FakeRegister {

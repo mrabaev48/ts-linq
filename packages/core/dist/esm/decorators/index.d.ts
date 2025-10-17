@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import type { IndexMetadata } from '../types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';

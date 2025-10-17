@@ -12,7 +12,7 @@ const RowMaterializer_1 = require("./RowMaterializer");
 const IncludePlanner_1 = require("./IncludePlanner");
 const JoinPredicateParser_1 = require("./JoinPredicateParser");
 const GlobalFilterApplier_1 = require("./GlobalFilterApplier");
-const metrics_safe_1 = require("metrics-safe");
+const metrics_safe_1 = require("@ts-linq/metrics-safe");
 const InternalLogger_1 = require("../utils/InternalLogger");
 /**
  * Fluent query builder over a given entity type. Accumulates query intent

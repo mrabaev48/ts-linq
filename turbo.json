@@ -1,0 +1,45 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "tsconfig.json",
+    "tsconfig.esm.json",
+    "tsconfig.tests.json"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".turbo/**"],
+      "cache": true
+    },
+    "build:cjs": {
+      "dependsOn": ["^build:cjs"],
+      "outputs": ["dist/**"],
+      "cache": true
+    },
+    "build:esm": {
+      "dependsOn": ["^build:esm"],
+      "outputs": ["dist/**"],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"],
+      "cache": true
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "outputs": [],
+      "cache": true
+    },
+    "clean": {
+      "cache": false
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

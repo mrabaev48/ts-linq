@@ -1,0 +1,28 @@
+{
+  "name": "@ts-linq/dialect-mssql",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "description": "Mssql SQL dialect for ts-linq ORM",
+  "main": "./dist/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
+    "clean": "rm -rf dist"
+  },
+  "files": ["dist/**/*"],
+  "peerDependencies": {
+    "@ts-linq/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  }
+}

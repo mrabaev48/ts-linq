@@ -10,7 +10,7 @@ export class EntityTemplateBuilder {
     const lines: string[] = [];
     lines.push(`import { Entity, Column, PrimaryKey } from '@ts-linq/core';`);
     lines.push('');
-    lines.push(`@Entity('${table}')`);
+    lines.push(`@Entity({ name: '${table}' })`);
     lines.push(`export class ${className} {`);
     for (const col of defs) {
       const tsType = this.mapTsType(col.ormType) + (col.nullable ? ' | null' : '');
@@ -27,7 +27,20 @@ export class EntityTemplateBuilder {
   }
 
   public buildDefault(className: string, table: string): string {
-    return `import { Entity, Column, PrimaryKey } from '@ts-linq/core';\n\n@Entity('${table}')\nexport class ${className} {\n  @PrimaryKey()\n  public id!: number;\n\n  @Column()\n  public name!: string;\n\n  @Column()\n  public createdAt!: Date;\n}\n`;
+    return `import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+
+@Entity({ name: '${table}' })
+export class ${className} {
+  @PrimaryKey({ type: 'INTEGER', autoIncrement: true })
+  public id!: number;
+
+  @Column({ type: 'TEXT', nullable: false })
+  public name!: string;
+
+  @Column({ type: 'DATETIME', nullable: false })
+  public createdAt!: Date;
+}
+`;
   }
 
   private mapTsType(colType: string): string {

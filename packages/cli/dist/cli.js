@@ -2,7 +2,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /* Minimal CLI: prints SQLite diff SQL using current metadata. */
-require("reflect-metadata");
 //
 const InitCommand_1 = require("./commands/InitCommand");
 const GenerateEntityCommand_1 = require("./commands/GenerateEntityCommand");

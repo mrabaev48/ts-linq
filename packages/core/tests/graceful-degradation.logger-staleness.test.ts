@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import type { SqlLogger } from '../src/types';
 import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';

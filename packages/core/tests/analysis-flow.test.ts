@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import type { SqlDialect } from '@ts-linq/core/src/query/SqlDialect';
 import { DatabaseProvider } from '@ts-linq/core/src/DatabaseProvider';
 import type { SqlLogger, SqlParameter, QueryAnalysisInfo } from '@ts-linq/core/src/types';

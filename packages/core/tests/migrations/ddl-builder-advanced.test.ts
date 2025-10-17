@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { DdlBuilder } from '../../src/DdlBuilder';
 import type { DdlStrategy } from '../../src/migrations/DdlStrategy';
 import type { EntityMetadata, ColumnMetadata } from '../../src/types';

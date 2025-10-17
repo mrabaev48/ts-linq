@@ -6,7 +6,11 @@ export interface CachePolicyOptions {
 }
 /**
  * Class decorator to declare cache invalidation dependencies for an entity.
- * Stores metadata under key 'orm:cachePolicy'.
+ * Stage-3 compatible - stores metadata in WeakMap.
  */
 export declare function CachePolicy(options: CachePolicyOptions): ClassDecorator;
+/**
+ * Get cache policy for an entity class.
+ */
+export declare function getCachePolicy(target: Function): CachePolicyOptions | undefined;
 //# sourceMappingURL=CachePolicy.d.ts.map

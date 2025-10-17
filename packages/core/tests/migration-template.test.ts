@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { generateMigrationClassSource } from '../src/migrations/MigrationTemplate';
 import type { SchemaDiff } from '../src/migrations/DiffTypes';
 

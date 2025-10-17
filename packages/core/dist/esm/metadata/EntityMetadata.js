@@ -11,11 +11,12 @@ export class EntityMetadataBuilder {
     constructor(target) {
         this.metadata = {
             target,
-            tableName: Reflect.getOwnMetadata?.('orm:tableName', target) || target.name,
+            tableName: target.name, // Default to class name, can be overridden by setTableName
             columns: [],
             primaryKeys: [],
             relationships: [],
-            indexes: []
+            indexes: [],
+            validations: []
         };
     }
     /**
@@ -60,6 +61,14 @@ export class EntityMetadataBuilder {
         return this;
     }
     /**
+     * Add a validation rule to the entity.
+     */
+    addValidationRule(rule) {
+        this.metadata.validations = this.metadata.validations || [];
+        this.metadata.validations.push(rule);
+        return this;
+    }
+    /**
      * Finalize and return the constructed `EntityMetadata` object.
      */
     build() {
@@ -68,13 +77,12 @@ export class EntityMetadataBuilder {
         }
         return {
             target: this.metadata.target,
-            tableName: this.metadata.tableName ||
-                Reflect.getOwnMetadata?.('orm:tableName', this.metadata.target) ||
-                this.metadata.target.name,
+            tableName: this.metadata.tableName || this.metadata.target.name,
             columns: this.metadata.columns || [],
             primaryKeys: this.metadata.primaryKeys || [],
             relationships: this.metadata.relationships || [],
-            indexes: this.metadata.indexes || []
+            indexes: this.metadata.indexes || [],
+            validations: this.metadata.validations || []
         };
     }
 }

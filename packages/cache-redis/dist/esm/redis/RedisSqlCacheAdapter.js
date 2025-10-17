@@ -1,3 +1,4 @@
+import { logInternalError } from '@ts-linq/core';
 export class RedisSqlCacheAdapter {
     constructor(client, options) {
         this.shadow = new Map();
@@ -23,8 +24,8 @@ export class RedisSqlCacheAdapter {
                         this.shadow.delete(msg.k);
                     }
                 }
-                catch {
-                    /* ignore malformed */
+                catch (e) {
+                    logInternalError('RedisSqlCacheAdapter.subscriber.message', e);
                 }
             });
         }
@@ -66,9 +67,7 @@ export class RedisSqlCacheAdapter {
                 }
             }
             catch (e) {
-                // best-effort logging to not fail prod path
-                // eslint-disable-next-line no-console
-                console.warn('[RedisSqlCacheAdapter] write-through failed', { key: this.k(key) });
+                logInternalError('RedisSqlCacheAdapter.writeThrough', e);
             }
         })();
     }
@@ -93,8 +92,7 @@ export class RedisSqlCacheAdapter {
                         await this.client.del(this.k(k));
                     }
                     catch (e) {
-                        // eslint-disable-next-line no-console
-                        console.warn('[RedisSqlCacheAdapter] delete failed', { key: this.k(k) });
+                        logInternalError('RedisSqlCacheAdapter.invalidate.delete', e);
                     }
                 })();
                 if (this.pubSubChannel && this.publisher) {
@@ -115,8 +113,8 @@ export class RedisSqlCacheAdapter {
                 try {
                     await this.client.del(this.k(first));
                 }
-                catch {
-                    /* ignore */
+                catch (e) {
+                    logInternalError('RedisSqlCacheAdapter.ensureCapacity.delete', e);
                 }
             })();
         }

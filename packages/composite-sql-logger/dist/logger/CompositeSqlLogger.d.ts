@@ -1,4 +1,4 @@
-import type { SqlLogger, QueryStartInfo, QueryEndInfo, RetryInfo, TransactionInfo, CacheInfo, CircuitEventInfo, ConnectionHealthInfo, FallbackInfo } from '@ts-linq/core';
+import type { SqlLogger, QueryStartInfo, QueryEndInfo, RetryInfo, TransactionInfo, CacheInfo, CircuitEventInfo, ConnectionHealthInfo, FallbackInfo, QueryAnalysisInfo } from '@ts-linq/core';
 export declare class CompositeSqlLogger implements SqlLogger {
     private readonly delegates;
     constructor(...delegates: Array<SqlLogger | undefined | null>);
@@ -16,5 +16,6 @@ export declare class CompositeSqlLogger implements SqlLogger {
         operation: string;
         fallback: string;
     }): void;
+    analysis(info: QueryAnalysisInfo): void;
 }
 //# sourceMappingURL=CompositeSqlLogger.d.ts.map

@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import type { SqlCache } from '../query/SqlCache';
 import type { CountCache } from '../query/CountCache';
 import type { EntityCacheLike } from '../utils/EntityCache';

@@ -1,5 +1,4 @@
-import 'reflect-metadata';
-import { PrometheusSqlLogger } from 'prometheus-sql-logger';
+import { PrometheusSqlLogger } from '@ts-linq/prometheus-sql-logger';
 
 type LabelValues = Record<string, string>;
 

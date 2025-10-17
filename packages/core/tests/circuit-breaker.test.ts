@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { SqlParameter } from '../src/types';
 import { CircuitOpenError } from '../src/types';

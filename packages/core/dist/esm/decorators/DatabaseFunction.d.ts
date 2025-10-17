@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 export declare function DatabaseFunction(expression: string | {
     sqlite?: string;
     postgresql?: string;

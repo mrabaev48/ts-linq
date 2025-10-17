@@ -20,6 +20,18 @@ interface PromClientLike {
     Histogram: new (cfg: Record<string, unknown>) => PromHistogram;
     Gauge?: new (cfg: Record<string, unknown>) => PromGauge;
 }
+type MemoryProfilerLike = {
+    onSample(listener: (s: {
+        timestampMs: number;
+        rssBytes: number;
+        heapTotalBytes: number;
+        heapUsedBytes: number;
+        externalBytes: number;
+        arrayBuffersBytes: number;
+        heapPressure: number;
+    }) => void): () => void;
+    getAliveAllocations?(): number;
+};
 export interface PrometheusLoggerOptions {
     prefix?: string;
     bucketsMs?: number[];
@@ -28,6 +40,10 @@ export interface PrometheusLoggerOptions {
     maskSql?: boolean;
     /** Custom patterns to redact from SQL text (replaced by [REDACTED]) */
     maskPatterns?: ReadonlyArray<RegExp>;
+    /** Optional memory profiling integration */
+    memory?: {
+        profiler?: MemoryProfilerLike;
+    };
 }
 export declare class PrometheusSqlLogger implements SqlLogger {
     private enabled;
@@ -61,12 +77,25 @@ export declare class PrometheusSqlLogger implements SqlLogger {
     private fallbackFailures?;
     private fallbackThrottled?;
     private hedgedWins?;
+    private analysisSlowTotal?;
+    private analysisExplainedTotal?;
+    private analysisDuration?;
+    private memRssGauge?;
+    private memHeapTotalGauge?;
+    private memHeapUsedGauge?;
+    private memExternalGauge?;
+    private memArrayBuffersGauge?;
+    private memHeapPressureGauge?;
+    private memAliveAllocationsGauge?;
+    private detachMemory?;
     constructor(namespace: string, options?: PrometheusLoggerOptions);
     private initQueryMetrics;
     private initCacheMetrics;
     private initHealthMetrics;
     private initCircuitMetrics;
+    private initAnalysisMetrics;
     private initFallbackMetrics;
+    private initMemoryMetrics;
     queryStart(_info?: {
         sql: string;
         params: readonly SqlParameter[];
@@ -149,6 +178,15 @@ export declare class PrometheusSqlLogger implements SqlLogger {
     private maskIfNeeded;
     private parseOperation;
     private parseEntity;
+    analysis?(info: {
+        sql: string;
+        params: readonly SqlParameter[];
+        durationMs: number;
+        provider?: string;
+        slow?: boolean;
+        explainPlan?: unknown;
+        recommendations?: ReadonlyArray<string>;
+    }): void;
     private cleanIdentifier;
 }
 export {};
