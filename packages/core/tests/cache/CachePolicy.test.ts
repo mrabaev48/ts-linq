@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { CachePolicy } from '../../src/decorators/CachePolicy';
 
 @CachePolicy({ ttl: 60, invalidateOn: ['Order'] })

@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 /**
  * Options for configuring relationships between entities.
  *

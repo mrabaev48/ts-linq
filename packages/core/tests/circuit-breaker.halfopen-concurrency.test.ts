@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { ProviderStub } from './_stubs/ProviderStub';
 import { CircuitOpenError } from '../src/types';
 

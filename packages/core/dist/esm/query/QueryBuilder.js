@@ -1,4 +1,4 @@
-import { safeCacheSize } from 'metrics-safe';
+import { safeCacheSize } from '@ts-linq/metrics-safe';
 import { EnhancedSqlCache } from './EnhancedSqlCache';
 /**
  * QueryBuilder is now focused solely on generating SQL

@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;AAAA,uBAAuB;AACvB,oDAAkC;AAClC,wDAAsC","sourcesContent":["// postgres SQL Dialect\nexport * from './PostgresDialect';\nexport * from './PostgresDdlStrategy';\n"]}

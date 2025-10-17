@@ -1,8 +1,7 @@
-import 'reflect-metadata';
 import { ForeignKeyConstraintError, DatabaseError } from '../src/types';
-import { PostgresProvider } from '@ts-linq/postgres';
-import { MySqlProvider } from '@ts-linq/mysql';
-import { MssqlProvider } from '@ts-linq/mssql';
+import { PostgresProvider } from '@ts-linq/provider-postgres';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
+import { MssqlProvider } from '@ts-linq/provider-mssql';
 
 class PgFK extends PostgresProvider {
   public async connect() {

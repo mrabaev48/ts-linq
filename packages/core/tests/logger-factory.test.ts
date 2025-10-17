@@ -1,9 +1,8 @@
-import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import type { ColumnMetadata } from '../src/types';
 import type { SqlLogger, SqlLoggerFactory, QueryStartInfo } from '@ts-linq/core';
-import { CompositeSqlLoggerFactory } from 'composite-sql-logger';
+import { CompositeSqlLoggerFactory } from '@ts-linq/composite-sql-logger';
 
 class LfUser {}
 MetadataStorage.addEntity(LfUser, 'lf_user');

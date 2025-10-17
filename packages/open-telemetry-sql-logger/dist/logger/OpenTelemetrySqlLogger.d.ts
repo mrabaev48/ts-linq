@@ -25,5 +25,14 @@ export declare class OpenTelemetrySqlLogger implements SqlLogger {
         error?: Error;
         provider?: string;
     }): void;
+    analysis?(info: {
+        sql: string;
+        params: readonly SqlParameter[];
+        durationMs: number;
+        provider?: string;
+        slow?: boolean;
+        explainPlan?: unknown;
+        recommendations?: ReadonlyArray<string>;
+    }): void;
 }
 //# sourceMappingURL=OpenTelemetrySqlLogger.d.ts.map

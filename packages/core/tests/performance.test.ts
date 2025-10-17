@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { QueryBuilder } from '../src/query/QueryBuilder';
 import type { SqlDialect } from '../src/query/SqlDialect';
 import type { QueryOptions, PerformanceOptions, SqlParameter } from '../src/types';

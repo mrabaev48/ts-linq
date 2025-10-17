@@ -9,7 +9,7 @@ import { RowMaterializer } from './RowMaterializer';
 import { IncludePlanner } from './IncludePlanner';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
-import { safeCache, safeCacheEvicted, safeCacheSize } from 'metrics-safe';
+import { safeCache, safeCacheEvicted, safeCacheSize } from '@ts-linq/metrics-safe';
 import { logInternalError } from '../utils/InternalLogger';
 /**
  * Fluent query builder over a given entity type. Accumulates query intent

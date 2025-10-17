@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { EntityLoader } from '../src/loading/EntityLoader';
 import { ProviderStub } from './_stubs/ProviderStub';
 import { LoadingStrategy } from '../src/loading/LoadingStrategy';

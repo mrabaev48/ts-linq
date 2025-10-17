@@ -124,6 +124,18 @@ export class DbContext {
         }
         this._audit = options.audit;
         this._globalFilters = options.globalFilters;
+        this._diagnostics = options.diagnostics;
+        // Start external memory profiler if provided
+        try {
+            const mp = this._diagnostics?.memoryProfiler;
+            if (mp) {
+                this._memoryProfiler = mp;
+                mp.start?.();
+            }
+        }
+        catch (e) {
+            logInternalError('DbContext.constructor.memoryProfiler.start', e);
+        }
         this._validationOptions = options.validation;
         this._validationService = new ChangeValidationService(this._validationOptions?.translate, this._audit);
         this._changeTracker = new ChangeTracker();
@@ -139,6 +151,18 @@ export class DbContext {
         }
         // Store performance options for downstream consumers
         this._performanceOptions = options.performance;
+        // Propagate query performance analysis options into provider if available
+        try {
+            const analysis = options.performance?.analysis;
+            if (analysis &&
+                typeof this._provider
+                    .configureQueryAnalysis === 'function') {
+                this._provider.configureQueryAnalysis(analysis);
+            }
+        }
+        catch {
+            /* ignore */
+        }
         // Apply configurable IN() chunk size into loader
         this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize);
         this._loadingDefaults = options.loading || {};
@@ -252,7 +276,7 @@ export class DbContext {
             // Smart invalidation: clear L2 cache for entities that declare dependencies
             this.invalidateCachesOnCommit();
             if (this._entityCache) {
-                const { safeCacheSize } = require('metrics-safe');
+                const { safeCacheSize } = require('@ts-linq/metrics-safe');
                 safeCacheSize(this._provider.loggerRef, {
                     cache: 'entityL2',
                     size: this._entityCache.size?.() ?? -1,
@@ -273,7 +297,7 @@ export class DbContext {
         if (this._entityCache) {
             try {
                 this._entityCache.clear();
-                const { safeCacheSize } = require('metrics-safe');
+                const { safeCacheSize } = require('@ts-linq/metrics-safe');
                 safeCacheSize(this._provider.loggerRef, {
                     cache: 'entityL2',
                     size: this._entityCache.size?.() ?? 0,
@@ -386,6 +410,13 @@ export class DbContext {
      */
     async dispose() {
         await this._provider.disconnect();
+        // Stop external memory profiler if started
+        try {
+            this._memoryProfiler?.stop?.();
+        }
+        catch (e) {
+            logInternalError('DbContext.dispose.memoryProfiler.stop', e);
+        }
     }
     /**
      * Get the underlying database provider
@@ -659,7 +690,8 @@ export class DbContext {
         const cached = this._validationRulesCache.get(entityClass);
         if (cached)
             return cached;
-        const rules = (Reflect.getOwnMetadata('orm:validations', entityClass) || []).slice();
+        // Stage-3: Use MetadataStorage instead of Reflect API
+        const rules = MetadataStorage.getValidationRules(entityClass).slice();
         this._validationRulesCache.set(entityClass, rules);
         return rules;
     }

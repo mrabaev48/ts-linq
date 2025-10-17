@@ -1,15 +1,28 @@
+// Store cache policies per entity class (Stage-3 compatible)
+const cachePolicies = new WeakMap();
 /**
  * Class decorator to declare cache invalidation dependencies for an entity.
- * Stores metadata under key 'orm:cachePolicy'.
+ * Stage-3 compatible - stores metadata in WeakMap.
  */
 export function CachePolicy(options) {
-    return (target) => {
-        try {
-            Reflect.defineMetadata?.('orm:cachePolicy', { ...options }, target);
+    return function (target, context) {
+        // Stage-3 path
+        if (context && typeof context === 'object' && context.kind === 'class') {
+            cachePolicies.set(target, { ...options });
+            context.addInitializer?.(function () {
+                const ctor = target;
+                cachePolicies.set(ctor, { ...options });
+            });
+            return;
         }
-        catch {
-            // no-op if Reflect metadata not available
-        }
+        // Fail if not Stage-3
+        throw new Error('@CachePolicy requires TS5 Stage-3 decorators');
     };
+}
+/**
+ * Get cache policy for an entity class.
+ */
+export function getCachePolicy(target) {
+    return cachePolicies.get(target);
 }
 //# sourceMappingURL=CachePolicy.js.map

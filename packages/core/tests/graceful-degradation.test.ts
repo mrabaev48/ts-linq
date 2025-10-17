@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { Queryable } from '../src/query/Queryable';
 import { MemoryFallback } from '../src/query/fallbacks/MemoryFallback';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';

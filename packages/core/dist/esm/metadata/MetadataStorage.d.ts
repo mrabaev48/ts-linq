@@ -1,4 +1,4 @@
-import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../types';
+import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '../types';
 /**
  * Global singleton storage that collects metadata produced by decorators
  * and exposes finalized `EntityMetadata` for use by providers and loaders.
@@ -25,6 +25,10 @@ export declare class MetadataStorage {
     static addRelationship(target: Function, relationship: RelationshipMetadata): void;
     /** Add index metadata for an entity. */
     static addIndex(target: Function, index: IndexMetadata): void;
+    /** Add validation rule for an entity. */
+    static addValidationRule(target: Function, rule: ValidationRule): void;
+    /** Get all validation rules for an entity. */
+    static getValidationRules(target: Function): ValidationRule[];
     /**
      * Get an existing metadata builder for a target or create a new one.
      */
@@ -42,6 +46,8 @@ export declare class MetadataStorage {
     private addRelationshipMetadata;
     /** Add an index definition to the target entity's builder. */
     private addIndexMetadata;
+    /** Add a validation rule to the target entity's builder. */
+    private addValidationRuleMetadata;
     /**
      * Finalize and store metadata for a given target if a builder exists.
      */

@@ -22,9 +22,6 @@ export function PrimaryKey(options = {}) {
                 isVersion: !!options?.version
             };
             MetadataStorage.addColumn(ctor, columnMeta);
-            const existingCols = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-            existingCols.push(columnMeta);
-            Reflect.defineMetadata('orm:columns', existingCols, ctor);
             MetadataStorage.addPrimaryKey(ctor, name);
             if (options.branded) {
                 const meta = MetadataStorage.getEntity(ctor);
@@ -34,10 +31,6 @@ export function PrimaryKey(options = {}) {
                     col.brand = ctor.name;
                 }
             }
-            const existingPks = Reflect.getOwnMetadata('orm:primaryKeys', ctor) || [];
-            if (!existingPks.includes(name))
-                existingPks.push(name);
-            Reflect.defineMetadata('orm:primaryKeys', existingPks, ctor);
         });
     };
 }

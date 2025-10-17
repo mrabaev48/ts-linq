@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import fc from 'fast-check';
 
 /**

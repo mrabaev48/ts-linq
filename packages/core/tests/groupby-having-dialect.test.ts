@@ -1,9 +1,8 @@
-import 'reflect-metadata';
 import { MetadataStorage } from '@ts-linq/core';
-import { SQLiteDialect } from '@ts-linq/sqlite';
-import { PostgresDialect } from '@ts-linq/postgres';
-import { MssqlDialect } from '@ts-linq/mssql';
-import { MysqlDialect } from '@ts-linq/mysql';
+import { SQLiteDialect } from '@ts-linq/provider-sqlite';
+import { PostgresDialect } from '@ts-linq/provider-postgres';
+import { MssqlDialect } from '@ts-linq/provider-mssql';
+import { MysqlDialect } from '@ts-linq/provider-mysql';
 
 class T {
   id!: number;

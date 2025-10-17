@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
 import { ProviderStub } from './_stubs/ProviderStub';
 import { Entity, Column, PrimaryKey } from '../src';
@@ -8,13 +7,13 @@ import { MetadataStorage } from '../src/metadata/MetadataStorage';
 function createUser() {
   @Entity()
   class User {
-    @PrimaryKey({ autoIncrement: true })
+    @PrimaryKey({ type: 'INTEGER', autoIncrement: true })
     id!: number;
 
-    @Column()
+    @Column({ type: 'TEXT' })
     name!: string;
 
-    @Column()
+    @Column({ type: 'TEXT' })
     email!: string;
   }
   return User;

@@ -1,5 +1,4 @@
-import 'reflect-metadata';
-import { SQLiteProvider } from '@ts-linq/sqlite';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 import { UniqueConstraintError, ForeignKeyConstraintError } from '../src/types';
 
 describe('SQLite error mapping', () => {

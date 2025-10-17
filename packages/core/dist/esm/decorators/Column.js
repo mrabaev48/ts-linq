@@ -1,11 +1,10 @@
-import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
 }
 /**
  * Stage-3 property decorator that registers column metadata.
- * If type is omitted and design:type is unavailable, defaults to TEXT.
+ * @param options.type - Column type (required for non-TEXT columns). Defaults to TEXT if omitted.
  */
 export function Column(options = {}) {
     return function ColumnDecorator(_targetOrValue, propOrContext) {
@@ -18,11 +17,10 @@ export function Column(options = {}) {
             const ctor = this?.constructor;
             if (!ctor)
                 return;
-            const designType = Reflect.getMetadata('design:type', ctor.prototype, name);
             const columnMetadata = {
                 propertyName: name,
                 columnName: options?.name || name,
-                type: options?.type || getTypeString(designType),
+                type: options?.type || 'TEXT',
                 nullable: options?.nullable !== false,
                 defaultValue: options?.defaultValue,
                 length: options?.length,
@@ -32,30 +30,7 @@ export function Column(options = {}) {
                 isVersion: options?.version || false
             };
             MetadataStorage.addColumn(ctor, columnMetadata);
-            const existing = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-            existing.push(columnMetadata);
-            Reflect.defineMetadata('orm:columns', existing, ctor);
         });
     };
-}
-function getTypeString(type) {
-    if (!type || !type.name)
-        return 'TEXT';
-    switch (type.name) {
-        case 'String':
-            return 'TEXT';
-        case 'Number':
-            return 'INTEGER';
-        case 'Boolean':
-            return 'BOOLEAN';
-        case 'Date':
-            return 'DATETIME';
-        case 'Array':
-            return 'TEXT';
-        case 'Object':
-            return 'TEXT';
-        default:
-            return 'TEXT';
-    }
 }
 //# sourceMappingURL=Column.js.map

@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
@@ -27,9 +26,6 @@ function defineRelationship(kind, targetEntity, options, targetOrValue, propOrCo
                 through: options?.through
             };
             MetadataStorage.addRelationship(ctor, relationship);
-            const existing = Reflect.getOwnMetadata('orm:relationships', ctor) || [];
-            existing.push(relationship);
-            Reflect.defineMetadata('orm:relationships', existing, ctor);
         });
         return;
     }

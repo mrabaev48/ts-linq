@@ -15,4 +15,5 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./lib/MetricsSafe"), exports);
+__exportStar(require("./lib/MemoryProfiler"), exports);
 //# sourceMappingURL=index.js.map

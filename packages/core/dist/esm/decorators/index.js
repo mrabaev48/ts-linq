@@ -1,4 +1,4 @@
-import 'reflect-metadata';
+import { MetadataStorage } from '../metadata/MetadataStorage';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export { ValidIf, ValidIfOf, RequiredIfOf, MinLengthOf, MaxLengthOf, PatternOf, RangeOf } from './ValidIf';
@@ -35,9 +35,8 @@ export function Index(options) {
             if (!ctor)
                 return;
             const meta = normalizeIndexOptions(options);
-            const existing = Reflect.getOwnMetadata('orm:indexes', ctor) || [];
-            existing.push(meta);
-            Reflect.defineMetadata('orm:indexes', existing, ctor);
+            // Stage-3: Use MetadataStorage instead of Reflect API
+            MetadataStorage.addIndex(ctor, meta);
         });
     };
 }

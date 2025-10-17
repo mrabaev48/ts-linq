@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
@@ -33,19 +32,6 @@ export function DatabaseFunction(expression, nameOverride) {
                     }
             };
             MetadataStorage.addColumn(ctor, columnMetadata);
-            // Maintain rehydration store for Entity decorator
-            const existing = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-            const existingColIndex = existing.findIndex((c) => c.propertyName === name);
-            if (existingColIndex > -1) {
-                existing[existingColIndex] = {
-                    ...existing[existingColIndex],
-                    defaultExpression: expr
-                };
-            }
-            else {
-                existing.push(columnMetadata);
-            }
-            Reflect.defineMetadata('orm:columns', existing, ctor);
         });
     };
 }

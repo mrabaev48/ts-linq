@@ -7,8 +7,9 @@ export class CompositeSqlLogger {
             try {
                 d.queryStart?.(info);
             }
-            catch {
-                /* swallow */
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] queryStart delegate error', e);
             }
         }
     }
@@ -17,8 +18,9 @@ export class CompositeSqlLogger {
             try {
                 d.queryEnd?.(info);
             }
-            catch {
-                /* swallow */
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] queryEnd delegate error', e);
             }
         }
     }
@@ -27,8 +29,9 @@ export class CompositeSqlLogger {
             try {
                 d.retry?.(info);
             }
-            catch {
-                /* swallow */
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] retry delegate error', e);
             }
         }
     }
@@ -37,8 +40,9 @@ export class CompositeSqlLogger {
             try {
                 d.transactionStart?.(info);
             }
-            catch {
-                /* swallow */
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] transactionStart delegate error', e);
             }
         }
     }
@@ -47,8 +51,9 @@ export class CompositeSqlLogger {
             try {
                 d.transactionEnd?.(info);
             }
-            catch {
-                /* swallow */
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] transactionEnd delegate error', e);
             }
         }
     }
@@ -57,8 +62,64 @@ export class CompositeSqlLogger {
             try {
                 d.cache?.(info);
             }
-            catch {
-                /* swallow */
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] cache delegate error', e);
+            }
+        }
+    }
+    connectionHealth(info) {
+        for (const d of this.delegates) {
+            try {
+                d.connectionHealth?.(info);
+            }
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] connectionHealth delegate error', e);
+            }
+        }
+    }
+    circuit(info) {
+        for (const d of this.delegates) {
+            try {
+                d.circuit?.(info);
+            }
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] circuit delegate error', e);
+            }
+        }
+    }
+    fallback(info) {
+        for (const d of this.delegates) {
+            try {
+                d.fallback?.(info);
+            }
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] fallback delegate error', e);
+            }
+        }
+    }
+    hedgedWin(info) {
+        for (const d of this.delegates) {
+            try {
+                d.hedgedWin?.(info);
+            }
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] hedgedWin delegate error', e);
+            }
+        }
+    }
+    analysis(info) {
+        for (const d of this.delegates) {
+            try {
+                d.analysis?.(info);
+            }
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] analysis delegate error', e);
             }
         }
     }

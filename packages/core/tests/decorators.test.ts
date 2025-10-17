@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 
@@ -34,7 +33,7 @@ describe('Decorators', () => {
     it('should register column metadata', () => {
       @Entity()
       class TestEntity {
-        @Column()
+        @Column({ type: 'TEXT' })
         name!: string;
       }
       // instantiate to trigger Stage-3 field initializers
@@ -65,7 +64,7 @@ describe('Decorators', () => {
     it('should register primary key', () => {
       @Entity()
       class TestEntity {
-        @PrimaryKey()
+        @PrimaryKey({ type: 'INTEGER' })
         id!: number;
       }
       new TestEntity();
@@ -90,7 +89,7 @@ describe('Decorators', () => {
     it('should register one-to-many relationship', () => {
       @Entity()
       class User {
-        @PrimaryKey()
+        @PrimaryKey({ type: 'INTEGER' })
         id!: number;
 
         @OneToMany(() => Post)
@@ -99,7 +98,7 @@ describe('Decorators', () => {
 
       @Entity()
       class Post {
-        @PrimaryKey()
+        @PrimaryKey({ type: 'INTEGER' })
         id!: number;
 
         @ManyToOne(() => User)

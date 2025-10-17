@@ -1,4 +1,4 @@
-import type { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions, SqlParameter, ConnectionPoolOptions, ConnectionHealthCheckOptions, CircuitBreakerOptions, CircuitState } from './types';
+import type { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions, SqlParameter, ConnectionPoolOptions, ConnectionHealthCheckOptions, CircuitBreakerOptions, CircuitState, QueryPerformanceAnalysisOptions } from './types';
 import type { SqlDialect } from './query/SqlDialect';
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -34,6 +34,11 @@ export declare abstract class DatabaseProvider {
     private circuitOpenedAt?;
     private halfOpenInFlight;
     private circuitOpenBackoffExp;
+    /** Optional query performance analysis configuration. */
+    protected analysis?: QueryPerformanceAnalysisOptions;
+    /** Internal accounting for analysis rate limiting. */
+    private analysisEventsWindowStartMs?;
+    private analysisEventsInWindow;
     /**
      * Create a provider with a given connection string.
      * @param connectionString Provider-specific connection string.
@@ -80,6 +85,14 @@ export declare abstract class DatabaseProvider {
      * Retries only when not in a transaction and for errors deemed transient.
      */
     private executeWithRetry;
+    /** Configure query performance analysis at runtime. */
+    configureQueryAnalysis(options?: QueryPerformanceAnalysisOptions): void;
+    /** Provider hook: obtain an EXPLAIN plan for a given SQL if supported. */
+    protected getExplainPlan(_sql: string, _params: readonly SqlParameter[]): Promise<unknown | undefined>;
+    /** Emit analysis event when thresholds are exceeded. */
+    private maybeAnalyzeQuery;
+    /** Heuristic recommendations from provider-agnostic plans. */
+    private deriveRecommendations;
     /** Basic transient error classifier. Providers may override for accuracy. */
     protected isTransientError(error: unknown): boolean;
     /** Circuit breaker: short-circuit if open or move to half-open if cooldown elapsed. */

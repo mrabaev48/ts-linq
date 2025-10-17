@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { Entity } from '../src/decorators/Entity';
 import { Column } from '../src/decorators/Column';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';

@@ -63,6 +63,15 @@ export class MetadataStorage {
     static addIndex(target, index) {
         MetadataStorage.getInstance().addIndexMetadata(target, index);
     }
+    /** Add validation rule for an entity. */
+    static addValidationRule(target, rule) {
+        MetadataStorage.getInstance().addValidationRuleMetadata(target, rule);
+    }
+    /** Get all validation rules for an entity. */
+    static getValidationRules(target) {
+        const metadata = MetadataStorage.getEntity(target);
+        return metadata?.validations ?? [];
+    }
     /**
      * Get an existing metadata builder for a target or create a new one.
      */
@@ -178,6 +187,17 @@ export class MetadataStorage {
             throw new ValidationError(`Index '${index.name}' on entity '${snapshot.tableName}' references unknown columns: ${missing.join(', ')}`);
         }
         builder.addIndex(index);
+    }
+    /** Add a validation rule to the target entity's builder. */
+    addValidationRuleMetadata(target, rule) {
+        const key = this.normalizeTarget(target);
+        const finalized = this.entities.get(key);
+        if (finalized) {
+            finalized.validations = [...(finalized.validations || []), rule];
+            return;
+        }
+        const builder = this.getOrCreateBuilder(target);
+        builder.addValidationRule(rule);
     }
     /**
      * Finalize and store metadata for a given target if a builder exists.

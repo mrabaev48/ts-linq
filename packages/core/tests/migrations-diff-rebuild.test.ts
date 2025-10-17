@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { DiffMigrationGenerator } from '../src/migrations/DiffMigrationGenerator';

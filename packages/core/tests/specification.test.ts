@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { PredicateParser } from '../src/query/PredicateParser';
 import { PredicateSpecification, Specs } from '../src/query/spec/Specification';
 

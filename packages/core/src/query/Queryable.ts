@@ -23,7 +23,7 @@ import type { EntityCacheLike } from '../utils/EntityCache';
 import type { CountCache } from './CountCache';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
-import { safeCache, safeCacheEvicted, safeCacheSize } from 'metrics-safe';
+import { safeCache, safeCacheEvicted, safeCacheSize } from '@ts-linq/metrics-safe';
 import { logInternalError } from '../utils/InternalLogger';
 import type {
   FallbackRequest,

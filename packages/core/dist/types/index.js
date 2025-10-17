@@ -4,7 +4,6 @@ exports.CircuitOpenError = exports.OptimisticConcurrencyError = exports.Validati
 exports.unbrandId = unbrandId;
 exports.brandId = brandId;
 exports.isBrandedId = isBrandedId;
-require("reflect-metadata");
 /**
  * Core types and metadata contracts used across the ORM.
  */

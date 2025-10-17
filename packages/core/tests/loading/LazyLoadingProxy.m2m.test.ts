@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import { LazyLoadingProxy, awaitLazyLoad } from '../../src/loading/LazyLoadingProxy';
 import type { DatabaseProvider } from '../../src/DatabaseProvider';

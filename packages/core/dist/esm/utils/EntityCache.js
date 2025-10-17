@@ -1,4 +1,4 @@
-import { safeCacheEvicted } from 'metrics-safe';
+import { safeCacheEvicted } from '@ts-linq/metrics-safe';
 import { logInternalError } from './InternalLogger';
 export class EntityCache {
     /**

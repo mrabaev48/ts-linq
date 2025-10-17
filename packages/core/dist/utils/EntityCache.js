@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityCache = void 0;
-const metrics_safe_1 = require("metrics-safe");
+const metrics_safe_1 = require("@ts-linq/metrics-safe");
 const InternalLogger_1 = require("./InternalLogger");
 class EntityCache {
     /**

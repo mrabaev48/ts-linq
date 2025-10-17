@@ -1,8 +1,7 @@
-import 'reflect-metadata';
-import { SQLiteDdlStrategy } from '@ts-linq/sqlite';
-import { PostgresDdlStrategy } from '@ts-linq/postgres';
-import { MySqlDdlStrategy } from '@ts-linq/mysql';
-import { MssqlDdlStrategy } from '@ts-linq/mssql';
+import { SQLiteDdlStrategy } from '@ts-linq/provider-sqlite';
+import { PostgresDdlStrategy } from '@ts-linq/provider-postgres';
+import { MySqlDdlStrategy } from '@ts-linq/provider-mysql';
+import { MssqlDdlStrategy } from '@ts-linq/provider-mssql';
 
 describe('DDL Strategies (smoke)', () => {
   it('mapType to SQLite', () => {

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RangeOf = exports.PatternOf = exports.MaxLengthOf = exports.MinLengthOf = exports.RequiredIfOf = exports.ValidIfOf = exports.ValidIf = exports.IndexOptionsBuilder = void 0;
 exports.normalizeIndexOptions = normalizeIndexOptions;
 exports.Index = Index;
-require("reflect-metadata");
+const MetadataStorage_1 = require("../metadata/MetadataStorage");
 const IndexOptionsBuilder_1 = require("../utils/IndexOptionsBuilder");
 var IndexOptionsBuilder_2 = require("../utils/IndexOptionsBuilder");
 Object.defineProperty(exports, "IndexOptionsBuilder", { enumerable: true, get: function () { return IndexOptionsBuilder_2.IndexOptionsBuilder; } });
@@ -48,9 +48,8 @@ function Index(options) {
             if (!ctor)
                 return;
             const meta = normalizeIndexOptions(options);
-            const existing = Reflect.getOwnMetadata('orm:indexes', ctor) || [];
-            existing.push(meta);
-            Reflect.defineMetadata('orm:indexes', existing, ctor);
+            // Stage-3: Use MetadataStorage instead of Reflect API
+            MetadataStorage_1.MetadataStorage.addIndex(ctor, meta);
         });
     };
 }

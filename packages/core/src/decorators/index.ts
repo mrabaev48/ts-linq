@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { MetadataStorage } from '../metadata/MetadataStorage';
 import type { IndexMetadata } from '../types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
@@ -66,9 +65,8 @@ export function Index(options: IndexInput) {
       const ctor = this as unknown as Function;
       if (!ctor) return;
       const meta: IndexMetadata = normalizeIndexOptions(options);
-      const existing: IndexMetadata[] = Reflect.getOwnMetadata('orm:indexes', ctor) || [];
-      existing.push(meta);
-      Reflect.defineMetadata('orm:indexes', existing, ctor);
+      // Stage-3: Use MetadataStorage instead of Reflect API
+      MetadataStorage.addIndex(ctor, meta);
     });
   };
 }

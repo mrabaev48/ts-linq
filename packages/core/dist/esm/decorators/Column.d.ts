@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import type { ColumnType } from '../types';
 /**
  * Options for configuring a column mapping on an entity property.
@@ -17,7 +16,7 @@ export interface ColumnOptions {
 }
 /**
  * Stage-3 property decorator that registers column metadata.
- * If type is omitted and design:type is unavailable, defaults to TEXT.
+ * @param options.type - Column type (required for non-TEXT columns). Defaults to TEXT if omitted.
  */
 export declare function Column(options?: ColumnOptions): PropertyDecorator;
 //# sourceMappingURL=Column.d.ts.map

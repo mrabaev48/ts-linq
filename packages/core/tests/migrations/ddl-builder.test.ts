@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { MigrationBuilder } from '../../src/migrations/MigrationBuilder';
 
 describe('DDL Builder (smoke)', () => {
