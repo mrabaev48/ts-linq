@@ -4,8 +4,8 @@ import type {
   IdentifierNode,
   LiteralNode,
   LogicalExpressionNode
-} from './ast/Nodes';
-import { ComparisonOperator, LogicalOperator } from './ast/Nodes';
+} from '@ts-linq/ast';
+import { ComparisonOperator, LogicalOperator } from '@ts-linq/ast';
 
 /**
  * Very lightweight parser that converts supported predicate functions

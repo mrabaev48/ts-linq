@@ -19,12 +19,14 @@ class GlobalFilterApplier {
         // Explicit global filters
         if (globalFilters && globalFilters.length > 0) {
             for (const globalFilter of globalFilters) {
-                const filterMeta = core_1.MetadataStorage.getEntity(globalFilter.entity);
-                if (filterMeta && selfMeta.tableName === filterMeta.tableName) {
-                    model.where.push({
-                        condition: globalFilter.where.condition,
-                        parameters: [...globalFilter.where.parameters]
-                    });
+                if (globalFilter.entity && globalFilter.where) {
+                    const filterMeta = core_1.MetadataStorage.getEntity(globalFilter.entity);
+                    if (filterMeta && selfMeta.tableName === filterMeta.tableName) {
+                        model.where.push({
+                            condition: globalFilter.where.condition,
+                            parameters: [...globalFilter.where.parameters]
+                        });
+                    }
                 }
             }
         }

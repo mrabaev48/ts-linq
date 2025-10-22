@@ -1,6 +1,4 @@
-import type { QueryOptions, SqlParameter } from '@ts-linq/types';
-import type { SqlLogger } from '@ts-linq/types';
-import type { SqlDialect } from './SqlDialect';
+import type { QueryOptions, SqlParameter, SqlLogger, SqlDialect } from '@ts-linq/types';
 import type { QueryModel } from '@ts-linq/core';
 import type { SqlCache } from './SqlCache';
 /**

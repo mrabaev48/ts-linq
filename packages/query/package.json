@@ -5,9 +5,13 @@
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@ts-linq/types": "workspace:*",
+    "@ts-linq/metrics-safe": "workspace:*",
+    "@ts-linq/ast": "workspace:*"
+  },
   "peerDependencies": {
-    "@ts-linq/core": "workspace:*",
-    "@ts-linq/types": "workspace:*"
+    "@ts-linq/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

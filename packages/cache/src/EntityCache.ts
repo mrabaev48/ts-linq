@@ -1,5 +1,4 @@
 import { safeCacheEvicted } from '@ts-linq/metrics-safe';
-import { logInternalError } from './InternalLogger';
 
 /**
  * Simple in-memory FIFO cache for entities keyed by `<EntityName>|<id>`.
@@ -49,7 +48,7 @@ export class EntityCache implements EntityCacheLike {
         try {
           safeCacheEvicted(this._logger, { cache: 'entityL2', provider: this._providerLabel });
         } catch (e) {
-          logInternalError('EntityCache.safeCacheEvicted', e);
+          // Silent fail for metrics
         }
       }
     }
