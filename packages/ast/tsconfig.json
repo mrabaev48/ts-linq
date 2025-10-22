@@ -5,7 +5,7 @@
     "outDir": "./dist",
     "composite": true,
     "paths": {
-      "@ts-linq/types": ["../types/src"]
+      "@ts-linq/types": ["../types/dist"]
     }
   },
   "include": ["src/**/*"],
