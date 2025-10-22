@@ -25,7 +25,7 @@ function ValidIf(predicate, message, options) {
             MetadataStorage_1.MetadataStorage.addValidationRule(ctor, {
                 propertyName: name,
                 predicate,
-                message,
+                message: message || '',
                 phase: options?.phase,
                 messageKey: options?.messageKey,
                 messageParams: options?.messageParams
