@@ -1,24 +1,21 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Queryable = void 0;
-const core_1 = require("@ts-linq/core");
-const types_1 = require("@ts-linq/types");
-const QueryBuilder_1 = require("./QueryBuilder");
-const PredicateParser_1 = require("./PredicateParser");
-const core_2 = require("@ts-linq/core");
-const core_3 = require("@ts-linq/core");
+import { MetadataStorage } from '@ts-linq/core';
+import { ok, err } from '@ts-linq/types';
+import { QueryBuilder } from './QueryBuilder';
+import { PredicateParser } from './PredicateParser';
+import { SqlVisitor } from '@ts-linq/core';
+import { QueryModel } from '@ts-linq/core';
 // LoadingStrategy not used directly here; keep imports minimal
-const RowMaterializer_1 = require("./RowMaterializer");
-const IncludePlanner_1 = require("./IncludePlanner");
-const JoinPredicateParser_1 = require("./JoinPredicateParser");
-const GlobalFilterApplier_1 = require("./GlobalFilterApplier");
-const metrics_safe_1 = require("@ts-linq/metrics-safe");
-const core_4 = require("@ts-linq/core");
+import { RowMaterializer } from './RowMaterializer';
+import { IncludePlanner } from './IncludePlanner';
+import { JoinPredicateParser } from './JoinPredicateParser';
+import { GlobalFilterApplier } from './GlobalFilterApplier';
+import { safeCache, safeCacheEvicted, safeCacheSize } from '@ts-linq/metrics-safe';
+import { logInternalError } from '@ts-linq/core';
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
  * in a QueryModel and delegates SQL generation to QueryBuilder.
  */
-class Queryable {
+export class Queryable {
     /**
      * Create a new Queryable bound to an entity type and provider.
      * @param entityClass Entity constructor.
@@ -26,10 +23,10 @@ class Queryable {
      * @param entityLoader Optional entity loader for eager includes.
      */
     constructor(entityClass, provider, entityLoader, entityCache, performance, globalFilters) {
-        this._model = new core_3.QueryModel();
+        this._model = new QueryModel();
         this._fallbackPredicates = [];
         this._includes = [];
-        this._globalFilterApplier = new GlobalFilterApplier_1.GlobalFilterApplier();
+        this._globalFilterApplier = new GlobalFilterApplier();
         this._fallbacks = [];
         // Lightweight signature of WHERE clauses for fast count() cache keys
         this._whereSignature = '[]';
@@ -40,9 +37,9 @@ class Queryable {
         this._performance = performance;
         this._globalFilters = globalFilters;
         this._externalCountCache = performance?.countCache;
-        this._sqlBuilder = new QueryBuilder_1.QueryBuilder(provider.getDialect(), provider.loggerRef, provider.providerLabel, performance?.sqlCache, performance?.cacheNamespace);
-        this._materializer = new RowMaterializer_1.RowMaterializer(this._entityClass, this._provider, this._entityCache, this._performance);
-        this._includePlanner = new IncludePlanner_1.IncludePlanner(this._entityLoader, this._entityClass);
+        this._sqlBuilder = new QueryBuilder(provider.getDialect(), provider.loggerRef, provider.providerLabel, performance?.sqlCache, performance?.cacheNamespace);
+        this._materializer = new RowMaterializer(this._entityClass, this._provider, this._entityCache, this._performance);
+        this._includePlanner = new IncludePlanner(this._entityLoader, this._entityClass);
         // Initialize fallback policy defaults
         if (!this._performance?.fallbackPolicy?.allowOps) {
             const defaults = {
@@ -298,10 +295,10 @@ class Queryable {
         if (!this._model.groupBy) {
             throw new Error('having() requires a preceding groupBy()');
         }
-        const parser = new PredicateParser_1.PredicateParser();
+        const parser = new PredicateParser();
         const ast = parser.parse(predicate);
         if (ast) {
-            const visitor = new core_2.SqlVisitor();
+            const visitor = new SqlVisitor();
             const { condition, parameters } = visitor.toSql(ast);
             this._model.groupBy.having = { condition, parameters };
         }
@@ -366,7 +363,7 @@ class Queryable {
      */
     include(selector) {
         const prop = this.extractIncludeProperty(selector);
-        const metadata = core_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = MetadataStorage.getEntity(this._entityClass);
         const valid = metadata?.relationships.some((r) => r.propertyName === prop);
         if (!valid) {
             throw new Error(`Invalid include '${prop}' for ${this._entityClass.name}. Define relationship '${prop}' via decorators or fix the name.`);
@@ -405,10 +402,10 @@ class Queryable {
     async tryFirst() {
         try {
             const value = await this.first();
-            return (0, types_1.ok)(value);
+            return ok(value);
         }
         catch (error) {
-            return (0, types_1.err)(error);
+            return err(error);
         }
     }
     /** Returns the first entity or null.
@@ -440,10 +437,10 @@ class Queryable {
     async trySingle() {
         try {
             const value = await this.single();
-            return (0, types_1.ok)(value);
+            return ok(value);
         }
         catch (error) {
-            return (0, types_1.err)(error);
+            return err(error);
         }
     }
     /** Returns one or null; throws if more than 1.
@@ -461,7 +458,7 @@ class Queryable {
      * const count = await context.products.where(p => p.price >= 100).count();
      */
     async count() {
-        const metadata = core_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = MetadataStorage.getEntity(this._entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
         if (this._performance?.enableCountCache) {
@@ -477,7 +474,7 @@ class Queryable {
                     Queryable._countCache.delete(key);
                     Queryable._countCache.set(key, hit);
                 }
-                (0, metrics_safe_1.safeCache)(this._provider.loggerRef, {
+                safeCache(this._provider.loggerRef, {
                     cache: 'count',
                     hit: true,
                     provider: this._provider.providerLabel,
@@ -507,7 +504,7 @@ class Queryable {
                     const firstKey = Queryable._countCache.keys().next().value;
                     if (firstKey !== undefined) {
                         Queryable._countCache.delete(firstKey);
-                        (0, metrics_safe_1.safeCacheEvicted)(this._provider.loggerRef, {
+                        safeCacheEvicted(this._provider.loggerRef, {
                             cache: 'count',
                             provider: this._provider.providerLabel
                         });
@@ -515,12 +512,12 @@ class Queryable {
                 }
                 Queryable._countCache.set(key, entry);
             }
-            (0, metrics_safe_1.safeCacheSize)(this._provider.loggerRef, {
+            safeCacheSize(this._provider.loggerRef, {
                 cache: 'count',
                 size: this._externalCountCache ? -1 : Queryable._countCache.size,
                 provider: this._provider.providerLabel
             });
-            (0, metrics_safe_1.safeCache)(this._provider.loggerRef, {
+            safeCache(this._provider.loggerRef, {
                 cache: 'count',
                 hit: false,
                 provider: this._provider.providerLabel
@@ -652,7 +649,7 @@ class Queryable {
                         return data.length;
                 }
                 catch (e) {
-                    (0, core_4.logInternalError)('hedged.startFallback.fetch', e);
+                    logInternalError('hedged.startFallback.fetch', e);
                     continue;
                 }
             }
@@ -683,7 +680,7 @@ class Queryable {
                     });
                 }
                 catch (e) {
-                    (0, core_4.logInternalError)('hedged.select.hedgedWin', e);
+                    logInternalError('hedged.select.hedgedWin', e);
                 }
                 return winner.n;
             }
@@ -719,13 +716,13 @@ class Queryable {
             this._whereSignature += `|${cached.condition}:${JSON.stringify(cached.parameters)}`;
             return;
         }
-        const parser = new PredicateParser_1.PredicateParser();
+        const parser = new PredicateParser();
         const ast = parser.parse(predicate);
         if (!ast) {
             this._fallbackPredicates.push(predicate);
             return;
         }
-        const visitor = new core_2.SqlVisitor();
+        const visitor = new SqlVisitor();
         const { condition, parameters } = visitor.toSql(ast);
         const whereClause = {
             condition,
@@ -922,7 +919,7 @@ class Queryable {
                     });
                 }
                 catch (e) {
-                    (0, core_4.logInternalError)('hedged.select.hedgedWin', e);
+                    logInternalError('hedged.select.hedgedWin', e);
                 }
                 this._provider.loggerRef?.fallback?.({
                     provider: this._provider.providerLabel,
@@ -1056,7 +1053,7 @@ class Queryable {
      * Falls back to shallow assign when no metadata is available.
      */
     mapRowToEntity(row) {
-        const metadata = core_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = MetadataStorage.getEntity(this._entityClass);
         if (this.shouldUseL2Cache(metadata)) {
             const cached = this.tryGetFromCache(row, metadata);
             if (cached)
@@ -1241,7 +1238,7 @@ class Queryable {
         if (this._abortSignal?.aborted)
             throw new Error('Operation aborted');
         // For entities, use primary key comparison if available
-        const metadata = core_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = MetadataStorage.getEntity(this._entityClass);
         if (metadata && metadata.primaryKeys.length > 0) {
             const pk = metadata.primaryKeys[0];
             const itemId = item[pk];
@@ -1302,8 +1299,8 @@ class Queryable {
     }
     /** Add a JOIN clause into the model using simple predicate parsing. */
     addJoin(type, otherCtor, on, alias) {
-        const leftMeta = core_1.MetadataStorage.getEntity(this._entityClass);
-        const rightMeta = core_1.MetadataStorage.getEntity(otherCtor);
+        const leftMeta = MetadataStorage.getEntity(this._entityClass);
+        const rightMeta = MetadataStorage.getEntity(otherCtor);
         if (!leftMeta || !rightMeta)
             throw new Error('Entity metadata not found for join');
         const onStr = this.parseJoinPredicate(on.toString(), leftMeta.tableName, rightMeta.tableName, leftMeta, rightMeta);
@@ -1320,14 +1317,13 @@ class Queryable {
      * Supports pattern: (a,b) => a.prop === b.prop
      */
     parseJoinPredicate(onStr, leftTable, rightTable, leftMeta, rightMeta) {
-        return JoinPredicateParser_1.JoinPredicateParser.parse(onStr, leftTable, rightTable, leftMeta, rightMeta);
+        return JoinPredicateParser.parse(onStr, leftTable, rightTable, leftMeta, rightMeta);
     }
     /** Apply configured global filters to the provided query model. */
     applyGlobalFiltersToModel(model) {
         this._globalFilterApplier.apply(this._entityClass, model, this._provider.softDeleteOptions, this._globalFilters);
     }
 }
-exports.Queryable = Queryable;
 Queryable._countCache = new Map();
 Queryable._COUNT_CACHE_MAX = 2000;
 // Single-flight deduplication for concurrent count() calls

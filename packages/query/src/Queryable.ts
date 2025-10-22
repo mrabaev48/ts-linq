@@ -101,10 +101,10 @@ export class Queryable<T> {
     this._globalFilters = globalFilters;
     this._externalCountCache = performance?.countCache;
     this._sqlBuilder = new QueryBuilder(
-      provider.getDialect(),
-      provider.loggerRef,
+      provider.getDialect() as any,
+      provider.loggerRef as any,
       provider.providerLabel,
-      performance?.sqlCache,
+      performance?.sqlCache as any,
       performance?.cacheNamespace
     );
     this._materializer = new RowMaterializer<T>(
@@ -706,6 +706,8 @@ export class Queryable<T> {
   private async tryFallbackCountSequential(queryModel: QueryModel): Promise<number | null> {
     const normal = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
     const req: FallbackRequest<T> = {
+      operation: "count" as FallbackOperation,
+      entityClass: this._entityClass,
       entity: this._entityClass,
       sql: normal.query,
       params: normal.parameters
@@ -747,6 +749,8 @@ export class Queryable<T> {
     if (!hedge?.enabled) return null;
     const normal = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
     const req: FallbackRequest<T> = {
+      operation: "count" as FallbackOperation,
+      entityClass: this._entityClass,
       entity: this._entityClass,
       sql: normal.query,
       params: normal.parameters
@@ -971,6 +975,8 @@ export class Queryable<T> {
     model: QueryModel
   ): Promise<T[] | null> {
     const req: FallbackRequest<T> = {
+      operation: "count" as FallbackOperation,
+      entityClass: this._entityClass,
       entity: this._entityClass,
       sql: sql.query,
       params: sql.parameters
@@ -1016,6 +1022,8 @@ export class Queryable<T> {
   > {
     let fallbackStarted = false;
     const req: FallbackRequest<T> = {
+      operation: "count" as FallbackOperation,
+      entityClass: this._entityClass,
       entity: this._entityClass,
       sql: sql.query,
       params: sql.parameters
@@ -1086,7 +1094,7 @@ export class Queryable<T> {
     const src = this._performance?.fallbackPolicy?.hedged?.sources;
     if (!src || src.length === 0) return this._fallbacks;
     const wanted = new Set(src);
-    return this._fallbacks.filter((fb) => wanted.has(fb.label));
+    return this._fallbacks.filter((fb) => wanted.has(fb.label as any));
   }
 
   /** Try to pass fallback throttle constraints; returns false when fallback should be skipped. */
@@ -1516,7 +1524,7 @@ export class Queryable<T> {
     );
     this._model.joins = this._model.joins || [];
     this._model.joins.push({
-      type: type as unknown as JoinType,
+      type: type as any,
       table: rightMeta.tableName,
       on: onStr,
       alias
