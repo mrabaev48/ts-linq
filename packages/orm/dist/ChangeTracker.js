@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChangeTracker = void 0;
-const types_1 = require("../types");
+const core_1 = require("@ts-linq/core");
 /**
  * Tracks entities and their states (Added, Modified, Deleted, Unchanged)
  * to enable unit-of-work style persistence via `saveChanges`.
@@ -19,7 +19,7 @@ class ChangeTracker {
         this._trackedEntities.set(entity, {
             entity,
             entityClass,
-            state: types_1.EntityState.Added
+            state: core_1.EntityState.Added
         });
     }
     /**
@@ -30,13 +30,13 @@ class ChangeTracker {
     update(entity, entityClass) {
         const existing = this._trackedEntities.get(entity);
         if (existing) {
-            existing.state = types_1.EntityState.Modified;
+            existing.state = core_1.EntityState.Modified;
         }
         else {
             this._trackedEntities.set(entity, {
                 entity,
                 entityClass,
-                state: types_1.EntityState.Modified,
+                state: core_1.EntityState.Modified,
                 originalValues: this.cloneObject(entity)
             });
         }
@@ -49,13 +49,13 @@ class ChangeTracker {
     remove(entity, entityClass) {
         const existing = this._trackedEntities.get(entity);
         if (existing) {
-            existing.state = types_1.EntityState.Deleted;
+            existing.state = core_1.EntityState.Deleted;
         }
         else {
             this._trackedEntities.set(entity, {
                 entity,
                 entityClass,
-                state: types_1.EntityState.Deleted
+                state: core_1.EntityState.Deleted
             });
         }
     }
@@ -68,7 +68,7 @@ class ChangeTracker {
         this._trackedEntities.set(entity, {
             entity,
             entityClass,
-            state: types_1.EntityState.Unchanged,
+            state: core_1.EntityState.Unchanged,
             originalValues: this.cloneObject(entity)
         });
     }
@@ -77,7 +77,7 @@ class ChangeTracker {
      * @returns Tracked entities excluding those in Unchanged state.
      */
     getChanges() {
-        return Array.from(this._trackedEntities.values()).filter((tracked) => tracked.state !== types_1.EntityState.Unchanged);
+        return Array.from(this._trackedEntities.values()).filter((tracked) => tracked.state !== core_1.EntityState.Unchanged);
     }
     /**
      * Get the state of a specific entity
@@ -86,18 +86,18 @@ class ChangeTracker {
      */
     getEntityState(entity) {
         const tracked = this._trackedEntities.get(entity);
-        return tracked ? tracked.state : types_1.EntityState.Unchanged;
+        return tracked ? tracked.state : core_1.EntityState.Unchanged;
     }
     /**
      * Accept all changes and reset tracking
      */
     acceptAllChanges() {
         for (const tracked of this._trackedEntities.values()) {
-            if (tracked.state === types_1.EntityState.Deleted) {
+            if (tracked.state === core_1.EntityState.Deleted) {
                 this._trackedEntities.delete(tracked.entity);
             }
             else {
-                tracked.state = types_1.EntityState.Unchanged;
+                tracked.state = core_1.EntityState.Unchanged;
                 tracked.originalValues = this.cloneObject(tracked.entity);
             }
         }
@@ -113,9 +113,9 @@ class ChangeTracker {
      */
     detectChanges() {
         for (const tracked of this._trackedEntities.values()) {
-            if (tracked.state === types_1.EntityState.Unchanged && tracked.originalValues) {
+            if (tracked.state === core_1.EntityState.Unchanged && tracked.originalValues) {
                 if (!this.areObjectsEqual(tracked.entity, tracked.originalValues)) {
-                    tracked.state = types_1.EntityState.Modified;
+                    tracked.state = core_1.EntityState.Modified;
                 }
             }
         }

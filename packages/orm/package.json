@@ -2,9 +2,11 @@
   "name": "@ts-linq/orm",
   "version": "2.0.0-alpha.1",
   "private": true,
-  "peerDependencies": {
+  "dependencies": {
     "@ts-linq/core": "workspace:*",
-    "@ts-linq/types": "workspace:*"
+    "@ts-linq/types": "workspace:*",
+    "@ts-linq/metadata": "workspace:*",
+    "@ts-linq/query": "workspace:*"
   },
   "devDependencies": {"typescript": "^5.4.5"},
   "scripts": {"build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json"}

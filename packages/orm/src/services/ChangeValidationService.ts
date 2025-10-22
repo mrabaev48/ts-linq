@@ -232,7 +232,7 @@ export class ChangeValidationService {
   } {
     const table = meta?.tableName || 'unknown_table';
     const typeName = meta?.target?.name || 'UnknownEntity';
-    const col = meta?.columns.find((c) => c.propertyName === property)?.columnName || property;
+    const col = meta?.columns.find((c: any) => c.propertyName === property)?.columnName || property;
     const fullMessage = `${typeName}.${property} (${table}.${col}): ${message}`;
     return {
       entity: table,

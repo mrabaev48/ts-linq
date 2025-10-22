@@ -1,43 +1,7 @@
-// Re-export common types from @ts-linq/types to avoid duplication
-export type {
-  SqlParameter,
-  WhereClause,
-  OrderByClause,
-  JoinClause,
-  QueryOptions,
-  GroupByClause,
-  Logger,
-  SqlLogger,
-  SqlDialect,
-  OrmMiddleware,
-  RetryPolicy,
-  ConnectionPoolOptions,
-  ConnectionHealthCheckOptions,
-  SoftDeleteOptions,
-  CacheOptions,
-  ColumnType,
-  ColumnMetadata,
-  RelationshipMetadata,
-  IndexMetadata,
-  EntityMetadata,
-  ValidationRule,
-  GlobalFilter,
-  PerformanceOptions,
-  LoadingStrategy,
-  JoinType,
-  CteDefinition,
-  Result,
-  FallbackOperation,
-  FallbackRequest,
-  QueryFallback,
-  FallbackPolicy,
-  CountCache
-} from '@ts-linq/types';
-
-export { ok, err } from '@ts-linq/types';
+// Core-specific types only. Common types should be imported from @ts-linq/types
 
 import type { SqlCache } from '../query/SqlCache';
-import type { CountCache } from '../query/CountCache';
+import type { CountCache as CountCacheType } from '@ts-linq/types';
 import type { EntityCacheLike } from '../utils/EntityCache';
 import type { DatabaseProvider } from '../DatabaseProvider';
 
@@ -151,3 +115,6 @@ export interface AggregateResult {
   min?: number;
   max?: number;
 }
+
+// Re-exported for ORM compatibility
+export type PrimaryKeyOf<T> = T extends { id: infer K } ? K : unknown;

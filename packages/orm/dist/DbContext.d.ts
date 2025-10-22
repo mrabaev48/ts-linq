@@ -1,10 +1,11 @@
-import type { DatabaseProvider } from '../DatabaseProvider';
-import { ChangeTracker } from '../change-tracking/ChangeTracker';
-import { EntityLoader } from '../loading/EntityLoader';
-import type { LoadingOptions } from '../loading/LoadingStrategy';
-import { LoadingStrategy } from '../loading/LoadingStrategy';
+import type { DatabaseProvider } from '@ts-linq/core';
+import { ChangeTracker } from './ChangeTracker';
+import { EntityLoader } from '@ts-linq/core';
+import type { LoadingOptions } from '@ts-linq/core';
+import { LoadingStrategy } from '@ts-linq/core';
 import { DbSet } from './DbSet';
-import type { DbContextOptions, Result } from '../types';
+import type { Result } from '@ts-linq/types';
+import type { DbContextOptions } from '@ts-linq/core';
 /**
  * Base unit-of-work style context that orchestrates entity sets, change tracking
  * and database provider interactions. Similar to Entity Framework's `DbContext`.

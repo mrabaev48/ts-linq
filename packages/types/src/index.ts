@@ -280,3 +280,13 @@ export interface EntityMetadata {
 
 // Export error classes
 export * from './errors';
+export { ValidationError } from './errors';
+
+// Additional ORM-related properties
+export interface PerformanceOptionsExtended extends PerformanceOptions {
+  inClauseChunkSize?: number;
+}
+
+export interface SoftDeleteOptionsExtended extends SoftDeleteOptions {
+  deletedAtColumn?: string;
+}

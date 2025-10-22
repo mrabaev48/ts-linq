@@ -1,12 +1,12 @@
-import type { DatabaseProvider } from '../DatabaseProvider';
-import type { ChangeTracker } from '../change-tracking/ChangeTracker';
-import type { EntityLoader } from '../loading/EntityLoader';
-import type { LoadingOptions } from '../loading/LoadingStrategy';
-import type { PrimaryKeyOf } from '../types';
-import { Queryable } from '../query/Queryable';
-import { TypedQueryable } from '../query/TypedQueryable';
-import type { EntityCacheLike } from '../utils/EntityCache';
-import type { PerformanceOptions, GlobalFilter } from '../types';
+import type { DatabaseProvider } from '@ts-linq/core';
+import { ChangeTracker } from './ChangeTracker';
+import { EntityLoader } from '@ts-linq/core';
+import type { LoadingOptions } from '@ts-linq/core';
+import { Queryable } from '@ts-linq/query';
+import { TypedQueryable } from '@ts-linq/query';
+import type { EntityCacheLike } from '@ts-linq/core';
+import type { GlobalFilter, PerformanceOptions } from '@ts-linq/types';
+import type { PrimaryKeyOf } from '@ts-linq/core';
 /**
  * Represents a typed set of entities and provides CRUD and LINQ-like operations
  * for a specific entity type.

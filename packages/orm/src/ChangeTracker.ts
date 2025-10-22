@@ -1,5 +1,6 @@
-import type { TrackedEntity } from '../types';
-import { EntityState } from '../types';
+import type { TrackedEntity } from "@ts-linq/core";
+import { EntityState } from "@ts-linq/core";
+
 
 /**
  * Tracks entities and their states (Added, Modified, Deleted, Unchanged)

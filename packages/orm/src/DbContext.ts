@@ -1,29 +1,32 @@
-import type { DatabaseProvider } from '../DatabaseProvider';
-import { ChangeTracker } from '../change-tracking/ChangeTracker';
-import { EntityLoader } from '../loading/EntityLoader';
-import type { LoadingOptions } from '../loading/LoadingStrategy';
-import { LoadingStrategy } from '../loading/LoadingStrategy';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import { LazyLoadingProxy } from '../loading/LazyLoadingProxy';
+import type { DatabaseProvider } from '@ts-linq/core';
+import { ChangeTracker } from './ChangeTracker';
+import { EntityLoader } from '@ts-linq/core';
+import type { LoadingOptions } from '@ts-linq/core';
+import { LoadingStrategy } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { LazyLoadingProxy } from '@ts-linq/core';
 import { DbSet } from './DbSet';
 import { InsertCommand } from './commands/InsertCommand';
 import { UpdateCommand } from './commands/UpdateCommand';
 import { DeleteCommand } from './commands/DeleteCommand';
 import { ChangeValidationService } from './services/ChangeValidationService';
 import type {
-  DbContextOptions,
   PerformanceOptions,
   Result,
-  LoadingDefaults,
   SoftDeleteOptions,
-  AuditOptions,
   GlobalFilter
-} from '../types';
-import type { DiagnosticsOptions, MemoryProfilerLike } from '../types';
-import { ok, err, ValidationError } from '../types';
-import type { EntityCacheLike } from '../utils/EntityCache';
-import { EntityCache } from '../utils/EntityCache';
-import { logInternalError } from '../utils/InternalLogger';
+} from '@ts-linq/types';
+import type { 
+  DbContextOptions,
+  LoadingDefaults,
+  AuditOptions,
+  DiagnosticsOptions, 
+  MemoryProfilerLike 
+} from '@ts-linq/core';
+import { ok, err, ValidationError } from '@ts-linq/types';
+import type { EntityCacheLike } from '@ts-linq/core';
+import { EntityCache } from '@ts-linq/core';
+// import { logInternalError } from '@ts-linq/core'; // REMOVED
 
 function getOriginal<T extends Function>(target: T): T {
   try {
@@ -92,7 +95,7 @@ export abstract class DbContext {
       /* ignore */
     }
     this._audit = options.audit;
-    this._globalFilters = options.globalFilters;
+    this._globalFilters = options.globalFilters as any;
     this._diagnostics = options.diagnostics;
     // Start external memory profiler if provided
     try {
@@ -102,7 +105,7 @@ export abstract class DbContext {
         mp.start?.();
       }
     } catch (e) {
-      logInternalError('DbContext.constructor.memoryProfiler.start', e);
+      // logInternalError('DbContext.constructor.memoryProfiler.start', e);
     }
     this._validationOptions = options.validation;
     this._validationService = new ChangeValidationService(
@@ -130,7 +133,7 @@ export abstract class DbContext {
         );
     }
     // Store performance options for downstream consumers
-    this._performanceOptions = options.performance;
+    this._performanceOptions = options.performance as any;
     // Propagate query performance analysis options into provider if available
     try {
       const analysis = options.performance?.analysis;
@@ -147,7 +150,7 @@ export abstract class DbContext {
       /* ignore */
     }
     // Apply configurable IN() chunk size into loader
-    this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize);
+    this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize as any);
     this._loadingDefaults = options.loading || {};
 
     // Apply loading strategy from options or keep default
@@ -287,7 +290,7 @@ export abstract class DbContext {
         });
       }
     } catch (e) {
-      logInternalError('DbContext.commitTransaction.invalidateCaches', e);
+      // logInternalError('DbContext.commitTransaction.invalidateCaches', e);
     }
   }
 
@@ -312,7 +315,7 @@ export abstract class DbContext {
           provider: this._provider.providerLabel
         });
       } catch (e) {
-        logInternalError('DbContext.rollbackTransaction.entityCacheClear', e);
+        // logInternalError('DbContext.rollbackTransaction.entityCacheClear', e);
       }
     }
     try {
@@ -320,7 +323,7 @@ export abstract class DbContext {
         require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }
       ).Queryable.clearCountCache();
     } catch (e) {
-      logInternalError('DbContext.rollbackTransaction.countCacheClear', e);
+      // logInternalError('DbContext.rollbackTransaction.countCacheClear', e);
     }
   }
 
@@ -334,7 +337,7 @@ export abstract class DbContext {
       // Future: inspect changeTracker changes and Reflect.getMetadata('orm:cachePolicy', entity)
       // to perform targeted invalidation per-entity/table.
     } catch (e) {
-      logInternalError('DbContext.invalidateCachesOnCommit', e);
+      // logInternalError('DbContext.invalidateCachesOnCommit', e);
     }
   }
 
@@ -354,7 +357,7 @@ export abstract class DbContext {
       this.invalidateSqlCacheByNames(changedNames);
       this.invalidateCountCacheByNames(changedNames);
     } catch (e) {
-      logInternalError('DbContext.invalidateCachesAfterSave', e);
+      // logInternalError('DbContext.invalidateCachesAfterSave', e);
     }
   }
 
@@ -397,7 +400,7 @@ export abstract class DbContext {
       }
       if (needFullClear) this._entityCache.clear();
     } catch (e) {
-      logInternalError('DbContext.removeDeletedFromEntityCache', e);
+      // logInternalError('DbContext.removeDeletedFromEntityCache', e);
     }
   }
 
@@ -408,7 +411,7 @@ export abstract class DbContext {
       };
       for (const name of changedNames) qb.QueryBuilder.invalidateForEntity(name);
     } catch (e) {
-      logInternalError('DbContext.invalidateCachesAfterSave.sqlCache', e);
+      // logInternalError('DbContext.invalidateCachesAfterSave.sqlCache', e);
     }
   }
 
@@ -421,7 +424,7 @@ export abstract class DbContext {
         extCount.invalidateBy((k) => k.startsWith(name + '|count|'));
       }
     } catch (e) {
-      logInternalError('DbContext.invalidateCachesAfterSave.countCache', e);
+      // logInternalError('DbContext.invalidateCachesAfterSave.countCache', e);
     }
   }
 
@@ -436,7 +439,7 @@ export abstract class DbContext {
         try {
           await fn();
         } catch (e) {
-          logInternalError('DbContext.cache.warmUp.task', e);
+          // logInternalError('DbContext.cache.warmUp.task', e);
         }
       });
       await Promise.all(tasks);
@@ -448,7 +451,7 @@ export abstract class DbContext {
         };
         for (const name of entityNames) qb.QueryBuilder.invalidateForEntity(name);
       } catch (e) {
-        logInternalError('DbContext.cache.invalidateByEntity.sqlCache', e);
+        // logInternalError('DbContext.cache.invalidateByEntity.sqlCache', e);
       }
       try {
         const extCount: { invalidateBy?: (m: (k: string) => boolean) => number } | undefined =
@@ -459,7 +462,7 @@ export abstract class DbContext {
           }
         }
       } catch (e) {
-        logInternalError('DbContext.cache.invalidateByEntity.countCache', e);
+        // logInternalError('DbContext.cache.invalidateByEntity.countCache', e);
       }
     },
     reportMetrics: (): void => {
@@ -505,7 +508,7 @@ export abstract class DbContext {
             provider: this._provider.providerLabel
           });
       } catch (e) {
-        logInternalError('DbContext.cache.reportMetrics', e);
+        // logInternalError('DbContext.cache.reportMetrics', e);
       }
     }
   } as const;
@@ -519,7 +522,7 @@ export abstract class DbContext {
     try {
       this._memoryProfiler?.stop?.();
     } catch (e) {
-      logInternalError('DbContext.dispose.memoryProfiler.stop', e);
+      // logInternalError('DbContext.dispose.memoryProfiler.stop', e);
     }
   }
 
@@ -707,7 +710,7 @@ export abstract class DbContext {
       }
       this.runConditionalValidations(change, meta, errors);
     }
-    if (errors.length > 0) throw new ValidationError('Model validation failed', errors);
+    if (errors.length > 0) throw new ValidationError('Model validation failed');
   }
 
   // ================= Helpers extracted from saveChanges =================
@@ -810,7 +813,7 @@ export abstract class DbContext {
     meta: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
     propertyName: string
   ): boolean {
-    return meta.columns.some((c) => c.propertyName === propertyName);
+    return meta.columns.some((c: any) => c.propertyName === propertyName);
   }
 
   private async processChange(change: {
@@ -861,8 +864,8 @@ export abstract class DbContext {
     const meta = MetadataStorage.getEntity(change.entityClass);
     if (!meta) return false;
     const flag = this._softDelete.column ?? 'isDeleted';
-    const deletedAt = this._softDelete.deletedAtColumn ?? 'deletedAt';
-    const hasFlag = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
+    const deletedAt = this._softDelete.deletedAtColumn as any ?? 'deletedAt';
+    const hasFlag = meta.columns.some((c: any) => c.propertyName === flag || c.columnName === flag);
     if (!hasFlag) return false;
     change.entity[flag] = true as unknown as boolean;
     const hasDeletedAt = meta.columns.some(
@@ -1082,7 +1085,7 @@ export abstract class DbContext {
   } {
     const table = meta?.tableName || 'unknown_table';
     const typeName = meta?.target?.name || 'UnknownEntity';
-    const col = meta?.columns.find((c) => c.propertyName === property)?.columnName || property;
+    const col = meta?.columns.find((c: any) => c.propertyName === property)?.columnName || property;
     const fullMessage = `${typeName}.${property} (${table}.${col}): ${message}`;
     return {
       entity: table,

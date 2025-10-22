@@ -15,6 +15,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ValidationError = void 0;
 exports.ok = ok;
 exports.err = err;
 function ok(value) {
@@ -25,4 +26,6 @@ function err(error) {
 }
 // Export error classes
 __exportStar(require("./errors"), exports);
+var errors_1 = require("./errors");
+Object.defineProperty(exports, "ValidationError", { enumerable: true, get: function () { return errors_1.ValidationError; } });
 //# sourceMappingURL=index.js.map

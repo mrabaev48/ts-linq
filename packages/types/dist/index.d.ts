@@ -220,4 +220,11 @@ export interface EntityMetadata {
     schema?: string;
 }
 export * from './errors';
+export { ValidationError } from './errors';
+export interface PerformanceOptionsExtended extends PerformanceOptions {
+    inClauseChunkSize?: number;
+}
+export interface SoftDeleteOptionsExtended extends SoftDeleteOptions {
+    deletedAtColumn?: string;
+}
 //# sourceMappingURL=index.d.ts.map
