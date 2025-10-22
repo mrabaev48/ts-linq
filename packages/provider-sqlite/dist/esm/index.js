@@ -1,8 +1,5 @@
-/**
- * SQLite database provider for ts-linq ORM
- */
-// SQLite-specific exports
+// Re-export dialect
+export * from '@ts-linq/dialect-sqlite';
+// Export provider
 export * from './SQLiteProvider';
-export * from './SQLiteDialect';
-export * from './SQLiteDdlStrategy';
 //# sourceMappingURL=index.js.map

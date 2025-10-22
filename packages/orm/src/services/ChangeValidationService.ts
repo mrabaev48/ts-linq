@@ -1,6 +1,6 @@
-import { MetadataStorage } from '../../metadata/MetadataStorage';
-import { ValidationError } from '../../types';
-import type { AuditOptions } from '../../types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { ValidationError } from '@ts-linq/types';
+import type { AuditOptions } from '@ts-linq/core';
 
 type ChangeForValidation = {
   entity: Record<string, unknown>;
@@ -51,7 +51,11 @@ export class ChangeValidationService {
       this.runConditionalValidations(change, meta, errors);
     }
 
-    if (errors.length > 0) throw new ValidationError('Model validation failed', errors);
+    if (errors.length > 0) {
+      const error = new ValidationError('Model validation failed');
+      (error as any).errors = errors;
+      throw error;
+    }
   }
 
   private getValidationRules(
@@ -60,7 +64,7 @@ export class ChangeValidationService {
     const cached = this.rulesCache.get(entityClass);
     if (cached) return cached;
     // Stage-3: Use MetadataStorage instead of Reflect API
-    const rules = MetadataStorage.getValidationRules(entityClass).slice();
+    const rules = MetadataStorage.getValidationRules(entityClass).slice() as any;
     this.rulesCache.set(entityClass, rules);
     return rules;
   }
@@ -161,6 +165,7 @@ export class ChangeValidationService {
   ): boolean {
     return (
       !!meta &&
+      !!meta.primaryKeys &&
       meta.primaryKeys.includes(col.propertyName) &&
       !!col.isGenerated &&
       change.state === 'added'

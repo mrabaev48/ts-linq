@@ -209,6 +209,8 @@ class DbContext {
         const prereg = metadata_1.MetadataStorage.getEntities();
         for (const e of prereg) {
             try {
+                if (!e.target)
+                    continue;
                 const original = getOriginal(e.target);
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const _tmp = new original();
@@ -527,6 +529,8 @@ class DbContext {
     initializeDbSets() {
         const entities = metadata_1.MetadataStorage.getEntities();
         for (const entity of entities) {
+            if (!entity.target)
+                continue;
             const original = getOriginal(entity.target);
             const dbSet = new DbSet_1.DbSet(original, this._provider, this._changeTracker, this._entityLoader, this._entityCache, this._performanceOptions, this._globalFilters);
             this._dbSets.set(original, dbSet);
@@ -684,7 +688,7 @@ class DbContext {
     }
     getPrimaryKey(entityClass) {
         const meta = metadata_1.MetadataStorage.getEntity(entityClass);
-        return meta?.primaryKeys[0];
+        return meta?.primaryKeys?.[0];
     }
     /**
      * Retrieve cached validation rules for an entity class (Reflect metadata → cache).
@@ -741,6 +745,7 @@ class DbContext {
     }
     isGeneratedPrimaryKey(meta, col, change) {
         return (!!meta &&
+            !!meta.primaryKeys &&
             meta.primaryKeys.includes(col.propertyName) &&
             !!col.isGenerated &&
             change.state === 'added');

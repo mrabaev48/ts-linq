@@ -5,7 +5,7 @@ import type { LoadingOptions } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '@ts-linq/query';
-import { TypedQueryable } from '@ts-linq/query';
+import { TypedQueryable } from '@ts-linq/core';
 import type { EntityCacheLike } from '@ts-linq/core';
 import type { GlobalFilter, PerformanceOptions } from '@ts-linq/types';
 import type { PrimaryKeyOf } from '@ts-linq/core';
@@ -84,7 +84,7 @@ export class DbSet<T extends object> {
     }
     // Route via Queryable to leverage L2 cache and global filters
     const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata || metadata.primaryKeys.length === 0) {
+    if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       return await this._provider.findById(id, this._entityClass);
     }
     const pk = metadata.primaryKeys[0] as keyof T & string;
@@ -96,7 +96,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters
     )
-      .where((e) => (e as unknown as Record<string, unknown>)[pk] === id)
+      .where((e: any) => (e as unknown as Record<string, unknown>)[pk] === id)
       .firstOrDefault();
   }
 
@@ -119,7 +119,7 @@ export class DbSet<T extends object> {
   public async findByIds(ids: ReadonlyArray<PrimaryKeyOf<T>>): Promise<T[]> {
     if (!ids || ids.length === 0) return [];
     const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata || metadata.primaryKeys.length === 0) {
+    if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       // Fallback: issue sequential finds (kept for completeness; generally not used)
       const results: T[] = [];
       for (const id of ids) {
@@ -133,7 +133,7 @@ export class DbSet<T extends object> {
     // Cross-query optimization: deduplicate and chunk large IN lists
     const uniqueIds = Array.from(new Set(ids as unknown as unknown[]));
     if (uniqueIds.length === 0) return [];
-    const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
+    const chunkSize = (this._performance as any)?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
     if (uniqueIds.length <= chunkSize) {
       return await this._provider.findWhereIn(
         this._entityClass,
@@ -197,7 +197,7 @@ export class DbSet<T extends object> {
     // Cross-query optimization: deduplicate inputs and split into chunks
     const uniqueValues = Array.from(new Set(values as unknown as unknown[]));
     if (uniqueValues.length === 0) return [];
-    const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
+    const chunkSize = (this._performance as any)?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
     if (uniqueValues.length <= chunkSize) {
       return await this._provider.findWhereIn(
         this._entityClass as unknown as new () => T,
@@ -255,7 +255,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).where(predicate);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Proxy: WHERE EXISTS (subquery). */
@@ -269,7 +269,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).whereExists(subquery);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
   /** Proxy: column IN (subquery). */
   public whereInSubquery<TOther>(
@@ -285,7 +285,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).whereInSubquery(column, subquery);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Select specific properties (EF-style with type safety) */
@@ -299,7 +299,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).select(selector);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Order by a property (EF-style with type safety) */
@@ -313,7 +313,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).orderBy(keySelector);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Order by descending (EF-style with type safety) */
@@ -327,7 +327,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).orderByDescending(keySelector);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Take a specific number of entities (EF-style) */
@@ -341,7 +341,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).take(count);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Skip a specific number of entities (EF-style) */
@@ -355,7 +355,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).skip(count);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Get distinct entities (EF-style) */
@@ -369,7 +369,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).distinct();
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Proxy: UNION of two queries of the same DbSet. */
@@ -383,7 +383,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).union(other);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
   /** Proxy: UNION ALL of two queries of the same DbSet. */
   public unionAll(other: Queryable<T>): TypedQueryable<T> {
@@ -396,7 +396,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).unionAll(other);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Get the first entity or throw if none exists */
@@ -483,7 +483,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).include(selector);
 
-    return TypedQueryable.from(queryable);
+    return TypedQueryable.from(queryable as any) as any;
   }
 
   /** Provider-level bulk insert within a transaction. */
@@ -498,7 +498,7 @@ export class DbSet<T extends object> {
   /** Upsert single entity by primary key existence check (ChangeTracker-based). */
   public async upsert(entity: T): Promise<T> {
     const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata || metadata.primaryKeys.length === 0)
+    if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0)
       throw new Error(`No primary key defined for ${this._entityClass.name}`);
     const pk = metadata.primaryKeys[0];
     const id = (entity as unknown as Record<string, unknown>)[pk];
@@ -519,7 +519,7 @@ export class DbSet<T extends object> {
   /** Upsert many entities via per-entity PK existence check. */
   public async upsertMany(entities: T[]): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata || metadata.primaryKeys.length === 0)
+    if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0)
       throw new Error(`No primary key defined for ${this._entityClass.name}`);
     const pk = metadata.primaryKeys[0];
     // Build list of ids present

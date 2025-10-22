@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SQLiteProvider = void 0;
 const core_1 = require("@ts-linq/core");
-const SQLiteDialect_1 = require("./SQLiteDialect");
-const SQLiteDdlStrategy_1 = require("./SQLiteDdlStrategy");
+const dialect_sqlite_1 = require("@ts-linq/dialect-sqlite");
+const dialect_sqlite_2 = require("@ts-linq/dialect-sqlite");
 function safeRequireSqlite3() {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -17,7 +17,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     constructor(connectionString, logger, middlewares, softDelete, retryPolicy) {
         super(connectionString, logger, middlewares, softDelete, retryPolicy);
         this.db = null;
-        this.ddl = new SQLiteDdlStrategy_1.SQLiteDdlStrategy();
+        this.ddl = new dialect_sqlite_2.SQLiteDdlStrategy();
         this.providerName = 'sqlite';
     }
     /** Open a connection to the SQLite database and enable foreign keys. */
@@ -289,7 +289,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Provide SQL dialect for this provider. */
     getDialect() {
-        return new SQLiteDialect_1.SQLiteDialect();
+        return new dialect_sqlite_1.SQLiteDialect();
     }
     /** Generate INSERT SQL and parameter list for the given entity. */
     generateInsertSql(entity, metadata) {

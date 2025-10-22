@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DbSet = void 0;
 const metadata_1 = require("@ts-linq/metadata");
 const query_1 = require("@ts-linq/query");
-const query_2 = require("@ts-linq/query");
+const core_1 = require("@ts-linq/core");
 /**
  * Represents a typed set of entities and provides CRUD and LINQ-like operations
  * for a specific entity type.
@@ -58,7 +58,7 @@ class DbSet {
         }
         // Route via Queryable to leverage L2 cache and global filters
         const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
-        if (!metadata || metadata.primaryKeys.length === 0) {
+        if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0) {
             return await this._provider.findById(id, this._entityClass);
         }
         const pk = metadata.primaryKeys[0];
@@ -78,7 +78,7 @@ class DbSet {
         if (!ids || ids.length === 0)
             return [];
         const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
-        if (!metadata || metadata.primaryKeys.length === 0) {
+        if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0) {
             // Fallback: issue sequential finds (kept for completeness; generally not used)
             const results = [];
             for (const id of ids) {
@@ -169,57 +169,57 @@ class DbSet {
     /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */
     where(predicate) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).where(predicate);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Proxy: WHERE EXISTS (subquery). */
     whereExists(subquery) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereExists(subquery);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Proxy: column IN (subquery). */
     whereInSubquery(column, subquery) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereInSubquery(column, subquery);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Select specific properties (EF-style with type safety) */
     select(selector) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).select(selector);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Order by a property (EF-style with type safety) */
     orderBy(keySelector) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderBy(keySelector);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Order by descending (EF-style with type safety) */
     orderByDescending(keySelector) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderByDescending(keySelector);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Take a specific number of entities (EF-style) */
     take(count) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).take(count);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Skip a specific number of entities (EF-style) */
     skip(count) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).skip(count);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Get distinct entities (EF-style) */
     distinct() {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).distinct();
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Proxy: UNION of two queries of the same DbSet. */
     union(other) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).union(other);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Proxy: UNION ALL of two queries of the same DbSet. */
     unionAll(other) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).unionAll(other);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Get the first entity or throw if none exists */
     async first() {
@@ -249,7 +249,7 @@ class DbSet {
     /** Include related entities for eager loading (EF-style with type safety) */
     include(selector) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).include(selector);
-        return query_2.TypedQueryable.from(queryable);
+        return core_1.TypedQueryable.from(queryable);
     }
     /** Provider-level bulk insert within a transaction. */
     async insertMany(entities) {
@@ -262,7 +262,7 @@ class DbSet {
     /** Upsert single entity by primary key existence check (ChangeTracker-based). */
     async upsert(entity) {
         const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
-        if (!metadata || metadata.primaryKeys.length === 0)
+        if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0)
             throw new Error(`No primary key defined for ${this._entityClass.name}`);
         const pk = metadata.primaryKeys[0];
         const id = entity[pk];
@@ -283,7 +283,7 @@ class DbSet {
     /** Upsert many entities via per-entity PK existence check. */
     async upsertMany(entities) {
         const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
-        if (!metadata || metadata.primaryKeys.length === 0)
+        if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0)
             throw new Error(`No primary key defined for ${this._entityClass.name}`);
         const pk = metadata.primaryKeys[0];
         // Build list of ids present

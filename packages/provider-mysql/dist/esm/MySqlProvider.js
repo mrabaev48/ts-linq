@@ -1,6 +1,6 @@
 import { DatabaseProvider, OptimisticConcurrencyError, MetadataStorage, SqlHelper, UniqueConstraintError, DatabaseError } from '@ts-linq/core';
-import { MysqlDialect } from './MysqlDialect';
-import { MySqlDdlStrategy } from './MySqlDdlStrategy';
+import { MysqlDialect } from '@ts-linq/dialect-mysql';
+import { MySqlDdlStrategy } from '@ts-linq/dialect-mysql';
 export class MySqlProvider extends DatabaseProvider {
     constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
         super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);

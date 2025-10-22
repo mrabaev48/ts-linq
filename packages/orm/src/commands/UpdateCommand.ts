@@ -1,4 +1,4 @@
-import type { DatabaseProvider } from '../../DatabaseProvider';
+import type { DatabaseProvider } from '@ts-linq/core';
 
 export type TrackedChange = {
   entity: Record<string, unknown>;

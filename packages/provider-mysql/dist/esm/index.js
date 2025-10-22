@@ -1,8 +1,5 @@
-/**
- * MySQL database provider for ts-linq ORM
- */
-// MySQL-specific exports
+// Re-export dialect
+export * from '@ts-linq/dialect-mysql';
+// Export provider
 export * from './MySqlProvider';
-export * from './MysqlDialect';
-export * from './MySqlDdlStrategy';
 //# sourceMappingURL=index.js.map

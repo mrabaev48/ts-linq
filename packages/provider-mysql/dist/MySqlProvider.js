@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MySqlProvider = void 0;
 const core_1 = require("@ts-linq/core");
-const MysqlDialect_1 = require("./MysqlDialect");
-const MySqlDdlStrategy_1 = require("./MySqlDdlStrategy");
+const dialect_mysql_1 = require("@ts-linq/dialect-mysql");
+const dialect_mysql_2 = require("@ts-linq/dialect-mysql");
 class MySqlProvider extends core_1.DatabaseProvider {
     constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
         super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
         this.pool = null;
-        this.ddl = new MySqlDdlStrategy_1.MySqlDdlStrategy();
+        this.ddl = new dialect_mysql_2.MySqlDdlStrategy();
         this.providerName = 'mysql';
     }
     async connect() {
@@ -246,7 +246,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
     }
     /** Provide SQL dialect for this provider. */
     getDialect() {
-        return new MysqlDialect_1.MysqlDialect();
+        return new dialect_mysql_1.MysqlDialect();
     }
     /** Coerce arbitrary JS value into a valid SqlParameter for MySQL. */
     coerceToSqlParameter(value) {
