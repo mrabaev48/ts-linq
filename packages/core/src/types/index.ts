@@ -1,4 +1,5 @@
-// Core-specific types only. Common types should be imported from @ts-linq/types
+// Re-export types from @ts-linq/types and @ts-linq/metadata for backwards compatibility
+export * from '@ts-linq/types';
 
 import type { SqlCache } from '../query/SqlCache';
 import type { CountCache as CountCacheType } from '@ts-linq/types';
@@ -118,3 +119,7 @@ export interface AggregateResult {
 
 // Re-exported for ORM compatibility
 export type PrimaryKeyOf<T> = T extends { id: infer K } ? K : unknown;
+
+// Re-export metadata types for backwards compatibility  
+export { MetadataStorage } from '@ts-linq/metadata';
+export type { EntityMetadata } from '@ts-linq/metadata';

@@ -1,12 +1,26 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CircuitOpenError = exports.OptimisticConcurrencyError = exports.ValidationError = exports.ForeignKeyConstraintError = exports.UniqueConstraintError = exports.DatabaseError = exports.err = exports.ok = exports.JoinType = exports.LoadingStrategy = exports.EntityState = void 0;
-exports.unbrandId = unbrandId;
-exports.brandId = brandId;
-exports.isBrandedId = isBrandedId;
+exports.MetadataStorage = exports.EntityState = void 0;
+// Re-export types from @ts-linq/types and @ts-linq/metadata for backwards compatibility
+__exportStar(require("@ts-linq/types"), exports);
 /**
- * Core types and metadata contracts used across the ORM.
+ * Core-specific types that don't belong in @ts-linq/types
  */
+/** Entity state for change tracking */
 var EntityState;
 (function (EntityState) {
     EntityState["Unchanged"] = "unchanged";
@@ -14,101 +28,7 @@ var EntityState;
     EntityState["Modified"] = "modified";
     EntityState["Deleted"] = "deleted";
 })(EntityState || (exports.EntityState = EntityState = {}));
-/**
- * Strategy for loading related entities.
- * - Lazy: relationships are not auto-loaded
- * - Eager: relationships are loaded immediately
- */
-var LoadingStrategy;
-(function (LoadingStrategy) {
-    LoadingStrategy["Lazy"] = "lazy";
-    LoadingStrategy["Eager"] = "eager";
-})(LoadingStrategy || (exports.LoadingStrategy = LoadingStrategy = {}));
-/**
- * SQL join types supported by the query builder.
- */
-var JoinType;
-(function (JoinType) {
-    JoinType["Inner"] = "INNER";
-    JoinType["Left"] = "LEFT";
-    JoinType["Right"] = "RIGHT";
-    JoinType["Full"] = "FULL";
-})(JoinType || (exports.JoinType = JoinType = {}));
-/** Create a successful Result. */
-const ok = (value) => ({ ok: true, value });
-exports.ok = ok;
-/** Create a failed Result. */
-const err = (error) => ({ ok: false, error });
-exports.err = err;
-/** Generic database error with optional engine-specific code. */
-class DatabaseError extends Error {
-    constructor(message, code) {
-        super(message);
-        this.name = 'DatabaseError';
-        this.code = code;
-    }
-}
-exports.DatabaseError = DatabaseError;
-/** Unique constraint violation error. */
-class UniqueConstraintError extends DatabaseError {
-    constructor(message, code) {
-        super(message, code);
-        this.name = 'UniqueConstraintError';
-    }
-}
-exports.UniqueConstraintError = UniqueConstraintError;
-/** Foreign key constraint violation error. */
-class ForeignKeyConstraintError extends DatabaseError {
-    constructor(message, code) {
-        super(message, code);
-        this.name = 'ForeignKeyConstraintError';
-    }
-}
-exports.ForeignKeyConstraintError = ForeignKeyConstraintError;
-/** Validation error for model constraints before persistence. */
-class ValidationError extends Error {
-    constructor(message, details) {
-        super(message);
-        this.name = 'ValidationError';
-        this.details = details;
-    }
-}
-exports.ValidationError = ValidationError;
-/** Optimistic concurrency violation error. */
-class OptimisticConcurrencyError extends DatabaseError {
-    constructor(message = 'Optimistic concurrency check failed', code) {
-        super(message, code);
-        this.name = 'OptimisticConcurrencyError';
-    }
-}
-exports.OptimisticConcurrencyError = OptimisticConcurrencyError;
-/** Thrown when a call is short-circuited due to an open circuit. */
-class CircuitOpenError extends Error {
-    constructor(message = 'Circuit is open; call short-circuited') {
-        super(message);
-        this.name = 'CircuitOpenError';
-    }
-}
-exports.CircuitOpenError = CircuitOpenError;
-/**
- * Extract the underlying value from a branded type.
- * Useful when interfacing with external APIs that don't use branded types.
- */
-function unbrandId(id) {
-    return id;
-}
-/**
- * Brand a raw ID value for type safety.
- * Use this when receiving IDs from external sources.
- */
-function brandId(id) {
-    return id;
-}
-/**
- * Type predicate to check if a value is a valid branded ID.
- * Primarily for runtime validation and type narrowing.
- */
-function isBrandedId(value) {
-    return typeof value === 'string' || typeof value === 'number';
-}
+// Re-export metadata types for backwards compatibility  
+var metadata_1 = require("@ts-linq/metadata");
+Object.defineProperty(exports, "MetadataStorage", { enumerable: true, get: function () { return metadata_1.MetadataStorage; } });
 //# sourceMappingURL=index.js.map

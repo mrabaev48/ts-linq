@@ -2,8 +2,9 @@
   "name": "@ts-linq/migrations",
   "version": "2.0.0-alpha.1",
   "private": true,
-  "peerDependencies": {
+  "dependencies": {
     "@ts-linq/core": "workspace:*",
+    "@ts-linq/metadata": "workspace:*",
     "@ts-linq/types": "workspace:*"
   },
   "devDependencies": {"typescript": "^5.4.5"},

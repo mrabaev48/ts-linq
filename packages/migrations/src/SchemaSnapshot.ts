@@ -1,6 +1,6 @@
 import type { SchemaSnapshot, TableSnapshot, ColumnDef, IndexDef } from './DiffTypes';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { DatabaseProvider } from '../DatabaseProvider';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { DatabaseProvider } from '@ts-linq/core';
 import {
   SQLiteSchemaInspector,
   PostgresSchemaInspector,
@@ -20,8 +20,8 @@ export class SchemaSnapshotBuilder {
 
   public buildExpectedFromMetadata(): SchemaSnapshot {
     const entities = MetadataStorage.getEntities();
-    const tables: TableSnapshot[] = entities.map((entityMeta) => {
-      const columns: ColumnDef[] = entityMeta.columns.map((column) => ({
+    const tables: TableSnapshot[] = entities.map((entityMeta: any) => {
+      const columns: ColumnDef[] = entityMeta.columns.map((column: any) => ({
         name: column.columnName,
         type: this.mapPortableType(column.type),
         nullable: column.nullable,
@@ -39,9 +39,9 @@ export class SchemaSnapshotBuilder {
           .computedStorage
       }));
       const primaryKeys = entityMeta.primaryKeys.map(
-        (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
+        (pk: any) => entityMeta.columns.find((column: any) => column.propertyName === pk)?.columnName || pk
       );
-      const indexes = (entityMeta.indexes || []).map((indexDef) => ({
+      const indexes = (entityMeta.indexes || []).map((indexDef: any) => ({
         name: indexDef.name,
         columns: indexDef.columns,
         unique: !!indexDef.unique,

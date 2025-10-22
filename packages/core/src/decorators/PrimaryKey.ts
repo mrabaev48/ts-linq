@@ -45,7 +45,7 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
       MetadataStorage.addPrimaryKey(ctor, name);
       if (options.branded) {
         const meta = MetadataStorage.getEntity(ctor);
-        const col = meta?.columns.find((c) => c.propertyName === name) as
+        const col = meta?.columns.find((c: any) => c.propertyName === name) as
           | typeof columnMeta
           | undefined;
         if (col) {

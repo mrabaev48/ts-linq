@@ -45,7 +45,7 @@ export class RowMaterializer<T> {
     }
   ): T | null {
     const pkProp = metadata.primaryKeys[0];
-    const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
+    const pkCol = metadata.columns.find((c: any) => c.propertyName === pkProp);
     const idValue = pkCol
       ? (row as Record<string, unknown>)[pkCol.columnName]
       : (row as Record<string, unknown>)[pkProp];
@@ -93,7 +93,7 @@ export class RowMaterializer<T> {
   ): void {
     if (!this.entityCache) return;
     const pkProp = metadata.primaryKeys[0];
-    const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
+    const pkCol = metadata.columns.find((c: any) => c.propertyName === pkProp);
     const idValue = pkCol
       ? (row as Record<string, unknown>)[pkCol.columnName]
       : (row as Record<string, unknown>)[pkProp];
