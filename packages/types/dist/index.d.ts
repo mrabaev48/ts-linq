@@ -114,12 +114,14 @@ export interface FallbackRequest<T = unknown> {
     entity?: Function;
     query?: QueryOptions;
     sql?: string;
+    params?: readonly SqlParameter[];
 }
 export interface QueryFallback<T = unknown> {
-    label?: string;
+    label: string;
     canHandle(request: FallbackRequest<T>): boolean;
     execute<T>(request: FallbackRequest<T>): Promise<T[]>;
-    fetch?<T>(request: FallbackRequest<T>): Promise<T[]>;
+    fetch<T>(request: FallbackRequest<T>): Promise<T[]>;
+    fetchCount?(request: FallbackRequest<T>): Promise<number>;
 }
 export interface FallbackPolicy {
     allowOps?: FallbackOperation[];
@@ -147,7 +149,7 @@ export interface PerformanceOptions {
     enableCountCache?: boolean;
     enableEntityCache?: boolean;
     queryTimeout?: number;
-    countCache?: CountCache | unknown;
+    countCache?: CountCache | any;
     countCacheTtlMs?: number;
     sqlCache?: unknown;
     cacheNamespace?: string;
