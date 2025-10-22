@@ -1,4 +1,4 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import { MetadataStorage } from './MetadataStorage';
 import type { ColumnOptions } from './Column';
 
 function isStage3FieldContext(x: unknown): x is {

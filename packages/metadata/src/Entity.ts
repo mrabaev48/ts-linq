@@ -1,5 +1,5 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { IndexMetadata } from '../types';
+import { MetadataStorage } from './MetadataStorage';
+import type { IndexMetadata } from '@ts-linq/types';
 
 /**
  * Options for configuring an entity/table.

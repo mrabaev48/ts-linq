@@ -1,4 +1,4 @@
-import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '../types';
+import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '@ts-linq/types';
 /**
  * Global singleton storage that collects metadata produced by decorators
  * and exposes finalized `EntityMetadata` for use by providers and loaders.
