@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.EntityCache = void 0;
-const metrics_safe_1 = require("@ts-linq/metrics-safe");
-class EntityCache {
+import { safeCacheEvicted } from '@ts-linq/metrics-safe';
+export class EntityCache {
     /**
      * @param maxSize Maximum number of cached items before FIFO eviction.
      */
@@ -32,7 +29,7 @@ class EntityCache {
             if (firstKey !== undefined) {
                 this._store.delete(firstKey);
                 try {
-                    (0, metrics_safe_1.safeCacheEvicted)(this._logger, { cache: 'entityL2', provider: this._providerLabel });
+                    safeCacheEvicted(this._logger, { cache: 'entityL2', provider: this._providerLabel });
                 }
                 catch (e) {
                     // Silent fail for metrics
@@ -58,5 +55,4 @@ class EntityCache {
         return this._store.size;
     }
 }
-exports.EntityCache = EntityCache;
 //# sourceMappingURL=EntityCache.js.map

@@ -1,4 +1,4 @@
-import type { ExpressionNode } from './ast/Nodes';
+import type { ExpressionNode } from '@ts-linq/ast';
 /**
  * Very lightweight parser that converts supported predicate functions
  * (e.g., a => a.price >= 10 && a.stock > 0) into a minimal AST

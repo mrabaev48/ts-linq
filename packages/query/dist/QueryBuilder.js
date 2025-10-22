@@ -121,7 +121,8 @@ class QueryBuilder {
             parts.push(providerName, '|');
         parts.push(entityClass.name);
         parts.push('|s:', options.select ? options.select.join(',') : '');
-        if (options.where?.length)
+        const whereArray = Array.isArray(options.where) ? options.where : (options.where ? [options.where] : []);
+        if (whereArray.length)
             parts.push('|w:', QueryBuilder.serializeWhere(options));
         if (options.orderBy?.length)
             parts.push('|o:', QueryBuilder.serializeOrderBy(options));
@@ -138,7 +139,8 @@ class QueryBuilder {
         return parts.join('');
     }
     static serializeWhere(options) {
-        return (options.where ?? [])
+        const whereArray = Array.isArray(options.where) ? options.where : (options.where ? [options.where] : []);
+        return whereArray
             .map((w) => `${w.condition}(${w.parameters?.join('|') ?? ''})`)
             .join('');
     }
@@ -147,6 +149,9 @@ class QueryBuilder {
     }
     static serializeGroupBy(options) {
         const gb = options.groupBy;
+        if (Array.isArray(gb)) {
+            return gb.join(',');
+        }
         const base = gb.columns.join(',');
         if (!gb.having)
             return base;

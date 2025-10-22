@@ -1,6 +1,4 @@
-import type { QueryOptions, SqlParameter } from '@ts-linq/types';
-import type { SqlLogger } from '@ts-linq/types';
-import type { SqlDialect } from './SqlDialect';
+import type { QueryOptions, SqlParameter, SqlLogger, SqlDialect } from '@ts-linq/types';
 import { safeCacheSize, safeCacheEvicted } from '@ts-linq/metrics-safe';
 import type { QueryModel } from '@ts-linq/core';
 import type { SqlCache, SqlCacheEntry } from './SqlCache';
@@ -158,7 +156,8 @@ export class QueryBuilder {
     if (providerName) parts.push(providerName, '|');
     parts.push(entityClass.name);
     parts.push('|s:', options.select ? options.select.join(',') : '');
-    if (options.where?.length) parts.push('|w:', QueryBuilder.serializeWhere(options));
+    const whereArray = Array.isArray(options.where) ? options.where : (options.where ? [options.where] : []);
+    if (whereArray.length) parts.push('|w:', QueryBuilder.serializeWhere(options));
     if (options.orderBy?.length) parts.push('|o:', QueryBuilder.serializeOrderBy(options));
     if (options.groupBy) parts.push('|g:', QueryBuilder.serializeGroupBy(options));
     if (options.joins?.length) parts.push('|j:', QueryBuilder.serializeJoins(options));
@@ -169,7 +168,8 @@ export class QueryBuilder {
   }
 
   private static serializeWhere(options: QueryOptions): string {
-    return (options.where ?? [])
+    const whereArray = Array.isArray(options.where) ? options.where : (options.where ? [options.where] : []);
+    return whereArray
       .map((w) => `${w.condition}(${w.parameters?.join('|') ?? ''})`)
       .join('');
   }
@@ -180,6 +180,9 @@ export class QueryBuilder {
 
   private static serializeGroupBy(options: QueryOptions): string {
     const gb = options.groupBy!;
+    if (Array.isArray(gb)) {
+      return gb.join(',');
+    }
     const base = gb.columns.join(',');
     if (!gb.having) return base;
     const hv = `{${gb.having.condition}(${gb.having.parameters?.join('|') ?? ''})}`;

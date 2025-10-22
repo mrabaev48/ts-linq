@@ -20,12 +20,18 @@ export interface JoinClause {
   on: string;
 }
 
+export interface GroupByClause {
+  columns: string[];
+  having?: WhereClause;
+}
+
 export interface QueryOptions {
   select?: string[];
-  where?: WhereClause;
+  selectParams?: SqlParameter[];
+  where?: WhereClause | WhereClause[];
   orderBy?: OrderByClause[];
   joins?: JoinClause[];
-  groupBy?: string[];
+  groupBy?: string[] | GroupByClause;
   having?: WhereClause;
   limit?: number;
   offset?: number;
@@ -56,6 +62,11 @@ export interface Logger {
   info(message: string, meta?: Record<string, unknown>): void;
   warn(message: string, meta?: Record<string, unknown>): void;
   error(message: string, meta?: Record<string, unknown>): void;
+}
+
+// SqlLogger extends Logger with cache method
+export interface SqlLogger extends Logger {
+  cache?(meta?: Record<string, unknown>): void;
 }
 
 // SQL Dialect interface
@@ -95,9 +106,103 @@ export interface ConnectionHealthCheckOptions {
 
 // Soft delete options
 export interface SoftDeleteOptions {
+  enabled?: boolean;
+  column?: string;
   columnName?: string;
   type?: 'boolean' | 'timestamp';
 }
+
+// Global filter
+export interface GlobalFilter {
+  filterName: string;
+  entity?: string;
+  where?: WhereClause;
+  predicate?: (query: QueryOptions) => QueryOptions;
+}
+
+// Join type
+export type JoinType = 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
+
+// CTE Definition
+export interface CteDefinition {
+  name: string;
+  query?: string;
+  sql?: string;
+  parameters?: SqlParameter[];
+}
+
+// Result type
+export interface Result<T, E = Error> {
+  success: boolean;
+  value?: T;
+  error?: E;
+}
+
+export function ok<T>(value: T): Result<T> {
+  return { success: true, value };
+}
+
+export function err<E = Error>(error: E): Result<never, E> {
+  return { success: false, error };
+}
+
+// Fallback types
+export type FallbackOperation = 'select' | 'count' | 'aggregate' | 'insert' | 'update' | 'delete' | 'first' | 'single' | 'any';
+
+export interface FallbackRequest<T = unknown> {
+  operation: FallbackOperation;
+  entityClass: Function;
+  entity?: Function;
+  query?: QueryOptions;
+  sql?: string;
+}
+
+export interface QueryFallback<T = unknown> {
+  label?: string;
+  canHandle(request: FallbackRequest<T>): boolean;
+  execute<T>(request: FallbackRequest<T>): Promise<T[]>;
+  fetch?<T>(request: FallbackRequest<T>): Promise<T[]>;
+}
+
+export interface FallbackPolicy {
+  allowOps?: FallbackOperation[];
+  allowIncludesOnFallback?: 'attempt' | 'skip' | 'error';
+  hedged?: {
+    sources?: QueryFallback[];
+    timeout?: number;
+    enabled?: boolean;
+    delayMs?: number;
+  };
+  throttle?: {
+    maxConcurrent?: number;
+    minIntervalMs?: number;
+    jitterRatio?: number;
+    maxPerMinute?: number;
+  };
+}
+
+// Count cache interface
+export interface CountCache {
+  get(key: string): number | undefined;
+  set(key: string, value: number): void;
+  clear(): void;
+}
+
+// Performance options
+export interface PerformanceOptions {
+  enableQueryCache?: boolean;
+  enableCountCache?: boolean;
+  enableEntityCache?: boolean;
+  queryTimeout?: number;
+  countCache?: CountCache | unknown;
+  countCacheTtlMs?: number;
+  sqlCache?: unknown;
+  cacheNamespace?: string;
+  fallbackPolicy?: FallbackPolicy;
+}
+
+// Loading strategy type
+export type LoadingStrategy = 'lazy' | 'eager' | 'explicit';
 
 // Cache options
 export interface CacheOptions {
