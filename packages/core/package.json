@@ -58,7 +58,12 @@
   ],
   "author": "",
   "license": "ISC",
-  "dependencies": {},
+  "dependencies": {
+    "@ts-linq/types": "workspace:*",
+    "@ts-linq/metadata": "workspace:*",
+    "@ts-linq/metrics-safe": "workspace:*",
+    "@ts-linq/ast": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5.4.5",
     "@types/node": "^24.3.0"

@@ -27,7 +27,7 @@ export class GlobalFilterApplier {
     if (globalFilters && globalFilters.length > 0) {
       for (const globalFilter of globalFilters) {
         if (globalFilter.entity && globalFilter.where) {
-          const filterMeta = MetadataStorage.getEntity(globalFilter.entity as Function);
+          const filterMeta = MetadataStorage.getEntity(globalFilter.entity as unknown as Function);
           if (filterMeta && selfMeta.tableName === filterMeta.tableName) {
             model.where.push({
               condition: globalFilter.where.condition,
