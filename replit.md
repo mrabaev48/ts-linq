@@ -114,6 +114,48 @@ Database-specific error mapping:
 - Retry policies with exponential backoff for transient failures
 - Graceful degradation for unsupported query operations
 
+## 🚧 Current Build Status (October 2025)
+
+### Monorepo Build Issues - DIAGNOSED & FIXING
+
+**Current Status**: Build infrastructure fixes in progress
+
+**Issues Found**:
+1. ✅ FIXED: Circular dependencies in core/re-exports.ts (moved to .bak)
+2. ✅ FIXED: TypeScript path resolution in ast package (paths now point to dist/)
+3. ⏭️ PENDING: Build all 35 packages in dependency order
+
+**Build Order**:
+```
+Foundation (no deps):
+  ✅ types - BUILT
+  ✅ metrics-safe - BUILT
+  ⏭️ ast - Config fixed, ready to build
+
+Core (depends on foundation):
+  ⏭️ metadata, query, orm, migrations
+  
+Providers (depends on core):
+  ⏭️ dialects (postgres, mysql, mssql, sqlite)
+  ⏭️ providers (postgres, mysql, mssql, sqlite)
+
+Extensions (depends on core):
+  ⏭️ cache, plugins, telemetry
+
+Tools (depends on everything):
+  ⏭️ cli, testkits, config, e2e-tests
+```
+
+**Documentation Created**:
+- BUILD-DIAGNOSIS.md - Full analysis of build failures
+- MONOREPO-FIX-PLAN.md - Step-by-step fix instructions
+- DEVELOPMENT-ROADMAP.md - Complete development plan
+
+**Next Steps**:
+1. Build all packages in correct dependency order
+2. Add build orchestration scripts to root package.json
+3. Optional: Set up Turborepo for automatic dependency management
+
 # External Dependencies
 
 ## Core Runtime Dependencies
