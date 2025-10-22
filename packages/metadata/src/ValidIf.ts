@@ -30,7 +30,7 @@ export function ValidIf(
       MetadataStorage.addValidationRule(ctor, {
         propertyName: name,
         predicate,
-        message,
+        message: message || '',
         phase: options?.phase,
         messageKey: options?.messageKey,
         messageParams: options?.messageParams

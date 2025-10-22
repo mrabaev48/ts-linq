@@ -133,8 +133,8 @@ class MetadataStorage {
         const key = this.normalizeTarget(target);
         const finalized = this.entities.get(key);
         if (finalized) {
-            if (!finalized.primaryKeys.includes(propertyName)) {
-                finalized.primaryKeys = [...finalized.primaryKeys, propertyName];
+            if (!finalized.primaryKeys?.includes(propertyName)) {
+                finalized.primaryKeys = [...(finalized.primaryKeys || []), propertyName];
             }
             return;
         }

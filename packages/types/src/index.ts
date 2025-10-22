@@ -116,12 +116,18 @@ export interface ColumnMetadata {
   unique?: boolean;
   primaryKey?: boolean;
   default?: unknown;
+  defaultValue?: unknown;
   defaultExpression?: string;
+  defaultExpressionDialect?: Record<string, string | undefined>;
+  computedExpression?: string;
   length?: number;
   precision?: number;
   scale?: number;
   generated?: boolean;
+  isGenerated?: boolean;
+  isComputed?: boolean;
   version?: boolean;
+  isVersion?: boolean;
 }
 
 export interface RelationshipMetadata {
@@ -131,6 +137,7 @@ export interface RelationshipMetadata {
   foreignKey?: string;
   inverseSide?: string;
   cascade?: boolean;
+  through?: string | object;
 }
 
 export interface IndexMetadata {
@@ -141,19 +148,25 @@ export interface IndexMetadata {
 }
 
 export interface ValidationRule {
-  propertyName: string;
-  validator: (value: unknown, entity: unknown) => boolean;
+  propertyName?: string;
+  validator?: (value: unknown, entity: unknown) => boolean;
   message: string;
   predicate?: (value: unknown) => boolean;
+  phase?: 'onCreate' | 'onUpdate' | 'always';
+  messageKey?: string;
+  messageParams?: Record<string, unknown>;
 }
 
 export interface EntityMetadata {
-  className: string;
+  target?: Function;
+  className?: string;
   tableName: string;
   columns: ColumnMetadata[];
   relationships: RelationshipMetadata[];
   indexes: IndexMetadata[];
-  validationRules: ValidationRule[];
+  validationRules?: ValidationRule[];
+  validations?: ValidationRule[];
+  primaryKeys?: string[];
   primaryKeyColumn?: string;
   schema?: string;
 }
