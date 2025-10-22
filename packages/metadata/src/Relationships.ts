@@ -1,5 +1,5 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { RelationshipMetadata } from '../types';
+import { MetadataStorage } from './MetadataStorage';
+import type { RelationshipMetadata } from '@ts-linq/types';
 
 /**
  * Options for configuring relationships between entities.

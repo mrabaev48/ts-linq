@@ -28,4 +28,10 @@ export class ForeignKeyConstraintError extends DatabaseError {
         this.name = 'ForeignKeyConstraintError';
     }
 }
+export class ValidationError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'ValidationError';
+    }
+}
 //# sourceMappingURL=errors.js.map

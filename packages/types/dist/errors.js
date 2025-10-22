@@ -1,7 +1,7 @@
 "use strict";
 // Error classes - no external dependencies
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ForeignKeyConstraintError = exports.UniqueConstraintError = exports.OptimisticConcurrencyError = exports.DatabaseError = void 0;
+exports.ValidationError = exports.ForeignKeyConstraintError = exports.UniqueConstraintError = exports.OptimisticConcurrencyError = exports.DatabaseError = void 0;
 class DatabaseError extends Error {
     constructor(message, cause) {
         super(message);
@@ -35,4 +35,11 @@ class ForeignKeyConstraintError extends DatabaseError {
     }
 }
 exports.ForeignKeyConstraintError = ForeignKeyConstraintError;
+class ValidationError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'ValidationError';
+    }
+}
+exports.ValidationError = ValidationError;
 //# sourceMappingURL=errors.js.map

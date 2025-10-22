@@ -1,5 +1,5 @@
-import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '../types';
-import { ValidationError } from '../types';
+import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '@ts-linq/types';
+import { ValidationError } from '@ts-linq/types';
 import { EntityMetadataBuilder } from './EntityMetadata';
 
 /**

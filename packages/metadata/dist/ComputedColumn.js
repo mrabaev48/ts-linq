@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ComputedColumn = ComputedColumn;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const MetadataStorage_1 = require("./MetadataStorage");
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
 }

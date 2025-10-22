@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MetadataStorage = void 0;
-const types_1 = require("../types");
+const types_1 = require("@ts-linq/types");
 const EntityMetadata_1 = require("./EntityMetadata");
 /**
  * Global singleton storage that collects metadata produced by decorators

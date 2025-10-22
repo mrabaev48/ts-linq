@@ -7,7 +7,7 @@ exports.MinLengthOf = MinLengthOf;
 exports.MaxLengthOf = MaxLengthOf;
 exports.PatternOf = PatternOf;
 exports.RangeOf = RangeOf;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const MetadataStorage_1 = require("./MetadataStorage");
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
 }

@@ -76,8 +76,8 @@ export interface OrmMiddleware {
 
 // Retry policy types
 export interface RetryPolicy {
-  shouldRetry(error: Error, attempt: number): boolean;
-  getDelay(attempt: number): number;
+  shouldRetry(error: unknown, attempt: number, inTransaction?: boolean): boolean;
+  getDelay?(attempt: number): number;
 }
 
 // Connection options
@@ -103,6 +103,59 @@ export interface SoftDeleteOptions {
 export interface CacheOptions {
   ttl?: number;
   maxSize?: number;
+}
+
+// Metadata types for decorators
+export type ColumnType = 'INTEGER' | 'TEXT' | 'REAL' | 'BLOB' | 'BOOLEAN' | 'DATE' | 'TIMESTAMP' | string;
+
+export interface ColumnMetadata {
+  propertyName: string;
+  columnName: string;
+  type: ColumnType;
+  nullable?: boolean;
+  unique?: boolean;
+  primaryKey?: boolean;
+  default?: unknown;
+  defaultExpression?: string;
+  length?: number;
+  precision?: number;
+  scale?: number;
+  generated?: boolean;
+  version?: boolean;
+}
+
+export interface RelationshipMetadata {
+  propertyName: string;
+  type: 'one-to-many' | 'many-to-one' | 'one-to-one' | 'many-to-many';
+  targetEntity: string | Function | (() => Function);
+  foreignKey?: string;
+  inverseSide?: string;
+  cascade?: boolean;
+}
+
+export interface IndexMetadata {
+  name: string;
+  columns: string[];
+  unique?: boolean;
+  where?: string;
+}
+
+export interface ValidationRule {
+  propertyName: string;
+  validator: (value: unknown, entity: unknown) => boolean;
+  message: string;
+  predicate?: (value: unknown) => boolean;
+}
+
+export interface EntityMetadata {
+  className: string;
+  tableName: string;
+  columns: ColumnMetadata[];
+  relationships: RelationshipMetadata[];
+  indexes: IndexMetadata[];
+  validationRules: ValidationRule[];
+  primaryKeyColumn?: string;
+  schema?: string;
 }
 
 // Export error classes

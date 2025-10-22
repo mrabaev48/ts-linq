@@ -1,4 +1,4 @@
-import type { ColumnMetadata, RelationshipMetadata, IndexMetadata, EntityMetadata, ValidationRule } from '../types';
+import type { ColumnMetadata, RelationshipMetadata, IndexMetadata, EntityMetadata, ValidationRule } from '@ts-linq/types';
 
 /**
  * Builder for incrementally constructing `EntityMetadata` while decorators
