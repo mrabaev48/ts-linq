@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DbSet = void 0;
-const Queryable_1 = require("../query/Queryable");
-const TypedQueryable_1 = require("../query/TypedQueryable");
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
+const query_1 = require("@ts-linq/query");
+const query_2 = require("@ts-linq/query");
 /**
  * Represents a typed set of entities and provides CRUD and LINQ-like operations
  * for a specific entity type.
@@ -57,12 +57,12 @@ class DbSet {
             return await this._entityLoader.loadEntity(this._entityClass, id, options);
         }
         // Route via Queryable to leverage L2 cache and global filters
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
         if (!metadata || metadata.primaryKeys.length === 0) {
             return await this._provider.findById(id, this._entityClass);
         }
         const pk = metadata.primaryKeys[0];
-        return await new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters)
+        return await new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters)
             .where((e) => e[pk] === id)
             .firstOrDefault();
     }
@@ -71,13 +71,13 @@ class DbSet {
         if (this._entityLoader && options) {
             return await this._entityLoader.loadEntities(this._entityClass, options);
         }
-        return await new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).toArray();
+        return await new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).toArray();
     }
     /** Fetch multiple entities by their primary keys in one query when supported. */
     async findByIds(ids) {
         if (!ids || ids.length === 0)
             return [];
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
         if (!metadata || metadata.primaryKeys.length === 0) {
             // Fallback: issue sequential finds (kept for completeness; generally not used)
             const results = [];
@@ -129,7 +129,7 @@ class DbSet {
     async findWhereIn(property, values) {
         if (!values || values.length === 0)
             return [];
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
         const columnName = metadata
             ? metadata.columns.find((c) => c.propertyName === property || c.columnName === property)
                 ?.columnName || String(property)
@@ -168,88 +168,88 @@ class DbSet {
     }
     /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */
     where(predicate) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).where(predicate);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).where(predicate);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Proxy: WHERE EXISTS (subquery). */
     whereExists(subquery) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereExists(subquery);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereExists(subquery);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Proxy: column IN (subquery). */
     whereInSubquery(column, subquery) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereInSubquery(column, subquery);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereInSubquery(column, subquery);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Select specific properties (EF-style with type safety) */
     select(selector) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).select(selector);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).select(selector);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Order by a property (EF-style with type safety) */
     orderBy(keySelector) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderBy(keySelector);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderBy(keySelector);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Order by descending (EF-style with type safety) */
     orderByDescending(keySelector) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderByDescending(keySelector);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderByDescending(keySelector);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Take a specific number of entities (EF-style) */
     take(count) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).take(count);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).take(count);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Skip a specific number of entities (EF-style) */
     skip(count) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).skip(count);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).skip(count);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Get distinct entities (EF-style) */
     distinct() {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).distinct();
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).distinct();
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Proxy: UNION of two queries of the same DbSet. */
     union(other) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).union(other);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).union(other);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Proxy: UNION ALL of two queries of the same DbSet. */
     unionAll(other) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).unionAll(other);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).unionAll(other);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Get the first entity or throw if none exists */
     async first() {
-        return await new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).first();
+        return await new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).first();
     }
     /** Get the first entity or null if none exists */
     async firstOrDefault() {
-        return await new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).firstOrDefault();
+        return await new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).firstOrDefault();
     }
     /** Get a single entity or throw if none or multiple exist */
     async single() {
-        return await new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).single();
+        return await new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).single();
     }
     /** Get a single entity or null if none exists, throw if multiple exist */
     async singleOrDefault() {
-        return await new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).singleOrDefault();
+        return await new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).singleOrDefault();
     }
     /** Count entities */
     async count() {
-        return await new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).count();
+        return await new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).count();
     }
     /** Check if any entities exist */
     async any() {
-        return await new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).any();
+        return await new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).any();
     }
     /** Start a query with eager includes using a property selector. */
     /** Include related entities for eager loading (EF-style with type safety) */
     include(selector) {
-        const queryable = new Queryable_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).include(selector);
-        return TypedQueryable_1.TypedQueryable.from(queryable);
+        const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).include(selector);
+        return query_2.TypedQueryable.from(queryable);
     }
     /** Provider-level bulk insert within a transaction. */
     async insertMany(entities) {
@@ -261,7 +261,7 @@ class DbSet {
     }
     /** Upsert single entity by primary key existence check (ChangeTracker-based). */
     async upsert(entity) {
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
         if (!metadata || metadata.primaryKeys.length === 0)
             throw new Error(`No primary key defined for ${this._entityClass.name}`);
         const pk = metadata.primaryKeys[0];
@@ -282,7 +282,7 @@ class DbSet {
     }
     /** Upsert many entities via per-entity PK existence check. */
     async upsertMany(entities) {
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
         if (!metadata || metadata.primaryKeys.length === 0)
             throw new Error(`No primary key defined for ${this._entityClass.name}`);
         const pk = metadata.primaryKeys[0];

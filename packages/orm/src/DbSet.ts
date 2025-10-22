@@ -1,14 +1,14 @@
-import type { DatabaseProvider } from '../DatabaseProvider';
-import type { ChangeTracker } from '../change-tracking/ChangeTracker';
-import type { EntityLoader } from '../loading/EntityLoader';
-import type { LoadingOptions } from '../loading/LoadingStrategy';
-import type { PrimaryKeyOf } from '../types';
-import { Queryable } from '../query/Queryable';
-import { TypedQueryable } from '../query/TypedQueryable';
-import type { EntityCacheLike } from '../utils/EntityCache';
-import type { PerformanceOptions, GlobalFilter } from '../types';
-import { LoadingStrategy } from '../loading/LoadingStrategy';
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import type { DatabaseProvider } from '@ts-linq/core';
+import { ChangeTracker } from './ChangeTracker';
+import { EntityLoader } from '@ts-linq/core';
+import type { LoadingOptions } from '@ts-linq/core';
+import { LoadingStrategy } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { Queryable } from '@ts-linq/query';
+import { TypedQueryable } from '@ts-linq/query';
+import type { EntityCacheLike } from '@ts-linq/core';
+import type { GlobalFilter, PerformanceOptions } from '@ts-linq/types';
+import type { PrimaryKeyOf } from '@ts-linq/core';
 
 /**
  * Represents a typed set of entities and provides CRUD and LINQ-like operations
@@ -129,7 +129,7 @@ export class DbSet<T extends object> {
       return results;
     }
     const pk = metadata.primaryKeys[0];
-    const column = metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk;
+    const column = metadata.columns.find((c: any) => c.propertyName === pk)?.columnName || pk;
     // Cross-query optimization: deduplicate and chunk large IN lists
     const uniqueIds = Array.from(new Set(ids as unknown as unknown[]));
     if (uniqueIds.length === 0) return [];
@@ -191,7 +191,7 @@ export class DbSet<T extends object> {
     if (!values || values.length === 0) return [];
     const metadata = MetadataStorage.getEntity(this._entityClass);
     const columnName = metadata
-      ? metadata.columns.find((c) => c.propertyName === property || c.columnName === property)
+      ? metadata.columns.find((c: any) => c.propertyName === property || c.columnName === property)
           ?.columnName || String(property)
       : String(property);
     // Cross-query optimization: deduplicate inputs and split into chunks
@@ -523,14 +523,14 @@ export class DbSet<T extends object> {
       throw new Error(`No primary key defined for ${this._entityClass.name}`);
     const pk = metadata.primaryKeys[0];
     // Build list of ids present
-    const pairs: Array<{ entity: T; id: unknown }> = entities.map((e) => ({
+    const pairs: Array<{ entity: T; id: unknown }> = entities.map((e: any) => ({
       entity: e,
       id: (e as unknown as Record<string, unknown>)[pk]
     }));
     const ids = pairs.filter((p) => p.id !== undefined && p.id !== null).map((p) => p.id);
     if (ids.length > 0) {
       // Fetch existing ids in one go if provider supports findWhereIn for PK column
-      const pkCol = metadata.columns.find((c) => c.propertyName === pk);
+      const pkCol = metadata.columns.find((c: any) => c.propertyName === pk);
       const existingRows = await this._provider.findWhereIn(
         this._entityClass as unknown as new () => T,
         pkCol ? pkCol.propertyName : pk,

@@ -1,19 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DbContext = void 0;
-const ChangeTracker_1 = require("../change-tracking/ChangeTracker");
-const EntityLoader_1 = require("../loading/EntityLoader");
-const LoadingStrategy_1 = require("../loading/LoadingStrategy");
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
-const LazyLoadingProxy_1 = require("../loading/LazyLoadingProxy");
+const ChangeTracker_1 = require("./ChangeTracker");
+const core_1 = require("@ts-linq/core");
+const core_2 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
+const core_3 = require("@ts-linq/core");
 const DbSet_1 = require("./DbSet");
 const InsertCommand_1 = require("./commands/InsertCommand");
 const UpdateCommand_1 = require("./commands/UpdateCommand");
 const DeleteCommand_1 = require("./commands/DeleteCommand");
 const ChangeValidationService_1 = require("./services/ChangeValidationService");
-const types_1 = require("../types");
-const EntityCache_1 = require("../utils/EntityCache");
-const InternalLogger_1 = require("../utils/InternalLogger");
+const types_1 = require("@ts-linq/types");
+const core_4 = require("@ts-linq/core");
+// import { logInternalError } from '@ts-linq/core'; // REMOVED
 function getOriginal(target) {
     try {
         const gm = Reflect
@@ -45,7 +45,7 @@ class DbContext {
      */
     constructor(options) {
         this._dbSets = new Map();
-        this._defaultLoadingStrategy = LoadingStrategy_1.LoadingStrategy.Eager;
+        this._defaultLoadingStrategy = core_2.LoadingStrategy.Eager;
         this._loadingDefaults = {};
         /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
         this._validationRulesCache = new WeakMap();
@@ -57,7 +57,7 @@ class DbContext {
                         await fn();
                     }
                     catch (e) {
-                        (0, InternalLogger_1.logInternalError)('DbContext.cache.warmUp.task', e);
+                        // logInternalError('DbContext.cache.warmUp.task', e);
                     }
                 });
                 await Promise.all(tasks);
@@ -69,7 +69,7 @@ class DbContext {
                         qb.QueryBuilder.invalidateForEntity(name);
                 }
                 catch (e) {
-                    (0, InternalLogger_1.logInternalError)('DbContext.cache.invalidateByEntity.sqlCache', e);
+                    // logInternalError('DbContext.cache.invalidateByEntity.sqlCache', e);
                 }
                 try {
                     const extCount = this._performanceOptions?.countCache;
@@ -80,7 +80,7 @@ class DbContext {
                     }
                 }
                 catch (e) {
-                    (0, InternalLogger_1.logInternalError)('DbContext.cache.invalidateByEntity.countCache', e);
+                    // logInternalError('DbContext.cache.invalidateByEntity.countCache', e);
                 }
             },
             reportMetrics: () => {
@@ -110,7 +110,7 @@ class DbContext {
                         });
                 }
                 catch (e) {
-                    (0, InternalLogger_1.logInternalError)('DbContext.cache.reportMetrics', e);
+                    // logInternalError('DbContext.cache.reportMetrics', e);
                 }
             }
         };
@@ -137,12 +137,12 @@ class DbContext {
             }
         }
         catch (e) {
-            (0, InternalLogger_1.logInternalError)('DbContext.constructor.memoryProfiler.start', e);
+            // logInternalError('DbContext.constructor.memoryProfiler.start', e);
         }
         this._validationOptions = options.validation;
         this._validationService = new ChangeValidationService_1.ChangeValidationService(this._validationOptions?.translate, this._audit);
         this._changeTracker = new ChangeTracker_1.ChangeTracker();
-        this._entityLoader = new EntityLoader_1.EntityLoader(this._provider);
+        this._entityLoader = new core_1.EntityLoader(this._provider);
         this._insertCmd = new InsertCommand_1.InsertCommand(this._provider, (c) => this.updateEntityCache(c));
         this._updateCmd = new UpdateCommand_1.UpdateCommand(this._provider, (c) => this.updateEntityCache(c));
         this._deleteCmd = new DeleteCommand_1.DeleteCommand(this._provider, (c) => this.handleSoftDelete(c), (c) => this.removeFromEntityCache(c));
@@ -150,7 +150,7 @@ class DbContext {
         if (options.performance?.enableEntityCache) {
             this._entityCache =
                 options.performance.entityCache ??
-                    new EntityCache_1.EntityCache(options.performance.entityCacheSize ?? 10000, this._provider.loggerRef, this._provider.providerLabel);
+                    new core_4.EntityCache(options.performance.entityCacheSize ?? 10000, this._provider.loggerRef, this._provider.providerLabel);
         }
         // Store performance options for downstream consumers
         this._performanceOptions = options.performance;
@@ -206,7 +206,7 @@ class DbContext {
     async ensureCreated() {
         await this._provider.connect();
         // Unconditionally pre-warm Stage-3 field decorators by instantiating each entity once
-        const prereg = MetadataStorage_1.MetadataStorage.getEntities();
+        const prereg = metadata_1.MetadataStorage.getEntities();
         for (const e of prereg) {
             try {
                 const original = getOriginal(e.target);
@@ -217,7 +217,7 @@ class DbContext {
                 // ignore constructors with side-effects/args
             }
         }
-        const entities = MetadataStorage_1.MetadataStorage.getEntities();
+        const entities = metadata_1.MetadataStorage.getEntities();
         for (const entity of entities) {
             await this._provider.createTable(entity);
         }
@@ -288,7 +288,7 @@ class DbContext {
             }
         }
         catch (e) {
-            (0, InternalLogger_1.logInternalError)('DbContext.commitTransaction.invalidateCaches', e);
+            // logInternalError('DbContext.commitTransaction.invalidateCaches', e);
         }
     }
     /**
@@ -308,14 +308,14 @@ class DbContext {
                 });
             }
             catch (e) {
-                (0, InternalLogger_1.logInternalError)('DbContext.rollbackTransaction.entityCacheClear', e);
+                // logInternalError('DbContext.rollbackTransaction.entityCacheClear', e);
             }
         }
         try {
             require('../query/Queryable').Queryable.clearCountCache();
         }
         catch (e) {
-            (0, InternalLogger_1.logInternalError)('DbContext.rollbackTransaction.countCacheClear', e);
+            // logInternalError('DbContext.rollbackTransaction.countCacheClear', e);
         }
     }
     /**
@@ -330,7 +330,7 @@ class DbContext {
             // to perform targeted invalidation per-entity/table.
         }
         catch (e) {
-            (0, InternalLogger_1.logInternalError)('DbContext.invalidateCachesOnCommit', e);
+            // logInternalError('DbContext.invalidateCachesOnCommit', e);
         }
     }
     /**
@@ -348,7 +348,7 @@ class DbContext {
             this.invalidateCountCacheByNames(changedNames);
         }
         catch (e) {
-            (0, InternalLogger_1.logInternalError)('DbContext.invalidateCachesAfterSave', e);
+            // logInternalError('DbContext.invalidateCachesAfterSave', e);
         }
     }
     computeNeedFullL2Clear(changedNames) {
@@ -382,7 +382,7 @@ class DbContext {
                 this._entityCache.clear();
         }
         catch (e) {
-            (0, InternalLogger_1.logInternalError)('DbContext.removeDeletedFromEntityCache', e);
+            // logInternalError('DbContext.removeDeletedFromEntityCache', e);
         }
     }
     invalidateSqlCacheByNames(changedNames) {
@@ -392,7 +392,7 @@ class DbContext {
                 qb.QueryBuilder.invalidateForEntity(name);
         }
         catch (e) {
-            (0, InternalLogger_1.logInternalError)('DbContext.invalidateCachesAfterSave.sqlCache', e);
+            // logInternalError('DbContext.invalidateCachesAfterSave.sqlCache', e);
         }
     }
     invalidateCountCacheByNames(changedNames) {
@@ -405,7 +405,7 @@ class DbContext {
             }
         }
         catch (e) {
-            (0, InternalLogger_1.logInternalError)('DbContext.invalidateCachesAfterSave.countCache', e);
+            // logInternalError('DbContext.invalidateCachesAfterSave.countCache', e);
         }
     }
     /**
@@ -418,7 +418,7 @@ class DbContext {
             this._memoryProfiler?.stop?.();
         }
         catch (e) {
-            (0, InternalLogger_1.logInternalError)('DbContext.dispose.memoryProfiler.stop', e);
+            // logInternalError('DbContext.dispose.memoryProfiler.stop', e);
         }
     }
     /**
@@ -492,14 +492,14 @@ class DbContext {
      * Useful for explicitly loading relationships on already-loaded entities.
      */
     async include(entity, entityClass, ...propertyNames) {
-        if (LazyLoadingProxy_1.LazyLoadingProxy.isLazyProxy(entity)) {
+        if (core_3.LazyLoadingProxy.isLazyProxy(entity)) {
             // Preload relationships for lazy proxy
-            await LazyLoadingProxy_1.LazyLoadingProxy.preloadRelationships([entity], entityClass, propertyNames, this._provider);
+            await core_3.LazyLoadingProxy.preloadRelationships([entity], entityClass, propertyNames, this._provider);
         }
         else {
             // Use entity loader for regular entities
             await this._entityLoader.populateRelationships(entity, entityClass, {
-                strategy: LoadingStrategy_1.LoadingStrategy.Eager,
+                strategy: core_2.LoadingStrategy.Eager,
                 includes: propertyNames
             });
         }
@@ -508,8 +508,8 @@ class DbContext {
      * Check if navigation property is loaded (Entity Framework style IsLoaded).
      */
     isLoaded(entity, propertyName) {
-        if (LazyLoadingProxy_1.LazyLoadingProxy.isLazyProxy(entity)) {
-            return LazyLoadingProxy_1.LazyLoadingProxy.isRelationshipLoaded(entity, propertyName);
+        if (core_3.LazyLoadingProxy.isLazyProxy(entity)) {
+            return core_3.LazyLoadingProxy.isRelationshipLoaded(entity, propertyName);
         }
         // For non-proxy entities, check if property key exists (even if undefined/null)
         const record = entity;
@@ -525,7 +525,7 @@ class DbContext {
      * getters that delegate to `set(Entity)`.
      */
     initializeDbSets() {
-        const entities = MetadataStorage_1.MetadataStorage.getEntities();
+        const entities = metadata_1.MetadataStorage.getEntities();
         for (const entity of entities) {
             const original = getOriginal(entity.target);
             const dbSet = new DbSet_1.DbSet(original, this._provider, this._changeTracker, this._entityLoader, this._entityCache, this._performanceOptions, this._globalFilters);
@@ -546,7 +546,7 @@ class DbContext {
         for (const change of changes) {
             if (change.state !== 'added' && change.state !== 'modified')
                 continue;
-            const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
+            const meta = metadata_1.MetadataStorage.getEntity(change.entityClass);
             if (!meta)
                 continue;
             const audit = this._audit?.enabled ? this._audit : undefined;
@@ -558,14 +558,14 @@ class DbContext {
             this.runConditionalValidations(change, meta, errors);
         }
         if (errors.length > 0)
-            throw new types_1.ValidationError('Model validation failed', errors);
+            throw new types_1.ValidationError('Model validation failed');
     }
     // ================= Helpers extracted from saveChanges =================
     prefillDefaults(changes) {
         for (const change of changes) {
             if (change.state !== 'added')
                 continue;
-            const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
+            const meta = metadata_1.MetadataStorage.getEntity(change.entityClass);
             if (!meta)
                 continue;
             for (const col of meta.columns) {
@@ -594,7 +594,7 @@ class DbContext {
     applyAudit(change) {
         if (!this._audit?.enabled)
             return;
-        const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(change.entityClass);
         if (!meta)
             return;
         const names = this.extractAuditNames(this._audit);
@@ -650,7 +650,7 @@ class DbContext {
     async handleSoftDelete(change) {
         if (!this._softDelete?.enabled)
             return false;
-        const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(change.entityClass);
         if (!meta)
             return false;
         const flag = this._softDelete.column ?? 'isDeleted';
@@ -683,7 +683,7 @@ class DbContext {
         this._entityCache.remove(change.entityClass, change.entity[pk]);
     }
     getPrimaryKey(entityClass) {
-        const meta = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         return meta?.primaryKeys[0];
     }
     /**
@@ -694,7 +694,7 @@ class DbContext {
         if (cached)
             return cached;
         // Stage-3: Use MetadataStorage instead of Reflect API
-        const rules = MetadataStorage_1.MetadataStorage.getValidationRules(entityClass).slice();
+        const rules = metadata_1.MetadataStorage.getValidationRules(entityClass).slice();
         this._validationRulesCache.set(entityClass, rules);
         return rules;
     }

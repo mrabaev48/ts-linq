@@ -15,16 +15,16 @@ export * from './decorators/Relationships';
 export * from './decorators/ValidIf';
 export * from './decorators/CachePolicy';
 
-// Metadata
-export * from './metadata/MetadataStorage';
-export * from './metadata/EntityMetadata';
+// Metadata - moved to @ts-linq/metadata package
+// export * from './metadata/MetadataStorage';
+// export * from './metadata/EntityMetadata';
 
-// Change tracking
-export * from './change-tracking/ChangeTracker';
+// Change tracking - moved to @ts-linq/orm package
+// export * from './change-tracking/ChangeTracker';
 
-// Context and DbSet
-export * from './context/DbContext';
-export * from './context/DbSet';
+// Context and DbSet - moved to @ts-linq/orm package
+// export * from './context/DbContext';
+// export * from './context/DbSet';
 
 // Query building
 export * from './query/Queryable';
@@ -55,20 +55,20 @@ export * from './loading/LoadingStrategy';
 export * from './loading/EntityLoader';
 export * from './loading/LazyLoadingProxy';
 
-// Migrations
-export * from './migrations/Migration';
-export * from './migrations/MigrationRunner';
-export * from './migrations/DiffTypes';
-export * from './migrations/DialectMigrationSql';
-export * from './migrations/MigrationBuilder';
-export * from './migrations/DiffBasedMigration';
-export * from './migrations/MigrationFileBuilder';
-export * from './migrations/DiffMigrationGenerator';
-export * from './migrations/SchemaSnapshot';
+// Migrations - moved to @ts-linq/migrations package
+// export * from './migrations/Migration';
+// export * from './migrations/MigrationRunner';
+// export * from './migrations/DiffTypes';
+// export * from './migrations/DialectMigrationSql';
+// export * from './migrations/MigrationBuilder';
+// export * from './migrations/DiffBasedMigration';
+// export * from './migrations/MigrationFileBuilder';
+// export * from './migrations/DiffMigrationGenerator';
+// export * from './migrations/SchemaSnapshot';
 
 // Utils
 export * from './utils/SqlHelper';
 export * from './utils/RetryPolicies';
 export * from './utils/EntityCache';
-export * from './utils/InternalLogger';
+// export * from './utils/InternalLogger'; // Removed
 export * from './utils/PrometheusEndpoint';

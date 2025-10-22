@@ -7,4 +7,5 @@ export function err(error) {
 }
 // Export error classes
 export * from './errors';
+export { ValidationError } from './errors';
 //# sourceMappingURL=index.js.map
