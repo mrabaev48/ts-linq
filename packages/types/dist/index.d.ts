@@ -96,7 +96,8 @@ export interface GlobalFilter {
 export type JoinType = 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
 export interface CteDefinition {
     name: string;
-    query: string;
+    query?: string;
+    sql?: string;
     parameters?: SqlParameter[];
 }
 export interface Result<T, E = Error> {
@@ -112,6 +113,7 @@ export interface FallbackRequest<T = unknown> {
     entityClass: Function;
     entity?: Function;
     query?: QueryOptions;
+    sql?: string;
 }
 export interface QueryFallback<T = unknown> {
     label?: string;
@@ -145,7 +147,8 @@ export interface PerformanceOptions {
     enableCountCache?: boolean;
     enableEntityCache?: boolean;
     queryTimeout?: number;
-    countCache?: CountCache;
+    countCache?: CountCache | unknown;
+    countCacheTtlMs?: number;
     sqlCache?: unknown;
     cacheNamespace?: string;
     fallbackPolicy?: FallbackPolicy;
