@@ -1,5 +1,5 @@
-import type { DatabaseProvider } from '../DatabaseProvider';
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import type { DatabaseProvider } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { SchemaSnapshotBuilder } from './SchemaSnapshot';
 import type { SchemaSnapshot, ColumnDef } from './DiffTypes';
 import { SchemaInspectionService } from './services/SchemaInspectionService';

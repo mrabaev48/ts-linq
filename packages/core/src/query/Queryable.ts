@@ -1228,7 +1228,7 @@ export class Queryable<T> {
     }
   ): T | null {
     const pkProp = metadata.primaryKeys[0];
-    const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
+    const pkCol = metadata.columns.find((c: any) => c.propertyName === pkProp);
     const idValue = pkCol
       ? (row as Record<string, unknown>)[pkCol.columnName]
       : (row as Record<string, unknown>)[pkProp];
@@ -1282,7 +1282,7 @@ export class Queryable<T> {
     entity: T
   ): void {
     const pkProp = metadata.primaryKeys[0];
-    const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
+    const pkCol = metadata.columns.find((c: any) => c.propertyName === pkProp);
     const idValue = pkCol
       ? (row as Record<string, unknown>)[pkCol.columnName]
       : (row as Record<string, unknown>)[pkProp];

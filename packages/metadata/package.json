@@ -2,6 +2,9 @@
   "name": "@ts-linq/metadata",
   "version": "2.0.0-alpha.1",
   "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/index.d.ts",
   "peerDependencies": {
     "@ts-linq/types": "workspace:*"
   },

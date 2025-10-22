@@ -284,7 +284,7 @@ export class EntityLoader {
     primaryKeys: string[];
   }): string {
     const pkProp = meta.primaryKeys[0];
-    return meta.columns.find((c) => c.propertyName === pkProp)?.columnName || pkProp;
+    return meta.columns.find((c: any) => c.propertyName === pkProp)?.columnName || pkProp;
   }
 
   private async loadRelationshipByType(

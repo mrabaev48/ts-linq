@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SchemaSnapshotSerializer = exports.SchemaSnapshotBuilder = void 0;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 const SchemaInspector_1 = require("./SchemaInspector");
 /**
  * OOP builders/serializers for SchemaSnapshot with thin functional wrappers for back-compat.
@@ -11,7 +11,7 @@ class SchemaSnapshotBuilder {
         this.provider = provider;
     }
     buildExpectedFromMetadata() {
-        const entities = MetadataStorage_1.MetadataStorage.getEntities();
+        const entities = metadata_1.MetadataStorage.getEntities();
         const tables = entities.map((entityMeta) => {
             const columns = entityMeta.columns.map((column) => ({
                 name: column.columnName,

@@ -20,9 +20,9 @@ export class JoinPredicateParser {
     const leftProp = match[3];
     const rightProp = match[4];
     const leftCol =
-      leftMeta.columns.find((c) => c.propertyName === leftProp)?.columnName || leftProp;
+      leftMeta.columns.find((c: any) => c.propertyName === leftProp)?.columnName || leftProp;
     const rightCol =
-      rightMeta.columns.find((c) => c.propertyName === rightProp)?.columnName || rightProp;
+      rightMeta.columns.find((c: any) => c.propertyName === rightProp)?.columnName || rightProp;
     return `${leftTable}.${leftCol} = ${rightTable}.${rightCol}`;
   }
 }

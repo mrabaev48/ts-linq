@@ -28,14 +28,14 @@ __exportStar(require("./decorators/PrimaryKey"), exports);
 __exportStar(require("./decorators/Relationships"), exports);
 __exportStar(require("./decorators/ValidIf"), exports);
 __exportStar(require("./decorators/CachePolicy"), exports);
-// Metadata
-__exportStar(require("./metadata/MetadataStorage"), exports);
-__exportStar(require("./metadata/EntityMetadata"), exports);
-// Change tracking
-__exportStar(require("./change-tracking/ChangeTracker"), exports);
-// Context and DbSet
-__exportStar(require("./context/DbContext"), exports);
-__exportStar(require("./context/DbSet"), exports);
+// Metadata - moved to @ts-linq/metadata package
+// export * from './metadata/MetadataStorage';
+// export * from './metadata/EntityMetadata';
+// Change tracking - moved to @ts-linq/orm package
+// export * from './change-tracking/ChangeTracker';
+// Context and DbSet - moved to @ts-linq/orm package
+// export * from './context/DbContext';
+// export * from './context/DbSet';
 // Query building
 __exportStar(require("./query/Queryable"), exports);
 __exportStar(require("./query/TypedQueryable"), exports);
@@ -62,20 +62,20 @@ __exportStar(require("./DdlBuilder"), exports);
 __exportStar(require("./loading/LoadingStrategy"), exports);
 __exportStar(require("./loading/EntityLoader"), exports);
 __exportStar(require("./loading/LazyLoadingProxy"), exports);
-// Migrations
-__exportStar(require("./migrations/Migration"), exports);
-__exportStar(require("./migrations/MigrationRunner"), exports);
-__exportStar(require("./migrations/DiffTypes"), exports);
-__exportStar(require("./migrations/DialectMigrationSql"), exports);
-__exportStar(require("./migrations/MigrationBuilder"), exports);
-__exportStar(require("./migrations/DiffBasedMigration"), exports);
-__exportStar(require("./migrations/MigrationFileBuilder"), exports);
-__exportStar(require("./migrations/DiffMigrationGenerator"), exports);
-__exportStar(require("./migrations/SchemaSnapshot"), exports);
+// Migrations - moved to @ts-linq/migrations package
+// export * from './migrations/Migration';
+// export * from './migrations/MigrationRunner';
+// export * from './migrations/DiffTypes';
+// export * from './migrations/DialectMigrationSql';
+// export * from './migrations/MigrationBuilder';
+// export * from './migrations/DiffBasedMigration';
+// export * from './migrations/MigrationFileBuilder';
+// export * from './migrations/DiffMigrationGenerator';
+// export * from './migrations/SchemaSnapshot';
 // Utils
 __exportStar(require("./utils/SqlHelper"), exports);
 __exportStar(require("./utils/RetryPolicies"), exports);
 __exportStar(require("./utils/EntityCache"), exports);
-__exportStar(require("./utils/InternalLogger"), exports);
+// export * from './utils/InternalLogger'; // Removed
 __exportStar(require("./utils/PrometheusEndpoint"), exports);
 //# sourceMappingURL=index.js.map

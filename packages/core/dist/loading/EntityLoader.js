@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityLoader = void 0;
-const LoadingStrategy_1 = require("./LoadingStrategy");
 const MetadataStorage_1 = require("../metadata/MetadataStorage");
 /**
  * Service responsible for loading entities with either lazy or eager strategy,
