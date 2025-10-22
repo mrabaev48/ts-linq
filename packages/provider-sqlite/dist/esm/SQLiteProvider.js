@@ -1,6 +1,6 @@
 import { DatabaseProvider, MetadataStorage, DatabaseError, UniqueConstraintError, ForeignKeyConstraintError, OptimisticConcurrencyError, SqlHelper } from '@ts-linq/core';
-import { SQLiteDialect } from './SQLiteDialect';
-import { SQLiteDdlStrategy } from './SQLiteDdlStrategy';
+import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
+import { SQLiteDdlStrategy } from '@ts-linq/dialect-sqlite';
 function safeRequireSqlite3() {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires

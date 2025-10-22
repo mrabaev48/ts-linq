@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChangeValidationService = void 0;
-const MetadataStorage_1 = require("../../metadata/MetadataStorage");
-const types_1 = require("../../types");
+const metadata_1 = require("@ts-linq/metadata");
+const types_1 = require("@ts-linq/types");
 class ChangeValidationService {
     constructor(translate, audit) {
         this.rulesCache = new WeakMap();
@@ -14,7 +14,7 @@ class ChangeValidationService {
         for (const change of changes) {
             if (change.state !== 'added' && change.state !== 'modified')
                 continue;
-            const meta = MetadataStorage_1.MetadataStorage.getEntity(change.entityClass);
+            const meta = metadata_1.MetadataStorage.getEntity(change.entityClass);
             if (!meta)
                 continue;
             const auditCfg = this.audit?.enabled ? this.audit : undefined;
@@ -25,15 +25,18 @@ class ChangeValidationService {
             }
             this.runConditionalValidations(change, meta, errors);
         }
-        if (errors.length > 0)
-            throw new types_1.ValidationError('Model validation failed', errors);
+        if (errors.length > 0) {
+            const error = new types_1.ValidationError('Model validation failed');
+            error.errors = errors;
+            throw error;
+        }
     }
     getValidationRules(entityClass) {
         const cached = this.rulesCache.get(entityClass);
         if (cached)
             return cached;
         // Stage-3: Use MetadataStorage instead of Reflect API
-        const rules = MetadataStorage_1.MetadataStorage.getValidationRules(entityClass).slice();
+        const rules = metadata_1.MetadataStorage.getValidationRules(entityClass).slice();
         this.rulesCache.set(entityClass, rules);
         return rules;
     }
@@ -80,6 +83,7 @@ class ChangeValidationService {
     }
     isGeneratedPrimaryKey(meta, col, change) {
         return (!!meta &&
+            !!meta.primaryKeys &&
             meta.primaryKeys.includes(col.propertyName) &&
             !!col.isGenerated &&
             change.state === 'added');

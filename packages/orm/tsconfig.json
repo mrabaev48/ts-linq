@@ -4,7 +4,9 @@
     "baseUrl": ".",
     "paths": {
       "@src/*": ["src/*"],
-      "@ts-linq/metrics-safe": ["../metrics-safe/dist"]
+      "@ts-linq/metrics-safe": ["../metrics-safe/dist"],
+      "@ts-linq/metadata": ["../metadata/dist"],
+      "@ts-linq/query": ["../query/dist"]
     },
     "composite": true,
     "declaration": true,
@@ -17,6 +19,9 @@
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
   "references": [
+    { "path": "../types" },
+    { "path": "../metadata" },
+    { "path": "../query" },
     { "path": "../metrics-safe" }
   ]
 }

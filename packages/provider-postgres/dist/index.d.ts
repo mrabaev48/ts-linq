@@ -1,7 +1,3 @@
-/**
- * PostgreSQL database provider for ts-linq ORM
- */
+export * from '@ts-linq/dialect-postgres';
 export * from './PostgresProvider';
-export * from './PostgresDialect';
-export * from './PostgresDdlStrategy';
 //# sourceMappingURL=index.d.ts.map

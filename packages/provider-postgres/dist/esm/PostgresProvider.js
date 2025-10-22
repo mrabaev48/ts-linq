@@ -1,6 +1,6 @@
 import { DatabaseProvider, OptimisticConcurrencyError, UniqueConstraintError, DatabaseError, ForeignKeyConstraintError, MetadataStorage, QueryBuilder } from '@ts-linq/core';
-import { PostgresDialect } from './PostgresDialect';
-import { PostgresDdlStrategy } from './PostgresDdlStrategy';
+import { PostgresDialect } from '@ts-linq/dialect-postgres';
+import { PostgresDdlStrategy } from '@ts-linq/dialect-postgres';
 // Lazy require to avoid hard dependency if not installed
 let Pg;
 try {

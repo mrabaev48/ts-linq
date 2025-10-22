@@ -1,6 +1,6 @@
 import { DatabaseProvider, OptimisticConcurrencyError, MetadataStorage, SqlHelper } from '@ts-linq/core';
-import { MssqlDialect } from './MssqlDialect';
-import { MssqlDdlStrategy } from './MssqlDdlStrategy';
+import { MssqlDialect } from '@ts-linq/dialect-mssql';
+import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
 /**
  * Microsoft SQL Server provider based on the `mssql` package.
  *

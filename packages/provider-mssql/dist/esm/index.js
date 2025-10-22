@@ -1,8 +1,5 @@
-/**
- * Microsoft SQL Server database provider for ts-linq ORM
- */
-// MSSQL-specific exports
+// Re-export dialect
+export * from '@ts-linq/dialect-mssql';
+// Export provider
 export * from './MssqlProvider';
-export * from './MssqlDialect';
-export * from './MssqlDdlStrategy';
 //# sourceMappingURL=index.js.map

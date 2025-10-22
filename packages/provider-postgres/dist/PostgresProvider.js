@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostgresProvider = void 0;
 const core_1 = require("@ts-linq/core");
-const PostgresDialect_1 = require("./PostgresDialect");
-const PostgresDdlStrategy_1 = require("./PostgresDdlStrategy");
+const dialect_postgres_1 = require("@ts-linq/dialect-postgres");
+const dialect_postgres_2 = require("@ts-linq/dialect-postgres");
 // Lazy require to avoid hard dependency if not installed
 let Pg;
 try {
@@ -50,7 +50,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     }
     constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
         super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
-        this.ddl = new PostgresDdlStrategy_1.PostgresDdlStrategy();
+        this.ddl = new dialect_postgres_2.PostgresDdlStrategy();
         this.qb = new core_1.QueryBuilder(this.getDialect());
         this.providerName = 'postgresql';
     }
@@ -207,7 +207,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     }
     /** Provide SQL dialect for this provider. */
     getDialect() {
-        return new PostgresDialect_1.PostgresDialect();
+        return new dialect_postgres_1.PostgresDialect();
     }
     /** Fetch a single row by its primary key value. */
     async findById(id, entityClass) {

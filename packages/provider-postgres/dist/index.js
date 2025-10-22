@@ -1,7 +1,4 @@
 "use strict";
-/**
- * PostgreSQL database provider for ts-linq ORM
- */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -17,8 +14,8 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// PostgreSQL-specific exports
+// Re-export dialect
+__exportStar(require("@ts-linq/dialect-postgres"), exports);
+// Export provider
 __exportStar(require("./PostgresProvider"), exports);
-__exportStar(require("./PostgresDialect"), exports);
-__exportStar(require("./PostgresDdlStrategy"), exports);
 //# sourceMappingURL=index.js.map

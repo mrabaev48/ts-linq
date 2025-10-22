@@ -119,8 +119,8 @@ export abstract class DbContext {
     this._updateCmd = new UpdateCommand(this._provider, (c) => this.updateEntityCache(c));
     this._deleteCmd = new DeleteCommand(
       this._provider,
-      (c) => this.handleSoftDelete(c),
-      (c) => this.removeFromEntityCache(c)
+      (c: any) => this.handleSoftDelete(c),
+      (c: any) => this.removeFromEntityCache(c)
     );
     // Initialize optional L2 entity cache
     if (options.performance?.enableEntityCache) {
@@ -150,7 +150,7 @@ export abstract class DbContext {
       /* ignore */
     }
     // Apply configurable IN() chunk size into loader
-    this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize as any);
+    this._entityLoader.setInChunkSize((this._performanceOptions as any)?.inClauseChunkSize);
     this._loadingDefaults = options.loading || {};
 
     // Apply loading strategy from options or keep default
@@ -196,6 +196,7 @@ export abstract class DbContext {
     const prereg = MetadataStorage.getEntities();
     for (const e of prereg) {
       try {
+        if (!e.target) continue;
         const original = getOriginal(e.target);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const _tmp = new (original as unknown as new () => unknown)();
@@ -206,7 +207,7 @@ export abstract class DbContext {
     const entities = MetadataStorage.getEntities();
 
     for (const entity of entities) {
-      await this._provider.createTable(entity);
+      await this._provider.createTable(entity as any);
     }
   }
 
@@ -657,6 +658,7 @@ export abstract class DbContext {
     const entities = MetadataStorage.getEntities();
 
     for (const entity of entities) {
+      if (!entity.target) continue;
       const original = getOriginal(entity.target);
       const dbSet = new DbSet<object>(
         original as unknown as new () => object,
@@ -864,12 +866,12 @@ export abstract class DbContext {
     const meta = MetadataStorage.getEntity(change.entityClass);
     if (!meta) return false;
     const flag = this._softDelete.column ?? 'isDeleted';
-    const deletedAt = this._softDelete.deletedAtColumn as any ?? 'deletedAt';
+    const deletedAt = (this._softDelete as any).deletedAtColumn ?? 'deletedAt';
     const hasFlag = meta.columns.some((c: any) => c.propertyName === flag || c.columnName === flag);
     if (!hasFlag) return false;
     change.entity[flag] = true as unknown as boolean;
     const hasDeletedAt = meta.columns.some(
-      (c) => c.propertyName === deletedAt || c.columnName === deletedAt
+      (c: any) => c.propertyName === deletedAt || c.columnName === deletedAt
     );
     if (hasDeletedAt) change.entity[deletedAt] = new Date();
     await this._provider.update(change.entity, change.entityClass);
@@ -899,7 +901,7 @@ export abstract class DbContext {
 
   private getPrimaryKey(entityClass: Function): string | undefined {
     const meta = MetadataStorage.getEntity(entityClass);
-    return meta?.primaryKeys[0];
+    return meta?.primaryKeys?.[0];
   }
 
   /**
@@ -911,7 +913,7 @@ export abstract class DbContext {
     const cached = this._validationRulesCache.get(entityClass);
     if (cached) return cached;
     // Stage-3: Use MetadataStorage instead of Reflect API
-    const rules = MetadataStorage.getValidationRules(entityClass).slice();
+    const rules = MetadataStorage.getValidationRules(entityClass).slice() as any;
     this._validationRulesCache.set(entityClass, rules);
     return rules;
   }
@@ -1012,6 +1014,7 @@ export abstract class DbContext {
   ): boolean {
     return (
       !!meta &&
+      !!meta.primaryKeys &&
       meta.primaryKeys.includes(col.propertyName) &&
       !!col.isGenerated &&
       change.state === 'added'
