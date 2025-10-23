@@ -20,7 +20,11 @@ function isStage3ClassContext(x: unknown): x is {
 
 /**
  * Stage-3 class decorator that marks a class as a database entity (table).
- * Collects all pending field metadata and registers everything with MetadataStorage.
+ * Collects all orphaned field metadata and registers everything with MetadataStorage.
+ * 
+ * Uses "orphaned metadata pattern" to work around SWC 2022-03 limitations where:
+ * - Field decorators cannot use addInitializer
+ * - Returned initializer functions are not executed
  */
 export function Entity(options: EntityOptions = {}): ClassDecorator {
   return function <TFunction extends Function>(
@@ -38,80 +42,48 @@ export function Entity(options: EntityOptions = {}): ClassDecorator {
     // Register entity immediately
     MetadataStorage.addEntity(ctor, tableName);
 
-    // Collect orphaned metadata (from field decorators that couldn't use addInitializer)
-    if ((globalThis as any).__tsLinqOrphanedColumns) {
-      const orphans = (globalThis as any).__tsLinqOrphanedColumns || [];
-      for (const columnMeta of orphans) {
-        MetadataStorage.addColumn(ctor, columnMeta);
-      }
-      (globalThis as any).__tsLinqOrphanedColumns = [];
-    }
-    
-    if ((globalThis as any).__tsLinqOrphanedPrimaryKeys) {
-      const orphanedPKs = (globalThis as any).__tsLinqOrphanedPrimaryKeys || [];
-      for (const pk of orphanedPKs) {
-        MetadataStorage.addPrimaryKey(ctor, pk);
-      }
-      (globalThis as any).__tsLinqOrphanedPrimaryKeys = [];
-    }
-    
-    if ((globalThis as any).__tsLinqOrphanedRelationships) {
-      const orphanedRels = (globalThis as any).__tsLinqOrphanedRelationships || [];
-      for (const rel of orphanedRels) {
-        MetadataStorage.addRelationship(ctor, rel);
-      }
-      (globalThis as any).__tsLinqOrphanedRelationships = [];
-    }
-    
-    if ((globalThis as any).__tsLinqOrphanedIndexes) {
-      const orphanedIndexes = (globalThis as any).__tsLinqOrphanedIndexes || [];
-      for (const idx of orphanedIndexes) {
-        MetadataStorage.addIndex(ctor, idx);
-      }
-      (globalThis as any).__tsLinqOrphanedIndexes = [];
-    }
-
-    // Use addInitializer to collect metadata from WeakMap registry
+    // Use addInitializer to collect orphaned metadata from field decorators
+    // This runs AFTER all field decorators have executed
     if (ctx.addInitializer) {
       ctx.addInitializer(() => {
-        const registry = (globalThis as any).__tsLinqPendingMetadata;
+        // Collect orphaned columns
+        if ((globalThis as any).__tsLinqOrphanedColumns) {
+          const orphans = (globalThis as any).__tsLinqOrphanedColumns || [];
+          for (const columnMeta of orphans) {
+            MetadataStorage.addColumn(ctor, columnMeta);
+          }
+          (globalThis as any).__tsLinqOrphanedColumns = [];
+        }
         
-        if (registry) {
-          // Collect columns
-          if (registry.columns?.has(ctor)) {
-            const columns = registry.columns.get(ctor) || [];
-            for (const col of columns) {
-              MetadataStorage.addColumn(ctor, col);
-            }
-            registry.columns.delete(ctor);
+        // Collect orphaned primary keys
+        if ((globalThis as any).__tsLinqOrphanedPrimaryKeys) {
+          const orphanedPKs = (globalThis as any).__tsLinqOrphanedPrimaryKeys || [];
+          for (const pk of orphanedPKs) {
+            MetadataStorage.addPrimaryKey(ctor, pk);
           }
-          
-          // Collect primary keys
-          if (registry.primaryKeys?.has(ctor)) {
-            const pks = registry.primaryKeys.get(ctor) || [];
-            for (const pk of pks) {
-              MetadataStorage.addPrimaryKey(ctor, pk);
-            }
-            registry.primaryKeys.delete(ctor);
+          (globalThis as any).__tsLinqOrphanedPrimaryKeys = [];
+        }
+        
+        // Collect orphaned relationships
+        if ((globalThis as any).__tsLinqOrphanedRelationships) {
+          const orphanedRels = (globalThis as any).__tsLinqOrphanedRelationships || [];
+          for (const rel of orphanedRels) {
+            MetadataStorage.addRelationship(ctor, rel);
           }
-          
-          // Collect relationships
-          if (registry.relationships?.has(ctor)) {
-            const rels = registry.relationships.get(ctor) || [];
-            for (const rel of rels) {
-              MetadataStorage.addRelationship(ctor, rel);
+          (globalThis as any).__tsLinqOrphanedRelationships = [];
+        }
+        
+        // Collect orphaned indexes
+        if ((globalThis as any).__tsLinqOrphanedIndexes) {
+          const orphanedIndexes = (globalThis as any).__tsLinqOrphanedIndexes || [];
+          for (const idx of orphanedIndexes) {
+            // Only collect indexes that belong to this entity
+            if (idx.ctor === ctor) {
+              MetadataStorage.addIndex(ctor, idx.metadata);
             }
-            registry.relationships.delete(ctor);
           }
-          
-          // Collect indexes
-          if (registry.indexes?.has(ctor)) {
-            const indexes = registry.indexes.get(ctor) || [];
-            for (const idx of indexes) {
-              MetadataStorage.addIndex(ctor, idx);
-            }
-            registry.indexes.delete(ctor);
-          }
+          // Clear only the collected indexes
+          (globalThis as any).__tsLinqOrphanedIndexes = orphanedIndexes.filter((x: any) => x.ctor !== ctor);
         }
       });
     }

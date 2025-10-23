@@ -1,12 +1,12 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { Entity, Column, PrimaryKey, ManyToOne, OneToMany } from '@ts-linq/metadata';
-import { Index } from '@ts-linq/core/decorators';
+import { Entity, Column, PrimaryKey, ManyToOne, OneToMany, Index, clearOrphanedMetadata } from '../../src/decorators';
 import { ValidationError } from '@ts-linq/types';
 
 describe('MetadataStorage - Decorator-based Metadata', () => {
   beforeEach(() => {
     MetadataStorage.getInstance().clear();
+    clearOrphanedMetadata();
   });
 
   describe('Entity Registration', () => {
@@ -16,9 +16,6 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @PrimaryKey({ type: 'INTEGER' })
         id!: number;
       }
-
-      // Create instance to trigger Stage-3 decorator initializers
-      new User();
 
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata).toBeDefined();
@@ -31,9 +28,6 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @PrimaryKey({ type: 'INTEGER' })
         id!: number;
       }
-
-      // Create instance to trigger Stage-3 decorator initializers
-      new User();
 
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata).toBeDefined();
@@ -52,10 +46,6 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @PrimaryKey({ type: 'INTEGER' })
         id!: number;
       }
-
-      // Create instances to trigger Stage-3 decorator initializers
-      new User();
-      new Post();
 
       const userMeta = MetadataStorage.getEntity(User);
       const postMeta = MetadataStorage.getEntity(Post);
@@ -81,7 +71,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         email!: string;
       }
 
-      new User(); // Trigger initializers
+
 
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata!.columns).toHaveLength(3);
@@ -102,7 +92,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         age?: number;
       }
 
-      new User(); // Trigger initializers
+
 
       const metadata = MetadataStorage.getEntity(User);
       const ageCol = metadata!.columns.find(c => c.propertyName === 'age');
@@ -120,7 +110,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         name!: string;
       }
 
-      new User(); // Trigger initializers
+
 
       const metadata = MetadataStorage.getEntity(User);
       const nameCol = metadata!.columns.find(c => c.propertyName === 'name');
@@ -138,7 +128,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         score!: number;
       }
 
-      new User(); // Trigger initializers
+
 
       const metadata = MetadataStorage.getEntity(User);
       const scoreCol = metadata!.columns.find(c => c.propertyName === 'score');
@@ -155,7 +145,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         id!: number;
       }
 
-      new User(); // Trigger initializers
+
 
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata!.primaryKeys).toContain('id');
@@ -195,7 +185,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         email!: string;
       }
 
-      new User(); // Trigger initializers
+
 
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata!.indexes).toHaveLength(1);
@@ -218,7 +208,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         email!: string;
       }
 
-      new User(); // Trigger initializers
+
 
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata!.indexes).toHaveLength(2);
@@ -238,7 +228,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         lastName!: string;
       }
 
-      new User(); // Trigger initializers
+
 
       const metadata = MetadataStorage.getEntity(User);
       const index = metadata!.indexes[0];
@@ -269,7 +259,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         user!: User;
       }
 
-      new User(); // Trigger initializers
+
       new Post(); // Trigger initializers
 
       const metadata = MetadataStorage.getEntity(Post);
@@ -297,7 +287,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
       }
 
       new Post(); // Trigger initializers
-      new User(); // Trigger initializers
+
 
       const metadata = MetadataStorage.getEntity(User);
       const postsRel = metadata!.relations?.find(r => r.propertyName === 'posts');
@@ -391,7 +381,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         user!: User;
       }
 
-      new User(); // Trigger initializers
+
       new Post(); // Trigger initializers
 
       const metadata = MetadataStorage.getEntity(User);
