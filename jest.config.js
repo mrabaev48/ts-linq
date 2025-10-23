@@ -6,6 +6,8 @@ module.exports = {
   detectOpenHandles: true,
   forceExit: true,
   roots: ['<rootDir>/packages'],
+  modulePaths: ['<rootDir>'],
+  moduleDirectories: ['node_modules', 'packages'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
     '^.+\\.ts$': 'ts-jest'

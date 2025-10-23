@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../src/index.ts"],"names":[],"mappings":"AAAA,4BAA4B;AAC5B,mEAAmE;AAEnE,MAAM,CAAC,MAAM,WAAW,GAAG,aAAa,CAAC","sourcesContent":["// SQL Visitor - Coming Soon\n// This package will provide SQL AST visitor pattern implementation\n\nexport const placeholder = 'sql-visitor';\n"]}

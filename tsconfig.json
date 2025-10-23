@@ -16,7 +16,11 @@
     "sourceRoot": "",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@ts-linq/*": ["packages/*/src"]
+    }
   },
   "files": [],
   "references": [
