@@ -1,10 +1,13 @@
-import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
+
+// Symbol for storing pending column metadata in decorator context
+const PENDING_COLUMNS = Symbol('pendingColumns');
+const PENDING_PRIMARY_KEYS = Symbol('pendingPrimaryKeys');
 
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
-  addInitializer?: (fn: (this: unknown) => void) => void;
+  metadata?: Record<symbol, unknown>;
 } {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
@@ -27,6 +30,8 @@ export interface ColumnOptions {
 
 /**
  * Stage-3 property decorator that registers column metadata.
+ * Uses context.metadata to share data with @Entity decorator.
+ * 
  * @param options.type - Column type (required for non-TEXT columns). Defaults to TEXT if omitted.
  */
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
@@ -36,9 +41,15 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
     }
     const ctx = propOrContext;
     const name = ctx.name.toString();
-    ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
-      if (!ctor) return;
+    
+    // Store column metadata in shared context.metadata object
+    // This is accessible to @Entity class decorator
+    if (ctx.metadata) {
+      if (!ctx.metadata[PENDING_COLUMNS]) {
+        ctx.metadata[PENDING_COLUMNS] = new Map<string, ColumnMetadata>();
+      }
+      
+      const columns = ctx.metadata[PENDING_COLUMNS] as Map<string, ColumnMetadata>;
       const columnMetadata: ColumnMetadata = {
         propertyName: name,
         columnName: options?.name || name,
@@ -51,7 +62,11 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
         isGenerated: options?.generated || false,
         isVersion: options?.version || false
       };
-      MetadataStorage.addColumn(ctor, columnMetadata);
-    });
+      
+      columns.set(name, columnMetadata);
+    }
   };
 }
+
+// Export symbols so other decorators can use them
+export { PENDING_COLUMNS, PENDING_PRIMARY_KEYS };
