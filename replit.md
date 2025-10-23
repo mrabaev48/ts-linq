@@ -22,7 +22,9 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core.
 - Vitest migration infrastructure complete, but decorator refactoring needed before full migration
 - See TEST_STATUS.md for detailed breakdown
 
---- It provides a code-first approach to database management, utilizing Stage-3 decorator-based entity definitions, LINQ-style query building, and supporting multiple database providers (SQLite, PostgreSQL, MySQL, MSSQL). The framework emphasizes type safety, change tracking, and adheres to SOLID principles for a clean, extensible architectural design, aiming to offer a robust and developer-friendly ORM solution for TypeScript applications.
+---
+
+It provides a code-first approach to database management, utilizing Stage-3 decorator-based entity definitions, LINQ-style query building, and supporting multiple database providers (SQLite, PostgreSQL, MySQL, MSSQL). The framework emphasizes type safety, change tracking, and adheres to SOLID principles for a clean, extensible architectural design, aiming to offer a robust and developer-friendly ORM solution for TypeScript applications.
 
 # User Preferences
 
