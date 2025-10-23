@@ -23,8 +23,9 @@ export interface ColumnOptions {
  * Uses reflect-metadata for metadata storage.
  */
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
-  return function (target: Object, propertyKey: string | symbol): void {
-    const ctor = target.constructor;
+  return function (target: any, propertyKey: string | symbol): void {
+    // For legacy decorators, target is the prototype, target.constructor is the class
+    const ctor = (target?.constructor || target) as Function;
     const propertyName = String(propertyKey);
     
     const columnMetadata: ColumnMetadata = {
@@ -40,6 +41,6 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
       isVersion: options?.version || false
     };
     
-    MetadataStorage.addColumn(ctor as Function, columnMetadata);
+    MetadataStorage.addColumn(ctor, columnMetadata);
   };
 }

@@ -70,9 +70,9 @@ describe('SqlLoggerFactory integration', () => {
   });
 
   test('composite factory is applied when options.loggerFactories/loggers provided', async () => {
-    const f1: SqlLoggerFactory = { create: jest.fn(() => ({ queryStart: jest.fn() })) };
-    const f2: SqlLoggerFactory = { create: jest.fn(() => ({ queryEnd: jest.fn() })) };
-    const staticL: SqlLogger = { retry: jest.fn() };
+    const f1: SqlLoggerFactory = { create: vi.fn(() => ({ queryStart: vi.fn() })) };
+    const f2: SqlLoggerFactory = { create: vi.fn(() => ({ queryEnd: vi.fn() })) };
+    const staticL: SqlLogger = { retry: vi.fn() };
     const ctx = new Ctx('sqlite', undefined, { factories: [f1, f2], loggers: [staticL] });
     await ctx.ensureCreated();
     await (

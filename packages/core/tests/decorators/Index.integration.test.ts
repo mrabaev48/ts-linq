@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import type { ColumnMetadata } from '../../src/types';
 import { Index, IndexOptionsBuilder } from '../../src/decorators';

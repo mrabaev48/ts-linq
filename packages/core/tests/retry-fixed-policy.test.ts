@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { DbSet } from '../src/context/DbSet';

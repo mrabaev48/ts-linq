@@ -22,10 +22,11 @@ function defineRelationship(
   kind: RelationshipMetadata['type'],
   targetEntity: () => Function,
   options: RelationshipOptions,
-  target: Object,
+  target: any,
   propertyKey: string | symbol
 ): void {
-  const ctor = target.constructor;
+  // For legacy decorators, target is the prototype, target.constructor is the class
+  const ctor = (target?.constructor || target) as Function;
   const propertyName = String(propertyKey);
   
   // Resolve targetEntity to concrete constructor
@@ -45,7 +46,7 @@ function defineRelationship(
     through: options?.through
   };
   
-  MetadataStorage.addRelationship(ctor as Function, relationship);
+  MetadataStorage.addRelationship(ctor, relationship);
 }
 
 /**
@@ -55,7 +56,7 @@ export function OneToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: Object, propertyKey: string | symbol): void {
+  return function (target: any, propertyKey: string | symbol): void {
     defineRelationship('one-to-many', targetEntity, options, target, propertyKey);
   };
 }
@@ -67,7 +68,7 @@ export function ManyToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: Object, propertyKey: string | symbol): void {
+  return function (target: any, propertyKey: string | symbol): void {
     defineRelationship('many-to-one', targetEntity, options, target, propertyKey);
   };
 }
@@ -79,7 +80,7 @@ export function OneToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: Object, propertyKey: string | symbol): void {
+  return function (target: any, propertyKey: string | symbol): void {
     defineRelationship('one-to-one', targetEntity, options, target, propertyKey);
   };
 }
@@ -91,7 +92,7 @@ export function ManyToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: Object, propertyKey: string | symbol): void {
+  return function (target: any, propertyKey: string | symbol): void {
     defineRelationship('many-to-many', targetEntity, options, target, propertyKey);
   };
 }

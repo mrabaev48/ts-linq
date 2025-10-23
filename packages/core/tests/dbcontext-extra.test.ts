@@ -1,15 +1,16 @@
+import 'reflect-metadata';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import type { DatabaseProvider } from '../src/DatabaseProvider';
 import { DbContext } from '../src/context/DbContext';
 import { LoadingStrategy } from '../src/loading/LoadingStrategy';
 import { ValidationError } from '../src/types';
 
-jest.mock('../src/query/Queryable', () => ({
-  Queryable: { clearCountCache: jest.fn() }
+vi.mock('../src/query/Queryable', () => ({
+  Queryable: { clearCountCache: vi.fn() }
 }));
 
-jest.mock('metrics-safe', () => ({
-  safeCacheSize: jest.fn()
+vi.mock('metrics-safe', () => ({
+  safeCacheSize: vi.fn()
 }));
 
 class TestContext extends DbContext {}
@@ -17,20 +18,20 @@ class TestContext extends DbContext {}
 function providerStub(): jest.Mocked<DatabaseProvider> {
   return {
     providerLabel: 'sqlite',
-    connect: jest.fn(async () => {}),
-    disconnect: jest.fn(async () => {}),
-    createTable: jest.fn(async () => {}),
-    beginTransaction: jest.fn(async () => {}),
-    commitTransaction: jest.fn(async () => {}),
-    rollbackTransaction: jest.fn(async () => {}),
+    connect: vi.fn(async () => {}),
+    disconnect: vi.fn(async () => {}),
+    createTable: vi.fn(async () => {}),
+    beginTransaction: vi.fn(async () => {}),
+    commitTransaction: vi.fn(async () => {}),
+    rollbackTransaction: vi.fn(async () => {}),
     inTransactionState: false,
-    getDialect: jest.fn(),
-    executeQuery: jest.fn(),
-    executeNonQuery: jest.fn(),
-    insert: jest.fn(async () => {}),
-    update: jest.fn(async () => {}),
-    delete: jest.fn(async () => {}),
-    upsert: jest.fn(async () => {}),
+    getDialect: vi.fn(),
+    executeQuery: vi.fn(),
+    executeNonQuery: vi.fn(),
+    insert: vi.fn(async () => {}),
+    update: vi.fn(async () => {}),
+    delete: vi.fn(async () => {}),
+    upsert: vi.fn(async () => {}),
     loggerRef: {}
   } as unknown as jest.Mocked<DatabaseProvider>;
 }
@@ -56,7 +57,7 @@ describe('DbContext extra coverage', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('ensureCreated connects and creates tables', async () => {
@@ -92,8 +93,8 @@ describe('DbContext extra coverage', () => {
       isLazyProxy: (o: unknown) => boolean;
       preloadRelationships: (...args: unknown[]) => Promise<void>;
     };
-    const spyIs = jest.spyOn(lp, 'isLazyProxy').mockReturnValue(true);
-    const spyPre = jest.spyOn(lp, 'preloadRelationships').mockResolvedValue(undefined as any);
+    const spyIs = vi.spyOn(lp, 'isLazyProxy').mockReturnValue(true);
+    const spyPre = vi.spyOn(lp, 'preloadRelationships').mockResolvedValue(undefined as any);
     const e = {} as E;
     await ctx.include(e, E, 'rel');
     expect(spyIs).toHaveBeenCalled();
@@ -115,8 +116,8 @@ describe('DbContext extra coverage', () => {
       isLazyProxy: (o: unknown) => boolean;
       isRelationshipLoaded: (o: unknown, p: string) => boolean;
     };
-    jest.spyOn(lp, 'isLazyProxy').mockReturnValue(true);
-    const spy = jest.spyOn(lp, 'isRelationshipLoaded').mockReturnValue(true);
+    vi.spyOn(lp, 'isLazyProxy').mockReturnValue(true);
+    const spy = vi.spyOn(lp, 'isRelationshipLoaded').mockReturnValue(true);
     expect(ctx.isLoaded({} as any, 'x')).toBe(true);
     expect(spy).toHaveBeenCalled();
   });
@@ -179,7 +180,7 @@ describe('DbContext extra coverage', () => {
   test('setLoadingStrategy delegates to EntityLoader.setDefaultStrategy', () => {
     const provider = providerStub();
     const ctx = new TestContext({ provider });
-    const spy = jest.spyOn(
+    const spy = vi.spyOn(
       require('../src/loading/EntityLoader').EntityLoader.prototype,
       'setDefaultStrategy'
     );

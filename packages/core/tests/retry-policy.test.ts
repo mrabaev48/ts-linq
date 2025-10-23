@@ -49,7 +49,7 @@ describe('Provider retry policy', () => {
     await p.beginTransaction();
     // In a transaction doExecuteNonQuery returns 1 without retries — simulate error via spy
     const pobj = p as unknown as { doExecuteNonQuery: (...args: unknown[]) => unknown };
-    const spy = jest.spyOn(pobj, 'doExecuteNonQuery').mockImplementation(() => {
+    const spy = vi.spyOn(pobj, 'doExecuteNonQuery').mockImplementation(() => {
       const err: Error & { message: string } = new Error('deadlock');
       err.message = 'deadlock';
       throw err;

@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { DbContext } from '../../src/context/DbContext';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import type { ColumnMetadata, SqlParameter } from '../../src/types';

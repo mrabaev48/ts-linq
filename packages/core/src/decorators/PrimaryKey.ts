@@ -15,8 +15,9 @@ export interface PrimaryKeyOptions {
  * Uses reflect-metadata for metadata storage.
  */
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
-  return function (target: Object, propertyKey: string | symbol): void {
-    const ctor = target.constructor;
+  return function (target: any, propertyKey: string | symbol): void {
+    // For legacy decorators, target is the prototype, target.constructor is the class
+    const ctor = (target?.constructor || target) as Function;
     const propertyName = String(propertyKey);
     
     const columnMeta: ColumnMetadata = {
@@ -29,9 +30,9 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
     };
     
     // Add column metadata
-    MetadataStorage.addColumn(ctor as Function, columnMeta);
+    MetadataStorage.addColumn(ctor, columnMeta);
     
     // Mark as primary key
-    MetadataStorage.addPrimaryKey(ctor as Function, propertyName);
+    MetadataStorage.addPrimaryKey(ctor, propertyName);
   };
 }

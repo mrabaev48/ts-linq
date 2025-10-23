@@ -2,7 +2,7 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import { SchemaApplyCommand } from '../src/commands/SchemaApplyCommand';
 import * as migrations from '@ts-linq/migrations';
 
-jest.mock('@ts-linq/migrations');
+vi.mock('@ts-linq/migrations');
 
 describe('Schema Apply - Destructive Change Protection', () => {
   let mockProvider: jest.Mocked<Partial<DatabaseProvider>>;
@@ -16,23 +16,23 @@ describe('Schema Apply - Destructive Change Protection', () => {
 
     mockProvider = {
       providerLabel: 'sqlite',
-      executeNonQuery: jest.fn(async (sql: string) => {
+      executeNonQuery: vi.fn(async (sql: string) => {
         executedQueries.push(sql);
         return 1;
       }),
-      connect: jest.fn(),
-      disconnect: jest.fn()
+      connect: vi.fn(),
+      disconnect: vi.fn()
     };
 
     mockLogger = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn()
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
     };
 
     mockFs = {
-      exists: jest.fn(() => true),
-      readText: jest.fn(() => JSON.stringify({
+      exists: vi.fn(() => true),
+      readText: vi.fn(() => JSON.stringify({
         tables: [
           {
             name: 'Users',
@@ -46,18 +46,18 @@ describe('Schema Apply - Destructive Change Protection', () => {
           }
         ]
       })),
-      writeText: jest.fn(),
-      ensureDir: jest.fn(),
-      readDir: jest.fn(() => [])
+      writeText: vi.fn(),
+      ensureDir: vi.fn(),
+      readDir: vi.fn(() => [])
     };
 
     (migrations.SchemaSnapshotSerializer as jest.Mock).mockImplementation(() => ({
-      deserialize: jest.fn((json: string) => JSON.parse(json)),
-      serialize: jest.fn((obj: any) => JSON.stringify(obj))
+      deserialize: vi.fn((json: string) => JSON.parse(json)),
+      serialize: vi.fn((obj: any) => JSON.stringify(obj))
     }));
 
     (migrations.SchemaSnapshotBuilder as jest.Mock).mockImplementation(() => ({
-      buildActualFromProvider: jest.fn(async () => ({
+      buildActualFromProvider: vi.fn(async () => ({
         tables: [
           {
             name: 'Users',
@@ -72,7 +72,7 @@ describe('Schema Apply - Destructive Change Protection', () => {
           }
         ]
       })),
-      buildExpectedFromMetadata: jest.fn()
+      buildExpectedFromMetadata: vi.fn()
     }));
 
     (migrations.compareSchemas as jest.Mock).mockReturnValue({
@@ -83,7 +83,7 @@ describe('Schema Apply - Destructive Change Protection', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('DROP TABLE protection', () => {
@@ -236,7 +236,7 @@ describe('Schema Apply - Destructive Change Protection', () => {
 
   describe('Error handling', () => {
     test('fails when snapshot file does not exist', async () => {
-      mockFs.exists = jest.fn(() => false);
+      mockFs.exists = vi.fn(() => false);
 
       const cmd = new SchemaApplyCommand(mockLogger, mockFs);
       await cmd.runDb(mockProvider as DatabaseProvider, [

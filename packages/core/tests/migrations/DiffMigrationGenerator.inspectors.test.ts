@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { DiffMigrationGenerator } from '../../src/migrations/DiffMigrationGenerator';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import type { ColumnMetadata, SqlParameter } from '../../src/types';

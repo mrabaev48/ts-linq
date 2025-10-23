@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { Entity, Column, PrimaryKey } from '../src';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { Queryable } from '../src/query/Queryable';
