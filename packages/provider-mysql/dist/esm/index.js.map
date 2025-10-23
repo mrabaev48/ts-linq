@@ -1,1 +1,0 @@
-{"version":3,"file":"index.js","sourceRoot":"","sources":["../../src/index.ts"],"names":[],"mappings":"AAAA,0FAA0F;AAC1F,cAAc,iBAAiB,CAAC","sourcesContent":["// Provider only - consumers import dialect directly from @ts-linq/dialect-mysql if needed\nexport * from './MySqlProvider';\n"]}

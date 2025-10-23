@@ -114,6 +114,7 @@ function readHealthFromEnv(): ConnectionHealthCheckOptions | undefined {
   if (process.env.DB_HEALTH_INTERVAL_MS)
     health.intervalMs = Number(process.env.DB_HEALTH_INTERVAL_MS);
   if (process.env.DB_HEALTH_TIMEOUT_MS) health.timeoutMs = Number(process.env.DB_HEALTH_TIMEOUT_MS);
+  if (process.env.DB_HEALTH_TEST_QUERY) health.testQuery = process.env.DB_HEALTH_TEST_QUERY;
   if (process.env.DB_HEALTH_MIN_INTERVAL_MS)
     health.minIntervalMs = Number(process.env.DB_HEALTH_MIN_INTERVAL_MS);
   if (process.env.DB_HEALTH_MAX_INTERVAL_MS)

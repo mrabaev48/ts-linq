@@ -1,1 +1,0 @@
-{"version":3,"file":"MssqlGroupEmitter.d.ts","sourceRoot":"","sources":["../../src/emitters/MssqlGroupEmitter.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,YAAY,EAAE,YAAY,EAAE,MAAM,eAAe,CAAC;AAEhE,qBAAa,iBAAiB;IACrB,IAAI,CAAC,UAAU,EAAE,YAAY,EAAE,EAAE,OAAO,EAAE,YAAY,GAAG,MAAM;CAYvE"}
