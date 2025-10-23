@@ -16,6 +16,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InMemorySqlCache = void 0;
 __exportStar(require("./Queryable"), exports);
+__exportStar(require("./TypedQueryable"), exports);
 __exportStar(require("./QueryBuilder"), exports);
 __exportStar(require("./QueryModel"), exports);
 __exportStar(require("./PredicateParser"), exports);

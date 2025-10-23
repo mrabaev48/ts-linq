@@ -14,6 +14,35 @@
 
 ---
 
+## PHASE 0: Critical Type Safety Restoration ✅ (COMPLETED)
+
+> **КРИТИЧЕСКАЯ НАХОДКА**: TypedQueryable был удалён по ошибке при рефакторинге
+
+### 0.1 TypedQueryable Restoration ✅ (COMPLETED)
+
+**Проблема**: При переходе на модульную архитектуру был удалён TypedQueryable - критически важный wrapper для compile-time type safety.
+
+**Что даёт TypedQueryable**:
+- ✅ Compile-time validation для `.select()` - нельзя выбрать несуществующее поле
+- ✅ Compile-time validation для `.include()` - только relationships разрешены
+- ✅ Type-safe relationships через `RelationshipProperties<T>`
+- ✅ Entity Framework API compatibility (`.except()`, `.intersect()`, `.concat()`)
+
+**Решение**: ✅ Восстановлен в `packages/query/src/TypedQueryable.ts`
+
+**Пример использования**:
+```typescript
+import { typed } from '@ts-linq/query';
+
+// Обычный Queryable - no compile-time checks
+const query1 = ctx.users.select(u => ({ invalid: u.nonExistent })); // ✅ Компилируется
+
+// TypedQueryable - строгая типизация
+const query2 = typed(ctx.users).select(u => ({ invalid: u.nonExistent })); // ❌ COMPILE ERROR!
+```
+
+---
+
 ## PHASE 1: Production Readiness & Stability (2-3 недели)
 
 > **Цель**: Подготовить фреймворк к публичному релизу
