@@ -1,4 +1,9 @@
-import type { SqlCache, SqlCacheEntry } from '@ts-linq/core';
+import type { SqlCacheEntry } from '@ts-linq/core';
+export interface SqlCache {
+    get(key: string): SqlCacheEntry | undefined;
+    set(key: string, value: SqlCacheEntry): void;
+    clear(): void;
+}
 export interface MemjsClientLike {
     get(key: string): Promise<{
         value: Buffer | null;

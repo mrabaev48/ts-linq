@@ -5,14 +5,17 @@ class MssqlGroupEmitter {
     emit(parameters, options) {
         if (!options.groupBy)
             return '';
+        const groupBy = Array.isArray(options.groupBy)
+            ? { columns: options.groupBy }
+            : options.groupBy;
         let sql = '';
-        if (options.groupBy.columns && options.groupBy.columns.length > 0) {
-            sql += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
+        if (groupBy.columns && groupBy.columns.length > 0) {
+            sql += ` GROUP BY ${groupBy.columns.join(', ')}`;
         }
-        if (options.groupBy.having) {
-            sql += ` HAVING ${options.groupBy.having.condition}`;
-            if (options.groupBy.having.parameters)
-                parameters.push(...options.groupBy.having.parameters);
+        if (groupBy.having) {
+            sql += ` HAVING ${groupBy.having.condition}`;
+            if (groupBy.having.parameters)
+                parameters.push(...groupBy.having.parameters);
         }
         return sql;
     }

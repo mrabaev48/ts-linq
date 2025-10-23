@@ -1,5 +1,4 @@
-import type { SqlParameter } from '@ts-linq/types';
-import type { SqlCache, SqlCacheEntry } from './SqlCache';
+import type { SqlParameter, SqlCache, SqlCacheEntry } from '@ts-linq/types';
 import { createHash } from 'node:crypto';
 
 /**

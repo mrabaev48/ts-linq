@@ -14,11 +14,14 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.InMemorySqlCache = void 0;
 __exportStar(require("./Queryable"), exports);
 __exportStar(require("./QueryBuilder"), exports);
+__exportStar(require("./QueryModel"), exports);
 __exportStar(require("./PredicateParser"), exports);
 __exportStar(require("./CountCache"), exports);
-__exportStar(require("./SqlCache"), exports);
+var SqlCache_1 = require("./SqlCache");
+Object.defineProperty(exports, "InMemorySqlCache", { enumerable: true, get: function () { return SqlCache_1.InMemorySqlCache; } });
 __exportStar(require("./EnhancedSqlCache"), exports);
 __exportStar(require("./RowMaterializer"), exports);
 __exportStar(require("./IncludePlanner"), exports);

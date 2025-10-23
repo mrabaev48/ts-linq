@@ -33,6 +33,7 @@ export class RowMaterializer<T> {
       !!this.performance?.enableEntityCache &&
       !!this.entityCache &&
       !!metadata &&
+      !!metadata.primaryKeys &&
       metadata.primaryKeys.length > 0
     );
   }
@@ -40,10 +41,11 @@ export class RowMaterializer<T> {
   private tryGetFromCache(
     row: unknown,
     metadata: {
-      primaryKeys: string[];
+      primaryKeys?: string[];
       columns: Array<{ propertyName: string; columnName: string }>;
     }
   ): T | null {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) return null;
     const pkProp = metadata.primaryKeys[0];
     const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
     const idValue = pkCol
@@ -86,12 +88,12 @@ export class RowMaterializer<T> {
   private rememberInCache(
     row: unknown,
     metadata: {
-      primaryKeys: string[];
+      primaryKeys?: string[];
       columns: Array<{ propertyName: string; columnName: string }>;
     },
     entity: T
   ): void {
-    if (!this.entityCache) return;
+    if (!this.entityCache || !metadata.primaryKeys || metadata.primaryKeys.length === 0) return;
     const pkProp = metadata.primaryKeys[0];
     const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
     const idValue = pkCol

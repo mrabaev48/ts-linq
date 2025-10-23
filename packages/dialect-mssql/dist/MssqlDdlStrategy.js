@@ -13,7 +13,7 @@ class MssqlDdlStrategy {
             throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
         }
         const columns = metadata.columns.map((column) => this.generateColumnDefinition(column));
-        if (metadata.primaryKeys.length > 0) {
+        if (metadata.primaryKeys && metadata.primaryKeys.length > 0) {
             const primaryKeyColumns = metadata.primaryKeys.map((pk) => {
                 const col = metadata.columns.find((column) => column.propertyName === pk);
                 return col ? col.columnName : pk;

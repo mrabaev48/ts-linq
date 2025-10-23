@@ -1,4 +1,3 @@
-import { logInternalError } from '@ts-linq/core';
 export class MemcachedSqlCacheAdapter {
     constructor(client, options) {
         this.shadow = new Map();
@@ -20,8 +19,7 @@ export class MemcachedSqlCacheAdapter {
         try {
             return b.toString('utf8');
         }
-        catch (e) {
-            logInternalError('MemcachedSqlCacheAdapter.decode', e);
+        catch {
             return null;
         }
     }
@@ -53,8 +51,8 @@ export class MemcachedSqlCacheAdapter {
             try {
                 await this.client.set(this.k(key), payload, options);
             }
-            catch (e) {
-                logInternalError('MemcachedSqlCacheAdapter.writeThrough', e);
+            catch {
+                // Ignore write-through errors
             }
         })();
     }
@@ -76,8 +74,8 @@ export class MemcachedSqlCacheAdapter {
                     try {
                         await this.client.delete(this.k(k));
                     }
-                    catch (e) {
-                        logInternalError('MemcachedSqlCacheAdapter.invalidate.delete', e);
+                    catch {
+                        // Ignore delete errors
                     }
                 })();
                 this._metrics.invalidations++;
@@ -106,8 +104,8 @@ export class MemcachedSqlCacheAdapter {
                 try {
                     await this.client.delete(this.k(first));
                 }
-                catch (e) {
-                    logInternalError('MemcachedSqlCacheAdapter.ensureCapacity.delete', e);
+                catch {
+                    // Ignore delete errors
                 }
             })();
         }

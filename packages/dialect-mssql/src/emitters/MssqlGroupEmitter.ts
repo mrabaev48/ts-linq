@@ -1,15 +1,18 @@
-import type { QueryOptions, SqlParameter } from '@ts-linq/types';
+import type { QueryOptions, SqlParameter, GroupByClause } from '@ts-linq/types';
 
 export class MssqlGroupEmitter {
   public emit(parameters: SqlParameter[], options: QueryOptions): string {
     if (!options.groupBy) return '';
+    const groupBy: GroupByClause = Array.isArray(options.groupBy) 
+      ? { columns: options.groupBy } 
+      : options.groupBy;
     let sql = '';
-    if (options.groupBy.columns && options.groupBy.columns.length > 0) {
-      sql += ` GROUP BY ${options.groupBy.columns.join(', ')}`;
+    if (groupBy.columns && groupBy.columns.length > 0) {
+      sql += ` GROUP BY ${groupBy.columns.join(', ')}`;
     }
-    if (options.groupBy.having) {
-      sql += ` HAVING ${options.groupBy.having.condition}`;
-      if (options.groupBy.having.parameters) parameters.push(...options.groupBy.having.parameters);
+    if (groupBy.having) {
+      sql += ` HAVING ${groupBy.having.condition}`;
+      if (groupBy.having.parameters) parameters.push(...groupBy.having.parameters);
     }
     return sql;
   }

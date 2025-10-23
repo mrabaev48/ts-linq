@@ -1,4 +1,3 @@
-import { logInternalError } from '@ts-linq/core';
 export class RedisSqlCacheAdapter {
     constructor(client, options) {
         this.shadow = new Map();
@@ -24,8 +23,8 @@ export class RedisSqlCacheAdapter {
                         this.shadow.delete(msg.k);
                     }
                 }
-                catch (e) {
-                    logInternalError('RedisSqlCacheAdapter.subscriber.message', e);
+                catch {
+                    // Ignore message parse errors
                 }
             });
         }
@@ -66,8 +65,8 @@ export class RedisSqlCacheAdapter {
                     await this.client.set(this.k(key), payload);
                 }
             }
-            catch (e) {
-                logInternalError('RedisSqlCacheAdapter.writeThrough', e);
+            catch {
+                // Ignore write-through errors
             }
         })();
     }
@@ -91,8 +90,8 @@ export class RedisSqlCacheAdapter {
                     try {
                         await this.client.del(this.k(k));
                     }
-                    catch (e) {
-                        logInternalError('RedisSqlCacheAdapter.invalidate.delete', e);
+                    catch {
+                        // Ignore delete errors
                     }
                 })();
                 if (this.pubSubChannel && this.publisher) {
@@ -113,8 +112,8 @@ export class RedisSqlCacheAdapter {
                 try {
                     await this.client.del(this.k(first));
                 }
-                catch (e) {
-                    logInternalError('RedisSqlCacheAdapter.ensureCapacity.delete', e);
+                catch {
+                    // Ignore delete errors
                 }
             })();
         }

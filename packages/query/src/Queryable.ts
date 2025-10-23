@@ -12,8 +12,8 @@ import { ok, err } from '@ts-linq/types';
 import type { CteDefinition } from '@ts-linq/types';
 import { QueryBuilder } from './QueryBuilder';
 import { PredicateParser } from './PredicateParser';
-import { SqlVisitor } from '@ts-linq/core';
-import { QueryModel } from '@ts-linq/core';
+import { SqlVisitor } from '@ts-linq/ast';
+import { QueryModel } from './QueryModel';
 import type { EntityLoader } from '@ts-linq/core';
 // LoadingStrategy not used directly here; keep imports minimal
 import { RowMaterializer } from './RowMaterializer';
@@ -24,7 +24,7 @@ import type { CountCache } from './CountCache';
 import { JoinPredicateParser } from './JoinPredicateParser';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { safeCache, safeCacheEvicted, safeCacheSize } from '@ts-linq/metrics-safe';
-import { logInternalError } from '@ts-linq/core';
+import { logInternalError } from './InternalLogger';
 import type {
   FallbackRequest,
   QueryFallback,
@@ -1224,6 +1224,7 @@ export class Queryable<T> {
       !!this._performance?.enableEntityCache &&
       !!this._entityCache &&
       !!metadata &&
+      !!metadata.primaryKeys &&
       metadata.primaryKeys.length > 0
     );
   }
@@ -1231,10 +1232,11 @@ export class Queryable<T> {
   private tryGetFromCache(
     row: unknown,
     metadata: {
-      primaryKeys: string[];
+      primaryKeys?: string[];
       columns: Array<{ propertyName: string; columnName: string }>;
     }
   ): T | null {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) return null;
     const pkProp = metadata.primaryKeys[0];
     const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
     const idValue = pkCol
@@ -1284,11 +1286,12 @@ export class Queryable<T> {
   private rememberInCache(
     row: unknown,
     metadata: {
-      primaryKeys: string[];
+      primaryKeys?: string[];
       columns: Array<{ propertyName: string; columnName: string }>;
     },
     entity: T
   ): void {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) return;
     const pkProp = metadata.primaryKeys[0];
     const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
     const idValue = pkCol
@@ -1428,7 +1431,7 @@ export class Queryable<T> {
 
     // For entities, use primary key comparison if available
     const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (metadata && metadata.primaryKeys.length > 0) {
+    if (metadata && metadata.primaryKeys && metadata.primaryKeys.length > 0) {
       const pk = metadata.primaryKeys[0];
       const itemId = (item as unknown as Record<string, unknown>)[pk];
 

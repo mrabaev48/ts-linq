@@ -5,13 +5,13 @@
 
 // Core types
 export * from './types';
-export * from './types/Logger';
+// Removed duplicate: export * from './types/Logger'; (already exported via './types')
 
 // Decorators
 export * from './decorators/Entity';
-export * from './decorators/Column';
+// Removed duplicate: export * from './decorators/Column'; (ColumnOptions already exported via './types')
 export * from './decorators/PrimaryKey';
-export * from './decorators/Relationships';
+// Removed duplicate: export * from './decorators/Relationships'; (RelationshipOptions already exported via './types')
 export * from './decorators/ValidIf';
 export * from './decorators/CachePolicy';
 

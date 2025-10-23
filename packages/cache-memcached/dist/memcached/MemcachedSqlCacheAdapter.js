@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MemcachedSqlCacheAdapter = void 0;
-const core_1 = require("@ts-linq/core");
 class MemcachedSqlCacheAdapter {
     constructor(client, options) {
         this.shadow = new Map();
@@ -23,8 +22,7 @@ class MemcachedSqlCacheAdapter {
         try {
             return b.toString('utf8');
         }
-        catch (e) {
-            (0, core_1.logInternalError)('MemcachedSqlCacheAdapter.decode', e);
+        catch {
             return null;
         }
     }
@@ -56,8 +54,8 @@ class MemcachedSqlCacheAdapter {
             try {
                 await this.client.set(this.k(key), payload, options);
             }
-            catch (e) {
-                (0, core_1.logInternalError)('MemcachedSqlCacheAdapter.writeThrough', e);
+            catch {
+                // Ignore write-through errors
             }
         })();
     }
@@ -79,8 +77,8 @@ class MemcachedSqlCacheAdapter {
                     try {
                         await this.client.delete(this.k(k));
                     }
-                    catch (e) {
-                        (0, core_1.logInternalError)('MemcachedSqlCacheAdapter.invalidate.delete', e);
+                    catch {
+                        // Ignore delete errors
                     }
                 })();
                 this._metrics.invalidations++;
@@ -109,8 +107,8 @@ class MemcachedSqlCacheAdapter {
                 try {
                     await this.client.delete(this.k(first));
                 }
-                catch (e) {
-                    (0, core_1.logInternalError)('MemcachedSqlCacheAdapter.ensureCapacity.delete', e);
+                catch {
+                    // Ignore delete errors
                 }
             })();
         }

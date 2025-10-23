@@ -1,4 +1,4 @@
-import type { SqlCache, SqlCacheEntry } from './SqlCache';
+import type { SqlCache, SqlCacheEntry } from '@ts-linq/types';
 /**
  * Enhanced SQL cache entry with TTL and usage tracking
  */

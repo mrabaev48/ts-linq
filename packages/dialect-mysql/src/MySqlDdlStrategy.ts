@@ -14,7 +14,7 @@ export class MySqlDdlStrategy {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
     }
     const cols: string[] = metadata.columns.map((c: any) => this.generateColumnDefinition(c));
-    if (metadata.primaryKeys.length) {
+    if (metadata.primaryKeys && metadata.primaryKeys.length) {
       const pkCols = metadata.primaryKeys.map(
         (pk: any) => metadata.columns.find((c: any) => c.propertyName === pk)?.columnName || pk
       );

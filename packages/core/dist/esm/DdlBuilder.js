@@ -15,7 +15,7 @@ export class DdlBuilder {
             result.push(this.strategy.generateCreateIndexSql(metadata.tableName, {
                 name: idx.name,
                 columns: idx.columns,
-                unique: idx.unique
+                unique: idx.unique ?? false
             }));
         }
         return result;

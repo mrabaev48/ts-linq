@@ -44,11 +44,12 @@ export class RedisCountCacheAdapter {
         // LRU touch
         this.shadow.delete(key);
         this.shadow.set(key, { value: entry.value, ts: entry.ts });
-        return { value: entry.value.value, ts: entry.value.ts };
+        return entry.value.value;
     }
-    set(key, entry) {
+    set(key, value) {
         this.ensureCapacity();
-        this.shadow.set(key, { value: { value: entry.value, ts: entry.ts }, ts: Date.now() });
+        const entry = { value, ts: Date.now() };
+        this.shadow.set(key, { value: entry, ts: Date.now() });
         const payload = JSON.stringify(entry);
         void (async () => {
             try {

@@ -1,5 +1,9 @@
 import { safeCacheEvicted } from '@ts-linq/metrics-safe';
 import { logInternalError } from './InternalLogger';
+/**
+ * Simple in-memory FIFO cache for entities keyed by `<EntityName>|<id>`.
+ * Intended as a best-effort level-2 cache to reduce allocations and mapping work.
+ */
 export class EntityCache {
     /**
      * @param maxSize Maximum number of cached items before FIFO eviction.

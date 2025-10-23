@@ -1,4 +1,8 @@
-import type { CountCache, CountCacheEntry } from '@ts-linq/core';
+export interface CountCache {
+    get(key: string): number | undefined;
+    set(key: string, value: number): void;
+    clear(): void;
+}
 export interface RedisClientLike {
     get(key: string): Promise<string | null> | string | null;
     set(key: string, value: string, mode?: string, ttlSeconds?: number): Promise<unknown> | unknown;
@@ -33,8 +37,8 @@ export declare class RedisCountCacheAdapter implements CountCache {
     private _metrics;
     constructor(client: RedisClientLike, options?: RedisCountCacheOptions);
     private k;
-    get(key: string): CountCacheEntry | undefined;
-    set(key: string, entry: CountCacheEntry): void;
+    get(key: string): number | undefined;
+    set(key: string, value: number): void;
     clear(): void;
     invalidateBy(matcher: (key: string) => boolean): number;
     private ensureCapacity;

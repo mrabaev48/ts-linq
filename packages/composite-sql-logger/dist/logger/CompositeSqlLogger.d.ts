@@ -2,6 +2,10 @@ import type { SqlLogger, QueryStartInfo, QueryEndInfo, RetryInfo, TransactionInf
 export declare class CompositeSqlLogger implements SqlLogger {
     private readonly delegates;
     constructor(...delegates: Array<SqlLogger | undefined | null>);
+    debug(message: string, meta?: Record<string, unknown>): void;
+    info(message: string, meta?: Record<string, unknown>): void;
+    warn(message: string, meta?: Record<string, unknown>): void;
+    error(message: string, meta?: Record<string, unknown>): void;
     queryStart(info: QueryStartInfo): void;
     queryEnd(info: QueryEndInfo): void;
     retry(info: RetryInfo): void;

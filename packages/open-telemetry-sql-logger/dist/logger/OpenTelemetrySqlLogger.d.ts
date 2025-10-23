@@ -10,6 +10,10 @@ export declare class OpenTelemetrySqlLogger implements SqlLogger {
     private maskPatterns;
     constructor(serviceName?: string, options?: OpenTelemetryLoggerOptions);
     private mask;
+    debug(_message: string, _meta?: Record<string, unknown>): void;
+    info(_message: string, _meta?: Record<string, unknown>): void;
+    warn(_message: string, _meta?: Record<string, unknown>): void;
+    error(_message: string, _meta?: Record<string, unknown>): void;
     queryStart(info: {
         sql: string;
         params: readonly SqlParameter[];

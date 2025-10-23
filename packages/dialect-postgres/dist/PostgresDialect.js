@@ -88,20 +88,26 @@ class PostgresDialect {
         }
     }
     buildWhereClause(parameters, options) {
-        if (!options.where || options.where.length === 0)
+        if (!options.where)
             return '';
-        const whereClauses = options.where.map((w) => w.condition);
-        for (const w of options.where)
+        const whereArray = Array.isArray(options.where) ? options.where : [options.where];
+        if (whereArray.length === 0)
+            return '';
+        const whereClauses = whereArray.map((w) => w.condition);
+        for (const w of whereArray)
             parameters.push(...w.parameters);
         return ` WHERE ${whereClauses.join(' AND ')}`;
     }
     buildGroupByHaving(parameters, options) {
         if (!options.groupBy)
             return '';
-        let sql = ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-        if (options.groupBy.having) {
-            sql += ` HAVING ${options.groupBy.having.condition}`;
-            parameters.push(...options.groupBy.having.parameters);
+        const groupBy = Array.isArray(options.groupBy)
+            ? { columns: options.groupBy }
+            : options.groupBy;
+        let sql = ` GROUP BY ${groupBy.columns.join(', ')}`;
+        if (groupBy.having) {
+            sql += ` HAVING ${groupBy.having.condition}`;
+            parameters.push(...groupBy.having.parameters);
         }
         return sql;
     }

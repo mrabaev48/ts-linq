@@ -13,7 +13,7 @@ class SQLiteDdlStrategy {
             throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
         }
         const columns = metadata.columns.map((col) => this.generateColumnDefinition(col));
-        if (metadata.primaryKeys.length > 0) {
+        if (metadata.primaryKeys && metadata.primaryKeys.length > 0) {
             const primaryKeyColumns = metadata.primaryKeys.map((pk) => {
                 const column = metadata.columns.find((c) => c.propertyName === pk);
                 return column ? column.columnName : pk;

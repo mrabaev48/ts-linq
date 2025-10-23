@@ -1,5 +1,5 @@
 import { LoadingStrategy } from './LoadingStrategy';
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 /**
  * Service responsible for loading entities with either lazy or eager strategy,
  * including recursive loading of relationships based on provided options.
@@ -76,7 +76,9 @@ export class EntityLoader {
         const depth = options.depth ?? 1;
         if (depth <= 0)
             return;
-        this.validateIncludes(metadata, options.includes);
+        if (metadata.target) {
+            this.validateIncludes(metadata, options.includes);
+        }
         for (const relationship of metadata.relationships) {
             if (!this.shouldInclude(relationship.propertyName, options.includes))
                 continue;
@@ -95,7 +97,9 @@ export class EntityLoader {
         if (depth <= 0)
             return;
         // Validate provided includes against metadata to fail fast on typos/mistakes
-        this.validateIncludes(metadata, options.includes);
+        if (metadata.target) {
+            this.validateIncludes(metadata, options.includes);
+        }
         for (const relationship of metadata.relationships) {
             if (!this.shouldInclude(relationship.propertyName, options.includes))
                 continue;
@@ -185,14 +189,16 @@ export class EntityLoader {
         entity[relationship.propertyName] = relatedEntities;
     }
     getPrimaryKeyColumnName(meta) {
-        const pkProp = meta.primaryKeys[0];
+        const pkProp = meta.primaryKeys?.[0];
+        if (!pkProp)
+            return 'id';
         return meta.columns.find((c) => c.propertyName === pkProp)?.columnName || pkProp;
     }
     async loadRelationshipByType(entity, entityClass, metadata, relationship, options, depth) {
         try {
             const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
             if (relationship.type === 'one-to-many') {
-                await this.loadOneToMany(entity, metadata, relationship, entityClass, targetCtor);
+                await this.loadOneToMany(entity, { primaryKeys: metadata.primaryKeys ?? [] }, relationship, entityClass, targetCtor);
             }
             else {
                 await this.loadToOne(entity, relationship, targetCtor, { ...options, depth: depth - 1 });
@@ -205,10 +211,10 @@ export class EntityLoader {
     async loadRelationshipBatchedByType(entities, entityClass, metadata, relationship, options, depth) {
         const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
         if (relationship.type === 'one-to-many') {
-            await this.loadOneToManyBatched(entities, { primaryKeys: metadata.primaryKeys }, relationship, entityClass, targetCtor, options, depth);
+            await this.loadOneToManyBatched(entities, { primaryKeys: metadata.primaryKeys ?? [] }, relationship, entityClass, targetCtor, options, depth);
             return;
         }
-        await this.loadToOneBatched(entities, { columns: metadata.columns ?? [], primaryKeys: metadata.primaryKeys }, relationship, targetCtor, options, depth);
+        await this.loadToOneBatched(entities, { columns: metadata.columns ?? [], primaryKeys: metadata.primaryKeys ?? [] }, relationship, targetCtor, options, depth);
     }
     async loadToOneBatched(entities, meta, relationship, targetCtor, options, depth) {
         const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
@@ -251,7 +257,9 @@ export class EntityLoader {
         }
         const byId = new Map();
         const targetMeta = MetadataStorage.getEntity(targetCtor);
-        const targetPk = targetMeta?.primaryKeys[0];
+        const targetPk = targetMeta?.primaryKeys?.[0];
+        if (!targetPk)
+            return;
         for (const relatedEntity of related)
             byId.set(relatedEntity[targetPk], relatedEntity);
         for (const entityItem of entities) {

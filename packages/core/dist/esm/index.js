@@ -4,40 +4,22 @@
  */
 // Core types
 export * from './types';
-export * from './types/Logger';
+// Removed duplicate: export * from './types/Logger'; (already exported via './types')
 // Decorators
 export * from './decorators/Entity';
-export * from './decorators/Column';
+// Removed duplicate: export * from './decorators/Column'; (ColumnOptions already exported via './types')
 export * from './decorators/PrimaryKey';
-export * from './decorators/Relationships';
+// Removed duplicate: export * from './decorators/Relationships'; (RelationshipOptions already exported via './types')
 export * from './decorators/ValidIf';
 export * from './decorators/CachePolicy';
-// Metadata
-export * from './metadata/MetadataStorage';
-export * from './metadata/EntityMetadata';
-// Change tracking
-export * from './change-tracking/ChangeTracker';
-// Context and DbSet
-export * from './context/DbContext';
-export * from './context/DbSet';
-// Query building
-export * from './query/Queryable';
-export * from './query/TypedQueryable';
-export * from './query/QueryBuilder';
-export * from './query/SqlCache';
-export * from './query/EnhancedSqlCache';
-export * from './query/SqlDialect';
-export * from './query/CountCache';
-export * from './query/GlobalFilterApplier';
-export * from './query/JoinPredicateParser';
-export * from './query/PredicateParser';
-export * from './query/QueryModel';
-export * from './query/ast/Nodes';
-export * from './query/ast/SqlVisitor';
-export * from './query/spec/Specification';
-export * from './query/SqlFunctions';
-export * from './query/fallbacks/MemoryFallback';
-export * from './query/fallbacks/ReplicaFallback';
+// Metadata - moved to @ts-linq/metadata package
+// Import from: @ts-linq/metadata
+// Change tracking - moved to @ts-linq/orm package  
+// Import from: @ts-linq/orm
+// Context and DbSet - moved to @ts-linq/orm package
+// Import from: @ts-linq/orm
+// Query building - moved to @ts-linq/query package
+// Import from: @ts-linq/query
 // Base provider abstractions
 export * from './DatabaseProvider';
 export * from './DdlStrategy';
@@ -46,20 +28,12 @@ export * from './DdlBuilder';
 export * from './loading/LoadingStrategy';
 export * from './loading/EntityLoader';
 export * from './loading/LazyLoadingProxy';
-// Migrations
-export * from './migrations/Migration';
-export * from './migrations/MigrationRunner';
-export * from './migrations/DiffTypes';
-export * from './migrations/DialectMigrationSql';
-export * from './migrations/MigrationBuilder';
-export * from './migrations/DiffBasedMigration';
-export * from './migrations/MigrationFileBuilder';
-export * from './migrations/DiffMigrationGenerator';
-export * from './migrations/SchemaSnapshot';
+// Migrations - moved to @ts-linq/migrations package
+// Import from: @ts-linq/migrations
 // Utils
 export * from './utils/SqlHelper';
 export * from './utils/RetryPolicies';
 export * from './utils/EntityCache';
-export * from './utils/InternalLogger';
+// export * from './utils/InternalLogger'; // Removed
 export * from './utils/PrometheusEndpoint';
 //# sourceMappingURL=index.js.map

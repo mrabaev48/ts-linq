@@ -16,7 +16,7 @@ export class MssqlDdlStrategy {
     const columns: string[] = metadata.columns.map((column: ColumnMetadata) =>
       this.generateColumnDefinition(column)
     );
-    if (metadata.primaryKeys.length > 0) {
+    if (metadata.primaryKeys && metadata.primaryKeys.length > 0) {
       const primaryKeyColumns = metadata.primaryKeys.map((pk: any) => {
         const col = metadata.columns.find((column: any) => column.propertyName === pk);
         return col ? col.columnName : pk;

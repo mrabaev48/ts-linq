@@ -2,10 +2,13 @@ export class MySqlGroupEmitter {
     emit(parameters, options) {
         if (!options.groupBy)
             return '';
-        let sql = ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-        if (options.groupBy.having) {
-            sql += ` HAVING ${options.groupBy.having.condition}`;
-            parameters.push(...options.groupBy.having.parameters);
+        const groupBy = Array.isArray(options.groupBy)
+            ? { columns: options.groupBy }
+            : options.groupBy;
+        let sql = ` GROUP BY ${groupBy.columns.join(', ')}`;
+        if (groupBy.having) {
+            sql += ` HAVING ${groupBy.having.condition}`;
+            parameters.push(...groupBy.having.parameters);
         }
         return sql;
     }

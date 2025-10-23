@@ -15,7 +15,7 @@ export class SQLiteDdlStrategy {
     }
     const columns = metadata.columns.map((col: any) => this.generateColumnDefinition(col));
 
-    if (metadata.primaryKeys.length > 0) {
+    if (metadata.primaryKeys && metadata.primaryKeys.length > 0) {
       const primaryKeyColumns = metadata.primaryKeys.map((pk: any) => {
         const column = metadata.columns.find((c: any) => c.propertyName === pk);
         return column ? column.columnName : pk;
@@ -23,10 +23,10 @@ export class SQLiteDdlStrategy {
 
       // Special handling for SQLite AUTOINCREMENT
       if (metadata.primaryKeys.length === 1) {
-        const pkColumn = metadata.columns.find((c: any) => c.propertyName === metadata.primaryKeys[0]);
+        const pkColumn = metadata.columns.find((c: any) => c.propertyName === metadata.primaryKeys![0]);
         if (pkColumn && pkColumn.isGenerated && this.mapTypeToSQLite(pkColumn.type) === 'INTEGER') {
           const pkIndex = metadata.columns.findIndex(
-            (c: any) => c.propertyName === metadata.primaryKeys[0]
+            (c: any) => c.propertyName === metadata.primaryKeys![0]
           );
           columns[pkIndex] += ' PRIMARY KEY AUTOINCREMENT';
         } else {

@@ -8,7 +8,8 @@
   "dependencies": {
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metrics-safe": "workspace:*",
-    "@ts-linq/ast": "workspace:*"
+    "@ts-linq/ast": "workspace:*",
+    "@ts-linq/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

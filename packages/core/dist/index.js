@@ -20,12 +20,12 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 // Core types
 __exportStar(require("./types"), exports);
-__exportStar(require("./types/Logger"), exports);
+// Removed duplicate: export * from './types/Logger'; (already exported via './types')
 // Decorators
 __exportStar(require("./decorators/Entity"), exports);
-__exportStar(require("./decorators/Column"), exports);
+// Removed duplicate: export * from './decorators/Column'; (ColumnOptions already exported via './types')
 __exportStar(require("./decorators/PrimaryKey"), exports);
-__exportStar(require("./decorators/Relationships"), exports);
+// Removed duplicate: export * from './decorators/Relationships'; (RelationshipOptions already exported via './types')
 __exportStar(require("./decorators/ValidIf"), exports);
 __exportStar(require("./decorators/CachePolicy"), exports);
 // Metadata - moved to @ts-linq/metadata package

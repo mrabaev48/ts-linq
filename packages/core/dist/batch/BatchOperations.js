@@ -225,7 +225,7 @@ class BatchOperations {
      */
     async executeBulkInsert(entities, metadata) {
         // Try to use provider-specific bulk insert if available
-        if (this.provider.insertMany && entities.length > 1) {
+        if (this.provider.insertMany && entities.length > 1 && metadata.target) {
             // Use database-specific bulk operations if supported
             return await this.provider.insertMany(entities, metadata.target);
         }
@@ -260,17 +260,23 @@ class BatchOperations {
      */
     async executeBulkUpdate(entities, metadata) {
         // Try provider-specific bulk update
-        if (this.provider.updateMany && entities.length > 1) {
+        if (this.provider.updateMany && entities.length > 1 && metadata.target) {
             return await this.provider.updateMany(entities, metadata.target);
+        }
+        if (!metadata.primaryKeys) {
+            throw new Error(`No primary keys defined for entity ${metadata.target?.name ?? 'Unknown'}`);
         }
         // Build batch update statements
         const primaryKeyColumn = metadata.columns.find((col) => metadata.primaryKeys.includes(col.propertyName));
         if (!primaryKeyColumn) {
-            throw new Error(`No primary key found for entity ${metadata.target.name}`);
+            throw new Error(`No primary key found for entity ${metadata.target?.name ?? 'Unknown'}`);
         }
         const updateColumns = metadata.columns.filter((col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated);
         if (updateColumns.length === 0) {
             return entities; // Nothing to update
+        }
+        if (!metadata.target) {
+            throw new Error('No target entity defined in metadata');
         }
         // Use individual updates within the transaction for better compatibility
         for (const entity of entities) {
@@ -282,9 +288,12 @@ class BatchOperations {
      * Execute optimized bulk delete using IN clause.
      */
     async executeBulkDelete(entities, metadata) {
+        if (!metadata.primaryKeys) {
+            throw new Error(`No primary keys defined for entity ${metadata.target?.name ?? 'Unknown'}`);
+        }
         const primaryKeyColumn = metadata.columns.find((col) => metadata.primaryKeys.includes(col.propertyName));
         if (!primaryKeyColumn) {
-            throw new Error(`No primary key found for entity ${metadata.target.name}`);
+            throw new Error(`No primary key found for entity ${metadata.target?.name ?? 'Unknown'}`);
         }
         const primaryKeyValues = entities
             .map((entity) => entity[primaryKeyColumn.propertyName])
@@ -303,6 +312,9 @@ class BatchOperations {
      * Execute bulk upsert using INSERT ... ON CONFLICT or provider-specific methods.
      */
     async executeBulkUpsert(entities, metadata) {
+        if (!metadata.target) {
+            throw new Error('No target entity defined in metadata');
+        }
         // Use provider's upsertMany if available
         if (this.provider.upsertMany && entities.length > 1) {
             return await this.provider.upsertMany(entities, metadata.target);

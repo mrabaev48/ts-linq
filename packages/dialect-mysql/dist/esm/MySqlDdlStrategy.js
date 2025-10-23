@@ -10,7 +10,7 @@ export class MySqlDdlStrategy {
             throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
         }
         const cols = metadata.columns.map((c) => this.generateColumnDefinition(c));
-        if (metadata.primaryKeys.length) {
+        if (metadata.primaryKeys && metadata.primaryKeys.length) {
             const pkCols = metadata.primaryKeys.map((pk) => metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk);
             cols.push(`PRIMARY KEY (${pkCols.join(', ')})`);
         }

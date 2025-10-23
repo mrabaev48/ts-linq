@@ -1,4 +1,13 @@
-import type { CountCache, CountCacheEntry } from '@ts-linq/core';
+interface CountCacheEntry {
+  value: number;
+  ts: number;
+}
+
+export interface CountCache {
+  get(key: string): number | undefined;
+  set(key: string, value: number): void;
+  clear(): void;
+}
 
 export interface MemjsClientLike {
   get(key: string): Promise<{ value: Buffer | null } | null> | { value: Buffer | null } | null;
@@ -51,7 +60,7 @@ export class MemcachedCountCacheAdapter implements CountCache {
     }
   }
 
-  get(key: string): CountCacheEntry | undefined {
+  get(key: string): number | undefined {
     this._metrics.requests++;
     const entry = this.shadow.get(key);
     if (!entry) return undefined;
@@ -64,12 +73,13 @@ export class MemcachedCountCacheAdapter implements CountCache {
     // LRU touch
     this.shadow.delete(key);
     this.shadow.set(key, { value: entry.value, ts: entry.ts });
-    return { value: entry.value.value, ts: entry.value.ts };
+    return entry.value.value;
   }
 
-  set(key: string, entry: CountCacheEntry): void {
+  set(key: string, value: number): void {
     this.ensureCapacity();
-    this.shadow.set(key, { value: { value: entry.value, ts: entry.ts }, ts: Date.now() });
+    const entry: CountCacheEntry = { value, ts: Date.now() };
+    this.shadow.set(key, { value: entry, ts: Date.now() });
     const payload = JSON.stringify(entry);
     const options =
       this.ttlSeconds && this.ttlSeconds > 0 ? { expires: this.ttlSeconds } : undefined;

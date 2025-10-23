@@ -191,14 +191,7 @@ export class DatabaseProvider {
                     throw error;
                 }
                 const should = this.retryPolicy
-                    ? (this.retryPolicy.shouldRetryEx?.({
-                        error,
-                        attempt,
-                        inTransaction: this.inTransaction,
-                        sql,
-                        params,
-                        provider: this.providerName
-                    }) ?? this.retryPolicy.shouldRetry(error, attempt, this.inTransaction))
+                    ? this.retryPolicy.shouldRetry(error, attempt, this.inTransaction)
                     : isTransient;
                 if (!allowRetry || !should || attempt >= maxAttempts) {
                     if (decrementHalfOpenOnExit) {
@@ -208,7 +201,7 @@ export class DatabaseProvider {
                 }
                 const jitter = Math.floor(Math.random() * 25);
                 const defaultBackoff = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
-                const backoff = this.retryPolicy ? this.retryPolicy.getDelayMs(attempt) : defaultBackoff;
+                const backoff = this.retryPolicy?.getDelayMs?.(attempt) ?? defaultBackoff;
                 this.logger?.retry?.({
                     sql,
                     params,

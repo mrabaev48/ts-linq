@@ -28,9 +28,12 @@ class RowMaterializer {
         return (!!this.performance?.enableEntityCache &&
             !!this.entityCache &&
             !!metadata &&
+            !!metadata.primaryKeys &&
             metadata.primaryKeys.length > 0);
     }
     tryGetFromCache(row, metadata) {
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0)
+            return null;
         const pkProp = metadata.primaryKeys[0];
         const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
         const idValue = pkCol
@@ -65,7 +68,7 @@ class RowMaterializer {
         return entity;
     }
     rememberInCache(row, metadata, entity) {
-        if (!this.entityCache)
+        if (!this.entityCache || !metadata.primaryKeys || metadata.primaryKeys.length === 0)
             return;
         const pkProp = metadata.primaryKeys[0];
         const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);

@@ -1,4 +1,4 @@
-import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
+import type { SqlDialect, QueryOptions, SqlParameter, WhereClause, GroupByClause } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { PgWhereEmitter } from './emitters/PgWhereEmitter';
 import { PgJoinEmitter } from './emitters/PgJoinEmitter';
@@ -89,18 +89,23 @@ export class PostgresDialect implements SqlDialect {
   }
 
   private buildWhereClause(parameters: SqlParameter[], options: QueryOptions): string {
-    if (!options.where || options.where.length === 0) return '';
-    const whereClauses = options.where.map((w: any) => w.condition);
-    for (const w of options.where) parameters.push(...w.parameters);
+    if (!options.where) return '';
+    const whereArray = Array.isArray(options.where) ? options.where : [options.where];
+    if (whereArray.length === 0) return '';
+    const whereClauses = whereArray.map((w: WhereClause) => w.condition);
+    for (const w of whereArray) parameters.push(...w.parameters);
     return ` WHERE ${whereClauses.join(' AND ')}`;
   }
 
   private buildGroupByHaving(parameters: SqlParameter[], options: QueryOptions): string {
     if (!options.groupBy) return '';
-    let sql = ` GROUP BY ${options.groupBy.columns.join(', ')}`;
-    if (options.groupBy.having) {
-      sql += ` HAVING ${options.groupBy.having.condition}`;
-      parameters.push(...options.groupBy.having.parameters);
+    const groupBy: GroupByClause = Array.isArray(options.groupBy) 
+      ? { columns: options.groupBy } 
+      : options.groupBy;
+    let sql = ` GROUP BY ${groupBy.columns.join(', ')}`;
+    if (groupBy.having) {
+      sql += ` HAVING ${groupBy.having.condition}`;
+      parameters.push(...groupBy.having.parameters);
     }
     return sql;
   }

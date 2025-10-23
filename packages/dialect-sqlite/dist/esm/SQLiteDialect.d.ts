@@ -1,4 +1,4 @@
-import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
+import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
 /**
  * SQLite implementation of SqlDialect.
  * Handles DISTINCT, WHERE (prebuilt), GROUP BY/HAVING, ORDER BY and LIMIT/OFFSET.
