@@ -1,8 +1,10 @@
 import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
 
-// Symbol for storing pending column metadata in decorator context
+// Symbols for storing pending metadata in decorator context
 const PENDING_COLUMNS = Symbol('pendingColumns');
 const PENDING_PRIMARY_KEYS = Symbol('pendingPrimaryKeys');
+const PENDING_INDEXES = Symbol('pendingIndexes');
+const PENDING_RELATIONSHIPS = Symbol('pendingRelationships');
 
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
@@ -69,4 +71,4 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
 }
 
 // Export symbols so other decorators can use them
-export { PENDING_COLUMNS, PENDING_PRIMARY_KEYS };
+export { PENDING_COLUMNS, PENDING_PRIMARY_KEYS, PENDING_INDEXES, PENDING_RELATIONSHIPS };

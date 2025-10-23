@@ -1,5 +1,5 @@
-import { MetadataStorage } from '@ts-linq/metadata';
 import type { RelationshipMetadata } from '@ts-linq/types';
+import { PENDING_RELATIONSHIPS } from './Column';
 
 /**
  * Options for configuring relationships between entities.
@@ -24,7 +24,7 @@ export interface RelationshipOptions {
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
-  addInitializer?: (fn: (this: unknown) => void) => void;
+  metadata?: Record<symbol, unknown>;
 } {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
@@ -40,15 +40,22 @@ function defineRelationship(
   if (isStage3FieldContext(propOrContext)) {
     const ctx = propOrContext;
     const name = ctx.name.toString();
-    ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
-      if (!ctor) return;
-      // Resolve targetEntity immediately to concrete ctor to avoid anonymous thunks in tests
+    
+    // Store relationship metadata in shared context.metadata
+    if (ctx.metadata) {
+      if (!ctx.metadata[PENDING_RELATIONSHIPS]) {
+        ctx.metadata[PENDING_RELATIONSHIPS] = new Map<string, RelationshipMetadata>();
+      }
+      
+      const relationships = ctx.metadata[PENDING_RELATIONSHIPS] as Map<string, RelationshipMetadata>;
+      
+      // Resolve targetEntity to concrete constructor
       const te = targetEntity as unknown as Function | (() => Function);
       const resolved =
         typeof te === 'function' && (te as { prototype?: unknown }).prototype
           ? (te as Function)
           : (te as () => Function)();
+      
       const relationship: RelationshipMetadata = {
         propertyName: name,
         type: kind,
@@ -58,8 +65,9 @@ function defineRelationship(
         cascade: options?.cascade || false,
         through: options?.through
       };
-      MetadataStorage.addRelationship(ctor, relationship);
-    });
+      
+      relationships.set(name, relationship);
+    }
     return;
   }
   throw new Error('Relationship decorators require TS5 Stage-3 decorators');
