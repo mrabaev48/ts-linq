@@ -214,25 +214,27 @@ export class MetadataStorage {
     // Builder path
     const builder = this.getOrCreateBuilder(target);
     const snapshot = builder.build();
-    // TEMPORARY: Allow duplicate indexes due to Stage-3 decorator timing
-    // addInitializer runs on every instance creation, so we skip if already added
+    
+    // Validate duplicate index name
     if ((snapshot.indexes || []).some((i) => i.name === index.name)) {
-      return; // Silently skip duplicate
+      throw new ValidationError(
+        `Duplicate index name '${index.name}' on entity '${snapshot.tableName}'`
+      );
     }
-    // TEMPORARY: Skip column validation due to Stage-3 decorator timing
-    // @Index runs before @Column initializers, so columns array is empty
-    // TODO: Refactor decorators to use Symbol.metadata for class-time registration
-    // const existingCols = new Set(
-    //   (snapshot.columns || []).map((c) => [c.columnName, c.propertyName]).flat()
-    // );
-    // const missing = index.columns.filter((c) => !existingCols.has(c));
-    // if (missing.length > 0) {
-    //   throw new ValidationError(
-    //     `Index '${index.name}' on entity '${snapshot.tableName}' references unknown columns: ${missing.join(
-    //       ', '
-    //     )}`
-    //   );
-    // }
+    
+    // Validate columns exist (now works correctly with context.metadata approach)
+    const existingCols = new Set(
+      (snapshot.columns || []).map((c) => [c.columnName, c.propertyName]).flat()
+    );
+    const missing = index.columns.filter((c) => !existingCols.has(c));
+    if (missing.length > 0) {
+      throw new ValidationError(
+        `Index '${index.name}' on entity '${snapshot.tableName}' references unknown columns: ${missing.join(
+          ', '
+        )}`
+      );
+    }
+    
     builder.addIndex(index);
   }
 
