@@ -204,6 +204,7 @@ export interface ConnectionHealthCheckOptions {
   enabled?: boolean;
   intervalMs?: number;
   timeoutMs?: number;
+  testQuery?: string;
   minIntervalMs?: number;
   maxIntervalMs?: number;
   degradeAfterFailures?: number;
