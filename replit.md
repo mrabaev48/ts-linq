@@ -5,7 +5,7 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core.
 ## Recent Changes - October 23, 2025
 
 ### ✅ Test Infrastructure: Jest with Legacy Decorators
-**Status**: Successfully reverted from Vitest back to Jest
+**Status**: Successfully configured and stable
 
 #### Decision
 After discovering fundamental incompatibility between Vitest and legacy decorators (Vitest's runtime provides invalid `target` values to property decorators even with TypeScript compiler), reverted to Jest which has battle-tested support for legacy decorators.
@@ -14,17 +14,24 @@ After discovering fundamental incompatibility between Vitest and legacy decorato
 - ✅ Reverted 150+ test files: vitest → jest (vi.fn → jest.fn, vi.spyOn → jest.spyOn)
 - ✅ Created jest.config.js with proper legacy decorator support
 - ✅ Installed Jest dependencies: jest, @jest/globals, ts-jest, @types/jest
+- ✅ Installed reflect-metadata as runtime dependency
+- ✅ Added all 35 packages to moduleNameMapper (migrations, concurrency, pagination, plugins, etc.)
+- ✅ Added lib: ["ES2021", "DOM"] for FinalizationRegistry support
 - ✅ Removed Vitest dependencies and vitest.config.ts
 - ✅ Updated package.json test scripts
 - ✅ **Legacy decorators work perfectly with Jest** - no target.name or MetadataStorage errors
 
 ### Test Status  
-- **Jest running successfully** with legacy experimental decorators
+- **Jest running successfully** with legacy experimental decorators ✅
 - **Core decorator tests: 3/3 passing** ✅
   - Entity registration with field metadata ✅
   - Works without creating instances ✅
   - Primary key registration ✅
-- Remaining test failures: Import path issues in some test files (use '../../src/...' instead of '@ts-linq/...' monorepo aliases)
+- **CLI tests: 17/17 suites passing, 55/55 tests** ✅
+  - All migration tests working ✅
+  - FinalizationRegistry support working ✅
+  - Command registry, generators, schema tools all passing ✅
+- Remaining test failures: TypeScript compilation errors in some legacy test files (implicit any, missing properties)
 - **Core decorator architecture stable and fully working** 🎯
 
 ---
