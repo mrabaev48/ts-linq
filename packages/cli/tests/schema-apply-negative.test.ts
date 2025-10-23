@@ -32,7 +32,7 @@ class ProviderStub implements Partial<DatabaseProvider> {
   public async disconnect(): Promise<void> {}
 }
 
-describe.skip('schema:apply negative', () => {
+describe('schema:apply negative', () => {
   it('sets exitCode=2 when snapshot file is missing', async () => {
     const file = '/tmp/not-exists.json';
     const fs = new MemFs();
