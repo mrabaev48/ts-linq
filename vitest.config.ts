@@ -22,6 +22,7 @@ export default defineConfig({
     testTimeout: 10000,
     hookTimeout: 10000,
   },
+  esbuild: false,
   plugins: [
     swc.vite({
       jsc: {
@@ -31,7 +32,9 @@ export default defineConfig({
           dynamicImport: true,
         },
         transform: {
-          decoratorVersion: '2022-03',
+          // NO decoratorVersion = use default Stage-3 support!
+          legacyDecorator: false,
+          decoratorMetadata: false,
         },
         target: 'es2022',
         keepClassNames: true,
