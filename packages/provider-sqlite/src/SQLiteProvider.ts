@@ -110,7 +110,10 @@ export class SQLiteProvider extends DatabaseProvider {
 
     // Create indexes
     for (const index of entityMetadata.indexes) {
-      const indexSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, index);
+      const indexSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, {
+        ...index,
+        unique: index.unique ?? false
+      });
       await this.executeNonQuery(indexSql);
     }
   }
@@ -125,6 +128,9 @@ export class SQLiteProvider extends DatabaseProvider {
     const { sql, params } = this.generateInsertSql(entity as Record<string, unknown>, metadata);
     await this.executeNonQuery(sql, params);
     // Handle generated PK via last_insert_rowid when applicable
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      return entity;
+    }
     const primaryKey = metadata.primaryKeys[0];
     if (primaryKey) {
       const primaryKeyColumn = metadata.columns.find((c) => c.propertyName === primaryKey);
@@ -159,7 +165,7 @@ export class SQLiteProvider extends DatabaseProvider {
     const affectedRows = await this.executeNonQuery(sql, params);
 
     if (affectedRows === 0) {
-      if (versionCol) throw new OptimisticConcurrencyError();
+      if (versionCol) throw new OptimisticConcurrencyError('Version mismatch detected during update');
       throw new Error(`No rows were updated. Entity may not exist or no changes detected.`);
     }
 
@@ -198,10 +204,10 @@ export class SQLiteProvider extends DatabaseProvider {
       throw new Error(`Entity metadata not found for ${entityClass.name}`);
     }
 
-    const primaryKey = metadata.primaryKeys[0];
-    if (!primaryKey) {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for ${entityClass.name}`);
     }
+    const primaryKey = metadata.primaryKeys[0];
 
     const primaryKeyColumn = metadata.columns.find((c) => c.propertyName === primaryKey);
     if (!primaryKeyColumn) {
@@ -420,13 +426,17 @@ export class SQLiteProvider extends DatabaseProvider {
     metadata: EntityMetadata,
     versionCol?: ColumnMetadata
   ): { sql: string; params: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+    }
+    const primaryKeys = metadata.primaryKeys;
     const updatableColumns = metadata.columns.filter(
       (col) =>
-        !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated && !col.isComputed
+        !primaryKeys.includes(col.propertyName) && !col.isGenerated && !col.isComputed
     );
 
     if (updatableColumns.length === 0) {
-      throw new Error(`No updatable columns found for entity ${metadata.target.name}`);
+      throw new Error(`No updatable columns found for entity ${metadata.tableName}`);
     }
 
     const setClauses: string[] = updatableColumns.map((col) => `${col.columnName} = ?`);
@@ -444,7 +454,7 @@ export class SQLiteProvider extends DatabaseProvider {
       const pkColumn = metadata.columns.find((col) => col.propertyName === pkProperty);
       if (!pkColumn) {
         throw new Error(
-          `Primary key column ${pkProperty} not found for entity ${metadata.target.name}`
+          `Primary key column ${pkProperty} not found for entity ${metadata.tableName}`
         );
       }
       primaryKeyConditions.push(`${pkColumn.columnName} = ?`);
@@ -457,7 +467,7 @@ export class SQLiteProvider extends DatabaseProvider {
     }
 
     if (primaryKeyConditions.length === 0) {
-      throw new Error(`No primary key values found for entity ${metadata.target.name}`);
+      throw new Error(`No primary key values found for entity ${metadata.tableName}`);
     }
 
     const whereClause = primaryKeyConditions.join(' AND ');
@@ -470,6 +480,9 @@ export class SQLiteProvider extends DatabaseProvider {
     entity: Record<string, unknown>,
     metadata: EntityMetadata
   ): { sql: string; params: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+    }
     const primaryKeyConditions: string[] = [];
     const params: SqlParameter[] = [];
 
@@ -477,7 +490,7 @@ export class SQLiteProvider extends DatabaseProvider {
       const pkColumn = metadata.columns.find((col) => col.propertyName === pkProperty);
       if (!pkColumn) {
         throw new Error(
-          `Primary key column ${pkProperty} not found for entity ${metadata.target.name}`
+          `Primary key column ${pkProperty} not found for entity ${metadata.tableName}`
         );
       }
       primaryKeyConditions.push(`${pkColumn.columnName} = ?`);
@@ -485,7 +498,7 @@ export class SQLiteProvider extends DatabaseProvider {
     }
 
     if (primaryKeyConditions.length === 0) {
-      throw new Error(`No primary key values found for entity ${metadata.target.name}`);
+      throw new Error(`No primary key values found for entity ${metadata.tableName}`);
     }
 
     const whereClause = primaryKeyConditions.join(' AND ');
@@ -615,5 +628,5 @@ function mapSqliteError(err: unknown): Error {
   if (code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || code === 'SQLITE_CONSTRAINT_TRIGGER') {
     return new ForeignKeyConstraintError(message, code);
   }
-  return new DatabaseError(message, code);
+  return new DatabaseError(message ?? 'Unknown error');
 }

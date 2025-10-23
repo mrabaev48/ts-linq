@@ -32,7 +32,7 @@ export class MySqlProvider extends DatabaseProvider {
         this.startHealthChecks(async () => {
             const started = Date.now();
             const pool = this.pool;
-            const sql = this.healthCheck?.testQuery || 'SELECT 1';
+            const sql = 'SELECT 1';
             await pool.query(sql);
             return Date.now() - started;
         });
@@ -49,7 +49,10 @@ export class MySqlProvider extends DatabaseProvider {
         const sql = this.ddl.generateCreateTableSql(entity);
         await this.executeNonQuery(sql);
         for (const idx of entity.indexes) {
-            await this.executeNonQuery(this.ddl.generateCreateIndexSql(entity.tableName, idx));
+            await this.executeNonQuery(this.ddl.generateCreateIndexSql(entity.tableName, {
+                ...idx,
+                unique: idx.unique ?? false
+            }));
         }
     }
     async insert(entity, entityClass) {
@@ -69,7 +72,7 @@ export class MySqlProvider extends DatabaseProvider {
         const affectedRows = await this.executeNonQuery(sql, params);
         if (affectedRows === 0) {
             if (versionCol)
-                throw new OptimisticConcurrencyError();
+                throw new OptimisticConcurrencyError('Version mismatch detected during update');
             throw new Error('No rows were updated.');
         }
         if (versionCol) {
@@ -85,11 +88,15 @@ export class MySqlProvider extends DatabaseProvider {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+            return this.insert(entity, entityClass);
+        }
+        const primaryKeys = metadata.primaryKeys;
         const insertable = metadata.columns.filter((c) => !c.isGenerated || entity[c.propertyName] !== undefined);
         const names = insertable.map((c) => c.columnName);
         const placeholders = insertable.map(() => '?');
         const params = insertable.map((c) => entity[c.propertyName]);
-        const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+        const updatable = metadata.columns.filter((c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated);
         const updateSet = updatable.map((c) => `${c.columnName} = VALUES(${c.columnName})`).join(', ');
         const sql = `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')}) ON DUPLICATE KEY UPDATE ${updateSet}`;
         await this.executeNonQuery(sql, params);
@@ -108,6 +115,9 @@ export class MySqlProvider extends DatabaseProvider {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for ${entityClass.name}`);
+        }
         const pk = metadata.primaryKeys[0];
         const pkCol = metadata.columns.find((c) => c.propertyName === pk);
         let sql = `SELECT * FROM ${metadata.tableName} WHERE ${pkCol.columnName} = ?`;
@@ -274,14 +284,18 @@ export class MySqlProvider extends DatabaseProvider {
         };
     }
     generateUpdateSql(entity, metadata, versionCol) {
-        const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+        }
+        const primaryKeys = metadata.primaryKeys;
+        const updatable = metadata.columns.filter((c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
         const setClauses = updatable.map((c) => `${c.columnName} = ?`);
         const setParams = updatable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
         if (versionCol)
             setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
         const whereClauses = [];
         const whereParams = [];
-        for (const pk of metadata.primaryKeys) {
+        for (const pk of primaryKeys) {
             const col = metadata.columns.find((c) => c.propertyName === pk);
             whereClauses.push(`${col.columnName} = ?`);
             whereParams.push(this.coerceToSqlParameter(entity[pk]));
@@ -294,6 +308,9 @@ export class MySqlProvider extends DatabaseProvider {
         return { sql, params: [...setParams, ...whereParams] };
     }
     generateDeleteSql(entity, metadata) {
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+        }
         const whereClauses = [];
         const params = [];
         for (const pk of metadata.primaryKeys) {
@@ -351,7 +368,7 @@ function mapMySqlError(err) {
     const message = anyErr?.message || String(err);
     if (code === 'ER_DUP_ENTRY')
         return new UniqueConstraintError(message, code);
-    return new DatabaseError(message, code);
+    return new DatabaseError(message ?? 'Unknown error');
 }
 function safeRequireMysql2() {
     try {

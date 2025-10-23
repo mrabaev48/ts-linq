@@ -1,4 +1,4 @@
-import { DatabaseProvider, OptimisticConcurrencyError, UniqueConstraintError, DatabaseError, ForeignKeyConstraintError, MetadataStorage, QueryBuilder } from '@ts-linq/core';
+import { DatabaseProvider, OptimisticConcurrencyError, UniqueConstraintError, DatabaseError, ForeignKeyConstraintError, MetadataStorage } from '@ts-linq/core';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { PostgresDdlStrategy } from '@ts-linq/dialect-postgres';
 // Lazy require to avoid hard dependency if not installed
@@ -48,7 +48,6 @@ export class PostgresProvider extends DatabaseProvider {
     constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
         super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
         this.ddl = new PostgresDdlStrategy();
-        this.qb = new QueryBuilder(this.getDialect());
         this.providerName = 'postgresql';
     }
     coerceToSqlParameter(value) {
@@ -90,7 +89,7 @@ export class PostgresProvider extends DatabaseProvider {
         })();
         this.startHealthChecks(async () => {
             const started = Date.now();
-            const sql = this.healthCheck?.testQuery || 'SELECT 1';
+            const sql = 'SELECT 1';
             await this.pool.query(sql);
             return Date.now() - started;
         });
@@ -111,7 +110,11 @@ export class PostgresProvider extends DatabaseProvider {
         await this.executeNonQuery(sql);
         // Create indexes
         for (const index of entityMetadata.indexes) {
-            const idxSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, index);
+            const idxSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, {
+                columns: index.columns,
+                unique: index.unique ?? false,
+                name: index.name
+            });
             await this.executeNonQuery(idxSql);
         }
     }
@@ -137,8 +140,12 @@ export class PostgresProvider extends DatabaseProvider {
         const meta = MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
+        if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for ${entityClass.name}`);
+        }
+        const primaryKeys = meta.primaryKeys;
         const versionCol = meta.columns.find((c) => c.isVersion);
-        const setCols = meta.columns.filter((c) => !meta.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
+        const setCols = meta.columns.filter((c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
         if (setCols.length === 0)
             return entity;
         const sets = setCols.map((c, i) => `"${c.columnName}" = $${i + 1}`);
@@ -146,17 +153,17 @@ export class PostgresProvider extends DatabaseProvider {
         if (versionCol) {
             sets.push(`"${versionCol.columnName}" = "${versionCol.columnName}" + 1`);
         }
-        const where = meta.primaryKeys.map((pk, i) => `"${meta.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${setCols.length + i + 1}`);
-        const whereVals = meta.primaryKeys.map((pk) => this.coerceToSqlParameter(entity[pk]));
+        const where = primaryKeys.map((pk, i) => `"${meta.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${setCols.length + i + 1}`);
+        const whereVals = primaryKeys.map((pk) => this.coerceToSqlParameter(entity[pk]));
         let sql = `UPDATE "${meta.tableName}" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
         if (versionCol) {
-            sql += ` AND "${versionCol.columnName}" = $${setCols.length + meta.primaryKeys.length + 1}`;
+            sql += ` AND "${versionCol.columnName}" = $${setCols.length + primaryKeys.length + 1}`;
             whereVals.push(this.coerceToSqlParameter(entity[versionCol.propertyName]));
         }
         const affected = await this.executeNonQuery(sql, [...setVals, ...whereVals]);
         if (affected === 0) {
             if (versionCol)
-                throw new OptimisticConcurrencyError();
+                throw new OptimisticConcurrencyError('Version mismatch detected during update');
             throw new Error('No rows were updated. Not found or no changes.');
         }
         if (versionCol) {
@@ -175,14 +182,15 @@ export class PostgresProvider extends DatabaseProvider {
         if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
             return this.insert(entity, entityClass);
         }
+        const primaryKeys = meta.primaryKeys;
         const insertCols = meta.columns.filter((c) => !c.isGenerated && !c.isComputed);
         const names = insertCols.map((c) => `"${c.columnName}"`);
         const placeholders = insertCols.map((_, i) => `$${i + 1}`);
         const values = insertCols.map((c) => this.coerceToSqlParameter(convertValueForPg(entity[c.propertyName], c.type)));
-        const conflictTargets = meta.primaryKeys
+        const conflictTargets = primaryKeys
             .map((pk) => `"${meta.columns.find((c) => c.propertyName === pk)?.columnName || pk}"`)
             .join(', ');
-        const setCols = meta.columns.filter((c) => !meta.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
+        const setCols = meta.columns.filter((c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
         const setClause = setCols
             .map((c) => `"${c.columnName}" = EXCLUDED."${c.columnName}"`)
             .join(', ');
@@ -197,6 +205,9 @@ export class PostgresProvider extends DatabaseProvider {
         const meta = MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
+        if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for ${entityClass.name}`);
+        }
         const where = meta.primaryKeys.map((pk, i) => `"${meta.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${i + 1}`);
         const vals = meta.primaryKeys.map((pk) => this.coerceToSqlParameter(entity[pk]));
         const sql = `DELETE FROM "${meta.tableName}" WHERE ${where.join(' AND ')}`;
@@ -211,6 +222,9 @@ export class PostgresProvider extends DatabaseProvider {
         const meta = MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
+        if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for ${entityClass.name}`);
+        }
         const pk = meta.primaryKeys[0];
         const col = meta.columns.find((c) => c.propertyName === pk)?.columnName || pk;
         let sql = `SELECT * FROM "${meta.tableName}" WHERE "${col}" = $1`;
@@ -420,7 +434,7 @@ function mapPgError(err) {
         return new UniqueConstraintError(message, code);
     if (code === '23503')
         return new ForeignKeyConstraintError(message, code);
-    return new DatabaseError(message, code);
+    return new DatabaseError(message ?? 'Unknown error');
 }
 // (removed legacy free function mapRowToEntity; instance method is used)
 //# sourceMappingURL=PostgresProvider.js.map

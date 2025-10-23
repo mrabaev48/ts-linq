@@ -5,10 +5,10 @@ import type {
   CircuitBreakerOptions,
   FallbackPolicy
 } from '@ts-linq/core';
-import { SQLiteProvider } from '@ts-linq/sqlite';
-import { PostgresProvider } from '@ts-linq/postgres';
-import { MySqlProvider } from '@ts-linq/mysql';
-import { MssqlProvider } from '@ts-linq/mssql';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+import { PostgresProvider } from '@ts-linq/provider-postgres';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
+import { MssqlProvider } from '@ts-linq/provider-mssql';
 
 export function createProviderFromEnv(): DatabaseProvider {
   const kind = (process.env.DB_PROVIDER || 'sqlite').toLowerCase();
@@ -115,7 +115,6 @@ function readHealthFromEnv(): ConnectionHealthCheckOptions | undefined {
   if (process.env.DB_HEALTH_INTERVAL_MS)
     health.intervalMs = Number(process.env.DB_HEALTH_INTERVAL_MS);
   if (process.env.DB_HEALTH_TIMEOUT_MS) health.timeoutMs = Number(process.env.DB_HEALTH_TIMEOUT_MS);
-  if (process.env.DB_HEALTH_TEST_QUERY) health.testQuery = process.env.DB_HEALTH_TEST_QUERY;
   if (process.env.DB_HEALTH_MIN_INTERVAL_MS)
     health.minIntervalMs = Number(process.env.DB_HEALTH_MIN_INTERVAL_MS);
   if (process.env.DB_HEALTH_MAX_INTERVAL_MS)
@@ -147,13 +146,10 @@ function readCircuitFromEnv(): CircuitBreakerOptions | undefined {
  */
 export function readFallbackPolicyFromEnv(): FallbackPolicy | undefined {
   const policy: FallbackPolicy = {} as FallbackPolicy;
-  if (process.env.DB_FALLBACK_ENABLED) policy.enabled = process.env.DB_FALLBACK_ENABLED === 'true';
   if (process.env.DB_FALLBACK_ALLOW_OPS)
     policy.allowOps = process.env.DB_FALLBACK_ALLOW_OPS.split(',').map((s) =>
       s.trim()
     ) as unknown as FallbackPolicy['allowOps'];
-  if (process.env.DB_FALLBACK_SOURCES)
-    policy.sources = process.env.DB_FALLBACK_SOURCES.split(',').map((s) => s.trim());
   // Throttle
   const throttle: NonNullable<FallbackPolicy['throttle']> = {};
   if (process.env.DB_FALLBACK_THROTTLE_MIN_MS)
@@ -169,12 +165,10 @@ export function readFallbackPolicyFromEnv(): FallbackPolicy | undefined {
     hedged.enabled = process.env.DB_FALLBACK_HEDGED_ENABLED === 'true';
   if (process.env.DB_FALLBACK_HEDGED_DELAY_MS)
     hedged.delayMs = Number(process.env.DB_FALLBACK_HEDGED_DELAY_MS);
-  if (process.env.DB_FALLBACK_HEDGED_SOURCES)
-    hedged.sources = process.env.DB_FALLBACK_HEDGED_SOURCES.split(',').map((s) => s.trim());
   if (!isEmpty(hedged)) policy.hedged = hedged;
   // Includes
   if (process.env.DB_FALLBACK_INCLUDES)
-    policy.allowIncludesOnFallback = process.env.DB_FALLBACK_INCLUDES as 'none' | 'attempt';
+    policy.allowIncludesOnFallback = process.env.DB_FALLBACK_INCLUDES as 'attempt' | 'skip' | 'error';
   return isEmpty(policy) ? undefined : policy;
 }
 

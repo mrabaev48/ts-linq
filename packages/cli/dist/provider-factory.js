@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createProviderFromEnv = createProviderFromEnv;
 exports.readFallbackPolicyFromEnv = readFallbackPolicyFromEnv;
-const sqlite_1 = require("@ts-linq/sqlite");
-const postgres_1 = require("@ts-linq/postgres");
-const mysql_1 = require("@ts-linq/mysql");
-const mssql_1 = require("@ts-linq/mssql");
+const provider_sqlite_1 = require("@ts-linq/provider-sqlite");
+const provider_postgres_1 = require("@ts-linq/provider-postgres");
+const provider_mysql_1 = require("@ts-linq/provider-mysql");
+const provider_mssql_1 = require("@ts-linq/provider-mssql");
 function createProviderFromEnv() {
     const kind = (process.env.DB_PROVIDER || 'sqlite').toLowerCase();
     if (isPg(kind))
@@ -28,7 +28,7 @@ function createPg() {
         throw new Error('POSTGRES_URL/DATABASE_URL is required for DB_PROVIDER=postgresql');
     const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
     // Provider constructors accept pool/health as the last arguments
-    const provider = new postgres_1.PostgresProvider(url, undefined, undefined, undefined, undefined, pool, health);
+    const provider = new provider_postgres_1.PostgresProvider(url, undefined, undefined, undefined, undefined, pool, health);
     if (circuit)
         provider.configureCircuit(circuit);
     return provider;
@@ -38,7 +38,7 @@ function createMy() {
     if (!url)
         throw new Error('MYSQL_URL/DATABASE_URL is required for DB_PROVIDER=mysql');
     const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-    const provider = new mysql_1.MySqlProvider(url, undefined, undefined, undefined, undefined, pool, health);
+    const provider = new provider_mysql_1.MySqlProvider(url, undefined, undefined, undefined, undefined, pool, health);
     if (circuit)
         provider.configureCircuit(circuit);
     return provider;
@@ -48,14 +48,14 @@ function createMs() {
     if (!url)
         throw new Error('MSSQL_URL/DATABASE_URL is required for DB_PROVIDER=mssql');
     const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-    const provider = new mssql_1.MssqlProvider(url, undefined, undefined, undefined, undefined, pool, health);
+    const provider = new provider_mssql_1.MssqlProvider(url, undefined, undefined, undefined, undefined, pool, health);
     if (circuit)
         provider.configureCircuit(circuit);
     return provider;
 }
 function createSqlite() {
     const conn = process.env.SQLITE_URL || ':memory:';
-    const provider = new sqlite_1.SQLiteProvider(conn);
+    const provider = new provider_sqlite_1.SQLiteProvider(conn);
     const { circuit } = readPoolHealthCircuitFromEnv();
     if (circuit)
         provider.configureCircuit(circuit);
@@ -89,8 +89,6 @@ function readHealthFromEnv() {
         health.intervalMs = Number(process.env.DB_HEALTH_INTERVAL_MS);
     if (process.env.DB_HEALTH_TIMEOUT_MS)
         health.timeoutMs = Number(process.env.DB_HEALTH_TIMEOUT_MS);
-    if (process.env.DB_HEALTH_TEST_QUERY)
-        health.testQuery = process.env.DB_HEALTH_TEST_QUERY;
     if (process.env.DB_HEALTH_MIN_INTERVAL_MS)
         health.minIntervalMs = Number(process.env.DB_HEALTH_MIN_INTERVAL_MS);
     if (process.env.DB_HEALTH_MAX_INTERVAL_MS)
@@ -123,12 +121,8 @@ function readCircuitFromEnv() {
  */
 function readFallbackPolicyFromEnv() {
     const policy = {};
-    if (process.env.DB_FALLBACK_ENABLED)
-        policy.enabled = process.env.DB_FALLBACK_ENABLED === 'true';
     if (process.env.DB_FALLBACK_ALLOW_OPS)
         policy.allowOps = process.env.DB_FALLBACK_ALLOW_OPS.split(',').map((s) => s.trim());
-    if (process.env.DB_FALLBACK_SOURCES)
-        policy.sources = process.env.DB_FALLBACK_SOURCES.split(',').map((s) => s.trim());
     // Throttle
     const throttle = {};
     if (process.env.DB_FALLBACK_THROTTLE_MIN_MS)
@@ -145,8 +139,6 @@ function readFallbackPolicyFromEnv() {
         hedged.enabled = process.env.DB_FALLBACK_HEDGED_ENABLED === 'true';
     if (process.env.DB_FALLBACK_HEDGED_DELAY_MS)
         hedged.delayMs = Number(process.env.DB_FALLBACK_HEDGED_DELAY_MS);
-    if (process.env.DB_FALLBACK_HEDGED_SOURCES)
-        hedged.sources = process.env.DB_FALLBACK_HEDGED_SOURCES.split(',').map((s) => s.trim());
     if (!isEmpty(hedged))
         policy.hedged = hedged;
     // Includes

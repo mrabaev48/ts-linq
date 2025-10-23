@@ -12,7 +12,6 @@ import { DatabaseProvider } from '@ts-linq/core';
  */
 export declare class PostgresProvider extends DatabaseProvider {
     private pool;
-    private qb;
     private ddl;
     /** Map a row object to a new entity instance using entity metadata and notify middleware. */
     private mapRowToEntity;

@@ -32,7 +32,11 @@
   "license": "ISC",
   "dependencies": {
     "@ts-linq/core": "workspace:*",
-    "@ts-linq/migrations": "workspace:*"
+    "@ts-linq/migrations": "workspace:*",
+    "@ts-linq/provider-sqlite": "workspace:*",
+    "@ts-linq/provider-postgres": "workspace:*",
+    "@ts-linq/provider-mysql": "workspace:*",
+    "@ts-linq/provider-mssql": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5",
