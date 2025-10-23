@@ -10,9 +10,6 @@
     "@ts-linq/metrics-safe": "workspace:*",
     "@ts-linq/ast": "workspace:*"
   },
-  "peerDependencies": {
-    "@ts-linq/core": "workspace:*"
-  },
   "devDependencies": {
     "typescript": "^5.4.5",
     "@types/node": "^24.3.0"

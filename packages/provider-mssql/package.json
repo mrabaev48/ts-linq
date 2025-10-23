@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
-  "peerDependencies": {
+  "dependencies": {
     "@ts-linq/core": "workspace:*",
     "@ts-linq/dialect-mssql": "workspace:*"
   },
