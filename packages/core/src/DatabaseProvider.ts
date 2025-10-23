@@ -13,7 +13,7 @@ import type {
   QueryAnalysisInfo
 } from './types';
 import { CircuitOpenError } from './types';
-import type { SqlDialect } from './query/SqlDialect';
+import type { SqlDialect } from '@ts-linq/query';
 import { logInternalError } from './utils/InternalLogger';
 
 /**

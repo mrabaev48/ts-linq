@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BatchOperations = void 0;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 const BatchPlan_1 = require("./BatchPlan");
 const BatchExecutor_1 = require("./BatchExecutor");
 /**
@@ -329,7 +329,7 @@ class BatchOperations {
      * Get entity metadata with validation.
      */
     getEntityMetadata(entityClass) {
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata) {
             throw new Error(`No metadata found for entity ${entityClass.name}`);
         }

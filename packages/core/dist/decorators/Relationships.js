@@ -4,7 +4,7 @@ exports.OneToMany = OneToMany;
 exports.ManyToOne = ManyToOne;
 exports.OneToOne = OneToOne;
 exports.ManyToMany = ManyToMany;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
 }
@@ -31,7 +31,7 @@ function defineRelationship(kind, targetEntity, options, targetOrValue, propOrCo
                 cascade: options?.cascade || false,
                 through: options?.through
             };
-            MetadataStorage_1.MetadataStorage.addRelationship(ctor, relationship);
+            metadata_1.MetadataStorage.addRelationship(ctor, relationship);
         });
         return;
     }

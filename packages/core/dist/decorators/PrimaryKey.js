@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrimaryKey = PrimaryKey;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
 }
@@ -24,10 +24,10 @@ function PrimaryKey(options = {}) {
                 isGenerated: !!options?.autoIncrement,
                 isVersion: !!options?.version
             };
-            MetadataStorage_1.MetadataStorage.addColumn(ctor, columnMeta);
-            MetadataStorage_1.MetadataStorage.addPrimaryKey(ctor, name);
+            metadata_1.MetadataStorage.addColumn(ctor, columnMeta);
+            metadata_1.MetadataStorage.addPrimaryKey(ctor, name);
             if (options.branded) {
-                const meta = MetadataStorage_1.MetadataStorage.getEntity(ctor);
+                const meta = metadata_1.MetadataStorage.getEntity(ctor);
                 const col = meta?.columns.find((c) => c.propertyName === name);
                 if (col) {
                     col.isBranded = true;

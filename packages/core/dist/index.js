@@ -29,31 +29,13 @@ __exportStar(require("./decorators/Relationships"), exports);
 __exportStar(require("./decorators/ValidIf"), exports);
 __exportStar(require("./decorators/CachePolicy"), exports);
 // Metadata - moved to @ts-linq/metadata package
-// export * from './metadata/MetadataStorage';
-// export * from './metadata/EntityMetadata';
-// Change tracking - moved to @ts-linq/orm package
-// export * from './change-tracking/ChangeTracker';
+// Import from: @ts-linq/metadata
+// Change tracking - moved to @ts-linq/orm package  
+// Import from: @ts-linq/orm
 // Context and DbSet - moved to @ts-linq/orm package
-// export * from './context/DbContext';
-// export * from './context/DbSet';
-// Query building
-__exportStar(require("./query/Queryable"), exports);
-__exportStar(require("./query/TypedQueryable"), exports);
-__exportStar(require("./query/QueryBuilder"), exports);
-__exportStar(require("./query/SqlCache"), exports);
-__exportStar(require("./query/EnhancedSqlCache"), exports);
-__exportStar(require("./query/SqlDialect"), exports);
-__exportStar(require("./query/CountCache"), exports);
-__exportStar(require("./query/GlobalFilterApplier"), exports);
-__exportStar(require("./query/JoinPredicateParser"), exports);
-__exportStar(require("./query/PredicateParser"), exports);
-__exportStar(require("./query/QueryModel"), exports);
-__exportStar(require("./query/ast/Nodes"), exports);
-__exportStar(require("./query/ast/SqlVisitor"), exports);
-__exportStar(require("./query/spec/Specification"), exports);
-__exportStar(require("./query/SqlFunctions"), exports);
-__exportStar(require("./query/fallbacks/MemoryFallback"), exports);
-__exportStar(require("./query/fallbacks/ReplicaFallback"), exports);
+// Import from: @ts-linq/orm
+// Query building - moved to @ts-linq/query package
+// Import from: @ts-linq/query
 // Base provider abstractions
 __exportStar(require("./DatabaseProvider"), exports);
 __exportStar(require("./DdlStrategy"), exports);
@@ -63,15 +45,7 @@ __exportStar(require("./loading/LoadingStrategy"), exports);
 __exportStar(require("./loading/EntityLoader"), exports);
 __exportStar(require("./loading/LazyLoadingProxy"), exports);
 // Migrations - moved to @ts-linq/migrations package
-// export * from './migrations/Migration';
-// export * from './migrations/MigrationRunner';
-// export * from './migrations/DiffTypes';
-// export * from './migrations/DialectMigrationSql';
-// export * from './migrations/MigrationBuilder';
-// export * from './migrations/DiffBasedMigration';
-// export * from './migrations/MigrationFileBuilder';
-// export * from './migrations/DiffMigrationGenerator';
-// export * from './migrations/SchemaSnapshot';
+// Import from: @ts-linq/migrations
 // Utils
 __exportStar(require("./utils/SqlHelper"), exports);
 __exportStar(require("./utils/RetryPolicies"), exports);

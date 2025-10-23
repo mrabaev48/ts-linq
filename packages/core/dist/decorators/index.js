@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RangeOf = exports.PatternOf = exports.MaxLengthOf = exports.MinLengthOf = exports.RequiredIfOf = exports.ValidIfOf = exports.ValidIf = exports.IndexOptionsBuilder = void 0;
 exports.normalizeIndexOptions = normalizeIndexOptions;
 exports.Index = Index;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 const IndexOptionsBuilder_1 = require("../utils/IndexOptionsBuilder");
 var IndexOptionsBuilder_2 = require("../utils/IndexOptionsBuilder");
 Object.defineProperty(exports, "IndexOptionsBuilder", { enumerable: true, get: function () { return IndexOptionsBuilder_2.IndexOptionsBuilder; } });
@@ -49,7 +49,7 @@ function Index(options) {
                 return;
             const meta = normalizeIndexOptions(options);
             // Stage-3: Use MetadataStorage instead of Reflect API
-            MetadataStorage_1.MetadataStorage.addIndex(ctor, meta);
+            metadata_1.MetadataStorage.addIndex(ctor, meta);
         });
     };
 }

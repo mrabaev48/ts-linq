@@ -1,66 +1,21 @@
 {
   "name": "@ts-linq/core",
   "version": "1.0.0",
-  "description": "Core ORM functionality with decorators, context, query building, and metadata management",
+  "private": true,
   "main": "./dist/index.js",
-  "module": "./dist/index.esm.js",
+  "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
-      "require": "./dist/index.js"
-    },
-    "./decorators": {
-      "types": "./dist/decorators/index.d.ts",
-      "import": "./dist/esm/decorators/index.js",
-      "require": "./dist/decorators/index.js"
-    },
-    "./query": {
-      "types": "./dist/query/index.d.ts",
-      "import": "./dist/esm/query/index.js",
-      "require": "./dist/query/index.js"
-    },
-    "./migrations": {
-      "types": "./dist/migrations/index.d.ts",
-      "import": "./dist/esm/migrations/index.js",
-      "require": "./dist/migrations/index.js"
-    },
-    "./types": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/types/index.js",
-      "require": "./dist/types/index.js"
-    },
-    "./utils": {
-      "types": "./dist/utils/index.d.ts",
-      "import": "./dist/esm/utils/index.js",
-      "require": "./dist/utils/index.js"
+      "require": "./dist/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist/**/*"
-  ],
-  "sideEffects": false,
-  "scripts": {
-    "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
-    "build:cjs": "tsc -p tsconfig.json",
-    "build:esm": "tsc -p tsconfig.esm.json",
-    "gen:esm-entry": "node scripts/gen-esm-entry.cjs",
-    "clean": "rm -rf dist",
-    "prepublishOnly": "npm run clean && npm run build"
-  },
-  "keywords": [
-    "orm",
-    "typescript",
-    "decorators",
-    "query-builder",
-    "entity-framework"
-  ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metadata": "workspace:*",
+    "@ts-linq/query": "workspace:*",
     "@ts-linq/metrics-safe": "workspace:*",
     "@ts-linq/ast": "workspace:*"
   },
@@ -70,5 +25,11 @@
   },
   "peerDependencies": {
     "typescript": ">=4.9.0"
+  },
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json"
   }
 }

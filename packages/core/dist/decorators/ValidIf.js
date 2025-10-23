@@ -7,7 +7,7 @@ exports.MinLengthOf = MinLengthOf;
 exports.MaxLengthOf = MaxLengthOf;
 exports.PatternOf = PatternOf;
 exports.RangeOf = RangeOf;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
 }
@@ -22,7 +22,7 @@ function ValidIf(predicate, message, options) {
             const ctor = this?.constructor;
             if (!ctor)
                 return;
-            MetadataStorage_1.MetadataStorage.addValidationRule(ctor, {
+            metadata_1.MetadataStorage.addValidationRule(ctor, {
                 propertyName: name,
                 predicate,
                 message,
@@ -63,7 +63,7 @@ function RequiredIfOf(condition, message) {
                     return v.length > 0;
                 return true;
             };
-            MetadataStorage_1.MetadataStorage.addValidationRule(ctor, {
+            metadata_1.MetadataStorage.addValidationRule(ctor, {
                 propertyName: propName,
                 predicate,
                 message: message || `${propName} is required`
@@ -90,7 +90,7 @@ function MinLengthOf(min, message) {
                     return v.length >= min;
                 return true;
             };
-            MetadataStorage_1.MetadataStorage.addValidationRule(ctor, {
+            metadata_1.MetadataStorage.addValidationRule(ctor, {
                 propertyName: propName,
                 predicate,
                 message: message || `Length must be >= ${min}`
@@ -117,7 +117,7 @@ function MaxLengthOf(max, message) {
                     return v.length <= max;
                 return true;
             };
-            MetadataStorage_1.MetadataStorage.addValidationRule(ctor, {
+            metadata_1.MetadataStorage.addValidationRule(ctor, {
                 propertyName: propName,
                 predicate,
                 message: message || `Length must be <= ${max}`
@@ -144,7 +144,7 @@ function PatternOf(regex, message) {
                     return regex.test(v);
                 return true;
             };
-            MetadataStorage_1.MetadataStorage.addValidationRule(ctor, { propertyName: propName, predicate, message: message || `Invalid format` });
+            metadata_1.MetadataStorage.addValidationRule(ctor, { propertyName: propName, predicate, message: message || `Invalid format` });
         });
     };
 }
@@ -171,7 +171,7 @@ function RangeOf(min, max, message) {
                 }
                 return true;
             };
-            MetadataStorage_1.MetadataStorage.addValidationRule(ctor, { propertyName: propName, predicate, message: message || `Out of range` });
+            metadata_1.MetadataStorage.addValidationRule(ctor, { propertyName: propName, predicate, message: message || `Out of range` });
         });
     };
 }

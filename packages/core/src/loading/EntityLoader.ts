@@ -1,7 +1,7 @@
 import type { LoadingOptions } from './LoadingStrategy';
 import { LoadingStrategy } from './LoadingStrategy';
 import type { DatabaseProvider } from '../DatabaseProvider';
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { LazyLoadingProxy } from './LazyLoadingProxy';
 
 /**

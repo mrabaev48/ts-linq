@@ -1,4 +1,4 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata } from '../types';
 
 function isStage3FieldContext(x: unknown): x is {

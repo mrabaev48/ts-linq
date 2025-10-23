@@ -17,6 +17,10 @@
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
   "references": [
-    { "path": "../metrics-safe" }
+    { "path": "../types" },
+    { "path": "../metadata" },
+    { "path": "../query" },
+    { "path": "../metrics-safe" },
+    { "path": "../ast" }
   ]
 }
