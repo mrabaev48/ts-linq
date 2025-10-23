@@ -268,13 +268,12 @@ export class MetadataStorage {
   public getEntityMetadata(target: Function): EntityMetadata | undefined {
     const key = this.normalizeTarget(target);
     
-    // Collect pending metadata from PendingMetadataCollector if available
-    // This handles Stage-3 decorators that use addInitializer
-    this.collectPendingMetadata(key);
-    
+    // If still in builder phase, collect pending metadata before finalization
     if (this.builders.has(key)) {
+      this.collectPendingMetadata(key);
       this.finalizeEntity(key);
     }
+    
     return this.entities.get(key);
   }
   
