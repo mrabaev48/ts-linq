@@ -1,5 +1,4 @@
 import type { RelationshipMetadata } from '@ts-linq/types';
-import { PendingMetadataCollector } from '@ts-linq/metadata';
 
 /**
  * Options for configuring relationships between entities.
@@ -24,8 +23,16 @@ function isStage3FieldContext(x: unknown): x is {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
 
-// WeakMap to track which constructors have already registered their metadata
-const registeredConstructors = new WeakMap<Function, Set<string>>();
+// Helper function for pending relationships
+function getPendingRelationships(ctor: Function): RelationshipMetadata[] {
+  if (!(globalThis as any).__tsLinqPendingRelationships) {
+    (globalThis as any).__tsLinqPendingRelationships = new WeakMap();
+  }
+  if (!(globalThis as any).__tsLinqPendingRelationships.has(ctor)) {
+    (globalThis as any).__tsLinqPendingRelationships.set(ctor, []);
+  }
+  return (globalThis as any).__tsLinqPendingRelationships.get(ctor);
+}
 
 function defineRelationship(
   kind: RelationshipMetadata['type'],
@@ -34,47 +41,41 @@ function defineRelationship(
   targetOrValue: unknown,
   propOrContext: unknown
 ): unknown {
-  // Stage-3 field decorator path only
-  if (isStage3FieldContext(propOrContext)) {
-    const ctx = propOrContext;
-    const name = ctx.name.toString();
-    
-    // Return initializer function (Stage-3 pattern for field decorators)
-    return function (this: unknown, initialValue: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
-      if (ctor) {
-        // Register metadata once per constructor
-        if (!registeredConstructors.has(ctor)) {
-          registeredConstructors.set(ctor, new Set());
-        }
-        const registered = registeredConstructors.get(ctor)!;
-        
-        if (!registered.has(name)) {
-          // Resolve targetEntity to concrete constructor
-          const te = targetEntity as unknown as Function | (() => Function);
-          const resolved =
-            typeof te === 'function' && (te as { prototype?: unknown }).prototype
-              ? (te as Function)
-              : (te as () => Function)();
-          
-          const relationship: RelationshipMetadata = {
-            propertyName: name,
-            type: kind,
-            targetEntity: resolved,
-            foreignKey: options?.foreignKey,
-            inverseSide: options?.inverseSide,
-            cascade: options?.cascade || false,
-            through: options?.through
-          };
-          
-          PendingMetadataCollector.addRelationship(ctor, relationship);
-          registered.add(name);
-        }
-      }
-      return initialValue;
-    };
+  if (!isStage3FieldContext(propOrContext)) {
+    throw new Error('Relationship decorators require TS5 Stage-3 decorators');
   }
-  throw new Error('Relationship decorators require TS5 Stage-3 decorators');
+  
+  const ctx = propOrContext;
+  const propertyName = ctx.name.toString();
+  
+  // Return initializer that queues metadata for @Entity to collect
+  return function(this: unknown, initialValue: unknown) {
+    const ctor = (this as any)?.constructor;
+    if (ctor) {
+      // Resolve targetEntity to concrete constructor
+      const te = targetEntity as unknown as Function | (() => Function);
+      const resolved =
+        typeof te === 'function' && (te as { prototype?: unknown }).prototype
+          ? (te as Function)
+          : (te as () => Function)();
+      
+      const relationship: RelationshipMetadata = {
+        propertyName,
+        type: kind,
+        targetEntity: resolved,
+        foreignKey: options?.foreignKey,
+        inverseSide: options?.inverseSide,
+        cascade: options?.cascade || false,
+        through: options?.through
+      };
+      
+      const pending = getPendingRelationships(ctor);
+      if (!pending.some(r => r.propertyName === propertyName)) {
+        pending.push(relationship);
+      }
+    }
+    return initialValue;
+  };
 }
 
 /**

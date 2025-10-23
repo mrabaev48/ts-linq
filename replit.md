@@ -10,16 +10,31 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core.
 - ✅ Performance gain: ~2.5x faster test execution (1.56s vs ~4s)
 - ✅ Created test infrastructure with real decorators (@Entity, @Column, @PrimaryKey)
 
-### Critical Discovery: Decorator Metadata Bug
-- ⚠️ **CRITICAL:** Stage-3 decorators are not registering metadata correctly
-- `@Column` and `@PrimaryKey` decorators run but metadata.columns remains empty
-- Relationship decorators (@ManyToOne, @OneToMany) don't register
-- Root cause: `ctx.addInitializer()` timing incompatible with current MetadataStorage design
-- **Required Fix:** Full decorator refactoring to use Symbol.metadata for class-time registration
+### Critical Discovery: SWC Stage-3 Decorator Limitations
+- ⚠️ **CRITICAL:** SWC `decoratorVersion: '2022-03'` has severe field decorator limitations
+- **Root Cause Identified:** SWC '2022-03' does NOT support:
+  - `context.addInitializer()` for field decorators (only class decorators)
+  - Returned initializer functions from field decorators are NOT executed
+  - `Symbol.metadata` (newer TC39 feature)
+- **Impact:** Field decorators (@Column, @PrimaryKey, @ManyToOne, etc.) cannot register metadata
+- **Current State:** Only @Entity (class decorator) works correctly; all field metadata registration fails
+
+### Attempted Solutions
+1. ❌ PendingMetadataCollector with `addInitializer` - not supported for field decorators
+2. ❌ Returned initializer functions - not executed by SWC
+3. ❌ GlobalThis with WeakMap + returned initializers - initializers never run
+4. ✅ @Entity `addInitializer` works (class decorators supported)
+
+### Path Forward Options
+1. **Upgrade SWC:** Use newer `decoratorVersion` (e.g., '2023-05') that supports full Stage-3 spec
+2. **Alternative Compiler:** Switch to TypeScript's tsc or Babel for Vitest compilation
+3. **Fallback Pattern:** Use legacy decorator pattern alongside Stage-3 (detect environment)
+4. **Manual Registration:** Explicit metadata registration API (breaks decorator-only approach)
 
 ### Test Status
-- Only 22/44 core tests passing (50%) due to decorator bugs
-- Vitest migration infrastructure complete, but decorator refactoring needed before full migration
+- Entity Registration: ✅ 3/3 passing (class decorator works)
+- Field Metadata: ❌ 0/12 passing (field decorators don't register)
+- Overall: ~50% tests failing due to SWC limitations
 - See TEST_STATUS.md for detailed breakdown
 
 ---
