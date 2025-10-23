@@ -1,4 +1,4 @@
-import type { QueryOptions, OrderByClause } from '@ts-linq/core';
+import type { QueryOptions, OrderByClause } from '@ts-linq/types';
 
 export class SQLiteOrderEmitter {
   public emit(options: QueryOptions): string {

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MysqlDialect = void 0;
-const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 const MySqlWhereEmitter_1 = require("./emitters/MySqlWhereEmitter");
 const MySqlJoinEmitter_1 = require("./emitters/MySqlJoinEmitter");
 const MySqlOrderEmitter_1 = require("./emitters/MySqlOrderEmitter");
@@ -28,7 +28,7 @@ class MysqlDialect {
      * @param options Normalized query options (select/where/order/joins/group/limit/offset)
      */
     buildSelect(entityClass, options) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const parameters = [];

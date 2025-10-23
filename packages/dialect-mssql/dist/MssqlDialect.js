@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MssqlDialect = void 0;
-const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 const MssqlWhereEmitter_1 = require("./emitters/MssqlWhereEmitter");
 const MssqlJoinEmitter_1 = require("./emitters/MssqlJoinEmitter");
 const MssqlOrderEmitter_1 = require("./emitters/MssqlOrderEmitter");
@@ -30,7 +30,7 @@ class MssqlDialect {
      * @returns SQL string and positional parameter array
      */
     buildSelect(entityClass, options) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const parameters = [];

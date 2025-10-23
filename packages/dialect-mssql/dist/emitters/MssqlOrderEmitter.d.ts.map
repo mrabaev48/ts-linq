@@ -1,1 +1,1 @@
-{"version":3,"file":"MssqlOrderEmitter.d.ts","sourceRoot":"","sources":["../../src/emitters/MssqlOrderEmitter.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,eAAe,CAAC;AAElD,qBAAa,iBAAiB;IACrB,IAAI,CAAC,OAAO,EAAE,YAAY,GAAG,MAAM;CAK3C"}
+{"version":3,"file":"MssqlOrderEmitter.d.ts","sourceRoot":"","sources":["../../src/emitters/MssqlOrderEmitter.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,gBAAgB,CAAC;AAEnD,qBAAa,iBAAiB;IACrB,IAAI,CAAC,OAAO,EAAE,YAAY,GAAG,MAAM;CAK3C"}

@@ -18,7 +18,9 @@
     "clean": "rm -rf dist"
   },
   "files": ["dist/**/*"],
-  "peerDependencies": {
+  "dependencies": {
+    "@ts-linq/metadata": "workspace:*",
+    "@ts-linq/types": "workspace:*",
     "@ts-linq/core": "workspace:*"
   },
   "devDependencies": {

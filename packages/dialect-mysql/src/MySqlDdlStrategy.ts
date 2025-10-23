@@ -1,4 +1,4 @@
-import type { EntityMetadata, ColumnMetadata } from '@ts-linq/core';
+import type { EntityMetadata, ColumnMetadata } from '@ts-linq/types';
 import { SqlHelper } from '@ts-linq/core';
 import { MySqlIndexBuilder } from './builders/MySqlIndexBuilder';
 
@@ -13,10 +13,10 @@ export class MySqlDdlStrategy {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
     }
-    const cols: string[] = metadata.columns.map((c) => this.generateColumnDefinition(c));
+    const cols: string[] = metadata.columns.map((c: any) => this.generateColumnDefinition(c));
     if (metadata.primaryKeys.length) {
       const pkCols = metadata.primaryKeys.map(
-        (pk) => metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk
+        (pk: any) => metadata.columns.find((c: any) => c.propertyName === pk)?.columnName || pk
       );
       cols.push(`PRIMARY KEY (${pkCols.join(', ')})`);
     }

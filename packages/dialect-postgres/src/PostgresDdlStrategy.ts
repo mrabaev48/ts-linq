@@ -1,4 +1,4 @@
-import type { EntityMetadata } from '@ts-linq/core';
+import type { EntityMetadata } from '@ts-linq/types';
 type LoggerLike = { warn(message: string, error?: unknown): void };
 import type { PgIndexSpec } from './builders/PgIndexBuilder';
 import { PgIndexBuilder } from './builders/PgIndexBuilder';
@@ -10,7 +10,7 @@ export class PostgresDdlStrategy {
     this.indexBuilder = new PgIndexBuilder(logger);
   }
   public generateCreateTableSql(entityMetadata: EntityMetadata): string {
-    const columnSqls = entityMetadata.columns.map((column) => {
+    const columnSqls = entityMetadata.columns.map((column: any) => {
       if (column.isComputed && column.computedExpression) {
         // PostgreSQL supports only STORED
         const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
@@ -30,8 +30,8 @@ export class PostgresDdlStrategy {
     if (entityMetadata.primaryKeys.length > 0) {
       const primaryKeySql = entityMetadata.primaryKeys
         .map(
-          (primaryKey) =>
-            `"${entityMetadata.columns.find((column) => column.propertyName === primaryKey)?.columnName || primaryKey}"`
+          (primaryKey: any) =>
+            `"${entityMetadata.columns.find((column: any) => column.propertyName === primaryKey)?.columnName || primaryKey}"`
         )
         .join(', ');
       columnSqls.push(`PRIMARY KEY (${primaryKeySql})`);

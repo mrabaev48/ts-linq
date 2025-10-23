@@ -1,4 +1,4 @@
-import type { QueryOptions } from '@ts-linq/core';
+import type { QueryOptions } from '@ts-linq/types';
 
 export class SQLiteJoinEmitter {
   public emit(options: QueryOptions): string {

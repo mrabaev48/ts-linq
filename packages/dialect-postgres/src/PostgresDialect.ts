@@ -1,5 +1,5 @@
-import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/core';
+import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { PgWhereEmitter } from './emitters/PgWhereEmitter';
 import { PgJoinEmitter } from './emitters/PgJoinEmitter';
 import { PgOrderEmitter } from './emitters/PgOrderEmitter';
@@ -90,7 +90,7 @@ export class PostgresDialect implements SqlDialect {
 
   private buildWhereClause(parameters: SqlParameter[], options: QueryOptions): string {
     if (!options.where || options.where.length === 0) return '';
-    const whereClauses = options.where.map((w) => w.condition);
+    const whereClauses = options.where.map((w: any) => w.condition);
     for (const w of options.where) parameters.push(...w.parameters);
     return ` WHERE ${whereClauses.join(' AND ')}`;
   }
@@ -107,7 +107,7 @@ export class PostgresDialect implements SqlDialect {
 
   private buildOrderBy(options: QueryOptions): string {
     if (!options.orderBy || options.orderBy.length === 0) return '';
-    const orderByClauses = options.orderBy.map((o) => `${o.column} ${o.direction}`);
+    const orderByClauses = options.orderBy.map((o: any) => `${o.column} ${o.direction}`);
     return ` ORDER BY ${orderByClauses.join(', ')}`;
   }
 
