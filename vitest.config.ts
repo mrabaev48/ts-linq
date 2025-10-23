@@ -1,5 +1,4 @@
 import { defineConfig } from 'vitest/config';
-import swc from 'unplugin-swc';
 import path from 'path';
 
 export default defineConfig({
@@ -21,26 +20,28 @@ export default defineConfig({
     },
     testTimeout: 10000,
     hookTimeout: 10000,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
   },
-  plugins: [
-    swc.vite({
-      jsc: {
-        parser: {
-          syntax: 'typescript',
-          decorators: true,
-          dynamicImport: true,
-        },
-        transform: {
-          decoratorVersion: '2022-03',
-        },
-        target: 'es2022',
-        keepClassNames: true,
+  ssr: {
+    noExternal: true,
+  },
+  esbuild: {
+    target: 'es2022',
+    tsconfigRaw: {
+      compilerOptions: {
+        experimentalDecorators: false,
+        emitDecoratorMetadata: false,
+        useDefineForClassFields: false,
+        module: 'ESNext',
+        moduleResolution: 'NodeNext',
       },
-      module: {
-        type: 'es6',
-      },
-    }),
-  ],
+    },
+  },
   resolve: {
     alias: {
       '@ts-linq/types': path.resolve(__dirname, 'packages/types/src'),

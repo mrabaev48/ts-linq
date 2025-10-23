@@ -1,7 +1,7 @@
 import type { IndexMetadata } from '@ts-linq/types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
-import { PendingMetadataCollector } from '@ts-linq/metadata';
 
+// Re-export all decorators
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export {
   ValidIf,
@@ -12,6 +12,11 @@ export {
   PatternOf,
   RangeOf
 } from './ValidIf';
+export { Entity } from './Entity';
+export { Column } from './Column';
+export { PrimaryKey } from './PrimaryKey';
+export { ManyToOne, OneToMany, OneToOne, ManyToMany } from './Relationships';
+export { clearOrphanedMetadata } from './utils';
 
 function isStage3ClassContext(x: unknown): x is {
   kind: 'class';
@@ -62,7 +67,7 @@ export function normalizeIndexOptions(input: IndexInput): IndexMetadata {
 
 /**
  * Class decorator that registers an index on the entity.
- * Metadata is collected in PendingMetadataCollector and finalized by @Entity.
+ * Uses orphaned metadata pattern to work with SWC 2022-03.
  */
 export function Index(options: IndexInput) {
   return function IndexDecorator(target: unknown, context: unknown) {
@@ -73,9 +78,14 @@ export function Index(options: IndexInput) {
     const ctor = target as Function;
     const meta: IndexMetadata = normalizeIndexOptions(options);
     
-    // Use addInitializer to register after class is fully decorated
-    context.addInitializer?.(function () {
-      PendingMetadataCollector.addIndex(ctor, meta);
+    // Save to globalThis for @Entity to collect
+    if (!(globalThis as any).__tsLinqOrphanedIndexes) {
+      (globalThis as any).__tsLinqOrphanedIndexes = [];
+    }
+    
+    (globalThis as any).__tsLinqOrphanedIndexes.push({
+      ctor,
+      metadata: meta
     });
   };
 }
