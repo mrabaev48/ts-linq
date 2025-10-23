@@ -1,10 +1,10 @@
 import { SchemaInspectionService } from '../../src/migrations/services/SchemaInspectionService';
 import type { DatabaseProvider } from '../../src/DatabaseProvider';
 
-jest.mock('../../src/migrations/SchemaInspector', () => {
+vi.mock('../../src/migrations/SchemaInspector', () => {
   class BaseMock {
-    listTables = jest.fn(async () => []);
-    getTableSnapshot = jest.fn(async (_: string) => null);
+    listTables = vi.fn(async () => []);
+    getTableSnapshot = vi.fn(async (_: string) => null);
   }
   return {
     SQLiteSchemaInspector: BaseMock,
@@ -19,19 +19,19 @@ function provider(
 ): jest.Mocked<DatabaseProvider> {
   return {
     providerLabel: label,
-    connect: jest.fn(async () => {}),
-    disconnect: jest.fn(async () => {}),
-    beginTransaction: jest.fn(async () => {}),
-    commitTransaction: jest.fn(async () => {}),
-    rollbackTransaction: jest.fn(async () => {}),
+    connect: vi.fn(async () => {}),
+    disconnect: vi.fn(async () => {}),
+    beginTransaction: vi.fn(async () => {}),
+    commitTransaction: vi.fn(async () => {}),
+    rollbackTransaction: vi.fn(async () => {}),
     inTransactionState: false,
-    getDialect: jest.fn(),
-    executeQuery: jest.fn(),
-    executeNonQuery: jest.fn(),
-    insert: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    upsert: jest.fn()
+    getDialect: vi.fn(),
+    executeQuery: vi.fn(),
+    executeNonQuery: vi.fn(),
+    insert: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    upsert: vi.fn()
   } as unknown as jest.Mocked<DatabaseProvider>;
 }
 

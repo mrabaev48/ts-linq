@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 import { OptimisticConcurrencyError } from '../src/types';
 import { Entity } from '../src/decorators/Entity';

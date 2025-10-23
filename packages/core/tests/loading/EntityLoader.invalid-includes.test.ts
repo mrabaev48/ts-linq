@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { EntityLoader } from '../../src/loading/EntityLoader';
 import type { DatabaseProvider } from '../../src/DatabaseProvider';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
@@ -5,23 +6,23 @@ import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 function providerStub(): jest.Mocked<DatabaseProvider> {
   return {
     providerLabel: 'sqlite',
-    connect: jest.fn(async () => {}),
-    disconnect: jest.fn(async () => {}),
-    beginTransaction: jest.fn(async () => {}),
-    commitTransaction: jest.fn(async () => {}),
-    rollbackTransaction: jest.fn(async () => {}),
+    connect: vi.fn(async () => {}),
+    disconnect: vi.fn(async () => {}),
+    beginTransaction: vi.fn(async () => {}),
+    commitTransaction: vi.fn(async () => {}),
+    rollbackTransaction: vi.fn(async () => {}),
     inTransactionState: false,
-    getDialect: jest.fn(),
-    executeQuery: jest.fn(),
-    executeNonQuery: jest.fn(),
-    insert: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    upsert: jest.fn(),
-    findById: jest.fn(async () => ({})),
-    findAll: jest.fn(async () => [{}]),
-    findWhere: jest.fn(async () => []),
-    findWhereIn: jest.fn(async () => [])
+    getDialect: vi.fn(),
+    executeQuery: vi.fn(),
+    executeNonQuery: vi.fn(),
+    insert: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    upsert: vi.fn(),
+    findById: vi.fn(async () => ({})),
+    findAll: vi.fn(async () => [{}]),
+    findWhere: vi.fn(async () => []),
+    findWhereIn: vi.fn(async () => [])
   } as unknown as jest.Mocked<DatabaseProvider>;
 }
 

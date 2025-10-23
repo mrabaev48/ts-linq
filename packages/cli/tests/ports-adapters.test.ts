@@ -7,9 +7,9 @@ import * as path from 'path';
 describe('ConsoleLogger', () => {
   it('delegates to console methods', () => {
     const logger = new ConsoleLogger();
-    const spyLog = jest.spyOn(console, 'log').mockImplementation(() => {});
-    const spyWarn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const spyErr = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const spyLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const spyWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const spyErr = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     logger.info('x');
     logger.warn('y');

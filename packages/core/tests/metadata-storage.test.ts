@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { MetadataStorage } from '../src/metadata/MetadataStorage';
 import { Entity, Column, PrimaryKey, OneToMany } from '../src';
 import { ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../src/types';

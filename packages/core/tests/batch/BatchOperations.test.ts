@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import type { BatchResult } from '../../src/batch/BatchOperations';
 import { BatchOperations } from '../../src/batch/BatchOperations';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
@@ -88,18 +89,18 @@ describe('BatchOperations', () => {
 
     // Mock provider
     mockProvider = {
-      insertMany: jest.fn(),
-      updateMany: jest.fn(),
-      upsertMany: jest.fn(),
-      insert: jest.fn(),
-      update: jest.fn(),
-      upsert: jest.fn(),
-      delete: jest.fn(),
-      executeNonQuery: jest.fn(),
-      beginTransaction: jest.fn(),
-      commitTransaction: jest.fn(),
-      rollbackTransaction: jest.fn(),
-      getDialect: jest.fn(),
+      insertMany: vi.fn(),
+      updateMany: vi.fn(),
+      upsertMany: vi.fn(),
+      insert: vi.fn(),
+      update: vi.fn(),
+      upsert: vi.fn(),
+      delete: vi.fn(),
+      executeNonQuery: vi.fn(),
+      beginTransaction: vi.fn(),
+      commitTransaction: vi.fn(),
+      rollbackTransaction: vi.fn(),
+      getDialect: vi.fn(),
       inTransactionState: false
     } as unknown as jest.Mocked<DatabaseProvider>;
 
@@ -193,7 +194,7 @@ describe('BatchOperations', () => {
         .mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
         .mockResolvedValueOnce(users.slice(2, 4) as unknown as object[]);
 
-      const progressCallback = jest.fn();
+      const progressCallback = vi.fn();
 
       await batchOps.bulkInsert(users, User, {
         batchSize: 2,

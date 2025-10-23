@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import {
   LazyLoadingProxy,
   isLazyProxy,
@@ -88,36 +89,36 @@ describe('LazyLoadingProxy', () => {
     MetadataStorage.addRelationship(Post, postUserRel);
 
     mockProvider = {
-      findById: jest.fn(),
-      findWhere: jest.fn(),
-      findWhereIn: jest.fn(),
-      findAll: jest.fn(),
-      connect: jest.fn(),
-      disconnect: jest.fn(),
-      createTable: jest.fn(),
-      getDialect: jest.fn() as unknown as DatabaseProvider['getDialect'],
-      insert: jest.fn(),
-      update: jest.fn(),
-      upsert: jest.fn(),
-      delete: jest.fn(),
-      executeQuery: jest.fn(),
-      doExecuteQuery: jest.fn(),
-      executeNonQuery: jest.fn(),
-      beginTransaction: jest.fn(),
-      commitTransaction: jest.fn(),
-      rollbackTransaction: jest.fn(),
+      findById: vi.fn(),
+      findWhere: vi.fn(),
+      findWhereIn: vi.fn(),
+      findAll: vi.fn(),
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      createTable: vi.fn(),
+      getDialect: vi.fn() as unknown as DatabaseProvider['getDialect'],
+      insert: vi.fn(),
+      update: vi.fn(),
+      upsert: vi.fn(),
+      delete: vi.fn(),
+      executeQuery: vi.fn(),
+      doExecuteQuery: vi.fn(),
+      executeNonQuery: vi.fn(),
+      beginTransaction: vi.fn(),
+      commitTransaction: vi.fn(),
+      rollbackTransaction: vi.fn(),
       inTransactionState: false,
       providerLabel: 'test',
       loggerRef: undefined,
       softDeleteOptions: undefined,
-      notifyEntityMaterialized: jest.fn(),
-      doExecuteNonQuery: jest.fn()
+      notifyEntityMaterialized: vi.fn(),
+      doExecuteNonQuery: vi.fn()
     } as unknown as jest.Mocked<DatabaseProvider>;
   });
 
   afterEach(async () => {
     // Clear all mocks to prevent resource leaks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     jest.clearAllTimers();
 
     // Wait for any pending promises to resolve
@@ -269,7 +270,7 @@ describe('LazyLoadingProxy', () => {
     });
 
     test('should handle loading errors gracefully', async () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const user = { id: 1, name: 'John' };
       mockProvider.findWhere.mockRejectedValueOnce(new Error('Database error'));
 

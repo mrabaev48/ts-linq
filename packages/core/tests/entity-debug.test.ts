@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { MetadataStorage } from '../dist/metadata/MetadataStorage';
 import { Entity } from '../dist/decorators/Entity';
 

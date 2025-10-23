@@ -30,7 +30,7 @@ describe('utils', () => {
   });
 
   it('validateEnv prints missing', () => {
-    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const ok = validateEnv(['SHOULD_NOT_EXIST_12345']);
     expect(ok).toBe(false);
     expect(spy).toHaveBeenCalled();

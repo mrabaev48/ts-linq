@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import type { DatabaseProvider } from '../../src/DatabaseProvider';
 import { DbContext } from '../../src/context/DbContext';
@@ -12,13 +13,13 @@ function providerStub(data: any[] = []): jest.Mocked<DatabaseProvider> {
 
   return {
     providerLabel: 'sqlite',
-    connect: jest.fn(async () => {}),
-    disconnect: jest.fn(async () => {}),
-    beginTransaction: jest.fn(async () => {}),
-    commitTransaction: jest.fn(async () => {}),
-    rollbackTransaction: jest.fn(async () => {}),
+    connect: vi.fn(async () => {}),
+    disconnect: vi.fn(async () => {}),
+    beginTransaction: vi.fn(async () => {}),
+    commitTransaction: vi.fn(async () => {}),
+    rollbackTransaction: vi.fn(async () => {}),
     inTransactionState: false,
-    getDialect: jest.fn(
+    getDialect: vi.fn(
       () =>
         ({
           buildSelect: (ctor, opts) => {
@@ -53,7 +54,7 @@ function providerStub(data: any[] = []): jest.Mocked<DatabaseProvider> {
           }
         }) as unknown as SqlDialect
     ),
-    executeQuery: jest.fn(async (sql: string, params: readonly SqlParameter[] = []) => {
+    executeQuery: vi.fn(async (sql: string, params: readonly SqlParameter[] = []) => {
       // Mock COUNT queries
       const countMatch = /SELECT\s+COUNT\(\*\)\s+as\s+count/i.exec(sql);
       if (countMatch) {
@@ -129,16 +130,16 @@ function providerStub(data: any[] = []): jest.Mocked<DatabaseProvider> {
 
       return filtered;
     }),
-    executeNonQuery: jest.fn(async () => 0),
-    insert: jest.fn(async (e: any) => e),
-    update: jest.fn(async (e: any) => e),
-    delete: jest.fn(async () => {}),
-    upsert: jest.fn(async (e: any) => e),
-    findById: jest.fn(async () => null),
-    findAll: jest.fn(async () => internalData),
-    findWhereIn: jest.fn(async () => []),
-    findWhere: jest.fn(async () => []),
-    createTable: jest.fn(async () => {})
+    executeNonQuery: vi.fn(async () => 0),
+    insert: vi.fn(async (e: any) => e),
+    update: vi.fn(async (e: any) => e),
+    delete: vi.fn(async () => {}),
+    upsert: vi.fn(async (e: any) => e),
+    findById: vi.fn(async () => null),
+    findAll: vi.fn(async () => internalData),
+    findWhereIn: vi.fn(async () => []),
+    findWhere: vi.fn(async () => []),
+    createTable: vi.fn(async () => {})
   } as unknown as jest.Mocked<DatabaseProvider>;
 }
 

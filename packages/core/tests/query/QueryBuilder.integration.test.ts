@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { QueryBuilder } from '../../src/query/QueryBuilder';
 import { EnhancedSqlCache } from '../../src/query/EnhancedSqlCache';
 import type { SqlDialect } from '../../src/query/SqlDialect';
@@ -39,7 +40,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
     });
 
     mockLogger = {
-      cache: jest.fn()
+      cache: vi.fn()
     };
 
     // Create a mock dialect for testing

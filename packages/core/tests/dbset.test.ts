@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { DbSet } from '../src/context/DbSet';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import { ChangeTracker } from '../src/change-tracking/ChangeTracker';

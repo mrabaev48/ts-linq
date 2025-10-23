@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import { LazyLoadingProxy, awaitLazyLoad } from '../../src/loading/LazyLoadingProxy';
 import type { DatabaseProvider } from '../../src/DatabaseProvider';
@@ -5,8 +6,8 @@ import type { DatabaseProvider } from '../../src/DatabaseProvider';
 function providerStub(rows: Array<{ s: unknown; t: unknown }>, related: any[]) {
   return {
     providerLabel: 'sqlite',
-    executeQuery: jest.fn(async () => rows),
-    findWhereIn: jest.fn(async () => related)
+    executeQuery: vi.fn(async () => rows),
+    findWhereIn: vi.fn(async () => related)
   } as unknown as jest.Mocked<DatabaseProvider>;
 }
 

@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { Queryable } from '../../src/query/Queryable';
 import { MetadataStorage } from '../../src/metadata/MetadataStorage';
 import type { SqlDialect } from '../../src/query/SqlDialect';
