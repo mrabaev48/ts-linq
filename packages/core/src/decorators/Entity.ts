@@ -1,6 +1,6 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import { PENDING_COLUMNS, PENDING_PRIMARY_KEYS } from './Column';
-import type { ColumnMetadata } from '@ts-linq/types';
+import { PENDING_COLUMNS, PENDING_PRIMARY_KEYS, PENDING_INDEXES, PENDING_RELATIONSHIPS } from './Column';
+import type { ColumnMetadata, IndexMetadata, RelationshipMetadata } from '@ts-linq/types';
 
 /**
  * Options for configuring an entity/table.
@@ -58,6 +58,22 @@ export function Entity(options: EntityOptions = {}): ClassDecorator {
         if (pendingPrimaryKeys) {
           for (const propertyName of pendingPrimaryKeys) {
             MetadataStorage.addPrimaryKey(target, propertyName);
+          }
+        }
+        
+        // Process indexes
+        const pendingIndexes = context.metadata[PENDING_INDEXES] as IndexMetadata[] | undefined;
+        if (pendingIndexes) {
+          for (const indexMeta of pendingIndexes) {
+            MetadataStorage.addIndex(target, indexMeta);
+          }
+        }
+        
+        // Process relationships
+        const pendingRelationships = context.metadata[PENDING_RELATIONSHIPS] as Map<string, RelationshipMetadata> | undefined;
+        if (pendingRelationships) {
+          for (const [_propertyName, relationMeta] of pendingRelationships.entries()) {
+            MetadataStorage.addRelationship(target, relationMeta);
           }
         }
       }
