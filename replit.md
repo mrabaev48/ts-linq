@@ -182,6 +182,13 @@ After clean builds (`turbo clean`), the entire monorepo failed to compile with s
 - Turbo automatically builds packages in correct dependency order
 - Clean builds (`turbo clean && turbo build`) now work reliably
 
+**Available Build Commands** (added October 23, 2025):
+- Individual packages: `pnpm run build:<package-name>` (e.g., `build:core`, `build:orm`, `build:query`)
+- All providers: `pnpm run build:providers` (builds provider-sqlite, provider-postgres, provider-mysql, provider-mssql)
+- All dialects: `pnpm run build:dialects` (builds dialect-sqlite, dialect-postgres, dialect-mysql, dialect-mssql)
+- All packages: `pnpm run build`
+- Clean all: `pnpm run clean`
+
 ## Type Safety Integration (October 23, 2025)
 
 ### TypedQueryable Restoration & DbSet Integration
