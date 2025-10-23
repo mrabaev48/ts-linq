@@ -3,10 +3,6 @@ import { PendingMetadataCollector } from '@ts-linq/metadata';
 
 /**
  * Options for configuring relationships between entities.
- *
- * - foreignKey: Column name on the dependent side used as the foreign key.
- * - inverseSide: Name of the property on the related entity that points back.
- * - cascade: Whether related operations should cascade (insert/update/delete).
  */
 export interface RelationshipOptions {
   foreignKey?: string;
@@ -24,10 +20,12 @@ export interface RelationshipOptions {
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
-  addInitializer?: (fn: () => void) => void;
 } {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
+
+// WeakMap to track which constructors have already registered their metadata
+const registeredConstructors = new WeakMap<Function, Set<string>>();
 
 function defineRelationship(
   kind: RelationshipMetadata['type'],
@@ -35,36 +33,46 @@ function defineRelationship(
   options: RelationshipOptions,
   targetOrValue: unknown,
   propOrContext: unknown
-): void | PropertyDecorator {
+): unknown {
   // Stage-3 field decorator path only
   if (isStage3FieldContext(propOrContext)) {
     const ctx = propOrContext;
     const name = ctx.name.toString();
     
-    ctx.addInitializer?.(function (this: unknown) {
+    // Return initializer function (Stage-3 pattern for field decorators)
+    return function (this: unknown, initialValue: unknown) {
       const ctor = (this as { constructor?: Function })?.constructor;
-      if (!ctor) return;
-      
-      // Resolve targetEntity to concrete constructor
-      const te = targetEntity as unknown as Function | (() => Function);
-      const resolved =
-        typeof te === 'function' && (te as { prototype?: unknown }).prototype
-          ? (te as Function)
-          : (te as () => Function)();
-      
-      const relationship: RelationshipMetadata = {
-        propertyName: name,
-        type: kind,
-        targetEntity: resolved,
-        foreignKey: options?.foreignKey,
-        inverseSide: options?.inverseSide,
-        cascade: options?.cascade || false,
-        through: options?.through
-      };
-      
-      PendingMetadataCollector.addRelationship(ctor, relationship);
-    });
-    return;
+      if (ctor) {
+        // Register metadata once per constructor
+        if (!registeredConstructors.has(ctor)) {
+          registeredConstructors.set(ctor, new Set());
+        }
+        const registered = registeredConstructors.get(ctor)!;
+        
+        if (!registered.has(name)) {
+          // Resolve targetEntity to concrete constructor
+          const te = targetEntity as unknown as Function | (() => Function);
+          const resolved =
+            typeof te === 'function' && (te as { prototype?: unknown }).prototype
+              ? (te as Function)
+              : (te as () => Function)();
+          
+          const relationship: RelationshipMetadata = {
+            propertyName: name,
+            type: kind,
+            targetEntity: resolved,
+            foreignKey: options?.foreignKey,
+            inverseSide: options?.inverseSide,
+            cascade: options?.cascade || false,
+            through: options?.through
+          };
+          
+          PendingMetadataCollector.addRelationship(ctor, relationship);
+          registered.add(name);
+        }
+      }
+      return initialValue;
+    };
   }
   throw new Error('Relationship decorators require TS5 Stage-3 decorators');
 }
@@ -77,7 +85,7 @@ export function OneToMany(
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    defineRelationship('one-to-many', targetEntity, options, targetOrValue, propOrContext);
+    return defineRelationship('one-to-many', targetEntity, options, targetOrValue, propOrContext);
   };
 }
 
@@ -89,7 +97,7 @@ export function ManyToOne(
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    defineRelationship('many-to-one', targetEntity, options, targetOrValue, propOrContext);
+    return defineRelationship('many-to-one', targetEntity, options, targetOrValue, propOrContext);
   };
 }
 
@@ -101,7 +109,7 @@ export function OneToOne(
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    defineRelationship('one-to-one', targetEntity, options, targetOrValue, propOrContext);
+    return defineRelationship('one-to-one', targetEntity, options, targetOrValue, propOrContext);
   };
 }
 
@@ -113,6 +121,6 @@ export function ManyToMany(
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (targetOrValue: unknown, propOrContext: unknown) {
-    defineRelationship('many-to-many', targetEntity, options, targetOrValue, propOrContext);
+    return defineRelationship('many-to-many', targetEntity, options, targetOrValue, propOrContext);
   };
 }
