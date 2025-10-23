@@ -9,7 +9,7 @@ import type {
   ConnectionHealthInfo,
   FallbackInfo,
   QueryAnalysisInfo
-} from '@ts-linq/core';
+} from '@ts-linq/types';
 
 export class CompositeSqlLogger implements SqlLogger {
   private readonly delegates: ReadonlyArray<SqlLogger>;

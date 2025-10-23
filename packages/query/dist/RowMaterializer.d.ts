@@ -5,7 +5,7 @@ export declare class RowMaterializer<T> {
     private readonly provider;
     private readonly entityCache?;
     private readonly performance?;
-    constructor(entityClass: new () => T, provider: DatabaseProvider, entityCache?: EntityCacheLike, performance?: PerformanceOptions);
+    constructor(entityClass: new () => T, provider: DatabaseProvider, entityCache?: EntityCacheLike | undefined, performance?: PerformanceOptions | undefined);
     mapRowToEntity(row: unknown): T;
     private shouldUseL2Cache;
     private tryGetFromCache;

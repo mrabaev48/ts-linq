@@ -3,11 +3,18 @@
   "version": "2.0.0-alpha.1",
   "private": true,
   "description": "Pure type definitions and interfaces for ts-linq (zero dependencies)",
-  "main": "./dist/index.js",
+  "main": "./dist/esm/index.js",
   "module": "./dist/esm/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/esm/index.js"
+    }
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
+    "build": "tsc -p tsconfig.esm.json",
     "clean": "rm -rf dist"
   },
   "devDependencies": {

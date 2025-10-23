@@ -134,6 +134,54 @@ Database-specific error mapping:
 
 # Recent Changes
 
+## Build System Restoration & Package Configuration Fix (October 23, 2025)
+
+### Problem Discovered
+After clean builds (`turbo clean`), the entire monorepo failed to compile with systematic dependency and TypeScript declaration file errors:
+- TypeScript couldn't find `.d.ts` files for workspace dependencies
+- Packages using dual CJS+ESM builds (`tsc -p tsconfig.json && tsc -p tsconfig.esm.json`) only generated ESM files in `dist/esm/` but not CommonJS files in `dist/`
+- Package.json files pointed to non-existent `dist/index.js` and `dist/index.d.ts` paths
+- Build order wasn't properly managed by Turbo, causing race conditions
+
+### Solution Implemented
+
+**1. Fixed TypeScript Composite Build Issues**:
+- Root cause: `composite: true` in tsconfig.json prevented file generation when using dual build commands
+- Removed old compiled artifacts (`.js`, `.d.ts`, `.map` files) from `src/` directories that were interfering with builds
+
+**2. Standardized Package.json Configuration** (25 packages updated):
+- Changed paths from `"main": "./dist/index.js"` to `"main": "./dist/esm/index.js"`
+- Changed types from `"types": "./dist/index.d.ts"` to `"types": "./dist/esm/index.d.ts"`
+- Updated exports to point to ESM files consistently
+- Simplified build scripts from `"tsc -p tsconfig.json && tsc -p tsconfig.esm.json"` to `"tsc -p tsconfig.esm.json"`
+
+**3. Fixed Import Errors**:
+- `@ts-linq/composite-sql-logger`: Changed import from `@ts-linq/core` to `@ts-linq/types` for `SqlLogger`
+- `@ts-linq/ast`, `@ts-linq/cache`, `@ts-linq/concurrency`: Added missing `@ts-linq/types` dependency
+
+**4. Configured Turbo Build Order**:
+- Updated `turbo.json` to use Turbo 2.x format (removed deprecated `pipeline` field)
+- Added proper `inputs` tracking for source files and configs
+- Leveraged `dependsOn: ["^build"]` for automatic topological sorting
+
+**Packages Fixed**:
+- Core: `@ts-linq/types`, `@ts-linq/metrics-safe`, `@ts-linq/ast`
+- Dialects: `@ts-linq/dialect-mssql`, `@ts-linq/dialect-mysql`, `@ts-linq/dialect-postgres`, `@ts-linq/dialect-sqlite`
+- Loggers: `@ts-linq/composite-sql-logger`, `@ts-linq/prometheus-sql-logger`, `@ts-linq/open-telemetry-sql-logger`
+- And 15+ more packages
+
+**Build Status**:
+- ✅ **All 34/34 packages compile successfully**
+- ✅ Build caching works correctly
+- ✅ Zero LSP errors
+- ✅ Tests run successfully
+- ✅ Proper dependency resolution across workspace packages
+
+**Technical Details**:
+- Using ESM as the primary module format with proper TypeScript declaration files
+- Turbo automatically builds packages in correct dependency order
+- Clean builds (`turbo clean && turbo build`) now work reliably
+
 ## Type Safety Integration (October 23, 2025)
 
 ### TypedQueryable Restoration & DbSet Integration
