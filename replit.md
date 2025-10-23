@@ -1,6 +1,28 @@
 # Overview
 
-This project is a TypeScript ORM framework, inspired by Entity Framework Core. It provides a code-first approach to database management, utilizing Stage-3 decorator-based entity definitions, LINQ-style query building, and supporting multiple database providers (SQLite, PostgreSQL, MySQL, MSSQL). The framework emphasizes type safety, change tracking, and adheres to SOLID principles for a clean, extensible architectural design, aiming to offer a robust and developer-friendly ORM solution for TypeScript applications.
+This project is a TypeScript ORM framework, inspired by Entity Framework Core.
+
+## Recent Changes - October 23, 2025
+
+### Vitest Migration (Partial)
+- ✅ Migrated test infrastructure from Jest to Vitest  
+- ✅ Configured unplugin-swc for native Stage-3 decorator compilation
+- ✅ Performance gain: ~2.5x faster test execution (1.56s vs ~4s)
+- ✅ Created test infrastructure with real decorators (@Entity, @Column, @PrimaryKey)
+
+### Critical Discovery: Decorator Metadata Bug
+- ⚠️ **CRITICAL:** Stage-3 decorators are not registering metadata correctly
+- `@Column` and `@PrimaryKey` decorators run but metadata.columns remains empty
+- Relationship decorators (@ManyToOne, @OneToMany) don't register
+- Root cause: `ctx.addInitializer()` timing incompatible with current MetadataStorage design
+- **Required Fix:** Full decorator refactoring to use Symbol.metadata for class-time registration
+
+### Test Status
+- Only 22/44 core tests passing (50%) due to decorator bugs
+- Vitest migration infrastructure complete, but decorator refactoring needed before full migration
+- See TEST_STATUS.md for detailed breakdown
+
+--- It provides a code-first approach to database management, utilizing Stage-3 decorator-based entity definitions, LINQ-style query building, and supporting multiple database providers (SQLite, PostgreSQL, MySQL, MSSQL). The framework emphasizes type safety, change tracking, and adheres to SOLID principles for a clean, extensible architectural design, aiming to offer a robust and developer-friendly ORM solution for TypeScript applications.
 
 # User Preferences
 
@@ -82,7 +104,7 @@ Database-specific error mapping:
 -   **Turborepo + pnpm**: Monorepo management for fast builds and efficient dependency management.
 -   **Modular Package Structure**: Decomposed into 30+ packages for tree-shaking and faster builds.
 -   **Type Safety**: Extensive TypeScript usage for compile-time validation, including `TypedQueryable`.
--   **Comprehensive Testing**: Over 232 test files (unit and E2E) using Docker Compose for multi-database testing, now utilizing Vitest with SWC for native Stage-3 decorator support and faster execution.
+-   **Comprehensive Testing**: Over 232 test files (unit and E2E) using Docker Compose for multi-database testing. **Currently migrating from Jest to Vitest** with SWC for native Stage-3 decorator support and ~2.5x faster execution. Migration revealed critical decorator metadata registration bugs that require refactoring before full test coverage can be achieved.
 
 ## Feature Specifications
 

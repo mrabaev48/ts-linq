@@ -2,7 +2,8 @@
 
 **Last Updated:** October 23, 2025
 
-## Current Status: 21/44 core tests passing (48%)
+## Current Status: 22/44 core tests passing (50%)  
+**CRITICAL ISSUE:** Decorator metadata registration broken - see below
 
 ### Vitest Migration Complete ✅
 - ✅ Migrated from Jest to Vitest
@@ -67,15 +68,46 @@
 - **Indexes**: @Index decorator not working correctly
 - **Relationships**: @ManyToOne/@OneToMany not registering metadata
 
-## Known Issues
+## CRITICAL BUG: Decorator Metadata Registration Failure
 
-### 1. Decorator Metadata Capture
-**Problem:** Some decorator options not being captured by MetadataStorage
-- Custom table names ignored
-- Column options (nullable, defaultValue, columnName) not saved
-- Relationship metadata missing
+### Problem
+**Stage-3 decorators are not registering metadata at all!**
+- `metadata.columns` is always empty (length 0) even after `new Entity()`
+- Relationship metadata never appears
+- Only entity name and indexes partially work
 
-**Root Cause:** Decorators may not be invoking MetadataStorage.add* methods correctly
+### Root Cause
+The `ctx.addInitializer()` approach in Stage-3 decorators has fundamental timing issues:
+1. Field decorators (@Column, @PrimaryKey) run per-instance
+2. They should register metadata once at class definition, not per object
+3. Current implementation calls `MetadataStorage.add*()` multiple times
+4. But the metadata isn't actually being stored correctly
+
+### Evidence
+```typescript
+@Entity()
+class User {
+  @PrimaryKey({ type: 'INTEGER' })
+  id!: number;
+  
+  @Column({ type: 'TEXT' })
+  name!: string;
+}
+
+new User();
+const meta = MetadataStorage.getEntity(User);
+console.log(meta.columns.length); // 0 ❌ Should be 2!
+console.log(meta.primaryKeys); // [] ❌ Should be ['id']!
+```
+
+### Required Fix
+**Full decorator refactoring needed:**
+1. Use `Symbol.metadata` or static registries for class-time registration
+2. Have field decorators append to shared metadata bucket
+3. Have @Entity finalize/register all collected metadata immediately
+4. Ensure metadata available without creating instances
+
+This is beyond scope of current Vitest migration task.
 
 ### 2. ProviderStub Batch Operations
 **Problem:** Multiple inserts don't return auto-increment IDs
