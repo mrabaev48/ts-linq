@@ -1,9 +1,9 @@
-import type { QueryOptions, SqlParameter } from '@ts-linq/core';
+import type { QueryOptions, SqlParameter } from '@ts-linq/types';
 
 export class SQLiteWhereEmitter {
   public emit(parameters: SqlParameter[], options: QueryOptions): string {
     if (!options.where || options.where.length === 0) return '';
-    const whereClauses = options.where.map((w) => w.condition);
+    const whereClauses = options.where.map((w: any) => w.condition);
     for (const w of options.where) parameters.push(...w.parameters);
     return ` WHERE ${whereClauses.join(' AND ')}`;
   }

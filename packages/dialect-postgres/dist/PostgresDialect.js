@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostgresDialect = void 0;
-const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 const PgWhereEmitter_1 = require("./emitters/PgWhereEmitter");
 const PgJoinEmitter_1 = require("./emitters/PgJoinEmitter");
 const PgOrderEmitter_1 = require("./emitters/PgOrderEmitter");
@@ -29,7 +29,7 @@ class PostgresDialect {
      * @param options Normalized query options (select/where/order/group/joins/limit/offset)
      */
     buildSelect(entityClass, options) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const parameters = [];

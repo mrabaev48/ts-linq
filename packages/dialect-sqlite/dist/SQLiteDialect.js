@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SQLiteDialect = void 0;
-const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 const SQLiteWhereEmitter_1 = require("./emitters/SQLiteWhereEmitter");
 const SQLiteJoinEmitter_1 = require("./emitters/SQLiteJoinEmitter");
 const SQLiteOrderEmitter_1 = require("./emitters/SQLiteOrderEmitter");
@@ -26,7 +26,7 @@ class SQLiteDialect {
      * @param options Normalized query options
      */
     buildSelect(entityClass, options) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const parameters = [];

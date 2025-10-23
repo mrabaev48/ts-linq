@@ -3,9 +3,10 @@ import type {
   OrderByClause,
   QueryOptions,
   WhereClause,
-  SqlParameter
-} from '@ts-linq/core';
-import { MetadataStorage, JoinClause } from '@ts-linq/core';
+  SqlParameter,
+  JoinClause
+} from '@ts-linq/types';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { SQLiteWhereEmitter } from './emitters/SQLiteWhereEmitter';
 import { SQLiteJoinEmitter } from './emitters/SQLiteJoinEmitter';
 import { SQLiteOrderEmitter } from './emitters/SQLiteOrderEmitter';

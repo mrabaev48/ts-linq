@@ -1,4 +1,4 @@
-import type { QueryOptions, SqlParameter } from '@ts-linq/core';
+import type { QueryOptions, SqlParameter } from '@ts-linq/types';
 
 export class MssqlGroupEmitter {
   public emit(parameters: SqlParameter[], options: QueryOptions): string {

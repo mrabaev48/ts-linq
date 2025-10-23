@@ -1,4 +1,4 @@
-import type { EntityMetadata } from '@ts-linq/core';
+import type { EntityMetadata } from '@ts-linq/types';
 type LoggerLike = {
     warn(message: string, error?: unknown): void;
 };
