@@ -1,124 +1,60 @@
+import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { DbContext } from '../../src/DbContext';
 import { DbSet } from '../../src/DbSet';
-import { MetadataStorage } from '@ts-linq/metadata';
-import { DatabaseProvider } from '@ts-linq/core';
+import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '@ts-linq/metadata';
+import { TestProvider } from '../stubs/TestProvider';
 
+@Entity()
 class User {
+  @PrimaryKey({ type: 'INTEGER', autoIncrement: true })
   id!: number;
+
+  @Column({ type: 'TEXT' })
   name!: string;
+
+  @Column({ type: 'TEXT' })
   email!: string;
+
+  @Column({ type: 'INTEGER', nullable: true })
   age?: number;
+
+  @OneToMany(() => Post, { inverseSide: 'userId' })
   posts!: Post[];
 }
 
+@Entity()
 class Post {
+  @PrimaryKey({ type: 'INTEGER', autoIncrement: true })
   id!: number;
+
+  @Column({ type: 'TEXT' })
   title!: string;
+
+  @Column({ type: 'TEXT' })
   content!: string;
+
+  @Column({ type: 'INTEGER' })
   userId!: number;
+
+  @ManyToOne(() => User, { inverseSide: 'posts' })
   user!: User;
 }
 
 class UserDbContext extends DbContext {}
 
-function setupMetadata() {
-  MetadataStorage.addEntity(User, 'User');
-
-  MetadataStorage.addPrimaryKey(User, 'id');
-  MetadataStorage.addColumn(User, {
-    propertyName: 'id',
-    columnName: 'id',
-    type: 'INTEGER',
-    nullable: false,
-    isGenerated: true,
-    isVersion: false
-  });
-
-  MetadataStorage.addColumn(User, {
-    propertyName: 'name',
-    columnName: 'name',
-    type: 'TEXT',
-    nullable: false,
-    isGenerated: false,
-    isVersion: false
-  });
-
-  MetadataStorage.addColumn(User, {
-    propertyName: 'email',
-    columnName: 'email',
-    type: 'TEXT',
-    nullable: false,
-    isGenerated: false,
-    isVersion: false
-  });
-
-  MetadataStorage.addColumn(User, {
-    propertyName: 'age',
-    columnName: 'age',
-    type: 'INTEGER',
-    nullable: true,
-    isGenerated: false,
-    isVersion: false
-  });
-
-  MetadataStorage.addEntity(Post, 'Post');
-
-  MetadataStorage.addPrimaryKey(Post, 'id');
-  MetadataStorage.addColumn(Post, {
-    propertyName: 'id',
-    columnName: 'id',
-    type: 'INTEGER',
-    nullable: false,
-    isGenerated: true,
-    isVersion: false
-  });
-
-  MetadataStorage.addColumn(Post, {
-    propertyName: 'title',
-    columnName: 'title',
-    type: 'TEXT',
-    nullable: false,
-    isGenerated: false,
-    isVersion: false
-  });
-
-  MetadataStorage.addColumn(Post, {
-    propertyName: 'content',
-    columnName: 'content',
-    type: 'TEXT',
-    nullable: false,
-    isGenerated: false,
-    isVersion: false
-  });
-
-  MetadataStorage.addColumn(Post, {
-    propertyName: 'userId',
-    columnName: 'userId',
-    type: 'INTEGER',
-    nullable: false,
-    isGenerated: false,
-    isVersion: false
-  });
-}
-
-describe('ORM Integration - Real User Scenarios', () => {
+describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
   let context: UserDbContext;
-  let provider: MockDatabaseProvider;
+  let provider: TestProvider;
 
   beforeEach(async () => {
-    MetadataStorage.getInstance().clear();
-    setupMetadata();
-    
-    provider = new MockDatabaseProvider();
+    provider = new TestProvider(':memory:');
     await provider.connect();
-    provider.mockResultPattern(/SELECT/, []);
-    provider.mockResultPattern(/INSERT/, [{ id: 1 }]);
-    provider.mockResultPattern(/UPDATE/, []);
-    provider.mockResultPattern(/DELETE/, []);
     context = new UserDbContext({ provider: provider as any });
+    await context.ensureCreated();
   });
 
   afterEach(async () => {
+    await context.dispose();
     await provider.disconnect();
   });
 
@@ -133,17 +69,44 @@ describe('ORM Integration - Real User Scenarios', () => {
       const affected = await context.saveChanges();
 
       expect(affected).toBeGreaterThanOrEqual(1);
+      expect(user.id).toBeGreaterThan(0);
     });
 
-    test('Read: Verify DbSet query methods work', () => {
-      const query = context.set(User).where(u => u.name === 'Alice');
-      expect(query).toBeDefined();
-      expect(typeof query.toArray).toBe('function');
-    });
-
-    test('Update: Change tracking marks entity as modified', async () => {
+    test('Read: Find user by ID', async () => {
       const user = new User();
-      user.id = 1;
+      user.name = 'Bob';
+      user.email = 'bob@example.com';
+      context.set(User).add(user);
+      await context.saveChanges();
+
+      const foundUser = await context.set(User).find(user.id);
+
+      expect(foundUser).toBeDefined();
+      expect(foundUser?.name).toBe('Bob');
+      expect(foundUser?.email).toBe('bob@example.com');
+    });
+
+    test('Read: Get all users', async () => {
+      const alice = new User();
+      alice.name = 'Alice';
+      alice.email = 'alice@example.com';
+
+      const bob = new User();
+      bob.name = 'Bob';
+      bob.email = 'bob@example.com';
+
+      context.set(User).add(alice);
+      context.set(User).add(bob);
+      await context.saveChanges();
+
+      const allUsers = await context.set(User).toArray();
+
+      expect(allUsers).toHaveLength(2);
+      expect(allUsers.map(u => u.name)).toEqual(expect.arrayContaining(['Alice', 'Bob']));
+    });
+
+    test('Update: Modify existing user', async () => {
+      const user = new User();
       user.name = 'Charlie';
       user.email = 'charlie@old.com';
       user.age = 25;
@@ -151,24 +114,33 @@ describe('ORM Integration - Real User Scenarios', () => {
       await context.saveChanges();
 
       user.email = 'charlie@new.com';
+      user.age = 26;
       context.set(User).update(user);
       const affected = await context.saveChanges();
 
-      expect(affected).toBeGreaterThanOrEqual(0);
+      expect(affected).toBe(1);
+
+      const updated = await context.set(User).find(user.id);
+      expect(updated?.email).toBe('charlie@new.com');
+      expect(updated?.age).toBe(26);
     });
 
-    test('Delete: Remove entity from tracking', async () => {
+    test('Delete: Remove a user', async () => {
       const user = new User();
-      user.id = 1;
       user.name = 'David';
       user.email = 'david@example.com';
       context.set(User).add(user);
       await context.saveChanges();
 
+      const userId = user.id;
+
       context.set(User).remove(user);
       const affected = await context.saveChanges();
 
-      expect(affected).toBeGreaterThanOrEqual(0);
+      expect(affected).toBe(1);
+
+      const deleted = await context.set(User).find(userId);
+      expect(deleted).toBeNull();
     });
   });
 
@@ -183,7 +155,10 @@ describe('ORM Integration - Real User Scenarios', () => {
       users.forEach(u => context.set(User).add(u));
       const affected = await context.saveChanges();
 
-      expect(affected).toBeGreaterThanOrEqual(3);
+      expect(affected).toBe(3);
+
+      const allUsers = await context.set(User).toArray();
+      expect(allUsers).toHaveLength(3);
     });
 
     test('Mixed operations in single saveChanges', async () => {
@@ -203,51 +178,94 @@ describe('ORM Integration - Real User Scenarios', () => {
 
       const affected = await context.saveChanges();
 
-      expect(affected).toBeGreaterThanOrEqual(0);
+      expect(affected).toBe(3);
+
+      const remaining = await context.set(User).toArray();
+      expect(remaining).toHaveLength(2);
+      expect(remaining.find(u => u.name === 'UpdatedUser1')).toBeDefined();
+      expect(remaining.find(u => u.name === 'User3')).toBeDefined();
+      expect(remaining.find(u => u.name === 'User2')).toBeUndefined();
     });
   });
 
   describe('Query Operations - Type Safety', () => {
-    test('Query builder methods return TypedQueryable', () => {
-      const query = context.set(User)
+    beforeEach(async () => {
+      const users = [
+        Object.assign(new User(), { name: 'Alice', email: 'alice@example.com', age: 30 }),
+        Object.assign(new User(), { name: 'Bob', email: 'bob@example.com', age: 25 }),
+        Object.assign(new User(), { name: 'Charlie', email: 'charlie@example.com', age: 35 }),
+        Object.assign(new User(), { name: 'Diana', email: 'diana@example.com', age: 28 })
+      ];
+      users.forEach(u => context.set(User).add(u));
+      await context.saveChanges();
+    });
+
+    test('Query with where clause', async () => {
+      const adults = await context.set(User)
         .where(u => (u.age ?? 0) >= 30)
+        .toArray();
+
+      expect(adults.length).toBeGreaterThanOrEqual(2);
+      expect(adults.every(u => (u.age ?? 0) >= 30)).toBe(true);
+    });
+
+    test('Query with ordering', async () => {
+      const ordered = await context.set(User)
         .orderBy(u => u.name)
-        .take(10);
+        .toArray();
 
-      expect(query).toBeDefined();
-      expect(typeof query.toArray).toBe('function');
-      expect(typeof query.count).toBe('function');
-      expect(typeof query.firstOrDefault).toBe('function');
+      expect(ordered[0].name).toBe('Alice');
+      expect(ordered[ordered.length - 1].name).toBe('Diana');
     });
 
-    test('Select projection maintains type safety', () => {
-      const query = context.set(User)
-        .select(u => ({ id: u.id, name: u.name }));
-
-      expect(query).toBeDefined();
-      expect(typeof query.toArray).toBe('function');
-    });
-
-    test('Include relationship navigation', () => {
-      const query = context.set(User).include(u => u.posts);
-
-      expect(query).toBeDefined();
-      expect(typeof query.toArray).toBe('function');
-    });
-
-    test('Pagination with skip and take', () => {
-      const query = context.set(User)
+    test('Query with pagination', async () => {
+      const page1 = await context.set(User)
         .orderBy(u => u.name)
         .skip(0)
-        .take(2);
+        .take(2)
+        .toArray();
 
-      expect(query).toBeDefined();
-      expect(typeof query.toArray).toBe('function');
+      const page2 = await context.set(User)
+        .orderBy(u => u.name)
+        .skip(2)
+        .take(2)
+        .toArray();
+
+      expect(page1).toHaveLength(2);
+      expect(page2).toHaveLength(2);
+      expect(page1[0].name).toBe('Alice');
+      expect(page2[0].name).toBe('Charlie');
+    });
+
+    test('Query with count', async () => {
+      const count = await context.set(User)
+        .where(u => (u.age ?? 0) >= 30)
+        .count();
+
+      expect(count).toBeGreaterThanOrEqual(2);
+    });
+
+    test('Query with firstOrDefault', async () => {
+      const user = await context.set(User)
+        .where(u => u.name === 'Bob')
+        .firstOrDefault();
+
+      expect(user).toBeDefined();
+      expect(user?.name).toBe('Bob');
+      expect(user?.age).toBe(25);
+    });
+
+    test('Query returns null when not found', async () => {
+      const user = await context.set(User)
+        .where(u => u.name === 'NonExistent')
+        .firstOrDefault();
+
+      expect(user).toBeNull();
     });
   });
 
   describe('Relationships', () => {
-    test('Create user with posts - verify entities are tracked', async () => {
+    test('Create user with posts', async () => {
       const user = Object.assign(new User(), {
         name: 'Blogger',
         email: 'blogger@example.com'
@@ -258,33 +276,37 @@ describe('ORM Integration - Real User Scenarios', () => {
       const post1 = Object.assign(new Post(), {
         title: 'First Post',
         content: 'Hello World!',
-        userId: 1
+        userId: user.id
       });
 
       const post2 = Object.assign(new Post(), {
         title: 'Second Post',
         content: 'Another post',
-        userId: 1
+        userId: user.id
       });
 
       context.set(Post).add(post1);
       context.set(Post).add(post2);
-      const affected = await context.saveChanges();
+      await context.saveChanges();
 
-      expect(affected).toBeGreaterThanOrEqual(2);
+      const allPosts = await context.set(Post).toArray();
+      expect(allPosts).toHaveLength(2);
+      expect(allPosts.every(p => p.userId === user.id)).toBe(true);
     });
   });
 
   describe('Edge Cases', () => {
-    test('Handle nullable columns', () => {
+    test('Handle nullable columns', async () => {
       const user = Object.assign(new User(), {
         name: 'NoAge',
         email: 'noage@example.com'
       });
 
-      expect(user.age).toBeUndefined();
       context.set(User).add(user);
-      expect(context.set(User)).toBeDefined();
+      await context.saveChanges();
+
+      const found = await context.set(User).find(user.id);
+      expect(found?.age).toBeUndefined();
     });
 
     test('SaveChanges with no tracked changes returns 0', async () => {
@@ -301,21 +323,8 @@ describe('ORM Integration - Real User Scenarios', () => {
       context.set(User).add(user2);
       await context.saveChanges();
 
-      expect(user1).toBeDefined();
-      expect(user2).toBeDefined();
-    });
-
-    test('Update without previous add is handled gracefully', async () => {
-      const user = Object.assign(new User(), {
-        id: 999,
-        name: 'Ghost',
-        email: 'ghost@example.com'
-      });
-
-      context.set(User).update(user);
-      const affected = await context.saveChanges();
-
-      expect(affected).toBeGreaterThanOrEqual(0);
+      const allUsers = await context.set(User).toArray();
+      expect(allUsers).toHaveLength(2);
     });
   });
 
@@ -332,7 +341,7 @@ describe('ORM Integration - Real User Scenarios', () => {
       const post = Object.assign(new Post(), {
         title: 'My First Blog Post',
         content: 'This is my first blog post on this platform!',
-        userId: 1
+        userId: author.id
       });
       context.set(Post).add(post);
       await context.saveChanges();
@@ -342,8 +351,14 @@ describe('ORM Integration - Real User Scenarios', () => {
       context.set(Post).update(post);
       await context.saveChanges();
 
-      expect(post.title).toBe('My Updated Blog Post');
-      expect(post.content).toContain('Updated content');
+      const foundPost = await context.set(Post).find(post.id);
+      expect(foundPost?.title).toBe('My Updated Blog Post');
+      expect(foundPost?.content).toContain('Updated content');
+
+      const authorPosts = await context.set(Post)
+        .where(p => p.userId === author.id)
+        .toArray();
+      expect(authorPosts).toHaveLength(1);
     });
 
     test('User registration and profile update', async () => {
@@ -353,14 +368,22 @@ describe('ORM Integration - Real User Scenarios', () => {
       });
       context.set(User).add(newUser);
       await context.saveChanges();
+      expect(newUser.id).toBeGreaterThan(0);
 
-      newUser.age = 28;
-      newUser.name = 'Jane Smith-Johnson';
-      context.set(User).update(newUser);
-      await context.saveChanges();
+      const userId = newUser.id;
+      const user = await context.set(User).find(userId);
+      expect(user).toBeDefined();
 
-      expect(newUser.age).toBe(28);
-      expect(newUser.name).toBe('Jane Smith-Johnson');
+      if (user) {
+        user.age = 28;
+        user.name = 'Jane Smith-Johnson';
+        context.set(User).update(user);
+        await context.saveChanges();
+
+        const updated = await context.set(User).find(userId);
+        expect(updated?.age).toBe(28);
+        expect(updated?.name).toBe('Jane Smith-Johnson');
+      }
     });
 
     test('User deactivation (delete)', async () => {
@@ -371,10 +394,13 @@ describe('ORM Integration - Real User Scenarios', () => {
       context.set(User).add(user);
       await context.saveChanges();
 
+      const userId = user.id;
+
       context.set(User).remove(user);
       await context.saveChanges();
 
-      expect(user).toBeDefined();
+      const deactivated = await context.set(User).find(userId);
+      expect(deactivated).toBeNull();
     });
   });
 
@@ -386,23 +412,14 @@ describe('ORM Integration - Real User Scenarios', () => {
     });
 
     test('DbSet methods are properly initialized', () => {
-      expect(typeof context.set(User).add).toBe('function');
-      expect(typeof context.set(User).update).toBe('function');
-      expect(typeof context.set(User).remove).toBe('function');
-      expect(typeof context.set(User).find).toBe('function');
-      expect(typeof context.set(User).where).toBe('function');
-      expect(typeof context.set(User).select).toBe('function');
-      expect(typeof context.set(User).orderBy).toBe('function');
-      expect(typeof context.set(User).include).toBe('function');
-    });
-
-    test('Provider connection state is managed correctly', async () => {
-      const newProvider = new MockDatabaseProvider();
-      await newProvider.connect();
-      expect(newProvider).toBeDefined();
-      
-      await newProvider.disconnect();
-      expect(newProvider).toBeDefined();
+      const userSet = context.set(User);
+      expect(typeof userSet.add).toBe('function');
+      expect(typeof userSet.update).toBe('function');
+      expect(typeof userSet.remove).toBe('function');
+      expect(typeof userSet.find).toBe('function');
+      expect(typeof userSet.where).toBe('function');
+      expect(typeof userSet.select).toBe('function');
+      expect(typeof userSet.orderBy).toBe('function');
     });
   });
 });

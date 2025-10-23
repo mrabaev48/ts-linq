@@ -16,12 +16,12 @@ args = "TypeScript ORM Development"
 name = "TypeScript ORM Development"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run test:watch"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm test:watch"
 
 [agent]
 expertMode = true
