@@ -1,6 +1,6 @@
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 import { DatabaseProvider } from '../src/providers/DatabaseProvider';
-import type { SqlParameter } from '../src/types';
+import type { SqlParameter } from '@ts-linq/types';
 
 class HookedProvider extends SQLiteProvider {
   public before: Array<string> = [];

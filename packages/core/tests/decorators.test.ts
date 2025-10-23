@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 
 describe('Decorators', () => {
   beforeEach(() => {

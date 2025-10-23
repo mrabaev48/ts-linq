@@ -2,10 +2,10 @@ import 'reflect-metadata';
 import { QueryBuilder } from '../src/query/QueryBuilder';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { QueryOptions, SqlParameter } from '../src/types';
-import { Entity, Column, PrimaryKey } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import { QueryOptions } from '../src/types';
+import type { QueryOptions, SqlParameter } from '@ts-linq/types';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryOptions } from '@ts-linq/types';
 
 // Define test entity inside function to ensure decorators execute properly
 function createQueryTestEntity() {

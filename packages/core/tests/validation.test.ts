@@ -2,7 +2,7 @@ import { DbContext } from '../src/context/DbContext';
 import { Entity } from '../src/decorators/Entity';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
-import { ValidationError } from '../src/types';
+import { ValidationError } from '@ts-linq/types';
 
 @Entity({ name: 'ValUsers' })
 class ValUser {

@@ -1,16 +1,20 @@
 import { CompositeSqlLogger, CompositeSqlLoggerFactory } from '@ts-linq/composite-sql-logger';
-import type { SqlLogger, SqlLoggerFactory } from '../src/types';
+import type { SqlLogger, SqlLoggerFactory, CacheInfo } from '@ts-linq/types';
 
 describe('CompositeSqlLogger', () => {
   test('fan-outs queryStart/queryEnd/retry/transaction/cache to all delegates', () => {
     const calls: string[] = [];
     const makeLogger = (id: string): SqlLogger => ({
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
       queryStart: () => calls.push(`${id}:qs`),
       queryEnd: () => calls.push(`${id}:qe`),
       retry: () => calls.push(`${id}:r`),
       transactionStart: () => calls.push(`${id}:ts`),
       transactionEnd: () => calls.push(`${id}:te`),
-      cache: (i) => calls.push(`${id}:c:${i.cache}:${i.hit ? 'H' : 'M'}`)
+      cache: (i: CacheInfo) => calls.push(`${id}:c:${i.cache}:${i.hit ? 'H' : 'M'}`)
     });
 
     const c = new CompositeSqlLogger(makeLogger('A'), makeLogger('B'));
@@ -38,8 +42,18 @@ describe('CompositeSqlLogger', () => {
   });
 
   test('swallows delegate errors', () => {
-    const ok: SqlLogger = { queryStart: jest.fn() };
+    const ok: SqlLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      queryStart: jest.fn()
+    };
     const bad: SqlLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
       queryStart: () => {
         throw new Error('boom');
       }
@@ -52,11 +66,29 @@ describe('CompositeSqlLogger', () => {
 
 describe('CompositeSqlLoggerFactory', () => {
   test('composes results from factories and static loggers', () => {
-    const lA: SqlLogger = { queryStart: jest.fn() };
-    const lB: SqlLogger = { queryStart: jest.fn() };
-    const f1: SqlLoggerFactory = { create: (p) => (p === 'sqlite' ? lA : undefined) };
+    const lA: SqlLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      queryStart: jest.fn()
+    };
+    const lB: SqlLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      queryStart: jest.fn()
+    };
+    const f1: SqlLoggerFactory = { create: (p: string) => (p === 'sqlite' ? lA : undefined) };
     const f2: SqlLoggerFactory = { create: () => lB };
-    const staticL: SqlLogger = { queryEnd: jest.fn() };
+    const staticL: SqlLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      queryEnd: jest.fn()
+    };
 
     const factory = new CompositeSqlLoggerFactory({ factories: [f1, f2], loggers: [staticL] });
     const comp = factory.create('sqlite');

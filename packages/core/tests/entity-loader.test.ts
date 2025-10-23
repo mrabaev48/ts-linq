@@ -2,8 +2,8 @@ import 'reflect-metadata';
 import { EntityLoader } from '../src/loading/EntityLoader';
 import { ProviderStub } from './_stubs/ProviderStub';
 import { LoadingStrategy } from '../src/loading/LoadingStrategy';
-import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 
 // Define test entities inside functions to ensure decorators execute properly
 function createTestEntities() {

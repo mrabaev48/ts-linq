@@ -34,9 +34,9 @@ export {
 
 // Decorators
 export * from './decorators/Entity';
-// Removed duplicate: export * from './decorators/Column'; (ColumnOptions already exported via './types')
+export * from './decorators/Column';
 export * from './decorators/PrimaryKey';
-// Removed duplicate: export * from './decorators/Relationships'; (RelationshipOptions already exported via './types')
+export * from './decorators/Relationships';
 export * from './decorators/ValidIf';
 export * from './decorators/CachePolicy';
 

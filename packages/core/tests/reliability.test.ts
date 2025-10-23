@@ -1,5 +1,5 @@
 import { DatabaseProvider } from '../src/DatabaseProvider';
-import type { SqlLogger, SqlParameter } from '../src/types';
+import type { SqlLogger, SqlParameter } from '@ts-linq/types';
 import { PredicateParser } from '../src/query/PredicateParser';
 
 describe('Reliability & Errors', () => {

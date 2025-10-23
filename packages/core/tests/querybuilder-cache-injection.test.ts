@@ -1,6 +1,6 @@
 import { QueryBuilder } from '../src/query/QueryBuilder';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { QueryOptions, SqlParameter } from '../src/types';
+import type { QueryOptions, SqlParameter } from '@ts-linq/types';
 import type { SqlCache, SqlCacheEntry } from '../src/query/SqlCache';
 
 class DummyDialect implements SqlDialect {

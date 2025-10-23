@@ -3,8 +3,8 @@ import { Column } from '../src/decorators/Column';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/DatabaseProvider';
-import { SqlParameter } from '../src/types';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { SqlParameter } from '@ts-linq/types';
+import { MetadataStorage } from '@ts-linq/metadata';
 
 @Entity({ name: 'Authors' })
 class Author {

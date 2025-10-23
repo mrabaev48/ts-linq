@@ -1,9 +1,9 @@
 import 'reflect-metadata';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import { Entity, Column, PrimaryKey } from '../src';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
-import type { QueryFallback, FallbackRequest } from '../src/types';
+import type { QueryFallback, FallbackRequest } from '@ts-linq/types';
 
 function defineEntity() {
   @Entity()

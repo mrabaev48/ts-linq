@@ -1,10 +1,10 @@
 import { QueryBuilder } from '../src/query/QueryBuilder';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { QueryOptions, PerformanceOptions, SqlParameter } from '../src/types';
+import type { QueryOptions, PerformanceOptions, SqlParameter } from '@ts-linq/types';
 import { EntityCache } from '../src/utils/EntityCache';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/DatabaseProvider';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 
 class FakeDialect implements SqlDialect {
   public calls = 0;

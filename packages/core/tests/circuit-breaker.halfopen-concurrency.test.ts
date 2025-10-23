@@ -1,5 +1,5 @@
 import { ProviderStub } from './_stubs/ProviderStub';
-import { CircuitOpenError } from '../src/types';
+import { CircuitOpenError } from '@ts-linq/types';
 
 class FlakyProviderConcurrent extends ProviderStub {
   private remainingFails: number;

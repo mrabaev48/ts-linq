@@ -1,8 +1,8 @@
-import type { SqlLogger } from '../src/types';
+import type { SqlLogger } from '@ts-linq/types';
 import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
-import { Entity, Column, PrimaryKey } from '../src';
-import type { QueryFallback, FallbackRequest } from '../src/types';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import type { QueryFallback, FallbackRequest } from '@ts-linq/types';
 
 @Entity()
 class U {

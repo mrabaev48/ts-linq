@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { DatabaseProvider } from '../src/DatabaseProvider';
-import { Entity, Column, PrimaryKey } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '../src/query/Queryable';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { SqlParameter } from '../src/types';
+import type { SqlParameter } from '@ts-linq/types';
 
 class ProviderStub extends DatabaseProvider {
   private data: any[] = [];

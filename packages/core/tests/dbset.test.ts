@@ -2,10 +2,10 @@ import 'reflect-metadata';
 import { DbSet } from '../src/context/DbSet';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import { ChangeTracker } from '../src/change-tracking/ChangeTracker';
-import { Entity, Column, PrimaryKey } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { SqlParameter } from '../src/types';
+import type { SqlParameter } from '@ts-linq/types';
 
 class ProviderStub extends DatabaseProvider {
   private tables = new Map<string, { rows: any[]; pk?: string }>();
@@ -123,7 +123,7 @@ class ProviderStub extends DatabaseProvider {
     this.inTransaction = false;
   }
 }
-import { EntityState } from '../src/types';
+import { EntityState } from '@ts-linq/types';
 
 // Define test entity inside function to ensure decorators execute properly
 function createTestEntity() {

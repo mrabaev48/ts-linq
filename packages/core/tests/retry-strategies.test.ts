@@ -2,8 +2,8 @@ import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { DbSet } from '../src/context/DbSet';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import type { ColumnMetadata, RetryPolicy } from '../src/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { ColumnMetadata, RetryPolicy } from '@ts-linq/types';
 
 interface ProviderInternal {
   doExecuteNonQuery: (...args: unknown[]) => unknown;

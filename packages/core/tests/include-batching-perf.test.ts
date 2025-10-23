@@ -4,7 +4,7 @@ import { Entity } from '../src/decorators/Entity';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
 import { OneToMany, ManyToOne } from '../src/decorators/Relationships';
-import { SqlLogger } from '../src/types';
+import { SqlLogger } from '@ts-linq/types';
 
 @Entity({ name: 'PerfAuthors' })
 class PerfAuthor {

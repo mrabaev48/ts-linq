@@ -1,4 +1,4 @@
-import { ForeignKeyConstraintError, DatabaseError } from '../src/types';
+import { ForeignKeyConstraintError, DatabaseError } from '@ts-linq/types';
 import { PostgresProvider } from '@ts-linq/provider-postgres';
 import { MySqlProvider } from '@ts-linq/provider-mysql';
 import { MssqlProvider } from '@ts-linq/provider-mssql';

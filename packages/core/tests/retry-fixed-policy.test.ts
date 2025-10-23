@@ -3,8 +3,8 @@ import { DbContext } from '../src/context/DbContext';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { DbSet } from '../src/context/DbSet';
 import { FixedIntervalRetryPolicy } from '../src/utils/RetryPolicies';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import type { ColumnMetadata } from '../src/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { ColumnMetadata } from '@ts-linq/types';
 
 class FxUser {}
 MetadataStorage.addEntity(FxUser, 'fx_user');

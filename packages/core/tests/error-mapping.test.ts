@@ -1,5 +1,5 @@
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
-import { UniqueConstraintError, ForeignKeyConstraintError } from '../src/types';
+import { UniqueConstraintError, ForeignKeyConstraintError } from '@ts-linq/types';
 
 describe('SQLite error mapping', () => {
   it('maps UNIQUE constraint violation to UniqueConstraintError', async () => {

@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
 import { ProviderStub } from './_stubs/ProviderStub';
-import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { LoadingStrategy } from '../src/loading/LoadingStrategy';
 
 class TestLogger {

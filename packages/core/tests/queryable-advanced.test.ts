@@ -1,11 +1,11 @@
 import 'reflect-metadata';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '../src/query/Queryable';
 import { InMemoryCountCache } from '../src/query/CountCache';
-import type { GlobalFilter } from '../src/types';
+import type { GlobalFilter } from '@ts-linq/types';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { SqlParameter } from '../src/types';
-import { Entity, Column, PrimaryKey } from '../src';
+import type { SqlParameter } from '@ts-linq/types';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 
 class ProviderStub extends DatabaseProvider {
