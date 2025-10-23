@@ -1,6 +1,6 @@
 import type { DbSet } from '@ts-linq/core';
 import { DbContext, type EntityId, MetadataStorage } from '@ts-linq/core';
-import { SQLiteProvider } from '@ts-linq/sqlite';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
 

@@ -1,6 +1,6 @@
-import { PostgresProvider } from '@ts-linq/postgres';
-import { MySqlProvider } from '@ts-linq/mysql';
-import { MssqlProvider } from '@ts-linq/mssql';
+import { PostgresProvider } from '@ts-linq/provider-postgres';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
+import { MssqlProvider } from '@ts-linq/provider-mssql';
 import { UniqueConstraintError, ForeignKeyConstraintError } from '@ts-linq/core';
 
 const PG = process.env.POSTGRES_URL || '';

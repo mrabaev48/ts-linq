@@ -1,4 +1,4 @@
-import { MysqlDialect } from '@ts-linq/mysql';
+import { MysqlDialect } from '@ts-linq/provider-mysql';
 import { MetadataStorage, type QueryOptions } from '@ts-linq/core';
 
 class MUser {

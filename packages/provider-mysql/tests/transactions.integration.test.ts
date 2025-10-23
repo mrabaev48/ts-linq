@@ -1,4 +1,4 @@
-import { MySqlProvider } from '@ts-linq/mysql';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
 
 const MY = process.env.MYSQL_URL || '';
 const d = MY ? describe : describe.skip;

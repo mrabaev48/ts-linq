@@ -1,6 +1,6 @@
 import { DbContext, MetadataStorage, ValidationError } from '@ts-linq/core';
 import type { ColumnMetadata } from '@ts-linq/core';
-import { MySqlProvider } from '@ts-linq/mysql';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
 import { ValidIfOf, RequiredIfOf } from '@ts-linq/core';
 
 class Product {

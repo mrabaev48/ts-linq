@@ -1,4 +1,4 @@
-import { SQLiteProvider } from '@ts-linq/sqlite';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
 

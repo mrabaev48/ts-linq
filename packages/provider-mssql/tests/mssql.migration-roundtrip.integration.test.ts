@@ -1,5 +1,5 @@
 import { DiffMigrationGenerator, MetadataStorage } from '@ts-linq/core';
-import { MssqlProvider } from '@ts-linq/mssql';
+import { MssqlProvider } from '@ts-linq/provider-mssql';
 
 const url = process.env.MSSQL_URL || '';
 const d = url ? describe : describe.skip;
