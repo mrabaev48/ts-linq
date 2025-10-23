@@ -1,6 +1,6 @@
 import type { IndexMetadata } from '@ts-linq/types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
-import { PENDING_INDEXES } from './Column';
+import { PendingMetadataCollector } from '@ts-linq/metadata';
 
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export {
@@ -15,7 +15,7 @@ export {
 
 function isStage3ClassContext(x: unknown): x is {
   kind: 'class';
-  metadata?: Record<symbol, unknown>;
+  addInitializer?: (fn: () => void) => void;
 } {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'class';
 }
@@ -62,23 +62,20 @@ export function normalizeIndexOptions(input: IndexInput): IndexMetadata {
 
 /**
  * Class decorator that registers an index on the entity.
- * Uses context.metadata to share data with @Entity decorator.
+ * Metadata is collected in PendingMetadataCollector and finalized by @Entity.
  */
 export function Index(options: IndexInput) {
-  return function IndexDecorator(_target: unknown, context: unknown) {
+  return function IndexDecorator(target: unknown, context: unknown) {
     if (!isStage3ClassContext(context)) {
       throw new Error('@Index requires TS5 Stage-3 decorators');
     }
     
-    // Store index metadata in shared context.metadata
-    if (context.metadata) {
-      if (!context.metadata[PENDING_INDEXES]) {
-        context.metadata[PENDING_INDEXES] = [];
-      }
-      
-      const indexes = context.metadata[PENDING_INDEXES] as IndexMetadata[];
-      const meta: IndexMetadata = normalizeIndexOptions(options);
-      indexes.push(meta);
-    }
+    const ctor = target as Function;
+    const meta: IndexMetadata = normalizeIndexOptions(options);
+    
+    // Use addInitializer to register after class is fully decorated
+    context.addInitializer?.(function () {
+      PendingMetadataCollector.addIndex(ctor, meta);
+    });
   };
 }

@@ -1,10 +1,10 @@
 import type { ColumnMetadata } from '@ts-linq/types';
-import { PENDING_COLUMNS, PENDING_PRIMARY_KEYS } from './Column';
+import { PendingMetadataCollector } from '@ts-linq/metadata';
 
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
-  metadata?: Record<symbol, unknown>;
+  addInitializer?: (fn: () => void) => void;
 } {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
@@ -19,7 +19,7 @@ export interface PrimaryKeyOptions {
 
 /**
  * Stage-3 property decorator that marks a column as a primary key.
- * Uses context.metadata to share data with @Entity decorator.
+ * Metadata is collected in PendingMetadataCollector and finalized by @Entity.
  */
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
   return function PrimaryKeyDecorator(_targetOrValue: unknown, propOrContext: unknown) {
@@ -29,14 +29,10 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
     const ctx = propOrContext;
     const name = ctx.name.toString();
     
-    // Store in shared context.metadata
-    if (ctx.metadata) {
-      // Add column metadata
-      if (!ctx.metadata[PENDING_COLUMNS]) {
-        ctx.metadata[PENDING_COLUMNS] = new Map<string, ColumnMetadata>();
-      }
+    ctx.addInitializer?.(function (this: unknown) {
+      const ctor = (this as { constructor?: Function })?.constructor;
+      if (!ctor) return;
       
-      const columns = ctx.metadata[PENDING_COLUMNS] as Map<string, ColumnMetadata>();
       const columnMeta: ColumnMetadata = {
         propertyName: name,
         columnName: options?.name || name,
@@ -45,18 +41,11 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
         isGenerated: !!options?.autoIncrement,
         isVersion: !!options?.version,
         isBranded: options?.branded,
-        brand: options?.branded ? '' : undefined // Will be set by @Entity with class name
+        brand: options?.branded ? ctor.name : undefined
       };
       
-      columns.set(name, columnMeta);
-      
-      // Mark as primary key
-      if (!ctx.metadata[PENDING_PRIMARY_KEYS]) {
-        ctx.metadata[PENDING_PRIMARY_KEYS] = new Set<string>();
-      }
-      
-      const primaryKeys = ctx.metadata[PENDING_PRIMARY_KEYS] as Set<string>;
-      primaryKeys.add(name);
-    }
+      PendingMetadataCollector.addColumn(ctor, columnMeta);
+      PendingMetadataCollector.addPrimaryKey(ctor, name);
+    });
   };
 }

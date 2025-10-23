@@ -1,93 +1,74 @@
 import type { ColumnMetadata, IndexMetadata, RelationshipMetadata } from '@ts-linq/types';
 
 /**
- * Temporary storage for decorator metadata before @Entity finalizes registration.
+ * Temporary storage for metadata collected by field decorators
+ * before @Entity finalizes and registers them in MetadataStorage.
  * 
- * Stage-3 decorators run in this order:
- * 1. Field decorators (@Column, @PrimaryKey) - run first
- * 2. Class decorator (@Entity) - runs last
- * 
- * Field decorators add to this collector, then @Entity reads and finalizes.
+ * Uses WeakMap to avoid memory leaks - entries are garbage collected
+ * when the class is no longer referenced.
  */
+class PendingMetadataCollectorImpl {
+  private columns = new WeakMap<Function, Map<string, ColumnMetadata>>();
+  private primaryKeys = new WeakMap<Function, Set<string>>();
+  private indexes = new WeakMap<Function, IndexMetadata[]>();
+  private relationships = new WeakMap<Function, Map<string, RelationshipMetadata>>();
 
-interface PendingMetadata {
-  columns: Map<string, ColumnMetadata>;
-  primaryKeys: Set<string>;
-  indexes: IndexMetadata[];
-  relationships: Map<string, RelationshipMetadata>;
+  addColumn(target: Function, column: ColumnMetadata): void {
+    if (!this.columns.has(target)) {
+      this.columns.set(target, new Map());
+    }
+    this.columns.get(target)!.set(column.propertyName, column);
+  }
+
+  getColumns(target: Function): Map<string, ColumnMetadata> {
+    return this.columns.get(target) || new Map();
+  }
+
+  addPrimaryKey(target: Function, propertyName: string): void {
+    if (!this.primaryKeys.has(target)) {
+      this.primaryKeys.set(target, new Set());
+    }
+    this.primaryKeys.get(target)!.add(propertyName);
+  }
+
+  getPrimaryKeys(target: Function): Set<string> {
+    return this.primaryKeys.get(target) || new Set();
+  }
+
+  addIndex(target: Function, index: IndexMetadata): void {
+    if (!this.indexes.has(target)) {
+      this.indexes.set(target, []);
+    }
+    this.indexes.get(target)!.push(index);
+  }
+
+  getIndexes(target: Function): IndexMetadata[] {
+    return this.indexes.get(target) || [];
+  }
+
+  addRelationship(target: Function, relationship: RelationshipMetadata): void {
+    if (!this.relationships.has(target)) {
+      this.relationships.set(target, new Map());
+    }
+    this.relationships.get(target)!.set(relationship.propertyName, relationship);
+  }
+
+  getRelationships(target: Function): Map<string, RelationshipMetadata> {
+    return this.relationships.get(target) || new Map();
+  }
+
+  /**
+   * Clear all pending metadata for a target (called by @Entity after registration).
+   */
+  clear(target: Function): void {
+    this.columns.delete(target);
+    this.primaryKeys.delete(target);
+    this.indexes.delete(target);
+    this.relationships.delete(target);
+  }
 }
 
 /**
- * WeakMap keyed by class constructor to store pending metadata.
- * Using WeakMap prevents memory leaks when classes are garbage collected.
+ * Global singleton for collecting pending metadata from field decorators.
  */
-const pendingMetadata = new WeakMap<Function, PendingMetadata>();
-
-export class PendingMetadataCollector {
-  /**
-   * Get or create pending metadata for a class
-   */
-  private static getOrCreate(target: Function): PendingMetadata {
-    if (!pendingMetadata.has(target)) {
-      pendingMetadata.set(target, {
-        columns: new Map(),
-        primaryKeys: new Set(),
-        indexes: [],
-        relationships: new Map()
-      });
-    }
-    return pendingMetadata.get(target)!;
-  }
-
-  /**
-   * Add column metadata from @Column or @PrimaryKey decorator
-   */
-  static addColumn(target: Function, propertyName: string, metadata: ColumnMetadata): void {
-    const pending = this.getOrCreate(target);
-    pending.columns.set(propertyName, metadata);
-  }
-
-  /**
-   * Mark a column as primary key
-   */
-  static addPrimaryKey(target: Function, propertyName: string): void {
-    const pending = this.getOrCreate(target);
-    pending.primaryKeys.add(propertyName);
-  }
-
-  /**
-   * Add index metadata from @Index decorator
-   */
-  static addIndex(target: Function, index: IndexMetadata): void {
-    const pending = this.getOrCreate(target);
-    pending.indexes.push(index);
-  }
-
-  /**
-   * Add relationship metadata from @ManyToOne, @OneToMany, etc.
-   */
-  static addRelationship(target: Function, propertyName: string, metadata: RelationshipMetadata): void {
-    const pending = this.getOrCreate(target);
-    pending.relationships.set(propertyName, metadata);
-  }
-
-  /**
-   * Retrieve all pending metadata and clear it.
-   * Called by @Entity to finalize registration.
-   */
-  static consumeAndClear(target: Function): PendingMetadata | undefined {
-    if (!pendingMetadata.has(target)) {
-      return undefined;
-    }
-    const data = pendingMetadata.get(target)!;
-    pendingMetadata.delete(target);
-    return data;
-  }
-
-  /**
-   * Check if there's pending metadata for a class
-   */
-  static hasPending(target: Function): boolean {
-    return pendingMetadata.has(target);
-  }
-}
+export const PendingMetadataCollector = new PendingMetadataCollectorImpl();

@@ -1,5 +1,5 @@
 import type { RelationshipMetadata } from '@ts-linq/types';
-import { PENDING_RELATIONSHIPS } from './Column';
+import { PendingMetadataCollector } from '@ts-linq/metadata';
 
 /**
  * Options for configuring relationships between entities.
@@ -24,7 +24,7 @@ export interface RelationshipOptions {
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
-  metadata?: Record<symbol, unknown>;
+  addInitializer?: (fn: () => void) => void;
 } {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
@@ -41,13 +41,9 @@ function defineRelationship(
     const ctx = propOrContext;
     const name = ctx.name.toString();
     
-    // Store relationship metadata in shared context.metadata
-    if (ctx.metadata) {
-      if (!ctx.metadata[PENDING_RELATIONSHIPS]) {
-        ctx.metadata[PENDING_RELATIONSHIPS] = new Map<string, RelationshipMetadata>();
-      }
-      
-      const relationships = ctx.metadata[PENDING_RELATIONSHIPS] as Map<string, RelationshipMetadata>;
+    ctx.addInitializer?.(function (this: unknown) {
+      const ctor = (this as { constructor?: Function })?.constructor;
+      if (!ctor) return;
       
       // Resolve targetEntity to concrete constructor
       const te = targetEntity as unknown as Function | (() => Function);
@@ -66,8 +62,8 @@ function defineRelationship(
         through: options?.through
       };
       
-      relationships.set(name, relationship);
-    }
+      PendingMetadataCollector.addRelationship(ctor, relationship);
+    });
     return;
   }
   throw new Error('Relationship decorators require TS5 Stage-3 decorators');

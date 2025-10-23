@@ -1,6 +1,7 @@
 import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '@ts-linq/types';
 import { ValidationError } from '@ts-linq/types';
 import { EntityMetadataBuilder } from './EntityMetadata';
+import { PendingMetadataCollector } from './PendingMetadataCollector';
 
 /**
  * Global singleton storage that collects metadata produced by decorators
@@ -266,10 +267,54 @@ export class MetadataStorage {
   /** Get finalized `EntityMetadata` for a specific constructor. */
   public getEntityMetadata(target: Function): EntityMetadata | undefined {
     const key = this.normalizeTarget(target);
+    
+    // Collect pending metadata from PendingMetadataCollector if available
+    // This handles Stage-3 decorators that use addInitializer
+    this.collectPendingMetadata(key);
+    
     if (this.builders.has(key)) {
       this.finalizeEntity(key);
     }
     return this.entities.get(key);
+  }
+  
+  /**
+   * Collect and register any pending metadata from PendingMetadataCollector.
+   * This is called automatically by getEntityMetadata to handle Stage-3 decorators.
+   */
+  private collectPendingMetadata(target: Function): void {
+    const pendingColumns = PendingMetadataCollector.getColumns(target);
+    const pendingPrimaryKeys = PendingMetadataCollector.getPrimaryKeys(target);
+    const pendingIndexes = PendingMetadataCollector.getIndexes(target);
+    const pendingRelationships = PendingMetadataCollector.getRelationships(target);
+    
+    // Only process if there's pending metadata
+    if (pendingColumns.size > 0 || pendingPrimaryKeys.size > 0 || 
+        pendingIndexes.length > 0 || pendingRelationships.size > 0) {
+      
+      // Register columns
+      for (const [_propertyName, columnMeta] of pendingColumns.entries()) {
+        this.addColumnMetadata(target, columnMeta);
+      }
+      
+      // Register primary keys
+      for (const propertyName of pendingPrimaryKeys) {
+        this.addPrimaryKeyMetadata(target, propertyName);
+      }
+      
+      // Register indexes
+      for (const indexMeta of pendingIndexes) {
+        this.addIndexMetadata(target, indexMeta);
+      }
+      
+      // Register relationships
+      for (const [_propertyName, relationMeta] of pendingRelationships.entries()) {
+        this.addRelationshipMetadata(target, relationMeta);
+      }
+      
+      // Clear pending metadata to free memory
+      PendingMetadataCollector.clear(target);
+    }
   }
 
   /** Finalize and return metadata for all registered entities. */
