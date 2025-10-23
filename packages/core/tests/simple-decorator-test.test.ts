@@ -1,11 +1,11 @@
+import 'reflect-metadata';
 import { describe, test, expect, beforeEach } from 'vitest';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { Entity, Column, PrimaryKey, clearOrphanedMetadata } from '../src/decorators';
+import { Entity, Column, PrimaryKey } from '../src/decorators';
 
-describe('Simple Decorator Test - Orphaned Pattern', () => {
+describe('Simple Decorator Test - Legacy Decorators', () => {
   beforeEach(() => {
     MetadataStorage.getInstance().clear();
-    clearOrphanedMetadata();
   });
 
   test('should register entity with field metadata', () => {
@@ -34,9 +34,23 @@ describe('Simple Decorator Test - Orphaned Pattern', () => {
       title!: string;
     }
 
-    // No `new Product()` needed!
+    // No `new Product()` needed with legacy decorators!
     const metadata = MetadataStorage.getEntity(Product);
     expect(metadata).toBeDefined();
     expect(metadata!.tableName).toBe('products');
+  });
+
+  test('should register primary key', () => {
+    @Entity()
+    class Item {
+      @PrimaryKey({ type: 'INTEGER', autoIncrement: true })
+      id!: number;
+
+      @Column({ type: 'TEXT' })
+      description!: string;
+    }
+
+    const metadata = MetadataStorage.getEntity(Item);
+    expect(metadata!.primaryKeys).toContain('id');
   });
 });

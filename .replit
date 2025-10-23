@@ -27,6 +27,10 @@ args = "pnpm test:watch"
 expertMode = true
 
 [[ports]]
+localPort = 32771
+externalPort = 3001
+
+[[ports]]
 localPort = 36837
 externalPort = 80
 
