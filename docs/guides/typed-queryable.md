@@ -133,36 +133,59 @@ const allSpecial = activeUsers.concat(premiumUsers);
 
 ## Usage
 
-### Basic Usage
+### Entity Framework Style (Recommended)
+
+**DbSet automatically returns TypedQueryable** - you don't need to call `typed()`!
+
+```typescript
+// ✅ DbSet.where() returns TypedQueryable automatically!
+const users = await ctx.users
+  .where(u => u.age >= 18)  // TypedQueryable<User>
+  .select(u => ({ id: u.id, name: u.name }))  // Compile-time type safety!
+  .orderBy(u => u.name)
+  .toArray();
+
+// ❌ COMPILE ERROR - 'nonExistent' doesn't exist on User
+const invalid = await ctx.users
+  .select(u => ({ invalid: u.nonExistent }));  // TypeScript error!
+
+// ❌ COMPILE ERROR - 'name' is not a relationship
+const badInclude = await ctx.users
+  .include(u => u.name);  // TypeScript error!
+```
+
+### Manual Wrapping (Advanced)
+
+You can also manually wrap a Queryable:
 
 ```typescript
 import { typed } from '@ts-linq/query';
 
-// Wrap any Queryable with typed()
-const query = typed(ctx.users)
+// Manual wrapping for advanced scenarios
+const query = typed(someQueryable)
   .where(u => u.age >= 18)
-  .select(u => ({ id: u.id, name: u.name }))
-  .orderBy(u => u.name);
-
-const results = await query.toArray();
+  .select(u => ({ id: u.id, name: u.name }));
 ```
 
-### With DbSet
+### With DbSet (Automatic!)
+
+**No setup needed** - DbSet returns TypedQueryable automatically:
 
 ```typescript
 class AppDbContext extends DbContext {
   users!: DbSet<User>;
-  
-  // Helper method for typed queries
-  typedUsers(): TypedQueryable<User> {
-    return typed(this.users);
-  }
+  orders!: DbSet<Order>;
 }
 
-// Usage
+// Usage - TypedQueryable is automatic!
 const ctx = new AppDbContext();
-const adults = await ctx.typedUsers()
-  .where(u => u.age >= 18)
+const adults = await ctx.users
+  .where(u => u.age >= 18)  // ✅ Already TypedQueryable!
+  .toArray();
+
+// ✅ Compile-time safety for includes
+const usersWithOrders = await ctx.users
+  .include(u => u.orders)  // ✅ Only relationships allowed!
   .toArray();
 ```
 

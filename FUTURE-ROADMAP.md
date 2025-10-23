@@ -28,17 +28,28 @@
 - ✅ Type-safe relationships через `RelationshipProperties<T>`
 - ✅ Entity Framework API compatibility (`.except()`, `.intersect()`, `.concat()`)
 
-**Решение**: ✅ Восстановлен в `packages/query/src/TypedQueryable.ts`
+**Решение**: ✅ Восстановлен в `packages/query/src/TypedQueryable.ts` + **DbSet интегрирован**
 
-**Пример использования**:
+**DbSet Integration** ✅:
+- DbSet теперь возвращает `TypedQueryable<T>` вместо `Queryable<T>`
+- Пользователь получает type safety **автоматически** - никакого `typed()` wrapper не нужно!
+- Полная Entity Framework-style API
+
+**Пример использования** (пользователь НЕ видит TypedQueryable):
 ```typescript
-import { typed } from '@ts-linq/query';
+// ✅ Entity Framework стиль - просто пишем запросы!
+const users = await ctx.users
+  .where(u => u.age >= 18)  // TypedQueryable под капотом
+  .select(u => ({ id: u.id, name: u.name }))
+  .toArray();
 
-// Обычный Queryable - no compile-time checks
-const query1 = ctx.users.select(u => ({ invalid: u.nonExistent })); // ✅ Компилируется
+// ❌ COMPILE ERROR - автоматическая type safety!
+const invalid = await ctx.users
+  .select(u => ({ bad: u.nonExistent }));  // ❌ Property doesn't exist
 
-// TypedQueryable - строгая типизация
-const query2 = typed(ctx.users).select(u => ({ invalid: u.nonExistent })); // ❌ COMPILE ERROR!
+// ❌ COMPILE ERROR - только relationships в include!
+const badInclude = await ctx.users
+  .include(u => u.name);  // ❌ 'name' is not a relationship
 ```
 
 ---

@@ -168,57 +168,57 @@ class DbSet {
     /** Create a fluent `Queryable` for LINQ-like operations (EF-style) */
     where(predicate) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).where(predicate);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Proxy: WHERE EXISTS (subquery). */
     whereExists(subquery) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereExists(subquery);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Proxy: column IN (subquery). */
     whereInSubquery(column, subquery) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).whereInSubquery(column, subquery);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Select specific properties (EF-style with type safety) */
     select(selector) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).select(selector);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Order by a property (EF-style with type safety) */
     orderBy(keySelector) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderBy(keySelector);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Order by descending (EF-style with type safety) */
     orderByDescending(keySelector) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).orderByDescending(keySelector);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Take a specific number of entities (EF-style) */
     take(count) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).take(count);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Skip a specific number of entities (EF-style) */
     skip(count) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).skip(count);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Get distinct entities (EF-style) */
     distinct() {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).distinct();
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Proxy: UNION of two queries of the same DbSet. */
     union(other) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).union(other);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Proxy: UNION ALL of two queries of the same DbSet. */
     unionAll(other) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).unionAll(other);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Get the first entity or throw if none exists */
     async first() {
@@ -248,7 +248,7 @@ class DbSet {
     /** Include related entities for eager loading (EF-style with type safety) */
     include(selector) {
         const queryable = new query_1.Queryable(this._entityClass, this._provider, this._entityLoader, this._entityCache, this._performance, this._globalFilters).include(selector);
-        return queryable;
+        return query_1.TypedQueryable.from(queryable);
     }
     /** Provider-level bulk insert within a transaction. */
     async insertMany(entities) {
