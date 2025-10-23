@@ -37,7 +37,7 @@ class MemFs {
   }
 }
 
-describe.skip('CLI commands basic', () => {
+describe('CLI commands basic', () => {
   const logger = new ConsoleLogger();
   const out = '/tmp/schema.snapshot.json';
 

@@ -1,6 +1,6 @@
 import { createProviderFromEnv } from '../src/provider-factory';
 
-describe.skip('CLI provider factory ENV mapping', () => {
+describe('CLI provider factory ENV mapping', () => {
   const env = process.env;
   beforeEach(() => {
     jest.resetModules();

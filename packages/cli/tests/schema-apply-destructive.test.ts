@@ -45,7 +45,7 @@ class ProviderStub implements Partial<DatabaseProvider> {
   public async disconnect(): Promise<void> {}
 }
 
-describe.skip('schema:apply destructive guard', () => {
+describe('schema:apply destructive guard', () => {
   it('requires --force for destructive SQL', async () => {
     process.exitCode = 0;
     const fs = new MemFs();

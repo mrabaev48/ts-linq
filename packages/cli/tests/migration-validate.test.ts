@@ -9,7 +9,7 @@ class SilentLogger {
   error(): void {}
 }
 
-describe.skip('migration:validate', () => {
+describe('migration:validate', () => {
   let tmpRoot: string;
   let migrationsDir: string;
   let cwdBackup: string;
