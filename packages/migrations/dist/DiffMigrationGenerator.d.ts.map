@@ -1,1 +1,0 @@
-{"version":3,"file":"DiffMigrationGenerator.d.ts","sourceRoot":"","sources":["../src/DiffMigrationGenerator.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,gBAAgB,EAAE,MAAM,eAAe,CAAC;AAOtD,MAAM,WAAW,aAAa;IAC5B,GAAG,EAAE,MAAM,CAAC;CACb;AAED;;;;;;GAMG;AACH,qBAAa,sBAAsB;IACrB,OAAO,CAAC,QAAQ;gBAAR,QAAQ,EAAE,gBAAgB;IAEjC,QAAQ,IAAI,OAAO,CAAC,aAAa,EAAE,CAAC;CASlD"}

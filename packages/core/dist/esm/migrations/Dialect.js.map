@@ -1,1 +1,0 @@
-{"version":3,"file":"Dialect.js","sourceRoot":"","sources":["../../../src/migrations/Dialect.ts"],"names":[],"mappings":"","sourcesContent":["export type Dialect = 'sqlite' | 'postgresql' | 'mysql' | 'mssql';\n"]}

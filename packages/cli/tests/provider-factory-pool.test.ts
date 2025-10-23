@@ -1,20 +1,9 @@
 import { createProviderFromEnv } from '../src/provider-factory';
 
-jest.mock('@ts-linq/provider-postgres', () => ({
-  PostgresProvider: class {
-    constructor(
-      public url: string,
-      public logger?: unknown,
-      public mw?: unknown,
-      public sd?: unknown,
-      public rp?: unknown,
-      public pool?: unknown,
-      public health?: unknown
-    ) {
-      (global as any).__constructed = { url, pool, health };
-    }
-  }
-}));
+jest.mock('@ts-linq/provider-postgres');
+jest.mock('@ts-linq/provider-mysql');
+jest.mock('@ts-linq/provider-sqlite');
+jest.mock('@ts-linq/provider-mssql');
 
 describe('CLI provider factory ENV mapping', () => {
   const env = process.env;
