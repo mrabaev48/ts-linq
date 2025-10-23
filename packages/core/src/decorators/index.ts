@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { IndexMetadata } from '@ts-linq/types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 
@@ -16,14 +18,6 @@ export { Entity } from './Entity';
 export { Column } from './Column';
 export { PrimaryKey } from './PrimaryKey';
 export { ManyToOne, OneToMany, OneToOne, ManyToMany } from './Relationships';
-export { clearOrphanedMetadata } from './utils';
-
-function isStage3ClassContext(x: unknown): x is {
-  kind: 'class';
-  addInitializer?: (fn: () => void) => void;
-} {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'class';
-}
 
 export interface IndexOptions {
   name: string;
@@ -66,26 +60,16 @@ export function normalizeIndexOptions(input: IndexInput): IndexMetadata {
 }
 
 /**
- * Class decorator that registers an index on the entity.
- * Uses orphaned metadata pattern to work with SWC 2022-03.
+ * Legacy class decorator that registers an index on the entity.
+ * Uses reflect-metadata for metadata storage.
  */
-export function Index(options: IndexInput) {
-  return function IndexDecorator(target: unknown, context: unknown) {
-    if (!isStage3ClassContext(context)) {
-      throw new Error('@Index requires TS5 Stage-3 decorators');
-    }
-    
+export function Index(options: IndexInput): ClassDecorator {
+  return function <TFunction extends Function>(target: TFunction): TFunction | void {
     const ctor = target as Function;
     const meta: IndexMetadata = normalizeIndexOptions(options);
     
-    // Save to globalThis for @Entity to collect
-    if (!(globalThis as any).__tsLinqOrphanedIndexes) {
-      (globalThis as any).__tsLinqOrphanedIndexes = [];
-    }
+    MetadataStorage.addIndex(ctor, meta);
     
-    (globalThis as any).__tsLinqOrphanedIndexes.push({
-      ctor,
-      metadata: meta
-    });
+    return target;
   };
 }

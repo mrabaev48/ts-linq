@@ -20,9 +20,22 @@ export default defineConfig({
     },
     testTimeout: 10000,
     hookTimeout: 10000,
+    // Use threads pool to avoid SSR transform issues
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: false,
+      },
+    },
   },
   esbuild: {
     target: 'es2020',
+  },
+  // Disable SSR transform completely
+  server: {
+    deps: {
+      inline: true,
+    },
   },
   resolve: {
     alias: {
