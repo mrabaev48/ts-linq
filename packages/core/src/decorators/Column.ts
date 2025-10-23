@@ -41,7 +41,9 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
     
     // Return initializer function (Stage-3 pattern for field decorators)
     return function (this: unknown, initialValue: unknown) {
+      console.log(`[@Column initializer called for ${name}]`);
       const ctor = (this as { constructor?: Function })?.constructor;
+      console.log(`[@Column constructor:`, ctor?.name || 'undefined', `]`);
       if (ctor) {
         // Register metadata once per constructor
         if (!registeredConstructors.has(ctor)) {
@@ -50,6 +52,7 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
         const registered = registeredConstructors.get(ctor)!;
         
         if (!registered.has(name)) {
+          console.log(`[@Column registering ${name} on ${ctor.name}]`);
           const columnMetadata: ColumnMetadata = {
             propertyName: name,
             columnName: options?.name || name,
@@ -65,6 +68,7 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
           
           PendingMetadataCollector.addColumn(ctor, columnMetadata);
           registered.add(name);
+          console.log(`[@Column registered ${name}, pending columns:`, PendingMetadataCollector.getColumns(ctor).size, `]`);
         }
       }
       return initialValue;
