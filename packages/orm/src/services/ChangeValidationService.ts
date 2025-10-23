@@ -1,6 +1,6 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import { ValidationError } from '@ts-linq/types';
-import type { AuditOptions } from '@ts-linq/core';
+import type { AuditOptions } from '@ts-linq/types';
 
 type ChangeForValidation = {
   entity: Record<string, unknown>;

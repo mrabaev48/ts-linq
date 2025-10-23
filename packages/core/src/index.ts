@@ -3,9 +3,34 @@
  * change tracking, loading utilities, and base provider abstractions.
  */
 
-// Core types
-export * from './types';
-// Removed duplicate: export * from './types/Logger'; (already exported via './types')
+// Core-specific types only (NOT re-exporting from @ts-linq/types)
+export {
+  EntityState,
+  CircuitOpenError,
+  type TrackedEntity,
+  type DbContextOptions,
+  type CircuitState,
+  type CircuitBreakerOptions,
+  type MemorySampleInfo,
+  type MemoryProfilerLike,
+  type DiagnosticsOptions,
+  type LoadingOptions,
+  type QueryResult,
+  type AggregateResult,
+  type PrimaryKeyOf,
+  type ConnectionHealthStatus,
+  type QueryStartInfo,
+  type QueryEndInfo,
+  type RetryInfo,
+  type TransactionInfo,
+  type CacheInfo,
+  type ConnectionHealthInfo,
+  type CircuitEventInfo,
+  type FallbackInfo,
+  type RetryDecisionInfo,
+  type QueryPerformanceAnalysisOptions,
+  type QueryAnalysisInfo
+} from './types';
 
 // Decorators
 export * from './decorators/Entity';

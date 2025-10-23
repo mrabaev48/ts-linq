@@ -1,4 +1,4 @@
-import { MetadataStorage } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 export class RowMaterializer {
     constructor(entityClass, provider, entityCache, performance) {
         this.entityClass = entityClass;

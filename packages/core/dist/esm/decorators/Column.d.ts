@@ -1,4 +1,4 @@
-import type { ColumnType } from '../types';
+import type { ColumnType } from '@ts-linq/types';
 /**
  * Options for configuring a column mapping on an entity property.
  */

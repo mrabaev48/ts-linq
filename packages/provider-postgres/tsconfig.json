@@ -13,5 +13,9 @@
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "**/*.test.ts", "**/*.spec.ts"],
-  "references": [{ "path": "../core" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../types" },
+    { "path": "../metadata" }
+  ]
 }

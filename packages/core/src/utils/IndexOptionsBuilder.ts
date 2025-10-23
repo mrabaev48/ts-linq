@@ -1,4 +1,4 @@
-import type { IndexMetadata } from '../types';
+import type { IndexMetadata } from '@ts-linq/types';
 
 export class IndexOptionsBuilder {
   private current: IndexMetadata;

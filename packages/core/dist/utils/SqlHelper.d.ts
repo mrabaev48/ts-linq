@@ -1,4 +1,4 @@
-import type { SqlParameter } from '../types';
+import type { SqlParameter } from '@ts-linq/types';
 export declare class SqlHelper {
     /**
      * Build a WHERE clause from a simple conditions object.

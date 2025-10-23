@@ -1,6 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import type { PerformanceOptions } from '@ts-linq/types';
-import type { EntityCacheLike } from '@ts-linq/core';
+import type { PerformanceOptions, EntityCacheLike } from '@ts-linq/types';
 export declare class RowMaterializer<T> {
     private readonly entityClass;
     private readonly provider;

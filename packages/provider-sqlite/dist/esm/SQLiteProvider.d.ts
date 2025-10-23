@@ -1,4 +1,4 @@
-import type { EntityMetadata, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlLogger, SqlDialect } from '@ts-linq/core';
+import type { EntityMetadata, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlLogger, SqlDialect } from '@ts-linq/types';
 import { DatabaseProvider } from '@ts-linq/core';
 export declare class SQLiteProvider extends DatabaseProvider {
     private db;

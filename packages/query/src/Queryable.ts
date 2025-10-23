@@ -1,12 +1,13 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type {
   WhereClause,
   OrderByClause,
   PerformanceOptions,
   Result,
   GlobalFilter,
-  SqlParameter
+  SqlParameter,
+  EntityCacheLike
 } from '@ts-linq/types';
 import { ok, err } from '@ts-linq/types';
 import type { CteDefinition } from '@ts-linq/types';
@@ -18,7 +19,6 @@ import type { EntityLoader } from '@ts-linq/core';
 // LoadingStrategy not used directly here; keep imports minimal
 import { RowMaterializer } from './RowMaterializer';
 import { IncludePlanner } from './IncludePlanner';
-import type { EntityCacheLike } from '@ts-linq/core';
 // EntityCache not used directly here
 import type { CountCache } from './CountCache';
 import { JoinPredicateParser } from './JoinPredicateParser';

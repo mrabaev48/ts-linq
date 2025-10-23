@@ -1,4 +1,6 @@
-import { DatabaseProvider, OptimisticConcurrencyError, MetadataStorage, SqlHelper } from '@ts-linq/core';
+import { OptimisticConcurrencyError } from '@ts-linq/types';
+import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
 /**

@@ -1,6 +1,6 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { DatabaseProvider } from '../DatabaseProvider';
-import type { RelationshipMetadata } from '../types';
+import type { RelationshipMetadata } from '@ts-linq/types';
 
 /**
  * Symbol to store original entity data without triggering lazy loading

@@ -1,4 +1,4 @@
-import type { SqlCacheEntry } from '@ts-linq/core';
+import type { SqlCacheEntry } from '@ts-linq/types';
 export interface SqlCache {
     get(key: string): SqlCacheEntry | undefined;
     set(key: string, value: SqlCacheEntry): void;

@@ -1,5 +1,6 @@
 import type {
   EntityMetadata,
+  ColumnMetadata,
   RetryPolicy,
   SqlParameter,
   OrmMiddleware,
@@ -8,15 +9,15 @@ import type {
   SqlDialect,
   ConnectionPoolOptions,
   ConnectionHealthCheckOptions
-} from '@ts-linq/core';
+} from '@ts-linq/types';
 import {
-  DatabaseProvider,
   OptimisticConcurrencyError,
   UniqueConstraintError,
   DatabaseError,
-  ForeignKeyConstraintError,
-  MetadataStorage
-} from '@ts-linq/core';
+  ForeignKeyConstraintError
+} from '@ts-linq/types';
+import { DatabaseProvider } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { PostgresDdlStrategy } from '@ts-linq/dialect-postgres';
 

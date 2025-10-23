@@ -5,7 +5,7 @@ import type { LoadingOptions } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '@ts-linq/query';
-import type { EntityCacheLike } from '@ts-linq/core';
+import type { EntityCacheLike } from '@ts-linq/types';
 import type { GlobalFilter, PerformanceOptions } from '@ts-linq/types';
 import type { PrimaryKeyOf } from '@ts-linq/core';
 

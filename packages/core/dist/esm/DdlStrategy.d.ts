@@ -1,4 +1,4 @@
-import type { EntityMetadata } from './types';
+import type { EntityMetadata } from '@ts-linq/types';
 export interface DdlStrategy {
     generateCreateTableSql(metadata: EntityMetadata): string;
     generateCreateIndexSql(tableName: string, index: {

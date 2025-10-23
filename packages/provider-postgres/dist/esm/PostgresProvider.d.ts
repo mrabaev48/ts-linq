@@ -1,4 +1,4 @@
-import type { EntityMetadata, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlLogger, SqlDialect, ConnectionPoolOptions, ConnectionHealthCheckOptions } from '@ts-linq/core';
+import type { EntityMetadata, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlLogger, SqlDialect, ConnectionPoolOptions, ConnectionHealthCheckOptions } from '@ts-linq/types';
 import { DatabaseProvider } from '@ts-linq/core';
 /**
  * PostgreSQL provider backed by `pg` Pool.

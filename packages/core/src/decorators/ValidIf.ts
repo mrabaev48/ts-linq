@@ -1,5 +1,4 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ValidationRule } from '../types';
 
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';

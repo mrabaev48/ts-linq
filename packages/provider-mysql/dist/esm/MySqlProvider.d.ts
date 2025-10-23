@@ -1,4 +1,4 @@
-import type { EntityMetadata, SqlLogger, RetryPolicy, OrmMiddleware, SoftDeleteOptions, SqlParameter, SqlDialect, ConnectionPoolOptions, ConnectionHealthCheckOptions } from '@ts-linq/core';
+import type { EntityMetadata, SqlLogger, RetryPolicy, OrmMiddleware, SoftDeleteOptions, SqlParameter, SqlDialect, ConnectionPoolOptions, ConnectionHealthCheckOptions } from '@ts-linq/types';
 import { DatabaseProvider } from '@ts-linq/core';
 export declare class MySqlProvider extends DatabaseProvider {
     private pool;

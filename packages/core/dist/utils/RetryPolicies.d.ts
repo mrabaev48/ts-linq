@@ -1,4 +1,4 @@
-import type { RetryPolicy } from '../types';
+import type { RetryPolicy } from '@ts-linq/types';
 export interface ExponentialBackoffOptions {
     baseDelayMs?: number;
     factor?: number;

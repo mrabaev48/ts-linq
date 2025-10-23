@@ -1,5 +1,5 @@
-// Re-export types from @ts-linq/types and @ts-linq/metadata for backwards compatibility
-export * from '@ts-linq/types';
+// Core-specific types only - NO re-exports from other packages
+// Consumers should import directly from @ts-linq/types when needed
 /**
  * Core-specific types that don't belong in @ts-linq/types
  */
@@ -11,8 +11,6 @@ export var EntityState;
     EntityState["Modified"] = "modified";
     EntityState["Deleted"] = "deleted";
 })(EntityState || (EntityState = {}));
-// Re-export metadata types for backwards compatibility  
-export { MetadataStorage } from '@ts-linq/metadata';
 export class CircuitOpenError extends Error {
     constructor(message = 'Circuit is open; call short-circuited') {
         super(message);

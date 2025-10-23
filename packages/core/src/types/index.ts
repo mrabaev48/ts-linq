@@ -1,5 +1,5 @@
-// Re-export types from @ts-linq/types and @ts-linq/metadata for backwards compatibility
-export * from '@ts-linq/types';
+// Core-specific types only - NO re-exports from other packages
+// Consumers should import directly from @ts-linq/types when needed
 
 import type { SqlCache } from '@ts-linq/types';
 import type { CountCache as CountCacheType } from '@ts-linq/types';
@@ -101,12 +101,10 @@ export interface AggregateResult {
   max?: number;
 }
 
-// Re-exported for ORM compatibility
+// Core-specific utility type
 export type PrimaryKeyOf<T> = T extends { id: infer K } ? K : unknown;
 
-// Re-export metadata types for backwards compatibility  
-export { MetadataStorage } from '@ts-linq/metadata';
-// EntityMetadata is exported from @ts-linq/types instead
+// NO re-exports - consumers import directly from @ts-linq/metadata
 
 // Extended logger types
 export type ConnectionHealthStatus = 'healthy' | 'degraded' | 'unhealthy';

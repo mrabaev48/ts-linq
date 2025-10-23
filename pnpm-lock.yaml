@@ -125,6 +125,9 @@ importers:
       '@ts-linq/core':
         specifier: workspace:*
         version: link:../core
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
       memjs:
         specifier: '>=1.3.0'
         version: 1.3.2
@@ -141,6 +144,9 @@ importers:
       '@ts-linq/core':
         specifier: workspace:*
         version: link:../core
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
       ioredis:
         specifier: '>=5.0.0'
         version: 5.8.1
@@ -163,6 +169,21 @@ importers:
       '@ts-linq/migrations':
         specifier: workspace:*
         version: link:../migrations
+      '@ts-linq/provider-mssql':
+        specifier: workspace:*
+        version: link:../provider-mssql
+      '@ts-linq/provider-mysql':
+        specifier: workspace:*
+        version: link:../provider-mysql
+      '@ts-linq/provider-postgres':
+        specifier: workspace:*
+        version: link:../provider-postgres
+      '@ts-linq/provider-sqlite':
+        specifier: workspace:*
+        version: link:../provider-sqlite
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -509,6 +530,12 @@ importers:
       '@ts-linq/dialect-mssql':
         specifier: workspace:*
         version: link:../dialect-mssql
+      '@ts-linq/metadata':
+        specifier: workspace:*
+        version: link:../metadata
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -525,6 +552,12 @@ importers:
       '@ts-linq/dialect-mysql':
         specifier: workspace:*
         version: link:../dialect-mysql
+      '@ts-linq/metadata':
+        specifier: workspace:*
+        version: link:../metadata
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -541,6 +574,12 @@ importers:
       '@ts-linq/dialect-postgres':
         specifier: workspace:*
         version: link:../dialect-postgres
+      '@ts-linq/metadata':
+        specifier: workspace:*
+        version: link:../metadata
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -557,6 +596,12 @@ importers:
       '@ts-linq/dialect-sqlite':
         specifier: workspace:*
         version: link:../dialect-sqlite
+      '@ts-linq/metadata':
+        specifier: workspace:*
+        version: link:../metadata
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -573,6 +618,9 @@ importers:
       '@ts-linq/core':
         specifier: workspace:*
         version: link:../core
+      '@ts-linq/metadata':
+        specifier: workspace:*
+        version: link:../metadata
       '@ts-linq/metrics-safe':
         specifier: workspace:*
         version: link:../metrics-safe

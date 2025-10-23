@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MySqlProvider = void 0;
+const types_1 = require("@ts-linq/types");
 const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 const dialect_mysql_1 = require("@ts-linq/dialect-mysql");
 const dialect_mysql_2 = require("@ts-linq/dialect-mysql");
 class MySqlProvider extends core_1.DatabaseProvider {
@@ -59,7 +61,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
         }
     }
     async insert(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const { sql, params } = this.generateInsertSql(entity, metadata);
@@ -67,7 +69,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
         return entity;
     }
     async update(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const versionCol = metadata.columns.find((c) => c.isVersion);
@@ -75,7 +77,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
         const affectedRows = await this.executeNonQuery(sql, params);
         if (affectedRows === 0) {
             if (versionCol)
-                throw new core_1.OptimisticConcurrencyError('Version mismatch detected during update');
+                throw new types_1.OptimisticConcurrencyError('Version mismatch detected during update');
             throw new Error('No rows were updated.');
         }
         if (versionCol) {
@@ -88,7 +90,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
     }
     /** Upsert using INSERT ... ON DUPLICATE KEY UPDATE ... */
     async upsert(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
@@ -106,7 +108,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
         return entity;
     }
     async delete(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const { sql, params } = this.generateDeleteSql(entity, metadata);
@@ -115,7 +117,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
             throw new Error('No rows were deleted.');
     }
     async findById(id, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
@@ -136,7 +138,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
         return rows.length ? this.mapRowToEntity(rows[0], entityClass) : null;
     }
     async findAll(entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         let sql = `SELECT * FROM ${metadata.tableName}`;
@@ -150,7 +152,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
         return rows.map((r) => this.mapRowToEntity(r, entityClass));
     }
     async findWhere(entityClass, conditions) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const { whereClause, params } = core_1.SqlHelper.buildWhereClause(conditions);
@@ -165,7 +167,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
         return rows.map((r) => this.mapRowToEntity(r, entityClass));
     }
     async findWhereIn(entityClass, column, values) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!values?.length)
@@ -326,7 +328,7 @@ class MySqlProvider extends core_1.DatabaseProvider {
     }
     mapRowToEntity(row, entityClass) {
         const entity = new entityClass();
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (metadata) {
             for (const column of metadata.columns) {
                 if (Object.prototype.hasOwnProperty.call(row, column.columnName)) {
@@ -371,8 +373,8 @@ function mapMySqlError(err) {
     const code = anyErr?.code;
     const message = anyErr?.message || String(err);
     if (code === 'ER_DUP_ENTRY')
-        return new core_1.UniqueConstraintError(message, code);
-    return new core_1.DatabaseError(message ?? 'Unknown error');
+        return new types_1.UniqueConstraintError(message, code);
+    return new types_1.DatabaseError(message ?? 'Unknown error');
 }
 function safeRequireMysql2() {
     try {

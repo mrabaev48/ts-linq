@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SQLiteProvider = void 0;
+const types_1 = require("@ts-linq/types");
 const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 const dialect_sqlite_1 = require("@ts-linq/dialect-sqlite");
 const dialect_sqlite_2 = require("@ts-linq/dialect-sqlite");
 function safeRequireSqlite3() {
@@ -72,7 +74,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Insert the entity and set generated primary key when applicable. */
     async insert(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata) {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
@@ -99,7 +101,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Update the entity row by primary key; supports optimistic concurrency via version column; throws if nothing affected. */
     async update(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata) {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
@@ -108,7 +110,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
         const affectedRows = await this.executeNonQuery(sql, params);
         if (affectedRows === 0) {
             if (versionCol)
-                throw new core_1.OptimisticConcurrencyError('Version mismatch detected during update');
+                throw new types_1.OptimisticConcurrencyError('Version mismatch detected during update');
             throw new Error(`No rows were updated. Entity may not exist or no changes detected.`);
         }
         // increment version in entity
@@ -122,7 +124,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Delete the entity row by primary key; throws if nothing affected. */
     async delete(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata) {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
@@ -134,7 +136,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Fetch a single entity by primary key value. */
     async findById(id, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata) {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
@@ -160,7 +162,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Fetch all rows for the given entity type. */
     async findAll(entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata) {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
@@ -176,7 +178,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Fetch rows that match a simple conditions object. */
     async findWhere(entityClass, conditions) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata) {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
@@ -193,7 +195,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Fetch rows where a single column value is within a list (IN clause). */
     async findWhereIn(entityClass, column, values) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata) {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
@@ -378,7 +380,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     /** Map a database row object to a new entity instance using metadata. */
     mapRowToEntity(row, entityClass) {
         const entity = new entityClass();
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (metadata) {
             for (const column of metadata.columns) {
                 if (Object.prototype.hasOwnProperty.call(row, column.columnName)) {
@@ -472,18 +474,18 @@ function mapSqliteError(err) {
     const code = anyErr?.code;
     const message = anyErr?.message || String(err);
     if (!code)
-        return new core_1.DatabaseError(message);
+        return new types_1.DatabaseError(message);
     // sqlite codes: https://www.sqlite.org/rescode.html (library-dependent)
     // Prefer FK if message indicates it
     if (message && message.toLowerCase().includes('foreign key')) {
-        return new core_1.ForeignKeyConstraintError(message, code);
+        return new types_1.ForeignKeyConstraintError(message, code);
     }
     if (code === 'SQLITE_CONSTRAINT' || code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        return new core_1.UniqueConstraintError(message, code);
+        return new types_1.UniqueConstraintError(message, code);
     }
     if (code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || code === 'SQLITE_CONSTRAINT_TRIGGER') {
-        return new core_1.ForeignKeyConstraintError(message, code);
+        return new types_1.ForeignKeyConstraintError(message, code);
     }
-    return new core_1.DatabaseError(message ?? 'Unknown error');
+    return new types_1.DatabaseError(message ?? 'Unknown error');
 }
 //# sourceMappingURL=SQLiteProvider.js.map

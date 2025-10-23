@@ -1,4 +1,4 @@
-import type { AuditOptions } from '@ts-linq/core';
+import type { AuditOptions } from '@ts-linq/types';
 type ChangeForValidation = {
     entity: Record<string, unknown>;
     entityClass: Function;

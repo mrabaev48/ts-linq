@@ -1,5 +1,5 @@
 import type { DatabaseProvider } from '../DatabaseProvider';
-import type { EntityMetadata, SqlParameter } from '../types';
+import type { EntityMetadata, SqlParameter } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { BatchPlan } from './BatchPlan';
 import { BatchExecutor } from './BatchExecutor';

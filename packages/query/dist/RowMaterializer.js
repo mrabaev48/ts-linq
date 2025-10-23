@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RowMaterializer = void 0;
-const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 class RowMaterializer {
     constructor(entityClass, provider, entityCache, performance) {
         this.entityClass = entityClass;
@@ -10,7 +10,7 @@ class RowMaterializer {
         this.performance = performance;
     }
     mapRowToEntity(row) {
-        const metadata = core_1.MetadataStorage.getEntity(this.entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this.entityClass);
         if (this.shouldUseL2Cache(metadata)) {
             const cached = this.tryGetFromCache(row, metadata);
             if (cached)

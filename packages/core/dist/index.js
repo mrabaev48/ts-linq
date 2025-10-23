@@ -18,9 +18,11 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// Core types
-__exportStar(require("./types"), exports);
-// Removed duplicate: export * from './types/Logger'; (already exported via './types')
+exports.CircuitOpenError = exports.EntityState = void 0;
+// Core-specific types only (NOT re-exporting from @ts-linq/types)
+var types_1 = require("./types");
+Object.defineProperty(exports, "EntityState", { enumerable: true, get: function () { return types_1.EntityState; } });
+Object.defineProperty(exports, "CircuitOpenError", { enumerable: true, get: function () { return types_1.CircuitOpenError; } });
 // Decorators
 __exportStar(require("./decorators/Entity"), exports);
 // Removed duplicate: export * from './decorators/Column'; (ColumnOptions already exported via './types')
