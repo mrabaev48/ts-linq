@@ -6,7 +6,7 @@ import type {
   SqlDialect,
   SqlLogger,
   SqlParameter
-} from '../src/types';
+} from '@ts-linq/types';
 
 class TestProvider extends DatabaseProvider {
   public start(runPing: () => Promise<number>): void {

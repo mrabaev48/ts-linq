@@ -1,7 +1,8 @@
 import 'reflect-metadata';
-import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
+import { DbContext, DbSet } from '@ts-linq/orm';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { ProviderStub } from './_stubs/ProviderStub';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 
 function defineSUser() {
   @Entity()

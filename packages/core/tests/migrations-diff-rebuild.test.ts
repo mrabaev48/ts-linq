@@ -1,5 +1,6 @@
-import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { DbContext, DbSet } from '@ts-linq/orm';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { DiffMigrationGenerator } from '../src/migrations/DiffMigrationGenerator';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 

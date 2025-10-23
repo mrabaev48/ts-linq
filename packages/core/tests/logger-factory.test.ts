@@ -1,6 +1,6 @@
 import { DbContext } from '../src/context/DbContext';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import type { ColumnMetadata } from '../src/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { ColumnMetadata } from '@ts-linq/types';
 import type { SqlLogger, SqlLoggerFactory, QueryStartInfo } from '@ts-linq/core';
 import { CompositeSqlLoggerFactory } from '@ts-linq/composite-sql-logger';
 

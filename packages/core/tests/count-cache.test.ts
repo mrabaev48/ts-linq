@@ -1,9 +1,10 @@
 import 'reflect-metadata';
-import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { DbContext, DbSet } from '@ts-linq/orm';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { SqlParameter } from '../src/types';
+import type { SqlParameter } from '@ts-linq/types';
 class ProviderStub extends DatabaseProvider {
   private tables = new Map<string, { rows: any[]; pk?: string }>();
   public async connect(): Promise<void> {}

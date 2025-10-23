@@ -1,8 +1,8 @@
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { QueryOptions, SqlParameter } from '../src/types';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import type { QueryOptions, SqlParameter } from '@ts-linq/types';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityCacheLike } from '../src/utils/EntityCache';
 
 class ProviderStub extends DatabaseProvider {

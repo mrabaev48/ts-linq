@@ -1,8 +1,7 @@
-import { Entity, Column, PrimaryKey, MetadataStorage, OrmMiddleware, SqlParameter } from '../src';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { OrmMiddleware, SqlParameter } from '@ts-linq/types';
 import { ProviderStub } from './_stubs/ProviderStub';
-
-// Re-export convenience decorators to avoid path confusion in tests
-// Some tests import from '../src', but here we import directly to be explicit
 
 function defineUserEntity() {
   @Entity()

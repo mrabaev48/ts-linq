@@ -2,10 +2,10 @@ import 'reflect-metadata';
 import { Queryable } from '../src/query/Queryable';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { QueryOptions, SqlParameter } from '../src/types';
+import type { QueryOptions, SqlParameter } from '@ts-linq/types';
 import type { SqlCache, SqlCacheEntry } from '../src/query/SqlCache';
 import type { CountCache, CountCacheEntry } from '../src/query/CountCache';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 
 class ProviderStub extends DatabaseProvider {
   public rows: Array<Record<string, unknown>> = [];

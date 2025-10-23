@@ -1,9 +1,9 @@
 import 'reflect-metadata';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { DatabaseProvider } from '../src/DatabaseProvider';
 import { DbContext } from '../src/context/DbContext';
 import { LoadingStrategy } from '../src/loading/LoadingStrategy';
-import { ValidationError } from '../src/types';
+import { ValidationError } from '@ts-linq/types';
 
 vi.mock('../src/query/Queryable', () => ({
   Queryable: { clearCountCache: vi.fn() }

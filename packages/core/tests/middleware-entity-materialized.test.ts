@@ -1,6 +1,7 @@
-import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import { OrmMiddleware } from '../src/types';
+import { DbContext, DbSet } from '@ts-linq/orm';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { OrmMiddleware } from '@ts-linq/types';
 
 function defineE() {
   @Entity()

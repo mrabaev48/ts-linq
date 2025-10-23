@@ -1,5 +1,5 @@
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import { Entity, Column, PrimaryKey } from '../src';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { Queryable } from '../src/query/Queryable';
 import { MemoryFallback } from '../src/query/fallbacks/MemoryFallback';
 import { ProviderStub } from './_stubs/ProviderStub';

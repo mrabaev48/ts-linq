@@ -1,4 +1,4 @@
-import { UniqueConstraintError } from '../src/types';
+import { UniqueConstraintError } from '@ts-linq/types';
 import { PostgresProvider } from '@ts-linq/provider-postgres';
 import { MySqlProvider } from '@ts-linq/provider-mysql';
 import { MssqlProvider } from '@ts-linq/provider-mssql';

@@ -2,8 +2,8 @@ import 'reflect-metadata';
 import { Entity } from '../src/decorators/Entity';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';
 import { Column } from '../src/decorators/Column';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import type { SqlParameter } from '../src/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { SqlParameter } from '@ts-linq/types';
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import type { SqlDialect } from '../src/query/SqlDialect';
 

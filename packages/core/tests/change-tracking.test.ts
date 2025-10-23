@@ -1,5 +1,5 @@
 import { ChangeTracker } from '../src/change-tracking/ChangeTracker';
-import { EntityState } from '../src/types';
+import { EntityState } from '@ts-linq/types';
 
 describe('ChangeTracker', () => {
   let changeTracker: ChangeTracker;

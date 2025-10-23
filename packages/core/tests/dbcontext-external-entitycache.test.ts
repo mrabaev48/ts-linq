@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { DbContext } from '../src/context/DbContext';
 import { DatabaseProvider } from '../src/DatabaseProvider';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityCacheLike } from '../src/utils/EntityCache';
 
 class ProviderStub extends DatabaseProvider {

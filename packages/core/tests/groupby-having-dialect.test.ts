@@ -10,7 +10,7 @@ class T {
   name!: string;
 }
 
-import type { QueryOptions } from '../src/types';
+import type { QueryOptions } from '@ts-linq/types';
 const options: QueryOptions = {
   select: ['authorId'],
   groupBy: { columns: ['authorId'], having: { condition: 'COUNT(*) > ?', parameters: [1] } }

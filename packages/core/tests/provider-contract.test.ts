@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
-import { OptimisticConcurrencyError } from '../src/types';
+import { OptimisticConcurrencyError } from '@ts-linq/types';
 import { Entity } from '../src/decorators/Entity';
 import { Column } from '../src/decorators/Column';
 import { PrimaryKey } from '../src/decorators/PrimaryKey';

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import { Entity, Column, PrimaryKey, OneToMany } from '../src';
-import { ColumnMetadata, RelationshipMetadata, IndexMetadata } from '../src/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { Entity, Column, PrimaryKey, OneToMany } from '@ts-linq/core';
+import { ColumnMetadata, RelationshipMetadata, IndexMetadata } from '@ts-linq/types';
 
 @Entity()
 class MetadataTestEntity {

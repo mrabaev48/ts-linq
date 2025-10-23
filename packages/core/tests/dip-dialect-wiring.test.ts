@@ -8,8 +8,8 @@ import { MysqlDialect } from '@ts-linq/provider-mysql';
 import { PostgresDialect } from '@ts-linq/provider-postgres';
 import { MssqlDialect } from '@ts-linq/provider-mssql';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { SqlParameter } from '../src/types';
-import { QueryOptions } from '../src/types';
+import type { SqlParameter } from '@ts-linq/types';
+import { QueryOptions } from '@ts-linq/types';
 import { Queryable } from '../src/query/Queryable';
 
 class ProviderStub extends DatabaseProvider {

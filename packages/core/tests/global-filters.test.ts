@@ -1,9 +1,10 @@
 import 'reflect-metadata';
-import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
+import { DbContext, DbSet } from '@ts-linq/orm';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { DatabaseProvider } from '../src/DatabaseProvider';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { SqlDialect } from '../src/query/SqlDialect';
-import type { SqlParameter } from '../src/types';
+import type { SqlParameter } from '@ts-linq/types';
 
 function defineEntities() {
   @Entity()

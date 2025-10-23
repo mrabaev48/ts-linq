@@ -1,6 +1,7 @@
 import 'reflect-metadata';
-import { DbContext, DbSet, Entity, Column, PrimaryKey } from '../src';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
+import { DbContext, DbSet } from '@ts-linq/orm';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 
 function defineB() {
   @Entity()

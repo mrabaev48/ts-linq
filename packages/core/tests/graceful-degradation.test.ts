@@ -1,9 +1,9 @@
 import { Queryable } from '../src/query/Queryable';
 import { MemoryFallback } from '../src/query/fallbacks/MemoryFallback';
-import { MetadataStorage } from '../src/metadata/MetadataStorage';
-import { Entity, Column, PrimaryKey } from '../src';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { ProviderStub } from './_stubs/ProviderStub';
-import type { QueryFallback } from '../src/types';
+import type { QueryFallback } from '@ts-linq/types';
 
 function createEntity() {
   @Entity()
