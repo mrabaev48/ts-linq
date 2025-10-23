@@ -2,7 +2,7 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import { ChangeTracker } from './ChangeTracker';
 import { EntityLoader } from '@ts-linq/core';
 import type { LoadingOptions } from '@ts-linq/core';
-import { Queryable } from '@ts-linq/query';
+import { Queryable, TypedQueryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
 import type { GlobalFilter, PerformanceOptions } from '@ts-linq/types';
 import type { PrimaryKeyOf } from '@ts-linq/core';
@@ -44,27 +44,27 @@ export declare class DbSet<T extends object> {
      */
     findWhereIn<K extends keyof T & string>(property: K, values: ReadonlyArray<T[K]>): Promise<T[]>;
     /** Create a fluent `Queryable` for LINQ-like operations (EF-style) */
-    where(predicate: (entity: T) => boolean): Queryable<T>;
+    where(predicate: (entity: T) => boolean): TypedQueryable<T>;
     /** Proxy: WHERE EXISTS (subquery). */
-    whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T>;
+    whereExists<TOther>(subquery: Queryable<TOther>): TypedQueryable<T>;
     /** Proxy: column IN (subquery). */
-    whereInSubquery<TOther>(column: keyof T & string, subquery: Queryable<TOther>): Queryable<T>;
+    whereInSubquery<TOther>(column: keyof T & string, subquery: Queryable<TOther>): TypedQueryable<T>;
     /** Select specific properties (EF-style with type safety) */
-    select<TResult>(selector: (entity: T) => TResult): Queryable<TResult>;
+    select<TResult>(selector: (entity: T) => TResult): TypedQueryable<TResult>;
     /** Order by a property (EF-style with type safety) */
-    orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T>;
+    orderBy<TKey>(keySelector: (entity: T) => TKey): TypedQueryable<T>;
     /** Order by descending (EF-style with type safety) */
-    orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T>;
+    orderByDescending<TKey>(keySelector: (entity: T) => TKey): TypedQueryable<T>;
     /** Take a specific number of entities (EF-style) */
-    take(count: number): Queryable<T>;
+    take(count: number): TypedQueryable<T>;
     /** Skip a specific number of entities (EF-style) */
-    skip(count: number): Queryable<T>;
+    skip(count: number): TypedQueryable<T>;
     /** Get distinct entities (EF-style) */
-    distinct(): Queryable<T>;
+    distinct(): TypedQueryable<T>;
     /** Proxy: UNION of two queries of the same DbSet. */
-    union(other: Queryable<T>): Queryable<T>;
+    union(other: Queryable<T>): TypedQueryable<T>;
     /** Proxy: UNION ALL of two queries of the same DbSet. */
-    unionAll(other: Queryable<T>): Queryable<T>;
+    unionAll(other: Queryable<T>): TypedQueryable<T>;
     /** Get the first entity or throw if none exists */
     first(): Promise<T>;
     /** Get the first entity or null if none exists */
@@ -79,7 +79,7 @@ export declare class DbSet<T extends object> {
     any(): Promise<boolean>;
     /** Start a query with eager includes using a property selector. */
     /** Include related entities for eager loading (EF-style with type safety) */
-    include(selector: (entity: T) => unknown): Queryable<T>;
+    include(selector: (entity: T) => unknown): TypedQueryable<T>;
     /** Provider-level bulk insert within a transaction. */
     insertMany(entities: T[]): Promise<T[]>;
     /** Provider-level bulk update within a transaction. */

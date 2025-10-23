@@ -131,3 +131,49 @@ Database-specific error mapping:
 
 -   **Turborepo**: High-performance build system for monorepos.
 -   **pnpm**: Fast, disk-space efficient package manager.
+
+# Recent Changes
+
+## Type Safety Integration (October 23, 2025)
+
+### TypedQueryable Restoration & DbSet Integration
+
+**Problem Discovered**: TypedQueryable was accidentally removed during architecture refactoring, eliminating critical compile-time type safety for query operations.
+
+**Solution Implemented**:
+
+1. **TypedQueryable Restored** (`packages/query/src/TypedQueryable.ts`):
+   - 365 lines of compile-time type safety wrapper around Queryable
+   - Validates `.select()` - prevents accessing non-existent properties
+   - Validates `.include()` - only allows relationship properties via `RelationshipProperties<T>` type
+   - Provides Entity Framework-style API (`.except()`, `.intersect()`, `.concat()`)
+   - Zero runtime overhead - all checks happen at compile-time
+
+2. **DbSet Integration Complete** (`packages/orm/src/DbSet.ts`):
+   - **All query methods now return `TypedQueryable<T>`** instead of `Queryable<T>`
+   - Updated methods: `where()`, `select()`, `orderBy()`, `orderByDescending()`, `take()`, `skip()`, `distinct()`, `include()`, `union()`, `unionAll()`
+   - **Transparent to users** - users write pure Entity Framework-style code without seeing TypedQueryable
+
+**User Experience** (Entity Framework Core-compatible):
+
+```typescript
+// ✅ Users write clean EF-style queries - TypedQueryable is automatic!
+const users = await ctx.users
+  .where(u => u.age >= 18)
+  .select(u => ({ id: u.id, name: u.name }))
+  .include(u => u.orders)
+  .toArray();
+
+// ❌ COMPILE ERROR - TypeScript catches errors immediately
+const invalid = await ctx.users
+  .select(u => ({ bad: u.nonExistent }));  // ❌ Property 'nonExistent' does not exist
+
+const badInclude = await ctx.users
+  .include(u => u.name);  // ❌ 'name' is not a relationship property
+```
+
+**Technical Details**:
+- DbSet methods wrap Queryable with `TypedQueryable.from()` before returning
+- `RelationshipProperties<T>` type helper extracts only array/object properties (excluding Date/Function)
+- Full build success: 34/34 packages compile without errors
+- Documentation created: `docs/guides/typed-queryable.md`
