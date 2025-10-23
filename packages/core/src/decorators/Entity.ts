@@ -1,4 +1,6 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import { PENDING_COLUMNS, PENDING_PRIMARY_KEYS } from './Column';
+import type { ColumnMetadata } from '@ts-linq/types';
 
 /**
  * Options for configuring an entity/table.
@@ -11,12 +13,17 @@ export interface EntityOptions {
 
 function isStage3ClassContext(
   x: unknown
-): x is { kind: 'class'; name?: string; addInitializer?: (fn: (this: unknown) => void) => void } {
+): x is { 
+  kind: 'class'; 
+  name?: string; 
+  metadata?: Record<symbol, unknown>;
+} {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'class';
 }
 
 /**
  * Class decorator that registers a class as a database entity (table).
+ * Collects all field metadata from @Column, @PrimaryKey, etc. and registers with MetadataStorage.
  * Requires TS5 Stage-3 decorators.
  */
 export function Entity(options: EntityOptions = {}): ClassDecorator {
@@ -29,19 +36,32 @@ export function Entity(options: EntityOptions = {}): ClassDecorator {
       // Compute tableName from options or class name
       const tableName = options?.name || target.name;
       
-      // Register entity immediately
+      // Register entity in MetadataStorage
       MetadataStorage.addEntity(target, tableName);
       
-      // Initializer to restore metadata after clear()
-      context.addInitializer?.(function (this: unknown) {
-        const ctor = target as unknown as Function;
-        // Recompute tableName to ensure correct value after clear
-        const currentTableName = options?.name || ctor.name;
-        const existing = MetadataStorage.getEntity(ctor);
-        if (!existing) {
-          MetadataStorage.addEntity(ctor, currentTableName);
+      // Collect all pending metadata from field decorators via context.metadata
+      if (context.metadata) {
+        // Process columns
+        const pendingColumns = context.metadata[PENDING_COLUMNS] as Map<string, ColumnMetadata> | undefined;
+        if (pendingColumns) {
+          for (const [_propertyName, columnMeta] of pendingColumns.entries()) {
+            // Set brand name for branded columns
+            if (columnMeta.isBranded) {
+              columnMeta.brand = target.name;
+            }
+            MetadataStorage.addColumn(target, columnMeta);
+          }
         }
-      });
+        
+        // Process primary keys
+        const pendingPrimaryKeys = context.metadata[PENDING_PRIMARY_KEYS] as Set<string> | undefined;
+        if (pendingPrimaryKeys) {
+          for (const propertyName of pendingPrimaryKeys) {
+            MetadataStorage.addPrimaryKey(target, propertyName);
+          }
+        }
+      }
+      
       return;
     }
 

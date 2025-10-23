@@ -1,19 +1,26 @@
-import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnOptions } from './Column';
+import type { ColumnMetadata } from '@ts-linq/types';
+import { PENDING_COLUMNS, PENDING_PRIMARY_KEYS } from './Column';
 
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
-  addInitializer?: (fn: (this: unknown) => void) => void;
+  metadata?: Record<symbol, unknown>;
 } {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
 
-export interface PrimaryKeyOptions extends ColumnOptions {
+export interface PrimaryKeyOptions {
+  name?: string;
+  type?: string;
   autoIncrement?: boolean;
+  version?: boolean;
   branded?: boolean;
 }
 
+/**
+ * Stage-3 property decorator that marks a column as a primary key.
+ * Uses context.metadata to share data with @Entity decorator.
+ */
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
   return function PrimaryKeyDecorator(_targetOrValue: unknown, propOrContext: unknown) {
     if (!isStage3FieldContext(propOrContext)) {
@@ -21,38 +28,35 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
     }
     const ctx = propOrContext;
     const name = ctx.name.toString();
-    ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
-      if (!ctor) return;
-      const columnMeta: {
-        propertyName: string;
-        columnName: string;
-        type: string;
-        nullable: boolean;
-        isGenerated: boolean;
-        isVersion: boolean;
-        isBranded?: boolean;
-        brand?: string;
-      } = {
+    
+    // Store in shared context.metadata
+    if (ctx.metadata) {
+      // Add column metadata
+      if (!ctx.metadata[PENDING_COLUMNS]) {
+        ctx.metadata[PENDING_COLUMNS] = new Map<string, ColumnMetadata>();
+      }
+      
+      const columns = ctx.metadata[PENDING_COLUMNS] as Map<string, ColumnMetadata>();
+      const columnMeta: ColumnMetadata = {
         propertyName: name,
         columnName: options?.name || name,
         type: options?.type || 'INTEGER',
         nullable: false,
         isGenerated: !!options?.autoIncrement,
-        isVersion: !!options?.version
-      } as const;
-      MetadataStorage.addColumn(ctor, columnMeta);
-      MetadataStorage.addPrimaryKey(ctor, name);
-      if (options.branded) {
-        const meta = MetadataStorage.getEntity(ctor);
-        const col = meta?.columns.find((c: any) => c.propertyName === name) as
-          | typeof columnMeta
-          | undefined;
-        if (col) {
-          col.isBranded = true;
-          col.brand = ctor.name;
-        }
+        isVersion: !!options?.version,
+        isBranded: options?.branded,
+        brand: options?.branded ? '' : undefined // Will be set by @Entity with class name
+      };
+      
+      columns.set(name, columnMeta);
+      
+      // Mark as primary key
+      if (!ctx.metadata[PENDING_PRIMARY_KEYS]) {
+        ctx.metadata[PENDING_PRIMARY_KEYS] = new Set<string>();
       }
-    });
+      
+      const primaryKeys = ctx.metadata[PENDING_PRIMARY_KEYS] as Set<string>;
+      primaryKeys.add(name);
+    }
   };
 }
