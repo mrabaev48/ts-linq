@@ -1,7 +1,6 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import type { PerformanceOptions, Result, GlobalFilter } from '@ts-linq/types';
+import type { PerformanceOptions, Result, GlobalFilter, EntityCacheLike } from '@ts-linq/types';
 import type { EntityLoader } from '@ts-linq/core';
-import type { EntityCacheLike } from '@ts-linq/core';
 import type { QueryFallback, FallbackPolicy } from '@ts-linq/types';
 /**
  * Fluent query builder over a given entity type. Accumulates query intent

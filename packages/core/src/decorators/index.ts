@@ -1,5 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { IndexMetadata } from '../types';
+import type { IndexMetadata } from '@ts-linq/types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export {

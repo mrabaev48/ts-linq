@@ -1,4 +1,4 @@
-import { MetadataStorage } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { GlobalFilter, SoftDeleteOptions, WhereClause } from '@ts-linq/types';
 
 export class GlobalFilterApplier {

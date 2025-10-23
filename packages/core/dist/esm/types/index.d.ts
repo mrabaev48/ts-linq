@@ -1,4 +1,3 @@
-export * from '@ts-linq/types';
 import type { DatabaseProvider } from '../DatabaseProvider';
 /**
  * Core-specific types that don't belong in @ts-linq/types
@@ -86,7 +85,6 @@ export interface AggregateResult {
 export type PrimaryKeyOf<T> = T extends {
     id: infer K;
 } ? K : unknown;
-export { MetadataStorage } from '@ts-linq/metadata';
 export type ConnectionHealthStatus = 'healthy' | 'degraded' | 'unhealthy';
 export interface QueryStartInfo {
     sql: string;

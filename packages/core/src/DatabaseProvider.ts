@@ -7,13 +7,15 @@ import type {
   SqlParameter,
   ConnectionPoolOptions,
   ConnectionHealthCheckOptions,
+  SqlDialect
+} from '@ts-linq/types';
+import type {
   CircuitBreakerOptions,
   CircuitState,
   QueryPerformanceAnalysisOptions,
   QueryAnalysisInfo
 } from './types';
 import { CircuitOpenError } from './types';
-import type { SqlDialect } from '@ts-linq/types';
 import { logInternalError } from './utils/InternalLogger';
 
 /**

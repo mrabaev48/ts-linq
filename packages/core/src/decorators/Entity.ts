@@ -1,5 +1,4 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { IndexMetadata } from '../types';
 
 /**
  * Options for configuring an entity/table.

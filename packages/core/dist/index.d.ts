@@ -2,7 +2,7 @@
  * Core ORM exports - types, decorators, metadata, context, query building,
  * change tracking, loading utilities, and base provider abstractions.
  */
-export * from './types';
+export { EntityState, CircuitOpenError, type TrackedEntity, type DbContextOptions, type CircuitState, type CircuitBreakerOptions, type MemorySampleInfo, type MemoryProfilerLike, type DiagnosticsOptions, type LoadingOptions, type QueryResult, type AggregateResult, type PrimaryKeyOf, type ConnectionHealthStatus, type QueryStartInfo, type QueryEndInfo, type RetryInfo, type TransactionInfo, type CacheInfo, type ConnectionHealthInfo, type CircuitEventInfo, type FallbackInfo, type RetryDecisionInfo, type QueryPerformanceAnalysisOptions, type QueryAnalysisInfo } from './types';
 export * from './decorators/Entity';
 export * from './decorators/PrimaryKey';
 export * from './decorators/ValidIf';

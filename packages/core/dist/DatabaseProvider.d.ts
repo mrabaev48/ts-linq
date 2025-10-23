@@ -1,5 +1,5 @@
-import type { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions, SqlParameter, ConnectionPoolOptions, ConnectionHealthCheckOptions, CircuitBreakerOptions, CircuitState, QueryPerformanceAnalysisOptions } from './types';
-import type { SqlDialect } from '@ts-linq/types';
+import type { EntityMetadata, OrmMiddleware, RetryPolicy, SqlLogger, SoftDeleteOptions, SqlParameter, ConnectionPoolOptions, ConnectionHealthCheckOptions, SqlDialect } from '@ts-linq/types';
+import type { CircuitBreakerOptions, CircuitState, QueryPerformanceAnalysisOptions } from './types';
 /**
  * Abstract base class for database providers. Concrete providers must
  * implement all abstract methods to support connections, CRUD operations,

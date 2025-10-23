@@ -18,13 +18,15 @@ import type {
 } from '@ts-linq/types';
 import type { 
   DbContextOptions,
-  LoadingDefaults,
-  AuditOptions,
   DiagnosticsOptions, 
   MemoryProfilerLike 
 } from '@ts-linq/core';
 import { ok, err, ValidationError } from '@ts-linq/types';
-import type { EntityCacheLike } from '@ts-linq/core';
+import type { 
+  EntityCacheLike,
+  LoadingDefaults,
+  AuditOptions
+} from '@ts-linq/types';
 import { EntityCache } from '@ts-linq/core';
 // import { logInternalError } from '@ts-linq/core'; // REMOVED
 

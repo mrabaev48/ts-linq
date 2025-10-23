@@ -2,9 +2,8 @@
  * Core ORM exports - types, decorators, metadata, context, query building,
  * change tracking, loading utilities, and base provider abstractions.
  */
-// Core types
-export * from './types';
-// Removed duplicate: export * from './types/Logger'; (already exported via './types')
+// Core-specific types only (NOT re-exporting from @ts-linq/types)
+export { EntityState, CircuitOpenError } from './types';
 // Decorators
 export * from './decorators/Entity';
 // Removed duplicate: export * from './decorators/Column'; (ColumnOptions already exported via './types')

@@ -7,16 +7,15 @@ import type {
   SoftDeleteOptions,
   SqlLogger,
   SqlDialect
-} from '@ts-linq/core';
+} from '@ts-linq/types';
 import {
-  DatabaseProvider,
-  MetadataStorage,
   DatabaseError,
   UniqueConstraintError,
   ForeignKeyConstraintError,
-  OptimisticConcurrencyError,
-  SqlHelper
-} from '@ts-linq/core';
+  OptimisticConcurrencyError
+} from '@ts-linq/types';
+import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
 import { SQLiteDdlStrategy } from '@ts-linq/dialect-sqlite';
 

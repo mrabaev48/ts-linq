@@ -1,4 +1,5 @@
-import type { DatabaseProvider, FallbackPolicy } from '@ts-linq/core';
+import type { DatabaseProvider } from '@ts-linq/core';
+import type { FallbackPolicy } from '@ts-linq/types';
 export declare function createProviderFromEnv(): DatabaseProvider;
 /**
  * Read Graceful Degradation fallback policy from environment variables.

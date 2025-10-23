@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Queryable = void 0;
-const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 const types_1 = require("@ts-linq/types");
 const QueryBuilder_1 = require("./QueryBuilder");
 const PredicateParser_1 = require("./PredicateParser");
@@ -366,7 +366,7 @@ class Queryable {
      */
     include(selector) {
         const prop = this.extractIncludeProperty(selector);
-        const metadata = core_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
         const valid = metadata?.relationships.some((r) => r.propertyName === prop);
         if (!valid) {
             throw new Error(`Invalid include '${prop}' for ${this._entityClass.name}. Define relationship '${prop}' via decorators or fix the name.`);
@@ -461,7 +461,7 @@ class Queryable {
      * const count = await context.products.where(p => p.price >= 100).count();
      */
     async count() {
-        const metadata = core_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
         if (this._performance?.enableCountCache) {
@@ -1056,7 +1056,7 @@ class Queryable {
      * Falls back to shallow assign when no metadata is available.
      */
     mapRowToEntity(row) {
-        const metadata = core_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
         if (this.shouldUseL2Cache(metadata)) {
             const cached = this.tryGetFromCache(row, metadata);
             if (cached)
@@ -1246,7 +1246,7 @@ class Queryable {
         if (this._abortSignal?.aborted)
             throw new Error('Operation aborted');
         // For entities, use primary key comparison if available
-        const metadata = core_1.MetadataStorage.getEntity(this._entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(this._entityClass);
         if (metadata && metadata.primaryKeys && metadata.primaryKeys.length > 0) {
             const pk = metadata.primaryKeys[0];
             const itemId = item[pk];
@@ -1307,8 +1307,8 @@ class Queryable {
     }
     /** Add a JOIN clause into the model using simple predicate parsing. */
     addJoin(type, otherCtor, on, alias) {
-        const leftMeta = core_1.MetadataStorage.getEntity(this._entityClass);
-        const rightMeta = core_1.MetadataStorage.getEntity(otherCtor);
+        const leftMeta = metadata_1.MetadataStorage.getEntity(this._entityClass);
+        const rightMeta = metadata_1.MetadataStorage.getEntity(otherCtor);
         if (!leftMeta || !rightMeta)
             throw new Error('Entity metadata not found for join');
         const onStr = this.parseJoinPredicate(on.toString(), leftMeta.tableName, rightMeta.tableName, leftMeta, rightMeta);

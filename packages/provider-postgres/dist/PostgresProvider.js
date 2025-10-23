@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostgresProvider = void 0;
+const types_1 = require("@ts-linq/types");
 const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 const dialect_postgres_1 = require("@ts-linq/dialect-postgres");
 const dialect_postgres_2 = require("@ts-linq/dialect-postgres");
 // Lazy require to avoid hard dependency if not installed
@@ -33,7 +35,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     /** Map a row object to a new entity instance using entity metadata and notify middleware. */
     mapRowToEntity(row, entityClass) {
         const entity = new entityClass();
-        const meta = core_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (meta) {
             for (const col of meta.columns) {
                 if (Object.prototype.hasOwnProperty.call(row, col.columnName)) {
@@ -123,7 +125,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     }
     /** Insert an entity row and return the populated entity (RETURNING *). */
     async insert(entity, entityClass) {
-        const meta = core_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const cols = meta.columns.filter((c) => !c.isGenerated && !c.isComputed);
@@ -140,7 +142,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     }
     /** Update a row by primary key; supports optimistic concurrency via version column. */
     async update(entity, entityClass) {
-        const meta = core_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
@@ -166,7 +168,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
         const affected = await this.executeNonQuery(sql, [...setVals, ...whereVals]);
         if (affected === 0) {
             if (versionCol)
-                throw new core_1.OptimisticConcurrencyError('Version mismatch detected during update');
+                throw new types_1.OptimisticConcurrencyError('Version mismatch detected during update');
             throw new Error('No rows were updated. Not found or no changes.');
         }
         if (versionCol) {
@@ -179,7 +181,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     }
     /** Upsert using INSERT ... ON CONFLICT (pk...) DO UPDATE SET ... RETURNING *. */
     async upsert(entity, entityClass) {
-        const meta = core_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
@@ -205,7 +207,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     }
     /** Delete a row by primary key. */
     async delete(entity, entityClass) {
-        const meta = core_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
@@ -222,7 +224,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     }
     /** Fetch a single row by its primary key value. */
     async findById(id, entityClass) {
-        const meta = core_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
@@ -248,7 +250,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     }
     /** Fetch all rows for the given entity type. */
     async findAll(entityClass) {
-        const meta = core_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         let sql = `SELECT * FROM "${meta.tableName}"`;
@@ -263,7 +265,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     }
     /** Find rows by simple equality conditions { column: value }. */
     async findWhere(entityClass, conditions) {
-        const meta = core_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const keys = Object.keys(conditions);
@@ -283,7 +285,7 @@ class PostgresProvider extends core_1.DatabaseProvider {
     async findWhereIn(entityClass, column, values) {
         if (!values || values.length === 0)
             return [];
-        const meta = core_1.MetadataStorage.getEntity(entityClass);
+        const meta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!meta)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const col = meta.columns.find((c) => c.propertyName === column || c.columnName === column)?.columnName ||
@@ -435,10 +437,10 @@ function mapPgError(err) {
     const code = anyErr?.code;
     const message = anyErr?.message || String(err);
     if (code === '23505')
-        return new core_1.UniqueConstraintError(message, code);
+        return new types_1.UniqueConstraintError(message, code);
     if (code === '23503')
-        return new core_1.ForeignKeyConstraintError(message, code);
-    return new core_1.DatabaseError(message ?? 'Unknown error');
+        return new types_1.ForeignKeyConstraintError(message, code);
+    return new types_1.DatabaseError(message ?? 'Unknown error');
 }
 // (removed legacy free function mapRowToEntity; instance method is used)
 //# sourceMappingURL=PostgresProvider.js.map

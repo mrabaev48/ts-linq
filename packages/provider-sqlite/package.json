@@ -15,7 +15,9 @@
   },
   "dependencies": {
     "@ts-linq/core": "workspace:*",
-    "@ts-linq/dialect-sqlite": "workspace:*"
+    "@ts-linq/dialect-sqlite": "workspace:*",
+    "@ts-linq/types": "workspace:*",
+    "@ts-linq/metadata": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

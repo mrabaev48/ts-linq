@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GlobalFilterApplier = void 0;
-const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 class GlobalFilterApplier {
     apply(entityClass, model, softDeleteOptions, globalFilters) {
-        const selfMeta = core_1.MetadataStorage.getEntity(entityClass);
+        const selfMeta = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!selfMeta)
             return;
         model.where = model.where || [];
@@ -20,7 +20,7 @@ class GlobalFilterApplier {
         if (globalFilters && globalFilters.length > 0) {
             for (const globalFilter of globalFilters) {
                 if (globalFilter.entity && globalFilter.where) {
-                    const filterMeta = core_1.MetadataStorage.getEntity(globalFilter.entity);
+                    const filterMeta = metadata_1.MetadataStorage.getEntity(globalFilter.entity);
                     if (filterMeta && selfMeta.tableName === filterMeta.tableName) {
                         model.where.push({
                             condition: globalFilter.where.condition,

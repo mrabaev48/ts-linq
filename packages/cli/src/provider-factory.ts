@@ -1,10 +1,9 @@
+import type { DatabaseProvider, CircuitBreakerOptions } from '@ts-linq/core';
 import type {
   ConnectionHealthCheckOptions,
   ConnectionPoolOptions,
-  DatabaseProvider,
-  CircuitBreakerOptions,
   FallbackPolicy
-} from '@ts-linq/core';
+} from '@ts-linq/types';
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 import { PostgresProvider } from '@ts-linq/provider-postgres';
 import { MySqlProvider } from '@ts-linq/provider-mysql';

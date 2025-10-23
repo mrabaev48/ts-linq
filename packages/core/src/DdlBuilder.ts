@@ -1,4 +1,4 @@
-import type { EntityMetadata } from './types';
+import type { EntityMetadata } from '@ts-linq/types';
 import type { DdlStrategy } from './DdlStrategy';
 
 /**

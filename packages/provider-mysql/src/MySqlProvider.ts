@@ -9,15 +9,14 @@ import type {
   SqlDialect,
   ConnectionPoolOptions,
   ConnectionHealthCheckOptions
-} from '@ts-linq/core';
+} from '@ts-linq/types';
 import {
-  DatabaseProvider,
   OptimisticConcurrencyError,
-  MetadataStorage,
-  SqlHelper,
   UniqueConstraintError,
   DatabaseError
-} from '@ts-linq/core';
+} from '@ts-linq/types';
+import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MySqlDdlStrategy } from '@ts-linq/dialect-mysql';
 

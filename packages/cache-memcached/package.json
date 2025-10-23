@@ -33,7 +33,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@ts-linq/core": "workspace:*"
+    "@ts-linq/core": "workspace:*",
+    "@ts-linq/types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

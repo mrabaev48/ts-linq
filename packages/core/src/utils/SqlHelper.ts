@@ -1,4 +1,4 @@
-import type { SqlParameter } from '../types';
+import type { SqlParameter } from '@ts-linq/types';
 
 enum SqlInlineValueType {
   String = 'string',

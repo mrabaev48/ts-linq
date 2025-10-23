@@ -1,4 +1,4 @@
-import { MetadataStorage } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 export class GlobalFilterApplier {
     apply(entityClass, model, softDeleteOptions, globalFilters) {
         const selfMeta = MetadataStorage.getEntity(entityClass);

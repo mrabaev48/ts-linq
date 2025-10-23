@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MssqlProvider = void 0;
 exports.mapTypeToMssql = mapTypeToMssql;
+const types_1 = require("@ts-linq/types");
 const core_1 = require("@ts-linq/core");
+const metadata_1 = require("@ts-linq/metadata");
 const dialect_mssql_1 = require("@ts-linq/dialect-mssql");
 const dialect_mssql_2 = require("@ts-linq/dialect-mssql");
 /**
@@ -116,7 +118,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
     }
     /** Insert entity row; when PK is IDENTITY, sets generated value via SCOPE_IDENTITY(). */
     async insert(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const { sql, params, returningPk } = this.generateInsertSql(entity, metadata);
@@ -133,7 +135,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
     }
     /** Update entity row by primary key. Throws if no rows affected. */
     async update(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const versionCol = metadata.columns.find((c) => c.isVersion);
@@ -141,7 +143,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
         const affectedRows = await this.executeNonQuery(sql, params);
         if (affectedRows === 0) {
             if (versionCol)
-                throw new core_1.OptimisticConcurrencyError('Version mismatch detected during update');
+                throw new types_1.OptimisticConcurrencyError('Version mismatch detected during update');
             throw new Error('No rows were updated.');
         }
         if (versionCol) {
@@ -154,7 +156,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
     }
     /** Delete entity row by primary key. Throws if no rows affected. */
     async delete(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const { sql, params } = this.generateDeleteSql(entity, metadata);
@@ -164,7 +166,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
     }
     /** Upsert using MERGE statement (simplified). */
     async upsert(entity, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
@@ -192,7 +194,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
     }
     /** Find a single entity by its primary key value. */
     async findById(id, entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
@@ -216,7 +218,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
     }
     /** Return all entities of the given type. */
     async findAll(entityClass) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         let sql = `SELECT * FROM ${metadata.tableName}`;
@@ -231,7 +233,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
     }
     /** Find entities by simple conditions object (column equals). */
     async findWhere(entityClass, conditions) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         const { whereClause, params } = core_1.SqlHelper.buildWhereClause(conditions);
@@ -247,7 +249,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
     }
     /** Find entities where a column value is in the given array (IN clause). */
     async findWhereIn(entityClass, column, values) {
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         if (!Array.isArray(values) || values.length === 0)
@@ -419,7 +421,7 @@ class MssqlProvider extends core_1.DatabaseProvider {
     }
     mapRowToEntity(row, entityClass) {
         const entity = new entityClass();
-        const metadata = core_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (metadata) {
             for (const column of metadata.columns) {
                 if (Object.prototype.hasOwnProperty.call(row, column.columnName)) {

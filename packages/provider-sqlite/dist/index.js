@@ -14,8 +14,6 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// Re-export dialect
-__exportStar(require("@ts-linq/dialect-sqlite"), exports);
-// Export provider
+// Provider only - consumers import dialect directly from @ts-linq/dialect-sqlite if needed
 __exportStar(require("./SQLiteProvider"), exports);
 //# sourceMappingURL=index.js.map

@@ -1,4 +1,2 @@
-// Re-export dialect
-export * from '@ts-linq/dialect-postgres';
-// Export provider
+// Provider only - consumers import dialect directly from @ts-linq/dialect-postgres if needed
 export * from './PostgresProvider';
