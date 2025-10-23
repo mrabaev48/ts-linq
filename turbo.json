@@ -8,6 +8,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "tsconfig*.json", "package.json"],
       "outputs": ["dist/**", ".turbo/**"],
       "cache": true
     },
@@ -40,6 +41,44 @@
     "dev": {
       "cache": false,
       "persistent": true
+    }
+  },
+  "pipeline": {
+    "@ts-linq/types#build": {
+      "dependsOn": [],
+      "outputs": ["dist/**"]
+    },
+    "@ts-linq/metrics-safe#build": {
+      "dependsOn": [],
+      "outputs": ["dist/**"]
+    },
+    "@ts-linq/ast#build": {
+      "dependsOn": ["@ts-linq/types#build"],
+      "outputs": ["dist/**"]
+    },
+    "@ts-linq/metadata#build": {
+      "dependsOn": [],
+      "outputs": ["dist/**"]
+    },
+    "@ts-linq/concurrency#build": {
+      "dependsOn": ["@ts-linq/types#build"],
+      "outputs": ["dist/**"]
+    },
+    "@ts-linq/cache#build": {
+      "dependsOn": ["@ts-linq/types#build", "@ts-linq/metrics-safe#build"],
+      "outputs": ["dist/**"]
+    },
+    "@ts-linq/core#build": {
+      "dependsOn": ["@ts-linq/types#build", "@ts-linq/metadata#build", "@ts-linq/concurrency#build", "@ts-linq/cache#build"],
+      "outputs": ["dist/**"]
+    },
+    "@ts-linq/query#build": {
+      "dependsOn": ["@ts-linq/types#build", "@ts-linq/core#build", "@ts-linq/metadata#build", "@ts-linq/ast#build", "@ts-linq/metrics-safe#build"],
+      "outputs": ["dist/**"]
+    },
+    "@ts-linq/orm#build": {
+      "dependsOn": ["@ts-linq/core#build", "@ts-linq/query#build", "@ts-linq/metadata#build", "@ts-linq/types#build"],
+      "outputs": ["dist/**"]
     }
   }
 }
