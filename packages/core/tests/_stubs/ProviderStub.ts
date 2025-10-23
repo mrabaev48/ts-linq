@@ -3,10 +3,8 @@
 /* eslint-disable max-lines-per-function */
 /* eslint-disable complexity */
 import { DatabaseProvider } from '../../src/DatabaseProvider';
-import { MetadataStorage } from '../../src/metadata/MetadataStorage';
-import type { EntityMetadata } from '../../src/types';
-import type { SqlDialect } from '../../src/query/SqlDialect';
-import type { QueryOptions, SqlParameter } from '../../src/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityMetadata, SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
 
 class TestDialect implements SqlDialect {
   public buildSelect(
