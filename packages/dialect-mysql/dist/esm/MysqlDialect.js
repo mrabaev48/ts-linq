@@ -1,4 +1,4 @@
-import { MetadataStorage } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
 import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
 import { MySqlOrderEmitter } from './emitters/MySqlOrderEmitter';

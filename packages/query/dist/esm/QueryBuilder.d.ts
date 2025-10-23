@@ -1,6 +1,6 @@
 import type { QueryOptions, SqlParameter, SqlLogger, SqlDialect } from '@ts-linq/types';
-import type { QueryModel } from '@ts-linq/core';
-import type { SqlCache } from './SqlCache';
+import type { QueryModel } from './QueryModel';
+import type { SqlCache } from '@ts-linq/types';
 /**
  * QueryBuilder is now focused solely on generating SQL
  * from an entity class and accumulated query options.

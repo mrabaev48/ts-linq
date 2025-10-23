@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MetadataStorage = exports.EntityState = void 0;
+exports.CircuitOpenError = exports.MetadataStorage = exports.EntityState = void 0;
 // Re-export types from @ts-linq/types and @ts-linq/metadata for backwards compatibility
 __exportStar(require("@ts-linq/types"), exports);
 /**
@@ -31,4 +31,11 @@ var EntityState;
 // Re-export metadata types for backwards compatibility  
 var metadata_1 = require("@ts-linq/metadata");
 Object.defineProperty(exports, "MetadataStorage", { enumerable: true, get: function () { return metadata_1.MetadataStorage; } });
+class CircuitOpenError extends Error {
+    constructor(message = 'Circuit is open; call short-circuited') {
+        super(message);
+        this.name = 'CircuitOpenError';
+    }
+}
+exports.CircuitOpenError = CircuitOpenError;
 //# sourceMappingURL=index.js.map

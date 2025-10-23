@@ -23,7 +23,7 @@ class PostgresDdlStrategy {
             const defaultSql = column.defaultExpression ? ` DEFAULT ${column.defaultExpression}` : '';
             return `"${column.columnName}" ${mappedType}${notNullSql}${defaultSql}`;
         });
-        if (entityMetadata.primaryKeys.length > 0) {
+        if (entityMetadata.primaryKeys && entityMetadata.primaryKeys.length > 0) {
             const primaryKeySql = entityMetadata.primaryKeys
                 .map((primaryKey) => `"${entityMetadata.columns.find((column) => column.propertyName === primaryKey)?.columnName || primaryKey}"`)
                 .join(', ');

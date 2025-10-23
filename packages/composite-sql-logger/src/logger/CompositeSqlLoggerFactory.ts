@@ -1,4 +1,4 @@
-import type { SqlLogger, SqlLoggerFactory } from '@ts-linq/core';
+import type { SqlLogger, SqlLoggerFactory } from '@ts-linq/types';
 import { CompositeSqlLogger } from './CompositeSqlLogger';
 
 export class CompositeSqlLoggerFactory implements SqlLoggerFactory {

@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RedisSqlCacheAdapter = void 0;
-const core_1 = require("@ts-linq/core");
 class RedisSqlCacheAdapter {
     constructor(client, options) {
         this.shadow = new Map();
@@ -27,8 +26,8 @@ class RedisSqlCacheAdapter {
                         this.shadow.delete(msg.k);
                     }
                 }
-                catch (e) {
-                    (0, core_1.logInternalError)('RedisSqlCacheAdapter.subscriber.message', e);
+                catch {
+                    // Ignore message parse errors
                 }
             });
         }
@@ -69,8 +68,8 @@ class RedisSqlCacheAdapter {
                     await this.client.set(this.k(key), payload);
                 }
             }
-            catch (e) {
-                (0, core_1.logInternalError)('RedisSqlCacheAdapter.writeThrough', e);
+            catch {
+                // Ignore write-through errors
             }
         })();
     }
@@ -94,8 +93,8 @@ class RedisSqlCacheAdapter {
                     try {
                         await this.client.del(this.k(k));
                     }
-                    catch (e) {
-                        (0, core_1.logInternalError)('RedisSqlCacheAdapter.invalidate.delete', e);
+                    catch {
+                        // Ignore delete errors
                     }
                 })();
                 if (this.pubSubChannel && this.publisher) {
@@ -116,8 +115,8 @@ class RedisSqlCacheAdapter {
                 try {
                     await this.client.del(this.k(first));
                 }
-                catch (e) {
-                    (0, core_1.logInternalError)('RedisSqlCacheAdapter.ensureCapacity.delete', e);
+                catch {
+                    // Ignore delete errors
                 }
             })();
         }

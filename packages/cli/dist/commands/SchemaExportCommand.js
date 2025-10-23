@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SchemaExportCommand = void 0;
 const path = __importStar(require("path"));
-const core_1 = require("@ts-linq/core");
+const migrations_1 = require("@ts-linq/migrations");
 const ConsoleLogger_1 = require("../adapters/ConsoleLogger");
 const NodeFs_1 = require("../adapters/NodeFs");
 class SchemaExportCommand {
@@ -48,8 +48,8 @@ class SchemaExportCommand {
     }
     run(argv) {
         const out = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
-        const snapshot = new core_1.SchemaSnapshotBuilder().buildExpectedFromMetadata();
-        const json = new core_1.SchemaSnapshotSerializer().serialize(snapshot);
+        const snapshot = new migrations_1.SchemaSnapshotBuilder().buildExpectedFromMetadata();
+        const json = new migrations_1.SchemaSnapshotSerializer().serialize(snapshot);
         this.fsAdapter.writeText(out, json);
         this.logger.info(`Schema snapshot saved to ${out}`);
         return Promise.resolve();

@@ -1,7 +1,7 @@
 import type { QueryOptions, SqlParameter, SqlLogger, SqlDialect } from '@ts-linq/types';
 import { safeCacheSize, safeCacheEvicted } from '@ts-linq/metrics-safe';
-import type { QueryModel } from '@ts-linq/core';
-import type { SqlCache, SqlCacheEntry } from './SqlCache';
+import type { QueryModel } from './QueryModel';
+import type { SqlCache, SqlCacheEntry } from '@ts-linq/types';
 import { EnhancedSqlCache } from './EnhancedSqlCache';
 
 /**

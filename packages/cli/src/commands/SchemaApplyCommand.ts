@@ -3,9 +3,9 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import {
   SchemaSnapshotBuilder,
   SchemaSnapshotSerializer,
-  generateMigrationFromDiff
-} from '@ts-linq/core';
-import { compareSchemas } from '@ts-linq/core';
+  generateMigrationFromDiff,
+  compareSchemas
+} from '@ts-linq/migrations';
 import { resolveDialect, getFlag } from '../utils';
 import type { DbCommand } from './Command';
 import type { Logger } from '../ports/Logger';

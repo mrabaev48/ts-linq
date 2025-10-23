@@ -249,6 +249,18 @@ export class PrometheusSqlLogger {
             });
         }
     }
+    debug(_message, _meta) {
+        // No-op: Prometheus metrics don't log text messages
+    }
+    info(_message, _meta) {
+        // No-op: Prometheus metrics don't log text messages
+    }
+    warn(_message, _meta) {
+        // No-op: Prometheus metrics don't log text messages
+    }
+    error(_message, _meta) {
+        // No-op: Prometheus metrics don't log text messages
+    }
     queryStart(_info) { }
     queryEnd(info) {
         if (!this.enabled || !this.client || !this.queryTotal || !this.queryDuration)

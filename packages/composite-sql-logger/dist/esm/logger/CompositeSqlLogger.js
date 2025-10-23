@@ -2,6 +2,50 @@ export class CompositeSqlLogger {
     constructor(...delegates) {
         this.delegates = delegates.filter(Boolean);
     }
+    debug(message, meta) {
+        for (const d of this.delegates) {
+            try {
+                d.debug(message, meta);
+            }
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] debug delegate error', e);
+            }
+        }
+    }
+    info(message, meta) {
+        for (const d of this.delegates) {
+            try {
+                d.info(message, meta);
+            }
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] info delegate error', e);
+            }
+        }
+    }
+    warn(message, meta) {
+        for (const d of this.delegates) {
+            try {
+                d.warn(message, meta);
+            }
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] warn delegate error', e);
+            }
+        }
+    }
+    error(message, meta) {
+        for (const d of this.delegates) {
+            try {
+                d.error(message, meta);
+            }
+            catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[CompositeSqlLogger] error delegate error', e);
+            }
+        }
+    }
     queryStart(info) {
         for (const d of this.delegates) {
             try {

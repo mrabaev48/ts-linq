@@ -3,6 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityCache = void 0;
 const metrics_safe_1 = require("@ts-linq/metrics-safe");
 const InternalLogger_1 = require("./InternalLogger");
+/**
+ * Simple in-memory FIFO cache for entities keyed by `<EntityName>|<id>`.
+ * Intended as a best-effort level-2 cache to reduce allocations and mapping work.
+ */
 class EntityCache {
     /**
      * @param maxSize Maximum number of cached items before FIFO eviction.

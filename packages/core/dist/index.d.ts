@@ -3,11 +3,8 @@
  * change tracking, loading utilities, and base provider abstractions.
  */
 export * from './types';
-export * from './types/Logger';
 export * from './decorators/Entity';
-export * from './decorators/Column';
 export * from './decorators/PrimaryKey';
-export * from './decorators/Relationships';
 export * from './decorators/ValidIf';
 export * from './decorators/CachePolicy';
 export * from './DatabaseProvider';

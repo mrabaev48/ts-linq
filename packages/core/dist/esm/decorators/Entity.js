@@ -1,4 +1,4 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 function isStage3ClassContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'class';
 }

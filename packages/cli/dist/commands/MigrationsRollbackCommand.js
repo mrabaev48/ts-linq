@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MigrationsRollbackCommand = void 0;
 const path = __importStar(require("path"));
-const core_1 = require("@ts-linq/core");
+const migrations_1 = require("@ts-linq/migrations");
 const ConsoleLogger_1 = require("../adapters/ConsoleLogger");
 const NodeFs_1 = require("../adapters/NodeFs");
 const config_1 = require("../config");
@@ -50,7 +50,7 @@ class MigrationsRollbackCommand {
     async runDb(provider, argv) {
         const { steps, toVersion } = this.parseArgs(argv);
         const migrationsDir = this.resolveMigrationsDir();
-        const runner = new core_1.MigrationRunner(provider);
+        const runner = new migrations_1.MigrationRunner(provider);
         const applied = await runner.getAppliedMigrations();
         const modules = await this.loadAllMigrations(migrationsDir);
         for (const mod of modules)

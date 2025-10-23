@@ -96,6 +96,10 @@ export declare class PrometheusSqlLogger implements SqlLogger {
     private initAnalysisMetrics;
     private initFallbackMetrics;
     private initMemoryMetrics;
+    debug(_message: string, _meta?: Record<string, unknown>): void;
+    info(_message: string, _meta?: Record<string, unknown>): void;
+    warn(_message: string, _meta?: Record<string, unknown>): void;
+    error(_message: string, _meta?: Record<string, unknown>): void;
     queryStart(_info?: {
         sql: string;
         params: readonly SqlParameter[];

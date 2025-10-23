@@ -104,7 +104,9 @@ export class EntityLoader {
     const depth = options.depth ?? 1;
     if (depth <= 0) return;
 
-    this.validateIncludes(metadata, options.includes);
+    if (metadata.target) {
+      this.validateIncludes(metadata as { relationships: Array<{ propertyName: string }>; target: { name: string } }, options.includes);
+    }
 
     for (const relationship of metadata.relationships) {
       if (!this.shouldInclude(relationship.propertyName, options.includes)) continue;
@@ -138,13 +140,15 @@ export class EntityLoader {
     if (depth <= 0) return;
 
     // Validate provided includes against metadata to fail fast on typos/mistakes
-    this.validateIncludes(
-      metadata as unknown as {
-        relationships: Array<{ propertyName: string }>;
-        target: { name: string };
-      },
-      options.includes
-    );
+    if (metadata.target) {
+      this.validateIncludes(
+        metadata as unknown as {
+          relationships: Array<{ propertyName: string }>;
+          target: { name: string };
+        },
+        options.includes
+      );
+    }
 
     for (const relationship of metadata.relationships) {
       if (!this.shouldInclude(relationship.propertyName, options.includes)) continue;
@@ -283,14 +287,15 @@ export class EntityLoader {
     columns: Array<{ propertyName: string; columnName: string }>;
     primaryKeys: string[];
   }): string {
-    const pkProp = meta.primaryKeys[0];
+    const pkProp = meta.primaryKeys?.[0];
+    if (!pkProp) return 'id';
     return meta.columns.find((c: any) => c.propertyName === pkProp)?.columnName || pkProp;
   }
 
   private async loadRelationshipByType(
     entity: unknown,
     entityClass: new () => unknown,
-    metadata: { primaryKeys: string[] },
+    metadata: { primaryKeys?: string[] },
     relationship: {
       propertyName: string;
       foreignKey?: string;
@@ -303,7 +308,7 @@ export class EntityLoader {
     try {
       const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => unknown;
       if (relationship.type === 'one-to-many') {
-        await this.loadOneToMany(entity, metadata, relationship, entityClass, targetCtor);
+        await this.loadOneToMany(entity, { primaryKeys: metadata.primaryKeys ?? [] }, relationship, entityClass, targetCtor);
       } else {
         await this.loadToOne(entity, relationship, targetCtor, { ...options, depth: depth - 1 });
       }
@@ -317,7 +322,7 @@ export class EntityLoader {
     entityClass: new () => unknown,
     metadata: {
       columns?: Array<{ propertyName: string; columnName: string }>;
-      primaryKeys: string[];
+      primaryKeys?: string[];
     },
     relationship: {
       propertyName: string;
@@ -332,7 +337,7 @@ export class EntityLoader {
     if (relationship.type === 'one-to-many') {
       await this.loadOneToManyBatched(
         entities,
-        { primaryKeys: metadata.primaryKeys },
+        { primaryKeys: metadata.primaryKeys ?? [] },
         relationship,
         entityClass,
         targetCtor,
@@ -343,7 +348,7 @@ export class EntityLoader {
     }
     await this.loadToOneBatched(
       entities,
-      { columns: metadata.columns ?? [], primaryKeys: metadata.primaryKeys },
+      { columns: metadata.columns ?? [], primaryKeys: metadata.primaryKeys ?? [] },
       relationship,
       targetCtor,
       options,
@@ -416,9 +421,10 @@ export class EntityLoader {
     }
     const byId = new Map<unknown, unknown>();
     const targetMeta = MetadataStorage.getEntity(targetCtor);
-    const targetPk = targetMeta?.primaryKeys[0];
+    const targetPk = targetMeta?.primaryKeys?.[0];
+    if (!targetPk) return;
     for (const relatedEntity of related)
-      byId.set((relatedEntity as Record<string, unknown>)[targetPk as string], relatedEntity);
+      byId.set((relatedEntity as Record<string, unknown>)[targetPk], relatedEntity);
 
     for (const entityItem of entities) {
       const fk = (entityItem as Record<string, unknown>)[foreignKeyName];

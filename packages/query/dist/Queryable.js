@@ -5,15 +5,15 @@ const core_1 = require("@ts-linq/core");
 const types_1 = require("@ts-linq/types");
 const QueryBuilder_1 = require("./QueryBuilder");
 const PredicateParser_1 = require("./PredicateParser");
-const core_2 = require("@ts-linq/core");
-const core_3 = require("@ts-linq/core");
+const ast_1 = require("@ts-linq/ast");
+const QueryModel_1 = require("./QueryModel");
 // LoadingStrategy not used directly here; keep imports minimal
 const RowMaterializer_1 = require("./RowMaterializer");
 const IncludePlanner_1 = require("./IncludePlanner");
 const JoinPredicateParser_1 = require("./JoinPredicateParser");
 const GlobalFilterApplier_1 = require("./GlobalFilterApplier");
 const metrics_safe_1 = require("@ts-linq/metrics-safe");
-const core_4 = require("@ts-linq/core");
+const InternalLogger_1 = require("./InternalLogger");
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
  * in a QueryModel and delegates SQL generation to QueryBuilder.
@@ -26,7 +26,7 @@ class Queryable {
      * @param entityLoader Optional entity loader for eager includes.
      */
     constructor(entityClass, provider, entityLoader, entityCache, performance, globalFilters) {
-        this._model = new core_3.QueryModel();
+        this._model = new QueryModel_1.QueryModel();
         this._fallbackPredicates = [];
         this._includes = [];
         this._globalFilterApplier = new GlobalFilterApplier_1.GlobalFilterApplier();
@@ -301,7 +301,7 @@ class Queryable {
         const parser = new PredicateParser_1.PredicateParser();
         const ast = parser.parse(predicate);
         if (ast) {
-            const visitor = new core_2.SqlVisitor();
+            const visitor = new ast_1.SqlVisitor();
             const { condition, parameters } = visitor.toSql(ast);
             this._model.groupBy.having = { condition, parameters };
         }
@@ -652,7 +652,7 @@ class Queryable {
                         return data.length;
                 }
                 catch (e) {
-                    (0, core_4.logInternalError)('hedged.startFallback.fetch', e);
+                    (0, InternalLogger_1.logInternalError)('hedged.startFallback.fetch', e);
                     continue;
                 }
             }
@@ -683,7 +683,7 @@ class Queryable {
                     });
                 }
                 catch (e) {
-                    (0, core_4.logInternalError)('hedged.select.hedgedWin', e);
+                    (0, InternalLogger_1.logInternalError)('hedged.select.hedgedWin', e);
                 }
                 return winner.n;
             }
@@ -725,7 +725,7 @@ class Queryable {
             this._fallbackPredicates.push(predicate);
             return;
         }
-        const visitor = new core_2.SqlVisitor();
+        const visitor = new ast_1.SqlVisitor();
         const { condition, parameters } = visitor.toSql(ast);
         const whereClause = {
             condition,
@@ -922,7 +922,7 @@ class Queryable {
                     });
                 }
                 catch (e) {
-                    (0, core_4.logInternalError)('hedged.select.hedgedWin', e);
+                    (0, InternalLogger_1.logInternalError)('hedged.select.hedgedWin', e);
                 }
                 this._provider.loggerRef?.fallback?.({
                     provider: this._provider.providerLabel,
@@ -1074,9 +1074,12 @@ class Queryable {
         return (!!this._performance?.enableEntityCache &&
             !!this._entityCache &&
             !!metadata &&
+            !!metadata.primaryKeys &&
             metadata.primaryKeys.length > 0);
     }
     tryGetFromCache(row, metadata) {
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0)
+            return null;
         const pkProp = metadata.primaryKeys[0];
         const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
         const idValue = pkCol
@@ -1117,6 +1120,8 @@ class Queryable {
         return entity;
     }
     rememberInCache(row, metadata, entity) {
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0)
+            return;
         const pkProp = metadata.primaryKeys[0];
         const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
         const idValue = pkCol
@@ -1242,7 +1247,7 @@ class Queryable {
             throw new Error('Operation aborted');
         // For entities, use primary key comparison if available
         const metadata = core_1.MetadataStorage.getEntity(this._entityClass);
-        if (metadata && metadata.primaryKeys.length > 0) {
+        if (metadata && metadata.primaryKeys && metadata.primaryKeys.length > 0) {
             const pk = metadata.primaryKeys[0];
             const itemId = item[pk];
             if (itemId !== undefined && itemId !== null) {

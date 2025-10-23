@@ -18,6 +18,7 @@ export interface JoinClause {
   type: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
   table: string;
   on: string;
+  alias?: string;
 }
 
 export interface GroupByClause {
@@ -64,9 +65,108 @@ export interface Logger {
   error(message: string, meta?: Record<string, unknown>): void;
 }
 
-// SqlLogger extends Logger with cache method
+// Logger info types for SqlLogger methods
+export type ConnectionHealthStatus = 'healthy' | 'degraded' | 'unhealthy';
+export type CircuitState = 'closed' | 'open' | 'half-open';
+
+export interface QueryStartInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  traceId?: string;
+  provider?: string;
+}
+
+export interface QueryEndInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  durationMs: number;
+  traceId?: string;
+  rows?: number;
+  error?: Error;
+  provider?: string;
+}
+
+export interface RetryInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  attempt: number;
+  traceId?: string;
+  provider?: string;
+}
+
+export interface TransactionInfo {
+  traceId?: string;
+  provider?: string;
+}
+
+export interface CacheInfo {
+  cache: 'sqlGen' | 'entityL2' | 'count';
+  hit: boolean;
+  provider?: string;
+  ttl?: boolean;
+}
+
+export interface ConnectionHealthInfo {
+  healthy: boolean;
+  latencyMs?: number;
+  provider?: string;
+  status?: ConnectionHealthStatus;
+}
+
+export interface CircuitEventInfo {
+  state: CircuitState;
+  provider?: string;
+  failures?: number;
+  reason?: string;
+  halfOpenInFlight?: number;
+}
+
+export interface FallbackInfo {
+  provider?: string;
+  fallback: string;
+  attempted: boolean;
+  succeeded?: boolean;
+  error?: Error;
+  throttled?: boolean;
+  isStale?: boolean;
+  asOf?: number;
+  source?: string;
+}
+
+export interface HedgedWinInfo {
+  provider?: string;
+  operation: string;
+  fallback: string;
+}
+
+export interface QueryAnalysisInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  durationMs: number;
+  provider?: string;
+  slow?: boolean;
+  explainPlan?: unknown;
+  recommendations?: ReadonlyArray<string>;
+}
+
+// SqlLogger extends Logger with additional methods for database event logging
 export interface SqlLogger extends Logger {
-  cache?(meta?: Record<string, unknown>): void;
+  cache?(info: CacheInfo): void;
+  queryStart?(info: QueryStartInfo): void;
+  queryEnd?(info: QueryEndInfo): void;
+  retry?(info: RetryInfo): void;
+  transactionStart?(info: TransactionInfo): void;
+  transactionEnd?(info: TransactionInfo): void;
+  connectionHealth?(info: ConnectionHealthInfo): void;
+  circuit?(info: CircuitEventInfo): void;
+  fallback?(info: FallbackInfo): void;
+  hedgedWin?(info: HedgedWinInfo): void;
+  analysis?(info: QueryAnalysisInfo): void;
+}
+
+// SqlLoggerFactory for creating dialect-specific loggers
+export interface SqlLoggerFactory {
+  create(provider: 'sqlite' | 'mysql' | 'postgresql' | 'mssql' | string): SqlLogger | undefined;
 }
 
 // SQL Dialect interface
@@ -80,15 +180,15 @@ export interface SqlDialect {
 
 // Middleware types
 export interface OrmMiddleware {
-  beforeExecute?(sql: string, params: readonly SqlParameter[]): Promise<void> | void;
-  afterExecute?(sql: string, result: unknown): Promise<void> | void;
-  entityMaterialized?<T>(entity: T): void;
+  beforeExecute?(info: { sql: string; params: readonly SqlParameter[]; traceId?: string }): Promise<void> | void;
+  afterExecute?(info: { sql: string; params: readonly SqlParameter[]; durationMs: number; traceId?: string; rows?: number }): Promise<void> | void;
+  entityMaterialized?<T>(entity: T | { entity: object; metadata?: any }): void;
 }
 
 // Retry policy types
 export interface RetryPolicy {
   shouldRetry(error: unknown, attempt: number, inTransaction?: boolean): boolean;
-  getDelay?(attempt: number): number;
+  getDelayMs?(attempt: number): number;
 }
 
 // Connection options
@@ -96,12 +196,18 @@ export interface ConnectionPoolOptions {
   min?: number;
   max?: number;
   idleTimeoutMs?: number;
+  connectionTimeoutMs?: number;
+  acquireTimeoutMs?: number;
 }
 
 export interface ConnectionHealthCheckOptions {
   enabled?: boolean;
   intervalMs?: number;
   timeoutMs?: number;
+  minIntervalMs?: number;
+  maxIntervalMs?: number;
+  degradeAfterFailures?: number;
+  unhealthyAfterFailures?: number;
 }
 
 // Soft delete options
@@ -190,6 +296,30 @@ export interface CountCache {
   clear(): void;
 }
 
+// SQL Cache interfaces
+export interface SqlCacheEntry {
+  query: string;
+  parameters: SqlParameter[];
+}
+
+export interface SqlCache {
+  get(key: string): SqlCacheEntry | undefined;
+  set(key: string, value: SqlCacheEntry): void;
+  clear(): void;
+  size(): number;
+  /** Optional targeted invalidation. Should return number of removed entries. */
+  invalidateBy?(matcher: (key: string) => boolean): number;
+  /** Optional metrics exposure for monitoring. */
+  getMetrics?(): {
+    currentSize: number;
+    totalRequests?: number;
+    hits?: number;
+    misses?: number;
+    evictions?: number;
+    invalidations?: number;
+  };
+}
+
 // Performance options
 export interface PerformanceOptions {
   enableQueryCache?: boolean;
@@ -201,10 +331,17 @@ export interface PerformanceOptions {
   sqlCache?: unknown;
   cacheNamespace?: string;
   fallbackPolicy?: FallbackPolicy;
+  entityCache?: unknown;
+  entityCacheSize?: number;
+  analysis?: unknown;
 }
 
-// Loading strategy type
-export type LoadingStrategy = 'lazy' | 'eager' | 'explicit';
+// Loading strategy enum
+export enum LoadingStrategy {
+  Lazy = 'lazy',
+  Eager = 'eager',
+  Explicit = 'explicit'
+}
 
 // Cache options
 export interface CacheOptions {
@@ -252,12 +389,21 @@ export interface IndexMetadata {
   columns: string[];
   unique?: boolean;
   where?: string;
+  orders?: { [column: string]: 'ASC' | 'DESC' };
+  expressions?: string[];
+  collations?: { [column: string]: string };
+  nulls?: { [column: string]: 'FIRST' | 'LAST' };
+  using?: string;
+  concurrently?: boolean;
+  withParams?: Record<string, unknown>;
+  mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
+  include?: string[];
 }
 
 export interface ValidationRule {
   propertyName?: string;
   validator?: (value: unknown, entity: unknown) => boolean;
-  message: string;
+  message?: string;
   predicate?: (value: unknown) => boolean;
   phase?: 'onCreate' | 'onUpdate' | 'always';
   messageKey?: string;
@@ -276,6 +422,33 @@ export interface EntityMetadata {
   primaryKeys?: string[];
   primaryKeyColumn?: string;
   schema?: string;
+}
+
+// Entity cache interface
+export interface EntityCacheLike {
+  get<T>(entityClass: Function, id: unknown): T | undefined;
+  set<T>(entityClass: Function, id: unknown, entity: T): void;
+  remove(entityClass: Function, id: unknown): void;
+  clear(): void;
+  size?(): number;
+}
+
+// Loading defaults
+export interface LoadingDefaults {
+  strategy?: LoadingStrategy;
+  maxDepth?: number;
+  depth?: number;
+}
+
+// Audit options
+export interface AuditOptions {
+  enabled?: boolean;
+  createdAtColumn?: string;
+  updatedAtColumn?: string;
+  createdByColumn?: string;
+  updatedByColumn?: string;
+  getCurrentUser?: () => string | number | Promise<string | number>;
+  clock?: () => Date;
 }
 
 // Export error classes

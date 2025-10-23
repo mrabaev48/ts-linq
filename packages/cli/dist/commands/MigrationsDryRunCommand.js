@@ -35,8 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MigrationsDryRunCommand = void 0;
 const path = __importStar(require("path"));
-const core_1 = require("@ts-linq/core");
-const core_2 = require("@ts-linq/core");
+const migrations_1 = require("@ts-linq/migrations");
 const utils_1 = require("../utils");
 const ConsoleLogger_1 = require("../adapters/ConsoleLogger");
 const NodeFs_1 = require("../adapters/NodeFs");
@@ -55,10 +54,10 @@ class MigrationsDryRunCommand {
             process.exitCode = 2;
             return;
         }
-        const target = new core_1.SchemaSnapshotSerializer().deserialize(this.fsAdapter.readText(file));
-        const actual = await new core_1.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
-        const diff = (0, core_2.compareSchemas)(target, actual);
-        const rendered = (0, core_1.generateMigrationFromDiff)(diff, (0, utils_1.resolveDialect)(provider.providerLabel));
+        const target = new migrations_1.SchemaSnapshotSerializer().deserialize(this.fsAdapter.readText(file));
+        const actual = await new migrations_1.SchemaSnapshotBuilder(provider).buildActualFromProvider(target);
+        const diff = (0, migrations_1.compareSchemas)(target, actual);
+        const rendered = (0, migrations_1.generateMigrationFromDiff)(diff, (0, utils_1.resolveDialect)(provider.providerLabel));
         for (const sql of rendered.up)
             this.logger.info(sql);
     }

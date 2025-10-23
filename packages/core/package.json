@@ -15,7 +15,6 @@
   "dependencies": {
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metadata": "workspace:*",
-    "@ts-linq/query": "workspace:*",
     "@ts-linq/metrics-safe": "workspace:*",
     "@ts-linq/ast": "workspace:*"
   },

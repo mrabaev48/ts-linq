@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenTelemetrySqlLogger = void 0;
-const core_1 = require("@ts-linq/core");
 function safeRequireOtel() {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -9,8 +8,8 @@ function safeRequireOtel() {
         if (otel && otel.trace && typeof otel.trace.getTracer === 'function')
             return otel;
     }
-    catch (e) {
-        (0, core_1.logInternalError)('OpenTelemetrySqlLogger.safeRequireOtel', e);
+    catch {
+        // Silently fail if OpenTelemetry is not installed
     }
     return undefined;
 }
@@ -34,11 +33,23 @@ class OpenTelemetrySqlLogger {
             try {
                 s = s.replace(re, '[REDACTED]');
             }
-            catch (e) {
-                (0, core_1.logInternalError)('OpenTelemetrySqlLogger.mask.replace', e);
+            catch {
+                // Ignore regex errors
             }
         }
         return s;
+    }
+    debug(_message, _meta) {
+        // No-op: OpenTelemetry doesn't log text messages directly
+    }
+    info(_message, _meta) {
+        // No-op: OpenTelemetry doesn't log text messages directly
+    }
+    warn(_message, _meta) {
+        // No-op: OpenTelemetry doesn't log text messages directly
+    }
+    error(_message, _meta) {
+        // No-op: OpenTelemetry doesn't log text messages directly
     }
     queryStart(info) {
         if (!this.tracer)
@@ -91,8 +102,8 @@ class OpenTelemetrySqlLogger {
             // Do not attach SQL text here to avoid duplication and sensitive data; rely on db.statement in query span
             span.end();
         }
-        catch (e) {
-            (0, core_1.logInternalError)('OpenTelemetrySqlLogger.analysis', e);
+        catch {
+            // Ignore errors in analysis
         }
     }
 }

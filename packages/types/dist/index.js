@@ -15,7 +15,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ValidationError = void 0;
+exports.ValidationError = exports.LoadingStrategy = void 0;
 exports.ok = ok;
 exports.err = err;
 function ok(value) {
@@ -24,6 +24,13 @@ function ok(value) {
 function err(error) {
     return { success: false, error };
 }
+// Loading strategy enum
+var LoadingStrategy;
+(function (LoadingStrategy) {
+    LoadingStrategy["Lazy"] = "lazy";
+    LoadingStrategy["Eager"] = "eager";
+    LoadingStrategy["Explicit"] = "explicit";
+})(LoadingStrategy || (exports.LoadingStrategy = LoadingStrategy = {}));
 // Export error classes
 __exportStar(require("./errors"), exports);
 var errors_1 = require("./errors");

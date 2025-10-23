@@ -1,4 +1,8 @@
-import type { CountCache, CountCacheEntry } from '@ts-linq/core';
+export interface CountCache {
+    get(key: string): number | undefined;
+    set(key: string, value: number): void;
+    clear(): void;
+}
 export interface MemjsClientLike {
     get(key: string): Promise<{
         value: Buffer | null;
@@ -29,8 +33,8 @@ export declare class MemcachedCountCacheAdapter implements CountCache {
     constructor(client: MemjsClientLike, options?: MemcachedCountCacheOptions);
     private k;
     private decode;
-    get(key: string): CountCacheEntry | undefined;
-    set(key: string, entry: CountCacheEntry): void;
+    get(key: string): number | undefined;
+    set(key: string, value: number): void;
     clear(): void;
     invalidateBy(matcher: (key: string) => boolean): number;
     private ensureCapacity;

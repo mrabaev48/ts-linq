@@ -1,5 +1,10 @@
-import type { SqlCache, SqlCacheEntry } from '@ts-linq/core';
-import { logInternalError } from '@ts-linq/core';
+import type { SqlCacheEntry } from '@ts-linq/core';
+
+export interface SqlCache {
+  get(key: string): SqlCacheEntry | undefined;
+  set(key: string, value: SqlCacheEntry): void;
+  clear(): void;
+}
 
 export interface MemjsClientLike {
   get(key: string): Promise<{ value: Buffer | null } | null> | { value: Buffer | null } | null;
@@ -47,8 +52,7 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
     if (!b) return null;
     try {
       return b.toString('utf8');
-    } catch (e) {
-      logInternalError('MemcachedSqlCacheAdapter.decode', e);
+    } catch {
       return null;
     }
   }
@@ -81,8 +85,8 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
     void (async () => {
       try {
         await this.client.set(this.k(key), payload, options);
-      } catch (e) {
-        logInternalError('MemcachedSqlCacheAdapter.writeThrough', e);
+      } catch {
+        // Ignore write-through errors
       }
     })();
   }
@@ -106,8 +110,8 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
         void (async () => {
           try {
             await this.client.delete(this.k(k));
-          } catch (e) {
-            logInternalError('MemcachedSqlCacheAdapter.invalidate.delete', e);
+          } catch {
+            // Ignore delete errors
           }
         })();
         this._metrics.invalidations++;
@@ -143,8 +147,8 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
       void (async () => {
         try {
           await this.client.delete(this.k(first));
-        } catch (e) {
-          logInternalError('MemcachedSqlCacheAdapter.ensureCapacity.delete', e);
+        } catch {
+          // Ignore delete errors
         }
       })();
     }

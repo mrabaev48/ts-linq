@@ -247,6 +247,9 @@ class LazyLoadingProxy {
         const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return null;
+        if (typeof relationship.targetEntity === 'string') {
+            return null; // Cannot resolve string target entities
+        }
         const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
         switch (relationship.type) {
             case 'many-to-one':
@@ -260,7 +263,7 @@ class LazyLoadingProxy {
                 return relatedEntity ? this.create(relatedEntity, targetCtor, provider) : null;
             }
             case 'one-to-many': {
-                const parentPkProperty = metadata.primaryKeys[0];
+                const parentPkProperty = metadata.primaryKeys?.[0];
                 if (!parentPkProperty)
                     return [];
                 const parentPkValue = entity[parentPkProperty];
@@ -289,6 +292,9 @@ class LazyLoadingProxy {
         const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;
+        if (typeof relationship.targetEntity === 'string') {
+            return; // Cannot resolve string target entities
+        }
         const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
         switch (relationship.type) {
             case 'many-to-one':
@@ -314,13 +320,13 @@ class LazyLoadingProxy {
         const uniqueFkValues = Array.from(new Set(fkValues));
         if (uniqueFkValues.length === 0)
             return;
-        const targetPkColumn = meta.columns.find((c) => c.propertyName === meta.primaryKeys[0])?.columnName ||
-            meta.primaryKeys[0];
+        const targetPkColumn = meta.columns.find((c) => c.propertyName === meta.primaryKeys?.[0])?.columnName ||
+            meta.primaryKeys?.[0] || 'id';
         const related = await provider.findWhereIn(targetCtor, targetPkColumn, uniqueFkValues);
         const relatedProxies = this.createMany(related, targetCtor, provider);
         const byId = new Map();
         const targetMeta = metadata_1.MetadataStorage.getEntity(targetCtor);
-        const targetPk = targetMeta?.primaryKeys[0];
+        const targetPk = targetMeta?.primaryKeys?.[0];
         if (!targetPk)
             return;
         for (const relatedEntity of relatedProxies) {
@@ -339,7 +345,7 @@ class LazyLoadingProxy {
         }
     }
     static async batchLoadOneToMany(entities, entityClass, relationship, provider, meta, targetCtor) {
-        const parentPkProperty = meta.primaryKeys[0];
+        const parentPkProperty = meta.primaryKeys?.[0];
         if (!parentPkProperty)
             return;
         const parentIds = entities
@@ -369,8 +375,8 @@ class LazyLoadingProxy {
         }
     }
     static async loadManyToMany(entity, entityClass, metadata, relationship, targetCtor, provider) {
-        const sourcePk = metadata.primaryKeys[0];
-        const targetPk = (metadata_1.MetadataStorage.getEntity(targetCtor)?.primaryKeys || [])[0];
+        const sourcePk = metadata.primaryKeys?.[0];
+        const targetPk = (metadata_1.MetadataStorage.getEntity(targetCtor)?.primaryKeys ?? [])[0];
         const through = relationship;
         if (!through.through?.table || !sourcePk || !targetPk)
             return [];
@@ -395,7 +401,7 @@ class LazyLoadingProxy {
         return ((metadata_1.MetadataStorage.getEntity(targetCtor)?.columns || []).find((c) => c.propertyName === targetPk)?.columnName || targetPk);
     }
     static async batchLoadManyToMany(entities, entityClass, relationship, provider, meta, targetCtor) {
-        const sourcePk = meta.primaryKeys[0];
+        const sourcePk = meta.primaryKeys?.[0];
         if (!sourcePk)
             return;
         const through = relationship;

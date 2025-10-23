@@ -1,4 +1,4 @@
-import { MetadataStorage } from '@ts-linq/core';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { SQLiteWhereEmitter } from './emitters/SQLiteWhereEmitter';
 import { SQLiteJoinEmitter } from './emitters/SQLiteJoinEmitter';
 import { SQLiteOrderEmitter } from './emitters/SQLiteOrderEmitter';
