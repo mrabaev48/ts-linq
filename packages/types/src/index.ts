@@ -331,7 +331,7 @@ export interface PerformanceOptions {
   sqlCache?: unknown;
   cacheNamespace?: string;
   fallbackPolicy?: FallbackPolicy;
-  entityCache?: unknown;
+  entityCache?: EntityCacheLike;
   entityCacheSize?: number;
   analysis?: unknown;
 }
@@ -449,6 +449,14 @@ export interface AuditOptions {
   updatedByColumn?: string;
   getCurrentUser?: () => string | number | Promise<string | number>;
   clock?: () => Date;
+  timeColumns?: {
+    createdAt?: string;
+    updatedAt?: string;
+  };
+  userColumns?: {
+    createdBy?: string;
+    updatedBy?: string;
+  };
 }
 
 // Export error classes
