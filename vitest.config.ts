@@ -28,9 +28,8 @@ export default defineConfig({
       },
     },
   },
-  esbuild: {
-    target: 'es2020',
-  },
+  // Disable esbuild - use TypeScript compiler instead for legacy decorator support
+  esbuild: false,
   // Disable SSR transform completely
   server: {
     deps: {

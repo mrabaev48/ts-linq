@@ -14,11 +14,19 @@ export class MetadataStorage {
 
   private normalizeTarget<T extends Function>(target: T): T {
     // Map decorated Extended classes back to original constructors if present
-    const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
-      .getOwnMetadata;
-    const maybe = getOwn?.('orm:original', target);
-    const original = typeof maybe === 'function' ? (maybe as T) : undefined;
-    return original ?? target;
+    if (!target || typeof target !== 'function') {
+      return target;
+    }
+    
+    try {
+      const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
+        .getOwnMetadata;
+      const maybe = getOwn?.('orm:original', target);
+      const original = typeof maybe === 'function' ? (maybe as T) : undefined;
+      return original ?? target;
+    } catch {
+      return target;
+    }
   }
 
   private constructor() {}
@@ -38,17 +46,25 @@ export class MetadataStorage {
 
   /** Get metadata for a specific entity constructor. */
   public static getEntity(target: Function): EntityMetadata | undefined {
-    const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
-      .getOwnMetadata;
-    const maybe = getOwn?.('orm:original', target);
-    const original = typeof maybe === 'function' ? maybe : target;
-    const meta = MetadataStorage.getInstance().getEntityMetadata(original);
-    if (!meta) return undefined;
-    if (original !== target) {
-      // Return a view of metadata with target set to the provided constructor (decorated class)
-      return { ...meta, target };
+    if (!target || typeof target !== 'function') {
+      return undefined;
     }
-    return meta;
+    
+    try {
+      const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
+        .getOwnMetadata;
+      const maybe = getOwn?.('orm:original', target);
+      const original = typeof maybe === 'function' ? maybe : target;
+      const meta = MetadataStorage.getInstance().getEntityMetadata(original);
+      if (!meta) return undefined;
+      if (original !== target) {
+        // Return a view of metadata with target set to the provided constructor (decorated class)
+        return { ...meta, target };
+      }
+      return meta;
+    } catch {
+      return MetadataStorage.getInstance().getEntityMetadata(target);
+    }
   }
 
   /** Register an entity and optionally set its table name. */

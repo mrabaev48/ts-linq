@@ -4,33 +4,35 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core.
 
 ## Recent Changes - October 23, 2025
 
-### ✅ Vitest Migration Complete
-- Successfully migrated test infrastructure from Jest to Vitest  
-- Tests now run significantly faster (2.5-3x performance improvement)
-- **34 test files passing** with **129 individual tests passing**
+### 🔍 Critical Discovery: Vitest Decorator Execution Context Issue
+**Status**: Investigating fundamental incompatibility between Vitest's execution model and legacy decorators
 
-### ✅ Decorator Strategy: Legacy Experimental Decorators
-After extensive investigation of Stage-3 decorators with Vitest, we encountered critical tooling limitations:
-- **SWC**: Field decorators don't support `addInitializer` (only class decorators)
-- **esbuild**: Can parse Stage-3 but cannot transform them
-- **Vitest SSR Transform**: Persistent ENOENT cache errors with any Stage-3 decorator compiler
+#### What We Discovered
+1. **esbuild Issue**: esbuild (Vitest's default transformer) cannot emit legacy decorators - it only supports Stage 3
+2. **TypeScript Compiler Issue**: Even with `esbuild: false`, Vitest's test execution context provides invalid `target` values to property decorators
+3. **Root Cause**: Property decorators receive `undefined` or non-function `target` values, causing:
+   - `target.name` → undefined
+   - `target.constructor` → undefined  
+   - MetadataStorage cannot register decorator metadata
 
-**SOLUTION IMPLEMENTED:** Reverted to TypeScript legacy experimental decorators:
-- ✅ Installed `reflect-metadata` dependency
-- ✅ Enabled `experimentalDecorators: true` and `emitDecoratorMetadata: true` in tsconfig.json
-- ✅ Converted all decorators to legacy syntax: @Entity, @Column, @PrimaryKey, @ManyToOne, @OneToMany, @OneToOne, @ManyToMany, @Index
-- ✅ Vitest now works reliably with decorators
+#### Attempted Fixes
+- ✅ Migrated 150+ test files: jest → vitest (jest.fn → vi.fn, jest.spyOn → vi.spyOn)
+- ✅ Added reflect-metadata imports to 50+ test files
+- ✅ Fixed decorator signatures: `target: Object` → `target: any`
+- ✅ Added null-safety: `const ctor = (target?.constructor || target) as Function`
+- ✅ Disabled esbuild in vitest.config.ts to use TypeScript compiler
+- ❌ **Still failing**: target parameter still invalid in Vitest runtime
 
-### Technical Learnings
-- **Stage-3 Decorators**: Not production-ready in Vitest environment (as of Oct 2025)
-- **Legacy Decorators**: Mature, stable, widely supported across all tooling
-- **Entity Framework Compatibility**: Legacy decorators provide identical API experience
+#### Architect Review Findings
+- Vitest/esbuild mixes Stage-3 and legacy decorator semantics
+- Property decorators receive context descriptors instead of prototypes
+- Try-catch guards mask symptoms without fixing root cause
+- Need to either: (1) Full Stage-3 migration with PendingMetadataCollector, or (2) Different test runner
 
-### Test Status
-- Test Files: 34 passed, 186 failed, 21 skipped (241 total)
-- Individual Tests: 129 passed, 126 failed, 28 skipped (283 total)
-- **Major Progress:** No more ENOENT errors, decorators register metadata correctly
-- Remaining failures: Test syntax issues (jest→vitest migration incomplete in some files)
+### Test Status  
+- **36 tests passing** (down from 129 after fixing decorator issues)
+- Most failures: MetadataStorage.getInstance() undefined, target.name undefined
+- Core decorator architecture needs rethinking for Vitest compatibility
 
 ---
 
