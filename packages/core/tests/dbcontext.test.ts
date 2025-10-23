@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { DbContext } from '@ts-linq/orm';
 import { ProviderStub } from './_stubs/ProviderStub';
 import { Entity, Column, PrimaryKey } from '@ts-linq/metadata';

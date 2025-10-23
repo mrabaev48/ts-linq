@@ -3,8 +3,8 @@ import { DdlBuilder } from '../src/DdlBuilder';
 describe('DdlBuilder', () => {
   test('buildCreateTableSql delegates to strategy', () => {
     const strategy = {
-      generateCreateTableSql: vi.fn(() => 'CREATE TABLE X'),
-      generateCreateIndexSql: vi.fn()
+      generateCreateTableSql: jest.fn(() => 'CREATE TABLE X'),
+      generateCreateIndexSql: jest.fn()
     } as any;
     const builder = new DdlBuilder(strategy);
     const sql = builder.buildCreateTableSql({} as any);
@@ -14,8 +14,8 @@ describe('DdlBuilder', () => {
 
   test('buildCreateIndexesSql maps metadata.indexes', () => {
     const strategy = {
-      generateCreateTableSql: vi.fn(),
-      generateCreateIndexSql: vi.fn(() => 'CREATE INDEX i1 ON T(a)')
+      generateCreateTableSql: jest.fn(),
+      generateCreateIndexSql: jest.fn(() => 'CREATE INDEX i1 ON T(a)')
     } as any;
     const builder = new DdlBuilder(strategy);
     const res = builder.buildCreateIndexesSql({
@@ -32,8 +32,8 @@ describe('DdlBuilder', () => {
 
   test('buildAll returns table and indexes together', () => {
     const strategy = {
-      generateCreateTableSql: vi.fn(() => 'CREATE TABLE T (id INT)'),
-      generateCreateIndexSql: vi.fn(() => 'CREATE INDEX i1 ON T(id)')
+      generateCreateTableSql: jest.fn(() => 'CREATE TABLE T (id INT)'),
+      generateCreateIndexSql: jest.fn(() => 'CREATE INDEX i1 ON T(id)')
     } as any;
     const builder = new DdlBuilder(strategy);
     const res = builder.buildAll({

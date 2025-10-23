@@ -54,11 +54,11 @@ class TestProvider extends DatabaseProvider {
 
 describe('DatabaseProvider health-check scheduler', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    jest.restoreAllMocks();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    jest.restoreAllMocks();
   });
 
   test('emits healthy=true on successful ping', async () => {

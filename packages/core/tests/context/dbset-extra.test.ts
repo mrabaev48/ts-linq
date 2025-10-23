@@ -8,23 +8,23 @@ class Ctx extends DbContext {}
 function providerStub(): jest.Mocked<DatabaseProvider> {
   return {
     providerLabel: 'sqlite',
-    connect: vi.fn(async () => {}),
-    disconnect: vi.fn(async () => {}),
-    beginTransaction: vi.fn(async () => {}),
-    commitTransaction: vi.fn(async () => {}),
-    rollbackTransaction: vi.fn(async () => {}),
+    connect: jest.fn(async () => {}),
+    disconnect: jest.fn(async () => {}),
+    beginTransaction: jest.fn(async () => {}),
+    commitTransaction: jest.fn(async () => {}),
+    rollbackTransaction: jest.fn(async () => {}),
     inTransactionState: false,
-    getDialect: vi.fn(),
-    executeQuery: vi.fn(),
-    executeNonQuery: vi.fn(),
-    insert: vi.fn(async () => {}),
-    update: vi.fn(async () => {}),
-    delete: vi.fn(async () => {}),
-    upsert: vi.fn(async () => {}),
-    findById: vi.fn(async () => null),
-    findAll: vi.fn(async () => []),
-    findWhereIn: vi.fn(async () => []),
-    findWhere: vi.fn(async () => [])
+    getDialect: jest.fn(),
+    executeQuery: jest.fn(),
+    executeNonQuery: jest.fn(),
+    insert: jest.fn(async () => {}),
+    update: jest.fn(async () => {}),
+    delete: jest.fn(async () => {}),
+    upsert: jest.fn(async () => {}),
+    findById: jest.fn(async () => null),
+    findAll: jest.fn(async () => []),
+    findWhereIn: jest.fn(async () => []),
+    findWhere: jest.fn(async () => [])
   } as unknown as jest.Mocked<DatabaseProvider>;
 }
 
@@ -61,7 +61,7 @@ describe('DbSet extra', () => {
 
   test('upsert adds when no PK value, updates/adds based on existence', async () => {
     const provider = providerStub();
-    provider.findById = vi.fn(async () => ({ id: 1 }));
+    provider.findById = jest.fn(async () => ({ id: 1 }));
     const ctx = new Ctx({ provider });
     const set = ctx.set(E);
     await set.upsert({ id: 1 } as any); // should update
@@ -71,7 +71,7 @@ describe('DbSet extra', () => {
 
   test('upsertMany mixes add/update based on existing ids', async () => {
     const provider = providerStub();
-    provider.findWhereIn = vi.fn(async () => [{ id: 2 }]);
+    provider.findWhereIn = jest.fn(async () => [{ id: 2 }]);
     const ctx = new Ctx({ provider });
     const set = ctx.set(E);
     const res = await set.upsertMany([

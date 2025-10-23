@@ -40,7 +40,7 @@ describe('QueryBuilder with Enhanced SQL Cache Integration', () => {
     });
 
     mockLogger = {
-      cache: vi.fn()
+      cache: jest.fn()
     };
 
     // Create a mock dialect for testing

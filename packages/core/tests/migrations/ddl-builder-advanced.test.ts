@@ -6,7 +6,7 @@ describe('DdlBuilder advanced scenarios', () => {
   describe('NULL and DEFAULT constraints', () => {
     it('should handle NOT NULL columns', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn((metadata) => {
+        generateCreateTableSql: jest.fn((metadata) => {
           const columns = metadata.columns
             .map((col: ColumnMetadata) => {
               const nullable = col.nullable !== false ? '' : ' NOT NULL';
@@ -15,7 +15,7 @@ describe('DdlBuilder advanced scenarios', () => {
             .join(', ');
           return `CREATE TABLE ${metadata.tableName} (${columns})`;
         }),
-        generateCreateIndexSql: vi.fn()
+        generateCreateIndexSql: jest.fn()
       };
 
       const builder = new DdlBuilder(strategy);
@@ -57,7 +57,7 @@ describe('DdlBuilder advanced scenarios', () => {
 
     it('should handle DEFAULT values', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn((metadata) => {
+        generateCreateTableSql: jest.fn((metadata) => {
           const columns = metadata.columns
             .map((col: ColumnMetadata) => {
               let def = '';
@@ -71,7 +71,7 @@ describe('DdlBuilder advanced scenarios', () => {
             .join(', ');
           return `CREATE TABLE ${metadata.tableName} (${columns})`;
         }),
-        generateCreateIndexSql: vi.fn()
+        generateCreateIndexSql: jest.fn()
       };
 
       const builder = new DdlBuilder(strategy);
@@ -105,7 +105,7 @@ describe('DdlBuilder advanced scenarios', () => {
 
     it('should handle DEFAULT expressions', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn((metadata) => {
+        generateCreateTableSql: jest.fn((metadata) => {
           const columns = metadata.columns
             .map((col: ColumnMetadata) => {
               let def = '';
@@ -117,7 +117,7 @@ describe('DdlBuilder advanced scenarios', () => {
             .join(', ');
           return `CREATE TABLE ${metadata.tableName} (${columns})`;
         }),
-        generateCreateIndexSql: vi.fn()
+        generateCreateIndexSql: jest.fn()
       };
 
       const builder = new DdlBuilder(strategy);
@@ -153,7 +153,7 @@ describe('DdlBuilder advanced scenarios', () => {
   describe('computed columns', () => {
     it('should handle GENERATED ALWAYS AS for computed columns', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn((metadata) => {
+        generateCreateTableSql: jest.fn((metadata) => {
           const columns = metadata.columns
             .map((col: ColumnMetadata) => {
               if ('computed' in col && col.computed) {
@@ -165,7 +165,7 @@ describe('DdlBuilder advanced scenarios', () => {
             .join(', ');
           return `CREATE TABLE ${metadata.tableName} (${columns})`;
         }),
-        generateCreateIndexSql: vi.fn()
+        generateCreateIndexSql: jest.fn()
       };
 
       const builder = new DdlBuilder(strategy);
@@ -208,7 +208,7 @@ describe('DdlBuilder advanced scenarios', () => {
   describe('foreign key constraints', () => {
     it('should handle FK definitions', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn((metadata) => {
+        generateCreateTableSql: jest.fn((metadata) => {
           const columns = metadata.columns
             .map((col: ColumnMetadata) => `${col.columnName} ${col.type}`)
             .join(', ');
@@ -224,7 +224,7 @@ describe('DdlBuilder advanced scenarios', () => {
             ? `CREATE TABLE ${metadata.tableName} (${columns}, ${fks})`
             : `CREATE TABLE ${metadata.tableName} (${columns})`;
         }),
-        generateCreateIndexSql: vi.fn()
+        generateCreateIndexSql: jest.fn()
       };
 
       const builder = new DdlBuilder(strategy);
@@ -264,7 +264,7 @@ describe('DdlBuilder advanced scenarios', () => {
 
     it('should handle ON DELETE and ON UPDATE actions', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn((metadata) => {
+        generateCreateTableSql: jest.fn((metadata) => {
           const columns = metadata.columns
             .map((col: ColumnMetadata) => `${col.columnName} ${col.type}`)
             .join(', ');
@@ -280,7 +280,7 @@ describe('DdlBuilder advanced scenarios', () => {
             ? `CREATE TABLE ${metadata.tableName} (${columns}, ${fks})`
             : `CREATE TABLE ${metadata.tableName} (${columns})`;
         }),
-        generateCreateIndexSql: vi.fn()
+        generateCreateIndexSql: jest.fn()
       };
 
       const builder = new DdlBuilder(strategy);
@@ -315,7 +315,7 @@ describe('DdlBuilder advanced scenarios', () => {
   describe('collation and charset', () => {
     it('should handle column collation', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn((metadata) => {
+        generateCreateTableSql: jest.fn((metadata) => {
           const columns = metadata.columns
             .map((col: ColumnMetadata) => {
               let collation = '';
@@ -328,7 +328,7 @@ describe('DdlBuilder advanced scenarios', () => {
             .join(', ');
           return `CREATE TABLE ${metadata.tableName} (${columns})`;
         }),
-        generateCreateIndexSql: vi.fn()
+        generateCreateIndexSql: jest.fn()
       };
 
       const builder = new DdlBuilder(strategy);
@@ -364,8 +364,8 @@ describe('DdlBuilder advanced scenarios', () => {
   describe('complex indexes', () => {
     it('should handle composite indexes', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn(() => 'CREATE TABLE test_table (id INTEGER)'),
-        generateCreateIndexSql: vi.fn((tableName, index) => {
+        generateCreateTableSql: jest.fn(() => 'CREATE TABLE test_table (id INTEGER)'),
+        generateCreateIndexSql: jest.fn((tableName, index) => {
           const cols = index.columns.join(', ');
           const unique = index.unique ? 'UNIQUE ' : '';
           return `CREATE ${unique}INDEX ${index.name} ON ${tableName} (${cols})`;
@@ -400,8 +400,8 @@ describe('DdlBuilder advanced scenarios', () => {
 
     it('should handle unique indexes', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn(() => 'CREATE TABLE test_table (id INTEGER)'),
-        generateCreateIndexSql: vi.fn((tableName, index) => {
+        generateCreateTableSql: jest.fn(() => 'CREATE TABLE test_table (id INTEGER)'),
+        generateCreateIndexSql: jest.fn((tableName, index) => {
           const cols = index.columns.join(', ');
           const unique = index.unique ? 'UNIQUE ' : '';
           return `CREATE ${unique}INDEX ${index.name} ON ${tableName} (${cols})`;
@@ -433,8 +433,8 @@ describe('DdlBuilder advanced scenarios', () => {
 
     it('should forward only name/columns/unique (no WHERE support)', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn(() => 'CREATE TABLE test_table (id INTEGER)'),
-        generateCreateIndexSql: vi.fn((tableName, index) => {
+        generateCreateTableSql: jest.fn(() => 'CREATE TABLE test_table (id INTEGER)'),
+        generateCreateIndexSql: jest.fn((tableName, index) => {
           const cols = index.columns.join(', ');
           // Note: DdlBuilder passes only { name, columns, unique }
           return `CREATE INDEX ${index.name} ON ${tableName} (${cols})`;
@@ -474,10 +474,10 @@ describe('DdlBuilder advanced scenarios', () => {
   describe('buildAll comprehensive scenarios', () => {
     it('should generate complete DDL with table and all indexes', () => {
       const strategy: DdlStrategy = {
-        generateCreateTableSql: vi.fn(
+        generateCreateTableSql: jest.fn(
           () => 'CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)'
         ),
-        generateCreateIndexSql: vi.fn(
+        generateCreateIndexSql: jest.fn(
           (tableName, index) =>
             `CREATE INDEX ${index.name} ON ${tableName} (${index.columns.join(', ')})`
         )

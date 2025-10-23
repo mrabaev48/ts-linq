@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach } from '@jest/globals';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { Entity, Column, PrimaryKey } from '../src/decorators';
 
