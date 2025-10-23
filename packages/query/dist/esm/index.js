@@ -1,4 +1,5 @@
 export * from './Queryable';
+export * from './TypedQueryable';
 export * from './QueryBuilder';
 export * from './QueryModel';
 export * from './PredicateParser';
