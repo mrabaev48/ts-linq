@@ -1,4 +1,4 @@
-import { MssqlProvider } from '@ts-linq/mssql';
+import { MssqlProvider } from '@ts-linq/provider-mssql';
 import { DatabaseError } from '@ts-linq/core';
 
 const url = process.env.MSSQL_URL || '';

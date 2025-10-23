@@ -1,5 +1,5 @@
 import { DiffMigrationGenerator, MetadataStorage } from '@ts-linq/core';
-import { SQLiteProvider } from '@ts-linq/sqlite';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 
 class RUserSq {
   id!: number;

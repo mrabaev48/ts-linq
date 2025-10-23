@@ -1,4 +1,4 @@
-import { SQLiteProvider } from '@ts-linq/sqlite';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 
 const d = describe; // sqlite in-memory is always available
 

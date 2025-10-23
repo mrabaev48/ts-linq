@@ -86,7 +86,7 @@ export class User {
 }
 `;
         const dbContext = `import { DbContext } from '@ts-linq/core';
-import { SQLiteProvider } from '@ts-linq/sqlite';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 
 export class AppDbContext extends DbContext {
   public constructor() {

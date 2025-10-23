@@ -1,6 +1,6 @@
 import { DbContext, MetadataStorage, ValidationError } from '@ts-linq/core';
 import type { ColumnMetadata } from '@ts-linq/core';
-import { MssqlProvider } from '@ts-linq/mssql';
+import { MssqlProvider } from '@ts-linq/provider-mssql';
 import { ValidIfOf, RequiredIfOf } from '@ts-linq/core';
 
 class Note {

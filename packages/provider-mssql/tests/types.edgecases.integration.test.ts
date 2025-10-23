@@ -1,4 +1,4 @@
-import { MssqlProvider } from '@ts-linq/mssql';
+import { MssqlProvider } from '@ts-linq/provider-mssql';
 
 const MS = process.env.MSSQL_URL || '';
 const d = MS ? describe : describe.skip;

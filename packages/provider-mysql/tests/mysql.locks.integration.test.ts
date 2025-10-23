@@ -1,4 +1,4 @@
-import { MySqlProvider } from '@ts-linq/mysql';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
 import { DatabaseError } from '@ts-linq/core';
 
 const url = process.env.MYSQL_URL || '';

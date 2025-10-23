@@ -2,7 +2,7 @@ import { DbContext } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/core';
 import type { ColumnMetadata } from '@ts-linq/core';
 import { ValidationError } from '@ts-linq/core';
-import { SQLiteProvider } from '@ts-linq/sqlite';
+import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 import { ValidIfOf, RequiredIfOf } from '@ts-linq/core';
 
 class Post {

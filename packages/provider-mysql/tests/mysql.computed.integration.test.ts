@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { MetadataStorage } from '@ts-linq/core';
 import type { ColumnMetadata } from '@ts-linq/core';
-import { MySqlProvider } from '@ts-linq/mysql';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
 
 class User {
   id!: number;

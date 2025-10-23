@@ -1,6 +1,6 @@
 import { createProviderFromEnv } from '../src/provider-factory';
 
-jest.mock('@ts-linq/postgres', () => ({
+jest.mock('@ts-linq/provider-postgres', () => ({
   PostgresProvider: class {
     constructor(
       public url: string,

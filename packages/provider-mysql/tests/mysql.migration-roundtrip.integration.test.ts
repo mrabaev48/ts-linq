@@ -1,5 +1,5 @@
 import { DiffMigrationGenerator, MetadataStorage } from '@ts-linq/core';
-import { MySqlProvider } from '@ts-linq/mysql';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
 
 const url = process.env.MYSQL_URL || '';
 const d = url ? describe : describe.skip;

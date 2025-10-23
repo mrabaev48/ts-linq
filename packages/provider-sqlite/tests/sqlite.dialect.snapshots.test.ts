@@ -1,4 +1,4 @@
-import { SQLiteDialect } from '@ts-linq/sqlite';
+import { SQLiteDialect } from '@ts-linq/provider-sqlite';
 import { MetadataStorage, QueryBuilder, type QueryOptions } from '@ts-linq/core';
 
 class SqUser {

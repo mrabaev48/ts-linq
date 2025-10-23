@@ -1,4 +1,4 @@
-import { MySqlProvider } from '@ts-linq/mysql';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
 import { DbContext } from '@ts-linq/core';
 
 // Gated by RUN_DB_TESTS

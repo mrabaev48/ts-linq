@@ -1,1 +1,0 @@
-{"version":3,"file":"ConsoleLogger.d.ts","sourceRoot":"","sources":["../../src/adapters/ConsoleLogger.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,iBAAiB,CAAC;AAE9C,qBAAa,aAAc,YAAW,MAAM;IACnC,IAAI,CAAC,OAAO,EAAE,MAAM,GAAG,IAAI;IAI3B,IAAI,CAAC,OAAO,EAAE,MAAM,GAAG,IAAI;IAI3B,KAAK,CAAC,OAAO,EAAE,MAAM,GAAG,IAAI;CAIpC"}
