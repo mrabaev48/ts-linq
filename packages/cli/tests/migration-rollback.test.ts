@@ -20,7 +20,7 @@ class FakeProvider {
   }
 }
 
-describe.skip('migration:rollback', () => {
+describe('migration:rollback', () => {
   let tmpRoot: string;
   let migrationsDir: string;
   let cwdBackup: string;
