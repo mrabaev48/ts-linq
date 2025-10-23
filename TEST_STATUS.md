@@ -1,148 +1,157 @@
-# Test Infrastructure Status
+# Test Status - Vitest Migration with Real Decorators
 
 **Last Updated:** October 23, 2025
 
-## Summary
+## Current Status: 21/44 core tests passing (48%)
 
-✅ **16/18 test suites passing (89%)**  
-✅ **38/40 individual tests passing (95%)**  
-⚠️ 2 tests failing due to test logic issues (not infrastructure)
+### Vitest Migration Complete ✅
+- ✅ Migrated from Jest to Vitest
+- ✅ Native Stage-3 decorator support via unplugin-swc
+- ✅ Tests use **real decorators** (@Entity, @Column, @PrimaryKey, @Index, @ManyToOne, @OneToMany)
+- ✅ Performance: ~1.56s (2.5x faster than Jest ~4s)
 
 ## Test Results
 
-```
-Test Suites: 2 failed, 16 passed, 18 total
-Tests:       2 failed, 38 passed, 40 total
-Snapshots:   0 total
-Time:        ~6-7 seconds
-```
+### packages/core/tests/dbcontext.test.ts
+**Status:** 16/26 tests passing (62%)
 
-## Passing Test Suites (16)
+#### ✅ Passing (16)
+- Initialization and Setup (3/3)
+  - should create DbContext instance
+  - ensureCreated should initialize database tables  
+  - should dispose context properly
+- DbSet Access (4/4)
+  - should return DbSet for registered entity
+  - should return DbSet for multiple entities
+  - should throw for unregistered entity
+  - should cache DbSet instances
+- CRUD Operations (2/5)
+  - should persist added entities
+  - should delete removed entities
+- Transactions (2/2)
+  - should handle empty saveChanges
+  - should allow multiple consecutive saveChanges
+- Query Operations (3/6)
+  - should query all entities
+  - should return null for non-existent ID
+  - should count entities
+  - should get first entity
+- Edge Cases (2/2)
+  - should handle nullable columns
+  - should handle entity with all required fields
 
-### CLI Tests (11)
-1. ✅ `arg-reader.test.ts` - Command-line argument parsing
-2. ✅ `cli-dispatch.test.ts` - CLI command dispatching
-3. ✅ `cli-help-aliases.test.ts` - Help text and command aliases
-4. ✅ `CommandRegistry.test.ts` - Command registration system
-5. ✅ `generate-commands.test.ts` - Code generation commands
-6. ✅ `generators.test.ts` - Entity and migration generators
-7. ✅ `metrics-serve.test.ts` - Metrics server functionality
-8. ✅ `migration-rollback.test.ts` - Migration rollback operations
-9. ✅ `ports-adapters.test.ts` - Port/adapter pattern implementations
-10. ✅ `schema-inspect.test.ts` - Database schema inspection
-11. ✅ `utils.test.ts` - Utility functions
+#### ❌ Failing (10)
+- **Batch operations**: Multiple entities don't get auto-increment IDs
+- **Update operations**: Find after update fails
+- **Mixed operations**: Complex batch scenarios fail
+- **Entity tracking**: Can't access ChangeTracker._states (private)
+- **Query filtering**: Where clause not fully implemented in stub
 
-### Config Tests (2)
-12. ✅ `ConfigBuilder.test.ts` - Configuration builder
-13. ✅ `ConfigLoader.test.ts` - Configuration loading
+### packages/core/tests/metadata/MetadataStorage.test.ts
+**Status:** 5/18 tests passing (28%)
 
-### Additional CLI Tests (3)
-14. ✅ `commands-basic.test.ts` - Basic command functionality
-15. ✅ `migration-validate.test.ts` - Migration validation
-16. ✅ `schema-apply-negative.test.ts` - Schema application error handling
+#### ✅ Passing (5)
+- Entity Registration (2/3)
+  - should register entity with @Entity decorator
+  - should register multiple entities
+- Metadata Retrieval (2/2)
+  - should get all registered entities
+  - should return undefined for unregistered entity
+- Metadata Clear (1/1)
+  - should clear all metadata
 
-## Failing Tests (2)
+#### ❌ Failing (13)
+- **Custom table name**: @Entity({ tableName: 'custom' }) not applied
+- **Column metadata**: Column options not captured (nullable, defaultValue, columnName)
+- **Primary keys**: PK metadata not fully captured
+- **Indexes**: @Index decorator not working correctly
+- **Relationships**: @ManyToOne/@OneToMany not registering metadata
 
-### 1. provider-factory-pool.test.ts
-- **Issue:** Test expects `(global as any).__constructed` to be set by mock providers
-- **Root Cause:** Mock providers in `__mocks__/@ts-linq/` are not automatically applied without explicit `jest.mock()` calls
-- **Fix Required:** Add `jest.mock('@ts-linq/provider-postgres')` at top of test file
+## Known Issues
 
-### 2. schema-apply-destructive.test.ts  
-- **Issue:** `SchemaSnapshotSerializer.deserialize()` throws "Invalid SchemaSnapshot JSON"
-- **Root Cause:** Test is passing invalid snapshot data structure
-- **Fix Required:** Update test data to match expected schema format with `{tables: [...]}` structure
+### 1. Decorator Metadata Capture
+**Problem:** Some decorator options not being captured by MetadataStorage
+- Custom table names ignored
+- Column options (nullable, defaultValue, columnName) not saved
+- Relationship metadata missing
 
-## Infrastructure Improvements Made
+**Root Cause:** Decorators may not be invoking MetadataStorage.add* methods correctly
 
-### 1. Jest Configuration Overhaul
-- **Problem:** Jest couldn't resolve `@ts-linq/*` workspace packages
-- **Solution:** Implemented `pathsToModuleNameMapper` from ts-jest with TypeScript path mappings
-- **Result:** All workspace packages now resolve correctly in tests
-
-### 2. TypeScript Configuration
-- **Problem:** Individual package tsconfig.json files didn't inherit workspace paths
-- **Solution:** Created `tsconfig.base.json` with shared path mappings
-- **Impact:** Improved module resolution across entire monorepo
-
-### 3. Source File Cleanup
-- **Problem:** Compiled `.js`, `.d.ts`, `.map` files in `src/` directories confused Jest
-- **Solution:** Removed 12 compiled artifacts from `packages/*/src/`
-- **Result:** Jest now consistently loads TypeScript source files
-
-### 4. Type Definition Additions
-- **Problem:** `ConnectionHealthCheckOptions` missing `testQuery` property
-- **Solution:** Added `testQuery?: string` to type definition in `@ts-linq/types`
-- **Impact:** Fixed TypeScript errors in provider-factory.ts
-
-### 5. Jest TypeScript Library Support
-- **Problem:** `FinalizationRegistry` not recognized in MemoryProfiler.ts
-- **Solution:** Added `ES2021.WeakRef` to Jest ts-jest lib configuration
-- **Result:** Modern JavaScript features now supported in tests
-
-## Configuration Files
-
-### jest.config.js
-```javascript
-const { pathsToModuleNameMapper } = require('ts-jest');
-const { compilerOptions } = require('./tsconfig.tests.json');
-
-module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  modulePaths: [compilerOptions.baseUrl || '<rootDir>'],
-  moduleDirectories: ['node_modules', 'packages'],
-  transform: {
-    '^.+\\.ts$': ['ts-jest', {
-      tsconfig: {
-        baseUrl: '.',
-        paths: compilerOptions.paths,
-        lib: ['ES2020', 'ES2021', 'ES2021.WeakRef']
-      }
-    }]
-  },
-  moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths || {}, { 
-    prefix: '<rootDir>/' 
-  })
-};
+### 2. ProviderStub Batch Operations
+**Problem:** Multiple inserts don't return auto-increment IDs
+```typescript
+// After batch insert, IDs are undefined:
+context.set(User).add(user1);
+context.set(User).add(user2);
+await context.saveChanges(); // Returns 2 (correct)
+user1.id; // undefined (wrong!)
+user2.id; // undefined (wrong!)
 ```
 
-### tsconfig.tests.json
-```json
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@ts-linq/*": ["packages/*/src"]
-    }
-  }
-}
-```
+**Fix Needed:** ProviderStub needs to handle batch inserts properly
 
-## Next Steps (Optional)
+### 3. Index Decorator Import
+**Problem:** @Index from '@ts-linq/core/decorators' may not match expected signature
 
-To achieve 100% test pass rate:
+**Fix Needed:** Verify Index decorator signature: `@Index(name, columns, options)`
 
-1. **Fix provider-factory-pool.test.ts:**
-   ```typescript
-   // Add at top of file:
-   jest.mock('@ts-linq/provider-postgres');
-   ```
+### 4. Private Property Access in Tests
+**Problem:** Tests try to access `context._changeTracker.getState()` but _changeTracker is private
 
-2. **Fix schema-apply-destructive.test.ts:**
-   - Update snapshot data structure to match expected format
-   - Ensure `tables` array is present in snapshot object
+**Fix Needed:** Add public accessor or redesign tests
 
-## Build System Status
+## Migration Progress
 
-✅ **All 34/34 packages compile successfully**  
-✅ **Build caching works correctly**  
-✅ **Zero LSP errors**  
-✅ **Turbo build system operational**
+### Completed ✅
+1. Vitest installation and configuration
+2. SWC plugin for Stage-3 decorators (decoratorVersion: '2022-03')
+3. Rewritten DbContext integration tests (22 tests)
+4. Rewritten MetadataStorage tests (18 tests)
+5. Updated ProviderStub imports to use @ts-linq/* packages
+6. Created TestProvider stub for ORM tests
 
-## Performance
+### In Progress 🚧
+1. Fixing decorator metadata capture issues
+2. Improving ProviderStub for batch operations
+3. Making private properties accessible for testing
 
-- Test execution: ~6-7 seconds for full suite
-- No memory leaks or hanging processes
-- Clean test isolation with proper setup/teardown
+### Pending 📋
+1. Rewrite remaining core tests (loading, migrations, cache, etc.)
+2. Rewrite query/TypedQueryable tests
+3. Rewrite provider tests (SQLite, Postgres, MySQL, MSSQL)
+4. Rewrite E2E tests with real decorators
+5. Add comprehensive relationship tests
+6. Add validation tests with @ValidIf decorator
+
+## Test File Status
+
+### Core Tests
+- ✅ packages/core/tests/dbcontext.test.ts (16/26 passing)
+- ✅ packages/core/tests/metadata/MetadataStorage.test.ts (5/18 passing)
+- ⏳ packages/core/tests/decorators/*.test.ts (not yet updated)
+- ⏳ packages/core/tests/context/*.test.ts (not yet updated)
+- ⏳ packages/core/tests/loading/*.test.ts (not yet updated)
+- ⏳ packages/core/tests/migrations/*.test.ts (not yet updated)
+- ⏳ packages/core/tests/cache/*.test.ts (not yet updated)
+
+### ORM Tests
+- ✅ packages/orm/tests/integration/DbContext.CRUD.test.ts (6/22 passing)
+- ⏳ Other ORM tests need migration
+
+### Provider Tests
+- ⏳ SQLite provider tests (30+ files)
+- ⏳ Postgres provider tests (20+ files)
+- ⏳ MySQL provider tests (10+ files)
+- ⏳ MSSQL provider tests (20+ files)
+
+### CLI Tests
+- ⏳ CLI tests likely need minimal changes
+- ⏳ Config tests may work as-is
+
+## Next Steps
+
+1. **Fix decorator metadata** - Ensure all decorator options are captured
+2. **Improve ProviderStub** - Handle batch inserts, updates correctly
+3. **Add public test APIs** - Expose ChangeTracker state for tests
+4. **Migrate decorator tests** - Rewrite with real Stage-3 decorators
+5. **Run full test suite** - Verify all 232 test files work with Vitest
