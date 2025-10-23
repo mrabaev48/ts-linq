@@ -1,4 +1,4 @@
-import type { SqlLogger, SqlParameter } from '@ts-linq/core';
+import type { SqlLogger, SqlParameter } from '@ts-linq/types';
 export interface OpenTelemetryLoggerOptions {
     maskSql?: boolean;
     maskPatterns?: ReadonlyArray<RegExp>;

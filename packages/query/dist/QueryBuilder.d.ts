@@ -33,7 +33,17 @@ export declare class QueryBuilder {
     /** Dispose of the global cache resources. Useful for cleanup. */
     static disposeCache(): void;
     /** Get cache metrics for performance monitoring (if using EnhancedSqlCache). */
-    getCacheMetrics(): import("./EnhancedSqlCache").SqlCacheMetrics;
+    getCacheMetrics(): {
+        currentSize: any;
+        totalRequests: number;
+        hits: number;
+        misses: number;
+        hitRatio: number;
+        evictions: number;
+        expirations: number;
+        averageAccessCount: number;
+        estimatedMemoryUsage: number;
+    };
     /** Get optimization insights for cache tuning (if using EnhancedSqlCache). */
     getOptimizationInsights(): {
         shouldIncreaseSize: boolean;

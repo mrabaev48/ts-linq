@@ -21,6 +21,9 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build"
   },
+  "dependencies": {
+    "@ts-linq/types": "workspace:*"
+  },
   "peerDependencies": {
     "@ts-linq/core": "workspace:*"
   },
