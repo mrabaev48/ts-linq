@@ -1,13 +1,6 @@
+import 'reflect-metadata';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
-
-function isStage3FieldContext(x: unknown): x is {
-  kind: 'field';
-  name: string | symbol;
-  access: { get?: () => any; set?: (value: any) => void };
-  addInitializer?: (fn: () => void) => void;
-} {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field';
-}
 
 /**
  * Options for configuring a column mapping on an entity property.
@@ -25,28 +18,14 @@ export interface ColumnOptions {
   version?: boolean;
 }
 
-// Global registry for pending metadata
-if (!(globalThis as any).__tsLinqPendingMetadata) {
-  (globalThis as any).__tsLinqPendingMetadata = {
-    columns: new WeakMap<Function, ColumnMetadata[]>(),
-    primaryKeys: new WeakMap<Function, string[]>(),
-    relationships: new WeakMap<Function, any[]>(),
-    indexes: new WeakMap<Function, any[]>()
-  };
-}
-
 /**
- * Stage-3 property decorator that registers column metadata.
- * Uses addInitializer if available, otherwise registers immediately.
+ * Legacy property decorator that registers column metadata.
+ * Uses reflect-metadata for metadata storage.
  */
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
-  return function ColumnDecorator(value: unknown, context: unknown) {
-    if (!isStage3FieldContext(context)) {
-      throw new Error('@Column requires TS5 Stage-3 decorators');
-    }
-    
-    const ctx = context;
-    const propertyName = ctx.name.toString();
+  return function (target: Object, propertyKey: string | symbol): void {
+    const ctor = target.constructor;
+    const propertyName = String(propertyKey);
     
     const columnMetadata: ColumnMetadata = {
       propertyName,
@@ -61,26 +40,6 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
       isVersion: options?.version || false
     };
     
-    // Try to use addInitializer if available (may not work in SWC 2022-03 for field decorators)
-    if (ctx.addInitializer) {
-      // This won't work in SWC 2022-03, but we try anyway
-      ctx.addInitializer(function(this: any) {
-        const ctor = this.constructor || this;
-        const registry = (globalThis as any).__tsLinqPendingMetadata.columns;
-        if (!registry.has(ctor)) {
-          registry.set(ctor, []);
-        }
-        const cols = registry.get(ctor);
-        if (!cols.some((c: ColumnMetadata) => c.propertyName === propertyName)) {
-          cols.push(columnMetadata);
-        }
-      });
-    } else {
-      // Fallback: store with a marker that @Entity will pick up
-      if (!(globalThis as any).__tsLinqOrphanedColumns) {
-        (globalThis as any).__tsLinqOrphanedColumns = [];
-      }
-      (globalThis as any).__tsLinqOrphanedColumns.push(columnMetadata);
-    }
+    MetadataStorage.addColumn(ctor as Function, columnMetadata);
   };
 }
