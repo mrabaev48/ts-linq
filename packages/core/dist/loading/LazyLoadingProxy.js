@@ -4,7 +4,7 @@ exports.LazyLoadingProxy = exports.LAZY_LOADING_STATE = exports.LAZY_LOADING_PRO
 exports.isLazyProxy = isLazyProxy;
 exports.getLazyTarget = getLazyTarget;
 exports.awaitLazyLoad = awaitLazyLoad;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 /**
  * Symbol to store original entity data without triggering lazy loading
  */
@@ -73,7 +73,7 @@ class LazyLoadingProxy {
         if (this.isLazyProxy(entity)) {
             return entity; // Already a lazy proxy
         }
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata || metadata.relationships.length === 0) {
             return entity; // No relationships to lazy load
         }
@@ -207,7 +207,7 @@ class LazyLoadingProxy {
     static async preloadRelationships(entities, entityClass, propertyNames, provider) {
         if (entities.length === 0)
             return;
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;
         // Group entities by whether they're already proxies
@@ -244,7 +244,7 @@ class LazyLoadingProxy {
      * Load a single relationship for an entity.
      */
     static async loadRelationship(entity, entityClass, relationship, provider) {
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return null;
         const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
@@ -286,7 +286,7 @@ class LazyLoadingProxy {
     static async batchLoadRelationship(entities, entityClass, relationship, provider) {
         if (entities.length === 0)
             return;
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;
         const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
@@ -319,7 +319,7 @@ class LazyLoadingProxy {
         const related = await provider.findWhereIn(targetCtor, targetPkColumn, uniqueFkValues);
         const relatedProxies = this.createMany(related, targetCtor, provider);
         const byId = new Map();
-        const targetMeta = MetadataStorage_1.MetadataStorage.getEntity(targetCtor);
+        const targetMeta = metadata_1.MetadataStorage.getEntity(targetCtor);
         const targetPk = targetMeta?.primaryKeys[0];
         if (!targetPk)
             return;
@@ -370,7 +370,7 @@ class LazyLoadingProxy {
     }
     static async loadManyToMany(entity, entityClass, metadata, relationship, targetCtor, provider) {
         const sourcePk = metadata.primaryKeys[0];
-        const targetPk = (MetadataStorage_1.MetadataStorage.getEntity(targetCtor)?.primaryKeys || [])[0];
+        const targetPk = (metadata_1.MetadataStorage.getEntity(targetCtor)?.primaryKeys || [])[0];
         const through = relationship;
         if (!through.through?.table || !sourcePk || !targetPk)
             return [];
@@ -392,7 +392,7 @@ class LazyLoadingProxy {
         return rows.map((r) => r.id).filter((v) => v !== undefined && v !== null);
     }
     static getColumnNameForPk(targetCtor, targetPk) {
-        return ((MetadataStorage_1.MetadataStorage.getEntity(targetCtor)?.columns || []).find((c) => c.propertyName === targetPk)?.columnName || targetPk);
+        return ((metadata_1.MetadataStorage.getEntity(targetCtor)?.columns || []).find((c) => c.propertyName === targetPk)?.columnName || targetPk);
     }
     static async batchLoadManyToMany(entities, entityClass, relationship, provider, meta, targetCtor) {
         const sourcePk = meta.primaryKeys[0];
@@ -401,7 +401,7 @@ class LazyLoadingProxy {
         const through = relationship;
         if (!through.through?.table)
             return;
-        const targetPk = (MetadataStorage_1.MetadataStorage.getEntity(targetCtor)?.primaryKeys || [])[0];
+        const targetPk = (metadata_1.MetadataStorage.getEntity(targetCtor)?.primaryKeys || [])[0];
         if (!targetPk)
             return;
         const jt = through.through.table;

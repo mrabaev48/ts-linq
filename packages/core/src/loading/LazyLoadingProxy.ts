@@ -1,4 +1,4 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { DatabaseProvider } from '../DatabaseProvider';
 import type { RelationshipMetadata } from '../types';
 

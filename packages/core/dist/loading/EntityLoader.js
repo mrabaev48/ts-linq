@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityLoader = void 0;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 /**
  * Service responsible for loading entities with either lazy or eager strategy,
  * including recursive loading of relationships based on provided options.
@@ -72,7 +72,7 @@ class EntityLoader {
      */
     async loadRelationships(entity, entityClass, options) {
         this.ensureStage3Init(entityClass);
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;
         const depth = options.depth ?? 1;
@@ -90,7 +90,7 @@ class EntityLoader {
         if (entities.length === 0)
             return;
         this.ensureStage3Init(entityClass);
-        const metadata = MetadataStorage_1.MetadataStorage.getEntity(entityClass);
+        const metadata = metadata_1.MetadataStorage.getEntity(entityClass);
         if (!metadata)
             return;
         const depth = options.depth ?? 1;
@@ -252,7 +252,7 @@ class EntityLoader {
             }
         }
         const byId = new Map();
-        const targetMeta = MetadataStorage_1.MetadataStorage.getEntity(targetCtor);
+        const targetMeta = metadata_1.MetadataStorage.getEntity(targetCtor);
         const targetPk = targetMeta?.primaryKeys[0];
         for (const relatedEntity of related)
             byId.set(relatedEntity[targetPk], relatedEntity);

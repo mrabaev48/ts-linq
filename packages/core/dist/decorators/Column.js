@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Column = Column;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 function isStage3FieldContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'field' && 'name' in x;
 }
@@ -32,7 +32,7 @@ function Column(options = {}) {
                 isGenerated: options?.generated || false,
                 isVersion: options?.version || false
             };
-            MetadataStorage_1.MetadataStorage.addColumn(ctor, columnMetadata);
+            metadata_1.MetadataStorage.addColumn(ctor, columnMetadata);
         });
     };
 }

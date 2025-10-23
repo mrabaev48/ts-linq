@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Entity = Entity;
-const MetadataStorage_1 = require("../metadata/MetadataStorage");
+const metadata_1 = require("@ts-linq/metadata");
 function isStage3ClassContext(x) {
     return !!x && typeof x === 'object' && x.kind === 'class';
 }
@@ -16,15 +16,15 @@ function Entity(options = {}) {
             // Compute tableName from options or class name
             const tableName = options?.name || target.name;
             // Register entity immediately
-            MetadataStorage_1.MetadataStorage.addEntity(target, tableName);
+            metadata_1.MetadataStorage.addEntity(target, tableName);
             // Initializer to restore metadata after clear()
             context.addInitializer?.(function () {
                 const ctor = target;
                 // Recompute tableName to ensure correct value after clear
                 const currentTableName = options?.name || ctor.name;
-                const existing = MetadataStorage_1.MetadataStorage.getEntity(ctor);
+                const existing = metadata_1.MetadataStorage.getEntity(ctor);
                 if (!existing) {
-                    MetadataStorage_1.MetadataStorage.addEntity(ctor, currentTableName);
+                    metadata_1.MetadataStorage.addEntity(ctor, currentTableName);
                 }
             });
             return;

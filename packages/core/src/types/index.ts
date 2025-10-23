@@ -1,7 +1,7 @@
 // Re-export types from @ts-linq/types and @ts-linq/metadata for backwards compatibility
 export * from '@ts-linq/types';
 
-import type { SqlCache } from '../query/SqlCache';
+import type { SqlCache } from '@ts-linq/query';
 import type { CountCache as CountCacheType } from '@ts-linq/types';
 import type { EntityCacheLike } from '../utils/EntityCache';
 import type { DatabaseProvider } from '../DatabaseProvider';

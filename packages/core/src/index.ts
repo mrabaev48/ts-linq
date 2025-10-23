@@ -16,34 +16,16 @@ export * from './decorators/ValidIf';
 export * from './decorators/CachePolicy';
 
 // Metadata - moved to @ts-linq/metadata package
-// export * from './metadata/MetadataStorage';
-// export * from './metadata/EntityMetadata';
+// Import from: @ts-linq/metadata
 
-// Change tracking - moved to @ts-linq/orm package
-// export * from './change-tracking/ChangeTracker';
+// Change tracking - moved to @ts-linq/orm package  
+// Import from: @ts-linq/orm
 
 // Context and DbSet - moved to @ts-linq/orm package
-// export * from './context/DbContext';
-// export * from './context/DbSet';
+// Import from: @ts-linq/orm
 
-// Query building
-export * from './query/Queryable';
-export * from './query/TypedQueryable';
-export * from './query/QueryBuilder';
-export * from './query/SqlCache';
-export * from './query/EnhancedSqlCache';
-export * from './query/SqlDialect';
-export * from './query/CountCache';
-export * from './query/GlobalFilterApplier';
-export * from './query/JoinPredicateParser';
-export * from './query/PredicateParser';
-export * from './query/QueryModel';
-export * from './query/ast/Nodes';
-export * from './query/ast/SqlVisitor';
-export * from './query/spec/Specification';
-export * from './query/SqlFunctions';
-export * from './query/fallbacks/MemoryFallback';
-export * from './query/fallbacks/ReplicaFallback';
+// Query building - moved to @ts-linq/query package
+// Import from: @ts-linq/query
 
 // Base provider abstractions
 export * from './DatabaseProvider';
@@ -56,15 +38,7 @@ export * from './loading/EntityLoader';
 export * from './loading/LazyLoadingProxy';
 
 // Migrations - moved to @ts-linq/migrations package
-// export * from './migrations/Migration';
-// export * from './migrations/MigrationRunner';
-// export * from './migrations/DiffTypes';
-// export * from './migrations/DialectMigrationSql';
-// export * from './migrations/MigrationBuilder';
-// export * from './migrations/DiffBasedMigration';
-// export * from './migrations/MigrationFileBuilder';
-// export * from './migrations/DiffMigrationGenerator';
-// export * from './migrations/SchemaSnapshot';
+// Import from: @ts-linq/migrations
 
 // Utils
 export * from './utils/SqlHelper';
