@@ -5,7 +5,6 @@ import type { LoadingOptions } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '@ts-linq/query';
-import { TypedQueryable } from '@ts-linq/core';
 import type { EntityCacheLike } from '@ts-linq/core';
 import type { GlobalFilter, PerformanceOptions } from '@ts-linq/types';
 import type { PrimaryKeyOf } from '@ts-linq/core';
@@ -244,8 +243,8 @@ export class DbSet<T extends object> {
     return aggregated;
   }
 
-  /** Create a fluent `TypedQueryable` for LINQ-like operations (EF-style) */
-  public where(predicate: (entity: T) => boolean): TypedQueryable<T> {
+  /** Create a fluent `Queryable` for LINQ-like operations (EF-style) */
+  public where(predicate: (entity: T) => boolean): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -255,11 +254,11 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).where(predicate);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Proxy: WHERE EXISTS (subquery). */
-  public whereExists<TOther>(subquery: Queryable<TOther>): TypedQueryable<T> {
+  public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -269,13 +268,13 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).whereExists(subquery);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
   /** Proxy: column IN (subquery). */
   public whereInSubquery<TOther>(
     column: keyof T & string,
     subquery: Queryable<TOther>
-  ): TypedQueryable<T> {
+  ): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -285,11 +284,11 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).whereInSubquery(column, subquery);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Select specific properties (EF-style with type safety) */
-  public select<TResult>(selector: (entity: T) => TResult): TypedQueryable<TResult> {
+  public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -299,11 +298,11 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).select(selector);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Order by a property (EF-style with type safety) */
-  public orderBy<TKey>(keySelector: (entity: T) => TKey): TypedQueryable<T> {
+  public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -313,11 +312,11 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).orderBy(keySelector);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Order by descending (EF-style with type safety) */
-  public orderByDescending<TKey>(keySelector: (entity: T) => TKey): TypedQueryable<T> {
+  public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -327,11 +326,11 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).orderByDescending(keySelector);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Take a specific number of entities (EF-style) */
-  public take(count: number): TypedQueryable<T> {
+  public take(count: number): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -341,11 +340,11 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).take(count);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Skip a specific number of entities (EF-style) */
-  public skip(count: number): TypedQueryable<T> {
+  public skip(count: number): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -355,11 +354,11 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).skip(count);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Get distinct entities (EF-style) */
-  public distinct(): TypedQueryable<T> {
+  public distinct(): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -369,11 +368,11 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).distinct();
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Proxy: UNION of two queries of the same DbSet. */
-  public union(other: Queryable<T>): TypedQueryable<T> {
+  public union(other: Queryable<T>): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -383,10 +382,10 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).union(other);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
   /** Proxy: UNION ALL of two queries of the same DbSet. */
-  public unionAll(other: Queryable<T>): TypedQueryable<T> {
+  public unionAll(other: Queryable<T>): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -396,7 +395,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).unionAll(other);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Get the first entity or throw if none exists */
@@ -473,7 +472,7 @@ export class DbSet<T extends object> {
 
   /** Start a query with eager includes using a property selector. */
   /** Include related entities for eager loading (EF-style with type safety) */
-  public include(selector: (entity: T) => unknown): TypedQueryable<T> {
+  public include(selector: (entity: T) => unknown): Queryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -483,7 +482,7 @@ export class DbSet<T extends object> {
       this._globalFilters
     ).include(selector);
 
-    return TypedQueryable.from(queryable as any) as any;
+    return queryable;
   }
 
   /** Provider-level bulk insert within a transaction. */

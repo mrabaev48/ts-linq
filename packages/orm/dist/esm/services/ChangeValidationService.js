@@ -41,10 +41,10 @@ export class ChangeValidationService {
         if (!audit)
             return undefined;
         return {
-            createdAt: audit.timeColumns?.createdAt ?? 'createdAt',
-            updatedAt: audit.timeColumns?.updatedAt ?? 'updatedAt',
-            createdBy: audit.userColumns?.createdBy ?? 'createdBy',
-            updatedBy: audit.userColumns?.updatedBy ?? 'updatedBy'
+            createdAt: audit.timeColumns?.createdAt ?? audit.createdAtColumn ?? 'createdAt',
+            updatedAt: audit.timeColumns?.updatedAt ?? audit.updatedAtColumn ?? 'updatedAt',
+            createdBy: audit.userColumns?.createdBy ?? audit.createdByColumn ?? 'createdBy',
+            updatedBy: audit.userColumns?.updatedBy ?? audit.updatedByColumn ?? 'updatedBy'
         };
     }
     validateComputedColumn(meta, col, change, errors) {
@@ -90,11 +90,11 @@ export class ChangeValidationService {
             return false;
         if (state === 'added' &&
             (propertyName === auditNames.createdAt || propertyName === auditNames.createdBy)) {
-            return propertyName === auditNames.createdAt || audit.getCurrentUserId !== undefined;
+            return propertyName === auditNames.createdAt || audit.getCurrentUser !== undefined;
         }
         if ((state === 'added' || state === 'modified') &&
             (propertyName === auditNames.updatedAt || propertyName === auditNames.updatedBy)) {
-            return propertyName === auditNames.updatedAt || audit.getCurrentUserId !== undefined;
+            return propertyName === auditNames.updatedAt || audit.getCurrentUser !== undefined;
         }
         return false;
     }
