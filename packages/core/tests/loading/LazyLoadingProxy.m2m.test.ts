@@ -6,8 +6,8 @@ import type { DatabaseProvider } from '../../src/DatabaseProvider';
 function providerStub(rows: Array<{ s: unknown; t: unknown }>, related: any[]) {
   return {
     providerLabel: 'sqlite',
-    executeQuery: vi.fn(async () => rows),
-    findWhereIn: vi.fn(async () => related)
+    executeQuery: jest.fn(async () => rows),
+    findWhereIn: jest.fn(async () => related)
   } as unknown as jest.Mocked<DatabaseProvider>;
 }
 

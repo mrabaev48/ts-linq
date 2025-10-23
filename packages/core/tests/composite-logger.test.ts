@@ -38,7 +38,7 @@ describe('CompositeSqlLogger', () => {
   });
 
   test('swallows delegate errors', () => {
-    const ok: SqlLogger = { queryStart: vi.fn() };
+    const ok: SqlLogger = { queryStart: jest.fn() };
     const bad: SqlLogger = {
       queryStart: () => {
         throw new Error('boom');
@@ -52,11 +52,11 @@ describe('CompositeSqlLogger', () => {
 
 describe('CompositeSqlLoggerFactory', () => {
   test('composes results from factories and static loggers', () => {
-    const lA: SqlLogger = { queryStart: vi.fn() };
-    const lB: SqlLogger = { queryStart: vi.fn() };
+    const lA: SqlLogger = { queryStart: jest.fn() };
+    const lB: SqlLogger = { queryStart: jest.fn() };
     const f1: SqlLoggerFactory = { create: (p) => (p === 'sqlite' ? lA : undefined) };
     const f2: SqlLoggerFactory = { create: () => lB };
-    const staticL: SqlLogger = { queryEnd: vi.fn() };
+    const staticL: SqlLogger = { queryEnd: jest.fn() };
 
     const factory = new CompositeSqlLoggerFactory({ factories: [f1, f2], loggers: [staticL] });
     const comp = factory.create('sqlite');

@@ -4,7 +4,7 @@ describe('CLI metrics:serve', () => {
   it('parses arguments and starts server (smoke)', async () => {
     // Arrange: stub startPrometheusServer to avoid real network
     const started: { port?: number; path?: string }[] = [];
-    vi.mock('@ts-linq/core', () => ({
+    jest.mock('@ts-linq/core', () => ({
       __esModule: true,
       startPrometheusServer: async ({ port, path }: { port?: number; path?: string }) => {
         started.push({ port, path });

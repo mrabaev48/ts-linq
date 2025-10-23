@@ -92,31 +92,31 @@ describe('TypedQueryable', () => {
   beforeEach(() => {
     // Create a mock queryable
     const q: Partial<jest.Mocked<Queryable<User>>> = {
-      select: vi.fn(function (this: Queryable<User>) {
+      select: jest.fn(function (this: Queryable<User>) {
         return this;
       }) as unknown as jest.Mock,
-      where: vi.fn(function (this: Queryable<User>) {
+      where: jest.fn(function (this: Queryable<User>) {
         return this;
       }) as unknown as jest.Mock,
-      orderBy: vi.fn(function (this: Queryable<User>) {
+      orderBy: jest.fn(function (this: Queryable<User>) {
         return this;
       }) as unknown as jest.Mock,
-      orderByDescending: vi.fn(function (this: Queryable<User>) {
+      orderByDescending: jest.fn(function (this: Queryable<User>) {
         return this;
       }) as unknown as jest.Mock,
-      include: vi.fn(function (this: Queryable<User>) {
+      include: jest.fn(function (this: Queryable<User>) {
         return this;
       }) as unknown as jest.Mock,
-      take: vi.fn(function (this: Queryable<User>) {
+      take: jest.fn(function (this: Queryable<User>) {
         return this;
       }) as unknown as jest.Mock,
-      skip: vi.fn(function (this: Queryable<User>) {
+      skip: jest.fn(function (this: Queryable<User>) {
         return this;
       }) as unknown as jest.Mock,
-      distinct: vi.fn(function (this: Queryable<User>) {
+      distinct: jest.fn(function (this: Queryable<User>) {
         return this;
       }) as unknown as jest.Mock,
-      first: vi.fn(
+      first: jest.fn(
         async () =>
           ({
             id: brandId<number, 'User'>(0) as unknown as UserId,
@@ -125,8 +125,8 @@ describe('TypedQueryable', () => {
             email: ''
           }) as User
       ),
-      firstOrDefault: vi.fn(async () => null as User | null),
-      single: vi.fn(
+      firstOrDefault: jest.fn(async () => null as User | null),
+      single: jest.fn(
         async () =>
           ({
             id: brandId<number, 'User'>(1) as unknown as UserId,
@@ -135,9 +135,9 @@ describe('TypedQueryable', () => {
             email: 'e'
           }) as User
       ),
-      any: vi.fn(async () => true),
-      toArray: vi.fn(async () => [] as User[]),
-      count: vi.fn(async () => 0)
+      any: jest.fn(async () => true),
+      toArray: jest.fn(async () => [] as User[]),
+      count: jest.fn(async () => 0)
     };
     mockQueryable = q as unknown as jest.Mocked<Queryable<User>>;
 

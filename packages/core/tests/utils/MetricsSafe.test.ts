@@ -8,7 +8,7 @@ import {
 describe('MetricsSafe', () => {
   const origEnv = process.env;
   beforeEach(() => {
-    vi.resetAllMocks();
+    jest.resetAllMocks();
     process.env = { ...origEnv };
   });
   afterAll(() => {
@@ -16,25 +16,25 @@ describe('MetricsSafe', () => {
   });
 
   test('safeCache calls logger.cache if exists', () => {
-    const cache = vi.fn();
+    const cache = jest.fn();
     safeCache({ cache } as any, { cache: 'count', hit: true });
     expect(cache).toHaveBeenCalledWith({ cache: 'count', hit: true });
   });
 
   test('safeCacheSize calls logger.cacheSize if exists', () => {
-    const cacheSize = vi.fn();
+    const cacheSize = jest.fn();
     safeCacheSize({ cacheSize } as any, { cache: 'entityL2', size: 1 });
     expect(cacheSize).toHaveBeenCalledWith({ cache: 'entityL2', size: 1 });
   });
 
   test('safeCacheEvicted calls logger.cacheEvicted if exists', () => {
-    const cacheEvicted = vi.fn();
+    const cacheEvicted = jest.fn();
     safeCacheEvicted({ cacheEvicted } as any, { cache: 'sqlGen' });
     expect(cacheEvicted).toHaveBeenCalledWith({ cache: 'sqlGen' });
   });
 
   test('warnIfLoggerDebug emits console.warn when flag set', () => {
-    const spy = vi.spyOn(console, 'warn').mockImplementation(() => undefined as any);
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => undefined as any);
     process.env.TSL_LOGGER_DEBUG = 'true';
     warnIfLoggerDebug('m', new Error('x'));
     expect(spy).toHaveBeenCalled();

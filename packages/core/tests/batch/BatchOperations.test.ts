@@ -89,18 +89,18 @@ describe('BatchOperations', () => {
 
     // Mock provider
     mockProvider = {
-      insertMany: vi.fn(),
-      updateMany: vi.fn(),
-      upsertMany: vi.fn(),
-      insert: vi.fn(),
-      update: vi.fn(),
-      upsert: vi.fn(),
-      delete: vi.fn(),
-      executeNonQuery: vi.fn(),
-      beginTransaction: vi.fn(),
-      commitTransaction: vi.fn(),
-      rollbackTransaction: vi.fn(),
-      getDialect: vi.fn(),
+      insertMany: jest.fn(),
+      updateMany: jest.fn(),
+      upsertMany: jest.fn(),
+      insert: jest.fn(),
+      update: jest.fn(),
+      upsert: jest.fn(),
+      delete: jest.fn(),
+      executeNonQuery: jest.fn(),
+      beginTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      getDialect: jest.fn(),
       inTransactionState: false
     } as unknown as jest.Mocked<DatabaseProvider>;
 
@@ -194,7 +194,7 @@ describe('BatchOperations', () => {
         .mockResolvedValueOnce(users.slice(0, 2) as unknown as object[])
         .mockResolvedValueOnce(users.slice(2, 4) as unknown as object[]);
 
-      const progressCallback = vi.fn();
+      const progressCallback = jest.fn();
 
       await batchOps.bulkInsert(users, User, {
         batchSize: 2,

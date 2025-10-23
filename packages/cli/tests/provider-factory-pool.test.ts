@@ -3,15 +3,15 @@ import { PostgresProvider } from '@ts-linq/provider-postgres';
 import { MySqlProvider } from '@ts-linq/provider-mysql';
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
 
-vi.mock('@ts-linq/provider-postgres');
-vi.mock('@ts-linq/provider-mysql');
-vi.mock('@ts-linq/provider-sqlite');
+jest.mock('@ts-linq/provider-postgres');
+jest.mock('@ts-linq/provider-mysql');
+jest.mock('@ts-linq/provider-sqlite');
 
 describe('Provider Factory - Environment Variable Mapping', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     process.env = { ...originalEnv };
   });
 
@@ -179,7 +179,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
   describe('Circuit Breaker Configuration', () => {
     test('configures circuit breaker when env vars provided', () => {
       const mockProvider = {
-        configureCircuit: vi.fn()
+        configureCircuit: jest.fn()
       };
       (PostgresProvider as jest.Mock).mockReturnValue(mockProvider);
 
@@ -215,7 +215,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       process.env.DB_CB_OPEN_MS = '30000';
 
       const mockProvider = {
-        configureCircuit: vi.fn()
+        configureCircuit: jest.fn()
       };
       (PostgresProvider as jest.Mock).mockReturnValue(mockProvider);
 
