@@ -20,27 +20,9 @@ export default defineConfig({
     },
     testTimeout: 10000,
     hookTimeout: 10000,
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
-  },
-  ssr: {
-    noExternal: true,
   },
   esbuild: {
-    target: 'es2022',
-    tsconfigRaw: {
-      compilerOptions: {
-        experimentalDecorators: false,
-        emitDecoratorMetadata: false,
-        useDefineForClassFields: false,
-        module: 'ESNext',
-        moduleResolution: 'NodeNext',
-      },
-    },
+    target: 'es2020',
   },
   resolve: {
     alias: {

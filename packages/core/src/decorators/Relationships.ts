@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { RelationshipMetadata } from '@ts-linq/types';
 
 /**
@@ -16,26 +18,15 @@ export interface RelationshipOptions {
   };
 }
 
-function isStage3FieldContext(x: unknown): x is {
-  kind: 'field';
-  name: string | symbol;
-} {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
-}
-
 function defineRelationship(
   kind: RelationshipMetadata['type'],
   targetEntity: () => Function,
   options: RelationshipOptions,
-  targetOrValue: unknown,
-  propOrContext: unknown
+  target: Object,
+  propertyKey: string | symbol
 ): void {
-  if (!isStage3FieldContext(propOrContext)) {
-    throw new Error('Relationship decorators require TS5 Stage-3 decorators');
-  }
-  
-  const ctx = propOrContext;
-  const propertyName = ctx.name.toString();
+  const ctor = target.constructor;
+  const propertyName = String(propertyKey);
   
   // Resolve targetEntity to concrete constructor
   const te = targetEntity as unknown as Function | (() => Function);
@@ -54,11 +45,7 @@ function defineRelationship(
     through: options?.through
   };
   
-  // Store as orphaned metadata for @Entity to collect
-  if (!(globalThis as any).__tsLinqOrphanedRelationships) {
-    (globalThis as any).__tsLinqOrphanedRelationships = [];
-  }
-  (globalThis as any).__tsLinqOrphanedRelationships.push(relationship);
+  MetadataStorage.addRelationship(ctor as Function, relationship);
 }
 
 /**
@@ -68,8 +55,8 @@ export function OneToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship('one-to-many', targetEntity, options, targetOrValue, propOrContext);
+  return function (target: Object, propertyKey: string | symbol): void {
+    defineRelationship('one-to-many', targetEntity, options, target, propertyKey);
   };
 }
 
@@ -80,8 +67,8 @@ export function ManyToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship('many-to-one', targetEntity, options, targetOrValue, propOrContext);
+  return function (target: Object, propertyKey: string | symbol): void {
+    defineRelationship('many-to-one', targetEntity, options, target, propertyKey);
   };
 }
 
@@ -92,8 +79,8 @@ export function OneToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship('one-to-one', targetEntity, options, targetOrValue, propOrContext);
+  return function (target: Object, propertyKey: string | symbol): void {
+    defineRelationship('one-to-one', targetEntity, options, target, propertyKey);
   };
 }
 
@@ -104,7 +91,7 @@ export function ManyToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (targetOrValue: unknown, propOrContext: unknown) {
-    return defineRelationship('many-to-many', targetEntity, options, targetOrValue, propOrContext);
+  return function (target: Object, propertyKey: string | symbol): void {
+    defineRelationship('many-to-many', targetEntity, options, target, propertyKey);
   };
 }

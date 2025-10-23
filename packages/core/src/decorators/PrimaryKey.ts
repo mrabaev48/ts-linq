@@ -1,12 +1,6 @@
+import 'reflect-metadata';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata } from '@ts-linq/types';
-
-function isStage3FieldContext(x: unknown): x is {
-  kind: 'field';
-  name: string | symbol;
-  addInitializer?: (fn: () => void) => void;
-} {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
-}
 
 export interface PrimaryKeyOptions {
   name?: string;
@@ -17,17 +11,13 @@ export interface PrimaryKeyOptions {
 }
 
 /**
- * Stage-3 property decorator that marks a column as a primary key.
- * Registers metadata using orphaned pattern for SWC compatibility.
+ * Legacy property decorator that marks a column as a primary key.
+ * Uses reflect-metadata for metadata storage.
  */
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
-  return function PrimaryKeyDecorator(value: unknown, context: unknown) {
-    if (!isStage3FieldContext(context)) {
-      throw new Error('@PrimaryKey requires TS5 Stage-3 decorators');
-    }
-    
-    const ctx = context;
-    const propertyName = ctx.name.toString();
+  return function (target: Object, propertyKey: string | symbol): void {
+    const ctor = target.constructor;
+    const propertyName = String(propertyKey);
     
     const columnMeta: ColumnMetadata = {
       propertyName,
@@ -38,15 +28,10 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
       isVersion: !!options?.version
     };
     
-    // Store as orphaned metadata for @Entity to collect
-    if (!(globalThis as any).__tsLinqOrphanedColumns) {
-      (globalThis as any).__tsLinqOrphanedColumns = [];
-    }
-    if (!(globalThis as any).__tsLinqOrphanedPrimaryKeys) {
-      (globalThis as any).__tsLinqOrphanedPrimaryKeys = [];
-    }
+    // Add column metadata
+    MetadataStorage.addColumn(ctor as Function, columnMeta);
     
-    (globalThis as any).__tsLinqOrphanedColumns.push(columnMeta);
-    (globalThis as any).__tsLinqOrphanedPrimaryKeys.push(propertyName);
+    // Mark as primary key
+    MetadataStorage.addPrimaryKey(ctor as Function, propertyName);
   };
 }
