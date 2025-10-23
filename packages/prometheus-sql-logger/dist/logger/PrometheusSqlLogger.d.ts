@@ -1,4 +1,4 @@
-import type { SqlLogger, SqlParameter } from '@ts-linq/core';
+import type { SqlLogger, SqlParameter } from '@ts-linq/types';
 type LabelValues = Record<string, string>;
 interface PromCounter {
     labels(labels: LabelValues): {
