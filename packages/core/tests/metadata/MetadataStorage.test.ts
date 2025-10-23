@@ -17,6 +17,9 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         id!: number;
       }
 
+      // Create instance to trigger Stage-3 decorator initializers
+      new User();
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata).toBeDefined();
       expect(metadata!.tableName).toBe('User');
@@ -28,6 +31,9 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @PrimaryKey({ type: 'INTEGER' })
         id!: number;
       }
+
+      // Create instance to trigger Stage-3 decorator initializers
+      new User();
 
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata).toBeDefined();
@@ -46,6 +52,10 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @PrimaryKey({ type: 'INTEGER' })
         id!: number;
       }
+
+      // Create instances to trigger Stage-3 decorator initializers
+      new User();
+      new Post();
 
       const userMeta = MetadataStorage.getEntity(User);
       const postMeta = MetadataStorage.getEntity(Post);
@@ -71,6 +81,8 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         email!: string;
       }
 
+      new User(); // Trigger initializers
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata!.columns).toHaveLength(3);
       
@@ -90,6 +102,8 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         age?: number;
       }
 
+      new User(); // Trigger initializers
+
       const metadata = MetadataStorage.getEntity(User);
       const ageCol = metadata!.columns.find(c => c.propertyName === 'age');
       
@@ -106,6 +120,8 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         name!: string;
       }
 
+      new User(); // Trigger initializers
+
       const metadata = MetadataStorage.getEntity(User);
       const nameCol = metadata!.columns.find(c => c.propertyName === 'name');
       
@@ -121,6 +137,8 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @Column({ type: 'INTEGER', defaultValue: 0 })
         score!: number;
       }
+
+      new User(); // Trigger initializers
 
       const metadata = MetadataStorage.getEntity(User);
       const scoreCol = metadata!.columns.find(c => c.propertyName === 'score');
