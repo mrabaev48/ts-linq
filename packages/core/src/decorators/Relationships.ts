@@ -23,24 +23,13 @@ function isStage3FieldContext(x: unknown): x is {
   return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
 }
 
-// Helper function for pending relationships
-function getPendingRelationships(ctor: Function): RelationshipMetadata[] {
-  if (!(globalThis as any).__tsLinqPendingRelationships) {
-    (globalThis as any).__tsLinqPendingRelationships = new WeakMap();
-  }
-  if (!(globalThis as any).__tsLinqPendingRelationships.has(ctor)) {
-    (globalThis as any).__tsLinqPendingRelationships.set(ctor, []);
-  }
-  return (globalThis as any).__tsLinqPendingRelationships.get(ctor);
-}
-
 function defineRelationship(
   kind: RelationshipMetadata['type'],
   targetEntity: () => Function,
   options: RelationshipOptions,
   targetOrValue: unknown,
   propOrContext: unknown
-): unknown {
+): void {
   if (!isStage3FieldContext(propOrContext)) {
     throw new Error('Relationship decorators require TS5 Stage-3 decorators');
   }
@@ -48,34 +37,28 @@ function defineRelationship(
   const ctx = propOrContext;
   const propertyName = ctx.name.toString();
   
-  // Return initializer that queues metadata for @Entity to collect
-  return function(this: unknown, initialValue: unknown) {
-    const ctor = (this as any)?.constructor;
-    if (ctor) {
-      // Resolve targetEntity to concrete constructor
-      const te = targetEntity as unknown as Function | (() => Function);
-      const resolved =
-        typeof te === 'function' && (te as { prototype?: unknown }).prototype
-          ? (te as Function)
-          : (te as () => Function)();
-      
-      const relationship: RelationshipMetadata = {
-        propertyName,
-        type: kind,
-        targetEntity: resolved,
-        foreignKey: options?.foreignKey,
-        inverseSide: options?.inverseSide,
-        cascade: options?.cascade || false,
-        through: options?.through
-      };
-      
-      const pending = getPendingRelationships(ctor);
-      if (!pending.some(r => r.propertyName === propertyName)) {
-        pending.push(relationship);
-      }
-    }
-    return initialValue;
+  // Resolve targetEntity to concrete constructor
+  const te = targetEntity as unknown as Function | (() => Function);
+  const resolved =
+    typeof te === 'function' && (te as { prototype?: unknown }).prototype
+      ? (te as Function)
+      : (te as () => Function)();
+  
+  const relationship: RelationshipMetadata = {
+    propertyName,
+    type: kind,
+    targetEntity: resolved,
+    foreignKey: options?.foreignKey,
+    inverseSide: options?.inverseSide,
+    cascade: options?.cascade || false,
+    through: options?.through
   };
+  
+  // Store as orphaned metadata for @Entity to collect
+  if (!(globalThis as any).__tsLinqOrphanedRelationships) {
+    (globalThis as any).__tsLinqOrphanedRelationships = [];
+  }
+  (globalThis as any).__tsLinqOrphanedRelationships.push(relationship);
 }
 
 /**

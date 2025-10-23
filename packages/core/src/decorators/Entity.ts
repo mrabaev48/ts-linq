@@ -20,8 +20,7 @@ function isStage3ClassContext(x: unknown): x is {
 
 /**
  * Stage-3 class decorator that marks a class as a database entity (table).
- * Registers the entity in MetadataStorage and collects pending field metadata
- * using addInitializer().
+ * Collects all pending field metadata and registers everything with MetadataStorage.
  */
 export function Entity(options: EntityOptions = {}): ClassDecorator {
   return function <TFunction extends Function>(
@@ -37,45 +36,82 @@ export function Entity(options: EntityOptions = {}): ClassDecorator {
     const tableName = options?.name || ctor.name;
 
     // Register entity immediately
-    MetadataStorage.addEntity(ctor, tableName, options?.schema);
+    MetadataStorage.addEntity(ctor, tableName);
 
-    // Use addInitializer to collect pending metadata after class definition
+    // Collect orphaned metadata (from field decorators that couldn't use addInitializer)
+    if ((globalThis as any).__tsLinqOrphanedColumns) {
+      const orphans = (globalThis as any).__tsLinqOrphanedColumns || [];
+      for (const columnMeta of orphans) {
+        MetadataStorage.addColumn(ctor, columnMeta);
+      }
+      (globalThis as any).__tsLinqOrphanedColumns = [];
+    }
+    
+    if ((globalThis as any).__tsLinqOrphanedPrimaryKeys) {
+      const orphanedPKs = (globalThis as any).__tsLinqOrphanedPrimaryKeys || [];
+      for (const pk of orphanedPKs) {
+        MetadataStorage.addPrimaryKey(ctor, pk);
+      }
+      (globalThis as any).__tsLinqOrphanedPrimaryKeys = [];
+    }
+    
+    if ((globalThis as any).__tsLinqOrphanedRelationships) {
+      const orphanedRels = (globalThis as any).__tsLinqOrphanedRelationships || [];
+      for (const rel of orphanedRels) {
+        MetadataStorage.addRelationship(ctor, rel);
+      }
+      (globalThis as any).__tsLinqOrphanedRelationships = [];
+    }
+    
+    if ((globalThis as any).__tsLinqOrphanedIndexes) {
+      const orphanedIndexes = (globalThis as any).__tsLinqOrphanedIndexes || [];
+      for (const idx of orphanedIndexes) {
+        MetadataStorage.addIndex(ctor, idx);
+      }
+      (globalThis as any).__tsLinqOrphanedIndexes = [];
+    }
+
+    // Use addInitializer to collect metadata from WeakMap registry
     if (ctx.addInitializer) {
       ctx.addInitializer(() => {
-        // Collect pending columns
-        if ((globalThis as any).__tsLinqPendingColumns?.has(ctor)) {
-          const pendingColumns = (globalThis as any).__tsLinqPendingColumns.get(ctor) || [];
-          for (const columnMeta of pendingColumns) {
-            MetadataStorage.addColumn(ctor, columnMeta);
+        const registry = (globalThis as any).__tsLinqPendingMetadata;
+        
+        if (registry) {
+          // Collect columns
+          if (registry.columns?.has(ctor)) {
+            const columns = registry.columns.get(ctor) || [];
+            for (const col of columns) {
+              MetadataStorage.addColumn(ctor, col);
+            }
+            registry.columns.delete(ctor);
           }
-          (globalThis as any).__tsLinqPendingColumns.delete(ctor);
-        }
-
-        // Collect pending primary keys
-        if ((globalThis as any).__tsLinqPendingPrimaryKeys?.has(ctor)) {
-          const pendingPKs = (globalThis as any).__tsLinqPendingPrimaryKeys.get(ctor) || [];
-          for (const propertyName of pendingPKs) {
-            MetadataStorage.addPrimaryKey(ctor, propertyName);
+          
+          // Collect primary keys
+          if (registry.primaryKeys?.has(ctor)) {
+            const pks = registry.primaryKeys.get(ctor) || [];
+            for (const pk of pks) {
+              MetadataStorage.addPrimaryKey(ctor, pk);
+            }
+            registry.primaryKeys.delete(ctor);
           }
-          (globalThis as any).__tsLinqPendingPrimaryKeys.delete(ctor);
-        }
-
-        // Collect pending relationships
-        if ((globalThis as any).__tsLinqPendingRelationships?.has(ctor)) {
-          const pendingRels = (globalThis as any).__tsLinqPendingRelationships.get(ctor) || [];
-          for (const relationMeta of pendingRels) {
-            MetadataStorage.addRelationship(ctor, relationMeta);
+          
+          // Collect relationships
+          if (registry.relationships?.has(ctor)) {
+            const rels = registry.relationships.get(ctor) || [];
+            for (const rel of rels) {
+              MetadataStorage.addRelationship(ctor, rel);
+            }
+            registry.relationships.delete(ctor);
           }
-          (globalThis as any).__tsLinqPendingRelationships.delete(ctor);
-        }
-
-        // Collect pending indexes
-        if ((globalThis as any).__tsLinqPendingIndexes?.has(ctor)) {
-          const pendingIndexes = (globalThis as any).__tsLinqPendingIndexes.get(ctor) || [];
-          for (const indexMeta of pendingIndexes) {
-            MetadataStorage.addIndex(ctor, indexMeta);
+          
+          // Collect indexes
+          if (registry.indexes?.has(ctor)) {
+            const indexes = registry.indexes.get(ctor) || [];
+            for (const idx of indexes) {
+              MetadataStorage.addIndex(ctor, idx);
+            }
+            registry.indexes.delete(ctor);
           }
-          (globalThis as any).__tsLinqPendingIndexes.delete(ctor);
         }
       });
     }

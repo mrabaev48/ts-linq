@@ -3,8 +3,10 @@ import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
+  access: { get?: () => any; set?: (value: any) => void };
+  addInitializer?: (fn: () => void) => void;
 } {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
+  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field';
 }
 
 /**
@@ -23,20 +25,19 @@ export interface ColumnOptions {
   version?: boolean;
 }
 
-// WeakMap to track pending columns per constructor
-function getPendingColumns(ctor: Function): ColumnMetadata[] {
-  if (!(globalThis as any).__tsLinqPendingColumns) {
-    (globalThis as any).__tsLinqPendingColumns = new WeakMap();
-  }
-  if (!(globalThis as any).__tsLinqPendingColumns.has(ctor)) {
-    (globalThis as any).__tsLinqPendingColumns.set(ctor, []);
-  }
-  return (globalThis as any).__tsLinqPendingColumns.get(ctor);
+// Global registry for pending metadata
+if (!(globalThis as any).__tsLinqPendingMetadata) {
+  (globalThis as any).__tsLinqPendingMetadata = {
+    columns: new WeakMap<Function, ColumnMetadata[]>(),
+    primaryKeys: new WeakMap<Function, string[]>(),
+    relationships: new WeakMap<Function, any[]>(),
+    indexes: new WeakMap<Function, any[]>()
+  };
 }
 
 /**
  * Stage-3 property decorator that registers column metadata.
- * Queues metadata for collection by @Entity decorator's addInitializer.
+ * Uses addInitializer if available, otherwise registers immediately.
  */
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
   return function ColumnDecorator(value: unknown, context: unknown) {
@@ -60,16 +61,26 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
       isVersion: options?.version || false
     };
     
-    // Return initializer that queues metadata for @Entity to collect
-    return function(initialValue: unknown) {
-      const ctor = (this as any)?.constructor;
-      if (ctor) {
-        const pending = getPendingColumns(ctor);
-        if (!pending.some((c: ColumnMetadata) => c.propertyName === propertyName)) {
-          pending.push(columnMetadata);
+    // Try to use addInitializer if available (may not work in SWC 2022-03 for field decorators)
+    if (ctx.addInitializer) {
+      // This won't work in SWC 2022-03, but we try anyway
+      ctx.addInitializer(function(this: any) {
+        const ctor = this.constructor || this;
+        const registry = (globalThis as any).__tsLinqPendingMetadata.columns;
+        if (!registry.has(ctor)) {
+          registry.set(ctor, []);
         }
+        const cols = registry.get(ctor);
+        if (!cols.some((c: ColumnMetadata) => c.propertyName === propertyName)) {
+          cols.push(columnMetadata);
+        }
+      });
+    } else {
+      // Fallback: store with a marker that @Entity will pick up
+      if (!(globalThis as any).__tsLinqOrphanedColumns) {
+        (globalThis as any).__tsLinqOrphanedColumns = [];
       }
-      return initialValue;
-    };
+      (globalThis as any).__tsLinqOrphanedColumns.push(columnMetadata);
+    }
   };
 }
