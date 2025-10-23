@@ -26,7 +26,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
     });
 
     test('should register entity with custom table name', () => {
-      @Entity({ tableName: 'custom_users' })
+      @Entity({ name: 'custom_users' })
       class User {
         @PrimaryKey({ type: 'INTEGER' })
         id!: number;
@@ -116,7 +116,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @PrimaryKey({ type: 'INTEGER' })
         id!: number;
 
-        @Column({ type: 'TEXT', columnName: 'user_name' })
+        @Column({ type: 'TEXT', name: 'user_name' })
         name!: string;
       }
 
@@ -155,6 +155,8 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         id!: number;
       }
 
+      new User(); // Trigger initializers
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata!.primaryKeys).toContain('id');
       
@@ -171,6 +173,8 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @PrimaryKey({ type: 'INTEGER' })
         roleId!: number;
       }
+
+      new UserRole(); // Trigger initializers
 
       const metadata = MetadataStorage.getEntity(UserRole);
       expect(metadata!.primaryKeys).toHaveLength(2);
@@ -190,6 +194,8 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @Column({ type: 'TEXT' })
         email!: string;
       }
+
+      new User(); // Trigger initializers
 
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata!.indexes).toHaveLength(1);
@@ -212,6 +218,8 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         email!: string;
       }
 
+      new User(); // Trigger initializers
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata!.indexes).toHaveLength(2);
     });
@@ -229,6 +237,8 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @Column({ type: 'TEXT' })
         lastName!: string;
       }
+
+      new User(); // Trigger initializers
 
       const metadata = MetadataStorage.getEntity(User);
       const index = metadata!.indexes[0];
@@ -259,6 +269,9 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         user!: User;
       }
 
+      new User(); // Trigger initializers
+      new Post(); // Trigger initializers
+
       const metadata = MetadataStorage.getEntity(Post);
       expect(metadata!.relations).toBeDefined();
       
@@ -282,6 +295,9 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @OneToMany(() => Post, { inverseSide: 'userId' })
         posts!: Post[];
       }
+
+      new Post(); // Trigger initializers
+      new User(); // Trigger initializers
 
       const metadata = MetadataStorage.getEntity(User);
       const postsRel = metadata!.relations?.find(r => r.propertyName === 'posts');
@@ -337,7 +353,7 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
 
   describe('Complex Entity Scenarios', () => {
     test('should handle entity with all metadata types', () => {
-      @Entity({ tableName: 'users' })
+      @Entity({ name: 'users' })
       @Index('idx_email', ['email'], { unique: true })
       @Index('idx_created', ['createdAt'])
       class User {
@@ -374,6 +390,9 @@ describe('MetadataStorage - Decorator-based Metadata', () => {
         @ManyToOne(() => User, { inverseSide: 'posts' })
         user!: User;
       }
+
+      new User(); // Trigger initializers
+      new Post(); // Trigger initializers
 
       const metadata = MetadataStorage.getEntity(User);
       
