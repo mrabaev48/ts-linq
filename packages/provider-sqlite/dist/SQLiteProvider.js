@@ -63,7 +63,10 @@ class SQLiteProvider extends core_1.DatabaseProvider {
         await this.executeNonQuery(sql);
         // Create indexes
         for (const index of entityMetadata.indexes) {
-            const indexSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, index);
+            const indexSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, {
+                ...index,
+                unique: index.unique ?? false
+            });
             await this.executeNonQuery(indexSql);
         }
     }
@@ -76,6 +79,9 @@ class SQLiteProvider extends core_1.DatabaseProvider {
         const { sql, params } = this.generateInsertSql(entity, metadata);
         await this.executeNonQuery(sql, params);
         // Handle generated PK via last_insert_rowid when applicable
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+            return entity;
+        }
         const primaryKey = metadata.primaryKeys[0];
         if (primaryKey) {
             const primaryKeyColumn = metadata.columns.find((c) => c.propertyName === primaryKey);
@@ -102,7 +108,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
         const affectedRows = await this.executeNonQuery(sql, params);
         if (affectedRows === 0) {
             if (versionCol)
-                throw new core_1.OptimisticConcurrencyError();
+                throw new core_1.OptimisticConcurrencyError('Version mismatch detected during update');
             throw new Error(`No rows were updated. Entity may not exist or no changes detected.`);
         }
         // increment version in entity
@@ -132,10 +138,10 @@ class SQLiteProvider extends core_1.DatabaseProvider {
         if (!metadata) {
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
         }
-        const primaryKey = metadata.primaryKeys[0];
-        if (!primaryKey) {
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
             throw new Error(`No primary key defined for ${entityClass.name}`);
         }
+        const primaryKey = metadata.primaryKeys[0];
         const primaryKeyColumn = metadata.columns.find((c) => c.propertyName === primaryKey);
         if (!primaryKeyColumn) {
             throw new Error(`Primary key column not found for ${entityClass.name}`);
@@ -309,9 +315,13 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Generate UPDATE SQL and params based on non-PK columns and PK WHERE clause. */
     generateUpdateSql(entity, metadata, versionCol) {
-        const updatableColumns = metadata.columns.filter((col) => !metadata.primaryKeys.includes(col.propertyName) && !col.isGenerated && !col.isComputed);
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+        }
+        const primaryKeys = metadata.primaryKeys;
+        const updatableColumns = metadata.columns.filter((col) => !primaryKeys.includes(col.propertyName) && !col.isGenerated && !col.isComputed);
         if (updatableColumns.length === 0) {
-            throw new Error(`No updatable columns found for entity ${metadata.target.name}`);
+            throw new Error(`No updatable columns found for entity ${metadata.tableName}`);
         }
         const setClauses = updatableColumns.map((col) => `${col.columnName} = ?`);
         const setParams = updatableColumns.map((col) => this.coerceToSqlParameter(entity[col.propertyName]));
@@ -323,7 +333,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
         for (const pkProperty of metadata.primaryKeys) {
             const pkColumn = metadata.columns.find((col) => col.propertyName === pkProperty);
             if (!pkColumn) {
-                throw new Error(`Primary key column ${pkProperty} not found for entity ${metadata.target.name}`);
+                throw new Error(`Primary key column ${pkProperty} not found for entity ${metadata.tableName}`);
             }
             primaryKeyConditions.push(`${pkColumn.columnName} = ?`);
             whereParams.push(this.coerceToSqlParameter(entity[pkProperty]));
@@ -333,7 +343,7 @@ class SQLiteProvider extends core_1.DatabaseProvider {
             whereParams.push(this.coerceToSqlParameter(entity[versionCol.propertyName]));
         }
         if (primaryKeyConditions.length === 0) {
-            throw new Error(`No primary key values found for entity ${metadata.target.name}`);
+            throw new Error(`No primary key values found for entity ${metadata.tableName}`);
         }
         const whereClause = primaryKeyConditions.join(' AND ');
         const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClause}`;
@@ -341,18 +351,21 @@ class SQLiteProvider extends core_1.DatabaseProvider {
     }
     /** Generate DELETE SQL and params using primary key values. */
     generateDeleteSql(entity, metadata) {
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+        }
         const primaryKeyConditions = [];
         const params = [];
         for (const pkProperty of metadata.primaryKeys) {
             const pkColumn = metadata.columns.find((col) => col.propertyName === pkProperty);
             if (!pkColumn) {
-                throw new Error(`Primary key column ${pkProperty} not found for entity ${metadata.target.name}`);
+                throw new Error(`Primary key column ${pkProperty} not found for entity ${metadata.tableName}`);
             }
             primaryKeyConditions.push(`${pkColumn.columnName} = ?`);
             params.push(this.coerceToSqlParameter(entity[pkProperty]));
         }
         if (primaryKeyConditions.length === 0) {
-            throw new Error(`No primary key values found for entity ${metadata.target.name}`);
+            throw new Error(`No primary key values found for entity ${metadata.tableName}`);
         }
         const whereClause = primaryKeyConditions.join(' AND ');
         const sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClause}`;
@@ -471,6 +484,6 @@ function mapSqliteError(err) {
     if (code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || code === 'SQLITE_CONSTRAINT_TRIGGER') {
         return new core_1.ForeignKeyConstraintError(message, code);
     }
-    return new core_1.DatabaseError(message, code);
+    return new core_1.DatabaseError(message ?? 'Unknown error');
 }
 //# sourceMappingURL=SQLiteProvider.js.map

@@ -69,7 +69,7 @@ export class MssqlProvider extends DatabaseProvider {
         this.startHealthChecks(async () => {
             const started = Date.now();
             const req = new mssql.Request(this.pool);
-            const sql = this.healthCheck?.testQuery || 'SELECT 1';
+            const sql = 'SELECT 1';
             await req.query(sql);
             return Date.now() - started;
         });
@@ -103,7 +103,10 @@ export class MssqlProvider extends DatabaseProvider {
         await this.executeNonQuery(sql);
         // Indexes
         for (const index of entityMetadata.indexes) {
-            const idxSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, index);
+            const idxSql = this.ddl.generateCreateIndexSql(entityMetadata.tableName, {
+                ...index,
+                unique: index.unique ?? false
+            });
             await this.executeNonQuery(idxSql);
         }
     }
@@ -134,7 +137,7 @@ export class MssqlProvider extends DatabaseProvider {
         const affectedRows = await this.executeNonQuery(sql, params);
         if (affectedRows === 0) {
             if (versionCol)
-                throw new OptimisticConcurrencyError();
+                throw new OptimisticConcurrencyError('Version mismatch detected during update');
             throw new Error('No rows were updated.');
         }
         if (versionCol) {
@@ -160,10 +163,11 @@ export class MssqlProvider extends DatabaseProvider {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
-        const pk = metadata.primaryKeys;
-        if (!pk.length)
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
             return this.insert(entity, entityClass);
-        const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
+        }
+        const pk = metadata.primaryKeys;
+        const updatable = metadata.columns.filter((c) => !pk.includes(c.propertyName) && !c.isGenerated && !c.isComputed);
         const sourceCols = metadata.columns.filter((c) => !c.isGenerated);
         const sourceSelect = sourceCols.map((c) => `? AS ${c.columnName}`).join(', ');
         const onClause = pk
@@ -187,9 +191,10 @@ export class MssqlProvider extends DatabaseProvider {
         const metadata = MetadataStorage.getEntity(entityClass);
         if (!metadata)
             throw new Error(`Entity metadata not found for ${entityClass.name}`);
-        const pk = metadata.primaryKeys[0];
-        if (!pk)
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
             throw new Error(`No primary key defined for ${entityClass.name}`);
+        }
+        const pk = metadata.primaryKeys[0];
         const pkCol = metadata.columns.find((c) => c.propertyName === pk);
         let sql = `SELECT * FROM ${metadata.tableName} WHERE ${pkCol.columnName} = ?`;
         if (this.softDelete?.enabled) {
@@ -362,23 +367,27 @@ export class MssqlProvider extends DatabaseProvider {
         const placeholders = insertable.map(() => '?');
         const params = insertable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
         const sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) VALUES (${placeholders.join(', ')})`;
-        const firstPk = metadata.primaryKeys[0];
+        const firstPk = metadata.primaryKeys?.[0];
         const returningPk = firstPk && metadata.columns.find((c) => c.propertyName === firstPk)?.isGenerated
             ? firstPk
             : undefined;
         return { sql, params, returningPk };
     }
     generateUpdateSql(entity, metadata, versionCol) {
-        const updatable = metadata.columns.filter((c) => !metadata.primaryKeys.includes(c.propertyName) && !c.isGenerated);
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+        }
+        const primaryKeys = metadata.primaryKeys;
+        const updatable = metadata.columns.filter((c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated);
         if (updatable.length === 0)
-            throw new Error(`No updatable columns for ${metadata.target.name}`);
+            throw new Error(`No updatable columns for ${metadata.tableName}`);
         const setClauses = updatable.map((c) => `${c.columnName} = ?`);
         const setParams = updatable.map((c) => this.coerceToSqlParameter(entity[c.propertyName]));
         if (versionCol)
             setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
         const whereClauses = [];
         const whereParams = [];
-        for (const pk of metadata.primaryKeys) {
+        for (const pk of primaryKeys) {
             const col = metadata.columns.find((c) => c.propertyName === pk);
             whereClauses.push(`${col.columnName} = ?`);
             whereParams.push(this.coerceToSqlParameter(entity[pk]));
@@ -391,6 +400,9 @@ export class MssqlProvider extends DatabaseProvider {
         return { sql, params: [...setParams, ...whereParams] };
     }
     generateDeleteSql(entity, metadata) {
+        if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+            throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+        }
         const whereClauses = [];
         const params = [];
         for (const pk of metadata.primaryKeys) {
