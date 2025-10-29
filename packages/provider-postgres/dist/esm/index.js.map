@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../src/index.ts"],"names":[],"mappings":"AAAA,6FAA6F;AAC7F,cAAc,oBAAoB,CAAC","sourcesContent":["// Provider only - consumers import dialect directly from @ts-linq/dialect-postgres if needed\nexport * from './PostgresProvider';\n"]}

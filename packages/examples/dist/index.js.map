@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":";AAAA,yBAAyB;AACzB,mDAAmD;;;AAEtC,QAAA,WAAW,GAAG,UAAU,CAAC","sourcesContent":["// Examples - Coming Soon\n// This package will provide runnable code examples\n\nexport const placeholder = 'examples';\n"]}

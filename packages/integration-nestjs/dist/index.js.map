@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":";;;AAAA,mCAAmC;AACtB,QAAA,WAAW,GAAG,oBAAoB,CAAC","sourcesContent":["// NestJS Integration - Coming Soon\nexport const placeholder = 'integration-nestjs';\n"]}
