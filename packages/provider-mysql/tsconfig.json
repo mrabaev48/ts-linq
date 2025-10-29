@@ -6,8 +6,8 @@
       "@src/*": ["src/*"]
     },
     "composite": true,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "outDir": "./dist",
     "rootDir": "./src"
   },
