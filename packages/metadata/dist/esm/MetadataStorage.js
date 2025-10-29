@@ -1,5 +1,6 @@
 import { ValidationError } from '@ts-linq/types';
 import { EntityMetadataBuilder } from './EntityMetadata';
+import { PendingMetadataCollector } from './PendingMetadataCollector';
 /**
  * Global singleton storage that collects metadata produced by decorators
  * and exposes finalized `EntityMetadata` for use by providers and loaders.
@@ -7,11 +8,19 @@ import { EntityMetadataBuilder } from './EntityMetadata';
 export class MetadataStorage {
     normalizeTarget(target) {
         // Map decorated Extended classes back to original constructors if present
-        const getOwn = Reflect
-            .getOwnMetadata;
-        const maybe = getOwn?.('orm:original', target);
-        const original = typeof maybe === 'function' ? maybe : undefined;
-        return original ?? target;
+        if (!target || typeof target !== 'function') {
+            return target;
+        }
+        try {
+            const getOwn = Reflect
+                .getOwnMetadata;
+            const maybe = getOwn?.('orm:original', target);
+            const original = typeof maybe === 'function' ? maybe : undefined;
+            return original ?? target;
+        }
+        catch {
+            return target;
+        }
     }
     constructor() {
         this.entities = new Map();
@@ -30,18 +39,26 @@ export class MetadataStorage {
     }
     /** Get metadata for a specific entity constructor. */
     static getEntity(target) {
-        const getOwn = Reflect
-            .getOwnMetadata;
-        const maybe = getOwn?.('orm:original', target);
-        const original = typeof maybe === 'function' ? maybe : target;
-        const meta = MetadataStorage.getInstance().getEntityMetadata(original);
-        if (!meta)
+        if (!target || typeof target !== 'function') {
             return undefined;
-        if (original !== target) {
-            // Return a view of metadata with target set to the provided constructor (decorated class)
-            return { ...meta, target };
         }
-        return meta;
+        try {
+            const getOwn = Reflect
+                .getOwnMetadata;
+            const maybe = getOwn?.('orm:original', target);
+            const original = typeof maybe === 'function' ? maybe : target;
+            const meta = MetadataStorage.getInstance().getEntityMetadata(original);
+            if (!meta)
+                return undefined;
+            if (original !== target) {
+                // Return a view of metadata with target set to the provided constructor (decorated class)
+                return { ...meta, target };
+            }
+            return meta;
+        }
+        catch {
+            return MetadataStorage.getInstance().getEntityMetadata(target);
+        }
     }
     /** Register an entity and optionally set its table name. */
     static addEntity(target, tableName) {
@@ -178,9 +195,11 @@ export class MetadataStorage {
         // Builder path
         const builder = this.getOrCreateBuilder(target);
         const snapshot = builder.build();
+        // Validate duplicate index name
         if ((snapshot.indexes || []).some((i) => i.name === index.name)) {
             throw new ValidationError(`Duplicate index name '${index.name}' on entity '${snapshot.tableName}'`);
         }
+        // Validate columns exist (now works correctly with context.metadata approach)
         const existingCols = new Set((snapshot.columns || []).map((c) => [c.columnName, c.propertyName]).flat());
         const missing = index.columns.filter((c) => !existingCols.has(c));
         if (missing.length > 0) {
@@ -214,10 +233,44 @@ export class MetadataStorage {
     /** Get finalized `EntityMetadata` for a specific constructor. */
     getEntityMetadata(target) {
         const key = this.normalizeTarget(target);
+        // If still in builder phase, collect pending metadata before finalization
         if (this.builders.has(key)) {
+            this.collectPendingMetadata(key);
             this.finalizeEntity(key);
         }
         return this.entities.get(key);
+    }
+    /**
+     * Collect and register any pending metadata from PendingMetadataCollector.
+     * This is called automatically by getEntityMetadata to handle Stage-3 decorators.
+     */
+    collectPendingMetadata(target) {
+        const pendingColumns = PendingMetadataCollector.getColumns(target);
+        const pendingPrimaryKeys = PendingMetadataCollector.getPrimaryKeys(target);
+        const pendingIndexes = PendingMetadataCollector.getIndexes(target);
+        const pendingRelationships = PendingMetadataCollector.getRelationships(target);
+        // Only process if there's pending metadata
+        if (pendingColumns.size > 0 || pendingPrimaryKeys.size > 0 ||
+            pendingIndexes.length > 0 || pendingRelationships.size > 0) {
+            // Register columns
+            for (const [_propertyName, columnMeta] of pendingColumns.entries()) {
+                this.addColumnMetadata(target, columnMeta);
+            }
+            // Register primary keys
+            for (const propertyName of pendingPrimaryKeys) {
+                this.addPrimaryKeyMetadata(target, propertyName);
+            }
+            // Register indexes
+            for (const indexMeta of pendingIndexes) {
+                this.addIndexMetadata(target, indexMeta);
+            }
+            // Register relationships
+            for (const [_propertyName, relationMeta] of pendingRelationships.entries()) {
+                this.addRelationshipMetadata(target, relationMeta);
+            }
+            // Clear pending metadata to free memory
+            PendingMetadataCollector.clear(target);
+        }
     }
     /** Finalize and return metadata for all registered entities. */
     getAllEntities() {

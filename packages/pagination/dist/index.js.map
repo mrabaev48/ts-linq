@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":"","sourcesContent":["// Pagination utilities\nexport interface PagedResult<T> {\n  data: T[];\n  page: number;\n  pageSize: number;\n  total: number;\n  totalPages: number;\n}\n"]}

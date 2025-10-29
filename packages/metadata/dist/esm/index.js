@@ -1,4 +1,5 @@
 export * from './MetadataStorage';
+export * from './PendingMetadataCollector';
 export * from './EntityMetadata';
 export * from './Entity';
 export * from './Column';
