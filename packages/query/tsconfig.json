@@ -8,8 +8,8 @@
       "@ts-linq/metadata": ["../metadata/dist"]
     },
     "composite": true,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "sourceMap": true,
     "inlineSources": true,
     "outDir": "./dist",
