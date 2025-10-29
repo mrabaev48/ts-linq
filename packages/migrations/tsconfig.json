@@ -10,8 +10,8 @@
       "@ts-linq/metrics-safe": ["../metrics-safe/dist"]
     },
     "composite": true,
-    "declaration": false,
-    "declarationMap": false,
+    "declaration": true,
+    "declarationMap": true,
     "sourceMap": true,
     "inlineSources": true,
     "outDir": "./dist",
