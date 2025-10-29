@@ -13,11 +13,20 @@ The dual-build system (CJS in dist/, ESM in dist/esm/) had two critical issues:
 2. Declaration file conflicts: Both CJS and ESM builds generated .d.ts files, creating potential mismatches
 
 #### Solution
-Created cross-platform Node.js script (`scripts/copy-types.js`) that:
-1. Cleans all .d.ts and .d.ts.map files from dist/ (excluding dist/esm/)
-2. Recursively copies fresh declarations from dist/esm/ to dist/
-3. Guarantees .d.ts parity between CJS and ESM builds
-4. Works on Windows, macOS, and Linux without shell dependencies
+**Dual-Build Strategy with Declaration Synchronization:**
+1. **CJS Build** (`tsconfig.json`): Compiles to `dist/` with declarations (required by TypeScript composite mode)
+2. **ESM Build** (`tsconfig.esm.json`): Compiles to `dist/esm/` with declarations
+3. **Declaration Sync** (`scripts/copy-types.js`): Cross-platform Node.js script that:
+   - Cleans stale .d.ts files from `dist/` (excluding `dist/esm/`)
+   - Copies fresh declarations from `dist/esm/` to `dist/`
+   - Guarantees .d.ts parity between CJS and ESM builds
+   - Works on Windows, macOS, and Linux without shell dependencies
+
+**Why this approach:**
+- TypeScript composite projects require `declaration: true` (cannot be disabled)
+- Dual builds (CJS + ESM) each generate their own .d.ts files
+- Copying from single source (ESM) ensures type consistency across module formats
+- Standard solution for dual-format TypeScript libraries
 
 #### Changes Made
 - ✅ Created `scripts/copy-types.js` with cleanDtsFiles() and copyTypesRecursive()
