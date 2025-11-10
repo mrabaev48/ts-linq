@@ -25,21 +25,13 @@ function defineRelationship(
   target: any,
   propertyKey: string | symbol
 ): void {
-  // For legacy decorators, target is the prototype, target.constructor is the class
   const ctor = (target?.constructor || target) as Function;
   const propertyName = String(propertyKey);
-  
-  // Resolve targetEntity to concrete constructor
-  const te = targetEntity as unknown as Function | (() => Function);
-  const resolved =
-    typeof te === 'function' && (te as { prototype?: unknown }).prototype
-      ? (te as Function)
-      : (te as () => Function)();
   
   const relationship: RelationshipMetadata = {
     propertyName,
     type: kind,
-    targetEntity: resolved,
+    targetEntity: targetEntity,
     foreignKey: options?.foreignKey,
     inverseSide: options?.inverseSide,
     cascade: options?.cascade || false,

@@ -192,23 +192,17 @@ export class MetadataStorage {
 
   /** Add a relationship definition to the target entity's builder. */
   private addRelationshipMetadata(target: Function, relationship: RelationshipMetadata): void {
-    // Normalize thunk target to constructor to keep tests stable
-    const te = relationship.targetEntity as unknown as Function | (() => Function);
-    const resolved =
-      typeof te === 'function' && (te as { prototype?: unknown }).prototype
-        ? (te as Function)
-        : (te as () => Function)();
     const key = this.normalizeTarget(target);
     const finalized = this.entities.get(key);
     if (finalized) {
       finalized.relationships = [
         ...finalized.relationships,
-        { ...relationship, targetEntity: resolved }
+        relationship
       ];
       return;
     }
     const builder = this.getOrCreateBuilder(target);
-    builder.addRelationship({ ...relationship, targetEntity: resolved });
+    builder.addRelationship(relationship);
   }
 
   /** Add an index definition to the target entity's builder. */
