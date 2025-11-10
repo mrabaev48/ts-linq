@@ -128,7 +128,7 @@ Database-specific error mapping:
 -   **Turborepo + pnpm**: Monorepo management for fast builds and efficient dependency management.
 -   **Modular Package Structure**: Decomposed into 30+ packages for tree-shaking and faster builds.
 -   **Type Safety**: Extensive TypeScript usage for compile-time validation, including `TypedQueryable`.
--   **Comprehensive Testing**: Over 232 test files (unit and E2E) using Vitest with ~2.5-3x faster execution than Jest. Currently **34 test files passing (129 individual tests)** with remaining failures due to incomplete jest→vitest syntax migration in older test files.
+-   **Comprehensive Testing**: Comprehensive test suite using Jest with ts-jest transformer. Test suite is being rewritten from scratch with improved coverage and organization.
 
 ## Feature Specifications
 
