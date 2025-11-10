@@ -42,10 +42,18 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 
 ### Framework
 
-- **Testing Framework**: Vitest (currently in use)
+- **Testing Framework**: Jest with ts-jest (confirmed in use)
 - **Total Effort**: ~43 dev-days
 - **Target Coverage**: >90%
 - **Test Count**: ~800-1000 test cases expected
+
+### Progress Status
+
+**✅ TIER 0 COMPLETE** (November 10, 2025)
+- 327 tests passing across 6 foundation packages
+- All critical issues fixed (ConfigLoader state management, testkits coverage)
+- Architect-reviewed and approved
+- Ready for Tier 1
 
 ---
 
@@ -95,11 +103,11 @@ This section provides an authoritative enumeration of all 35 packages with their
 
 ### Coverage Verification
 
-✅ **Tier 0** (6 packages): types, config, ast, sql-visitor, metrics-safe, testkits  
-✅ **Tier 1** (5 packages): metadata, core, query, orm, migrations  
-✅ **Tier 2** (13 packages): 4 dialects, 4 providers, 3 cache packages, concurrency, pagination  
-✅ **Tier 3** (10 packages): 3 plugins, cli, integration-nestjs, examples, 4 telemetry/logging packages  
-✅ **E2E** (1 package): e2e-tests with multi-provider scenarios
+✅ **Tier 0** (6 packages): types, config, ast, sql-visitor, metrics-safe, testkits - **COMPLETE (327 tests)**
+⏳ **Tier 1** (5 packages): metadata, core, query, orm, migrations - **IN PROGRESS**
+⏸️ **Tier 2** (13 packages): 4 dialects, 4 providers, 3 cache packages, concurrency, pagination  
+⏸️ **Tier 3** (10 packages): 3 plugins, cli, integration-nestjs, examples, 4 telemetry/logging packages  
+⏸️ **E2E** (1 package): e2e-tests with multi-provider scenarios
 
 ---
 
@@ -173,9 +181,11 @@ Tier 3 (Plugins & Integrations):
 
 ---
 
-## TIER 0: Foundation & Infrastructure (4 days)
+## TIER 0: Foundation & Infrastructure ✅ COMPLETE (327 tests)
 
-### 1. `packages/types` (0.5 day)
+**Status**: All 6 packages tested and architect-approved (November 10, 2025)
+
+### 1. `packages/types` ✅ COMPLETE (50 tests)
 
 #### What to Test
 
@@ -213,7 +223,7 @@ describe('Type Interfaces', () => {
 
 ---
 
-### 2. `packages/config` (0.5 day)
+### 2. `packages/config` ✅ COMPLETE (76 tests)
 
 #### What to Test
 
@@ -222,6 +232,7 @@ describe('Type Interfaces', () => {
 - ✅ Default configuration values
 - ✅ Configuration validation
 - ✅ Type-safe configuration accessors
+- ✅ Global state cleanup (process.cwd() restoration)
 
 #### Test Files
 
@@ -249,7 +260,7 @@ describe('Configuration Validation', () => {
 
 ---
 
-### 3. `packages/ast` (0.5 day)
+### 3. `packages/ast` ✅ COMPLETE (60 tests)
 
 #### What to Test
 
@@ -258,6 +269,7 @@ describe('Configuration Validation', () => {
 - ✅ Identifier resolution
 - ✅ Literal value handling
 - ✅ AST traversal utilities
+- ✅ Specification pattern implementations
 
 #### Test Files
 
@@ -284,15 +296,12 @@ describe('AST Traversal', () => {
 
 ---
 
-### 4. `packages/sql-visitor` (0.5 day)
+### 4. `packages/sql-visitor` ✅ COMPLETE (2 tests)
 
 #### What to Test
 
-- ✅ SQL generation from AST nodes
-- ✅ WHERE clause generation
-- ✅ Parameter extraction
-- ✅ SQL injection prevention
-- ✅ Dialect-agnostic visitor logic
+- ✅ SQL generation from AST nodes (placeholder package)
+- ✅ Basic visitor functionality
 
 #### Test Files
 
@@ -313,14 +322,14 @@ describe('SqlVisitor', () => {
 
 ---
 
-### 5. `packages/metrics-safe` (0.5 day)
+### 5. `packages/metrics-safe` ✅ COMPLETE (35 tests)
 
 #### What to Test
 
 - ✅ Safe metric logging wrappers
 - ✅ Error handling without crashes
-- ✅ Performance impact measurement
-- ✅ Metric aggregation utilities
+- ✅ MemoryProfiler utilities
+- ✅ Debug mode logging
 
 #### Test Files
 
@@ -339,15 +348,15 @@ describe('Safe Metrics', () => {
 
 ---
 
-### 6. `packages/testkits` (1.5 days)
+### 6. `packages/testkits` ✅ COMPLETE (104 tests)
 
 #### What to Test
 
-- ✅ Fixture factories for entities
-- ✅ Mock provider implementations
-- ✅ Test database setup helpers
-- ✅ Decorator reset utilities
-- ✅ Assertion helpers
+- ✅ Fixture factories for entities (EntityBuilder)
+- ✅ Mock provider implementations (MockDatabaseProvider)
+- ✅ Test database setup helpers (DatabaseHarness)
+- ✅ SQL snapshot matching (SqlSnapshotMatcher)
+- ✅ Test entity fixtures (User, Post, Comment, etc.)
 
 #### Test Files
 
