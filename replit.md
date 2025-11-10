@@ -53,13 +53,23 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core, p
 - Full metrics: totalRequests, hits, misses, evictions, invalidations
 **Status:** Architect-approved ✅
 
-**Tier 2 Partial Total: 183 tests passing (Utilities 60 + Cache Adapters 123)**
+### ✅ SQL Dialects (Partial) - 119 tests
+**Files:**
+- dialect-sqlite: SQLiteDialect.test.ts (24), SQLiteDdlStrategy.test.ts (37) = 61 tests
+- dialect-postgres: PostgresDialect.test.ts (27), PostgresDdlStrategy.test.ts (31) = 58 tests
+**Coverage:** 
+- SQLite: SELECT, DDL, type mapping, INTEGER AUTOINCREMENT, LIMIT -1 quirk
+- PostgreSQL: SELECT with $1..$n params, "quoted" identifiers, DDL with USING/NULLS/CONCURRENT, UUID/JSONB/TIMESTAMPTZ, CTE
+**Major Fix:** PostgreSQL `quoteIdentifier()` now properly doubles quotes and adds closing quote
+**Status:** Architect-approved ✅
+
+**Tier 2 Partial Total: 302 tests passing (Utilities 60 + Cache Adapters 123 + Dialects 119)**
 
 **⏳ TIER 2 REMAINING:**
-- 4 SQL dialect packages (sqlite, postgresql, mysql, mssql)
+- 2 SQL dialect packages (mysql, mssql)
 - 4 Database provider packages
 
-**Overall Total: 920 tests in Tier 0+1+2 combined** (327 + 410 + 183)
+**Overall Total: 1039 tests in Tier 0+1+2 combined** (327 + 410 + 302)
 
 # User Preferences
 
