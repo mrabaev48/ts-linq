@@ -454,4 +454,35 @@ describe('MetadataStorage', () => {
       expect(metadata1).toBe(metadata2);
     });
   });
+
+  describe('branded primary key support', () => {
+    it('should support branded primary keys via API', () => {
+      class User {}
+      
+      MetadataStorage.addEntity(User, 'users');
+      
+      const columnMeta: ColumnMetadata & { isBranded?: boolean; brand?: string } = {
+        propertyName: 'id',
+        columnName: 'id',
+        type: 'INTEGER',
+        nullable: false,
+        isGenerated: true,
+        isVersion: false,
+        isBranded: true,
+        brand: 'User'
+      };
+      
+      MetadataStorage.addColumn(User, columnMeta);
+      MetadataStorage.addPrimaryKey(User, 'id');
+      
+      const metadata = MetadataStorage.getEntity(User);
+      const idColumn = metadata?.columns.find(c => c.propertyName === 'id') as typeof columnMeta | undefined;
+      
+      expect(idColumn).toBeDefined();
+      expect(idColumn?.isGenerated).toBe(true);
+      expect(idColumn?.isBranded).toBe(true);
+      expect(idColumn?.brand).toBe('User');
+      expect(metadata?.primaryKeys).toContain('id');
+    });
+  });
 });

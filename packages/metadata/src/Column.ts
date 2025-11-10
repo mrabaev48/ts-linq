@@ -1,14 +1,6 @@
 import { MetadataStorage } from './MetadataStorage';
 import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
 
-function isStage3FieldContext(x: unknown): x is {
-  kind: 'field';
-  name: string | symbol;
-  addInitializer?: (fn: (this: unknown) => void) => void;
-} {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
-}
-
 /**
  * Options for configuring a column mapping on an entity property.
  */
@@ -26,32 +18,32 @@ export interface ColumnOptions {
 }
 
 /**
- * Stage-3 property decorator that registers column metadata.
+ * Legacy property decorator that registers column metadata.
  * @param options.type - Column type (required for non-TEXT columns). Defaults to TEXT if omitted.
  */
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
-  return function ColumnDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext)) {
-      throw new Error('@Column requires TS5 Stage-3 decorators');
+  return function (target: any, propertyKey: string | symbol): void {
+    const name = propertyKey.toString();
+    const ctor = target.constructor;
+    
+    // Ensure entity metadata exists (property decorators run before class decorator)
+    if (!MetadataStorage.getEntity(ctor)) {
+      MetadataStorage.addEntity(ctor, ctor.name);
     }
-    const ctx = propOrContext;
-    const name = ctx.name.toString();
-    ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
-      if (!ctor) return;
-      const columnMetadata: ColumnMetadata = {
-        propertyName: name,
-        columnName: options?.name || name,
-        type: options?.type || 'TEXT',
-        nullable: options?.nullable !== false,
-        defaultValue: options?.defaultValue,
-        length: options?.length,
-        precision: options?.precision,
-        scale: options?.scale,
-        isGenerated: options?.generated || false,
-        isVersion: options?.version || false
-      };
-      MetadataStorage.addColumn(ctor, columnMetadata);
-    });
+    
+    const columnMetadata: ColumnMetadata = {
+      propertyName: name,
+      columnName: options?.name || name,
+      type: options?.type || 'TEXT',
+      nullable: options?.nullable !== false,
+      defaultValue: options?.defaultValue,
+      length: options?.length,
+      precision: options?.precision,
+      scale: options?.scale,
+      isGenerated: options?.generated || false,
+      isVersion: options?.version || false
+    };
+    
+    MetadataStorage.addColumn(ctor, columnMetadata);
   };
 }

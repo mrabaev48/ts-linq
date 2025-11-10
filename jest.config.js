@@ -3,6 +3,18 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/packages'],
   testMatch: ['**/*.test.ts', '**/*.spec.ts'],
+  transform: {
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          experimentalDecorators: true,
+          emitDecoratorMetadata: true,
+          lib: ['ES2021', 'DOM']
+        }
+      }
+    ]
+  },
   moduleNameMapper: {
     '^@ts-linq/types$': '<rootDir>/packages/types/src',
     '^@ts-linq/metadata$': '<rootDir>/packages/metadata/src',
@@ -45,14 +57,5 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  testTimeout: 10000,
-  globals: {
-    'ts-jest': {
-      tsconfig: {
-        experimentalDecorators: true,
-        emitDecoratorMetadata: true,
-        lib: ['ES2021', 'DOM']
-      }
-    }
-  }
+  testTimeout: 10000
 };
