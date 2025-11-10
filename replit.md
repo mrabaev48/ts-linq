@@ -2,7 +2,42 @@
 
 This project is a TypeScript ORM framework, inspired by Entity Framework Core.
 
-## Recent Changes - October 29, 2025
+## Recent Changes - November 10, 2025
+
+### ✅ Test Suite Rewrite: Tier 0 Foundation Packages Complete
+**Status**: 327 tests passing, architect-reviewed and approved
+
+#### Accomplishment
+Completed comprehensive test coverage for all 6 Tier 0 foundation packages:
+
+| Package | Tests | Coverage |
+|---------|-------|----------|
+| types | 50 | Result helpers, error classes, enums, type exports |
+| config | 76 | ConfigBuilder fluent API, ConfigLoader with file loading |
+| ast | 60 | AST nodes, Specification pattern, Binary/Logical/SqlVisitor |
+| sql-visitor | 2 | Placeholder package with minimal coverage |
+| metrics-safe | 35 | Safe metric logging, MemoryProfiler |
+| testkits | 104 | EntityBuilder, MockProvider, DatabaseHarness, SqlSnapshotMatcher, Fixtures |
+| **Total** | **327** | **All foundation utilities** |
+
+#### Key Improvements
+- **Global State Management**: Fixed ConfigLoader to properly restore `process.cwd()` in `afterAll`, preventing test pollution
+- **Comprehensive Testkits**: Added missing coverage for DatabaseHarness, SqlSnapshotMatcher, and TestEntities fixtures
+- **Test Quality**: All tests use proper setup/teardown, handle edge cases, and follow Jest best practices
+- **Cross-Package Compatibility**: All 18 test suites run successfully together without conflicts
+
+#### Testing Framework
+- Using Jest (not Vitest) with ts-jest transformer
+- All tests include proper `afterEach` cleanup for state isolation
+- Test execution verified: `pnpm test -- packages/{types,config,ast,sql-visitor,metrics-safe,testkits}/tests`
+
+#### Next Steps
+- Ready to proceed to Tier 1 packages: metadata, core, query, orm, migrations
+- Monitor ts-jest deprecation warnings for future config updates
+
+---
+
+## Previous Changes - October 29, 2025
 
 ### ✅ Build System: Cross-Platform Declaration File Management
 **Status**: Successfully configured and stable

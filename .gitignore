@@ -7,3 +7,7 @@
 /refactor-plans.md
 /packages/open-telemetry-sql-logger/dist/
 /.cursor/
+
+# Test artifacts
+__test_configs__
+*.heapsnapshot
