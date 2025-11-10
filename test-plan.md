@@ -53,7 +53,17 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 - 327 tests passing across 6 foundation packages
 - All critical issues fixed (ConfigLoader state management, testkits coverage)
 - Architect-reviewed and approved
-- Ready for Tier 1
+
+**✅ TIER 1 MOSTLY COMPLETE** (November 10, 2025)
+- 336 tests passing across 4 core ORM packages
+- metadata: 52 tests ✅
+- core: 125 tests ✅ (includes circular dependency fix in relationship decorators)
+- query: 85 tests ✅ (QueryBuilder, QueryModel, CountCache)
+- orm: 74 tests ✅ (ChangeTracker, DbSet)
+- migrations: ⏳ PENDING
+- All completed packages architect-reviewed and approved
+
+**TOTAL: 663 tests passing** (327 Tier 0 + 336 Tier 1)
 
 ---
 
@@ -104,7 +114,12 @@ This section provides an authoritative enumeration of all 35 packages with their
 ### Coverage Verification
 
 ✅ **Tier 0** (6 packages): types, config, ast, sql-visitor, metrics-safe, testkits - **COMPLETE (327 tests)**
-⏳ **Tier 1** (5 packages): metadata, core, query, orm, migrations - **IN PROGRESS**
+🟢 **Tier 1** (5 packages): **4/5 COMPLETE (336 tests)**
+   - ✅ metadata (52 tests)
+   - ✅ core (125 tests) - includes production fix for circular dependencies
+   - ✅ query (85 tests) - QueryBuilder, QueryModel, CountCache
+   - ✅ orm (74 tests) - ChangeTracker, DbSet
+   - ⏳ migrations (pending)
 ⏸️ **Tier 2** (13 packages): 4 dialects, 4 providers, 3 cache packages, concurrency, pagination  
 ⏸️ **Tier 3** (10 packages): 3 plugins, cli, integration-nestjs, examples, 4 telemetry/logging packages  
 ⏸️ **E2E** (1 package): e2e-tests with multi-provider scenarios
