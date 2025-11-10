@@ -2,6 +2,25 @@
 
 This project is a TypeScript ORM framework, inspired by Entity Framework Core, providing a code-first approach to database management. It utilizes TypeScript legacy experimental decorators for entity definitions, offers LINQ-style query building, and supports multiple database providers (SQLite, PostgreSQL, MySQL, MSSQL). The framework emphasizes type safety, change tracking, and adheres to SOLID principles, aiming to be a robust and developer-friendly ORM solution for TypeScript applications.
 
+## Recent Testing Progress - November 10, 2025
+
+### ✅ Query Package Testing Complete (85 tests)
+**Files:** QueryBuilder.test.ts (35), QueryModel.test.ts (22), CountCache.test.ts (28)
+**Coverage:** SQL generation, immutable query models, TTL/FIFO caching
+**Status:** Architect-approved ✅
+
+### ✅ Core Package Testing Complete (125 tests)  
+**Major Fix:** Resolved circular dependency in relationship decorators (thunk-based lazy resolution)
+**Status:** Architect-approved ✅
+
+### ✅ Metadata Package Complete (52 tests)
+**Status:** Architect-approved ✅
+
+### ✅ Tier 0 Foundation Complete (327 tests)
+**Status:** All passing ✅
+
+**Total Progress: 589 tests passing**
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
