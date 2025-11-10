@@ -52,6 +52,7 @@ export class RedisSqlCacheAdapter implements SqlCache {
   private readonly pubSubChannel?: string;
   private readonly publisher?: RedisPublisherLike;
   private readonly shadow = new Map<string, { value: SqlCacheEntry; ts: number }>();
+  private _metrics = { requests: 0, hits: 0, misses: 0, evictions: 0, invalidations: 0 };
 
   constructor(client: RedisClientLike, options?: RedisSqlCacheOptions) {
     this.client = client;
@@ -98,6 +99,41 @@ export class RedisSqlCacheAdapter implements SqlCache {
     this.shadow.delete(key);
     this.shadow.set(key, { value: entry.value, ts: entry.ts });
     return { query: entry.value.query, parameters: [...entry.value.parameters] };
+  }
+
+  async getAsync(key: string): Promise<SqlCacheEntry | undefined> {
+    this._metrics.requests++;
+    const entry = this.shadow.get(key);
+    if (entry) {
+      if (this.shadowTtlMs && this.shadowTtlMs > 0 && Date.now() - entry.ts > this.shadowTtlMs) {
+        this.shadow.delete(key);
+        // Fall through to remote fetch
+      } else {
+        this._metrics.hits++;
+        // LRU: move to end
+        this.shadow.delete(key);
+        this.shadow.set(key, { value: entry.value, ts: entry.ts });
+        return { query: entry.value.query, parameters: [...entry.value.parameters] };
+      }
+    }
+
+    // Shadow miss (or expired) - try remote
+    this._metrics.misses++;
+    try {
+      const remoteValue = await this.client.get(this.k(key));
+      if (!remoteValue) return undefined;
+
+      const parsed = JSON.parse(remoteValue) as SqlCacheEntry;
+      // Hydrate shadow
+      this.ensureCapacity();
+      this.shadow.set(key, {
+        value: { query: parsed.query, parameters: [...parsed.parameters] },
+        ts: Date.now()
+      });
+      return { query: parsed.query, parameters: [...parsed.parameters] };
+    } catch {
+      return undefined;
+    }
   }
 
   set(key: string, value: SqlCacheEntry): void {
@@ -150,6 +186,7 @@ export class RedisSqlCacheAdapter implements SqlCache {
         if (this.pubSubChannel && this.publisher) {
           void this.publisher.publish(this.pubSubChannel, JSON.stringify({ t: 'del', k }));
         }
+        this._metrics.invalidations++;
       }
     }
     return removed;
@@ -160,6 +197,7 @@ export class RedisSqlCacheAdapter implements SqlCache {
       const first = this.shadow.keys().next().value;
       if (first === undefined) break;
       this.shadow.delete(first);
+      this._metrics.evictions++;
       // best-effort remote clean
       void (async () => {
         try {
@@ -169,6 +207,17 @@ export class RedisSqlCacheAdapter implements SqlCache {
         }
       })();
     }
+  }
+
+  public getMetrics() {
+    return {
+      currentSize: this.shadow.size,
+      totalRequests: this._metrics.requests,
+      hits: this._metrics.hits,
+      misses: this._metrics.misses,
+      evictions: this._metrics.evictions,
+      invalidations: this._metrics.invalidations
+    };
   }
 
   private h(key: string): string {
