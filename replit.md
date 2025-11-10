@@ -35,7 +35,12 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core, p
 **Status:** All passing ✅
 
 **Tier 1 Total: 410 tests passing (Metadata 52 + Core 125 + Query 85 + ORM 74 + Migrations 74)**
-**Overall Total: 737 tests in Tier 0+1 combined**
+
+**⏳ TIER 2 IN PROGRESS** (Started November 10, 2025)
+- Utility packages complete: **60 tests** (cache 28, pagination 7, concurrency 25)
+- Remaining: cache-redis, cache-memcached, 4 dialects, 4 providers
+
+**Overall Total: 797 tests in Tier 0+1+2 combined**
 
 # User Preferences
 
