@@ -4,6 +4,35 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core.
 
 ## Recent Changes - November 10, 2025
 
+### ✅ Core Package Testing: Foundation Utilities Complete
+**Status**: 92 tests passing across 6 test files, architect-reviewed and stable
+
+#### Accomplishment
+Completed comprehensive test coverage for core package foundation utilities, building on metadata package success (52 tests).
+
+**Test Files Created:**
+- `DdlBuilder.test.ts` (8 tests) - DDL SQL generation with strategy pattern
+- `SqlHelper.test.ts` (27 tests) - SQL helpers (escapeIdentifier, formatValue, WHERE/ORDER BY/LIMIT clauses)
+- `BatchExecutor.test.ts` (7 tests) - Transaction-aware batch execution
+- `EntityCache.test.ts` (24 tests) - L2 FIFO entity cache with eviction
+- `RetryPolicies.test.ts` (16 tests) - ExponentialBackoff, FixedInterval, NoRetry policies
+- `InternalLogger.test.ts` (10 tests) - Safe internal error logging
+
+**Testing Patterns:**
+- Comprehensive edge case coverage (null/undefined, empty inputs, error conditions)
+- Proper Jest setup/teardown with mocks for dependencies
+- Deterministic tests avoiding flaky random/timing assertions
+- Focus on small, testable utility classes first
+
+**Architect Feedback Addressed:**
+- Stabilized jitter test by checking range bounds instead of uniqueness
+- Fixed NoRetryPolicy API signature (no arguments)
+- Improved InternalLogger test to check output format correctly
+
+**Coverage:** 92 tests passing (Tier 0: 327 + metadata: 52 + core: 92 = **471 total tests**)
+
+---
+
 ### ✅ Legacy Decorators Migration & Metadata Package Testing Complete
 **Status**: 52 metadata tests passing (25 MetadataStorage + 27 Decorators), all decorators converted to legacy syntax
 
