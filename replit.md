@@ -36,11 +36,30 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core, p
 
 **Tier 1 Total: 410 tests passing (Metadata 52 + Core 125 + Query 85 + ORM 74 + Migrations 74)**
 
-**⏳ TIER 2 IN PROGRESS** (Started November 10, 2025)
-- Utility packages complete: **60 tests** (cache 28, pagination 7, concurrency 25)
-- Remaining: cache-redis, cache-memcached, 4 dialects, 4 providers
+### 🎉 TIER 2 PARTIAL COMPLETE - UTILITIES & CACHE ADAPTERS APPROVED ✅
 
-**Overall Total: 797 tests in Tier 0+1+2 combined**
+### ✅ Utility Packages Complete (60 tests)
+- cache (28 tests), pagination (7 tests), concurrency (25 tests)
+**Status:** Architect-approved ✅
+
+### ✅ Cache Adapters Complete (123 tests)
+**Files:**
+- cache-redis: RedisCountCacheAdapter (31), RedisSqlCacheAdapter (32) = 63 tests
+- cache-memcached: MemcachedCountCacheAdapter (29), MemcachedSqlCacheAdapter (31) = 60 tests
+**Major Production Fix:** Implemented proper async read-through with `getAsync()` methods
+- Sync `get()`: Shadow cache only (L1 cache)
+- Async `getAsync()`: Shadow + remote read-through (L1 + L2 cache)
+- Correct metrics tracking: shadow hits/misses only, no double-counting
+- Full metrics: totalRequests, hits, misses, evictions, invalidations
+**Status:** Architect-approved ✅
+
+**Tier 2 Partial Total: 183 tests passing (Utilities 60 + Cache Adapters 123)**
+
+**⏳ TIER 2 REMAINING:**
+- 4 SQL dialect packages (sqlite, postgresql, mysql, mssql)
+- 4 Database provider packages
+
+**Overall Total: 920 tests in Tier 0+1+2 combined** (327 + 410 + 183)
 
 # User Preferences
 

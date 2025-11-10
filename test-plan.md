@@ -63,10 +63,12 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 - migrations: 74 tests ✅ (MigrationBuilder, MigrationRunner, DiffBasedMigration)
 - All packages architect-reviewed and approved ✅
 
-**⏳ TIER 2 IN PROGRESS** (Starting November 10, 2025)
-- 13 packages: 4 dialects, 4 providers, 3 cache packages, concurrency, pagination
+**⏳ TIER 2 IN PROGRESS** (Started November 10, 2025)
+- **3 utility packages complete: 60 tests** (cache 28, pagination 7, concurrency 25) - Architect-approved ✅
+- **2 cache adapters complete: 119 tests** (cache-redis 61, cache-memcached 58) - *Production fix applied: read-through from remote store*
+- Remaining: 4 dialects, 4 providers
 
-**TOTAL: 737 tests passing** (327 Tier 0 + 410 Tier 1)
+**TOTAL: 916 tests passing** (327 Tier 0 + 410 Tier 1 + 179 Tier 2)
 
 ---
 
@@ -123,7 +125,8 @@ This section provides an authoritative enumeration of all 35 packages with their
    - ✅ query (85 tests) - QueryBuilder, QueryModel, CountCache
    - ✅ orm (74 tests) - ChangeTracker, DbSet
    - ✅ migrations (74 tests) - MigrationBuilder, MigrationRunner, DiffBasedMigration
-⏳ **Tier 2** (13 packages): 4 dialects, 4 providers, 3 cache packages, concurrency, pagination - **IN PROGRESS**
+⏳ **Tier 2** (13 packages): **60 tests complete** - cache (28) ✅, pagination (7) ✅, concurrency (25) ✅ - **IN PROGRESS**
+   - Remaining: cache-redis, cache-memcached, 4 dialects, 4 providers
 ⏸️ **Tier 3** (10 packages): 3 plugins, cli, integration-nestjs, examples, 4 telemetry/logging packages  
 ⏸️ **E2E** (1 package): e2e-tests with multi-provider scenarios
 
