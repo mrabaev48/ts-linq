@@ -18,7 +18,7 @@ export class PostgresDialect implements SqlDialect {
   private readonly orderEmitter = new PgOrderEmitter();
   private readonly groupEmitter = new PgGroupEmitter();
   public quoteIdentifier(identifier: string): string {
-    return `"${identifier.replace(/"/g, '"')}`;
+    return `"${identifier.replace(/"/g, '""')}"`;
   }
   /**
    * Generate a PostgreSQL SELECT query from normalized QueryOptions.
