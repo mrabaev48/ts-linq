@@ -1,14 +1,6 @@
 import { MetadataStorage } from './MetadataStorage';
 import type { ColumnMetadata } from '@ts-linq/types';
 
-function isStage3FieldContext(x: unknown): x is {
-  kind: 'field';
-  name: string | symbol;
-  addInitializer?(fn: (this: unknown) => void): void;
-} {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
-}
-
 export interface ComputedColumnOptions {
   /** SQL expression for the computed column (provider-agnostic as possible). */
   expression: string;
@@ -19,26 +11,21 @@ export interface ComputedColumnOptions {
 }
 
 export function ComputedColumn(options: ComputedColumnOptions): PropertyDecorator {
-  return function ComputedColumnDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext)) {
-      throw new Error('@ComputedColumn requires TS5 Stage-3 decorators');
-    }
-    const ctx = propOrContext;
-    const name = ctx.name.toString();
-    ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
-      if (!ctor) return;
-      const columnMetadata: ColumnMetadata = {
-        propertyName: name,
-        columnName: options?.name || name,
-        type: 'TEXT',
-        nullable: true,
-        isGenerated: false,
-        isVersion: false,
-        isComputed: true,
-        computedExpression: options.expression
-      };
-      MetadataStorage.addColumn(ctor, columnMetadata);
-    });
+  return function (target: any, propertyKey: string | symbol): void {
+    const name = propertyKey.toString();
+    const ctor = target.constructor;
+    
+    const columnMetadata: ColumnMetadata = {
+      propertyName: name,
+      columnName: options?.name || name,
+      type: 'TEXT',
+      nullable: true,
+      isGenerated: false,
+      isVersion: false,
+      isComputed: true,
+      computedExpression: options.expression
+    };
+    
+    MetadataStorage.addColumn(ctor, columnMetadata);
   };
 }
