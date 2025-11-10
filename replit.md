@@ -4,32 +4,57 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core.
 
 ## Recent Changes - November 10, 2025
 
-### ✅ Core Package Testing: Foundation Utilities Complete
-**Status**: 92 tests passing across 6 test files, architect-reviewed and stable
+### ✅ Core Package Testing Complete + Major Production Fix
+**Status**: 126 tests passing, critical decorator bug fixed, architect-reviewed and approved
 
-#### Accomplishment
-Completed comprehensive test coverage for core package foundation utilities, building on metadata package success (52 tests).
+#### Major Production Fix
+**Circular Dependency Bug in Relationship Decorators** - Fixed system-wide issue affecting all relationship metadata:
 
-**Test Files Created:**
+**Problem:** Decorators eagerly resolved `targetEntity` thunks during class decoration, causing TDZ errors with forward references:
+```typescript
+@OneToMany(() => Post, ...)  // ERROR: Post not defined yet during User decoration
+posts?: Post[];
+```
+
+**Root Cause:** `defineRelationship()` in Relationships.ts and MetadataStorage.addRelationshipMetadata() immediately invoked thunks instead of storing them for lazy evaluation.
+
+**Solution:** Modified to store thunks and defer resolution until metadata consumption:
+- `packages/core/src/decorators/Relationships.ts` - Store thunk as-is
+- `packages/metadata/src/MetadataStorage.ts` - Preserve lazy evaluation throughout stack
+- Consumers (EntityLoader, LazyLoadingProxy) already support thunk resolution
+
+**Impact:**
+- ✅ Enables proper forward references (Entity Framework Core pattern)
+- ✅ Fixes TDZ errors in modern ES compilation
+- ✅ No regression in existing tests
+- ✅ System-wide improvement for all relationship decorators
+
+#### Test Coverage
+**Test Files Created (126 tests):**
 - `DdlBuilder.test.ts` (8 tests) - DDL SQL generation with strategy pattern
 - `SqlHelper.test.ts` (27 tests) - SQL helpers (escapeIdentifier, formatValue, WHERE/ORDER BY/LIMIT clauses)
 - `BatchExecutor.test.ts` (7 tests) - Transaction-aware batch execution
 - `EntityCache.test.ts` (24 tests) - L2 FIFO entity cache with eviction
 - `RetryPolicies.test.ts` (16 tests) - ExponentialBackoff, FixedInterval, NoRetry policies
 - `InternalLogger.test.ts` (10 tests) - Safe internal error logging
+- `LoadingStrategy.test.ts` (8 tests) - Enum values and strategy usage
+- `EntityLoader.test.ts` (26 tests) - Entity loading with decorator-registered metadata, lazy/eager strategies, batching
+
+**EntityLoader Tests Now Include:**
+- Decorator-registered metadata with real User ↔ Post relationships
+- Provider batching verification (findWhereIn calls)
+- Depth handling and includes options
+- Error propagation
 
 **Testing Patterns:**
-- Comprehensive edge case coverage (null/undefined, empty inputs, error conditions)
-- Proper Jest setup/teardown with mocks for dependencies
-- Deterministic tests avoiding flaky random/timing assertions
-- Focus on small, testable utility classes first
+- Comprehensive edge case coverage
+- Proper Jest setup/teardown with mocks
+- Deterministic tests (no flaky timing/random assertions)
+- Focus on public API behavior
 
-**Architect Feedback Addressed:**
-- Stabilized jitter test by checking range bounds instead of uniqueness
-- Fixed NoRetryPolicy API signature (no arguments)
-- Improved InternalLogger test to check output format correctly
+**Coverage:** 126 tests passing (Tier 0: 327 + metadata: 52 + core: 126 = **505 total tests**)
 
-**Coverage:** 92 tests passing (Tier 0: 327 + metadata: 52 + core: 92 = **471 total tests**)
+**Architect Approval:** "PASS - decorator changes defer resolution correctly, no regression, approve Tier 1 core work"
 
 ---
 
