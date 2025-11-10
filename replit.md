@@ -4,6 +4,38 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core.
 
 ## Recent Changes - November 10, 2025
 
+### ✅ Legacy Decorators Migration & Metadata Package Testing Complete
+**Status**: 52 metadata tests passing (25 MetadataStorage + 27 Decorators), all decorators converted to legacy syntax
+
+#### Accomplishment
+Successfully migrated entire metadata package from Stage-3 decorators to legacy decorators (`experimentalDecorators: true`) and created comprehensive test coverage for all decorator functionality.
+
+**Decorators Converted (8 files):**
+- `Entity.ts` - Class decorator for entity registration
+- `Column.ts` - Property decorator with auto-entity creation
+- `PrimaryKey.ts` - Property decorator with branded PK support
+- `Relationships.ts` - OneToMany, ManyToOne, OneToOne, ManyToMany
+- `ComputedColumn.ts` - Computed column decorator
+- `DatabaseFunction.ts` - Database function decorator  
+- `ValidIf.ts` - 6 validation decorators (ValidIf, RequiredIfOf, MinLengthOf, MaxLengthOf, PatternOf, RangeOf)
+- `CachePolicy.ts` - Cache policy decorator
+
+**Critical Fixes:**
+1. **Execution Order Handling**: Property decorators auto-create entity metadata when @Entity hasn't run yet
+2. **MetadataStorage.registerEntity**: Fixed to update finalized entities instead of recreating builders
+3. **Jest Configuration**: Updated to ts-jest@29 modern API with `experimentalDecorators` enabled
+
+**Test Coverage:**
+- MetadataStorage API: 25 tests (registration, retrieval, validation, finalization)
+- Decorator functionality: 27 tests (all decorators + execution order scenarios)
+
+#### Testing Framework
+- Jest (not Vitest) with ts-jest transformer configured for legacy decorators
+- All decorators tested via direct function calls (not inline annotations due to Jest limitations)
+- Proper cleanup with `afterEach(() => MetadataStorage.getInstance().clear())`
+
+---
+
 ### ✅ Test Suite Rewrite: Tier 0 Foundation Packages Complete
 **Status**: 327 tests passing, architect-reviewed and approved
 

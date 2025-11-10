@@ -107,6 +107,13 @@ class MetadataStorage {
      * Finalization is deferred until metadata is consumed.
      */
     registerEntity(target, tableName) {
+        const key = this.normalizeTarget(target);
+        const finalized = this.entities.get(key);
+        if (finalized && tableName) {
+            // Entity is already finalized, just update tableName
+            finalized.tableName = tableName;
+            return;
+        }
         const builder = this.getOrCreateBuilder(target);
         if (tableName) {
             builder.setTableName(tableName);
