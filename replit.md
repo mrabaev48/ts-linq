@@ -4,6 +4,11 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core, p
 
 ## Recent Testing Progress - November 10, 2025
 
+### ✅ ORM Package Testing Complete (74 tests)
+**Files:** ChangeTracker.test.ts (45), DbSet.test.ts (29)
+**Coverage:** Entity state management, CRUD operations, change tracking, batch operations
+**Status:** Architect-approved ✅
+
 ### ✅ Query Package Testing Complete (85 tests)
 **Files:** QueryBuilder.test.ts (35), QueryModel.test.ts (22), CountCache.test.ts (28)
 **Coverage:** SQL generation, immutable query models, TTL/FIFO caching
@@ -19,7 +24,7 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core, p
 ### ✅ Tier 0 Foundation Complete (327 tests)
 **Status:** All passing ✅
 
-**Total Progress: 589 tests passing**
+**Total Progress: 663 tests passing**
 
 # User Preferences
 
