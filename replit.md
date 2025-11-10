@@ -53,23 +53,25 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core, p
 - Full metrics: totalRequests, hits, misses, evictions, invalidations
 **Status:** Architect-approved ✅
 
-### ✅ SQL Dialects (Partial) - 119 tests
+### ✅ SQL Dialects (Partial) - 177 tests
 **Files:**
 - dialect-sqlite: SQLiteDialect.test.ts (24), SQLiteDdlStrategy.test.ts (37) = 61 tests
 - dialect-postgres: PostgresDialect.test.ts (27), PostgresDdlStrategy.test.ts (31) = 58 tests
+- dialect-mysql: MysqlDialect.test.ts (27), MySqlDdlStrategy.test.ts (31) = 58 tests
 **Coverage:** 
 - SQLite: SELECT, DDL, type mapping, INTEGER AUTOINCREMENT, LIMIT -1 quirk
 - PostgreSQL: SELECT with $1..$n params, "quoted" identifiers, DDL with USING/NULLS/CONCURRENT, UUID/JSONB/TIMESTAMPTZ, CTE
-**Major Fix:** PostgreSQL `quoteIdentifier()` now properly doubles quotes and adds closing quote
+- MySQL: SELECT with `backtick` identifiers, LIMIT 18446744073709551615 quirk, FULLTEXT/SPATIAL indexes, INVISIBLE/VISIBLE
+**Major Fixes:** PostgreSQL `quoteIdentifier()` proper escaping, MySQL backtick identifier support
 **Status:** Architect-approved ✅
 
-**Tier 2 Partial Total: 302 tests passing (Utilities 60 + Cache Adapters 123 + Dialects 119)**
+**Tier 2 Partial Total: 360 tests passing (Utilities 60 + Cache Adapters 123 + Dialects 177)**
 
 **⏳ TIER 2 REMAINING:**
-- 2 SQL dialect packages (mysql, mssql)
+- 1 SQL dialect package (mssql)
 - 4 Database provider packages
 
-**Overall Total: 1039 tests in Tier 0+1+2 combined** (327 + 410 + 302)
+**Overall Total: 1097 tests in Tier 0+1+2 combined** (327 + 410 + 360)
 
 # User Preferences
 
