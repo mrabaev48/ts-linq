@@ -2,7 +2,26 @@
 
 This project is a TypeScript ORM framework, inspired by Entity Framework Core, providing a code-first approach to database management. It utilizes TypeScript legacy experimental decorators for entity definitions, offers LINQ-style query building, and supports multiple database providers (SQLite, PostgreSQL, MySQL, MSSQL). The framework emphasizes type safety, change tracking, and adheres to SOLID principles, aiming to be a robust and developer-friendly ORM solution for TypeScript applications.
 
-## Recent Testing Progress - November 10, 2025
+## Recent Testing Progress
+
+### 🎯 November 19, 2025: Critical Production Features Migration
+
+**MemoryFallback Re-Implementation** ✅  
+Discovered and fixed critical architectural gap: MemoryFallback class was missing despite graceful degradation API existing in codebase. Implemented production-ready solution:
+- **Location**: packages/query/src/fallbacks/MemoryFallback.ts
+- **Unit Tests**: 12 tests (caching, async suppliers, refresh intervals, offset/limit)
+- **Status**: Build passing, fully functional ✅
+
+**Critical Tests Migration from tests-old** (45 tests migrated)  
+Systematically migrated ~20 production features from legacy test files:
+- ✅ Circuit Breaker (9 tests): Force open/close, half-open concurrency, error thresholds
+- ✅ Specification Pattern (18 tests in ast/tests): Already covered, no migration needed
+- ✅ Prometheus Metrics (16 tests): SqlLogger, query analysis, /metrics endpoint
+- ✅ Property-Based Testing (8 tests): Keyset pagination correctness, predicate SQL/JS equivalence
+- ✅ MemoryFallback (12 tests): Core graceful degradation infrastructure
+- ⏳ Graceful Degradation (9 files, ~40 tests): Deferred for follow-up (hedged queries, fallback policies, throttling)
+
+**New Tests Total**: +45 critical production feature tests
 
 ### 🎉 TIER 1 COMPLETE - ALL PACKAGES APPROVED ✅
 
@@ -83,9 +102,23 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core, p
 **Major Refactoring:** All providers now use config objects instead of connection strings
 **Status:** All 84 tests passing ✅
 
-**🎉 TIER 2 COMPLETE! Total: 500 tests** (Utilities 60 + Cache Adapters 123 + Dialects 234 + Providers 83)
+**🎉 TIER 2 COMPLETE! Total: 501 tests** (Utilities 60 + Cache Adapters 123 + Dialects 234 + Providers 84)
 
-**Overall Total: 1237 tests in Tier 0+1+2 combined** (327 + 410 + 500)
+**Overall Total: 1238 tests in Tier 0+1+2 combined** (327 + 410 + 501)
+
+### 📊 Critical Features Migration Summary (November 19, 2025)
+
+**Migrated Tests**: 45 tests across 8 files  
+**Production Features**:
+- Circuit Breaker resilience (core/tests-new)
+- Prometheus observability (prometheus-sql-logger/tests-new, core/tests-new)
+- Property-based testing (pagination/tests-new, query/tests-new)
+- MemoryFallback infrastructure (query/tests-new)
+
+**Pending Migration**:
+- Graceful degradation test suite (9 files, ~40 tests) - requires ProviderStub migration
+
+**Total Test Count**: ~1,280+ tests (1238 in Tier 0-2 + 45 migrated critical features)
 
 # User Preferences
 
