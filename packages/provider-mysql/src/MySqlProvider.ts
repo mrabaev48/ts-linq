@@ -8,7 +8,8 @@ import type {
   SqlParameter,
   SqlDialect,
   ConnectionPoolOptions,
-  ConnectionHealthCheckOptions
+  ConnectionHealthCheckOptions,
+  MySqlConfig
 } from '@ts-linq/types';
 import {
   OptimisticConcurrencyError,
@@ -19,6 +20,7 @@ import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MySqlDdlStrategy } from '@ts-linq/dialect-mysql';
+import { buildMysqlConnectionString } from './buildConnectionString';
 
 /**
  * MySQL provider based on `mysql2/promise`.
@@ -57,16 +59,20 @@ interface MySqlPoolLike {
 export class MySqlProvider extends DatabaseProvider {
   private pool: MySqlPoolLike | null = null;
   private ddl = new MySqlDdlStrategy();
-  constructor(
-    connectionString: string,
-    logger?: SqlLogger,
-    middlewares?: OrmMiddleware[],
-    softDelete?: SoftDeleteOptions,
-    retryPolicy?: RetryPolicy,
-    poolOptions?: ConnectionPoolOptions,
-    healthCheck?: ConnectionHealthCheckOptions
-  ) {
-    super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
+  private readonly config: MySqlConfig;
+
+  constructor(config: MySqlConfig) {
+    const connectionString = buildMysqlConnectionString(config);
+    super(
+      connectionString,
+      config.logger,
+      config.middlewares,
+      config.softDelete,
+      config.retryPolicy,
+      config.poolOptions,
+      config.healthCheck
+    );
+    this.config = config;
     this.providerName = 'mysql';
   }
 
