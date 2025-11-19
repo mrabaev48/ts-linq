@@ -1,10 +1,10 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { AuditOptions, AuditContext, AuditMiddleware as IAuditMiddleware } from './types';
+import type { AuditOptions, AuditContext } from './types';
 
 /**
  * Middleware that handles audit trail operations
  */
-export class AuditMiddleware implements IAuditMiddleware {
+export class AuditMiddleware {
   private options: AuditOptions;
 
   constructor(options: AuditOptions = {}) {
