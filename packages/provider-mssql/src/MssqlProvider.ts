@@ -8,13 +8,15 @@ import type {
   SoftDeleteOptions,
   SqlDialect,
   ConnectionPoolOptions,
-  ConnectionHealthCheckOptions
+  ConnectionHealthCheckOptions,
+  MssqlConfig
 } from '@ts-linq/types';
 import { OptimisticConcurrencyError } from '@ts-linq/types';
 import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
+import { buildMssqlConnectionString } from './buildConnectionString';
 
 interface MssqlRequestLike {
   input(name: string, value: SqlParameter): MssqlRequestLike;
@@ -74,17 +76,21 @@ export class MssqlProvider extends DatabaseProvider {
   private pool: MssqlConnectionPoolLike | null = null;
   private tx: MssqlTransactionLike | null = null;
   private ddl = new MssqlDdlStrategy();
-  /** Create provider with MSSQL connection string. */
-  constructor(
-    connectionString: string,
-    logger?: SqlLogger,
-    middlewares?: OrmMiddleware[],
-    softDelete?: SoftDeleteOptions,
-    retryPolicy?: RetryPolicy,
-    poolOptions?: ConnectionPoolOptions,
-    healthCheck?: ConnectionHealthCheckOptions
-  ) {
-    super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
+  private readonly config: MssqlConfig;
+
+  /** Create provider with MSSQL configuration. */
+  constructor(config: MssqlConfig) {
+    const connectionString = buildMssqlConnectionString(config);
+    super(
+      connectionString,
+      config.logger,
+      config.middlewares,
+      config.softDelete,
+      config.retryPolicy,
+      config.poolOptions,
+      config.healthCheck
+    );
+    this.config = config;
     this.providerName = 'mssql';
   }
 

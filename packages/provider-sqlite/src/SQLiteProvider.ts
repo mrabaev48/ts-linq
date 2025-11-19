@@ -6,7 +6,8 @@ import type {
   OrmMiddleware,
   SoftDeleteOptions,
   SqlLogger,
-  SqlDialect
+  SqlDialect,
+  SQLiteConfig
 } from '@ts-linq/types';
 import {
   DatabaseError,
@@ -18,6 +19,7 @@ import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
 import { SQLiteDdlStrategy } from '@ts-linq/dialect-sqlite';
+import { buildSqliteConnectionString } from './buildConnectionString';
 
 /**
  * SQLite implementation of `DatabaseProvider` using the `sqlite3` package.
@@ -54,15 +56,18 @@ function safeRequireSqlite3(): Sqlite3Like {
 export class SQLiteProvider extends DatabaseProvider {
   private db: Sqlite3DatabaseLike | null = null;
   private ddl = new SQLiteDdlStrategy();
+  private readonly config: SQLiteConfig;
 
-  constructor(
-    connectionString: string,
-    logger?: SqlLogger,
-    middlewares?: OrmMiddleware[],
-    softDelete?: SoftDeleteOptions,
-    retryPolicy?: RetryPolicy
-  ) {
-    super(connectionString, logger, middlewares, softDelete, retryPolicy);
+  constructor(config: SQLiteConfig) {
+    const connectionString = buildSqliteConnectionString(config);
+    super(
+      connectionString,
+      config.logger,
+      config.middlewares,
+      config.softDelete,
+      config.retryPolicy
+    );
+    this.config = config;
     this.providerName = 'sqlite';
   }
 

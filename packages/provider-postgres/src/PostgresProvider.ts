@@ -8,7 +8,8 @@ import type {
   SqlLogger,
   SqlDialect,
   ConnectionPoolOptions,
-  ConnectionHealthCheckOptions
+  ConnectionHealthCheckOptions,
+  PostgresConfig
 } from '@ts-linq/types';
 import {
   OptimisticConcurrencyError,
@@ -20,6 +21,7 @@ import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { PostgresDdlStrategy } from '@ts-linq/dialect-postgres';
+import { buildPostgresConnectionString } from './buildConnectionString';
 
 // Lazy require to avoid hard dependency if not installed
 let Pg: {
@@ -61,6 +63,8 @@ interface PgPoolLike {
 export class PostgresProvider extends DatabaseProvider {
   private pool!: PgPoolLike;
   private ddl = new PostgresDdlStrategy();
+  private readonly config: PostgresConfig;
+
   /** Map a row object to a new entity instance using entity metadata and notify middleware. */
   private mapRowToEntity<T extends object>(row: unknown, entityClass: new () => T): T {
     const entity = new entityClass();
@@ -82,16 +86,18 @@ export class PostgresProvider extends DatabaseProvider {
     return entity;
   }
 
-  constructor(
-    connectionString: string,
-    logger?: SqlLogger,
-    middlewares?: OrmMiddleware[],
-    softDelete?: SoftDeleteOptions,
-    retryPolicy?: RetryPolicy,
-    poolOptions?: ConnectionPoolOptions,
-    healthCheck?: ConnectionHealthCheckOptions
-  ) {
-    super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
+  constructor(config: PostgresConfig) {
+    const connectionString = buildPostgresConnectionString(config);
+    super(
+      connectionString,
+      config.logger,
+      config.middlewares,
+      config.softDelete,
+      config.retryPolicy,
+      config.poolOptions,
+      config.healthCheck
+    );
+    this.config = config;
     this.providerName = 'postgresql';
   }
 
