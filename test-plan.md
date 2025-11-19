@@ -2635,9 +2635,9 @@ export function assertTransactionActive(provider: DatabaseProvider): void
 | Tier 1 | core, query, orm, metadata, migrations | 12 | 🔴 Critical |
 | Tier 2 | dialects (4 @ 2d), providers (4 @ 0.5d), cache (3 @ 0.5d), concurrency, pagination, telemetry (4 @ 0.75d) | 11 | 🟠 High |
 | Tier 3 | plugins (3 @ 2d), CLI, integration-nestjs, examples, composite-sql-logger | 7 | 🟡 Medium |
-| Integration | integration-tests (cross-package integration testing) | 5 | 🔴 Critical |
+| Integration | integration-tests (cross-package integration testing) | 7 | 🔴 Critical |
 | E2E | e2e-tests (infrastructure + 8 test suites) | 9 | 🔴 Critical |
-| **TOTAL** | **36 packages** | **48 days** | |
+| **TOTAL** | **36 packages** | **50 days** | |
 
 ### Detailed Breakdown
 
@@ -2679,11 +2679,12 @@ export function assertTransactionActive(provider: DatabaseProvider): void
 - examples: 1d
 - composite-sql-logger: (included in Tier 2 telemetry)
 
-**Integration Tests (5 days):**
-- Query + Provider Integration: 2d
-- ORM + Cache Integration: 1d
-- Migrations + Dialect Integration: 1d
-- Telemetry + Resilience Integration: 1d
+**Integration Tests (7 days):**
+- Query + Provider Integration: 2d (60 tests)
+- ORM + Cache Integration: 1.5d (45 tests)
+- Migrations + Dialect Integration: 2d (60 tests)
+- Telemetry + Resilience Integration: 1.5d (40 tests)
+- Advanced Features Integration: 1d (35 tests)
 
 **E2E (9 days):**
 - Infrastructure setup: 1d
@@ -2697,63 +2698,527 @@ export function assertTransactionActive(provider: DatabaseProvider): void
 
 ---
 
-## Integration Tests (5 days)
+## Integration Tests (7 days, ~200+ tests)
 
 ### `packages/integration-tests` - Cross-Package Integration Testing
 
-This new package focuses on integration testing across multiple ORM packages to ensure seamless interaction between different components of the framework. Unlike E2E tests that validate full workflows, integration tests verify specific interactions between 2-3 packages.
+This package provides comprehensive integration testing across multiple ORM packages to ensure seamless interaction between different components. Integration tests verify that 2-4 packages work together correctly, filling the gap between unit tests (single package) and E2E tests (full workflows).
 
 #### Package Structure
 
 ```
 packages/integration-tests/
 ├── src/
-│   └── index.ts (test utilities)
+│   ├── index.ts (test utilities)
+│   ├── test-data.ts (shared test fixtures)
+│   └── helpers/
+│       ├── provider-helpers.ts
+│       ├── cache-helpers.ts
+│       └── migration-helpers.ts
 ├── tests/
-│   ├── query-provider-integration.test.ts
-│   ├── orm-cache-integration.test.ts
-│   ├── migrations-dialect-integration.test.ts
-│   ├── telemetry-provider-integration.test.ts
-│   ├── cache-adapter-integration.test.ts
-│   └── resilience-integration.test.ts
+│   ├── 01-query-provider/
+│   │   ├── sqlite-integration.test.ts
+│   │   ├── postgres-integration.test.ts
+│   │   ├── mysql-integration.test.ts
+│   │   ├── mssql-integration.test.ts
+│   │   └── cross-provider.test.ts
+│   ├── 02-orm-cache/
+│   │   ├── dbset-sqlcache.test.ts
+│   │   ├── dbset-countcache.test.ts
+│   │   ├── changetracker-redis.test.ts
+│   │   ├── changetracker-memcached.test.ts
+│   │   └── batch-operations-cache.test.ts
+│   ├── 03-migrations-dialect/
+│   │   ├── sqlite-ddl.test.ts
+│   │   ├── postgres-ddl.test.ts
+│   │   ├── mysql-ddl.test.ts
+│   │   ├── mssql-ddl.test.ts
+│   │   └── migration-runner.test.ts
+│   ├── 04-telemetry-resilience/
+│   │   ├── prometheus-provider.test.ts
+│   │   ├── otel-provider.test.ts
+│   │   ├── circuit-breaker.test.ts
+│   │   ├── retry-policies.test.ts
+│   │   └── fallback-strategies.test.ts
+│   ├── 05-metadata-decorators/
+│   │   ├── entity-metadata.test.ts
+│   │   ├── relationship-metadata.test.ts
+│   │   └── validation-metadata.test.ts
+│   ├── 06-pagination-query/
+│   │   ├── offset-pagination.test.ts
+│   │   ├── keyset-pagination.test.ts
+│   │   └── cursor-pagination.test.ts
+│   └── 07-advanced-features/
+│       ├── soft-delete-global-filters.test.ts
+│       ├── multi-tenant-query.test.ts
+│       ├── audit-changetracker.test.ts
+│       └── middleware-pipeline.test.ts
 ├── package.json
 └── tsconfig.json
 ```
 
-#### Day 1-2: Query + Provider Integration (2 days)
+#### Day 1-2: Query + Provider Integration (2 days, 60 tests)
+
+##### SQLite-Specific Integration (15 tests)
 
 ```typescript
-// tests/query-provider-integration.test.ts
-describe('Query Builder + Database Provider Integration', () => {
-  describe.each(['sqlite', 'postgres', 'mysql', 'mssql'])('%s provider', (provider) => {
-    it('should generate correct SQL for complex WHERE with multiple conditions', async () => {
-      // Arrange: QueryBuilder with 5 AND/OR predicates
-      // Act: Execute via DatabaseProvider
-      // Assert: Correct SQL generated, results match expected
+// tests/01-query-provider/sqlite-integration.test.ts
+describe('SQLite Provider + QueryBuilder Integration', () => {
+  describe('Basic Query Generation', () => {
+    it('should generate SELECT with WHERE clause', async () => {
+      // Arrange: QueryBuilder.where(u => u.age > 18)
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL = "SELECT * FROM users WHERE age > ?" with params [18]
     })
 
-    it('should handle JOIN across 3 tables with provider-specific syntax', async () => {
-      // Arrange: QueryBuilder with LEFT JOIN + INNER JOIN
-      // Act: Execute via provider
-      // Assert: Correct JOIN syntax for each dialect
+    it('should generate SELECT with multiple WHERE conditions (AND)', async () => {
+      // Arrange: .where(u => u.age > 18 && u.active === true)
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL = "SELECT * FROM users WHERE age > ? AND active = ?" with params [18, 1]
     })
 
-    it('should apply pagination with provider-specific LIMIT/OFFSET', async () => {
-      // Arrange: QueryBuilder with skip(10).take(20)
-      // Act: Execute via provider
-      // Assert: SQLite uses LIMIT/OFFSET, MSSQL uses OFFSET FETCH
+    it('should generate SELECT with OR conditions', async () => {
+      // Arrange: .where(u => u.role === 'admin' || u.role === 'moderator')
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL with OR, params ['admin', 'moderator']
     })
 
-    it('should handle aggregations with GROUP BY across providers', async () => {
-      // Arrange: QueryBuilder with groupBy() and count()
-      // Act: Execute via provider
-      // Assert: Correct GROUP BY syntax and results
+    it('should handle LIKE operator for string matching', async () => {
+      // Arrange: .where(u => u.name.includes('John'))
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL = "SELECT * FROM users WHERE name LIKE ?" with params ['%John%']
     })
 
-    it('should execute parameterized queries with provider-specific placeholders', async () => {
-      // Arrange: QueryBuilder with dynamic values
-      // Act: Execute via provider
-      // Assert: PostgreSQL uses $1, MySQL uses ?, MSSQL uses @p1
+    it('should generate IN clause for array conditions', async () => {
+      // Arrange: .where(u => [1, 2, 3].includes(u.id))
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL = "SELECT * FROM users WHERE id IN (?, ?, ?)" with params [1, 2, 3]
+    })
+  })
+
+  describe('JOIN Operations', () => {
+    it('should generate INNER JOIN between two tables', async () => {
+      // Arrange: QueryBuilder.join('posts', 'users.id', 'posts.userId')
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL = "SELECT * FROM users INNER JOIN posts ON users.id = posts.userId"
+    })
+
+    it('should generate LEFT JOIN with WHERE clause', async () => {
+      // Arrange: .leftJoin('posts', 'users.id', 'posts.userId').where(u => u.active === true)
+      // Act: Execute via SQLiteProvider
+      // Assert: Correct LEFT JOIN SQL with WHERE
+    })
+
+    it('should handle multi-table JOIN (3+ tables)', async () => {
+      // Arrange: Join users -> posts -> comments
+      // Act: Execute via SQLiteProvider
+      // Assert: Correct chained JOIN syntax
+    })
+  })
+
+  describe('Pagination & Sorting', () => {
+    it('should generate LIMIT clause', async () => {
+      // Arrange: .take(10)
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL ends with "LIMIT 10"
+    })
+
+    it('should generate OFFSET + LIMIT', async () => {
+      // Arrange: .skip(20).take(10)
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL ends with "LIMIT 10 OFFSET 20"
+    })
+
+    it('should generate ORDER BY ASC', async () => {
+      // Arrange: .orderBy(u => u.name)
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL contains "ORDER BY name ASC"
+    })
+
+    it('should generate ORDER BY DESC', async () => {
+      // Arrange: .orderByDescending(u => u.createdAt)
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL contains "ORDER BY createdAt DESC"
+    })
+
+    it('should handle multiple ORDER BY columns', async () => {
+      // Arrange: .orderBy(u => u.lastName).thenBy(u => u.firstName)
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL = "ORDER BY lastName ASC, firstName ASC"
+    })
+  })
+
+  describe('Aggregations', () => {
+    it('should generate COUNT(*)', async () => {
+      // Arrange: QueryBuilder.count()
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL = "SELECT COUNT(*) FROM users", returns number
+    })
+
+    it('should generate SUM aggregation', async () => {
+      // Arrange: .sum(o => o.amount)
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL = "SELECT SUM(amount) FROM orders"
+    })
+
+    it('should generate AVG aggregation', async () => {
+      // Arrange: .average(o => o.price)
+      // Act: Execute via SQLiteProvider
+      // Assert: SQL = "SELECT AVG(price) FROM orders"
+    })
+  })
+})
+```
+
+##### PostgreSQL-Specific Integration (15 tests)
+
+```typescript
+// tests/01-query-provider/postgres-integration.test.ts
+describe('PostgreSQL Provider + QueryBuilder Integration', () => {
+  describe('Parameter Placeholders', () => {
+    it('should use $1, $2, $3 for parameterized queries', async () => {
+      // Arrange: .where(u => u.age > 18 && u.name === 'John')
+      // Act: Execute via PostgresProvider
+      // Assert: SQL = "SELECT * FROM users WHERE age > $1 AND name = $2" with params [18, 'John']
+    })
+
+    it('should handle nested parameter numbering in subqueries', async () => {
+      // Arrange: Complex subquery with parameters
+      // Act: Execute via PostgresProvider
+      // Assert: Correct $1..$n numbering throughout
+    })
+  })
+
+  describe('PostgreSQL-Specific Features', () => {
+    it('should generate query with JSONB column access', async () => {
+      // Arrange: .where(u => u.metadata['role'] === 'admin')
+      // Act: Execute via PostgresProvider
+      // Assert: SQL uses -> or ->> operator for JSONB
+    })
+
+    it('should handle UUID type correctly', async () => {
+      // Arrange: Entity with UUID primary key
+      // Act: Insert via PostgresProvider
+      // Assert: UUID generated and stored correctly
+    })
+
+    it('should support ARRAY types', async () => {
+      // Arrange: Entity with ARRAY column
+      // Act: Insert/query via PostgresProvider
+      // Assert: Array serialized/deserialized correctly
+    })
+
+    it('should use RETURNING clause for INSERT', async () => {
+      // Arrange: Insert entity without explicit ID
+      // Act: Execute via PostgresProvider
+      // Assert: SQL = "INSERT INTO users (...) VALUES ($1, $2) RETURNING *"
+    })
+
+    it('should use "double quotes" for identifier escaping', async () => {
+      // Arrange: Table/column with reserved keyword name
+      // Act: Generate SQL via PostgresProvider
+      // Assert: SQL = 'SELECT "user"."order" FROM "user"'
+    })
+  })
+
+  describe('CTE (Common Table Expressions)', () => {
+    it('should generate WITH clause for CTE', async () => {
+      // Arrange: QueryBuilder with CTE
+      // Act: Execute via PostgresProvider
+      // Assert: SQL = "WITH cte AS (...) SELECT * FROM cte"
+    })
+
+    it('should handle recursive CTE', async () => {
+      // Arrange: Recursive query for hierarchical data
+      // Act: Execute via PostgresProvider
+      // Assert: Correct WITH RECURSIVE syntax
+    })
+  })
+
+  describe('Full-Text Search', () => {
+    it('should generate ts_query for full-text search', async () => {
+      // Arrange: .search('typescript ORM')
+      // Act: Execute via PostgresProvider
+      // Assert: SQL uses to_tsquery/to_tsvector
+    })
+  })
+
+  describe('Transactions', () => {
+    it('should execute multiple queries in single transaction', async () => {
+      // Arrange: Begin transaction, insert 3 entities
+      // Act: Commit via PostgresProvider
+      // Assert: All inserts succeed, transaction committed
+    })
+
+    it('should rollback on error', async () => {
+      // Arrange: Begin transaction, insert valid + invalid entity
+      // Act: Rollback via PostgresProvider
+      // Assert: No data persisted
+    })
+
+    it('should support savepoints (nested transactions)', async () => {
+      // Arrange: Transaction with savepoint
+      // Act: Rollback to savepoint
+      // Assert: Changes after savepoint rolled back, before preserved
+    })
+  })
+})
+```
+
+##### MySQL-Specific Integration (15 tests)
+
+```typescript
+// tests/01-query-provider/mysql-integration.test.ts
+describe('MySQL Provider + QueryBuilder Integration', () => {
+  describe('Identifier Escaping', () => {
+    it('should use backticks for identifier escaping', async () => {
+      // Arrange: Table/column with reserved keyword
+      // Act: Generate SQL via MySqlProvider
+      // Assert: SQL = "SELECT `user`.`order` FROM `user`"
+    })
+
+    it('should escape backticks in identifiers', async () => {
+      // Arrange: Column name with backtick character
+      // Act: Generate SQL
+      // Assert: Backtick doubled: ``
+    })
+  })
+
+  describe('AUTO_INCREMENT Handling', () => {
+    it('should insert with AUTO_INCREMENT and return ID', async () => {
+      // Arrange: Entity without ID
+      // Act: Insert via MySqlProvider
+      // Assert: ID returned via LAST_INSERT_ID()
+    })
+
+    it('should handle batch insert with AUTO_INCREMENT', async () => {
+      // Arrange: 10 entities without IDs
+      // Act: Batch insert via MySqlProvider
+      // Assert: All IDs assigned sequentially
+    })
+  })
+
+  describe('MySQL-Specific Types', () => {
+    it('should handle TINYINT for boolean', async () => {
+      // Arrange: Entity with boolean field
+      // Act: Insert true/false via MySqlProvider
+      // Assert: Stored as 1/0 in database
+    })
+
+    it('should handle DATETIME vs TIMESTAMP', async () => {
+      // Arrange: Entity with Date field
+      // Act: Insert via MySqlProvider
+      // Assert: Correct DATETIME format used
+    })
+
+    it('should handle TEXT vs VARCHAR correctly', async () => {
+      // Arrange: Entity with string fields of varying length
+      // Act: Create table via MySqlProvider
+      // Assert: Short strings use VARCHAR, long use TEXT
+    })
+  })
+
+  describe('Pagination Quirks', () => {
+    it('should use very large number for LIMIT without OFFSET', async () => {
+      // Arrange: .skip(0) (no limit)
+      // Act: Generate SQL via MySqlProvider
+      // Assert: LIMIT 18446744073709551615 (MySQL quirk)
+    })
+
+    it('should use proper LIMIT OFFSET syntax', async () => {
+      // Arrange: .skip(10).take(5)
+      // Act: Generate SQL via MySqlProvider
+      // Assert: SQL = "... LIMIT 5 OFFSET 10"
+    })
+  })
+
+  describe('Index Types', () => {
+    it('should support FULLTEXT indexes', async () => {
+      // Arrange: Migration creating FULLTEXT index
+      // Act: Generate DDL via MySQL dialect
+      // Assert: SQL = "CREATE FULLTEXT INDEX ..."
+    })
+
+    it('should support SPATIAL indexes', async () => {
+      // Arrange: Migration creating SPATIAL index on geometry column
+      // Act: Generate DDL
+      // Assert: SQL = "CREATE SPATIAL INDEX ..."
+    })
+  })
+
+  describe('Transactions & Locking', () => {
+    it('should support SELECT FOR UPDATE locking', async () => {
+      // Arrange: Query with FOR UPDATE
+      // Act: Execute in transaction via MySqlProvider
+      // Assert: Row locked until commit
+    })
+
+    it('should handle deadlock detection', async () => {
+      // Arrange: Two transactions with conflicting locks
+      // Act: Execute concurrent queries
+      // Assert: Deadlock detected and reported
+    })
+  })
+})
+```
+
+##### MSSQL-Specific Integration (15 tests)
+
+```typescript
+// tests/01-query-provider/mssql-integration.test.ts
+describe('MSSQL Provider + QueryBuilder Integration', () => {
+  describe('Parameter Naming', () => {
+    it('should use @p1, @p2, @p3 for parameters', async () => {
+      // Arrange: .where(u => u.age > 18 && u.name === 'John')
+      // Act: Execute via MssqlProvider
+      // Assert: SQL = "SELECT * FROM users WHERE age > @p1 AND name = @p2"
+    })
+
+    it('should handle named parameters correctly', async () => {
+      // Arrange: Complex query with many parameters
+      // Act: Execute via MssqlProvider
+      // Assert: All @p parameters numbered correctly
+    })
+  })
+
+  describe('Identifier Escaping', () => {
+    it('should use [square brackets] for identifiers', async () => {
+      // Arrange: Table/column with reserved keyword
+      // Act: Generate SQL via MssqlProvider
+      // Assert: SQL = "SELECT [user].[order] FROM [user]"
+    })
+
+    it('should escape closing brackets in identifiers', async () => {
+      // Arrange: Column name with ] character
+      // Act: Generate SQL
+      // Assert: Bracket doubled: ]]
+    })
+  })
+
+  describe('IDENTITY Columns', () => {
+    it('should insert with IDENTITY and use SCOPE_IDENTITY()', async () => {
+      // Arrange: Entity without ID
+      // Act: Insert via MssqlProvider
+      // Assert: ID returned via SCOPE_IDENTITY()
+    })
+
+    it('should handle IDENTITY INSERT ON/OFF', async () => {
+      // Arrange: Insert with explicit ID value
+      // Act: Execute via MssqlProvider
+      // Assert: SET IDENTITY_INSERT table ON/OFF
+    })
+  })
+
+  describe('TOP vs OFFSET FETCH', () => {
+    it('should use TOP for simple limit', async () => {
+      // Arrange: .take(10)
+      // Act: Generate SQL via MssqlProvider
+      // Assert: SQL = "SELECT TOP 10 * FROM users"
+    })
+
+    it('should use OFFSET FETCH for skip + take', async () => {
+      // Arrange: .skip(20).take(10)
+      // Act: Generate SQL via MssqlProvider
+      // Assert: SQL = "... OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY"
+    })
+
+    it('should require ORDER BY with OFFSET FETCH', async () => {
+      // Arrange: .skip(10).take(5) without orderBy
+      // Act: Generate SQL via MssqlProvider
+      // Assert: Default ORDER BY added (e.g., ORDER BY (SELECT NULL))
+    })
+  })
+
+  describe('MSSQL-Specific Types', () => {
+    it('should handle NVARCHAR for Unicode strings', async () => {
+      // Arrange: Entity with Unicode string
+      // Act: Insert via MssqlProvider
+      // Assert: Uses NVARCHAR, handles Unicode correctly
+    })
+
+    it('should handle uniqueidentifier (GUID)', async () => {
+      // Arrange: Entity with GUID primary key
+      // Act: Insert via MssqlProvider
+      // Assert: NEWID() used for generation
+    })
+
+    it('should handle XML column type', async () => {
+      // Arrange: Entity with XML data
+      // Act: Insert/query via MssqlProvider
+      // Assert: XML serialized/parsed correctly
+    })
+  })
+
+  describe('Stored Procedures', () => {
+    it('should execute stored procedure via EXEC', async () => {
+      // Arrange: Provider.executeStoredProc('sp_GetUsers', params)
+      // Act: Execute via MssqlProvider
+      // Assert: SQL = "EXEC sp_GetUsers @p1, @p2"
+    })
+
+    it('should handle OUTPUT parameters from stored proc', async () => {
+      // Arrange: Stored proc with OUTPUT parameter
+      // Act: Execute via MssqlProvider
+      // Assert: OUTPUT value returned correctly
+    })
+  })
+})
+```
+
+##### Cross-Provider Compatibility Tests (8 tests)
+
+```typescript
+// tests/01-query-provider/cross-provider.test.ts
+describe('Cross-Provider Compatibility', () => {
+  const providers = ['sqlite', 'postgres', 'mysql', 'mssql'];
+
+  describe.each(providers)('%s provider', (providerName) => {
+    it('should execute same query across all providers with consistent results', async () => {
+      // Arrange: Identical data in all 4 databases
+      // Act: Execute .where(u => u.age > 18).orderBy(u => u.name) on all providers
+      // Assert: All return same result set
+    })
+
+    it('should handle NULL values consistently', async () => {
+      // Arrange: Entity with NULL column
+      // Act: Query NULL values
+      // Assert: All providers handle NULL same way
+    })
+
+    it('should support DISTINCT across providers', async () => {
+      // Arrange: .distinct().select(u => u.role)
+      // Act: Execute on all providers
+      // Assert: Duplicate roles removed
+    })
+
+    it('should handle UNION across providers', async () => {
+      // Arrange: Two queries with UNION
+      // Act: Execute on all providers
+      // Assert: Combined results without duplicates
+    })
+
+    it('should support subqueries in WHERE clause', async () => {
+      // Arrange: .where(u => u.id IN (subquery))
+      // Act: Execute on all providers
+      // Assert: Correct results from subquery
+    })
+
+    it('should handle CASE expressions', async () => {
+      // Arrange: SELECT with CASE WHEN
+      // Act: Execute on all providers
+      // Assert: Conditional logic applied correctly
+    })
+
+    it('should support EXISTS clause', async () => {
+      // Arrange: .where(u => EXISTS(subquery))
+      // Act: Execute on all providers
+      // Assert: Correct filtering based on EXISTS
+    })
+
+    it('should handle date/time functions consistently', async () => {
+      // Arrange: Query with NOW(), date arithmetic
+      // Act: Execute on all providers
+      // Assert: Date functions work (with provider-specific syntax)
     })
   })
 })
@@ -2931,14 +3396,42 @@ describe('Resilience Features Integration', () => {
 4. **Resilience Verification**: Test circuit breaker, retry, and fallback interactions
 5. **Telemetry Coverage**: Ensure observability features capture all operations
 
-#### Expected Test Count
+#### Expected Test Count Summary
 
-- Query + Provider: ~40 tests (10 per dialect × 4 dialects)
-- ORM + Cache: ~20 tests
-- Migrations + Dialect: ~25 tests (5 per dialect × 4 + shared)
-- Telemetry + Resilience: ~15 tests
+- **Day 1-2: Query + Provider**: 60 tests
+  - SQLite: 15 tests
+  - PostgreSQL: 15 tests (with JSONB, UUID, CTE, full-text search)
+  - MySQL: 15 tests (with FULLTEXT, SPATIAL indexes)
+  - MSSQL: 15 tests (with IDENTITY, stored procedures)
+  - Cross-Provider Compatibility: 8 tests
 
-**Total: ~100 integration tests**
+- **Day 3: ORM + Cache**: 45 tests
+  - DbSet + SqlCache: 12 tests
+  - DbSet + CountCache: 8 tests
+  - ChangeTracker + Redis: 12 tests
+  - ChangeTracker + Memcached: 8 tests
+  - Batch Operations + Cache: 5 tests
+
+- **Day 4-5: Migrations + Dialect**: 60 tests
+  - SQLite DDL: 15 tests (table recreation workarounds)
+  - PostgreSQL DDL: 15 tests (SERIAL, RETURNING, advanced types)
+  - MySQL DDL: 15 tests (AUTO_INCREMENT, ENGINE, index types)
+  - MSSQL DDL: 15 tests (IDENTITY, TOP/OFFSET FETCH, OUTPUT)
+
+- **Day 6: Telemetry + Resilience**: 40 tests
+  - Prometheus + Provider: 10 tests
+  - OpenTelemetry + Provider: 8 tests
+  - Circuit Breaker Integration: 10 tests
+  - Retry Policy Integration: 7 tests
+  - Fallback Strategy Integration: 5 tests
+
+- **Day 7: Advanced Features**: 35 tests
+  - Metadata + Decorators: 12 tests
+  - Pagination + Query: 8 tests
+  - Soft Delete + Global Filters: 8 tests
+  - Multi-Tenant + Query: 7 tests
+
+**Total: ~240 integration tests across 7 days**
 
 ---
 
@@ -3096,3 +3589,447 @@ describe('Resilience Features Integration', () => {
 **Total Estimated Effort:** 43 dev-days (revised from 38)  
 **Total Packages:** 35  
 **Total Expected Tests:** ~800-1000 test cases
+# Integration Tests - Detailed Plan (Days 3-7)
+
+## Day 3: ORM + Cache Integration (1.5 days, 45 tests)
+
+### DbSet + SqlCache Integration (12 tests)
+
+```typescript
+// tests/02-orm-cache/dbset-sqlcache.test.ts
+describe('DbSet + SqlCache Integration', () => {
+  it('should cache SELECT query results', async () => {
+    // Arrange: Execute users.where(u => u.age > 18).toArray()
+    // Act: Execute same query again
+    // Assert: Second query hits SqlCache, no DB round-trip
+  })
+
+  it('should use cache key based on SQL + parameters', async () => {
+    // Arrange: Execute query with params [18]
+    // Act: Execute query with params [20]
+    // Assert: Different cache keys, both queries execute
+  })
+
+  it('should invalidate cache on INSERT', async () => {
+    // Arrange: Cached SELECT * FROM users
+    // Act: users.add(newUser); saveChanges()
+    // Assert: Cache invalidated, next SELECT hits DB
+  })
+
+  it('should invalidate cache on UPDATE', async () => {
+    // Arrange: Cached query result
+    // Act: Update entity via ChangeTracker.saveChanges()
+    // Assert: Cache invalidated for affected table
+  })
+
+  it('should invalidate cache on DELETE', async () => {
+    // Arrange: Cached query
+    // Act: users.remove(entity); saveChanges()
+    // Assert: Cache invalidated
+  })
+
+  it('should respect TTL (time-to-live) expiration', async () => {
+    // Arrange: Cache with 1s TTL, execute query
+    // Act: Wait 1.5s, execute query again
+    // Assert: Cache expired, DB query executed
+  })
+
+  it('should support manual cache warming', async () => {
+    // Arrange: Pre-generate SQL and cache entries
+    // Act: context.warmCache([commonQueries])
+    // Assert: Subsequent queries hit cache immediately
+  })
+
+  it('should handle cache FIFO eviction when full', async () => {
+    // Arrange: Cache with max size 10, add 11 entries
+    // Act: Add 11th entry
+    // Assert: First entry evicted
+  })
+
+  it('should cache count() results separately', async () => {
+    // Arrange: Execute users.count()
+    // Act: Execute users.count() again
+    // Assert: Count cached, no DB query
+  })
+
+  it('should cache first() queries', async () => {
+    // Arrange: Execute users.where(...).first()
+    // Act: Execute same query again
+    // Assert: Result cached
+  })
+
+  it('should NOT cache queries with skip/take (pagination)', async () => {
+    // Arrange: users.skip(10).take(20)
+    // Act: Execute twice
+    // Assert: Cache bypassed for paginated queries (or cached separately)
+  })
+
+  it('should clear entire cache on demand', async () => {
+    // Arrange: Multiple cached queries
+    // Act: context.clearCache()
+    // Assert: All cache entries removed
+  })
+})
+```
+
+### DbSet + CountCache Integration (8 tests)
+
+```typescript
+// tests/02-orm-cache/dbset-countcache.test.ts
+describe('DbSet + CountCache Integration', () => {
+  it('should cache count() with predicate', async () => {
+    // Arrange: users.where(u => u.active === true).count()
+    // Act: Execute same count() again
+    // Assert: CountCache hit, no DB query
+  })
+
+  it('should use different cache keys for different predicates', async () => {
+    // Arrange: count(u => u.age > 18), count(u => u.age > 21)
+    // Act: Execute both
+    // Assert: Separate cache entries
+  })
+
+  it('should invalidate count cache on entity insert', async () => {
+    // Arrange: Cached count()
+    // Act: Insert new entity
+    // Assert: Count cache invalidated
+  })
+
+  it('should invalidate count cache on entity delete', async () => {
+    // Arrange: Cached count()
+    // Act: Delete entity
+    // Assert: Count cache invalidated
+  })
+
+  it('should NOT invalidate count cache on entity UPDATE (count unchanged)', async () => {
+    // Arrange: Cached count()
+    // Act: Update entity (no new rows)
+    // Assert: Count cache still valid
+  })
+
+  it('should support TTL expiration for count cache', async () => {
+    // Arrange: CountCache with 2s TTL
+    // Act: Wait 2.5s, count() again
+    // Assert: Cache expired, fresh count
+  })
+
+  it('should evict LRU entries when count cache full', async () => {
+    // Arrange: CountCache size=5, add 6 entries
+    // Act: Add 6th entry
+    // Assert: Least recently used entry evicted
+  })
+
+  it('should clear count cache independently', async () => {
+    // Arrange: Both SqlCache and CountCache populated
+    // Act: context.clearCountCache()
+    // Assert: Only CountCache cleared, SqlCache intact
+  })
+})
+```
+
+### ChangeTracker + Redis Integration (12 tests)
+
+```typescript
+// tests/02-orm-cache/changetracker-redis.test.ts
+describe('ChangeTracker + Redis Cache Integration', () => {
+  it('should store entity in Redis L2 cache on load', async () => {
+    // Arrange: users.find(1)
+    // Act: Check Redis
+    // Assert: Entity stored with key "users:1", serialized as JSON
+  })
+
+  it('should retrieve entity from Redis on subsequent loads', async () => {
+    // Arrange: Load user#1, stored in Redis
+    // Act: Load user#1 again
+    // Assert: Retrieved from Redis, no DB query
+  })
+
+  it('should invalidate Redis entry on entity UPDATE', async () => {
+    // Arrange: Entity cached in Redis
+    // Act: Update entity, saveChanges()
+    // Assert: Redis cache invalidated for that entity
+  })
+
+  it('should invalidate Redis entry on entity DELETE', async () => {
+    // Arrange: Entity cached in Redis
+    // Act: Delete entity, saveChanges()
+    // Assert: Redis entry removed
+  })
+
+  it('should serialize complex entities (with nested objects)', async () => {
+    // Arrange: Entity with nested address object
+    // Act: Store in Redis, retrieve
+    // Assert: Nested objects preserved correctly
+  })
+
+  it('should serialize Date fields correctly', async () => {
+    // Arrange: Entity with createdAt: Date
+    // Act: Store/retrieve from Redis
+    // Assert: Date deserialized as Date object, not string
+  })
+
+  it('should handle Redis connection failure gracefully', async () => {
+    // Arrange: Stop Redis server
+    // Act: users.find(1)
+    // Assert: Falls back to DB, no error thrown
+  })
+
+  it('should support TTL for entity cache in Redis', async () => {
+    // Arrange: Configure Redis cache with 5s TTL
+    // Act: Wait 6s, load entity
+    // Assert: Expired, loaded from DB
+  })
+
+  it('should use namespace prefix for Redis keys', async () => {
+    // Arrange: Configure cache with prefix "myapp:"
+    // Act: Store entity
+    // Assert: Redis key = "myapp:users:1"
+  })
+
+  it('should handle composite primary keys in Redis', async () => {
+    // Arrange: Entity with composite key (tenantId, userId)
+    // Act: Store in Redis
+    // Assert: Key = "users:tenant1:user1"
+  })
+
+  it('should evict entries from Redis when max size reached', async () => {
+    // Arrange: Redis cache with max 100 entries
+    // Act: Store 101 entities
+    // Assert: Oldest entry evicted (LRU)
+  })
+
+  it('should clear all entities from Redis cache', async () => {
+    // Arrange: 50 entities cached in Redis
+    // Act: context.clearRedisCache()
+    // Assert: All Redis entries removed
+  })
+})
+```
+
+### ChangeTracker + Memcached Integration (8 tests)
+
+```typescript
+// tests/02-orm-cache/changetracker-memcached.test.ts
+describe('ChangeTracker + Memcached Integration', () => {
+  it('should cache entities in Memcached', async () => {
+    // Arrange: Load entity
+    // Act: Check Memcached
+    // Assert: Entity stored with serialized value
+  })
+
+  it('should retrieve entities from Memcached', async () => {
+    // Arrange: Entity in Memcached
+    // Act: Load entity
+    // Assert: Retrieved from Memcached, no DB hit
+  })
+
+  it('should handle Memcached serialization errors gracefully', async () => {
+    // Arrange: Entity with circular reference (un-serializable)
+    // Act: Attempt to cache
+    // Assert: Fallback to DB, error logged
+  })
+
+  it('should support TTL in Memcached', async () => {
+    // Arrange: Cache with 3s TTL
+    // Act: Wait 4s, load entity
+    // Assert: Expired, loaded from DB
+  })
+
+  it('should handle Memcached server unavailable', async () => {
+    // Arrange: Stop Memcached
+    // Act: Load entity
+    // Assert: Graceful fallback to DB
+  })
+
+  it('should use consistent hashing for Memcached keys', async () => {
+    // Arrange: Multiple Memcached servers
+    // Act: Store entities
+    // Assert: Entities distributed across servers via hashing
+  })
+
+  it('should retry Memcached transient failures', async () => {
+    // Arrange: Memcached with intermittent failures
+    // Act: Load entity (retry policy)
+    // Assert: Retried 3 times, eventually succeeds or falls back
+  })
+
+  it('should clear Memcached cache', async () => {
+    // Arrange: Entities cached
+    // Act: context.clearMemcachedCache()
+    // Assert: All entries removed
+  })
+})
+```
+
+### Batch Operations + Cache Integration (5 tests)
+
+```typescript
+// tests/02-orm-cache/batch-operations-cache.test.ts
+describe('Batch Operations + Cache Integration', () => {
+  it('should invalidate cache after bulk insert', async () => {
+    // Arrange: Cached SELECT query
+    // Act: BatchOperations.bulkInsert([100 entities])
+    // Assert: Cache invalidated
+  })
+
+  it('should invalidate cache after bulk update', async () => {
+    // Arrange: Cached query
+    // Act: BatchOperations.bulkUpdate([entities])
+    // Assert: Cache invalidated
+  })
+
+  it('should invalidate cache after bulk delete', async () => {
+    // Arrange: Cached query
+    // Act: BatchOperations.bulkDelete([ids])
+    // Assert: Cache invalidated
+  })
+
+  it('should NOT cache batch operation results', async () => {
+    // Arrange: Execute bulk insert
+    // Act: Check cache
+    // Assert: Bulk operations bypass cache
+  })
+
+  it('should clear cache across all adapters after batch', async () => {
+    // Arrange: SqlCache, CountCache, Redis all populated
+    // Act: Bulk insert
+    // Assert: All caches invalidated
+  })
+})
+```
+
+---
+
+## Day 4-5: Migrations + Dialect Integration (2 days, 60 tests)
+
+### SQLite DDL Generation (15 tests)
+
+```typescript
+// tests/03-migrations-dialect/sqlite-ddl.test.ts
+describe('SQLite Migrations + Dialect Integration', () => {
+  describe('CREATE TABLE', () => {
+    it('should generate CREATE TABLE with INTEGER PRIMARY KEY AUTOINCREMENT', async () => {
+      // Arrange: Migration creating users table
+      // Act: Generate DDL via SQLite dialect
+      // Assert: SQL = "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, ...)"
+    })
+
+    it('should generate column with NOT NULL constraint', async () => {
+      // Arrange: Column email NOT NULL
+      // Act: Generate DDL
+      // Assert: SQL contains "email TEXT NOT NULL"
+    })
+
+    it('should generate UNIQUE constraint', async () => {
+      // Arrange: Column email UNIQUE
+      // Act: Generate DDL
+      // Assert: SQL = "email TEXT UNIQUE" or CONSTRAINT syntax
+    })
+
+    it('should generate DEFAULT value', async () => {
+      // Arrange: Column active BOOLEAN DEFAULT 1
+      // Act: Generate DDL
+      // Assert: SQL = "active INTEGER DEFAULT 1"
+    })
+
+    it('should generate CHECK constraint', async () => {
+      // Arrange: Column age with CHECK(age >= 18)
+      // Act: Generate DDL
+      // Assert: SQL = "CHECK (age >= 18)"
+    })
+  })
+
+  describe('ALTER TABLE', () => {
+    it('should generate ADD COLUMN', async () => {
+      // Arrange: Add column phone to users
+      // Act: Generate DDL
+      // Assert: SQL = "ALTER TABLE users ADD COLUMN phone TEXT"
+    })
+
+    it('should handle ADD COLUMN with DEFAULT (workaround)', async () => {
+      // Arrange: Add column with DEFAULT value
+      // Act: Generate DDL
+      // Assert: SQLite workaround (recreate table if needed)
+    })
+
+    it('should generate DROP COLUMN via table recreation', async () => {
+      // Arrange: Drop column email
+      // Act: Generate DDL
+      // Assert: CREATE new table, copy data, drop old, rename
+    })
+
+    it('should NOT support ALTER COLUMN TYPE directly', async () => {
+      // Arrange: Change column type VARCHAR -> TEXT
+      // Act: Generate DDL
+      // Assert: Table recreation strategy used
+    })
+
+    it('should support RENAME TABLE', async () => {
+      // Arrange: Rename users -> customers
+      // Act: Generate DDL
+      // Assert: SQL = "ALTER TABLE users RENAME TO customers"
+    })
+  })
+
+  describe('FOREIGN KEYS', () => {
+    it('should generate FOREIGN KEY constraint', async () => {
+      // Arrange: posts.userId references users.id
+      // Act: Generate DDL
+      // Assert: SQL = "FOREIGN KEY (userId) REFERENCES users(id)"
+    })
+
+    it('should enable PRAGMA foreign_keys for enforcement', async () => {
+      // Arrange: Migration with FK
+      // Act: Execute via SQLiteProvider
+      // Assert: PRAGMA foreign_keys=ON executed first
+    })
+
+    it('should handle ON DELETE CASCADE', async () => {
+      // Arrange: FK with ON DELETE CASCADE
+      // Act: Generate DDL
+      // Assert: SQL contains "ON DELETE CASCADE"
+    })
+
+    it('should handle ON UPDATE SET NULL', async () => {
+      // Arrange: FK with ON UPDATE SET NULL
+      // Act: Generate DDL
+      // Assert: SQL contains "ON UPDATE SET NULL"
+    })
+  })
+
+  describe('INDEXES', () => {
+    it('should generate CREATE INDEX', async () => {
+      // Arrange: Index on email column
+      // Act: Generate DDL
+      // Assert: SQL = "CREATE INDEX idx_users_email ON users(email)"
+    })
+  })
+})
+```
+
+### PostgreSQL DDL Generation (15 tests) - Similar structure with Postgres-specific features
+
+### MySQL DDL Generation (15 tests) - Similar structure with MySQL-specific features
+
+### MSSQL DDL Generation (15 tests) - Similar structure with MSSQL-specific features
+
+---
+
+## Day 6: Telemetry + Resilience Integration (1.5 days, 40 tests)
+
+### Prometheus + Provider Integration (10 tests)
+### OpenTelemetry + Provider Integration (8 tests)
+### Circuit Breaker Integration (10 tests)
+### Retry Policy Integration (7 tests)
+### Fallback Strategy Integration (5 tests)
+
+---
+
+## Day 7: Advanced Features Integration (1.5 days, 35 tests)
+
+### Metadata + Decorators (12 tests)
+### Pagination + Query (8 tests)
+### Soft Delete + Global Filters (8 tests)
+### Multi-Tenant + Query (7 tests)
+
+**TOTAL: ~245 integration tests across 7 days**
