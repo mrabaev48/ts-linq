@@ -24,6 +24,7 @@ export interface DbContextOptions {
     softDelete?: import('@ts-linq/types').SoftDeleteOptions;
     audit?: import('@ts-linq/types').AuditOptions;
     globalFilters?: import('@ts-linq/types').GlobalFilter[];
+    middlewares?: import('@ts-linq/types').OrmMiddleware[];
     validation?: {
         translate?: (key: string, params?: Record<string, unknown>) => string;
     };
