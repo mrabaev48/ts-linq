@@ -178,11 +178,26 @@ export interface SqlDialect {
   quoteIdentifier(identifier: string): string;
 }
 
+// Middleware context types
+export interface EntityChangeContext {
+  entity: Record<string, unknown>;
+  entityClass: Function;
+  state: 'added' | 'modified' | 'deleted';
+  originalValues?: Record<string, unknown>;
+}
+
 // Middleware types
 export interface OrmMiddleware {
+  // SQL execution hooks
   beforeExecute?(info: { sql: string; params: readonly SqlParameter[]; traceId?: string }): Promise<void> | void;
   afterExecute?(info: { sql: string; params: readonly SqlParameter[]; durationMs: number; traceId?: string; rows?: number }): Promise<void> | void;
   entityMaterialized?<T>(entity: T | { entity: object; metadata?: any }): void;
+  
+  // Entity lifecycle hooks
+  beforeSave?(context: EntityChangeContext): Promise<void> | void;
+  afterSave?(context: EntityChangeContext): Promise<void> | void;
+  beforeDelete?(context: EntityChangeContext): Promise<boolean | void> | boolean | void; // return true to handle delete (soft-delete)
+  afterDelete?(context: EntityChangeContext): Promise<void> | void;
 }
 
 // Retry policy types

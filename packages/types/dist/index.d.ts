@@ -148,6 +148,12 @@ export interface SqlDialect {
     };
     quoteIdentifier(identifier: string): string;
 }
+export interface EntityChangeContext {
+    entity: Record<string, unknown>;
+    entityClass: Function;
+    state: 'added' | 'modified' | 'deleted';
+    originalValues?: Record<string, unknown>;
+}
 export interface OrmMiddleware {
     beforeExecute?(info: {
         sql: string;
@@ -165,6 +171,10 @@ export interface OrmMiddleware {
         entity: object;
         metadata?: any;
     }): void;
+    beforeSave?(context: EntityChangeContext): Promise<void> | void;
+    afterSave?(context: EntityChangeContext): Promise<void> | void;
+    beforeDelete?(context: EntityChangeContext): Promise<boolean | void> | boolean | void;
+    afterDelete?(context: EntityChangeContext): Promise<void> | void;
 }
 export interface RetryPolicy {
     shouldRetry(error: unknown, attempt: number, inTransaction?: boolean): boolean;
