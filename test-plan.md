@@ -144,10 +144,6 @@ This section provides an authoritative enumeration of all 35 packages with their
    - ⏳ provider-postgres - Pending
    - ⏳ provider-mysql - Pending
    - ⏳ provider-mssql - Pending
-   - ✅ orm (74 tests) - ChangeTracker, DbSet
-   - ✅ migrations (74 tests) - MigrationBuilder, MigrationRunner, DiffBasedMigration
-⏳ **Tier 2** (13 packages): **60 tests complete** - cache (28) ✅, pagination (7) ✅, concurrency (25) ✅ - **IN PROGRESS**
-   - Remaining: cache-redis, cache-memcached, 4 dialects, 4 providers
 ⏸️ **Tier 3** (10 packages): 3 plugins, cli, integration-nestjs, examples, 4 telemetry/logging packages  
 ⏸️ **E2E** (1 package): e2e-tests with multi-provider scenarios
 
