@@ -149,4 +149,76 @@ describe('MssqlProvider', () => {
       expect((provider as unknown as { inTransaction: boolean }).inTransaction).toBe(false);
     });
   });
+
+  describe('connection string validation', () => {
+    it('should accept connection string with timeout settings', () => {
+      const provider = new MssqlProvider(
+        'Server=localhost;Database=testdb;Connection Timeout=30;'
+      );
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toContain('Connection Timeout=30');
+    });
+
+    it('should accept connection string with pool configuration', () => {
+      const provider = new MssqlProvider(
+        'Server=localhost;Database=testdb;Max Pool Size=100;Min Pool Size=10;'
+      );
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toContain('Max Pool Size=100');
+    });
+
+    it('should preserve connection string with application name', () => {
+      const provider = new MssqlProvider(
+        'Server=localhost;Database=testdb;Application Name=MyApp;'
+      );
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toContain('Application Name=MyApp');
+    });
+  });
+
+  describe('parameter validation', () => {
+    it('should handle undefined logger gracefully', () => {
+      const provider = new MssqlProvider('Server=localhost;Database=testdb;', undefined);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should handle undefined middlewares gracefully', () => {
+      const provider = new MssqlProvider('Server=localhost;Database=testdb;', undefined, undefined);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should handle empty middlewares array', () => {
+      const provider = new MssqlProvider('Server=localhost;Database=testdb;', undefined, []);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept softDelete with custom column name', () => {
+      const provider = new MssqlProvider(
+        'Server=localhost;Database=testdb;',
+        undefined,
+        undefined,
+        { enabled: true, column: 'IsDeleted' }
+      );
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept retryPolicy with custom delay', () => {
+      const provider = new MssqlProvider(
+        'Server=localhost;Database=testdb;',
+        undefined,
+        undefined,
+        undefined,
+        { shouldRetry: (err) => true, getDelayMs: () => 2000 }
+      );
+
+      expect(provider).toBeDefined();
+    });
+  });
 });

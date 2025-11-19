@@ -136,4 +136,64 @@ describe('MySqlProvider', () => {
       expect((provider as unknown as { inTransaction: boolean }).inTransaction).toBe(false);
     });
   });
+
+  describe('connection string validation', () => {
+    it('should accept connection string with multiple query parameters', () => {
+      const provider = new MySqlProvider('mysql://localhost/testdb?charset=utf8mb4&timezone=UTC');
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toContain('charset=utf8mb4');
+      expect((provider as unknown as { connectionString: string }).connectionString).toContain('timezone=UTC');
+    });
+
+    it('should preserve connection string with SSL options', () => {
+      const provider = new MySqlProvider('mysql://localhost/testdb?ssl=true');
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toContain('ssl=true');
+    });
+  });
+
+  describe('parameter validation', () => {
+    it('should handle undefined logger gracefully', () => {
+      const provider = new MySqlProvider('mysql://localhost/testdb', undefined);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should handle undefined middlewares gracefully', () => {
+      const provider = new MySqlProvider('mysql://localhost/testdb', undefined, undefined);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should handle empty middlewares array', () => {
+      const provider = new MySqlProvider('mysql://localhost/testdb', undefined, []);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept softDelete with enabled false', () => {
+      const provider = new MySqlProvider(
+        'mysql://localhost/testdb',
+        undefined,
+        undefined,
+        { enabled: false }
+      );
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept retryPolicy', () => {
+      const provider = new MySqlProvider(
+        'mysql://localhost/testdb',
+        undefined,
+        undefined,
+        undefined,
+        { shouldRetry: (err, attempt) => attempt < 3, getDelayMs: (attempt) => attempt * 500 }
+      );
+
+      expect(provider).toBeDefined();
+    });
+  });
 });
