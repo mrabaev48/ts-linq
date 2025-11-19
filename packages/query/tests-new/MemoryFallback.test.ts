@@ -88,6 +88,42 @@ describe('MemoryFallback', () => {
     expect(count).toBe(5);
   });
 
+  it('should apply offset/limit in fetchCount for pagination consistency', async () => {
+    const request: FallbackRequest<TestEntity> = {
+      operation: 'count',
+      entityClass: TestEntity,
+      query: { offset: 1, limit: 3 }
+    };
+
+    const count = await fallback.fetchCount(request);
+    
+    // Count should match paginated result: skip 1, take 3 = 3 items
+    expect(count).toBe(3);
+  });
+
+  it('should execute count operation via execute() and return number', async () => {
+    const request: FallbackRequest<TestEntity> = {
+      operation: 'count',
+      entityClass: TestEntity
+    };
+
+    const result = await fallback.execute(request);
+    
+    // Should return array with single number
+    expect(result).toHaveLength(1);
+    expect(typeof result[0]).toBe('number');
+    expect(result[0]).toBe(5);
+  });
+
+  it('should throw for unsupported operations in execute()', async () => {
+    const request: FallbackRequest<TestEntity> = {
+      operation: 'insert' as any,
+      entityClass: TestEntity
+    };
+
+    await expect(fallback.execute(request)).rejects.toThrow(/does not support operation 'insert'/);
+  });
+
   it('should always return true for canHandle', () => {
     const request: FallbackRequest<TestEntity> = {
       operation: 'select',
