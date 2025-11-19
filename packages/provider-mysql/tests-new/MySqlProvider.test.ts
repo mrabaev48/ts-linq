@@ -4,14 +4,31 @@ import { MysqlDialect } from '@ts-linq/dialect-mysql';
 
 describe('MySqlProvider', () => {
   describe('constructor', () => {
-    it('should create provider with connection string', () => {
-      const provider = new MySqlProvider('mysql://root@localhost/testdb');
+    it('should create provider with minimal config', () => {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root'
+      });
 
       expect(provider).toBeDefined();
       expect((provider as unknown as { providerName: string }).providerName).toBe('mysql');
     });
 
-    it('should accept logger in constructor', () => {
+    it('should accept full config with all options', () => {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        port: 3306,
+        database: 'testdb',
+        user: 'root',
+        password: 'secret',
+        charset: 'utf8mb4'
+      });
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept logger in config', () => {
       const mockLogger = {
         query: jest.fn(),
         transactionStart: jest.fn(),
@@ -22,53 +39,50 @@ describe('MySqlProvider', () => {
         error: jest.fn()
       };
 
-      const provider = new MySqlProvider(
-        'mysql://root@localhost/testdb',
-        mockLogger as unknown as typeof mockLogger
-      );
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        logger: mockLogger as unknown as typeof mockLogger
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept middlewares in constructor', () => {
+    it('should accept middlewares in config', () => {
       const mockMiddleware = {
         beforeExecute: jest.fn(),
         afterExecute: jest.fn()
       };
 
-      const provider = new MySqlProvider(
-        'mysql://root@localhost/testdb',
-        undefined,
-        [mockMiddleware]
-      );
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        middlewares: [mockMiddleware]
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept softDelete options in constructor', () => {
-      const provider = new MySqlProvider(
-        'mysql://root@localhost/testdb',
-        undefined,
-        undefined,
-        { enabled: true, column: 'deleted_at' }
-      );
+    it('should accept softDelete options in config', () => {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        softDelete: { enabled: true, column: 'isDeleted' }
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept retryPolicy in constructor', () => {
-      const retryPolicy = {
-        maxRetries: 3,
-        shouldRetry: () => true
-      };
-
-      const provider = new MySqlProvider(
-        'mysql://root@localhost/testdb',
-        undefined,
-        undefined,
-        undefined,
-        retryPolicy
-      );
+    it('should accept retryPolicy in config', () => {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        retryPolicy: { shouldRetry: () => true, getDelayMs: () => 500 }
+      });
 
       expect(provider).toBeDefined();
     });
@@ -76,7 +90,11 @@ describe('MySqlProvider', () => {
 
   describe('getDialect', () => {
     it('should return MysqlDialect instance', () => {
-      const provider = new MySqlProvider('mysql://root@localhost/testdb');
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root'
+      });
       const dialect = provider.getDialect();
 
       expect(dialect).toBeInstanceOf(MysqlDialect);
@@ -84,54 +102,89 @@ describe('MySqlProvider', () => {
   });
 
   describe('connection string handling', () => {
-    it('should accept mysql:// protocol', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb');
+    it('should build connection string from config', () => {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        port: 3306,
+        database: 'testdb',
+        user: 'root',
+        password: 'secret'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toBe(
-        'mysql://localhost/testdb'
-      );
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('mysql://');
+      expect(connStr).toContain('root');
+      expect(connStr).toContain('localhost');
+      expect(connStr).toContain('testdb');
     });
 
-    it('should accept connection string with user and password', () => {
-      const provider = new MySqlProvider('mysql://root:password@localhost/testdb');
+    it('should handle config without password', () => {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toBe(
-        'mysql://root:password@localhost/testdb'
-      );
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('mysql://root@localhost');
     });
 
-    it('should accept connection string with port', () => {
-      const provider = new MySqlProvider('mysql://root@localhost:3307/testdb');
+    it('should include charset in query params', () => {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        charset: 'utf8mb4'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain(':3307');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('charset=utf8mb4');
     });
 
-    it('should accept connection string with charset parameter', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb?charset=utf8mb4');
+    it('should include custom port', () => {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        port: 3307,
+        database: 'testdb',
+        user: 'root'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('charset=utf8mb4');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain(':3307');
     });
   });
 
   describe('provider metadata', () => {
     it('should have providerName set to mysql', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb');
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root'
+      });
 
       expect((provider as unknown as { providerName: string }).providerName).toBe('mysql');
     });
 
     it('should initialize with isConnected false', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb');
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root'
+      });
 
       expect((provider as unknown as { isConnected: boolean }).isConnected).toBe(false);
     });
 
     it('should initialize with inTransaction false', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb');
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root'
+      });
 
       expect((provider as unknown as { inTransaction: boolean }).inTransaction).toBe(false);
     });
@@ -139,59 +192,86 @@ describe('MySqlProvider', () => {
 
   describe('connection string validation', () => {
     it('should accept connection string with multiple query parameters', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb?charset=utf8mb4&timezone=UTC');
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        charset: 'utf8mb4',
+        timezone: 'UTC'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('charset=utf8mb4');
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('timezone=UTC');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('charset=utf8mb4');
+      expect(connStr).toContain('timezone=UTC');
     });
 
-    it('should preserve connection string with SSL options', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb?ssl=true');
+    it('should handle socket path connections', () => {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        socketPath: '/var/run/mysqld/mysqld.sock'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('ssl=true');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('socketPath');
     });
   });
 
   describe('parameter validation', () => {
     it('should handle undefined logger gracefully', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb', undefined);
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        logger: undefined
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should handle undefined middlewares gracefully', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb', undefined, undefined);
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        middlewares: undefined
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should handle empty middlewares array', () => {
-      const provider = new MySqlProvider('mysql://localhost/testdb', undefined, []);
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        middlewares: []
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should accept softDelete with enabled false', () => {
-      const provider = new MySqlProvider(
-        'mysql://localhost/testdb',
-        undefined,
-        undefined,
-        { enabled: false }
-      );
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        softDelete: { enabled: false }
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should accept retryPolicy', () => {
-      const provider = new MySqlProvider(
-        'mysql://localhost/testdb',
-        undefined,
-        undefined,
-        undefined,
-        { shouldRetry: (err, attempt) => attempt < 3, getDelayMs: (attempt) => attempt * 500 }
-      );
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root',
+        retryPolicy: { shouldRetry: (err, attempt) => attempt < 3, getDelayMs: (attempt) => attempt * 500 }
+      });
 
       expect(provider).toBeDefined();
     });

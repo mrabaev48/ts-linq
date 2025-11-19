@@ -35,7 +35,12 @@ export function buildMysqlConnectionString(config: MySqlConfig): string {
     // For Unix socket connections, encode the path as a query parameter
     uri += 'localhost';
   } else {
-    uri += host;
+    // Handle IPv6 addresses
+    if (host.includes(':')) {
+      uri += `[${host}]`;
+    } else {
+      uri += host;
+    }
     if (port !== 3306) {
       uri += `:${port}`;
     }

@@ -3,6 +3,7 @@ import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
+import { buildMssqlConnectionString } from './buildConnectionString';
 /**
  * Microsoft SQL Server provider based on the `mssql` package.
  *
@@ -38,12 +39,14 @@ import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
  * }
  */
 export class MssqlProvider extends DatabaseProvider {
-    /** Create provider with MSSQL connection string. */
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
+    /** Create provider with MSSQL configuration. */
+    constructor(config) {
+        const connectionString = buildMssqlConnectionString(config);
+        super(connectionString, config.logger, config.middlewares, config.softDelete, config.retryPolicy, config.poolOptions, config.healthCheck);
         this.pool = null;
         this.tx = null;
         this.ddl = new MssqlDdlStrategy();
+        this.config = config;
         this.providerName = 'mssql';
     }
     /** Open a connection pool to MSSQL server. */

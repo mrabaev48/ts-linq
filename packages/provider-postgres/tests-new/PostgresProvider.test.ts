@@ -4,14 +4,32 @@ import { PostgresDialect } from '@ts-linq/dialect-postgres';
 
 describe('PostgresProvider', () => {
   describe('constructor', () => {
-    it('should create provider with connection string', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb');
+    it('should create provider with minimal config', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres'
+      });
 
       expect(provider).toBeDefined();
       expect((provider as unknown as { providerName: string }).providerName).toBe('postgresql');
     });
 
-    it('should accept logger in constructor', () => {
+    it('should accept full config with all options', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        port: 5432,
+        database: 'testdb',
+        user: 'admin',
+        password: 'secret',
+        ssl: true,
+        applicationName: 'MyApp'
+      });
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept logger in config', () => {
       const mockLogger = {
         query: jest.fn(),
         transactionStart: jest.fn(),
@@ -22,46 +40,50 @@ describe('PostgresProvider', () => {
         error: jest.fn()
       };
 
-      const provider = new PostgresProvider('postgresql://localhost/testdb', mockLogger as unknown as typeof mockLogger);
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        logger: mockLogger as unknown as typeof mockLogger
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept middlewares in constructor', () => {
+    it('should accept middlewares in config', () => {
       const mockMiddleware = {
         beforeExecute: jest.fn(),
         afterExecute: jest.fn()
       };
 
-      const provider = new PostgresProvider('postgresql://localhost/testdb', undefined, [mockMiddleware]);
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        middlewares: [mockMiddleware]
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept softDelete options in constructor', () => {
-      const provider = new PostgresProvider(
-        'postgresql://localhost/testdb',
-        undefined,
-        undefined,
-        { enabled: true, column: 'deletedAt' }
-      );
+    it('should accept softDelete options in config', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        softDelete: { enabled: true, column: 'deletedAt' }
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept retryPolicy in constructor', () => {
-      const retryPolicy = {
-        maxRetries: 3,
-        shouldRetry: () => true
-      };
-
-      const provider = new PostgresProvider(
-        'postgresql://localhost/testdb',
-        undefined,
-        undefined,
-        undefined,
-        retryPolicy
-      );
+    it('should accept retryPolicy in config', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        retryPolicy: { shouldRetry: () => true, getDelayMs: () => 1000 }
+      });
 
       expect(provider).toBeDefined();
     });
@@ -69,7 +91,11 @@ describe('PostgresProvider', () => {
 
   describe('getDialect', () => {
     it('should return PostgresDialect instance', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb');
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres'
+      });
       const dialect = provider.getDialect();
 
       expect(dialect).toBeInstanceOf(PostgresDialect);
@@ -77,120 +103,187 @@ describe('PostgresProvider', () => {
   });
 
   describe('connection string handling', () => {
-    it('should accept standard PostgreSQL connection string', () => {
-      const provider = new PostgresProvider('postgresql://user:password@localhost:5432/dbname');
+    it('should build connection string from config', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        port: 5432,
+        database: 'testdb',
+        user: 'admin',
+        password: 'secret'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toBe(
-        'postgresql://user:password@localhost:5432/dbname'
-      );
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('postgresql://');
+      expect(connStr).toContain('admin');
+      expect(connStr).toContain('localhost');
+      expect(connStr).toContain('testdb');
     });
 
-    it('should accept postgres:// protocol', () => {
-      const provider = new PostgresProvider('postgres://localhost/testdb');
+    it('should handle config without password', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toBe(
-        'postgres://localhost/testdb'
-      );
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('postgresql://postgres@localhost');
     });
 
-    it('should accept connection string with SSL parameters', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb?sslmode=require');
+    it('should include SSL mode when enabled', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        ssl: true
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('sslmode=require');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('sslmode=require');
     });
 
-    it('should accept connection string with schema', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb?schema=public');
+    it('should include application name in query params', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        applicationName: 'MyApp'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('schema=public');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('application_name=MyApp');
     });
   });
 
   describe('provider metadata', () => {
-    it('should have providerName set to postgres', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb');
+    it('should have providerName set to postgresql', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres'
+      });
 
       expect((provider as unknown as { providerName: string }).providerName).toBe('postgresql');
     });
 
     it('should initialize with isConnected false', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb');
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres'
+      });
 
       expect((provider as unknown as { isConnected: boolean }).isConnected).toBe(false);
     });
 
     it('should initialize with inTransaction false', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb');
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres'
+      });
 
       expect((provider as unknown as { inTransaction: boolean }).inTransaction).toBe(false);
     });
   });
 
   describe('connection string validation', () => {
-    it('should accept connection string with query parameters', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb?application_name=myapp');
+    it('should handle IPv6 addresses', () => {
+      const provider = new PostgresProvider({
+        host: '::1',
+        port: 5432,
+        database: 'testdb',
+        user: 'postgres'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('application_name=myapp');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('[::1]');
     });
 
-    it('should accept connection string with multiple parameters', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb?sslmode=require&connect_timeout=10');
+    it('should include schema parameter', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        schema: 'public'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('sslmode=require');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('schema=public');
     });
 
-    it('should preserve IPv6 addresses', () => {
-      const provider = new PostgresProvider('postgresql://[::1]:5432/testdb');
+    it('should handle connection timeout', () => {
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        connectionTimeoutMs: 10000
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('[::1]');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('connect_timeout=10');
     });
   });
 
   describe('parameter validation', () => {
     it('should handle undefined logger gracefully', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb', undefined);
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        logger: undefined
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should handle undefined middlewares gracefully', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb', undefined, undefined);
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        middlewares: undefined
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should handle empty middlewares array', () => {
-      const provider = new PostgresProvider('postgresql://localhost/testdb', undefined, []);
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        middlewares: []
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should accept softDelete with custom column', () => {
-      const provider = new PostgresProvider(
-        'postgresql://localhost/testdb',
-        undefined,
-        undefined,
-        { enabled: true, column: 'deletedAt' }
-      );
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        softDelete: { enabled: true, column: 'deletedAt' }
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should accept retryPolicy', () => {
-      const provider = new PostgresProvider(
-        'postgresql://localhost/testdb',
-        undefined,
-        undefined,
-        undefined,
-        { shouldRetry: () => true, getDelayMs: (attempt) => attempt * 1000 }
-      );
+      const provider = new PostgresProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'postgres',
+        retryPolicy: { shouldRetry: () => true, getDelayMs: (attempt) => attempt * 1000 }
+      });
 
       expect(provider).toBeDefined();
     });

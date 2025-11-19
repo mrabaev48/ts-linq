@@ -1,9 +1,10 @@
-import type { EntityMetadata, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlLogger, SqlDialect } from '@ts-linq/types';
+import type { EntityMetadata, SqlParameter, SqlDialect, SQLiteConfig } from '@ts-linq/types';
 import { DatabaseProvider } from '@ts-linq/core';
 export declare class SQLiteProvider extends DatabaseProvider {
     private db;
     private ddl;
-    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[], softDelete?: SoftDeleteOptions, retryPolicy?: RetryPolicy);
+    private readonly config;
+    constructor(config: SQLiteConfig);
     /** Open a connection to the SQLite database and enable foreign keys. */
     connect(): Promise<void>;
     /** Close the SQLite database connection if open. */

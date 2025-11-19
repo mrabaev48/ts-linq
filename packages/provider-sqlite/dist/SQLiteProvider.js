@@ -6,6 +6,7 @@ const core_1 = require("@ts-linq/core");
 const metadata_1 = require("@ts-linq/metadata");
 const dialect_sqlite_1 = require("@ts-linq/dialect-sqlite");
 const dialect_sqlite_2 = require("@ts-linq/dialect-sqlite");
+const buildConnectionString_1 = require("./buildConnectionString");
 function safeRequireSqlite3() {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -16,10 +17,12 @@ function safeRequireSqlite3() {
     }
 }
 class SQLiteProvider extends core_1.DatabaseProvider {
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy);
+    constructor(config) {
+        const connectionString = (0, buildConnectionString_1.buildSqliteConnectionString)(config);
+        super(connectionString, config.logger, config.middlewares, config.softDelete, config.retryPolicy);
         this.db = null;
         this.ddl = new dialect_sqlite_2.SQLiteDdlStrategy();
+        this.config = config;
         this.providerName = 'sqlite';
     }
     /** Open a connection to the SQLite database and enable foreign keys. */

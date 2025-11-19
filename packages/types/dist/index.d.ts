@@ -193,6 +193,55 @@ export interface SoftDeleteOptions {
     columnName?: string;
     type?: 'boolean' | 'timestamp';
 }
+export interface BaseProviderConfig {
+    logger?: SqlLogger;
+    middlewares?: OrmMiddleware[];
+    softDelete?: SoftDeleteOptions;
+    retryPolicy?: RetryPolicy;
+    poolOptions?: ConnectionPoolOptions;
+    healthCheck?: ConnectionHealthCheckOptions;
+}
+export interface SQLiteConfig extends BaseProviderConfig {
+    file: string;
+    mode?: 'memory' | 'readonly' | 'readwrite';
+    busyTimeoutMs?: number;
+}
+export interface PostgresConfig extends BaseProviderConfig {
+    host: string;
+    port?: number;
+    database: string;
+    user: string;
+    password?: string;
+    ssl?: boolean | object;
+    applicationName?: string;
+    schema?: string;
+    connectionTimeoutMs?: number;
+}
+export interface MySqlConfig extends BaseProviderConfig {
+    host: string;
+    port?: number;
+    user: string;
+    password?: string;
+    database: string;
+    socketPath?: string;
+    charset?: string;
+    timezone?: string;
+}
+export interface MssqlConfig extends BaseProviderConfig {
+    server: string;
+    port?: number;
+    database: string;
+    user?: string;
+    password?: string;
+    domain?: string;
+    encrypt?: boolean;
+    trustServerCertificate?: boolean;
+    integratedSecurity?: boolean;
+    instanceName?: string;
+    connectionTimeout?: number;
+    applicationName?: string;
+    options?: Record<string, unknown>;
+}
 export interface GlobalFilter {
     filterName: string;
     entity?: string;
@@ -397,8 +446,7 @@ export interface AuditOptions {
         updatedBy?: string;
     };
 }
-export * from './errors';
-export { ValidationError } from './errors';
+export { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError, ForeignKeyConstraintError, ValidationError } from './errors';
 export interface PerformanceOptionsExtended extends PerformanceOptions {
     inClauseChunkSize?: number;
 }

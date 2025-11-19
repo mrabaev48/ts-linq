@@ -7,6 +7,7 @@ const core_1 = require("@ts-linq/core");
 const metadata_1 = require("@ts-linq/metadata");
 const dialect_mssql_1 = require("@ts-linq/dialect-mssql");
 const dialect_mssql_2 = require("@ts-linq/dialect-mssql");
+const buildConnectionString_1 = require("./buildConnectionString");
 /**
  * Microsoft SQL Server provider based on the `mssql` package.
  *
@@ -42,12 +43,14 @@ const dialect_mssql_2 = require("@ts-linq/dialect-mssql");
  * }
  */
 class MssqlProvider extends core_1.DatabaseProvider {
-    /** Create provider with MSSQL connection string. */
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
+    /** Create provider with MSSQL configuration. */
+    constructor(config) {
+        const connectionString = (0, buildConnectionString_1.buildMssqlConnectionString)(config);
+        super(connectionString, config.logger, config.middlewares, config.softDelete, config.retryPolicy, config.poolOptions, config.healthCheck);
         this.pool = null;
         this.tx = null;
         this.ddl = new dialect_mssql_2.MssqlDdlStrategy();
+        this.config = config;
         this.providerName = 'mssql';
     }
     /** Open a connection pool to MSSQL server. */

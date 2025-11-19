@@ -3,6 +3,7 @@ import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { PostgresDdlStrategy } from '@ts-linq/dialect-postgres';
+import { buildPostgresConnectionString } from './buildConnectionString';
 // Lazy require to avoid hard dependency if not installed
 let Pg;
 try {
@@ -47,9 +48,11 @@ export class PostgresProvider extends DatabaseProvider {
         this.notifyEntityMaterialized(entity, meta);
         return entity;
     }
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
+    constructor(config) {
+        const connectionString = buildPostgresConnectionString(config);
+        super(connectionString, config.logger, config.middlewares, config.softDelete, config.retryPolicy, config.poolOptions, config.healthCheck);
         this.ddl = new PostgresDdlStrategy();
+        this.config = config;
         this.providerName = 'postgresql';
     }
     coerceToSqlParameter(value) {
