@@ -106,6 +106,49 @@ Systematically migrated ~20 production features from legacy test files:
 
 **Overall Total: 1238 tests in Tier 0+1+2 combined** (327 + 410 + 501)
 
+### 🧹 November 19, 2025: Legacy Tests Cleanup
+
+**tests-old Cleanup Complete** ✅  
+Systematically removed all obsolete test files from `packages/core/tests-old`:
+- **Deleted**: ~74 obsolete test files (already covered by new tests)
+- **Deleted**: Multiple subdirectories (batch, cache, context, decorators, loading, metadata, migrations, query, etc.)
+- **Kept**: 9 graceful-degradation test files for future migration (awaiting ProviderStub)
+- **Final state**: Clean tests-old directory with only pending migration tests
+
+**Files Retained for Future Migration**:
+- graceful-degradation.test.ts
+- graceful-degradation.policy.test.ts
+- graceful-degradation.hedged-count.test.ts
+- graceful-degradation.hedged-select.test.ts
+- graceful-degradation.hedged-sources.test.ts
+- graceful-degradation.include-policy.test.ts
+- graceful-degradation.logger-staleness.test.ts
+- graceful-degradation.replica-fetchcount.test.ts
+- graceful-degradation.throttle.test.ts
+
+**Impact**: Cleaner codebase, reduced technical debt, easier navigation
+
+### 📦 November 19, 2025: Integration Tests Package Added to Test Plan
+
+**New Test Category: Integration Tests** (5 days, ~100 tests)  
+Added comprehensive integration testing package to `test-plan.md`:
+- **Location**: `packages/integration-tests`
+- **Purpose**: Cross-package integration testing (unlike E2E which tests full workflows)
+- **Scope**: Verify interactions between 2-3 packages
+
+**Test Suites**:
+1. **Query + Provider Integration** (2 days, ~40 tests): SQL generation across all 4 dialects
+2. **ORM + Cache Integration** (1 day, ~20 tests): Cache adapters with DbSet/ChangeTracker
+3. **Migrations + Dialect Integration** (1 day, ~25 tests): DDL generation per dialect
+4. **Telemetry + Resilience Integration** (1 day, ~15 tests): Observability + circuit breaker
+
+**Updated Test Plan Totals**:
+- **Total Packages**: 36 (was 35)
+- **Total Effort**: 48 days (was 43 days)
+- **New Category**: Integration Tests (5 days, 🔴 Critical priority)
+
+**Rationale**: Integration tests fill the gap between unit tests (single package) and E2E tests (full workflows), ensuring seamless cross-package compatibility before E2E validation.
+
 ### 📊 Critical Features Migration Summary (November 19, 2025)
 
 **Migrated Tests**: 45 tests across 8 files  

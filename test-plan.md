@@ -2635,8 +2635,9 @@ export function assertTransactionActive(provider: DatabaseProvider): void
 | Tier 1 | core, query, orm, metadata, migrations | 12 | 🔴 Critical |
 | Tier 2 | dialects (4 @ 2d), providers (4 @ 0.5d), cache (3 @ 0.5d), concurrency, pagination, telemetry (4 @ 0.75d) | 11 | 🟠 High |
 | Tier 3 | plugins (3 @ 2d), CLI, integration-nestjs, examples, composite-sql-logger | 7 | 🟡 Medium |
+| Integration | integration-tests (cross-package integration testing) | 5 | 🔴 Critical |
 | E2E | e2e-tests (infrastructure + 8 test suites) | 9 | 🔴 Critical |
-| **TOTAL** | **35 packages** | **43 days** | |
+| **TOTAL** | **36 packages** | **48 days** | |
 
 ### Detailed Breakdown
 
@@ -2678,6 +2679,12 @@ export function assertTransactionActive(provider: DatabaseProvider): void
 - examples: 1d
 - composite-sql-logger: (included in Tier 2 telemetry)
 
+**Integration Tests (5 days):**
+- Query + Provider Integration: 2d
+- ORM + Cache Integration: 1d
+- Migrations + Dialect Integration: 1d
+- Telemetry + Resilience Integration: 1d
+
 **E2E (9 days):**
 - Infrastructure setup: 1d
 - CRUD + Change Tracking: 2d
@@ -2687,6 +2694,251 @@ export function assertTransactionActive(provider: DatabaseProvider): void
 - Caching: 1d
 - Performance + Concurrency: 1d
 - Middleware + Telemetry: 1d
+
+---
+
+## Integration Tests (5 days)
+
+### `packages/integration-tests` - Cross-Package Integration Testing
+
+This new package focuses on integration testing across multiple ORM packages to ensure seamless interaction between different components of the framework. Unlike E2E tests that validate full workflows, integration tests verify specific interactions between 2-3 packages.
+
+#### Package Structure
+
+```
+packages/integration-tests/
+├── src/
+│   └── index.ts (test utilities)
+├── tests/
+│   ├── query-provider-integration.test.ts
+│   ├── orm-cache-integration.test.ts
+│   ├── migrations-dialect-integration.test.ts
+│   ├── telemetry-provider-integration.test.ts
+│   ├── cache-adapter-integration.test.ts
+│   └── resilience-integration.test.ts
+├── package.json
+└── tsconfig.json
+```
+
+#### Day 1-2: Query + Provider Integration (2 days)
+
+```typescript
+// tests/query-provider-integration.test.ts
+describe('Query Builder + Database Provider Integration', () => {
+  describe.each(['sqlite', 'postgres', 'mysql', 'mssql'])('%s provider', (provider) => {
+    it('should generate correct SQL for complex WHERE with multiple conditions', async () => {
+      // Arrange: QueryBuilder with 5 AND/OR predicates
+      // Act: Execute via DatabaseProvider
+      // Assert: Correct SQL generated, results match expected
+    })
+
+    it('should handle JOIN across 3 tables with provider-specific syntax', async () => {
+      // Arrange: QueryBuilder with LEFT JOIN + INNER JOIN
+      // Act: Execute via provider
+      // Assert: Correct JOIN syntax for each dialect
+    })
+
+    it('should apply pagination with provider-specific LIMIT/OFFSET', async () => {
+      // Arrange: QueryBuilder with skip(10).take(20)
+      // Act: Execute via provider
+      // Assert: SQLite uses LIMIT/OFFSET, MSSQL uses OFFSET FETCH
+    })
+
+    it('should handle aggregations with GROUP BY across providers', async () => {
+      // Arrange: QueryBuilder with groupBy() and count()
+      // Act: Execute via provider
+      // Assert: Correct GROUP BY syntax and results
+    })
+
+    it('should execute parameterized queries with provider-specific placeholders', async () => {
+      // Arrange: QueryBuilder with dynamic values
+      // Act: Execute via provider
+      // Assert: PostgreSQL uses $1, MySQL uses ?, MSSQL uses @p1
+    })
+  })
+})
+```
+
+#### Day 3: ORM + Cache Integration (1 day)
+
+```typescript
+// tests/orm-cache-integration.test.ts
+describe('ORM + Cache Adapters Integration', () => {
+  describe('DbSet + SqlCache Integration', () => {
+    it('should cache query results and hit cache on repeat', async () => {
+      // Arrange: DbSet query executed twice
+      // Act: Execute same query again
+      // Assert: Second query hits cache (no DB round-trip)
+    })
+
+    it('should invalidate cache on entity update', async () => {
+      // Arrange: Cached query result
+      // Act: Update entity via DbSet.update()
+      // Assert: Cache invalidated, next query hits DB
+    })
+
+    it('should warm cache from DbSet queries', async () => {
+      // Arrange: Pre-execute common queries
+      // Act: Execute queries again
+      // Assert: All hit cache
+    })
+  })
+
+  describe('DbSet + Redis Cache Integration', () => {
+    it('should store entities in Redis L2 cache', async () => {
+      // Arrange: Load entity via DbSet.find()
+      // Act: Check Redis for cached entity
+      // Assert: Entity stored in Redis with correct serialization
+    })
+
+    it('should fall back to DB when Redis unavailable', async () => {
+      // Arrange: Stop Redis server
+      // Act: Load entity via DbSet
+      // Assert: Returns entity from DB (graceful fallback)
+    })
+
+    it('should synchronize ChangeTracker with Redis cache', async () => {
+      // Arrange: Entity in Redis cache
+      // Act: Update entity via ChangeTracker
+      // Assert: Redis cache invalidated on saveChanges()
+    })
+  })
+
+  describe('DbSet + Memcached Integration', () => {
+    it('should cache count() results in Memcached', async () => {
+      // Arrange: Execute count() query
+      // Act: Execute same count() again
+      // Assert: Result from Memcached (no DB query)
+    })
+
+    it('should handle Memcached TTL expiration', async () => {
+      // Arrange: Cached result with 1s TTL
+      // Act: Wait 1.5s, query again
+      // Assert: Cache expired, fresh DB query
+    })
+  })
+})
+```
+
+#### Day 4: Migrations + Dialect Integration (1 day)
+
+```typescript
+// tests/migrations-dialect-integration.test.ts
+describe('Migrations + SQL Dialect Integration', () => {
+  describe.each(['sqlite', 'postgres', 'mysql', 'mssql'])('%s dialect', (dialect) => {
+    it('should generate CREATE TABLE with dialect-specific syntax', async () => {
+      // Arrange: Migration with createTable()
+      // Act: Generate SQL via dialect
+      // Assert: Correct DDL syntax (e.g., AUTO_INCREMENT vs SERIAL vs IDENTITY)
+    })
+
+    it('should generate ADD COLUMN with proper type mapping', async () => {
+      // Arrange: Migration with addColumn('email', 'string')
+      // Act: Generate SQL via dialect
+      // Assert: VARCHAR(255) for MySQL, TEXT for SQLite, etc.
+    })
+
+    it('should handle dialect-specific constraints', async () => {
+      // Arrange: Migration with foreign key + unique constraint
+      // Act: Generate SQL
+      // Assert: Correct CONSTRAINT syntax per dialect
+    })
+
+    it('should generate indexes with dialect-specific options', async () => {
+      // Arrange: Migration with createIndex() including partial/unique
+      // Act: Generate SQL
+      // Assert: PostgreSQL supports partial, MySQL doesn't
+    })
+
+    it('should execute migration and rollback correctly', async () => {
+      // Arrange: Migration with up() and down()
+      // Act: Run migration, then rollback
+      // Assert: Schema changes applied and reverted
+    })
+  })
+})
+```
+
+#### Day 5: Telemetry + Resilience Integration (1 day)
+
+```typescript
+// tests/telemetry-provider-integration.test.ts
+describe('Telemetry + Provider Integration', () => {
+  it('should log SQL queries via PrometheusSqlLogger', async () => {
+    // Arrange: DatabaseProvider with PrometheusSqlLogger
+    // Act: Execute 5 queries
+    // Assert: Metrics recorded (query_count, duration_histogram)
+  })
+
+  it('should record circuit breaker state changes in metrics', async () => {
+    // Arrange: Provider with CircuitBreaker + Prometheus
+    // Act: Trigger 5 failures to open circuit
+    // Assert: circuit_breaker_open metric = 1
+  })
+
+  it('should export OpenTelemetry spans for DB operations', async () => {
+    // Arrange: Provider with OtelLogger
+    // Act: Execute query
+    // Assert: Span created with SQL, duration, status
+  })
+
+  it('should aggregate metrics from CompositeSqlLogger', async () => {
+    // Arrange: Provider with CompositeSqlLogger (Prometheus + Otel)
+    // Act: Execute queries
+    // Assert: Both loggers receive events
+  })
+})
+
+// tests/resilience-integration.test.ts
+describe('Resilience Features Integration', () => {
+  it('should retry transient failures via RetryPolicy', async () => {
+    // Arrange: Provider with ExponentialBackoffRetry
+    // Act: Simulate connection timeout
+    // Assert: Query retried 3 times before failing
+  })
+
+  it('should fall back to MemoryFallback when DB unavailable', async () => {
+    // Arrange: Queryable with MemoryFallback configured
+    // Act: Disconnect DB, execute query
+    // Assert: Returns data from in-memory fallback
+  })
+
+  it('should activate circuit breaker after error threshold', async () => {
+    // Arrange: Provider with CircuitBreaker (threshold=5)
+    // Act: Trigger 5 consecutive failures
+    // Assert: Circuit opens, next query rejected immediately
+  })
+
+  it('should transition circuit breaker from half-open to closed', async () => {
+    // Arrange: Circuit breaker in half-open state
+    // Act: Execute 3 successful queries
+    // Assert: Circuit closes, normal operation resumes
+  })
+
+  it('should combine retry + circuit breaker + fallback', async () => {
+    // Arrange: Provider with all 3 resilience features
+    // Act: Simulate intermittent failures
+    // Assert: Retries attempted, circuit opens, fallback activated
+  })
+})
+```
+
+#### Integration Test Goals
+
+1. **Cross-Package Validation**: Ensure packages work together seamlessly
+2. **Dialect Compatibility**: Verify SQL generation works across all 4 dialects
+3. **Cache Layer Testing**: Validate cache adapters integrate correctly with ORM
+4. **Resilience Verification**: Test circuit breaker, retry, and fallback interactions
+5. **Telemetry Coverage**: Ensure observability features capture all operations
+
+#### Expected Test Count
+
+- Query + Provider: ~40 tests (10 per dialect × 4 dialects)
+- ORM + Cache: ~20 tests
+- Migrations + Dialect: ~25 tests (5 per dialect × 4 + shared)
+- Telemetry + Resilience: ~15 tests
+
+**Total: ~100 integration tests**
 
 ---
 
