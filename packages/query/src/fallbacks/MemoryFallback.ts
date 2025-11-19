@@ -32,7 +32,21 @@ export class MemoryFallback<T> implements QueryFallback<T> {
   }
 
   async execute<TResult>(request: FallbackRequest<TResult>): Promise<TResult[]> {
-    return this.fetch(request);
+    const operation = request.operation;
+    
+    if (operation === 'count') {
+      const count = await this.fetchCount(request);
+      return [count as unknown as TResult];
+    }
+    
+    if (operation === 'select' || operation === 'first' || operation === 'single' || operation === 'any') {
+      return this.fetch(request);
+    }
+    
+    throw new Error(
+      `MemoryFallback does not support operation '${operation}'. ` +
+      `Only 'select', 'first', 'single', 'any', and 'count' are supported.`
+    );
   }
 
   async fetch<TResult>(request: FallbackRequest<TResult>): Promise<TResult[]> {
@@ -55,7 +69,20 @@ export class MemoryFallback<T> implements QueryFallback<T> {
 
   async fetchCount<TResult>(request: FallbackRequest<TResult>): Promise<number> {
     const data = await this.getData();
-    return data.length;
+    let result: T[] = [...data];
+    
+    const query = request.query;
+    if (query) {
+      if (query.offset !== undefined && query.offset > 0) {
+        result = result.slice(query.offset);
+      }
+
+      if (query.limit !== undefined && query.limit > 0) {
+        result = result.slice(0, query.limit);
+      }
+    }
+    
+    return result.length;
   }
 
   private async getData(): Promise<T[]> {
