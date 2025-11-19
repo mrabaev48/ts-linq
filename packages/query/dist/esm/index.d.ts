@@ -8,4 +8,5 @@ export { InMemorySqlCache } from './SqlCache';
 export * from './EnhancedSqlCache';
 export * from './RowMaterializer';
 export * from './IncludePlanner';
+export * from './fallbacks';
 //# sourceMappingURL=index.d.ts.map
