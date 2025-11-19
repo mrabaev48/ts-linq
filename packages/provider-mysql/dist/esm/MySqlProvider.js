@@ -3,11 +3,14 @@ import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MySqlDdlStrategy } from '@ts-linq/dialect-mysql';
+import { buildMysqlConnectionString } from './buildConnectionString';
 export class MySqlProvider extends DatabaseProvider {
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
+    constructor(config) {
+        const connectionString = buildMysqlConnectionString(config);
+        super(connectionString, config.logger, config.middlewares, config.softDelete, config.retryPolicy, config.poolOptions, config.healthCheck);
         this.pool = null;
         this.ddl = new MySqlDdlStrategy();
+        this.config = config;
         this.providerName = 'mysql';
     }
     async connect() {

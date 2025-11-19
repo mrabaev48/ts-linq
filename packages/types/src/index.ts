@@ -520,8 +520,13 @@ export interface AuditOptions {
 }
 
 // Export error classes
-export * from './errors';
-export { ValidationError } from './errors';
+export {
+  DatabaseError,
+  OptimisticConcurrencyError,
+  UniqueConstraintError,
+  ForeignKeyConstraintError,
+  ValidationError
+} from './errors';
 
 // Additional ORM-related properties
 export interface PerformanceOptionsExtended extends PerformanceOptions {

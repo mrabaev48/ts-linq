@@ -6,11 +6,14 @@ const core_1 = require("@ts-linq/core");
 const metadata_1 = require("@ts-linq/metadata");
 const dialect_mysql_1 = require("@ts-linq/dialect-mysql");
 const dialect_mysql_2 = require("@ts-linq/dialect-mysql");
+const buildConnectionString_1 = require("./buildConnectionString");
 class MySqlProvider extends core_1.DatabaseProvider {
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
+    constructor(config) {
+        const connectionString = (0, buildConnectionString_1.buildMysqlConnectionString)(config);
+        super(connectionString, config.logger, config.middlewares, config.softDelete, config.retryPolicy, config.poolOptions, config.healthCheck);
         this.pool = null;
         this.ddl = new dialect_mysql_2.MySqlDdlStrategy();
+        this.config = config;
         this.providerName = 'mysql';
     }
     async connect() {

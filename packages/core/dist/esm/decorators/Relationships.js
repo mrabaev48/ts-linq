@@ -1,18 +1,12 @@
 import 'reflect-metadata';
 import { MetadataStorage } from '@ts-linq/metadata';
 function defineRelationship(kind, targetEntity, options, target, propertyKey) {
-    // For legacy decorators, target is the prototype, target.constructor is the class
     const ctor = (target?.constructor || target);
     const propertyName = String(propertyKey);
-    // Resolve targetEntity to concrete constructor
-    const te = targetEntity;
-    const resolved = typeof te === 'function' && te.prototype
-        ? te
-        : te();
     const relationship = {
         propertyName,
         type: kind,
-        targetEntity: resolved,
+        targetEntity: targetEntity,
         foreignKey: options?.foreignKey,
         inverseSide: options?.inverseSide,
         cascade: options?.cascade || false,

@@ -4,14 +4,33 @@ import { MssqlDialect } from '@ts-linq/dialect-mssql';
 
 describe('MssqlProvider', () => {
   describe('constructor', () => {
-    it('should create provider with connection string', () => {
-      const provider = new MssqlProvider('Server=localhost;Database=testdb;');
+    it('should create provider with minimal config', () => {
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123'
+      });
 
       expect(provider).toBeDefined();
       expect((provider as unknown as { providerName: string }).providerName).toBe('mssql');
     });
 
-    it('should accept logger in constructor', () => {
+    it('should accept full config with all options', () => {
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        port: 1433,
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        encrypt: true,
+        trustServerCertificate: true
+      });
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept logger in config', () => {
       const mockLogger = {
         query: jest.fn(),
         transactionStart: jest.fn(),
@@ -22,53 +41,54 @@ describe('MssqlProvider', () => {
         error: jest.fn()
       };
 
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;',
-        mockLogger as unknown as typeof mockLogger
-      );
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        logger: mockLogger as unknown as typeof mockLogger
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept middlewares in constructor', () => {
+    it('should accept middlewares in config', () => {
       const mockMiddleware = {
         beforeExecute: jest.fn(),
         afterExecute: jest.fn()
       };
 
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;',
-        undefined,
-        [mockMiddleware]
-      );
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        middlewares: [mockMiddleware]
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept softDelete options in constructor', () => {
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;',
-        undefined,
-        undefined,
-        { enabled: true, column: 'IsDeleted' }
-      );
+    it('should accept softDelete options in config', () => {
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        softDelete: { enabled: true, column: 'IsDeleted' }
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept retryPolicy in constructor', () => {
-      const retryPolicy = {
-        maxRetries: 3,
-        shouldRetry: () => true
-      };
-
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;',
-        undefined,
-        undefined,
-        undefined,
-        retryPolicy
-      );
+    it('should accept retryPolicy in config', () => {
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        retryPolicy: { shouldRetry: () => true, getDelayMs: () => 2000 }
+      });
 
       expect(provider).toBeDefined();
     });
@@ -76,7 +96,12 @@ describe('MssqlProvider', () => {
 
   describe('getDialect', () => {
     it('should return MssqlDialect instance', () => {
-      const provider = new MssqlProvider('Server=localhost;Database=testdb;');
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123'
+      });
       const dialect = provider.getDialect();
 
       expect(dialect).toBeInstanceOf(MssqlDialect);
@@ -84,67 +109,95 @@ describe('MssqlProvider', () => {
   });
 
   describe('connection string handling', () => {
-    it('should accept ADO.NET style connection string', () => {
-      const provider = new MssqlProvider('Server=localhost;Database=testdb;');
+    it('should build connection string from config', () => {
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toBe(
-        'Server=localhost;Database=testdb;'
-      );
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('Server=localhost');
+      expect(connStr).toContain('Database=testdb');
+      expect(connStr).toContain('User Id=sa');
+      expect(connStr).toContain('Password=Password123');
     });
 
-    it('should accept connection string with authentication', () => {
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;User Id=sa;Password=Password123;'
-      );
+    it('should handle config with integrated security', () => {
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        integratedSecurity: true
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('User Id=sa');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('Integrated Security=true');
     });
 
-    it('should accept connection string with instance name', () => {
-      const provider = new MssqlProvider('Server=localhost\\SQLEXPRESS;Database=testdb;');
+    it('should include instance name', () => {
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        instanceName: 'SQLEXPRESS'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('SQLEXPRESS');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('SQLEXPRESS');
     });
 
-    it('should accept connection string with integrated security', () => {
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;Integrated Security=true;'
-      );
+    it('should include encryption settings', () => {
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        encrypt: true,
+        trustServerCertificate: true
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain(
-        'Integrated Security=true'
-      );
-    });
-
-    it('should accept connection string with encryption settings', () => {
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;Encrypt=true;TrustServerCertificate=true;'
-      );
-
-      expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('Encrypt=true');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('Encrypt=true');
+      expect(connStr).toContain('TrustServerCertificate=true');
     });
   });
 
   describe('provider metadata', () => {
     it('should have providerName set to mssql', () => {
-      const provider = new MssqlProvider('Server=localhost;Database=testdb;');
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123'
+      });
 
       expect((provider as unknown as { providerName: string }).providerName).toBe('mssql');
     });
 
     it('should initialize with isConnected false', () => {
-      const provider = new MssqlProvider('Server=localhost;Database=testdb;');
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123'
+      });
 
       expect((provider as unknown as { isConnected: boolean }).isConnected).toBe(false);
     });
 
     it('should initialize with inTransaction false', () => {
-      const provider = new MssqlProvider('Server=localhost;Database=testdb;');
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123'
+      });
 
       expect((provider as unknown as { inTransaction: boolean }).inTransaction).toBe(false);
     });
@@ -152,71 +205,106 @@ describe('MssqlProvider', () => {
 
   describe('connection string validation', () => {
     it('should accept connection string with timeout settings', () => {
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;Connection Timeout=30;'
-      );
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        connectionTimeout: 30
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('Connection Timeout=30');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('Connection Timeout=30');
     });
 
     it('should accept connection string with pool configuration', () => {
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;Max Pool Size=100;Min Pool Size=10;'
-      );
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        poolOptions: { max: 100, min: 10 }
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('Max Pool Size=100');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('Max Pool Size=100');
+      expect(connStr).toContain('Min Pool Size=10');
     });
 
-    it('should preserve connection string with application name', () => {
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;Application Name=MyApp;'
-      );
+    it('should include application name', () => {
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        applicationName: 'MyApp'
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toContain('Application Name=MyApp');
+      const connStr = (provider as unknown as { connectionString: string }).connectionString;
+      expect(connStr).toContain('Application Name=MyApp');
     });
   });
 
   describe('parameter validation', () => {
     it('should handle undefined logger gracefully', () => {
-      const provider = new MssqlProvider('Server=localhost;Database=testdb;', undefined);
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        logger: undefined
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should handle undefined middlewares gracefully', () => {
-      const provider = new MssqlProvider('Server=localhost;Database=testdb;', undefined, undefined);
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        middlewares: undefined
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should handle empty middlewares array', () => {
-      const provider = new MssqlProvider('Server=localhost;Database=testdb;', undefined, []);
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        middlewares: []
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should accept softDelete with custom column name', () => {
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;',
-        undefined,
-        undefined,
-        { enabled: true, column: 'IsDeleted' }
-      );
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        softDelete: { enabled: true, column: 'IsDeleted' }
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should accept retryPolicy with custom delay', () => {
-      const provider = new MssqlProvider(
-        'Server=localhost;Database=testdb;',
-        undefined,
-        undefined,
-        undefined,
-        { shouldRetry: (err) => true, getDelayMs: () => 2000 }
-      );
+      const provider = new MssqlProvider({
+        server: 'localhost',
+        database: 'testdb',
+        user: 'sa',
+        password: 'Password123',
+        retryPolicy: { shouldRetry: (err) => true, getDelayMs: () => 2000 }
+      });
 
       expect(provider).toBeDefined();
     });

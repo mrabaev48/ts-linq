@@ -13,6 +13,5 @@ export var LoadingStrategy;
     LoadingStrategy["Explicit"] = "explicit";
 })(LoadingStrategy || (LoadingStrategy = {}));
 // Export error classes
-export * from './errors';
-export { ValidationError } from './errors';
+export { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError, ForeignKeyConstraintError, ValidationError } from './errors';
 //# sourceMappingURL=index.js.map

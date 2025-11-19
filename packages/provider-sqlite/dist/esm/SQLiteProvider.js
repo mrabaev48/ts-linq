@@ -3,6 +3,7 @@ import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
 import { SQLiteDdlStrategy } from '@ts-linq/dialect-sqlite';
+import { buildSqliteConnectionString } from './buildConnectionString';
 function safeRequireSqlite3() {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -13,10 +14,12 @@ function safeRequireSqlite3() {
     }
 }
 export class SQLiteProvider extends DatabaseProvider {
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy);
+    constructor(config) {
+        const connectionString = buildSqliteConnectionString(config);
+        super(connectionString, config.logger, config.middlewares, config.softDelete, config.retryPolicy);
         this.db = null;
         this.ddl = new SQLiteDdlStrategy();
+        this.config = config;
         this.providerName = 'sqlite';
     }
     /** Open a connection to the SQLite database and enable foreign keys. */

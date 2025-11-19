@@ -4,14 +4,14 @@ import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
 
 describe('SQLiteProvider', () => {
   describe('constructor', () => {
-    it('should create provider with connection string', () => {
-      const provider = new SQLiteProvider(':memory:');
+    it('should create provider with minimal config', () => {
+      const provider = new SQLiteProvider({ file: ':memory:' });
 
       expect(provider).toBeDefined();
       expect((provider as unknown as { providerName: string }).providerName).toBe('sqlite');
     });
 
-    it('should accept logger in constructor', () => {
+    it('should accept logger in config', () => {
       const mockLogger = {
         query: jest.fn(),
         transactionStart: jest.fn(),
@@ -22,46 +22,42 @@ describe('SQLiteProvider', () => {
         error: jest.fn()
       };
 
-      const provider = new SQLiteProvider(':memory:', mockLogger as unknown as typeof mockLogger);
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        logger: mockLogger as unknown as typeof mockLogger
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept middlewares in constructor', () => {
+    it('should accept middlewares in config', () => {
       const mockMiddleware = {
         beforeExecute: jest.fn(),
         afterExecute: jest.fn()
       };
 
-      const provider = new SQLiteProvider(':memory:', undefined, [mockMiddleware]);
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        middlewares: [mockMiddleware]
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept softDelete options in constructor', () => {
-      const provider = new SQLiteProvider(
-        ':memory:',
-        undefined,
-        undefined,
-        { enabled: true, column: 'isDeleted' }
-      );
+    it('should accept softDelete options in config', () => {
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        softDelete: { enabled: true, column: 'isDeleted' }
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept retryPolicy in constructor', () => {
-      const retryPolicy = {
-        maxRetries: 3,
-        shouldRetry: () => true
-      };
-
-      const provider = new SQLiteProvider(
-        ':memory:',
-        undefined,
-        undefined,
-        undefined,
-        retryPolicy
-      );
+    it('should accept retryPolicy in config', () => {
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        retryPolicy: { shouldRetry: () => true, getDelayMs: () => 1000 }
+      });
 
       expect(provider).toBeDefined();
     });
@@ -69,7 +65,7 @@ describe('SQLiteProvider', () => {
 
   describe('getDialect', () => {
     it('should return SQLiteDialect instance', () => {
-      const provider = new SQLiteProvider(':memory:');
+      const provider = new SQLiteProvider({ file: ':memory:' });
       const dialect = provider.getDialect();
 
       expect(dialect).toBeInstanceOf(SQLiteDialect);
@@ -77,104 +73,107 @@ describe('SQLiteProvider', () => {
   });
 
   describe('connection string handling', () => {
-    it('should accept file-based connection string', () => {
-      const provider = new SQLiteProvider('./test.db');
+    it('should handle memory mode', () => {
+      const provider = new SQLiteProvider({ file: ':memory:' });
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toBe(
+        ':memory:'
+      );
+    });
+
+    it('should handle file path', () => {
+      const provider = new SQLiteProvider({ file: './test.db' });
 
       expect(provider).toBeDefined();
       expect((provider as unknown as { connectionString: string }).connectionString).toBe('./test.db');
     });
 
-    it('should accept in-memory connection string', () => {
-      const provider = new SQLiteProvider(':memory:');
+    it('should handle mode option for memory', () => {
+      const provider = new SQLiteProvider({ file: 'test.db', mode: 'memory' });
 
       expect(provider).toBeDefined();
       expect((provider as unknown as { connectionString: string }).connectionString).toBe(':memory:');
     });
 
-    it('should accept absolute path connection string', () => {
-      const provider = new SQLiteProvider('/tmp/test.db');
+    it('should handle readonly mode', () => {
+      const provider = new SQLiteProvider({ file: './data.db', mode: 'readonly' });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toBe('/tmp/test.db');
     });
   });
 
   describe('provider metadata', () => {
     it('should have providerName set to sqlite', () => {
-      const provider = new SQLiteProvider(':memory:');
+      const provider = new SQLiteProvider({ file: ':memory:' });
 
       expect((provider as unknown as { providerName: string }).providerName).toBe('sqlite');
     });
 
     it('should initialize with isConnected false', () => {
-      const provider = new SQLiteProvider(':memory:');
+      const provider = new SQLiteProvider({ file: ':memory:' });
 
       expect((provider as unknown as { isConnected: boolean }).isConnected).toBe(false);
     });
 
     it('should initialize with inTransaction false', () => {
-      const provider = new SQLiteProvider(':memory:');
+      const provider = new SQLiteProvider({ file: ':memory:' });
 
       expect((provider as unknown as { inTransaction: boolean }).inTransaction).toBe(false);
     });
   });
 
-  describe('connection string validation', () => {
-    it('should accept empty string for in-memory database', () => {
-      const provider = new SQLiteProvider('');
+  describe('config validation', () => {
+    it('should accept busyTimeoutMs option', () => {
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        busyTimeoutMs: 5000
+      });
 
       expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toBe('');
     });
 
-    it('should accept relative path', () => {
-      const provider = new SQLiteProvider('../data/test.db');
-
-      expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toBe('../data/test.db');
-    });
-
-    it('should preserve special SQLite connection strings', () => {
-      const provider = new SQLiteProvider('file::memory:?cache=shared');
-
-      expect(provider).toBeDefined();
-      expect((provider as unknown as { connectionString: string }).connectionString).toBe('file::memory:?cache=shared');
-    });
-  });
-
-  describe('parameter validation', () => {
     it('should handle undefined logger gracefully', () => {
-      const provider = new SQLiteProvider(':memory:', undefined);
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        logger: undefined
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should handle undefined middlewares gracefully', () => {
-      const provider = new SQLiteProvider(':memory:', undefined, undefined);
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        middlewares: undefined
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should handle empty middlewares array', () => {
-      const provider = new SQLiteProvider(':memory:', undefined, []);
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        middlewares: []
+      });
 
       expect(provider).toBeDefined();
     });
 
-    it('should accept softDelete with enabled false', () => {
-      const provider = new SQLiteProvider(':memory:', undefined, undefined, { enabled: false });
+    it('should accept softDelete with custom column', () => {
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        softDelete: { enabled: true, column: 'deletedAt' }
+      });
 
       expect(provider).toBeDefined();
     });
 
     it('should accept retryPolicy', () => {
-      const provider = new SQLiteProvider(
-        ':memory:',
-        undefined,
-        undefined,
-        undefined,
-        { shouldRetry: () => false, getDelayMs: () => 1000 }
-      );
+      const provider = new SQLiteProvider({
+        file: ':memory:',
+        retryPolicy: { shouldRetry: () => false, getDelayMs: () => 1000 }
+      });
 
       expect(provider).toBeDefined();
     });

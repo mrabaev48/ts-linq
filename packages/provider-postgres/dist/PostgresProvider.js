@@ -6,6 +6,7 @@ const core_1 = require("@ts-linq/core");
 const metadata_1 = require("@ts-linq/metadata");
 const dialect_postgres_1 = require("@ts-linq/dialect-postgres");
 const dialect_postgres_2 = require("@ts-linq/dialect-postgres");
+const buildConnectionString_1 = require("./buildConnectionString");
 // Lazy require to avoid hard dependency if not installed
 let Pg;
 try {
@@ -50,9 +51,11 @@ class PostgresProvider extends core_1.DatabaseProvider {
         this.notifyEntityMaterialized(entity, meta);
         return entity;
     }
-    constructor(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck) {
-        super(connectionString, logger, middlewares, softDelete, retryPolicy, poolOptions, healthCheck);
+    constructor(config) {
+        const connectionString = (0, buildConnectionString_1.buildPostgresConnectionString)(config);
+        super(connectionString, config.logger, config.middlewares, config.softDelete, config.retryPolicy, config.poolOptions, config.healthCheck);
         this.ddl = new dialect_postgres_2.PostgresDdlStrategy();
+        this.config = config;
         this.providerName = 'postgresql';
     }
     coerceToSqlParameter(value) {

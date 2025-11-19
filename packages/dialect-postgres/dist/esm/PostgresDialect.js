@@ -18,7 +18,7 @@ export class PostgresDialect {
         this.groupEmitter = new PgGroupEmitter();
     }
     quoteIdentifier(identifier) {
-        return `"${identifier.replace(/"/g, '"')}`;
+        return `"${identifier.replace(/"/g, '""')}"`;
     }
     /**
      * Generate a PostgreSQL SELECT query from normalized QueryOptions.

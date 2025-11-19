@@ -1,4 +1,4 @@
-import type { EntityMetadata, RetryPolicy, SqlParameter, OrmMiddleware, SoftDeleteOptions, SqlLogger, SqlDialect, ConnectionPoolOptions, ConnectionHealthCheckOptions } from '@ts-linq/types';
+import type { EntityMetadata, SqlParameter, SqlDialect, PostgresConfig } from '@ts-linq/types';
 import { DatabaseProvider } from '@ts-linq/core';
 /**
  * PostgreSQL provider backed by `pg` Pool.
@@ -13,9 +13,10 @@ import { DatabaseProvider } from '@ts-linq/core';
 export declare class PostgresProvider extends DatabaseProvider {
     private pool;
     private ddl;
+    private readonly config;
     /** Map a row object to a new entity instance using entity metadata and notify middleware. */
     private mapRowToEntity;
-    constructor(connectionString: string, logger?: SqlLogger, middlewares?: OrmMiddleware[], softDelete?: SoftDeleteOptions, retryPolicy?: RetryPolicy, poolOptions?: ConnectionPoolOptions, healthCheck?: ConnectionHealthCheckOptions);
+    constructor(config: PostgresConfig);
     private coerceToSqlParameter;
     /** Open a connection pool to PostgreSQL using the connection string. */
     connect(): Promise<void>;

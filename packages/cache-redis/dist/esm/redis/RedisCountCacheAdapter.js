@@ -46,6 +46,38 @@ export class RedisCountCacheAdapter {
         this.shadow.set(key, { value: entry.value, ts: entry.ts });
         return entry.value.value;
     }
+    async getAsync(key) {
+        this._metrics.requests++;
+        const entry = this.shadow.get(key);
+        if (entry) {
+            if (this.shadowTtlMs && this.shadowTtlMs > 0 && Date.now() - entry.ts > this.shadowTtlMs) {
+                this.shadow.delete(key);
+                // Fall through to remote fetch
+            }
+            else {
+                this._metrics.hits++;
+                // LRU touch
+                this.shadow.delete(key);
+                this.shadow.set(key, { value: entry.value, ts: entry.ts });
+                return entry.value.value;
+            }
+        }
+        // Shadow miss (or expired) - try remote
+        this._metrics.misses++;
+        try {
+            const remoteValue = await this.client.get(this.k(key));
+            if (!remoteValue)
+                return undefined;
+            const parsed = JSON.parse(remoteValue);
+            // Hydrate shadow
+            this.ensureCapacity();
+            this.shadow.set(key, { value: parsed, ts: Date.now() });
+            return parsed.value;
+        }
+        catch {
+            return undefined;
+        }
+    }
     set(key, value) {
         this.ensureCapacity();
         const entry = { value, ts: Date.now() };
