@@ -59,3 +59,53 @@ As a backend ORM, the framework has no direct UI. Design focuses on API ergonomi
 -   **Turborepo**: High-performance build system for monorepos.
 -   **pnpm**: Fast, disk-space efficient package manager.
 -   **Jest**: Testing framework.
+
+# Recent Changes
+
+## November 19, 2025: E2E Tests Plan Detailed
+
+**Comprehensive E2E Test Plan** (10 days, ~323 tests)  
+Expanded E2E testing plan in `test-plan.md` with full Arrange-Act-Assert specifications:
+- **Location**: `packages/e2e-tests`
+- **Infrastructure**: Docker-compose with PostgreSQL, MySQL, MSSQL, Redis, Memcached
+- **Testing Approach**: Full workflow validation from entity definition → query → persistence
+
+**Test Suites Breakdown**:
+
+1. **Day 1: Infrastructure** (8 tests): Database connections, pooling, Redis/Memcached setup
+2. **Day 2-3: CRUD & Change Tracking** (60 tests):
+   - SQLite CRUD: 13 tests (auto-increment, constraints, defaults)
+   - PostgreSQL CRUD: 13 tests (similar coverage)
+   - MySQL CRUD: 13 tests (similar coverage)
+   - MSSQL CRUD: 13 tests (similar coverage)
+   - Change Tracking: 20 tests (entity states, modified properties, batch saves, concurrency control, attach/detach)
+
+3. **Day 4: Relationships** (35 tests):
+   - One-to-Many: 10 tests (eager/lazy loading, N+1 prevention, cascading)
+   - Many-to-One: 10 tests
+   - Many-to-Many: 10 tests (junction tables, bidirectional navigation)
+   - Lazy Loading: 8 tests
+   - Eager Loading: 7 tests
+
+4. **Day 5: LINQ Queries** (40 tests):
+   - Complex WHERE: 10 tests (AND/OR, LIKE, IN, NULL handling, expressions)
+   - JOINs: 7 tests (INNER, LEFT, RIGHT, multi-table, self-join)
+   - Aggregations: 10 tests (SUM, AVG, MIN, MAX, GROUP BY, HAVING, window functions)
+   - Subqueries: 8 tests (IN, EXISTS, scalar, correlated, nested)
+
+5. **Day 6: Transactions** (30 tests):
+   - Commit/Rollback: 10 tests (explicit/auto commit, error rollback, sequential TXs)
+   - Savepoints: 7 tests (nested transactions, rollback to savepoint)
+   - Isolation Levels: 10 tests (READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE, SNAPSHOT)
+   - Deadlocks: 8 tests (detection, retry policies, circular deadlocks)
+
+6. **Day 7: Migrations** (35 tests) - Schema creation, up/down, rollback, diff-based migrations
+7. **Day 8: Caching** (40 tests) - SQL cache, entity cache, Redis/Memcached integration, invalidation
+8. **Day 9: Performance & Concurrency** (45 tests) - Bulk operations, N+1 prevention, indexing, optimistic/pessimistic locking
+9. **Day 10: Multi-Provider** (30 tests) - Cross-provider consistency, type mapping, provider switching
+
+**Test Plan Updates**:
+- **Integration Tests**: 7 days, ~240 tests (added earlier today)
+- **E2E Tests**: 10 days, ~323 tests (expanded from 9 days)
+- **Total Effort**: 51 days for comprehensive testing
+- **Total Packages**: 36 packages

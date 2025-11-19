@@ -1732,11 +1732,74 @@ describe('Example Projects', () => {
 
 ---
 
-## E2E Tests (9 days)
+## E2E Tests (10 days, ~300+ tests)
 
 ### `packages/e2e-tests` - End-to-End Testing
 
-#### Infrastructure Setup (1 day)
+End-to-end tests validate complete workflows across the entire ORM stack, from entity definition through query execution to database persistence. These tests use real database instances (via Docker) and exercise the full framework as end users would.
+
+#### Package Structure
+
+```
+packages/e2e-tests/
+├── docker-compose.yml
+├── src/
+│   ├── test-helpers.ts
+│   ├── entity-fixtures.ts
+│   └── database-setup.ts
+├── tests/
+│   ├── 01-infrastructure/
+│   │   └── database-connections.test.ts
+│   ├── 02-crud-workflows/
+│   │   ├── sqlite-crud.test.ts
+│   │   ├── postgres-crud.test.ts
+│   │   ├── mysql-crud.test.ts
+│   │   ├── mssql-crud.test.ts
+│   │   └── change-tracking.test.ts
+│   ├── 03-relationships/
+│   │   ├── one-to-many.test.ts
+│   │   ├── many-to-one.test.ts
+│   │   ├── many-to-many.test.ts
+│   │   ├── lazy-loading.test.ts
+│   │   └── eager-loading.test.ts
+│   ├── 04-linq-queries/
+│   │   ├── complex-where.test.ts
+│   │   ├── joins.test.ts
+│   │   ├── aggregations.test.ts
+│   │   └── subqueries.test.ts
+│   ├── 05-transactions/
+│   │   ├── commit-rollback.test.ts
+│   │   ├── savepoints.test.ts
+│   │   ├── isolation-levels.test.ts
+│   │   └── deadlocks.test.ts
+│   ├── 06-migrations/
+│   │   ├── schema-creation.test.ts
+│   │   ├── up-down.test.ts
+│   │   ├── rollback.test.ts
+│   │   └── diff-based.test.ts
+│   ├── 07-caching/
+│   │   ├── sql-cache.test.ts
+│   │   ├── entity-cache.test.ts
+│   │   ├── redis-integration.test.ts
+│   │   └── invalidation.test.ts
+│   ├── 08-performance/
+│   │   ├── bulk-operations.test.ts
+│   │   ├── n-plus-one.test.ts
+│   │   ├── indexing.test.ts
+│   │   └── query-optimization.test.ts
+│   ├── 09-concurrency/
+│   │   ├── optimistic-locking.test.ts
+│   │   ├── pessimistic-locking.test.ts
+│   │   └── concurrent-updates.test.ts
+│   └── 10-multi-provider/
+│       ├── cross-provider-consistency.test.ts
+│       ├── provider-switching.test.ts
+│       └── type-mapping.test.ts
+├── package.json
+└── tsconfig.json
+```
+
+#### Day 1: Infrastructure Setup (1 day)
 
 Create `docker-compose.yml` for test databases:
 
@@ -1803,102 +1866,379 @@ services:
       - "11211:11211"
 ```
 
-#### E2E Test Scenarios (8 days)
-
-##### Day 1-2: CRUD Workflows & Change Tracking
+#### Database Connection Tests (8 tests)
 
 ```typescript
-// e2e-tests/tests/crud-workflows.test.ts
-describe('CRUD Workflows - All Providers', () => {
-  describe.each(['sqlite', 'postgres', 'mysql', 'mssql'])('%s provider', (provider) => {
-    it('should create entity with auto-increment ID', async () => {
-      // Arrange: Create DbContext with provider
-      // Act: Insert entity via DbSet.add() + saveChanges()
-      // Assert: Entity has generated ID
+// tests/01-infrastructure/database-connections.test.ts
+describe('Database Infrastructure', () => {
+  it('should connect to SQLite in-memory database', async () => {
+    // Arrange: Configure SQLite provider with :memory:
+    // Act: Create DbContext, ping database
+    // Assert: Connection established
+  })
+
+  it('should connect to PostgreSQL via Docker', async () => {
+    // Arrange: Wait for Postgres health check
+    // Act: Create DbContext with Postgres provider
+    // Assert: Connection successful, can query pg_database
+  })
+
+  it('should connect to MySQL via Docker', async () => {
+    // Arrange: Wait for MySQL health check
+    // Act: Create DbContext with MySQL provider
+    // Assert: Connection successful, can query information_schema
+  })
+
+  it('should connect to MSSQL via Docker', async () => {
+    // Arrange: Wait for MSSQL health check
+    // Act: Create DbContext with MSSQL provider
+    // Assert: Connection successful, can query sys.databases
+  })
+
+  it('should handle connection pooling (PostgreSQL)', async () => {
+    // Arrange: Configure pool with min=2, max=10
+    // Act: Create 15 concurrent connections
+    // Assert: Pool reuses connections, max 10 active
+  })
+
+  it('should reconnect after connection loss', async () => {
+    // Arrange: Establish connection
+    // Act: Kill connection, execute query
+    // Assert: Reconnects automatically
+  })
+
+  it('should connect to Redis cache', async () => {
+    // Arrange: Redis Docker container running
+    // Act: Create Redis client
+    // Assert: Can SET/GET keys
+  })
+
+  it('should connect to Memcached', async () => {
+    // Arrange: Memcached Docker container running
+    // Act: Create Memcached client
+    // Assert: Can store/retrieve values
+  })
+})
+```
+
+---
+
+#### Day 2-3: CRUD Workflows & Change Tracking (2 days, 52 tests)
+
+##### SQLite CRUD (13 tests)
+
+```typescript
+// tests/02-crud-workflows/sqlite-crud.test.ts
+describe('SQLite CRUD Operations', () => {
+  describe('Create', () => {
+    it('should insert entity with auto-increment ID', async () => {
+      // Arrange: Define User entity, create DbContext
+      // Act: users.add({ name: 'John', email: 'john@example.com' }); await context.saveChanges()
+      // Assert: Entity has ID > 0, persisted in database
     })
 
-    it('should read entity by ID', async () => {
-      // Arrange: Insert test entity
-      // Act: Find by ID
-      // Assert: Returns correct entity
+    it('should insert multiple entities in single transaction', async () => {
+      // Arrange: 5 entities
+      // Act: Add all, saveChanges() once
+      // Assert: All 5 inserted, IDs assigned sequentially
     })
 
-    it('should read all entities', async () => {
-      // Arrange: Insert 3 test entities
-      // Act: Query via DbSet (no filters)
-      // Assert: Returns all 3 entities
+    it('should respect NOT NULL constraints', async () => {
+      // Arrange: Entity with required field
+      // Act: Insert without required field
+      // Assert: Throws validation or DB error
     })
 
-    it('should update entity properties', async () => {
-      // Arrange: Insert test entity
-      // Act: Modify property, call update(), saveChanges()
-      // Assert: Database reflects changes
+    it('should respect UNIQUE constraints', async () => {
+      // Arrange: Insert entity with unique email
+      // Act: Insert another with same email
+      // Assert: Throws unique constraint violation
     })
 
+    it('should use DEFAULT values', async () => {
+      // Arrange: Entity with active: true DEFAULT
+      // Act: Insert without specifying active
+      // Assert: Entity has active=true
+    })
+  })
+
+  describe('Read', () => {
+    it('should find entity by ID', async () => {
+      // Arrange: Insert user#1
+      // Act: users.find(1)
+      // Assert: Returns correct user
+    })
+
+    it('should return null for non-existent ID', async () => {
+      // Arrange: Empty table
+      // Act: users.find(999)
+      // Assert: Returns null
+    })
+
+    it('should load all entities', async () => {
+      // Arrange: Insert 10 entities
+      // Act: users.toArray()
+      // Assert: Returns all 10
+    })
+
+    it('should filter with WHERE clause', async () => {
+      // Arrange: Insert users with ages 18, 25, 30
+      // Act: users.where(u => u.age > 20).toArray()
+      // Assert: Returns users with age 25, 30
+    })
+  })
+
+  describe('Update', () => {
+    it('should update single entity', async () => {
+      // Arrange: Insert user
+      // Act: Load user, modify name, saveChanges()
+      // Assert: Database shows updated name
+    })
+
+    it('should update multiple properties', async () => {
+      // Arrange: Insert user
+      // Act: Modify name, email, age; saveChanges()
+      // Assert: All fields updated
+    })
+
+    it('should not update unchanged entities', async () => {
+      // Arrange: Insert user
+      // Act: Load user (no changes), saveChanges()
+      // Assert: No UPDATE SQL executed
+    })
+  })
+
+  describe('Delete', () => {
     it('should delete entity', async () => {
-      // Arrange: Insert test entity
-      // Act: Call remove(), saveChanges()
+      // Arrange: Insert user
+      // Act: users.remove(user); saveChanges()
       // Assert: Entity no longer in database
     })
 
-    it('should handle batch insert (1000 entities)', async () => {
-      // Arrange: Generate 1000 test entities
-      // Act: Use BatchOperations.bulkInsert()
-      // Assert: All inserted, duration < 5s
-    })
-
-    it('should handle batch update (1000 entities)', async () => {
-      // Arrange: Insert 1000 entities
-      // Act: Modify all, use BatchOperations.bulkUpdate()
-      // Assert: All updated, duration < 5s
-    })
-
-    it('should handle batch delete (1000 entities)', async () => {
-      // Arrange: Insert 1000 entities
-      // Act: Use BatchOperations.bulkDelete()
-      // Assert: All deleted, duration < 3s
+    it('should cascade delete with ON DELETE CASCADE', async () => {
+      // Arrange: User with posts (FK with CASCADE)
+      // Act: Delete user
+      // Assert: All posts also deleted
     })
   })
 })
+```
 
-// e2e-tests/tests/change-tracking.test.ts
-describe('Change Tracking', () => {
-  it('should track Added entities', async () => {
-    // Arrange: Create context
-    // Act: Add entity to DbSet
-    // Assert: ChangeTracker shows Added state
+##### PostgreSQL CRUD (13 tests) - Similar structure
+
+##### MySQL CRUD (13 tests) - Similar structure
+
+##### MSSQL CRUD (13 tests) - Similar structure
+
+##### Change Tracking E2E (20 tests)
+
+```typescript
+// tests/02-crud-workflows/change-tracking.test.ts
+describe('Change Tracking E2E', () => {
+  describe('Entity States', () => {
+    it('should track Added state', async () => {
+      // Arrange: Create context
+      // Act: users.add(newUser)
+      // Assert: ChangeTracker.getState(newUser) === EntityState.Added
+    })
+
+    it('should track Unchanged state after load', async () => {
+      // Arrange: Insert user via direct SQL
+      // Act: Load user via ORM
+      // Assert: State === Unchanged
+    })
+
+    it('should transition Unchanged → Modified on property change', async () => {
+      // Arrange: Load user (Unchanged)
+      // Act: user.name = 'NewName'
+      // Assert: State === Modified, modified properties = ['name']
+    })
+
+    it('should track Deleted state', async () => {
+      // Arrange: Load user
+      // Act: users.remove(user)
+      // Assert: State === Deleted
+    })
+
+    it('should track Detached state after context disposal', async () => {
+      // Arrange: Load user, dispose context
+      // Act: Check state
+      // Assert: State === Detached
+    })
   })
 
-  it('should track Modified entities', async () => {
-    // Arrange: Insert and load entity
-    // Act: Modify property
-    // Assert: ChangeTracker shows Modified state with modified properties
+  describe('Modified Properties Tracking', () => {
+    it('should track single modified property', async () => {
+      // Arrange: Load user
+      // Act: user.name = 'NewName'
+      // Assert: ChangeTracker.getModifiedProperties(user) === ['name']
+    })
+
+    it('should track multiple modified properties', async () => {
+      // Arrange: Load user
+      // Act: user.name = 'A'; user.email = 'a@b.com'; user.age = 30
+      // Assert: Modified properties = ['name', 'email', 'age']
+    })
+
+    it('should clear modified properties after saveChanges()', async () => {
+      // Arrange: Modified user
+      // Act: saveChanges()
+      // Assert: Modified properties = [], state = Unchanged
+    })
+
+    it('should not track unchanged property reassignment', async () => {
+      // Arrange: Load user (name='John')
+      // Act: user.name = 'John' (same value)
+      // Assert: Modified properties = []
+    })
   })
 
-  it('should track Deleted entities', async () => {
-    // Arrange: Insert and load entity
-    // Act: Call remove()
-    // Assert: ChangeTracker shows Deleted state
+  describe('Batch SaveChanges', () => {
+    it('should save Added, Modified, Deleted in single transaction', async () => {
+      // Arrange: Add user1, modify user2, delete user3
+      // Act: saveChanges()
+      // Assert: All 3 operations committed, transaction log shows single TX
+    })
+
+    it('should generate SQL in correct order (DELETE, UPDATE, INSERT)', async () => {
+      // Arrange: Mix of operations
+      // Act: saveChanges()
+      // Assert: SQL executed in order: DELETE first, then UPDATE, then INSERT
+    })
+
+    it('should rollback entire batch on error', async () => {
+      // Arrange: Add valid user + invalid user (FK violation)
+      // Act: saveChanges()
+      // Assert: Throws error, valid user NOT persisted
+    })
   })
 
-  it('should save all changes in single transaction', async () => {
-    // Arrange: Add, modify, delete different entities
-    // Act: Call saveChanges()
-    // Assert: All operations committed together
+  describe('Concurrency Control', () => {
+    it('should detect optimistic concurrency via row version', async () => {
+      // Arrange: Entity with @RowVersion field
+      // Act: Load in context1, load in context2, modify both, save context1, save context2
+      // Assert: context2.saveChanges() throws ConcurrencyException
+    })
+
+    it('should include conflict details in ConcurrencyException', async () => {
+      // Arrange: Concurrent modification scenario
+      // Act: Trigger conflict
+      // Assert: Exception contains current values, original values, database values
+    })
+
+    it('should support manual conflict resolution (client wins)', async () => {
+      // Arrange: Concurrent modification
+      // Act: Catch exception, force save with overwrite flag
+      // Assert: Client values persisted
+    })
+
+    it('should support manual conflict resolution (database wins)', async () => {
+      // Arrange: Concurrent modification
+      // Act: Catch exception, reload entity, reapply changes
+      // Assert: Merged with database values
+    })
+
+    it('should auto-increment row version on each update', async () => {
+      // Arrange: Entity with version=1
+      // Act: Update entity, saveChanges()
+      // Assert: version=2 in database
+    })
   })
 
-  it('should rollback all changes on error', async () => {
-    // Arrange: Add valid entity + invalid entity (constraint violation)
-    // Act: Call saveChanges() (should fail)
-    // Assert: Valid entity also rolled back
-  })
+  describe('Attach/Detach', () => {
+    it('should attach entity to context', async () => {
+      // Arrange: Create entity (not from DB)
+      // Act: context.attach(entity)
+      // Assert: State === Unchanged, tracked by context
+    })
 
-  it('should detect concurrent modification (optimistic concurrency)', async () => {
-    // Arrange: Insert entity with version field
-    // Act: Load in 2 contexts, modify both, save first, save second
-    // Assert: Second save throws ConcurrencyError
+    it('should detach entity from context', async () => {
+      // Arrange: Tracked entity
+      // Act: context.detach(entity)
+      // Assert: State === Detached, changes not saved
+    })
+
+    it('should reattach detached entity', async () => {
+      // Arrange: Detached entity
+      // Act: context.attach(entity)
+      // Assert: Can track and save changes
+    })
   })
 })
+```
+
+---
+
+#### Day 4: Relationships (1 day, 35 tests)
+
+```typescript
+// tests/03-relationships/one-to-many.test.ts
+describe('One-to-Many Relationships', () => {
+  it('should load parent with children (eager loading)', async () => {
+    // Arrange: User with 3 posts
+    // Act: users.include(u => u.posts).find(1)
+    // Assert: Returns user with posts array populated
+  })
+
+  it('should lazy load children on access', async () => {
+    // Arrange: User with posts (lazy loading enabled)
+    // Act: Load user, access user.posts
+    // Assert: Posts loaded via separate query
+  })
+
+  it('should prevent N+1 queries with include()', async () => {
+    // Arrange: 10 users, each with 5 posts
+    // Act: users.include(u => u.posts).toArray()
+    // Assert: Only 2 SQL queries executed (1 for users, 1 for posts)
+  })
+
+  it('should insert child with parent FK', async () => {
+    // Arrange: User#1 exists
+    // Act: posts.add({ title: 'Post1', userId: 1 }); saveChanges()
+    // Assert: Post inserted with userId=1
+  })
+
+  it('should update child FK', async () => {
+    // Arrange: Post with userId=1
+    // Act: post.userId = 2; saveChanges()
+    // Assert: FK updated
+  })
+
+  it('should delete child without affecting parent', async () => {
+    // Arrange: User with posts
+    // Act: Delete one post
+    // Assert: User remains, other posts intact
+  })
+
+  it('should cascade delete children when parent deleted (if configured)', async () => {
+    // Arrange: User with posts, FK with ON DELETE CASCADE
+    // Act: Delete user
+    // Assert: All posts deleted
+  })
+
+  it('should throw FK violation if parent deleted without CASCADE', async () => {
+    // Arrange: User with posts, FK with NO ACTION
+    // Act: Delete user
+    // Assert: Throws FK constraint error
+  })
+
+  it('should handle null FK (optional relationship)', async () => {
+    // Arrange: Post entity with optional userId
+    // Act: Insert post without userId
+    // Assert: userId = null in database
+  })
+
+  it('should filter children via navigation property', async () => {
+    // Arrange: User with published and draft posts
+    // Act: user.posts.where(p => p.published === true)
+    // Assert: Returns only published posts
+  })
+})
+
+// tests/03-relationships/many-to-one.test.ts (10 tests)
+// tests/03-relationships/many-to-many.test.ts (10 tests)
+// tests/03-relationships/lazy-loading.test.ts (8 tests)
+// tests/03-relationships/eager-loading.test.ts (7 tests)
 ```
 
 ##### Day 3: LINQ Queries
@@ -2636,8 +2976,8 @@ export function assertTransactionActive(provider: DatabaseProvider): void
 | Tier 2 | dialects (4 @ 2d), providers (4 @ 0.5d), cache (3 @ 0.5d), concurrency, pagination, telemetry (4 @ 0.75d) | 11 | 🟠 High |
 | Tier 3 | plugins (3 @ 2d), CLI, integration-nestjs, examples, composite-sql-logger | 7 | 🟡 Medium |
 | Integration | integration-tests (cross-package integration testing) | 7 | 🔴 Critical |
-| E2E | e2e-tests (infrastructure + 8 test suites) | 9 | 🔴 Critical |
-| **TOTAL** | **36 packages** | **50 days** | |
+| E2E | e2e-tests (infrastructure + 9 test suites) | 10 | 🔴 Critical |
+| **TOTAL** | **36 packages** | **51 days** | |
 
 ### Detailed Breakdown
 
@@ -2686,15 +3026,16 @@ export function assertTransactionActive(provider: DatabaseProvider): void
 - Telemetry + Resilience Integration: 1.5d (40 tests)
 - Advanced Features Integration: 1d (35 tests)
 
-**E2E (9 days):**
-- Infrastructure setup: 1d
-- CRUD + Change Tracking: 2d
-- LINQ Queries: 1d
-- Relationships: 1d
-- Migrations: 1d
-- Caching: 1d
-- Performance + Concurrency: 1d
-- Middleware + Telemetry: 1d
+**E2E (10 days):**
+- Infrastructure setup: 1d (8 tests)
+- CRUD + Change Tracking: 2d (60 tests)
+- Relationships: 1d (35 tests)
+- LINQ Queries: 1d (40 tests)
+- Transactions: 1d (30 tests)
+- Migrations: 1d (35 tests)
+- Caching: 1d (40 tests)
+- Performance & Concurrency: 1d (45 tests)
+- Multi-Provider Testing: 1d (30 tests)
 
 ---
 
@@ -4032,4 +4373,73 @@ describe('SQLite Migrations + Dialect Integration', () => {
 ### Soft Delete + Global Filters (8 tests)
 ### Multi-Tenant + Query (7 tests)
 
-**TOTAL: ~245 integration tests across 7 days**
+**TOTAL: ~240 integration tests across 7 days**
+
+---
+
+## E2E Tests Summary (10 days, ~323 tests)
+
+End-to-end tests validate complete workflows across the entire ORM stack using real databases via Docker.
+
+**Package Structure**: See section "## E2E Tests (10 days, ~300+ tests)" above for full file structure and detailed test specifications.
+
+### Test Count Breakdown:
+
+| Day | Category | Tests | Key Features |
+|-----|----------|-------|--------------|
+| 1 | Infrastructure | 8 | Database connections (SQLite, PostgreSQL, MySQL, MSSQL), connection pooling, Redis/Memcached setup |
+| 2-3 | CRUD & Change Tracking | 60 | SQLite/Postgres/MySQL/MSSQL CRUD (13 each), Change Tracking (20): states, properties, concurrency |
+| 4 | Relationships | 35 | One-to-Many (10), Many-to-One (10), Many-to-Many (10), Lazy Loading (8), Eager Loading (7) |
+| 5 | LINQ Queries | 40 | Complex WHERE (10), JOINs (7), Aggregations (10), Subqueries (8) |
+| 6 | Transactions | 30 | Commit/Rollback (10), Savepoints (7), Isolation Levels (10), Deadlocks (8) |
+| 7 | Migrations | 35 | Schema creation, up/down migrations, rollback, diff-based migrations |
+| 8 | Caching | 40 | SQL cache, entity cache, Redis/Memcached integration, invalidation strategies |
+| 9 | Performance & Concurrency | 45 | Bulk operations, N+1 prevention, indexing, optimistic/pessimistic locking |
+| 10 | Multi-Provider | 30 | Cross-provider consistency, type mapping, provider switching |
+| **TOTAL** | **E2E Tests** | **323** | **Full stack validation** |
+
+### Key Testing Approaches:
+
+1. **Real Databases**: All tests run against actual database instances (via Docker Compose)
+2. **Full Workflow Testing**: Entity definition → DbContext → Query execution → Database persistence
+3. **Multi-Provider Coverage**: Every major feature tested across SQLite, PostgreSQL, MySQL, MSSQL
+4. **Performance Validation**: Bulk operations must complete within specified timeframes
+5. **Concurrency Testing**: Optimistic locking, deadlock detection, transaction isolation
+6. **Cache Integration**: Redis and Memcached tested with graceful fallback scenarios
+
+---
+
+## Grand Test Plan Summary
+
+### Total Test Coverage:
+
+| Category | Packages | Days | Tests | Status |
+|----------|----------|------|-------|--------|
+| **Tier 0** | 6 | 4 | 327 | ✅ Complete |
+| **Tier 1** | 5 | 12 | 410 | ✅ Complete |
+| **Tier 2** | 15 | 11 | 501 | ✅ Complete |
+| **Critical Features** | - | - | 48 | ✅ Migrated |
+| **Tier 3** | 5 | 7 | ~175 | 🔴 Planned |
+| **Integration Tests** | 1 | 7 | ~240 | 🔴 Planned |
+| **E2E Tests** | 1 | 10 | ~323 | 🔴 Planned |
+| **TOTAL** | **36** | **51** | **~2,024** | **In Progress** |
+
+### Test Coverage Milestones:
+
+- ✅ **Phase 1 (Tiers 0-2 + Critical)**: 1,286 tests COMPLETE
+- 🔴 **Phase 2 (Tier 3)**: ~175 tests PLANNED
+- 🔴 **Phase 3 (Integration + E2E)**: ~563 tests PLANNED
+
+### Success Criteria:
+
+1. **>90% Code Coverage**: All core packages must exceed 90% line/branch coverage
+2. **All Critical Paths Tested**: CRUD, relationships, LINQ, migrations, transactions
+3. **Multi-Database Validation**: All features work consistently across 4 database providers
+4. **Performance Benchmarks Met**: Bulk operations, query optimization, cache hit rates
+5. **Zero Regressions**: All existing tests continue to pass throughout development
+
+---
+
+**Last Updated**: November 19, 2025  
+**Total Lines in Plan**: 4,400+  
+**Detailed Test Specifications**: ~950+ individual test cases documented
