@@ -53,25 +53,26 @@ This project is a TypeScript ORM framework, inspired by Entity Framework Core, p
 - Full metrics: totalRequests, hits, misses, evictions, invalidations
 **Status:** Architect-approved ✅
 
-### ✅ SQL Dialects (Partial) - 177 tests
+### ✅ SQL Dialects Complete - 234 tests
 **Files:**
 - dialect-sqlite: SQLiteDialect.test.ts (24), SQLiteDdlStrategy.test.ts (37) = 61 tests
 - dialect-postgres: PostgresDialect.test.ts (27), PostgresDdlStrategy.test.ts (31) = 58 tests
 - dialect-mysql: MysqlDialect.test.ts (27), MySqlDdlStrategy.test.ts (31) = 58 tests
+- dialect-mssql: MssqlDialect.test.ts (29), MssqlDdlStrategy.test.ts (28) = 57 tests
 **Coverage:** 
 - SQLite: SELECT, DDL, type mapping, INTEGER AUTOINCREMENT, LIMIT -1 quirk
 - PostgreSQL: SELECT with $1..$n params, "quoted" identifiers, DDL with USING/NULLS/CONCURRENT, UUID/JSONB/TIMESTAMPTZ, CTE
 - MySQL: SELECT with `backtick` identifiers, LIMIT 18446744073709551615 quirk, FULLTEXT/SPATIAL indexes, INVISIBLE/VISIBLE
+- MSSQL: SELECT with [brackets], @p1..@pn params, TOP/OFFSET FETCH, PERSISTED computed columns, INCLUDE indexes
 **Major Fixes:** PostgreSQL `quoteIdentifier()` proper escaping, MySQL backtick identifier support
 **Status:** Architect-approved ✅
 
-**Tier 2 Partial Total: 360 tests passing (Utilities 60 + Cache Adapters 123 + Dialects 177)**
+**Tier 2 Partial Total: 417 tests passing (Utilities 60 + Cache Adapters 123 + Dialects 234)**
 
 **⏳ TIER 2 REMAINING:**
-- 1 SQL dialect package (mssql)
 - 4 Database provider packages
 
-**Overall Total: 1097 tests in Tier 0+1+2 combined** (327 + 410 + 360)
+**Overall Total: 1154 tests in Tier 0+1+2 combined** (327 + 410 + 417)
 
 # User Preferences
 
