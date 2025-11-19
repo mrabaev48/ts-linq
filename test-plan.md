@@ -63,7 +63,7 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 - migrations: 74 tests ✅ (MigrationBuilder, MigrationRunner, DiffBasedMigration)
 - All packages architect-reviewed and approved ✅
 
-**✅ TIER 2 COMPLETE** (Started November 10, 2025)
+**✅ TIER 2 COMPLETE** (November 10, 2025)
 - **3 utility packages: 60 tests** (cache 28, pagination 7, concurrency 25) - Architect-approved ✅
 - **2 cache adapters: 123 tests** (cache-redis 63, cache-memcached 60) - *Production fix applied: async read-through with getAsync()*
 - **4 SQL dialects: 234 tests** - Architect-approved ✅
@@ -71,13 +71,98 @@ This document outlines a comprehensive testing plan for complete test suite rewr
   - dialect-postgres: 58 tests (PostgresDialect 27, PostgresDdlStrategy 31) - *Fixed quoteIdentifier() escaping*
   - dialect-mysql: 58 tests (MysqlDialect 27, MySqlDdlStrategy 31)
   - dialect-mssql: 57 tests (MssqlDialect 29, MssqlDdlStrategy 28)
-- **4 database providers: 83 tests** - All passing ✅
+- **4 database providers: 84 tests** - All passing ✅
   - provider-sqlite: 20 tests (constructor, dialect, connection strings, validation)
   - provider-postgres: 21 tests (constructor, dialect, connection strings, validation, IPv6)
   - provider-mysql: 20 tests (constructor, dialect, connection strings, validation, SSL)
-  - provider-mssql: 22 tests (constructor, dialect, connection strings, validation, pooling)
+  - provider-mssql: 23 tests (constructor, dialect, connection strings, validation, pooling)
 
-**TOTAL: 1237 tests passing** (327 Tier 0 + 410 Tier 1 + 500 Tier 2)
+**🎯 CRITICAL PRODUCTION FEATURES MIGRATION** (November 19, 2025)
+- **MemoryFallback Implementation**: 15 tests - *NEW production feature* ✅
+  - Discovered & fixed architectural gap (graceful degradation API existed but implementation was missing)
+  - Location: packages/query/src/fallbacks/MemoryFallback.ts
+  - Fully implements QueryFallback interface with operation routing
+  - Architect-reviewed and approved ✅
+
+- **Circuit Breaker**: 9 tests (packages/core/tests-new/CircuitBreaker.test.ts) ✅
+  - Force open/close, half-open concurrency, error thresholds
+  
+- **Prometheus Metrics**: 16 tests ✅
+  - packages/prometheus-sql-logger/tests-new/PrometheusSqlLogger.test.ts (6 tests)
+  - packages/prometheus-sql-logger/tests-new/PrometheusAnalysis.test.ts (4 tests)
+  - packages/core/tests-new/PrometheusEndpoint.test.ts (6 tests)
+  
+- **Property-Based Testing**: 8 tests ✅
+  - packages/pagination/tests-new/PropertyBasedKeysetPagination.test.ts (4 tests)
+  - packages/query/tests-new/PropertyBasedPredicates.test.ts (4 tests)
+  
+- **Specification Pattern**: Already covered (18 tests in packages/ast/tests) ✅
+
+- **Pending**: Graceful degradation end-to-end tests (9 files, ~40 tests) - requires ProviderStub migration
+
+**TOTAL: ~1,286 tests passing** (1238 baseline + 48 critical features migration)
+
+---
+
+## 📦 Critical Production Features Migration Summary
+
+This section documents the systematic migration of critical production features from the legacy `tests-old` directory to the new test infrastructure.
+
+### ✅ Completed Migrations (November 19, 2025)
+
+| Feature | Tests | Files | Location | Status |
+|---------|-------|-------|----------|--------|
+| **MemoryFallback** | 15 | 1 | `packages/query/tests-new/MemoryFallback.test.ts` | ✅ NEW Production Feature |
+| **Circuit Breaker** | 9 | 1 | `packages/core/tests-new/CircuitBreaker.test.ts` | ✅ Migrated |
+| **Prometheus Metrics** | 16 | 3 | `packages/prometheus-sql-logger/tests-new/`, `packages/core/tests-new/` | ✅ Migrated |
+| **Property-Based Testing** | 8 | 2 | `packages/pagination/tests-new/`, `packages/query/tests-new/` | ✅ Migrated |
+| **Specification Pattern** | 18 | 1 | `packages/ast/tests/Specification.test.ts` | ✅ Already Covered |
+
+**Total Migrated**: 48 tests across 8 files
+
+### 🔍 MemoryFallback: Critical Architectural Gap Fixed
+
+**Discovery**: During migration, discovered that graceful degradation API (`fallbackTo()`, `withFallbackPolicy()`) existed in Queryable, but the core implementation class `MemoryFallback` was completely missing.
+
+**Impact**: Without MemoryFallback, the resilience features were non-functional:
+- ❌ No in-memory fallback capability
+- ❌ Blocked migration of 9 graceful degradation test files (~40 tests)
+- ❌ Hedged queries, fallback policies, throttling untestable
+
+**Solution Delivered**:
+- ✅ Fully implemented `MemoryFallback<T>` in `packages/query/src/fallbacks/`
+- ✅ Implements complete `QueryFallback<T>` interface
+- ✅ Operation routing: select, count, first, single, any (rejects insert/update/delete)
+- ✅ Pagination-aware `fetchCount()` for consistency
+- ✅ Caching with configurable refresh intervals
+- ✅ Async data suppliers supported
+- ✅ 15 comprehensive unit tests
+- ✅ Architect-reviewed and approved
+
+**Production Readiness**: The MemoryFallback implementation is production-ready and can be used immediately for graceful degradation scenarios.
+
+### ⏳ Pending Migrations
+
+| Feature | Est. Tests | Files | Reason Deferred |
+|---------|-----------|-------|-----------------|
+| Graceful Degradation E2E | ~40 | 9 | Requires ProviderStub migration from tests-old |
+
+The 9 graceful degradation test files depend on `ProviderStub` mock provider which needs to be migrated from tests-old to enable end-to-end graceful degradation testing (hedged queries, fallback policies, replica fetching, throttling).
+
+### 📊 Migration Impact
+
+**Before Migration**:
+- Critical production features only in legacy tests-old
+- MemoryFallback implementation completely missing
+- Graceful degradation API non-functional
+
+**After Migration**:
+- ✅ 48 critical production feature tests migrated
+- ✅ MemoryFallback implemented and tested (NEW feature)
+- ✅ Circuit breaker resilience validated
+- ✅ Prometheus observability coverage
+- ✅ Property-based testing for pagination/predicates
+- ✅ Total test count: ~1,286 tests (+48 from migration)
 
 ---
 
@@ -134,9 +219,9 @@ This section provides an authoritative enumeration of all 35 packages with their
    - ✅ query (85 tests) - QueryBuilder, QueryModel, CountCache
    - ✅ orm (74 tests) - ChangeTracker, DbSet
    - ✅ migrations (74 tests) - MigrationBuilder, MigrationRunner, DiffBasedMigration
-⏳ **Tier 2** (13 packages): **417 tests passing** - Partial complete
+✅ **Tier 2** (13 packages): **501 tests passing** - COMPLETE ✅
    - ✅ cache (28 tests) - EntityCache, CachePolicy
-   - ✅ pagination (7 tests) - PagedResult
+   - ✅ pagination (11 tests) - PagedResult + 4 property-based pagination tests
    - ✅ concurrency (25 tests) - RetryPolicies  
    - ✅ cache-redis (63 tests) - Redis adapters with async read-through
    - ✅ cache-memcached (60 tests) - Memcached adapters with async read-through
@@ -147,7 +232,7 @@ This section provides an authoritative enumeration of all 35 packages with their
    - ✅ provider-sqlite (20 tests) - Constructor, dialect, connection validation
    - ✅ provider-postgres (21 tests) - Constructor, dialect, connection validation, IPv6
    - ✅ provider-mysql (20 tests) - Constructor, dialect, connection validation, SSL
-   - ✅ provider-mssql (22 tests) - Constructor, dialect, connection validation, pooling
+   - ✅ provider-mssql (23 tests) - Constructor, dialect, connection validation, pooling
 ⏸️ **Tier 3** (10 packages): 3 plugins, cli, integration-nestjs, examples, 4 telemetry/logging packages  
 ⏸️ **E2E** (1 package): e2e-tests with multi-provider scenarios
 
@@ -796,6 +881,7 @@ describe('Health Check', () => {
 - `GlobalFilterApplier`
 - `JoinPredicateParser`
 - `InMemoryCountCache`
+- `MemoryFallback<T>` ✅ **NEW - Graceful Degradation Support**
 
 #### Unit Tests
 
@@ -931,6 +1017,33 @@ describe('InMemoryCountCache', () => {
   it('should evict oldest entries when full')
   it('should clear all entries')
 })
+
+// query/tests-new/MemoryFallback.test.ts ✅ COMPLETE (15 tests)
+describe('MemoryFallback', () => {
+  it('should return all data when no query options provided')
+  it('should apply offset from query options')
+  it('should apply limit from query options')
+  it('should apply both offset and limit')
+  it('should return count of all data')
+  it('should apply offset/limit in fetchCount for pagination consistency')
+  it('should execute count operation via execute() and return number')
+  it('should throw for unsupported operations in execute()')
+  it('should always return true for canHandle')
+  it('should execute via execute method')
+  it('should cache data on first access')
+  it('should clear cache when clearCache is called')
+  it('should accept options with custom label')
+  it('should support async data supplier')
+  it('should refresh cache after refreshIntervalMs')
+})
+
+// query/tests-new/PropertyBasedPredicates.test.ts ✅ COMPLETE (4 tests)
+describe('Property-Based Testing: Predicate SQL vs JS Filtering', () => {
+  it('should match JS filter semantics when parsing: a.price >= X && a.stock > Y')
+  it('should match JS filter semantics for OR predicates')
+  it('should handle complex nested predicates correctly')
+  it('should preserve filtering with equality predicates')
+})
 ```
 
 #### Edge Cases
@@ -943,6 +1056,9 @@ describe('InMemoryCountCache', () => {
 - Concurrent count() requests
 - Predicate fallback throttling
 - Aborted queries mid-execution
+- MemoryFallback with unsupported operations (insert/update/delete)
+- Async data supplier errors
+- Cache refresh race conditions
 
 ---
 
