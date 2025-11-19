@@ -129,4 +129,70 @@ describe('PostgresProvider', () => {
       expect((provider as unknown as { inTransaction: boolean }).inTransaction).toBe(false);
     });
   });
+
+  describe('connection string validation', () => {
+    it('should accept connection string with query parameters', () => {
+      const provider = new PostgresProvider('postgresql://localhost/testdb?application_name=myapp');
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toContain('application_name=myapp');
+    });
+
+    it('should accept connection string with multiple parameters', () => {
+      const provider = new PostgresProvider('postgresql://localhost/testdb?sslmode=require&connect_timeout=10');
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toContain('sslmode=require');
+    });
+
+    it('should preserve IPv6 addresses', () => {
+      const provider = new PostgresProvider('postgresql://[::1]:5432/testdb');
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toContain('[::1]');
+    });
+  });
+
+  describe('parameter validation', () => {
+    it('should handle undefined logger gracefully', () => {
+      const provider = new PostgresProvider('postgresql://localhost/testdb', undefined);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should handle undefined middlewares gracefully', () => {
+      const provider = new PostgresProvider('postgresql://localhost/testdb', undefined, undefined);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should handle empty middlewares array', () => {
+      const provider = new PostgresProvider('postgresql://localhost/testdb', undefined, []);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept softDelete with custom column', () => {
+      const provider = new PostgresProvider(
+        'postgresql://localhost/testdb',
+        undefined,
+        undefined,
+        { enabled: true, column: 'deletedAt' }
+      );
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept retryPolicy', () => {
+      const provider = new PostgresProvider(
+        'postgresql://localhost/testdb',
+        undefined,
+        undefined,
+        undefined,
+        { shouldRetry: () => true, getDelayMs: (attempt) => attempt * 1000 }
+      );
+
+      expect(provider).toBeDefined();
+    });
+  });
 });

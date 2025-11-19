@@ -118,4 +118,65 @@ describe('SQLiteProvider', () => {
       expect((provider as unknown as { inTransaction: boolean }).inTransaction).toBe(false);
     });
   });
+
+  describe('connection string validation', () => {
+    it('should accept empty string for in-memory database', () => {
+      const provider = new SQLiteProvider('');
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toBe('');
+    });
+
+    it('should accept relative path', () => {
+      const provider = new SQLiteProvider('../data/test.db');
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toBe('../data/test.db');
+    });
+
+    it('should preserve special SQLite connection strings', () => {
+      const provider = new SQLiteProvider('file::memory:?cache=shared');
+
+      expect(provider).toBeDefined();
+      expect((provider as unknown as { connectionString: string }).connectionString).toBe('file::memory:?cache=shared');
+    });
+  });
+
+  describe('parameter validation', () => {
+    it('should handle undefined logger gracefully', () => {
+      const provider = new SQLiteProvider(':memory:', undefined);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should handle undefined middlewares gracefully', () => {
+      const provider = new SQLiteProvider(':memory:', undefined, undefined);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should handle empty middlewares array', () => {
+      const provider = new SQLiteProvider(':memory:', undefined, []);
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept softDelete with enabled false', () => {
+      const provider = new SQLiteProvider(':memory:', undefined, undefined, { enabled: false });
+
+      expect(provider).toBeDefined();
+    });
+
+    it('should accept retryPolicy', () => {
+      const provider = new SQLiteProvider(
+        ':memory:',
+        undefined,
+        undefined,
+        undefined,
+        { shouldRetry: () => false, getDelayMs: () => 1000 }
+      );
+
+      expect(provider).toBeDefined();
+    });
+  });
 });
