@@ -62,6 +62,28 @@ As a backend ORM, the framework has no direct UI. Design focuses on API ergonomi
 
 # Recent Changes
 
+## November 19, 2025: Plugin Packages Implementation
+
+**Plugin Packages Created**: Extracted soft-delete, audit, and multi-tenant functionality into standalone packages:
+
+**Implementation Details**:
+- **@ts-linq/plugin-soft-delete** (31 tests): SoftDeleteMiddleware handles boolean and timestamp-based soft deletes with query filtering
+- **@ts-linq/plugin-audit** (56 tests): AuditMiddleware auto-fills createdAt/updatedAt/createdBy/updatedBy with support for async getCurrentUser
+- **@ts-linq/plugin-multi-tenant** (45 tests): MultiTenantMiddleware provides tenant isolation with automatic query filtering
+
+**Test Results**: 132 tests passing across 3 plugin packages (exceeded planned 75 tests)
+- All plugins use Jest with ts-jest
+- Middleware pattern validated by architect
+- Type-safe implementations with full TypeScript support
+
+**Next Steps**:
+- Define DbContext middleware hook interface
+- Integrate plugins with DbContext.saveChanges() pipeline
+- Add contract tests for hook interfaces
+- Configure dual build (CJS/ESM) for all plugins
+
+**Current Test Coverage**: 1,286 (Tiers 0-2) + 132 (plugins) = **1,418 tests**
+
 ## November 19, 2025: Tier 3 Testing Assessment
 
 **Tier 3 Plugin Testing Status**: After architect review, plugin tests (soft-delete, audit) identified as blocked pending middleware implementation:
