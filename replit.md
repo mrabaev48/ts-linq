@@ -62,6 +62,23 @@ As a backend ORM, the framework has no direct UI. Design focuses on API ergonomi
 
 # Recent Changes
 
+## November 19, 2025: Tier 3 Testing Assessment
+
+**Tier 3 Plugin Testing Status**: After architect review, plugin tests (soft-delete, audit) identified as blocked pending middleware implementation:
+- **Finding**: Soft-delete and audit functionality exists in DbContext options but lacks middleware hooks for SaveChanges() interception
+- **Blockers**: 
+  - Mock DatabaseProvider approach failed due to constructor/interface obligations
+  - Full DbContext integration tests require unimplemented middleware pipeline
+  - Plugin packages (plugin-soft-delete, plugin-audit, plugin-multi-tenant) have empty src/ directories
+- **CLI Package**: ✅ **Passes** - 16 test files with 27 test suites already exist and run successfully
+- **Recommendation**: Defer plugin integration tests to post-middleware implementation; focus on unit tests for middleware functions when ready
+- **Current Test Coverage**: 1,286 tests passing (Tiers 0-2 complete)
+
+**Test Plan Updates**:
+- Tier 3 originally planned: 175 tests (plugins + CLI + integrations)
+- Tier 3 achievable now: ~27 test suites (CLI only) - plugins blocked
+- Integration tests and E2E tests remain planned but require infrastructure completion
+
 ## November 19, 2025: E2E Tests Plan Detailed
 
 **Comprehensive E2E Test Plan** (10 days, ~323 tests)  
