@@ -65,10 +65,15 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 
 **⏳ TIER 2 IN PROGRESS** (Started November 10, 2025)
 - **3 utility packages complete: 60 tests** (cache 28, pagination 7, concurrency 25) - Architect-approved ✅
-- **2 cache adapters complete: 119 tests** (cache-redis 61, cache-memcached 58) - *Production fix applied: read-through from remote store*
-- Remaining: 4 dialects, 4 providers
+- **2 cache adapters complete: 123 tests** (cache-redis 63, cache-memcached 60) - *Production fix applied: async read-through with getAsync()*
+- **4 SQL dialects complete: 234 tests** - Architect-approved ✅
+  - dialect-sqlite: 61 tests (SQLiteDialect 24, SQLiteDdlStrategy 37)
+  - dialect-postgres: 58 tests (PostgresDialect 27, PostgresDdlStrategy 31) - *Fixed quoteIdentifier() escaping*
+  - dialect-mysql: 58 tests (MysqlDialect 27, MySqlDdlStrategy 31)
+  - dialect-mssql: 57 tests (MssqlDialect 29, MssqlDdlStrategy 28)
+- Remaining: 4 database providers
 
-**TOTAL: 916 tests passing** (327 Tier 0 + 410 Tier 1 + 179 Tier 2)
+**TOTAL: 1154 tests passing** (327 Tier 0 + 410 Tier 1 + 417 Tier 2)
 
 ---
 
@@ -123,6 +128,22 @@ This section provides an authoritative enumeration of all 35 packages with their
    - ✅ metadata (52 tests)
    - ✅ core (125 tests) - includes production fix for circular dependencies
    - ✅ query (85 tests) - QueryBuilder, QueryModel, CountCache
+   - ✅ orm (74 tests) - ChangeTracker, DbSet
+   - ✅ migrations (74 tests) - MigrationBuilder, MigrationRunner, DiffBasedMigration
+⏳ **Tier 2** (13 packages): **417 tests passing** - Partial complete
+   - ✅ cache (28 tests) - EntityCache, CachePolicy
+   - ✅ pagination (7 tests) - PagedResult
+   - ✅ concurrency (25 tests) - RetryPolicies  
+   - ✅ cache-redis (63 tests) - Redis adapters with async read-through
+   - ✅ cache-memcached (60 tests) - Memcached adapters with async read-through
+   - ✅ dialect-sqlite (61 tests) - SQLite query/DDL generation
+   - ✅ dialect-postgres (58 tests) - PostgreSQL query/DDL with $1..$n params
+   - ✅ dialect-mysql (58 tests) - MySQL query/DDL with backticks
+   - ✅ dialect-mssql (57 tests) - MSSQL query/DDL with @p params
+   - ⏳ provider-sqlite - Pending
+   - ⏳ provider-postgres - Pending
+   - ⏳ provider-mysql - Pending
+   - ⏳ provider-mssql - Pending
    - ✅ orm (74 tests) - ChangeTracker, DbSet
    - ✅ migrations (74 tests) - MigrationBuilder, MigrationRunner, DiffBasedMigration
 ⏳ **Tier 2** (13 packages): **60 tests complete** - cache (28) ✅, pagination (7) ✅, concurrency (25) ✅ - **IN PROGRESS**
