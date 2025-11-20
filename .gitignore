@@ -10,10 +10,9 @@
 # Test artifacts
 __test_configs__
 *.heapsnapshot
-#/packages/**/.turbo/
-#/packages/**/dist/
-#/.turbo/
-#/.pnpm-store/
-#/.pnpm-store/**/**
-#/.turbo/
-#/.turbo/cache/*
+/packages/**/.turbo/**
+/packages/**/dist/**
+/.turbo/**
+/.pnpm-store/
+/.pnpm-store/**/**
+/.turbo/cache/*
