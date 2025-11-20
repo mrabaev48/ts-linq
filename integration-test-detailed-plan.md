@@ -1,6 +1,7 @@
 # Integration Tests - Detailed Plan (Days 3-7)
 
 ## Day 3: ORM + Cache Integration (1.5 days, 45 tests)
+Status: Implemented — tests in `packages/integration-tests/tests-new/02-orm-cache/*.test.ts` ✅
 
 ### DbSet + SqlCache Integration (12 tests)
 
@@ -82,6 +83,7 @@ describe('DbSet + SqlCache Integration', () => {
 ```
 
 ### DbSet + CountCache Integration (8 tests)
+Status: Implemented — `packages/integration-tests/tests-new/02-orm-cache/dbset-countcache.test.ts` ✅
 
 ```typescript
 // tests/02-orm-cache/dbset-countcache.test.ts
@@ -137,6 +139,7 @@ describe('DbSet + CountCache Integration', () => {
 ```
 
 ### ChangeTracker + Redis Integration (12 tests)
+Status: Implemented — `packages/integration-tests/tests-new/02-orm-cache/changetracker-redis.test.ts` ✅
 
 ```typescript
 // tests/02-orm-cache/changetracker-redis.test.ts
@@ -216,6 +219,7 @@ describe('ChangeTracker + Redis Cache Integration', () => {
 ```
 
 ### ChangeTracker + Memcached Integration (8 tests)
+Status: Implemented — `packages/integration-tests/tests-new/02-orm-cache/changetracker-memcached.test.ts` ✅
 
 ```typescript
 // tests/02-orm-cache/changetracker-memcached.test.ts
@@ -271,6 +275,7 @@ describe('ChangeTracker + Memcached Integration', () => {
 ```
 
 ### Batch Operations + Cache Integration (5 tests)
+Status: Implemented — `packages/integration-tests/tests-new/02-orm-cache/batch-operations-cache.test.ts` ✅
 
 ```typescript
 // tests/02-orm-cache/batch-operations-cache.test.ts
@@ -310,6 +315,7 @@ describe('Batch Operations + Cache Integration', () => {
 ---
 
 ## Day 4-5: Migrations + Dialect Integration (2 days, 60 tests)
+Status: Implemented — tests in `packages/integration-tests/tests-new/03-migrations-dialect/*.test.ts` (SQLite/Postgres/MySQL/MSSQL DDL) ✅
 
 ### SQLite DDL Generation (15 tests)
 
@@ -425,6 +431,7 @@ describe('SQLite Migrations + Dialect Integration', () => {
 ---
 
 ## Day 6: Telemetry + Resilience Integration (1.5 days, 40 tests)
+Status: Implemented — tests in `packages/integration-tests/tests-new/04-telemetry-resilience/*.test.ts` (Prometheus/Otel/CircuitBreaker/Retry/Fallback) ✅
 
 ### Prometheus + Provider Integration (10 tests)
 ### OpenTelemetry + Provider Integration (8 tests)
@@ -435,6 +442,7 @@ describe('SQLite Migrations + Dialect Integration', () => {
 ---
 
 ## Day 7: Advanced Features Integration (1.5 days, 35 tests)
+Status: Implemented — tests in `packages/integration-tests/tests-new/05-metadata-decorators/*`, `06-pagination-query/*`, `07-advanced-features/*` ✅
 
 ### Metadata + Decorators (12 tests)
 ### Pagination + Query (8 tests)

@@ -10,5 +10,5 @@
 # Test artifacts
 __test_configs__
 *.heapsnapshot
-/packages/**/.turbo/
-/packages/**/dist/
+#/packages/**/.turbo/
+#/packages/**/dist/

@@ -1,1 +1,0 @@
-{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;AAAA,2FAA2F;AAC3F,mDAAiC","sourcesContent":["// Provider only - consumers import dialect directly from @ts-linq/dialect-sqlite if needed\nexport * from './SQLiteProvider';\n"]}
