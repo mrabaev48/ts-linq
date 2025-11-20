@@ -1,6 +1,7 @@
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+import { shouldRunSqlite } from '../_utils/env';
 
-const run = !!process.env.RUN_DB_TESTS;
+const run = shouldRunSqlite;
 const d = run ? describe : describe.skip;
 
 d('[integration][sqlite] transactions', () => {

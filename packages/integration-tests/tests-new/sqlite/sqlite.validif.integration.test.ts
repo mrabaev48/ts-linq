@@ -3,6 +3,7 @@ import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata } from '@ts-linq/types';
 import { ValidationError } from '@ts-linq/types';
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+import { shouldRunSqlite } from '../_utils/env';
 import { ValidIfOf, RequiredIfOf } from '@ts-linq/core';
 
 class Post {
@@ -17,7 +18,7 @@ class SqliteCtx extends DbContext {
   }
 }
 
-const run = !!process.env.RUN_DB_TESTS;
+const run = shouldRunSqlite;
 (run ? describe : describe.skip)(
   '[integration][sqlite] Conditional Validation with real DB',
   () => {

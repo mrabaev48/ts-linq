@@ -396,6 +396,63 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
+  packages/integration-tests:
+    devDependencies:
+      '@ts-linq/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ts-linq/dialect-mssql':
+        specifier: workspace:*
+        version: link:../dialect-mssql
+      '@ts-linq/dialect-mysql':
+        specifier: workspace:*
+        version: link:../dialect-mysql
+      '@ts-linq/dialect-postgres':
+        specifier: workspace:*
+        version: link:../dialect-postgres
+      '@ts-linq/dialect-sqlite':
+        specifier: workspace:*
+        version: link:../dialect-sqlite
+      '@ts-linq/metadata':
+        specifier: workspace:*
+        version: link:../metadata
+      '@ts-linq/migrations':
+        specifier: workspace:*
+        version: link:../migrations
+      '@ts-linq/orm':
+        specifier: workspace:*
+        version: link:../orm
+      '@ts-linq/provider-mssql':
+        specifier: workspace:*
+        version: link:../provider-mssql
+      '@ts-linq/provider-mysql':
+        specifier: workspace:*
+        version: link:../provider-mysql
+      '@ts-linq/provider-postgres':
+        specifier: workspace:*
+        version: link:../provider-postgres
+      '@ts-linq/provider-sqlite':
+        specifier: workspace:*
+        version: link:../provider-sqlite
+      '@ts-linq/query':
+        specifier: workspace:*
+        version: link:../query
+      '@ts-linq/testkits':
+        specifier: workspace:*
+        version: link:../testkits
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
+      '@types/node':
+        specifier: ^24.3.0
+        version: 24.9.1
+      sqlite3:
+        specifier: ^5.1.6
+        version: 5.1.7
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   packages/metadata:
     dependencies:
       '@ts-linq/types':

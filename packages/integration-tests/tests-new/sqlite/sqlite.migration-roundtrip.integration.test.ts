@@ -1,13 +1,14 @@
 import { DiffMigrationGenerator } from '@ts-linq/migrations';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+import { shouldRunSqlite } from '../_utils/env';
 
 class RUserSq {
   id!: number;
   email!: string;
 }
 
-const run = !!process.env.RUN_DB_TESTS;
+const run = shouldRunSqlite;
 (run ? describe : describe.skip)(
   '[integration][sqlite] migration round-trip (diff → apply → no diff)',
   () => {

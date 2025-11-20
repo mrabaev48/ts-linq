@@ -2,6 +2,7 @@ import type { DbSet } from '@ts-linq/orm';
 import { DbContext } from '@ts-linq/orm';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+import { shouldRunSqlite } from '../_utils/env';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -19,7 +20,7 @@ class AppCtx extends DbContext {
   }
 }
 
-const run = !!process.env.RUN_DB_TESTS;
+const run = shouldRunSqlite;
 (run ? describe : describe.skip)('SQLite branded ID integration', () => {
   beforeAll(() => {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });

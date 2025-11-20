@@ -1,4 +1,11 @@
 packages:
-  - 'packages/*'
-  - 'packages/e2e-tests'
-  - 'packages/config'
+  - packages/*
+  - packages/e2e-tests
+  - packages/config
+
+ignoredBuiltDependencies:
+  - '@swc/core'
+  - cpu-features
+  - protobufjs
+  - sqlite3
+  - ssh2

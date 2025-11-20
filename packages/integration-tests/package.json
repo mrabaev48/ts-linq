@@ -24,6 +24,7 @@
     "@ts-linq/provider-mysql": "workspace:*",
     "@ts-linq/provider-mssql": "workspace:*",
     "@ts-linq/testkits": "workspace:*",
+    "sqlite3": "^5.1.6",
     "typescript": "^5.4.5",
     "@types/node": "^24.3.0"
   }

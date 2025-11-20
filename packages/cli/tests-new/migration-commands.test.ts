@@ -44,6 +44,7 @@ class InMemoryFs implements FileSystem {
   readDir(path: string): string[] {
     const prefix = path.endsWith('/') ? path : `${path}/`;
     const names = new Set<string>();
+    // @ts-ignore
     for (const key of this.files.keys()) {
       if (key.startsWith(prefix)) {
         const rest = key.slice(prefix.length);
