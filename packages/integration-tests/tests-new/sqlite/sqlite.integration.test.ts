@@ -1,8 +1,9 @@
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+import { shouldRunSqlite } from '../_utils/env';
 import path from 'node:path';
 import fs from 'node:fs';
 
-const run = !!process.env.RUN_DB_TESTS;
+const run = shouldRunSqlite;
 (run ? describe : describe.skip)('SQLiteProvider integration (smoke)', () => {
   const dbPath = path.join(process.cwd(), 'size-tests', 'tmp', 'test.db');
   beforeAll(() => {

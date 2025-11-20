@@ -1,6 +1,7 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata } from '@ts-linq/types';
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+import { shouldRunSqlite } from '../_utils/env';
 
 class User {
   id!: number;
@@ -8,7 +9,7 @@ class User {
   doubleA!: number;
 }
 
-const run = !!process.env.RUN_DB_TESTS;
+const run = shouldRunSqlite;
 (run ? describe : describe.skip)('SQLite computed column (integration)', () => {
   // Gate by env: this suite is included only when RUN_DB_TESTS=1 via jest config
   test('computed column VIRTUAL evaluates on read', async () => {

@@ -1,4 +1,5 @@
 import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+import { shouldRunSqlite } from '../_utils/env';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { DbSet } from '@ts-linq/orm';
 import { DbContext } from '@ts-linq/orm';
@@ -37,7 +38,7 @@ class TestContext extends DbContext {
   roles!: DbSet<Role>;
 }
 
-const run = !!process.env.RUN_DB_TESTS;
+const run = shouldRunSqlite;
 (run ? describe : describe.skip)('SQLite many-to-many integration', () => {
   let provider: SQLiteProvider;
   let ctx: TestContext;
