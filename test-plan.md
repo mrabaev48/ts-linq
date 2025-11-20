@@ -104,7 +104,11 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 
 - **Pending**: Graceful degradation end-to-end tests (9 files, ~40 tests) - requires ProviderStub migration
 
-**TOTAL: 1,552 unit tests passing** (unit suite only; integration/E2E excluded)
+**TOTAL: 1,588 unit tests passing** (unit suite only; integration/E2E excluded)  
+Updates (Nov 20, 2025):
+- Added unit tests in `tests-new` for plugins: `plugin-audit`, `plugin-multi-tenant`, `plugin-soft-delete`
+- Added and stabilized CLI unit tests in `tests-new`: `codegen.test.ts`, `db-commands.test.ts` (deterministic non‑destructive SQL in `SchemaApplyCommand`)
+- All new tests follow the `tests-new` policy [[memory:9877894]]
 
 ---
 
@@ -239,7 +243,10 @@ This section provides an authoritative enumeration of all 35 packages with their
    - ✅ provider-postgres (21 tests) - Constructor, dialect, connection validation, IPv6
    - ✅ provider-mysql (20 tests) - Constructor, dialect, connection validation, SSL
    - ✅ provider-mssql (23 tests) - Constructor, dialect, connection validation, pooling
-⏸️ **Tier 3** (10 packages): 3 plugins, cli, integration-nestjs, examples, 4 telemetry/logging packages  
+🟡 **Tier 3 (partial)** (10 packages):  
+- Plugins (3): unit tests added in `tests-new`  
+- CLI: unit tests for `codegen` and `db-commands` added and stabilized  
+- Remaining: integration-nestjs, examples, telemetry/logging packages  
 ⏸️ **E2E** (1 package): e2e-tests with multi-provider scenarios
 
 ---
@@ -4425,7 +4432,7 @@ End-to-end tests validate complete workflows across the entire ORM stack using r
 | **Tier 1** | 5 | 12 | 410 | ✅ Complete |
 | **Tier 2** | 15 | 11 | 501 | ✅ Complete |
 | **Critical Features** | - | - | 48 | ✅ Migrated |
-| **Tier 3** | 5 | 7 | ~175 | 🔴 Planned |
+| **Tier 3** | 5 | 7 | ~175 | 🟡 In Progress (partial) |
 | **Integration Tests** | 1 | 7 | ~240 | 🔴 Planned |
 | **E2E Tests** | 1 | 10 | ~323 | 🔴 Planned |
 | **TOTAL** | **36** | **51** | **~2,024** | **In Progress** |
