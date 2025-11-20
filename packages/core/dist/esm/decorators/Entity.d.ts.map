@@ -1,1 +1,0 @@
-{"version":3,"file":"Entity.d.ts","sourceRoot":"","sources":["../../../src/decorators/Entity.ts"],"names":[],"mappings":"AAAA,OAAO,kBAAkB,CAAC;AAG1B;;GAEG;AACH,MAAM,WAAW,aAAa;IAC5B,qEAAqE;IACrE,IAAI,CAAC,EAAE,MAAM,CAAC;IACd,iEAAiE;IACjE,MAAM,CAAC,EAAE,MAAM,CAAC;CACjB;AAED;;;GAGG;AACH,wBAAgB,MAAM,CAAC,OAAO,GAAE,aAAkB,GAAG,cAAc,CASlE"}

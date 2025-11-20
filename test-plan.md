@@ -3114,6 +3114,7 @@ packages/integration-tests/
 #### Day 1-2: Query + Provider Integration (2 days, 60 tests)
 
 ##### SQLite-Specific Integration (15 tests)
+Status: Implemented — tests in `packages/integration-tests/tests-new/01-query-provider/sqlite-integration.test.ts` ✅
 
 ```typescript
 // tests/01-query-provider/sqlite-integration.test.ts
@@ -3225,6 +3226,7 @@ describe('SQLite Provider + QueryBuilder Integration', () => {
 ```
 
 ##### PostgreSQL-Specific Integration (15 tests)
+Status: Implemented — tests in `packages/integration-tests/tests-new/01-query-provider/postgres-integration.test.ts` ✅
 
 ```typescript
 // tests/01-query-provider/postgres-integration.test.ts
@@ -3320,6 +3322,7 @@ describe('PostgreSQL Provider + QueryBuilder Integration', () => {
 ```
 
 ##### MySQL-Specific Integration (15 tests)
+Status: Implemented — tests in `packages/integration-tests/tests-new/01-query-provider/mysql-integration.test.ts` ✅
 
 ```typescript
 // tests/01-query-provider/mysql-integration.test.ts
@@ -3417,6 +3420,7 @@ describe('MySQL Provider + QueryBuilder Integration', () => {
 ```
 
 ##### MSSQL-Specific Integration (15 tests)
+Status: Implemented — tests in `packages/integration-tests/tests-new/01-query-provider/mssql-integration.test.ts` ✅
 
 ```typescript
 // tests/01-query-provider/mssql-integration.test.ts

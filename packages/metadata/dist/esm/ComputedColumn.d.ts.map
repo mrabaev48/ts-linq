@@ -1,1 +1,0 @@
-{"version":3,"file":"ComputedColumn.d.ts","sourceRoot":"","sources":["../../src/ComputedColumn.ts"],"names":[],"mappings":"AAGA,MAAM,WAAW,qBAAqB;IACpC,8EAA8E;IAC9E,UAAU,EAAE,MAAM,CAAC;IACnB,qCAAqC;IACrC,IAAI,CAAC,EAAE,MAAM,CAAC;IACd,0EAA0E;IAC1E,SAAS,CAAC,EAAE,OAAO,CAAC;CACrB;AAED,wBAAgB,cAAc,CAAC,OAAO,EAAE,qBAAqB,GAAG,iBAAiB,CAkBhF"}
