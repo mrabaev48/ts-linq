@@ -4,7 +4,13 @@ describe('MySqlProvider CRUD (smoke)', () => {
   const url = process.env.MYSQL_URL;
   it('create table, insert, select, update, delete', async () => {
     if (!url) return; // skip
-    const p = new MySqlProvider(url);
+    const p = new MySqlProvider({
+      host: process.env.MYSQL_HOST || 'localhost',
+      port: process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT) : 3306,
+      database: process.env.MYSQL_DB || 'test',
+      user: process.env.MYSQL_USER || 'root',
+      password: process.env.MYSQL_PASSWORD
+    });
     await p.connect();
     await p.executeNonQuery(
       'CREATE TABLE IF NOT EXISTS items(id INT AUTO_INCREMENT PRIMARY KEY, name TEXT NOT NULL)'

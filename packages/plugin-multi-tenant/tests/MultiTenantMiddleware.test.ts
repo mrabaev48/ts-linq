@@ -54,7 +54,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should disable multi-tenant when enabled=false', async () => {
       const mw = new MultiTenantMiddleware({ enabled: false });
-      const entity = { id: 1, total: 100 };
+      const entity: Partial<Order> = { id: 1, total: 100 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -111,7 +111,7 @@ describe('MultiTenantMiddleware', () => {
   describe('Tenant Isolation', () => {
     it('should apply tenant ID on insert', async () => {
       middleware.setTenant(100);
-      const entity = { id: 1, total: 250 };
+      const entity: Partial<Order> = { id: 1, total: 250 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -125,7 +125,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should apply tenant ID on update', async () => {
       middleware.setTenant(200);
-      const entity = { id: 1, total: 300, tenantId: 100 };
+      const entity: Partial<Order> = { id: 1, total: 300, tenantId: 100 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -139,7 +139,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should use context tenantId if provided', async () => {
       middleware.setTenant(100);
-      const entity = { id: 1, total: 250 };
+      const entity: Partial<Order> = { id: 1, total: 250 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -154,7 +154,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should not apply tenant to entities without tenant column', async () => {
       middleware.setTenant(100);
-      const entity = { id: 1, amount: 500 };
+      const entity: Partial<Invoice> = { id: 1, amount: 500 };
       const context: TenantContext = {
         entity,
         entityClass: Invoice,
@@ -167,7 +167,7 @@ describe('MultiTenantMiddleware', () => {
     });
 
     it('should throw error in strict mode when no tenant is set', async () => {
-      const entity = { id: 1, total: 250 };
+      const entity: Partial<Order> = { id: 1, total: 250 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -181,7 +181,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should not throw error in non-strict mode when no tenant is set', async () => {
       const mw = new MultiTenantMiddleware({ strictMode: false });
-      const entity = { id: 1, total: 250 };
+      const entity: Partial<Order> = { id: 1, total: 250 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -232,7 +232,7 @@ describe('MultiTenantMiddleware', () => {
   describe('Tenant Ownership', () => {
     it('should detect entity belongs to current tenant', async () => {
       middleware.setTenant(100);
-      const entity = { id: 1, tenantId: 100, total: 250 };
+      const entity: Partial<Order> = { id: 1, tenantId: 100, total: 250 };
 
       const belongs = await middleware.belongsToTenant(entity);
       expect(belongs).toBe(true);
@@ -240,7 +240,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should detect entity does not belong to current tenant', async () => {
       middleware.setTenant(100);
-      const entity = { id: 1, tenantId: 200, total: 250 };
+      const entity: Partial<Order> = { id: 1, tenantId: 200, total: 250 };
 
       const belongs = await middleware.belongsToTenant(entity);
       expect(belongs).toBe(false);
@@ -248,14 +248,14 @@ describe('MultiTenantMiddleware', () => {
 
     it('should handle string tenant IDs in ownership check', async () => {
       middleware.setTenant('tenant-a');
-      const entity = { id: 1, tenantId: 'tenant-a', total: 250 };
+      const entity: Partial<Order> = { id: 1, tenantId: 'tenant-a' as any, total: 250 };
 
       const belongs = await middleware.belongsToTenant(entity);
       expect(belongs).toBe(true);
     });
 
     it('should return false when current tenant is not set', async () => {
-      const entity = { id: 1, tenantId: 100, total: 250 };
+      const entity: Partial<Order> = { id: 1, tenantId: 100, total: 250 };
 
       const belongs = await middleware.belongsToTenant(entity);
       expect(belongs).toBe(false);
@@ -279,7 +279,7 @@ describe('MultiTenantMiddleware', () => {
       });
 
       mw.setTenant(500);
-      const entity = { id: 1 };
+      const entity: Partial<CustomEntity> = { id: 1 };
       const context: TenantContext = {
         entity,
         entityClass: CustomEntity,

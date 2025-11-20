@@ -89,6 +89,9 @@
     "build:examples": "turbo run build --filter=@ts-linq/examples",
     "build:e2e-tests": "turbo run build --filter=@ts-linq/e2e-tests",
     "test": "jest",
+    "test:unit": "jest -c ./jest.unit.config.js",
+    "test:integration": "pnpm -F @ts-linq/integration-tests test",
+    "test:e2e": "pnpm -F @ts-linq/e2e-tests test",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "npx eslint --fix",
@@ -128,6 +131,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.4.0",
     "@commitlint/config-conventional": "^19.4.0",
+    "@jest/test-sequencer": "^29.7.0",
     "@jest/globals": "^30.2.0",
     "@rollup/plugin-node-resolve": "^13.3.0",
     "@types/jest": "^29.5.14",

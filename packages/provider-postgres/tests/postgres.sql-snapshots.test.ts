@@ -1,7 +1,7 @@
-import { QueryBuilder } from '@ts-linq/core';
-import type { QueryOptions } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/core';
-import { PostgresDialect } from '@ts-linq/provider-postgres';
+import { QueryBuilder } from '@ts-linq/query';
+import type { QueryOptions } from '@ts-linq/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { PostgresDialect } from '@ts-linq/dialect-postgres';
 
 class PgUser {
   id!: number;

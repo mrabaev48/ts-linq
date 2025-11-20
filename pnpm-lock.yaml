@@ -30,6 +30,9 @@ importers:
       '@jest/globals':
         specifier: ^30.2.0
         version: 30.2.0
+      '@jest/test-sequencer':
+        specifier: ^29.7.0
+        version: 29.7.0
       '@rollup/plugin-node-resolve':
         specifier: ^13.3.0
         version: 13.3.0(rollup@2.79.2)
@@ -588,6 +591,33 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/dialect-mysql':
+        specifier: workspace:*
+        version: link:../dialect-mysql
+      '@ts-linq/dialect-postgres':
+        specifier: workspace:*
+        version: link:../dialect-postgres
+      '@ts-linq/dialect-sqlite':
+        specifier: workspace:*
+        version: link:../dialect-sqlite
+      '@ts-linq/migrations':
+        specifier: workspace:*
+        version: link:../migrations
+      '@ts-linq/orm':
+        specifier: workspace:*
+        version: link:../orm
+      '@ts-linq/provider-mysql':
+        specifier: workspace:*
+        version: link:../provider-mysql
+      '@ts-linq/provider-postgres':
+        specifier: workspace:*
+        version: link:../provider-postgres
+      '@ts-linq/provider-sqlite':
+        specifier: workspace:*
+        version: link:../provider-sqlite
+      '@ts-linq/query':
+        specifier: workspace:*
+        version: link:../query
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -610,6 +640,21 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/dialect-mssql':
+        specifier: workspace:*
+        version: link:../dialect-mssql
+      '@ts-linq/dialect-postgres':
+        specifier: workspace:*
+        version: link:../dialect-postgres
+      '@ts-linq/dialect-sqlite':
+        specifier: workspace:*
+        version: link:../dialect-sqlite
+      '@ts-linq/migrations':
+        specifier: workspace:*
+        version: link:../migrations
+      '@ts-linq/query':
+        specifier: workspace:*
+        version: link:../query
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -632,6 +677,21 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/dialect-mssql':
+        specifier: workspace:*
+        version: link:../dialect-mssql
+      '@ts-linq/dialect-mysql':
+        specifier: workspace:*
+        version: link:../dialect-mysql
+      '@ts-linq/dialect-sqlite':
+        specifier: workspace:*
+        version: link:../dialect-sqlite
+      '@ts-linq/migrations':
+        specifier: workspace:*
+        version: link:../migrations
+      '@ts-linq/query':
+        specifier: workspace:*
+        version: link:../query
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -654,6 +714,21 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/dialect-mssql':
+        specifier: workspace:*
+        version: link:../dialect-mssql
+      '@ts-linq/dialect-mysql':
+        specifier: workspace:*
+        version: link:../dialect-mysql
+      '@ts-linq/dialect-postgres':
+        specifier: workspace:*
+        version: link:../dialect-postgres
+      '@ts-linq/orm':
+        specifier: workspace:*
+        version: link:../orm
+      '@ts-linq/query':
+        specifier: workspace:*
+        version: link:../query
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1

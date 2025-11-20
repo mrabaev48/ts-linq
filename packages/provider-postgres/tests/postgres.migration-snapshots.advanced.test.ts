@@ -1,5 +1,5 @@
-import { generateMigrationFromDiff } from '@ts-linq/core';
-import type { SchemaDiff } from '@ts-linq/core';
+import { generateMigrationFromDiff } from '@ts-linq/migrations';
+import type { SchemaDiff } from '@ts-linq/migrations';
 
 function normalize(lines: string[]): string {
   return lines.join('\n');

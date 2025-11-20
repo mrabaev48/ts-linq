@@ -1,5 +1,7 @@
-import { SQLiteDialect } from '@ts-linq/provider-sqlite';
-import { MetadataStorage, QueryBuilder, type QueryOptions } from '@ts-linq/core';
+import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
+import { QueryBuilder } from '@ts-linq/query';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { QueryOptions } from '@ts-linq/types';
 
 class SqUser {
   id!: number;
