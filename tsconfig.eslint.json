@@ -3,8 +3,10 @@
   "include": [
     "packages/*/src/**/*",
     "packages/*/tests/**/*",
+    "packages/*/tests-new/**/*",
     "examples/**/*",
     "bench/**/*"
   ],
-  "exclude": ["dist", "node_modules", "packages/*/dist/**/*", "packages/*/test-d/**/*"]
+  "exclude": ["dist", "node_modules", "packages/*/dist/**/*", "packages/*/test-d/**/*"],
+  "references": []
 }

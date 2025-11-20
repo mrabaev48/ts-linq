@@ -1,0 +1,40 @@
+import { PostgresProvider } from '@ts-linq/provider-postgres';
+
+const PG = process.env.POSTGRES_URL || '';
+const d = PG ? describe : describe.skip;
+
+d('[integration][postgres] transactions', () => {
+  test('commit persists, rollback reverts', async () => {
+    const p = new PostgresProvider({
+      host: process.env.POSTGRES_HOST || 'localhost',
+      port: process.env.POSTGRES_PORT ? parseInt(process.env.POSTGRES_PORT) : 5432,
+      database: process.env.POSTGRES_DB || 'test',
+      user: process.env.POSTGRES_USER || 'postgres',
+      password: process.env.POSTGRES_PASSWORD
+    });
+    await p.connect();
+    try {
+      await p.executeNonQuery(
+        'CREATE TABLE IF NOT EXISTS "tx_items"(id SERIAL PRIMARY KEY, name TEXT NOT NULL)'
+      );
+
+      await p.beginTransaction();
+      await p.executeNonQuery(`INSERT INTO "tx_items"(name) VALUES('a')`);
+      await p.commitTransaction();
+      const afterCommit = await p.executeQuery<{ name: string }>(`SELECT name FROM "tx_items"`);
+      expect(afterCommit.length).toBe(1);
+
+      await p.beginTransaction();
+      await p.executeNonQuery(`INSERT INTO "tx_items"(name) VALUES('b')`);
+      await p.rollbackTransaction();
+      const afterRollback = await p.executeQuery<{ name: string }>(
+        `SELECT name FROM "tx_items" WHERE name='b'`
+      );
+      expect(afterRollback.length).toBe(0);
+    } finally {
+      try {
+        await p.executeNonQuery('DROP TABLE IF EXISTS "tx_items"');
+      } catch {}
+    }
+  });
+});

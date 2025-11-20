@@ -1,6 +1,7 @@
 import fc from 'fast-check';
-import { MetadataStorage, type QueryOptions } from '@ts-linq/core';
-import { PostgresDialect } from '@ts-linq/provider-postgres';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { QueryOptions } from '@ts-linq/types';
+import { PostgresDialect } from '@ts-linq/dialect-postgres';
 
 class S {
   id!: number;

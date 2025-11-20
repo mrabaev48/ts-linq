@@ -8,7 +8,8 @@
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "project": [
-      "./tsconfig.eslint.json"
+      "./tsconfig.eslint.json",
+      "./packages/*/tsconfig.eslint.json"
     ],
     "sourceType": "module"
   },
@@ -30,7 +31,11 @@
     "packages/**/tests/**/*.d.ts",
     "docs/**",
     "shop.db",
-    "examples/**"
+    "examples/**",
+    "jest*.config.js",
+    "jest*.config.cjs",
+    "jest*.config.mjs",
+    "packages/integration-tests/jest.sequencer.js"
   ],
   "rules": {
     "prettier/prettier": "error",
@@ -95,6 +100,7 @@
     {
       "files": [
         "tests/**/*.ts",
+        "tests-new/**/*.ts",
         "**/*.test.ts",
         "**/*.spec.ts"
       ],

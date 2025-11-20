@@ -40,28 +40,30 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       createProviderFromEnv();
 
       expect(PostgresProvider).toHaveBeenCalledWith(
-        'postgres://user:pass@localhost:5432/testdb',
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        {
-          min: 2,
-          max: 20,
-          idleTimeoutMs: 30000,
-          acquireTimeoutMs: 5000,
-          connectionTimeoutMs: 10000
-        },
-        {
-          enabled: true,
-          intervalMs: 60000,
-          timeoutMs: 5000,
-          testQuery: 'SELECT 42',
-          minIntervalMs: 1000,
-          maxIntervalMs: 10000,
-          degradeAfterFailures: 3,
-          unhealthyAfterFailures: 5
-        }
+        expect.objectContaining({
+          host: 'localhost',
+          port: 5432,
+          database: 'testdb',
+          user: 'user',
+          password: 'pass',
+          poolOptions: {
+            min: 2,
+            max: 20,
+            idleTimeoutMs: 30000,
+            acquireTimeoutMs: 5000,
+            connectionTimeoutMs: 10000
+          },
+          healthCheck: {
+            enabled: true,
+            intervalMs: 60000,
+            timeoutMs: 5000,
+            testQuery: 'SELECT 42',
+            minIntervalMs: 1000,
+            maxIntervalMs: 10000,
+            degradeAfterFailures: 3,
+            unhealthyAfterFailures: 5
+          }
+        })
       );
     });
 
@@ -72,13 +74,15 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       createProviderFromEnv();
 
       expect(PostgresProvider).toHaveBeenCalledWith(
-        'postgres://localhost/db',
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined
+        expect.objectContaining({
+          host: 'localhost',
+          port: 5432,
+          database: 'db',
+          user: '',
+          password: '',
+          poolOptions: undefined,
+          healthCheck: undefined
+        })
       );
     });
 
@@ -89,13 +93,15 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       createProviderFromEnv();
 
       expect(PostgresProvider).toHaveBeenCalledWith(
-        'postgres://fallback/db',
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined
+        expect.objectContaining({
+          host: 'fallback',
+          port: 5432,
+          database: 'db',
+          user: '',
+          password: '',
+          poolOptions: undefined,
+          healthCheck: undefined
+        })
       );
     });
 
@@ -122,19 +128,21 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       createProviderFromEnv();
 
       expect(MySqlProvider).toHaveBeenCalledWith(
-        'mysql://user:pass@localhost:3306/testdb',
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        {
-          min: 1,
-          max: 10
-        },
-        {
-          enabled: true,
-          intervalMs: 30000
-        }
+        expect.objectContaining({
+          host: 'localhost',
+          port: 3306,
+          database: 'testdb',
+          user: 'user',
+          password: 'pass',
+          poolOptions: {
+            min: 1,
+            max: 10
+          },
+          healthCheck: {
+            enabled: true,
+            intervalMs: 30000
+          }
+        })
       );
     });
 
@@ -155,7 +163,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
 
       createProviderFromEnv();
 
-      expect(SQLiteProvider).toHaveBeenCalledWith(':memory:');
+      expect(SQLiteProvider).toHaveBeenCalledWith({ file: ':memory:' });
     });
 
     test('creates SQLite provider with custom database path', () => {
@@ -164,7 +172,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
 
       createProviderFromEnv();
 
-      expect(SQLiteProvider).toHaveBeenCalledWith('./data/test.db');
+      expect(SQLiteProvider).toHaveBeenCalledWith({ file: './data/test.db' });
     });
 
     test('defaults to SQLite when DB_PROVIDER not set', () => {
@@ -222,21 +230,23 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       const provider = createProviderFromEnv();
 
       expect(PostgresProvider).toHaveBeenCalledWith(
-        expect.stringContaining('prod-db.example.com'),
-        undefined,
-        undefined,
-        undefined,
-        undefined,
         expect.objectContaining({
-          min: 5,
-          max: 50,
-          idleTimeoutMs: 60000,
-          acquireTimeoutMs: 10000
-        }),
-        expect.objectContaining({
-          enabled: true,
-          intervalMs: 30000,
-          timeoutMs: 3000
+          host: 'prod-db.example.com',
+          port: 5432,
+          database: 'appdb',
+          user: 'prod_user',
+          password: 'secret',
+          poolOptions: expect.objectContaining({
+            min: 5,
+            max: 50,
+            idleTimeoutMs: 60000,
+            acquireTimeoutMs: 10000
+          }),
+          healthCheck: expect.objectContaining({
+            enabled: true,
+            intervalMs: 30000,
+            timeoutMs: 3000
+          })
         })
       );
       expect(mockProvider.configureCircuit).toHaveBeenCalledWith(
@@ -255,7 +265,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
 
       const provider = createProviderFromEnv();
 
-      expect(SQLiteProvider).toHaveBeenCalledWith(':memory:');
+      expect(SQLiteProvider).toHaveBeenCalledWith({ file: ':memory:' });
       expect(provider).toBeDefined();
     });
   });

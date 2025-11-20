@@ -1,4 +1,4 @@
-import { MigrationBuilder } from '@ts-linq/core';
+import { MigrationBuilder } from '@ts-linq/migrations';
 
 function normalize(lines: string[]): string {
   return lines.join('\n');

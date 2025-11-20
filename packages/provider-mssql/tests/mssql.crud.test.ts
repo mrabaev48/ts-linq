@@ -4,7 +4,13 @@ describe('MssqlProvider CRUD (smoke)', () => {
   const url = process.env.MSSQL_URL;
   it('create table, insert, select, update, delete', async () => {
     if (!url) return; // skip
-    const p = new MssqlProvider(url);
+    const p = new MssqlProvider({
+      server: process.env.MSSQL_SERVER || 'localhost',
+      port: process.env.MSSQL_PORT ? parseInt(process.env.MSSQL_PORT) : 1433,
+      database: process.env.MSSQL_DB || 'test',
+      user: process.env.MSSQL_USER,
+      password: process.env.MSSQL_PASSWORD
+    });
     await p.connect();
     await p.executeNonQuery(
       "IF OBJECT_ID('items','U') IS NULL CREATE TABLE items(id INT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(50) NOT NULL)"

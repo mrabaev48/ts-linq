@@ -4,7 +4,13 @@ describe('PostgresProvider CRUD (smoke)', () => {
   const url = process.env.POSTGRES_URL;
   it('create table, insert, select, update, delete', async () => {
     if (!url) return; // skip
-    const p = new PostgresProvider(url);
+    const p = new PostgresProvider({
+      host: process.env.POSTGRES_HOST || 'localhost',
+      port: process.env.POSTGRES_PORT ? parseInt(process.env.POSTGRES_PORT) : 5432,
+      database: process.env.POSTGRES_DB || 'test',
+      user: process.env.POSTGRES_USER || 'postgres',
+      password: process.env.POSTGRES_PASSWORD
+    });
     await p.connect();
     await p.executeNonQuery(
       'CREATE TABLE IF NOT EXISTS items(id SERIAL PRIMARY KEY, name TEXT NOT NULL)'

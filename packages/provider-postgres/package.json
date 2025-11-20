@@ -21,7 +21,12 @@
   },
   "devDependencies": {
     "typescript": "^5.4.5",
-    "@types/node": "^24.3.0"
+    "@types/node": "^24.3.0",
+    "@ts-linq/query": "workspace:*",
+    "@ts-linq/dialect-mysql": "workspace:*",
+    "@ts-linq/dialect-mssql": "workspace:*",
+    "@ts-linq/dialect-sqlite": "workspace:*",
+    "@ts-linq/migrations": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && npm run gen:esm-entry && npm run copy:types",

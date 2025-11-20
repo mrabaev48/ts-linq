@@ -1,4 +1,4 @@
-import { MigrationBuilder } from '@ts-linq/core';
+import { MigrationBuilder } from '@ts-linq/migrations';
 
 describe('Postgres FK DDL snapshots', () => {
   test('FK with ON UPDATE/DELETE actions snapshot', () => {

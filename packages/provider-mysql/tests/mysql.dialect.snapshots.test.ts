@@ -1,5 +1,6 @@
-import { MysqlDialect } from '@ts-linq/provider-mysql';
-import { MetadataStorage, type QueryOptions } from '@ts-linq/core';
+import { MysqlDialect } from '@ts-linq/dialect-mysql';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { QueryOptions } from '@ts-linq/types';
 
 class MUser {
   id!: number;

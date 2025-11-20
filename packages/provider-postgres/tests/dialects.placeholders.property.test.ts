@@ -1,9 +1,11 @@
 import fc from 'fast-check';
-import { MetadataStorage, QueryBuilder, type QueryOptions } from '@ts-linq/core';
-import { PostgresDialect } from '@ts-linq/provider-postgres';
-import { MysqlDialect } from '@ts-linq/provider-mysql';
-import { MssqlDialect } from '@ts-linq/provider-mssql';
-import { SQLiteDialect } from '@ts-linq/provider-sqlite';
+import { QueryBuilder } from '@ts-linq/query';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { QueryOptions } from '@ts-linq/types';
+import { PostgresDialect } from '@ts-linq/dialect-postgres';
+import { MysqlDialect } from '@ts-linq/dialect-mysql';
+import { MssqlDialect } from '@ts-linq/dialect-mssql';
+import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
 
 class T {
   id!: number;

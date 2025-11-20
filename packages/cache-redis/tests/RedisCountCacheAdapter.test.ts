@@ -1,5 +1,5 @@
 import { RedisCountCacheAdapter } from '../src/redis/RedisCountCacheAdapter';
-import type { CountCacheEntry } from '@ts-linq/core';
+
 
 class FakeRedis {
   private m = new Map<string, string>();
@@ -18,16 +18,15 @@ describe('RedisCountCacheAdapter', () => {
   test('stores and retrieves count entries via shadow map', async () => {
     const client = new FakeRedis();
     const cache = new RedisCountCacheAdapter(client, { ttlSeconds: 1 });
-    const entry: CountCacheEntry = { value: 42, ts: Date.now() };
-    cache.set('cnt', entry);
+    cache.set('cnt', 42);
     const got = cache.get('cnt');
-    expect(got?.value).toBe(42);
+    expect(got).toBe(42);
   });
 
   test('clear resets shadow map', () => {
     const client = new FakeRedis();
     const cache = new RedisCountCacheAdapter(client);
-    cache.set('a', { value: 1, ts: Date.now() });
+    cache.set('a', 1);
     expect(cache.get('a')).toBeDefined();
     cache.clear();
     expect(cache.get('a')).toBeUndefined();
@@ -36,16 +35,16 @@ describe('RedisCountCacheAdapter', () => {
   test('hashKeys stores hashed count key in backend', async () => {
     const client = new FakeRedis();
     const cache = new RedisCountCacheAdapter(client, { hashKeys: true });
-    cache.set('Product|count|[]', { value: 1, ts: Date.now() });
+    cache.set('Product|count|[]', 1);
     // Just smoke: shadow updated
-    expect(cache.get('Product|count|[]')?.value).toBe(1);
+    expect(cache.get('Product|count|[]')).toBe(1);
   });
 
   test('invalidateBy removes matching count keys', async () => {
     const client = new FakeRedis();
     const cache = new RedisCountCacheAdapter(client);
-    cache.set('Product|count|[]', { value: 1, ts: Date.now() });
-    cache.set('Order|count|[]', { value: 2, ts: Date.now() });
+    cache.set('Product|count|[]', 1);
+    cache.set('Order|count|[]', 2);
     const removed = cache.invalidateBy((k) => k.startsWith('Product|count|'));
     expect(removed).toBe(1);
     expect(cache.get('Product|count|[]')).toBeUndefined();

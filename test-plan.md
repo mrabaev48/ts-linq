@@ -98,9 +98,13 @@ This document outlines a comprehensive testing plan for complete test suite rewr
   
 - **Specification Pattern**: Already covered (18 tests in packages/ast/tests) ✅
 
+- **Query Unit Tests (new)**: 7 tests ✅
+  - packages/query/tests-new/Queryable.test.ts (4 tests)
+  - packages/query/tests-new/TypedQueryable.test.ts (3 tests)
+
 - **Pending**: Graceful degradation end-to-end tests (9 files, ~40 tests) - requires ProviderStub migration
 
-**TOTAL: ~1,286 tests passing** (1238 baseline + 48 critical features migration)
+**TOTAL: 1,552 unit tests passing** (unit suite only; integration/E2E excluded)
 
 ---
 
@@ -118,7 +122,9 @@ This section documents the systematic migration of critical production features 
 | **Property-Based Testing** | 8 | 2 | `packages/pagination/tests-new/`, `packages/query/tests-new/` | ✅ Migrated |
 | **Specification Pattern** | 18 | 1 | `packages/ast/tests/Specification.test.ts` | ✅ Already Covered |
 
-**Total Migrated**: 48 tests across 8 files
+| **CLI Commands** | 15 | 3 | `packages/cli/tests-new/` | ✅ Migrated |
+
+**Total Migrated**: 63 tests across 11 files
 
 ### 🔍 MemoryFallback: Critical Architectural Gap Fixed
 
@@ -157,12 +163,12 @@ The 9 graceful degradation test files depend on `ProviderStub` mock provider whi
 - Graceful degradation API non-functional
 
 **After Migration**:
-- ✅ 48 critical production feature tests migrated
+- ✅ 63 critical production feature tests migrated
 - ✅ MemoryFallback implemented and tested (NEW feature)
 - ✅ Circuit breaker resilience validated
 - ✅ Prometheus observability coverage
 - ✅ Property-based testing for pagination/predicates
-- ✅ Total test count: ~1,286 tests (+48 from migration)
+- ✅ Total test count: ~1,286 tests (+63 from migration)
 
 ---
 
@@ -3892,7 +3898,7 @@ describe('Resilience Features Integration', () => {
 
 ### Testing Best Practices
 
-- Tests use **Vitest** framework for fast, parallel execution
+- Tests use **Jest** framework for fast, parallel execution
 - All tests must be **isolated** (no shared state between tests)
 - Use **deterministic fixtures** for reproducible test results
 - **Reset metadata** between tests via `MetadataStorage.reset()`
@@ -4440,6 +4446,6 @@ End-to-end tests validate complete workflows across the entire ORM stack using r
 
 ---
 
-**Last Updated**: November 19, 2025  
+**Last Updated**: November 20, 2025  
 **Total Lines in Plan**: 4,400+  
 **Detailed Test Specifications**: ~950+ individual test cases documented

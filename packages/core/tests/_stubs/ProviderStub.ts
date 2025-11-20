@@ -17,10 +17,14 @@ class TestDialect implements SqlDialect {
   ): { query: string; parameters: SqlParameter[] } {
     const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
     let query = `SELECT ${options.distinct ? 'DISTINCT ' : ''}${
-      options.select?.length ? (options.select as string[]).join(', ') : '*'
+      options.select?.length ? options.select.join(', ') : '*'
     } FROM ${meta.tableName}`;
     const parameters: SqlParameter[] = [];
-    const whereArray = Array.isArray(options.where) ? options.where : options.where ? [options.where] : [];
+    const whereArray = Array.isArray(options.where)
+      ? options.where
+      : options.where
+        ? [options.where]
+        : [];
     if (whereArray.length) {
       query += ' WHERE ' + whereArray.map((w) => w.condition).join(' AND ');
       for (const w of whereArray) parameters.push(...w.parameters);
@@ -113,13 +117,14 @@ export class ProviderStub extends DatabaseProvider {
     const table = this.data.get(meta.tableName) || [];
     const pk = meta.primaryKeys?.[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
-    const pkName = pkCol?.columnName ?? pk;
-    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pk]);
+    const pkProp = pk ?? pkCol?.propertyName ?? 'id';
+    const pkName = pkCol?.columnName ?? pkProp;
+    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pkProp]);
     const targetIdx = idx >= 0 ? idx : table.length > 0 ? table.length - 1 : -1;
     if (targetIdx >= 0) {
       const row = table[targetIdx];
       for (const col of meta.columns) {
-        if (col.propertyName === pk) continue;
+        if (col.propertyName === pkProp) continue;
         const val = (entity as any)[col.propertyName];
         if (val !== undefined) row[col.columnName] = val;
       }
@@ -144,8 +149,9 @@ export class ProviderStub extends DatabaseProvider {
     const table = this.data.get(meta.tableName) || [];
     const pk = meta.primaryKeys?.[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
-    const pkName = pkCol?.columnName ?? pk;
-    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pk]);
+    const pkProp = pk ?? pkCol?.propertyName ?? 'id';
+    const pkName = pkCol?.columnName ?? pkProp;
+    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pkProp]);
     if (idx >= 0) {
       const sd = this.softDelete;
       if (sd?.enabled && sd.column) {
@@ -173,7 +179,8 @@ export class ProviderStub extends DatabaseProvider {
     const table = this.data.get(meta.tableName) || [];
     const pk = meta.primaryKeys?.[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
-    const pkName = pkCol?.columnName ?? pk;
+    const pkProp = pk ?? pkCol?.propertyName ?? 'id';
+    const pkName = pkCol?.columnName ?? pkProp;
     let row = table.find((r) => r[pkName] === id);
     if (this.softDelete?.enabled && this.softDelete.column && row && row[this.softDelete.column]) {
       row = undefined;
@@ -193,7 +200,8 @@ export class ProviderStub extends DatabaseProvider {
     const table = (this.data.get(meta.tableName) || []).slice();
     const pk = meta.primaryKeys?.[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
-    const pkName = pkCol?.columnName ?? pk;
+    const pkProp = pk ?? pkCol?.propertyName ?? 'id';
+    const pkName = pkCol?.columnName ?? pkProp;
     // apply soft-delete filter if configured
     let rows = table;
     if (this.softDelete?.enabled && this.softDelete.column) {
