@@ -63,7 +63,7 @@ export interface AuditContext {
   entity: Record<string, unknown>;
   entityClass: Function;
   state: 'added' | 'modified' | 'deleted';
-  timestamp: Date;
+  timestamp?: Date;
   currentUser?: string | number;
 }
 
