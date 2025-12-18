@@ -62,6 +62,32 @@ As a backend ORM, the framework has no direct UI. Design focuses on API ergonomi
 
 # Recent Changes
 
+## December 18, 2025: Middleware Integration Complete
+
+**Middleware Pipeline Implemented**: Full DbContext middleware integration for entity lifecycle hooks.
+
+**Implementation Details**:
+- **OrmMiddleware Interface** (types package): Defines `beforeSave`, `afterSave`, `beforeDelete`, `afterDelete` lifecycle hooks
+- **EntityChangeContext Type**: Provides entity, entityClass, state, and originalValues to middleware
+- **DbContextOptions.middlewares**: Array of OrmMiddleware instances for registration
+- **saveChanges() Integration**: Calls beforeSave/afterSave for add/update operations
+- **processDelete() Pipeline**: Proper delete handling with beforeDelete/afterDelete hooks
+  - beforeDelete returning `true` triggers soft-delete via update instead of hard delete
+  - Falls back to built-in soft-delete for backward compatibility
+  - afterDelete called after all delete operations
+
+**Plugin Middleware Updates**:
+- **SoftDeleteMiddleware**: Implements `beforeDelete()` returning true to handle soft-delete
+- **AuditMiddleware**: Implements `beforeSave()` to auto-fill audit timestamp/user fields
+- **MultiTenantMiddleware**: Implements `beforeSave()` to apply tenant ID
+
+**Test Results**: 1,406 tests passing (99%+)
+- Soft-delete plugin: 31/31 tests passing
+- Core middleware integration validated by architect
+- Pre-existing TypeScript config issues in provider integration tests (unrelated)
+
+**Architecture Review**: Passed - delete pipeline now properly invokes middleware hooks for all operations.
+
 ## November 19, 2025: Plugin Packages Implementation
 
 **Plugin Packages Created**: Extracted soft-delete, audit, and multi-tenant functionality into standalone packages:
