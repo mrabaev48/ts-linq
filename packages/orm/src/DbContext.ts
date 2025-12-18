@@ -14,7 +14,9 @@ import type {
   PerformanceOptions,
   Result,
   SoftDeleteOptions,
-  GlobalFilter
+  GlobalFilter,
+  OrmMiddleware,
+  EntityChangeContext
 } from '@ts-linq/types';
 import type { 
   DbContextOptions,
@@ -67,6 +69,7 @@ export abstract class DbContext {
   private _globalFilters?: GlobalFilter[];
   private _diagnostics?: DiagnosticsOptions;
   private _memoryProfiler?: MemoryProfilerLike;
+  private _middlewares: OrmMiddleware[] = [];
   private _validationOptions?: {
     translate?: (key: string, params?: Record<string, unknown>) => string;
   };
@@ -114,6 +117,8 @@ export abstract class DbContext {
       this._validationOptions?.translate,
       this._audit
     );
+    // Initialize middlewares from options
+    this._middlewares = options.middlewares ?? [];
 
     this._changeTracker = new ChangeTracker();
     this._entityLoader = new EntityLoader(this._provider);
@@ -235,8 +240,18 @@ export abstract class DbContext {
     let affectedRows = 0;
     for (const change of changes) {
       const normalized = this.normalizeChange(change);
+      const context = this.toChangeContext(normalized);
+      
+      // Call beforeSave middleware hooks
+      await this.invokeMiddlewareBeforeSave(context);
+      
+      // Apply built-in audit (for backward compatibility)
       this.applyAudit(normalized);
+      
       affectedRows += await this.processChange(normalized);
+      
+      // Call afterSave middleware hooks
+      await this.invokeMiddlewareAfterSave(context);
     }
     // Smart invalidation after successful DML
     const normalizedForInvalidation = normalizedForValidation.map((c) => ({
@@ -864,6 +879,18 @@ export abstract class DbContext {
     entity: Record<string, unknown>;
     entityClass: Function;
   }): Promise<boolean> {
+    // First, try middleware beforeDelete hooks (for plugin-based soft-delete)
+    const context = this.toChangeContext({ ...change, state: 'deleted' });
+    const handled = await this.invokeMiddlewareBeforeDelete(context);
+    if (handled) {
+      // Middleware handled the delete (e.g., soft-delete plugin)
+      await this._provider.update(change.entity, change.entityClass);
+      this.updateEntityCache(change);
+      await this.invokeMiddlewareAfterDelete(context);
+      return true;
+    }
+    
+    // Fall back to built-in soft-delete for backward compatibility
     if (!this._softDelete?.enabled) return false;
     const meta = MetadataStorage.getEntity(change.entityClass);
     if (!meta) return false;
@@ -878,7 +905,76 @@ export abstract class DbContext {
     if (hasDeletedAt) change.entity[deletedAt] = new Date();
     await this._provider.update(change.entity, change.entityClass);
     this.updateEntityCache(change);
+    await this.invokeMiddlewareAfterDelete(context);
     return true;
+  }
+
+  // ============= Middleware Helper Methods =============
+
+  /**
+   * Convert normalized change to EntityChangeContext for middleware
+   */
+  private toChangeContext(change: {
+    entity: Record<string, unknown>;
+    entityClass: Function;
+    state: string;
+    originalValues?: Record<string, unknown>;
+  }): EntityChangeContext {
+    return {
+      entity: change.entity,
+      entityClass: change.entityClass,
+      state: change.state as 'added' | 'modified' | 'deleted',
+      originalValues: change.originalValues
+    };
+  }
+
+  /**
+   * Invoke beforeSave hooks on all registered middlewares
+   */
+  private async invokeMiddlewareBeforeSave(context: EntityChangeContext): Promise<void> {
+    for (const middleware of this._middlewares) {
+      if (middleware.beforeSave) {
+        await middleware.beforeSave(context);
+      }
+    }
+  }
+
+  /**
+   * Invoke afterSave hooks on all registered middlewares
+   */
+  private async invokeMiddlewareAfterSave(context: EntityChangeContext): Promise<void> {
+    for (const middleware of this._middlewares) {
+      if (middleware.afterSave) {
+        await middleware.afterSave(context);
+      }
+    }
+  }
+
+  /**
+   * Invoke beforeDelete hooks on all registered middlewares
+   * @returns true if any middleware handled the delete (e.g., soft-delete)
+   */
+  private async invokeMiddlewareBeforeDelete(context: EntityChangeContext): Promise<boolean> {
+    for (const middleware of this._middlewares) {
+      if (middleware.beforeDelete) {
+        const result = await middleware.beforeDelete(context);
+        if (result === true) {
+          return true; // Middleware handled the delete
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Invoke afterDelete hooks on all registered middlewares
+   */
+  private async invokeMiddlewareAfterDelete(context: EntityChangeContext): Promise<void> {
+    for (const middleware of this._middlewares) {
+      if (middleware.afterDelete) {
+        await middleware.afterDelete(context);
+      }
+    }
   }
 
   private updateEntityCache(change: {
