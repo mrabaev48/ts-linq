@@ -54,7 +54,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should disable multi-tenant when enabled=false', async () => {
       const mw = new MultiTenantMiddleware({ enabled: false });
-      const entity = { id: 1, total: 100 };
+      const entity: any = { id: 1, total: 100 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -111,7 +111,7 @@ describe('MultiTenantMiddleware', () => {
   describe('Tenant Isolation', () => {
     it('should apply tenant ID on insert', async () => {
       middleware.setTenant(100);
-      const entity = { id: 1, total: 250 };
+      const entity: any = { id: 1, total: 250 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -125,7 +125,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should apply tenant ID on update', async () => {
       middleware.setTenant(200);
-      const entity = { id: 1, total: 300, tenantId: 100 };
+      const entity: any = { id: 1, total: 300, tenantId: 100 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -139,7 +139,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should use context tenantId if provided', async () => {
       middleware.setTenant(100);
-      const entity = { id: 1, total: 250 };
+      const entity: any = { id: 1, total: 250 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -154,7 +154,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should not apply tenant to entities without tenant column', async () => {
       middleware.setTenant(100);
-      const entity = { id: 1, amount: 500 };
+      const entity: any = { id: 1, amount: 500 };
       const context: TenantContext = {
         entity,
         entityClass: Invoice,
@@ -163,11 +163,11 @@ describe('MultiTenantMiddleware', () => {
 
       await middleware.applyTenant(context);
 
-      expect((entity as any).tenantId).toBeUndefined();
+      expect(entity.tenantId).toBeUndefined();
     });
 
     it('should throw error in strict mode when no tenant is set', async () => {
-      const entity = { id: 1, total: 250 };
+      const entity: any = { id: 1, total: 250 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -181,7 +181,7 @@ describe('MultiTenantMiddleware', () => {
 
     it('should not throw error in non-strict mode when no tenant is set', async () => {
       const mw = new MultiTenantMiddleware({ strictMode: false });
-      const entity = { id: 1, total: 250 };
+      const entity: any = { id: 1, total: 250 };
       const context: TenantContext = {
         entity,
         entityClass: Order,
@@ -279,7 +279,7 @@ describe('MultiTenantMiddleware', () => {
       });
 
       mw.setTenant(500);
-      const entity = { id: 1 };
+      const entity: any = { id: 1 };
       const context: TenantContext = {
         entity,
         entityClass: CustomEntity,
@@ -288,7 +288,7 @@ describe('MultiTenantMiddleware', () => {
 
       await mw.applyTenant(context);
 
-      expect((entity as any).organizationId).toBe(500);
+      expect(entity.organizationId).toBe(500);
     });
   });
 

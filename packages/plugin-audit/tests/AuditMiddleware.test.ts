@@ -65,7 +65,7 @@ describe('AuditMiddleware', () => {
 
     it('should disable audit when enabled=false', async () => {
       const mw = new AuditMiddleware({ enabled: false });
-      const entity = { id: 1, title: 'Test' };
+      const entity: any = { id: 1, title: 'Test' };
       const context: AuditContext = {
         entity,
         entityClass: Document,
@@ -81,7 +81,7 @@ describe('AuditMiddleware', () => {
 
   describe('Created Audit Fields', () => {
     it('should set createdAt on insert', async () => {
-      const entity = { id: 1, title: 'New Document' };
+      const entity: any = { id: 1, title: 'New Document' };
       const beforeCreate = new Date();
       const context: AuditContext = {
         entity,
@@ -97,7 +97,7 @@ describe('AuditMiddleware', () => {
     });
 
     it('should set createdBy on insert', async () => {
-      const entity = { id: 1, title: 'New Document' };
+      const entity: any = { id: 1, title: 'New Document' };
       const context: AuditContext = {
         entity,
         entityClass: Document,
@@ -112,7 +112,7 @@ describe('AuditMiddleware', () => {
     });
 
     it('should use getCurrentUser function if currentUser not in context', async () => {
-      const entity = { id: 1, title: 'New Document' };
+      const entity: any = { id: 1, title: 'New Document' };
       const context: AuditContext = {
         entity,
         entityClass: Document,
@@ -126,7 +126,7 @@ describe('AuditMiddleware', () => {
     });
 
     it('should handle entity without audit columns', async () => {
-      const entity = { id: 1, content: 'Post content' };
+      const entity: any = { id: 1, content: 'Post content' };
       const context: AuditContext = {
         entity,
         entityClass: Post,
@@ -146,12 +146,11 @@ describe('AuditMiddleware', () => {
         clock: () => customDate
       });
 
-      const entity = { id: 1, title: 'Test' };
+      const entity: any = { id: 1, title: 'Test' };
       const context: AuditContext = {
         entity,
         entityClass: Document,
-        state: 'added',
-        timestamp: new Date()
+        state: 'added'
       };
 
       await mw.applyAudit(context);
@@ -162,7 +161,7 @@ describe('AuditMiddleware', () => {
 
   describe('Updated Audit Fields', () => {
     it('should set updatedAt on insert', async () => {
-      const entity = { id: 1, title: 'New Document' };
+      const entity: any = { id: 1, title: 'New Document' };
       const context: AuditContext = {
         entity,
         entityClass: Document,
@@ -176,7 +175,7 @@ describe('AuditMiddleware', () => {
     });
 
     it('should set updatedAt on update', async () => {
-      const entity = { 
+      const entity: any = { 
         id: 1, 
         title: 'Updated',
         createdAt: new Date('2024-01-01'),
@@ -200,7 +199,7 @@ describe('AuditMiddleware', () => {
     });
 
     it('should set updatedBy on insert', async () => {
-      const entity = { id: 1, title: 'New Document' };
+      const entity: any = { id: 1, title: 'New Document' };
       const context: AuditContext = {
         entity,
         entityClass: Document,
@@ -216,7 +215,7 @@ describe('AuditMiddleware', () => {
 
     it('should update updatedBy on modification', async () => {
       currentUser = 'user1';
-      const entity = { 
+      const entity: any = { 
         id: 1, 
         title: 'Document',
         createdBy: 'user1',
@@ -246,7 +245,7 @@ describe('AuditMiddleware', () => {
 
     it('should not modify createdAt/createdBy on update', async () => {
       const originalCreatedAt = new Date('2024-01-01');
-      const entity = { 
+      const entity: any = { 
         id: 1, 
         title: 'Document',
         createdAt: originalCreatedAt,
@@ -297,7 +296,7 @@ describe('AuditMiddleware', () => {
         modifier?: string;
       }
 
-      const entity = { id: 1 };
+      const entity: any = { id: 1 };
       const context: AuditContext = {
         entity,
         entityClass: CustomEntity,
@@ -335,7 +334,7 @@ describe('AuditMiddleware', () => {
         modified?: Date;
       }
 
-      const entity = { id: 1 };
+      const entity: any = { id: 1 };
       const context: AuditContext = {
         entity,
         entityClass: TimeEntity,
@@ -359,7 +358,7 @@ describe('AuditMiddleware', () => {
         }
       });
 
-      const entity = { id: 1, title: 'Test' };
+      const entity: any = { id: 1, title: 'Test' };
       const context: AuditContext = {
         entity,
         entityClass: Document,
@@ -379,7 +378,7 @@ describe('AuditMiddleware', () => {
         }
       });
 
-      const entity = { id: 1, title: 'Test' };
+      const entity: any = { id: 1, title: 'Test' };
       const context: AuditContext = {
         entity,
         entityClass: Document,
@@ -398,7 +397,7 @@ describe('AuditMiddleware', () => {
         getCurrentUser: () => 12345
       });
 
-      const entity = { id: 1, title: 'Test' };
+      const entity: any = { id: 1, title: 'Test' };
       const context: AuditContext = {
         entity,
         entityClass: Document,
