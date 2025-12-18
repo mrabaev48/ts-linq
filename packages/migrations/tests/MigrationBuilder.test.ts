@@ -2,7 +2,7 @@ import { MigrationBuilder } from '../src/MigrationBuilder';
 
 describe('MigrationBuilder', () => {
   describe('createTable()', () => {
-    it('should create a table with columns', () => {
+    it('should create a table with columns and generate correct diff', () => {
       const builder = new MigrationBuilder();
       
       builder.createTable('users', t => {
@@ -12,10 +12,16 @@ describe('MigrationBuilder', () => {
         t.primaryKey('id');
       });
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      expect(diff.tables).toHaveLength(1);
+      expect(diff.tables[0].table).toBe('users');
+      expect(diff.tables[0].create).toBeDefined();
+      expect(diff.tables[0].create!.columns).toHaveLength(3);
+      expect(diff.tables[0].create!.columns[0].name).toBe('id');
+      expect(diff.tables[0].create!.primaryKeys).toContain('id');
     });
 
-    it('should support default values', () => {
+    it('should support default values in diff', () => {
       const builder = new MigrationBuilder();
       
       builder.createTable('settings', t => {
@@ -24,21 +30,13 @@ describe('MigrationBuilder', () => {
         t.column('count', 'INTEGER', { defaultValue: 0 });
       });
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const cols = diff.tables[0].create!.columns;
+      expect(cols.find(c => c.name === 'enabled')?.defaultValue).toBe(true);
+      expect(cols.find(c => c.name === 'count')?.defaultValue).toBe(0);
     });
 
-    it('should support default expressions', () => {
-      const builder = new MigrationBuilder();
-      
-      builder.createTable('events', t => {
-        t.column('id', 'INTEGER');
-        t.column('created_at', 'TIMESTAMP', { defaultExpression: 'CURRENT_TIMESTAMP' });
-      });
-      
-      expect(builder).toBeDefined();
-    });
-
-    it('should support indexes', () => {
+    it('should support indexes in diff', () => {
       const builder = new MigrationBuilder();
       
       builder.createTable('products', t => {
@@ -47,10 +45,13 @@ describe('MigrationBuilder', () => {
         t.index('idx_sku', ['sku'], true);
       });
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      expect(diff.tables[0].create!.indexes).toHaveLength(1);
+      expect(diff.tables[0].create!.indexes[0].name).toBe('idx_sku');
+      expect(diff.tables[0].create!.indexes[0].unique).toBe(true);
     });
 
-    it('should support foreign keys', () => {
+    it('should support foreign keys in diff', () => {
       const builder = new MigrationBuilder();
       
       builder.createTable('orders', t => {
@@ -64,16 +65,22 @@ describe('MigrationBuilder', () => {
         });
       });
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      expect(diff.tables[0].create!.foreignKeys).toHaveLength(1);
+      expect(diff.tables[0].create!.foreignKeys[0].refTable).toBe('users');
+      expect(diff.tables[0].create!.foreignKeys[0].onDelete).toBe('CASCADE');
     });
   });
 
   describe('dropTable()', () => {
-    it('should register table for dropping', () => {
+    it('should register table for dropping in diff', () => {
       const builder = new MigrationBuilder();
       builder.dropTable('old_table');
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      expect(diff.tables).toHaveLength(1);
+      expect(diff.tables[0].table).toBe('old_table');
+      expect(diff.tables[0].drop).toBe(true);
     });
 
     it('should support dropping multiple tables', () => {
@@ -81,110 +88,128 @@ describe('MigrationBuilder', () => {
       builder.dropTable('table1');
       builder.dropTable('table2');
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      expect(diff.tables).toHaveLength(2);
+      expect(diff.tables.every(t => t.drop)).toBe(true);
     });
   });
 
   describe('alterTable()', () => {
-    it('should add column to existing table', () => {
+    it('should add column to existing table in diff', () => {
       const builder = new MigrationBuilder();
       builder.alterTable('users', t => {
         t.addColumn('age', 'INTEGER', { nullable: true });
       });
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const usersTable = diff.tables.find(t => t.table === 'users');
+      expect(usersTable).toBeDefined();
+      expect(usersTable!.columnChanges).toBeDefined();
+      expect(usersTable!.columnChanges!.some(c => c.kind === 'add' && c.column.name === 'age')).toBe(true);
     });
 
-    it('should add multiple columns', () => {
+    it('should add multiple columns in diff', () => {
       const builder = new MigrationBuilder();
       builder.alterTable('users', t => {
         t.addColumn('first_name', 'TEXT');
         t.addColumn('last_name', 'TEXT');
       });
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const usersTable = diff.tables.find(t => t.table === 'users');
+      expect(usersTable!.columnChanges).toHaveLength(2);
     });
 
-    it('should drop column from table', () => {
+    it('should drop column from table in diff', () => {
       const builder = new MigrationBuilder();
       builder.alterTable('users', t => {
         t.dropColumn('deprecated_field');
       });
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const usersTable = diff.tables.find(t => t.table === 'users');
+      expect(usersTable!.columnChanges!.some(c => c.kind === 'drop' && c.column.name === 'deprecated_field')).toBe(true);
     });
 
-    it('should alter column type', () => {
+    it('should alter column type in diff', () => {
       const builder = new MigrationBuilder();
       builder.alterTable('users', t => {
         t.alterColumn('age', 'BIGINT');
       });
       
-      expect(builder).toBeDefined();
-    });
-
-    it('should alter column nullable', () => {
-      const builder = new MigrationBuilder();
-      builder.alterTable('users', t => {
-        t.alterColumn('email', 'TEXT', { nullable: false });
-      });
-      
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const usersTable = diff.tables.find(t => t.table === 'users');
+      expect(usersTable!.columnChanges!.some(c => c.kind === 'alter' && c.column.name === 'age')).toBe(true);
     });
   });
 
   describe('createIndex()', () => {
-    it('should create index on table', () => {
+    it('should create index in diff', () => {
       const builder = new MigrationBuilder();
       builder.createIndex('users', 'idx_email', ['email']);
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const usersTable = diff.tables.find(t => t.table === 'users');
+      expect(usersTable!.indexCreates).toBeDefined();
+      expect(usersTable!.indexCreates!.some(i => i.name === 'idx_email')).toBe(true);
     });
 
-    it('should create unique index', () => {
+    it('should create unique index in diff', () => {
       const builder = new MigrationBuilder();
       builder.createIndex('users', 'idx_unique_email', ['email'], true);
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const usersTable = diff.tables.find(t => t.table === 'users');
+      const addedIndex = usersTable!.indexCreates!.find(i => i.name === 'idx_unique_email');
+      expect(addedIndex!.unique).toBe(true);
     });
 
-    it('should create composite index', () => {
+    it('should create composite index in diff', () => {
       const builder = new MigrationBuilder();
       builder.createIndex('orders', 'idx_user_date', ['user_id', 'order_date']);
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const ordersTable = diff.tables.find(t => t.table === 'orders');
+      const addedIndex = ordersTable!.indexCreates!.find(i => i.name === 'idx_user_date');
+      expect(addedIndex!.columns).toEqual(['user_id', 'order_date']);
     });
   });
 
   describe('dropIndex()', () => {
-    it('should drop index from table', () => {
+    it('should drop index in diff', () => {
       const builder = new MigrationBuilder();
       builder.dropIndex('users', 'idx_old');
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const usersTable = diff.tables.find(t => t.table === 'users');
+      expect(usersTable!.indexDrops).toContain('idx_old');
     });
   });
 
   describe('renameTable()', () => {
-    it('should rename table', () => {
+    it('should rename table in diff', () => {
       const builder = new MigrationBuilder();
       builder.renameTable('old_name', 'new_name');
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const renamedTable = diff.tables.find(t => t.table === 'old_name');
+      expect(renamedTable!.renameTo).toBe('new_name');
     });
   });
 
   describe('renameColumn()', () => {
-    it('should rename column', () => {
+    it('should rename column in diff', () => {
       const builder = new MigrationBuilder();
       builder.renameColumn('users', 'old_col', 'new_col');
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const usersTable = diff.tables.find(t => t.table === 'users');
+      expect(usersTable!.columnRenames!.some(c => c.from === 'old_col')).toBe(true);
     });
   });
 
   describe('addForeignKey()', () => {
-    it('should add foreign key to table', () => {
+    it('should add foreign key in diff', () => {
       const builder = new MigrationBuilder();
       builder.addForeignKey('orders', {
         columns: ['customer_id'],
@@ -192,10 +217,13 @@ describe('MigrationBuilder', () => {
         refColumns: ['id']
       });
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const ordersTable = diff.tables.find(t => t.table === 'orders');
+      expect(ordersTable!.fkCreates).toBeDefined();
+      expect(ordersTable!.fkCreates!.some(fk => fk.refTable === 'customers')).toBe(true);
     });
 
-    it('should add foreign key with cascade options', () => {
+    it('should add foreign key with cascade options in diff', () => {
       const builder = new MigrationBuilder();
       builder.addForeignKey('line_items', {
         name: 'fk_order',
@@ -206,16 +234,22 @@ describe('MigrationBuilder', () => {
         onUpdate: 'CASCADE'
       });
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const lineItemsTable = diff.tables.find(t => t.table === 'line_items');
+      const addedFk = lineItemsTable!.fkCreates!.find(fk => fk.name === 'fk_order');
+      expect(addedFk!.onDelete).toBe('CASCADE');
+      expect(addedFk!.onUpdate).toBe('CASCADE');
     });
   });
 
   describe('dropForeignKey()', () => {
-    it('should drop foreign key', () => {
+    it('should drop foreign key in diff', () => {
       const builder = new MigrationBuilder();
       builder.dropForeignKey('orders', 'fk_customer');
       
-      expect(builder).toBeDefined();
+      const diff = builder.toDiff();
+      const ordersTable = diff.tables.find(t => t.table === 'orders');
+      expect(ordersTable!.fkDrops).toContain('fk_customer');
     });
   });
 

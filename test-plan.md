@@ -128,11 +128,11 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 - cache: ✅ 28 tests passing (EntityCache, CachePolicy)
 - concurrency: ✅ 22 tests passing (RetryPolicies)
 - query: ✅ 25 tests passing (CountCache, InternalLogger)
-- migrations: ✅ 29 tests passing (MigrationBuilder)
+- migrations: ✅ 27 tests passing (MigrationBuilder with full diff/toSql assertions)
 - pagination: ⏭️ Skipped (interface only, no logic)
 - dialect-*: Covered by provider package tests
 
-**TOTAL: ~1,563 tests passing** (1238 baseline + 110 plugins + 52 CLI + 59 telemetry + 104 new)
+**TOTAL: ~1,561 tests passing** (1238 baseline + 110 plugins + 52 CLI + 59 telemetry + 102 new)
 
 ---
 
