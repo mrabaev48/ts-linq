@@ -1,10 +1,12 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { OrmMiddleware, EntityChangeContext } from '@ts-linq/types';
 import type { MultiTenantOptions, TenantContext } from './types';
 
 /**
  * Middleware that handles multi-tenant operations
+ * Implements OrmMiddleware interface for DbContext integration
  */
-export class MultiTenantMiddleware {
+export class MultiTenantMiddleware implements OrmMiddleware {
   private options: MultiTenantOptions;
   private currentTenant?: string | number;
 
@@ -16,6 +18,44 @@ export class MultiTenantMiddleware {
       strictMode: true,
       ...options
     };
+  }
+
+  /**
+   * OrmMiddleware lifecycle hook - called before save
+   * Automatically applies tenant ID to entities
+   */
+  async beforeSave(context: EntityChangeContext): Promise<void> {
+    if (!this.options.enabled) {
+      return;
+    }
+
+    if (context.state !== 'added' && context.state !== 'modified') {
+      return;
+    }
+
+    const meta = MetadataStorage.getEntity(context.entityClass);
+    if (!meta) {
+      return;
+    }
+
+    const tenantColumn = this.options.tenantIdColumn!;
+
+    const hasTenantColumn = meta.columns.some(
+      (c: any) => c.propertyName === tenantColumn || c.columnName === tenantColumn
+    );
+
+    if (!hasTenantColumn) {
+      return;
+    }
+
+    const tenantId = await this.getTenant();
+    const entity = context.entity as Record<string, unknown>;
+
+    if (this.options.strictMode && tenantId === undefined) {
+      throw new Error('No tenant context available. Set tenant using setTenant() or getCurrentTenant()');
+    }
+
+    entity[tenantColumn] = tenantId as any;
   }
 
   /**
@@ -45,7 +85,7 @@ export class MultiTenantMiddleware {
   }
 
   /**
-   * Apply tenant ID to entity
+   * Apply tenant ID to entity (legacy method for backward compatibility)
    */
   async applyTenant(context: TenantContext): Promise<void> {
     if (!this.options.enabled) {
@@ -59,7 +99,6 @@ export class MultiTenantMiddleware {
 
     const tenantColumn = this.options.tenantIdColumn!;
 
-    // Check if entity has tenant column
     const hasTenantColumn = meta.columns.some(
       (c: any) => c.propertyName === tenantColumn || c.columnName === tenantColumn
     );

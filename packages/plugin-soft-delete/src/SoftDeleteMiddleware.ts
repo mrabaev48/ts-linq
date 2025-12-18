@@ -1,10 +1,12 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { OrmMiddleware, EntityChangeContext } from '@ts-linq/types';
 import type { SoftDeleteOptions, SoftDeleteContext } from './types';
 
 /**
  * Middleware that handles soft delete operations
+ * Implements OrmMiddleware interface for DbContext integration
  */
-export class SoftDeleteMiddleware {
+export class SoftDeleteMiddleware implements OrmMiddleware {
   private options: SoftDeleteOptions;
 
   constructor(options: SoftDeleteOptions = {}) {
@@ -19,7 +21,47 @@ export class SoftDeleteMiddleware {
   }
 
   /**
-   * Handle soft delete operation
+   * OrmMiddleware lifecycle hook - called before delete
+   * Returns true if soft-delete was handled (prevents hard delete)
+   */
+  async beforeDelete(context: EntityChangeContext): Promise<boolean> {
+    if (!this.options.enabled) {
+      return false;
+    }
+
+    const meta = MetadataStorage.getEntity(context.entityClass);
+    if (!meta) {
+      return false;
+    }
+
+    const flagColumn = this.options.column!;
+    const timestampColumn = this.options.deletedAtColumn!;
+
+    const hasFlagColumn = meta.columns.some(
+      (c: any) => c.propertyName === flagColumn || c.columnName === flagColumn
+    );
+
+    const hasTimestampColumn = meta.columns.some(
+      (c: any) => c.propertyName === timestampColumn || c.columnName === timestampColumn
+    );
+
+    if (!hasFlagColumn && !hasTimestampColumn) {
+      return false;
+    }
+
+    // Mark as soft deleted
+    if (hasFlagColumn) {
+      (context.entity as Record<string, unknown>)[flagColumn] = true;
+    }
+    if (hasTimestampColumn) {
+      (context.entity as Record<string, unknown>)[timestampColumn] = new Date();
+    }
+    
+    return true; // Prevents hard delete, DbContext will do update instead
+  }
+
+  /**
+   * Handle soft delete operation (legacy method for backward compatibility)
    */
   async handleSoftDelete(context: SoftDeleteContext): Promise<boolean> {
     if (!this.options.enabled) {
@@ -34,7 +76,6 @@ export class SoftDeleteMiddleware {
     const flagColumn = this.options.column!;
     const timestampColumn = this.options.deletedAtColumn!;
 
-    // Check if entity has soft delete columns
     const hasFlagColumn = meta.columns.some(
       (c: any) => c.propertyName === flagColumn || c.columnName === flagColumn
     );
@@ -48,7 +89,6 @@ export class SoftDeleteMiddleware {
     }
 
     if (context.operation === 'delete') {
-      // Mark as deleted
       if (hasFlagColumn) {
         context.entity[flagColumn] = true;
       }
@@ -57,7 +97,6 @@ export class SoftDeleteMiddleware {
       }
       return true;
     } else if (context.operation === 'restore') {
-      // Restore deleted entity
       if (hasFlagColumn) {
         context.entity[flagColumn] = false;
       }
