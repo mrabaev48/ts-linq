@@ -124,7 +124,15 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 - examples: ⏭️ Skipped (demo code, not for testing)
 - telemetry: ⏭️ Skipped (empty src/ - placeholder package)
 
-**TOTAL: ~1,459 tests passing** (1238 baseline + 110 plugins + 52 CLI + 59 telemetry)
+**Additional Tier 2 packages tested**:
+- cache: ✅ 28 tests passing (EntityCache, CachePolicy)
+- concurrency: ✅ 22 tests passing (RetryPolicies)
+- query: ✅ 25 tests passing (CountCache, InternalLogger)
+- migrations: ✅ 29 tests passing (MigrationBuilder)
+- pagination: ⏭️ Skipped (interface only, no logic)
+- dialect-*: Covered by provider package tests
+
+**TOTAL: ~1,563 tests passing** (1238 baseline + 110 plugins + 52 CLI + 59 telemetry + 104 new)
 
 ---
 
