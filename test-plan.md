@@ -116,12 +116,15 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 - **Total Plugin Tests**: 110 tests
 
 **🔄 TIER 3 IN PROGRESS**:
-- CLI: 16 test files exist (need verification)
+- CLI: ✅ 16 test files, 52 tests passing (API updated to object-based config)
+- prometheus-sql-logger: ✅ 10 tests passing
+- open-telemetry-sql-logger: ✅ 15 tests passing
+- composite-sql-logger: ✅ 34 tests passing
 - integration-nestjs: Not started
-- examples: Not started
-- telemetry packages: Not started
+- examples: Not started (placeholder package)
+- telemetry: Not started (empty src/ - placeholder package)
 
-**TOTAL: ~1,348 tests passing** (1238 baseline + 110 plugin tests)
+**TOTAL: ~1,459 tests passing** (1238 baseline + 110 plugins + 52 CLI + 59 telemetry)
 
 ---
 

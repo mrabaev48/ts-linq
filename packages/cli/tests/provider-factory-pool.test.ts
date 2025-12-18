@@ -215,21 +215,23 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       const provider = createProviderFromEnv();
 
       expect(PostgresProvider).toHaveBeenCalledWith(
-        expect.stringContaining('prod-db.example.com'),
-        undefined,
-        undefined,
-        undefined,
-        undefined,
         expect.objectContaining({
-          min: 5,
-          max: 50,
-          idleTimeoutMs: 60000,
-          acquireTimeoutMs: 10000
-        }),
-        expect.objectContaining({
-          enabled: true,
-          intervalMs: 30000,
-          timeoutMs: 3000
+          host: 'prod-db.example.com',
+          port: 5432,
+          database: 'appdb',
+          user: 'prod_user',
+          password: 'secret',
+          poolOptions: expect.objectContaining({
+            min: 5,
+            max: 50,
+            idleTimeoutMs: 60000,
+            acquireTimeoutMs: 10000
+          }),
+          healthCheck: expect.objectContaining({
+            enabled: true,
+            intervalMs: 30000,
+            timeoutMs: 3000
+          })
         })
       );
       expect(mockProvider.configureCircuit).toHaveBeenCalledWith(
