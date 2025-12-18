@@ -120,9 +120,9 @@ This document outlines a comprehensive testing plan for complete test suite rewr
 - prometheus-sql-logger: ✅ 10 tests passing
 - open-telemetry-sql-logger: ✅ 15 tests passing
 - composite-sql-logger: ✅ 34 tests passing
-- integration-nestjs: Not started
-- examples: Not started (placeholder package)
-- telemetry: Not started (empty src/ - placeholder package)
+- integration-nestjs: ⏭️ Skipped (placeholder - "Coming Soon")
+- examples: ⏭️ Skipped (demo code, not for testing)
+- telemetry: ⏭️ Skipped (empty src/ - placeholder package)
 
 **TOTAL: ~1,459 tests passing** (1238 baseline + 110 plugins + 52 CLI + 59 telemetry)
 
