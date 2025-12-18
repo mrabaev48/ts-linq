@@ -848,10 +848,47 @@ export abstract class DbContext {
         await this.applyUpdate(change);
         return 1;
       case 'deleted':
-        return (await this.applyDelete(change)) ? 1 : 0;
+        return await this.processDelete(change);
       default:
         return 0;
     }
+  }
+
+  /**
+   * Process delete with proper middleware hook invocation
+   */
+  private async processDelete(change: {
+    entity: Record<string, unknown>;
+    entityClass: Function;
+  }): Promise<number> {
+    const context = this.toChangeContext({ ...change, state: 'deleted' });
+    
+    // Call beforeDelete hooks - if any returns true, it handled as soft-delete
+    const handledByMiddleware = await this.invokeMiddlewareBeforeDelete(context);
+    
+    if (handledByMiddleware) {
+      // Middleware handled (e.g., soft-delete plugin marked entity)
+      await this._provider.update(change.entity, change.entityClass);
+      this.updateEntityCache(change);
+      await this.invokeMiddlewareAfterDelete(context);
+      return 1;
+    }
+    
+    // Try built-in soft-delete for backward compatibility
+    const softDeleted = await this.handleSoftDeleteBuiltin(change);
+    if (softDeleted) {
+      await this.invokeMiddlewareAfterDelete(context);
+      return 1;
+    }
+    
+    // Hard delete via DeleteCommand
+    const deleted = await this.applyDelete(change);
+    if (deleted) {
+      await this.invokeMiddlewareAfterDelete(context);
+      return 1;
+    }
+    
+    return 0;
   }
 
   private async applyInsert(change: {
@@ -875,22 +912,13 @@ export abstract class DbContext {
     return await this._deleteCmd.execute({ ...change, state: 'deleted' });
   }
 
-  private async handleSoftDelete(change: {
+  /**
+   * Built-in soft-delete handler for backward compatibility with DbContextOptions.softDelete
+   */
+  private async handleSoftDeleteBuiltin(change: {
     entity: Record<string, unknown>;
     entityClass: Function;
   }): Promise<boolean> {
-    // First, try middleware beforeDelete hooks (for plugin-based soft-delete)
-    const context = this.toChangeContext({ ...change, state: 'deleted' });
-    const handled = await this.invokeMiddlewareBeforeDelete(context);
-    if (handled) {
-      // Middleware handled the delete (e.g., soft-delete plugin)
-      await this._provider.update(change.entity, change.entityClass);
-      this.updateEntityCache(change);
-      await this.invokeMiddlewareAfterDelete(context);
-      return true;
-    }
-    
-    // Fall back to built-in soft-delete for backward compatibility
     if (!this._softDelete?.enabled) return false;
     const meta = MetadataStorage.getEntity(change.entityClass);
     if (!meta) return false;
@@ -905,8 +933,18 @@ export abstract class DbContext {
     if (hasDeletedAt) change.entity[deletedAt] = new Date();
     await this._provider.update(change.entity, change.entityClass);
     this.updateEntityCache(change);
-    await this.invokeMiddlewareAfterDelete(context);
     return true;
+  }
+  
+  /**
+   * Legacy handleSoftDelete method - delegates to processDelete for proper middleware handling
+   * Kept for backward compatibility with DeleteCommand callback
+   */
+  private async handleSoftDelete(change: {
+    entity: Record<string, unknown>;
+    entityClass: Function;
+  }): Promise<boolean> {
+    return await this.handleSoftDeleteBuiltin(change);
   }
 
   // ============= Middleware Helper Methods =============

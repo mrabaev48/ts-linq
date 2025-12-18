@@ -179,9 +179,21 @@ export declare abstract class DbContext {
     private applyUpdatedAudit;
     private hasProperty;
     private processChange;
+    /**
+     * Process delete with proper middleware hook invocation
+     */
+    private processDelete;
     private applyInsert;
     private applyUpdate;
     private applyDelete;
+    /**
+     * Built-in soft-delete handler for backward compatibility with DbContextOptions.softDelete
+     */
+    private handleSoftDeleteBuiltin;
+    /**
+     * Legacy handleSoftDelete method - delegates to processDelete for proper middleware handling
+     * Kept for backward compatibility with DeleteCommand callback
+     */
     private handleSoftDelete;
     /**
      * Convert normalized change to EntityChangeContext for middleware
