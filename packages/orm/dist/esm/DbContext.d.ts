@@ -32,6 +32,7 @@ export declare abstract class DbContext {
     private _globalFilters?;
     private _diagnostics?;
     private _memoryProfiler?;
+    private _middlewares;
     private _validationOptions?;
     private _validationService;
     private _insertCmd;
@@ -182,6 +183,27 @@ export declare abstract class DbContext {
     private applyUpdate;
     private applyDelete;
     private handleSoftDelete;
+    /**
+     * Convert normalized change to EntityChangeContext for middleware
+     */
+    private toChangeContext;
+    /**
+     * Invoke beforeSave hooks on all registered middlewares
+     */
+    private invokeMiddlewareBeforeSave;
+    /**
+     * Invoke afterSave hooks on all registered middlewares
+     */
+    private invokeMiddlewareAfterSave;
+    /**
+     * Invoke beforeDelete hooks on all registered middlewares
+     * @returns true if any middleware handled the delete (e.g., soft-delete)
+     */
+    private invokeMiddlewareBeforeDelete;
+    /**
+     * Invoke afterDelete hooks on all registered middlewares
+     */
+    private invokeMiddlewareAfterDelete;
     private updateEntityCache;
     private removeFromEntityCache;
     private getPrimaryKey;

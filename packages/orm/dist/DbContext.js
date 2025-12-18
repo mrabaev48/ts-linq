@@ -47,6 +47,7 @@ class DbContext {
         this._dbSets = new Map();
         this._defaultLoadingStrategy = core_2.LoadingStrategy.Eager;
         this._loadingDefaults = {};
+        this._middlewares = [];
         /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
         this._validationRulesCache = new WeakMap();
         /** Simple cache utilities (warm-up etc.). */
@@ -141,6 +142,8 @@ class DbContext {
         }
         this._validationOptions = options.validation;
         this._validationService = new ChangeValidationService_1.ChangeValidationService(this._validationOptions?.translate, this._audit);
+        // Initialize middlewares from options
+        this._middlewares = options.middlewares ?? [];
         this._changeTracker = new ChangeTracker_1.ChangeTracker();
         this._entityLoader = new core_1.EntityLoader(this._provider);
         this._insertCmd = new InsertCommand_1.InsertCommand(this._provider, (c) => this.updateEntityCache(c));
@@ -240,8 +243,14 @@ class DbContext {
         let affectedRows = 0;
         for (const change of changes) {
             const normalized = this.normalizeChange(change);
+            const context = this.toChangeContext(normalized);
+            // Call beforeSave middleware hooks
+            await this.invokeMiddlewareBeforeSave(context);
+            // Apply built-in audit (for backward compatibility)
             this.applyAudit(normalized);
             affectedRows += await this.processChange(normalized);
+            // Call afterSave middleware hooks
+            await this.invokeMiddlewareAfterSave(context);
         }
         // Smart invalidation after successful DML
         const normalizedForInvalidation = normalizedForValidation.map((c) => ({
@@ -652,6 +661,17 @@ class DbContext {
         return await this._deleteCmd.execute({ ...change, state: 'deleted' });
     }
     async handleSoftDelete(change) {
+        // First, try middleware beforeDelete hooks (for plugin-based soft-delete)
+        const context = this.toChangeContext({ ...change, state: 'deleted' });
+        const handled = await this.invokeMiddlewareBeforeDelete(context);
+        if (handled) {
+            // Middleware handled the delete (e.g., soft-delete plugin)
+            await this._provider.update(change.entity, change.entityClass);
+            this.updateEntityCache(change);
+            await this.invokeMiddlewareAfterDelete(context);
+            return true;
+        }
+        // Fall back to built-in soft-delete for backward compatibility
         if (!this._softDelete?.enabled)
             return false;
         const meta = metadata_1.MetadataStorage.getEntity(change.entityClass);
@@ -668,7 +688,65 @@ class DbContext {
             change.entity[deletedAt] = new Date();
         await this._provider.update(change.entity, change.entityClass);
         this.updateEntityCache(change);
+        await this.invokeMiddlewareAfterDelete(context);
         return true;
+    }
+    // ============= Middleware Helper Methods =============
+    /**
+     * Convert normalized change to EntityChangeContext for middleware
+     */
+    toChangeContext(change) {
+        return {
+            entity: change.entity,
+            entityClass: change.entityClass,
+            state: change.state,
+            originalValues: change.originalValues
+        };
+    }
+    /**
+     * Invoke beforeSave hooks on all registered middlewares
+     */
+    async invokeMiddlewareBeforeSave(context) {
+        for (const middleware of this._middlewares) {
+            if (middleware.beforeSave) {
+                await middleware.beforeSave(context);
+            }
+        }
+    }
+    /**
+     * Invoke afterSave hooks on all registered middlewares
+     */
+    async invokeMiddlewareAfterSave(context) {
+        for (const middleware of this._middlewares) {
+            if (middleware.afterSave) {
+                await middleware.afterSave(context);
+            }
+        }
+    }
+    /**
+     * Invoke beforeDelete hooks on all registered middlewares
+     * @returns true if any middleware handled the delete (e.g., soft-delete)
+     */
+    async invokeMiddlewareBeforeDelete(context) {
+        for (const middleware of this._middlewares) {
+            if (middleware.beforeDelete) {
+                const result = await middleware.beforeDelete(context);
+                if (result === true) {
+                    return true; // Middleware handled the delete
+                }
+            }
+        }
+        return false;
+    }
+    /**
+     * Invoke afterDelete hooks on all registered middlewares
+     */
+    async invokeMiddlewareAfterDelete(context) {
+        for (const middleware of this._middlewares) {
+            if (middleware.afterDelete) {
+                await middleware.afterDelete(context);
+            }
+        }
     }
     updateEntityCache(change) {
         if (!this._entityCache)
