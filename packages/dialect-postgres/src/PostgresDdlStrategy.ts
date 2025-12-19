@@ -22,12 +22,19 @@ export class PostgresDdlStrategy {
         }
         return `"${column.columnName}" ${this.mapTypeToPg(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) STORED`;
       }
+      // Handle auto-increment / isGenerated columns
+      if (column.isGenerated && !column.isComputed) {
+        const serialType = column.type?.toUpperCase() === 'BIGINT' ? 'BIGSERIAL' : 'SERIAL';
+        return `"${column.columnName}" ${serialType} PRIMARY KEY`;
+      }
       const mappedType = this.mapTypeToPg(column.type);
       const notNullSql = column.nullable ? '' : ' NOT NULL';
       const defaultSql = column.defaultExpression ? ` DEFAULT ${column.defaultExpression}` : '';
       return `"${column.columnName}" ${mappedType}${notNullSql}${defaultSql}`;
     });
-    if (entityMetadata.primaryKeys && entityMetadata.primaryKeys.length > 0) {
+    // Only add separate PRIMARY KEY constraint if no isGenerated columns (they already have PRIMARY KEY inline)
+    const hasSerialPrimaryKey = entityMetadata.columns.some((c: any) => c.isGenerated && !c.isComputed);
+    if (!hasSerialPrimaryKey && entityMetadata.primaryKeys && entityMetadata.primaryKeys.length > 0) {
       const primaryKeySql = entityMetadata.primaryKeys
         .map(
           (primaryKey: any) =>

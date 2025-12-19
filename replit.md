@@ -62,6 +62,28 @@ As a backend ORM, the framework has no direct UI. Design focuses on API ergonomi
 
 # Recent Changes
 
+## December 19, 2025: E2E Tests and PostgreSQL SERIAL Fix
+
+**E2E Test Suite Implemented**: Full end-to-end tests with PostgreSQL running against Replit database.
+
+**Test Results**: 
+- Total new tests: 1,030 (tests-new) + 13 E2E tests = **1,043 tests passing**
+- E2E tests: 13 passed, 1 skipped (nested transactions - PostgreSQL limitation)
+- Test suites: 53 passed
+
+**Implementation Details**:
+- **packages/e2e-tests/**: CRUD operations, complex queries, transaction scenarios
+- **PostgresDdlStrategy Fix**: Added SERIAL/BIGSERIAL type for autoIncrement columns
+- **Type Coercion**: E2E tests handle PostgreSQL returning numbers as strings
+
+**Key Fixes**:
+- `PostgresDdlStrategy.generateCreateTableSql()` now correctly handles `isGenerated` columns with SERIAL PRIMARY KEY
+- Skips separate PRIMARY KEY constraint when SERIAL already includes it
+
+**Known Limitations**:
+- PredicateParser SQL translation for comparison operators (>, <, etc.) in where clauses needs investigation
+- PostgreSQL nested transactions require savepoint support (test skipped)
+
 ## December 18, 2025: Middleware Integration Complete
 
 **Middleware Pipeline Implemented**: Full DbContext middleware integration for entity lifecycle hooks.
