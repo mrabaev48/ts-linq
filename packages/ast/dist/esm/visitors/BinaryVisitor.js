@@ -3,7 +3,8 @@ export class BinaryVisitor {
         const column = node.left.name;
         const value = node.right.value;
         const op = node.operator;
-        return { condition: `${column} ${op} ?`, parameters: [value] };
+        // Quote column name for case-sensitive databases (PostgreSQL)
+        return { condition: `"${column}" ${op} ?`, parameters: [value] };
     }
 }
 //# sourceMappingURL=BinaryVisitor.js.map

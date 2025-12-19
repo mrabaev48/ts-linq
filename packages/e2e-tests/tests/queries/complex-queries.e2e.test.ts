@@ -125,33 +125,29 @@ describe.each(['postgres'] as const)('E2E Complex Queries - %s', (providerName) 
     expect(firstPost).toBeDefined();
   });
 
-  it('should retrieve data for client-side filtering', async () => {
-    // Note: where clause with comparison operators (>, <, etc.) requires 
-    // PredicateParser SQL translation which has known limitations
-    // This test validates data retrieval and client-side filtering
+  it('should perform complex filters with comparison operators', async () => {
     if (process.env.SKIP_DB_TESTS === '1') {
       return;
     }
 
     const postSet = context.set(Post);
-    const allPosts = await postSet.toArray();
-    const filtered = allPosts.filter((p: Post) => Number(p.authorId) > 0);
+    const filtered = await postSet
+      .where((p: Post) => p.authorId > 0)
+      .toArray();
     
     expect(filtered.length).toBeGreaterThan(0);
   });
 
-  it('should count records correctly', async () => {
-    // Note: filtered count via where().count() requires PredicateParser SQL translation
-    // This test validates basic count and data retrieval
+  it('should count with filtered query', async () => {
     if (process.env.SKIP_DB_TESTS === '1') {
       return;
     }
 
     const postSet = context.set(Post);
     const totalCount = await postSet.count();
-    const allPosts = await postSet.toArray();
+    const filteredCount = await postSet.where((p: Post) => p.authorId > 0).count();
     
     expect(Number(totalCount)).toBeGreaterThan(0);
-    expect(allPosts.length).toBe(Number(totalCount));
+    expect(Number(filteredCount)).toBeLessThanOrEqual(Number(totalCount));
   });
 });
