@@ -19,8 +19,8 @@ describe('MemcachedCountCacheAdapter', () => {
   test('invalidateBy removes matching count keys', async () => {
     const client = new FakeMemjs();
     const cache = new MemcachedCountCacheAdapter(client);
-    cache.set('Product|count|[]', { value: 1, ts: Date.now() });
-    cache.set('Order|count|[]', { value: 2, ts: Date.now() });
+    cache.set('Product|count|[]', 1);
+    cache.set('Order|count|[]', 2);
     const removed = cache.invalidateBy((k) => k.startsWith('Product|count|'));
     expect(removed).toBe(1);
     expect(cache.get('Product|count|[]')).toBeUndefined();
@@ -29,15 +29,15 @@ describe('MemcachedCountCacheAdapter', () => {
   test('stores and retrieves count via shadow map', async () => {
     const client = new FakeMemjs();
     const cache = new MemcachedCountCacheAdapter(client, { ttlSeconds: 1 });
-    cache.set('c', { value: 5, ts: Date.now() });
+    cache.set('c', 5);
     const got = cache.get('c');
-    expect(got?.value).toBe(5);
+    expect(got).toBe(5);
   });
 
   test('clear empties shadow map', () => {
     const client = new FakeMemjs();
     const cache = new MemcachedCountCacheAdapter(client);
-    cache.set('k', { value: 1, ts: Date.now() });
+    cache.set('k', 1);
     expect(cache.get('k')).toBeDefined();
     cache.clear();
     expect(cache.get('k')).toBeUndefined();
@@ -46,7 +46,7 @@ describe('MemcachedCountCacheAdapter', () => {
   test('hashKeys stores hashed count key in backend', async () => {
     const client = new FakeMemjs();
     const cache = new MemcachedCountCacheAdapter(client, { hashKeys: true });
-    cache.set('Product|count|[]', { value: 1, ts: Date.now() });
-    expect(cache.get('Product|count|[]')?.value).toBe(1);
+    cache.set('Product|count|[]', 1);
+    expect(cache.get('Product|count|[]')).toBe(1);
   });
 });
