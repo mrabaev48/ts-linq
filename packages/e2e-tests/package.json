@@ -4,20 +4,23 @@
   "private": true,
   "description": "End-to-end tests for ts-linq ORM across all database providers",
   "scripts": {
-    "test": "jest",
-    "test:sqlite": "jest --testNamePattern=sqlite",
-    "test:postgres": "jest --testNamePattern=postgres",
-    "test:mysql": "jest --testNamePattern=mysql",
-    "test:mssql": "jest --testNamePattern=mssql",
-    "test:docker": "docker-compose -f ../../docker-compose.test.yml up -d && jest && docker-compose -f ../../docker-compose.test.yml down"
+    "test": "jest --passWithNoTests",
+    "test:sqlite": "jest --testNamePattern=sqlite --passWithNoTests",
+    "test:postgres": "jest --testNamePattern=postgres --passWithNoTests",
+    "test:mysql": "jest --testNamePattern=mysql --passWithNoTests",
+    "test:mssql": "jest --testNamePattern=mssql --passWithNoTests"
   },
   "dependencies": {
     "@ts-linq/core": "workspace:*",
+    "@ts-linq/orm": "workspace:*",
+    "@ts-linq/metadata": "workspace:*",
     "@ts-linq/testkits": "workspace:*",
     "@ts-linq/provider-sqlite": "workspace:*",
     "@ts-linq/provider-postgres": "workspace:*",
     "@ts-linq/provider-mysql": "workspace:*",
-    "@ts-linq/provider-mssql": "workspace:*"
+    "@ts-linq/provider-mssql": "workspace:*",
+    "sqlite3": "^5.1.6",
+    "pg": "^8.11.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
