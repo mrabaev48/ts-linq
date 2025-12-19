@@ -850,7 +850,9 @@ export class Queryable<T> {
   // helpers copied from previous QueryBuilder for parsing
   /** Adds a SQL where clause if possible, else stores predicate for in-memory filtering. */
   private addWhereOrFallback(predicate: (entity: T) => boolean): void {
-    const cacheKey = predicate.toString();
+    // Include provider label in cache key to prevent cross-dialect contamination
+    const providerLabel = this._provider?.providerLabel ?? 'unknown';
+    const cacheKey = `${providerLabel}:${predicate.toString()}`;
     const cached = Queryable._predicateSqlCache.get(cacheKey);
     if (cached) {
       this._model.where = this._model.where || [];
