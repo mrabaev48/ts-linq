@@ -79,8 +79,11 @@ As a backend ORM, the framework has no direct UI. Design focuses on API ergonomi
 **Key Fixes**:
 - `PostgresDdlStrategy.generateCreateTableSql()` now correctly handles `isGenerated` columns with SERIAL PRIMARY KEY
 - Skips separate PRIMARY KEY constraint when SERIAL already includes it
-- `BinaryVisitor.visit()` now quotes column names for PostgreSQL case-sensitivity
-- `Queryable.buildCountSqlAndParams()` converts `?` placeholders to `$1,$2...` for PostgreSQL
+- `BinaryVisitor.visit()` now accepts optional `quoteIdentifier` parameter for dialect-aware quoting
+- `SqlVisitor` constructor now accepts optional `quoteIdentifier` function
+- `Queryable` uses `getQuoteIdentifier()` and `isPostgresProvider()` for dialect-aware SQL generation
+- Placeholder conversion (`?` → `$1,$2...`) only applied for PostgreSQL provider
+- Predicate cache keys now include providerLabel to prevent cross-dialect contamination
 
 **Known Limitations**:
 - PostgreSQL nested transactions require savepoint support (test skipped)
