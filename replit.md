@@ -79,9 +79,10 @@ As a backend ORM, the framework has no direct UI. Design focuses on API ergonomi
 **Key Fixes**:
 - `PostgresDdlStrategy.generateCreateTableSql()` now correctly handles `isGenerated` columns with SERIAL PRIMARY KEY
 - Skips separate PRIMARY KEY constraint when SERIAL already includes it
+- `BinaryVisitor.visit()` now quotes column names for PostgreSQL case-sensitivity
+- `Queryable.buildCountSqlAndParams()` converts `?` placeholders to `$1,$2...` for PostgreSQL
 
 **Known Limitations**:
-- PredicateParser SQL translation for comparison operators (>, <, etc.) in where clauses needs investigation
 - PostgreSQL nested transactions require savepoint support (test skipped)
 
 ## December 18, 2025: Middleware Integration Complete

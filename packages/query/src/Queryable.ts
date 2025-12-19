@@ -418,7 +418,7 @@ export class Queryable<T> {
     const parser = new PredicateParser<T>();
     const ast = parser.parse(predicate);
     if (ast) {
-      const visitor = new SqlVisitor();
+      const visitor = new SqlVisitor(this.getQuoteIdentifier());
       const { condition, parameters } = visitor.toSql(ast);
       this._model.groupBy.having = { condition, parameters };
     } else {
@@ -686,7 +686,7 @@ export class Queryable<T> {
     sql: string;
     params: SqlParameter[];
   } {
-    const tableName = table;
+    const tableName = `"${table}"`;
     let sql = `SELECT COUNT(*) as count FROM ${tableName}`;
     const params: SqlParameter[] = [];
     if (queryModel.where && queryModel.where.length > 0) {
@@ -699,7 +699,35 @@ export class Queryable<T> {
         for (let i = 0; i < wc.parameters.length; i++) params.push(wc.parameters[i]);
       }
     }
+    // Convert ? placeholders to $1, $2, ... only for PostgreSQL
+    if (this.isPostgresProvider()) {
+      sql = this.convertPlaceholders(sql, params.length);
+    }
     return { sql, params };
+  }
+
+  /** Check if current provider is PostgreSQL */
+  private isPostgresProvider(): boolean {
+    return this._provider?.providerLabel?.toLowerCase().includes('postgres') ?? false;
+  }
+
+  /** Get dialect-specific identifier quoter */
+  private getQuoteIdentifier(): ((name: string) => string) | undefined {
+    if (this.isPostgresProvider()) {
+      return (name: string) => `"${name}"`;
+    }
+    // MySQL uses backticks, SQLite doesn't require quoting for most cases
+    return undefined;
+  }
+
+  /** Convert ? placeholders to numbered $1, $2, ... for databases that require it */
+  private convertPlaceholders(sql: string, paramCount: number): string {
+    if (paramCount === 0) return sql;
+    let index = 0;
+    return sql.replace(/\?/g, () => {
+      index++;
+      return `$${index}`;
+    });
   }
 
   /** Sequential fallback for count(): server-count if available, else SELECT length. */
@@ -838,7 +866,7 @@ export class Queryable<T> {
       this._fallbackPredicates.push(predicate);
       return;
     }
-    const visitor = new SqlVisitor();
+    const visitor = new SqlVisitor(this.getQuoteIdentifier());
     const { condition, parameters } = visitor.toSql(ast);
     const whereClause: WhereClause = {
       condition,
