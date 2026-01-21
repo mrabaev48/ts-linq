@@ -25,6 +25,9 @@ export class PostgresSchemaInspector {
     );
     const result: TableIndexDef[] = [];
     for (const r of rows) {
+      // Ignore implicit primary key index created by PRIMARY KEY constraint.
+      // It is not user-declared and should not participate in schema diff.
+      if (r.indexname.endsWith('_pkey')) continue;
       const def = r.indexdef || '';
       const unique = /^CREATE\s+UNIQUE\s+INDEX/i.test(def);
       // Extract parts inside parentheses after ON <table> (...). Table may be schema-qualified with quoted identifiers.

@@ -30,11 +30,13 @@ pgDescribe('[integration][postgres] JSONB operations', () => {
         `SELECT jsonb_path_query_first(data, $1) AS v FROM "pg_jsonb"`,
         ['$.a.b']
       );
-      expect(rows2[0].v).toBe('1');
+      // jsonb_path_query_first returns a JSONB scalar (number here)
+      expect(rows2[0]?.v).toBe(1);
     } finally {
       try {
         await p.executeNonQuery('DROP TABLE IF EXISTS "pg_jsonb"');
       } catch {}
+      await p.disconnect();
     }
   });
 });

@@ -34,7 +34,6 @@ const fakeClient = {
 describe('PrometheusSqlLogger - Query Analysis', () => {
   it('should record analysis duration, slow queries and explain plans', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient as any, prefix: 'tsl_' });
-    
     const info: QueryAnalysisInfo = {
       sql: 'SELECT * FROM users WHERE age > 18',
       params: [],
@@ -43,16 +42,14 @@ describe('PrometheusSqlLogger - Query Analysis', () => {
       slow: true,
       explainPlan: { plan: 'SCAN users' }
     };
-    
+
     // Should not throw
     logger.analysis?.(info);
-    
     expect(logger).toBeDefined();
   });
 
   it('should handle fast queries without explain plans', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient as any, prefix: 'tsl_' });
-    
     const info: QueryAnalysisInfo = {
       sql: 'SELECT id FROM users LIMIT 1',
       params: [],
@@ -60,15 +57,12 @@ describe('PrometheusSqlLogger - Query Analysis', () => {
       provider: 'postgresql',
       slow: false
     };
-    
     logger.analysis?.(info);
-    
     expect(logger).toBeDefined();
   });
 
   it('should record analysis for different database providers', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient as any, prefix: 'tsl_' });
-    
     // PostgreSQL slow query
     logger.analysis?.({
       sql: 'SELECT * FROM products',
@@ -78,7 +72,7 @@ describe('PrometheusSqlLogger - Query Analysis', () => {
       slow: true,
       explainPlan: { plan: 'FULL SCAN' }
     });
-    
+
     // PostgreSQL fast query
     logger.analysis?.({
       sql: 'SELECT * FROM orders WHERE id = $1',
@@ -87,7 +81,6 @@ describe('PrometheusSqlLogger - Query Analysis', () => {
       provider: 'postgresql',
       slow: false
     });
-    
     // MySQL slow query
     logger.analysis?.({
       sql: 'SELECT * FROM customers JOIN orders ON customers.id = orders.customer_id',
@@ -97,13 +90,11 @@ describe('PrometheusSqlLogger - Query Analysis', () => {
       slow: true,
       explainPlan: { plan: 'Using join buffer' }
     });
-    
     expect(logger).toBeDefined();
   });
 
   it('should no-op when analysis hook is called without client', () => {
     const logger = new PrometheusSqlLogger('test');
-    
     const info: QueryAnalysisInfo = {
       sql: 'SELECT * FROM users',
       params: [],
@@ -111,10 +102,9 @@ describe('PrometheusSqlLogger - Query Analysis', () => {
       provider: 'postgresql',
       slow: true
     };
-    
+
     // Should not throw even without prom-client
     logger.analysis?.(info);
-    
     expect(logger).toBeDefined();
   });
 });

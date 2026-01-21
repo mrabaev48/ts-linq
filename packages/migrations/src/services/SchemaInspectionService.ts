@@ -13,6 +13,23 @@ export class SchemaInspectionService {
   ): Promise<SchemaSnapshot> {
     const label = provider.providerLabel;
 
+    const existingTables = await (async (): Promise<Set<string>> => {
+      if (label === 'postgresql') {
+        const ins = new PostgresSchemaInspector(provider);
+        return new Set(await ins.listTables());
+      }
+      if (label === 'mysql') {
+        const ins = new MySqlSchemaInspector(provider);
+        return new Set(await ins.listTables());
+      }
+      if (label === 'mssql') {
+        const ins = new MssqlSchemaInspector(provider);
+        return new Set(await ins.listTables());
+      }
+      // Unknown provider: assume tables exist to avoid destructive diffs.
+      return new Set<string>(expected.tables.map((t) => t.name));
+    })();
+
     // For supported providers: mirror expected columns/PKs, fetch actual indexes via dialect inspectors
     const fetchIndexes = async (table: string): Promise<IndexDef[]> => {
       if (label === 'postgresql') {
@@ -45,6 +62,7 @@ export class SchemaInspectionService {
 
     const actualTables: TableSnapshot[] = [];
     for (const t of expected.tables) {
+      if (!existingTables.has(t.name)) continue;
       const indexes = await fetchIndexes(t.name);
       actualTables.push({
         name: t.name,

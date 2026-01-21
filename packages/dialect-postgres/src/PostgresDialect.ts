@@ -1,4 +1,13 @@
-import type { SqlDialect, QueryOptions, SqlParameter, WhereClause, GroupByClause, EntityMetadata, ColumnMetadata } from '@ts-linq/types';
+import type {
+  ColumnMetadata,
+  EntityMetadata,
+  GroupByClause,
+  OrderByClause,
+  QueryOptions,
+  SqlDialect,
+  SqlParameter,
+  WhereClause
+} from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { PgWhereEmitter } from './emitters/PgWhereEmitter';
 import { PgJoinEmitter } from './emitters/PgJoinEmitter';
@@ -99,8 +108,8 @@ export class PostgresDialect implements SqlDialect {
 
   private buildGroupByHaving(parameters: SqlParameter[], options: QueryOptions): string {
     if (!options.groupBy) return '';
-    const groupBy: GroupByClause = Array.isArray(options.groupBy) 
-      ? { columns: options.groupBy } 
+    const groupBy: GroupByClause = Array.isArray(options.groupBy)
+      ? { columns: options.groupBy }
       : options.groupBy;
     let sql = ` GROUP BY ${groupBy.columns.join(', ')}`;
     if (groupBy.having) {
@@ -112,7 +121,7 @@ export class PostgresDialect implements SqlDialect {
 
   private buildOrderBy(options: QueryOptions): string {
     if (!options.orderBy || options.orderBy.length === 0) return '';
-    const orderByClauses = options.orderBy.map((o: any) => `${o.column} ${o.direction}`);
+    const orderByClauses = options.orderBy.map((o: OrderByClause) => `${o.column} ${o.direction}`);
     return ` ORDER BY ${orderByClauses.join(', ')}`;
   }
 
@@ -131,7 +140,20 @@ export class PostgresDialect implements SqlDialect {
     entity: Record<string, unknown>,
     metadata: EntityMetadata
   ): { sql: string; parameters: SqlParameter[] } {
-    const cols = metadata.columns.filter((c) => !c.isGenerated && !c.isComputed);
+    const primaryKeys = new Set<string>(metadata.primaryKeys ?? []);
+    const hasValue = (propertyName: string): boolean => {
+      const v = entity[propertyName];
+      return v !== null && v !== undefined;
+    };
+    const cols = metadata.columns.filter((c) => {
+      if (c.isComputed) return false;
+      // Never include generated columns unless caller explicitly provided a value
+      if (c.isGenerated && !hasValue(c.propertyName)) return false;
+      // Heuristic: allow DB-generated PKs when value is missing even if metadata didn't mark it generated.
+      // This matches common SERIAL/IDENTITY PK usage while still allowing explicit PK inserts.
+      if (primaryKeys.has(c.propertyName) && !hasValue(c.propertyName)) return false;
+      return true;
+    });
     const names = cols.map((c) => `"${c.columnName}"`);
     const placeholders = cols.map((_, i) => `$${i + 1}`);
     const parameters: SqlParameter[] = cols.map((c) =>
@@ -168,13 +190,11 @@ export class PostgresDialect implements SqlDialect {
       (pk, i) =>
         `"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${setCols.length + i + 1}`
     );
-    const whereVals: SqlParameter[] = primaryKeys.map((pk) =>
-      this.coerceParameter(entity[pk])
-    );
+    const whereVals: SqlParameter[] = primaryKeys.map((pk) => this.coerceParameter(entity[pk]));
     parameters.push(...whereVals);
 
     let sql = `UPDATE "${metadata.tableName}" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
-    
+
     if (versionCol) {
       sql += ` AND "${versionCol.columnName}" = $${parameters.length + 1}`;
       parameters.push(this.coerceParameter(entity[versionCol.propertyName]));

@@ -32,8 +32,13 @@ interface PgQueryResult<T = unknown> {
   rows: T[];
   rowCount: number;
 }
+interface PgClientLike {
+  query<T = unknown>(sql: string, params?: readonly SqlParameter[]): Promise<PgQueryResult<T>>;
+  release(): void;
+}
 interface PgPoolLike {
   query<T = unknown>(sql: string, params?: readonly SqlParameter[]): Promise<PgQueryResult<T>>;
+  connect(): Promise<PgClientLike>;
   end(): Promise<void>;
 }
 
@@ -49,6 +54,7 @@ interface PgPoolLike {
  */
 export class PostgresProvider extends DatabaseProvider {
   private pool!: PgPoolLike;
+  private transactionClient?: PgClientLike;
   private ddl = new PostgresDdlStrategy();
   private readonly config: PostgresConfig;
 
@@ -348,7 +354,8 @@ export class PostgresProvider extends DatabaseProvider {
     params: readonly SqlParameter[] = []
   ): Promise<T[]> {
     try {
-      const res = await this.pool.query<T>(sql, params);
+      const runner = this.transactionClient ?? this.pool;
+      const res = await runner.query<T>(sql, params);
       return res.rows;
     } catch (e: unknown) {
       throw mapPgError(e);
@@ -361,7 +368,8 @@ export class PostgresProvider extends DatabaseProvider {
     params: readonly SqlParameter[] = []
   ): Promise<number> {
     try {
-      const res = await this.pool.query(sql, params);
+      const runner = this.transactionClient ?? this.pool;
+      const res = await runner.query(sql, params);
       return res.rowCount;
     } catch (e: unknown) {
       throw mapPgError(e);
@@ -389,28 +397,50 @@ export class PostgresProvider extends DatabaseProvider {
   /** Begin a transaction (sets a trace id for logging). */
   public async beginTransaction(): Promise<void> {
     if (this.inTransaction) throw new Error('Transaction already in progress');
-    this.currentTraceId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    await this.executeNonQuery('BEGIN');
-    this.inTransaction = true;
-    this.logger?.transactionStart?.({ traceId: this.currentTraceId, provider: this.providerName });
+    if (!this.pool) throw new Error('Provider is not connected');
+    const client = await this.pool.connect();
+    try {
+      this.transactionClient = client;
+      this.inTransaction = true;
+      this.currentTraceId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      await this.executeNonQuery('BEGIN');
+      this.logger?.transactionStart?.({
+        traceId: this.currentTraceId,
+        provider: this.providerName
+      });
+    } catch (e) {
+      this.transactionClient = undefined;
+      this.inTransaction = false;
+      this.currentTraceId = undefined;
+      client.release();
+      throw e;
+    }
   }
   /** Commit the current transaction. */
   public async commitTransaction(): Promise<void> {
     if (!this.inTransaction) throw new Error('No transaction in progress');
+    const client = this.transactionClient;
+    if (!client) throw new Error('Invariant violation: transaction client is missing');
     await this.executeNonQuery('COMMIT');
     this.inTransaction = false;
+    this.transactionClient = undefined;
     const tid = this.currentTraceId;
     this.currentTraceId = undefined;
     this.logger?.transactionEnd?.({ traceId: tid, provider: this.providerName });
+    client.release();
   }
   /** Roll back the current transaction. */
   public async rollbackTransaction(): Promise<void> {
     if (!this.inTransaction) throw new Error('No transaction in progress');
+    const client = this.transactionClient;
+    if (!client) throw new Error('Invariant violation: transaction client is missing');
     await this.executeNonQuery('ROLLBACK');
     this.inTransaction = false;
+    this.transactionClient = undefined;
     const tid = this.currentTraceId;
     this.currentTraceId = undefined;
     this.logger?.transactionEnd?.({ traceId: tid, provider: this.providerName });
+    client.release();
   }
 }
 

@@ -61,6 +61,8 @@ d('[integration][postgres] locks and concurrency', () => {
       try {
         await p1.executeNonQuery('DROP TABLE IF EXISTS "items_lock"');
       } catch {}
+      await p1.disconnect().catch(() => {});
+      await p2.disconnect().catch(() => {});
     }
   });
 
@@ -111,18 +113,11 @@ d('[integration][postgres] locks and concurrency', () => {
           a.id as unknown as never
         ]);
 
-      let raised = 0;
-      try {
-        await t1();
-      } catch {
-        raised++;
-      }
-      try {
-        await t2();
-      } catch {
-        raised++;
-      }
-      expect(raised).toBeGreaterThanOrEqual(1);
+      // Run concurrently to reliably create a deadlock; Postgres will abort one side.
+      const settled = await Promise.allSettled([t1(), t2()]);
+      const rejected = settled.filter((r) => r.status === 'rejected').length;
+      // At least one should fail (deadlock/cancel)
+      expect(rejected).toBeGreaterThanOrEqual(1);
 
       await p1.rollbackTransaction().catch(() => {});
       await p2.rollbackTransaction().catch(() => {});
@@ -130,6 +125,8 @@ d('[integration][postgres] locks and concurrency', () => {
       try {
         await p1.executeNonQuery('DROP TABLE IF EXISTS "dead_items"');
       } catch {}
+      await p1.disconnect().catch(() => {});
+      await p2.disconnect().catch(() => {});
     }
   });
 });
