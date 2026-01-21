@@ -5,7 +5,7 @@ import type { QueryOptions } from '@ts-linq/types';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
-import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
+
 
 class T {
   id!: number;
@@ -117,17 +117,5 @@ describe('Dialect placeholders (property-based)', () => {
     );
   });
 
-  test('SQLite: ? preserved; OFFSET without LIMIT inserts LIMIT -1', () => {
-    const qb = new QueryBuilder(new SQLiteDialect());
-    const built = qb.generateSql(
-      T as any,
-      {
-        select: ['id'],
-        where: [{ condition: 'a > ?', parameters: [1] }],
-        offset: 10
-      } as any
-    );
-    expect(built.query).toContain('LIMIT -1 OFFSET 10');
-    expect((built.query.match(/\?/g) || []).length).toBe(1);
-  });
+
 });

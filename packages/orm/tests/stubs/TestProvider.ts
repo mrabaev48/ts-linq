@@ -34,7 +34,7 @@ class TestDialect implements SqlDialect {
 export class TestProvider extends DatabaseProvider {
   constructor(connectionString: string) {
     super(connectionString, undefined, undefined, undefined, undefined);
-    this.providerName = 'sqlite';
+    this.providerName = 'test';
   }
 
   private readonly data: Map<string, any[]> = new Map();

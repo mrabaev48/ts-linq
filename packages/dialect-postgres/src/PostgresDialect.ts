@@ -1,4 +1,4 @@
-import type { SqlDialect, QueryOptions, SqlParameter, WhereClause, GroupByClause } from '@ts-linq/types';
+import type { SqlDialect, QueryOptions, SqlParameter, WhereClause, GroupByClause, EntityMetadata, ColumnMetadata } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { PgWhereEmitter } from './emitters/PgWhereEmitter';
 import { PgJoinEmitter } from './emitters/PgJoinEmitter';
@@ -126,5 +126,96 @@ export class PostgresDialect implements SqlDialect {
       return ` OFFSET ${options.offset}`;
     }
     return '';
+  }
+  public buildInsert(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    const cols = metadata.columns.filter((c) => !c.isGenerated && !c.isComputed);
+    const names = cols.map((c) => `"${c.columnName}"`);
+    const placeholders = cols.map((_, i) => `$${i + 1}`);
+    const parameters: SqlParameter[] = cols.map((c) =>
+      this.coerceParameter(entity[c.propertyName])
+    );
+    const sql = `INSERT INTO "${metadata.tableName}" (${names.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
+    return { sql, parameters };
+  }
+
+  public buildUpdate(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    versionCol?: ColumnMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for ${metadata.tableName}`);
+    }
+    const primaryKeys = metadata.primaryKeys;
+    const setCols = metadata.columns.filter(
+      (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
+    );
+    if (setCols.length === 0) throw new Error('No columns to update');
+
+    const sets = setCols.map((c, i) => `"${c.columnName}" = $${i + 1}`);
+    const parameters: SqlParameter[] = setCols.map((c) =>
+      this.coerceParameter(entity[c.propertyName])
+    );
+
+    if (versionCol) {
+      sets.push(`"${versionCol.columnName}" = "${versionCol.columnName}" + 1`);
+    }
+
+    const where = primaryKeys.map(
+      (pk, i) =>
+        `"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${setCols.length + i + 1}`
+    );
+    const whereVals: SqlParameter[] = primaryKeys.map((pk) =>
+      this.coerceParameter(entity[pk])
+    );
+    parameters.push(...whereVals);
+
+    let sql = `UPDATE "${metadata.tableName}" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
+    
+    if (versionCol) {
+      sql += ` AND "${versionCol.columnName}" = $${parameters.length + 1}`;
+      parameters.push(this.coerceParameter(entity[versionCol.propertyName]));
+    }
+
+    return { sql, parameters };
+  }
+
+  public buildDelete(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for ${metadata.tableName}`);
+    }
+    const where = metadata.primaryKeys.map(
+      (pk, i) =>
+        `"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${i + 1}`
+    );
+    const parameters: SqlParameter[] = metadata.primaryKeys.map((pk) =>
+      this.coerceParameter(entity[pk])
+    );
+    const sql = `DELETE FROM "${metadata.tableName}" WHERE ${where.join(' AND ')}`;
+    return { sql, parameters };
+  }
+
+  private coerceParameter(value: unknown): SqlParameter {
+    if (
+      value === null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value instanceof Date ||
+      value instanceof Uint8Array
+    ) {
+      return value as SqlParameter;
+    }
+    try {
+      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+    } catch {
+      return String(value) as unknown as SqlParameter;
+    }
   }
 }

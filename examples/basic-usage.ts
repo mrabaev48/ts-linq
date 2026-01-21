@@ -44,8 +44,9 @@ class BlogDbContext extends DbContext {
 async function basicUsageExample() {
   // Create context
   const context = new BlogDbContext({
-    connectionString: './blog.db',
-    provider: 'sqlite'
+    connectionString:
+      process.env.POSTGRES_URL || 'postgres://postgres:postgres@localhost:5432/ts_linq',
+    provider: 'postgresql'
   });
 
   try {

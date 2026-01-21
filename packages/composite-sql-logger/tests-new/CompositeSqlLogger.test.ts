@@ -1,5 +1,17 @@
 import { CompositeSqlLogger } from '../src/logger/CompositeSqlLogger';
-import type { SqlLogger } from '@ts-linq/types';
+import type {
+  SqlLogger,
+  QueryStartInfo,
+  QueryEndInfo,
+  RetryInfo,
+  CacheInfo,
+  CircuitEventInfo,
+  ConnectionHealthInfo,
+  FallbackInfo,
+  TransactionInfo,
+  HedgedWinInfo,
+  QueryAnalysisInfo
+} from '@ts-linq/types';
 
 function makeSpyLogger() {
   const calls: Record<string, unknown>[] = [];
@@ -8,16 +20,16 @@ function makeSpyLogger() {
     info: (m: string, meta?: Record<string, unknown>) => calls.push({ m, meta, t: 'info' }),
     warn: (m: string, meta?: Record<string, unknown>) => calls.push({ m, meta, t: 'warn' }),
     error: (m: string, meta?: Record<string, unknown>) => calls.push({ m, meta, t: 'error' }),
-    queryStart: (i) => calls.push({ t: 'qs', i }),
-    queryEnd: (i) => calls.push({ t: 'qe', i }),
-    transaction: (i) => calls.push({ t: 'tx', i }),
-    retry: (i) => calls.push({ t: 'rt', i }),
-    cache: (i) => calls.push({ t: 'cache', i }),
-    circuit: (i) => calls.push({ t: 'circuit', i }),
-    health: (i) => calls.push({ t: 'health', i }),
-    fallback: (i) => calls.push({ t: 'fallback', i }),
-    hedgedStart: (i) => calls.push({ t: 'hedgedStart', i }),
-    hedgedWin: (i) => calls.push({ t: 'hedgedWin', i })
+    queryStart: (i: QueryStartInfo) => calls.push({ t: 'qs', i }),
+    queryEnd: (i: QueryEndInfo) => calls.push({ t: 'qe', i }),
+    transactionStart: (i: TransactionInfo) => calls.push({ t: 'tx_start', i }),
+    transactionEnd: (i: TransactionInfo) => calls.push({ t: 'tx_end', i }),
+    retry: (i: RetryInfo) => calls.push({ t: 'rt', i }),
+    cache: (i: CacheInfo) => calls.push({ t: 'cache', i }),
+    circuit: (i: CircuitEventInfo) => calls.push({ t: 'circuit', i }),
+    connectionHealth: (i: ConnectionHealthInfo) => calls.push({ t: 'health', i }),
+    fallback: (i: FallbackInfo) => calls.push({ t: 'fallback', i }),
+    hedgedWin: (i: HedgedWinInfo) => calls.push({ t: 'hedgedWin', i })
   };
   return { logger, calls };
 }
@@ -40,27 +52,27 @@ describe('CompositeSqlLogger (tests-new)', () => {
       info() {},
       warn() {},
       error() {},
-      queryStart() {
+      queryStart(_i: QueryStartInfo) {
         throw new Error('boom');
       },
-      queryEnd() {
+      queryEnd(_i: QueryEndInfo) {
         throw new Error('boom');
       },
-      transaction() {},
-      retry() {},
-      cache() {},
-      circuit() {},
-      health() {},
-      fallback() {},
-      hedgedStart() {},
-      hedgedWin() {}
+      transactionStart(_i: TransactionInfo) {},
+      transactionEnd(_i: TransactionInfo) {},
+      retry(_i: RetryInfo) {},
+      cache(_i: CacheInfo) {},
+      circuit(_i: CircuitEventInfo) {},
+      connectionHealth(_i: ConnectionHealthInfo) {},
+      fallback(_i: FallbackInfo) {},
+      hedgedWin(_i: HedgedWinInfo) {}
     };
     const comp = new CompositeSqlLogger(ok.logger, bad);
     expect(() =>
-      comp.queryStart({ sql: 'select 1', params: [], provider: 'sqlite' })
+      comp.queryStart({ sql: 'select 1', params: [], provider: 'postgresql' })
     ).not.toThrow();
     expect(() =>
-      comp.queryEnd({ sql: 'select 1', params: [], durationMs: 1, provider: 'sqlite' })
+      comp.queryEnd({ sql: 'select 1', params: [], durationMs: 1, provider: 'postgresql' })
     ).not.toThrow();
     // calls recorded only to ok
     expect(ok.calls.some((x) => x.t === 'qs')).toBe(true);
@@ -74,25 +86,26 @@ describe('CompositeSqlLogger (tests-new)', () => {
       info() {},
       warn() {},
       error() {},
-      queryStart() {},
-      queryEnd() {},
-      transaction() {},
-      retry() {},
-      cache() {},
-      circuit() {},
-      health() {},
-      fallback() {},
-      hedgedStart() {},
-      hedgedWin() {}
+      queryStart(_i: QueryStartInfo) {},
+      queryEnd(_i: QueryEndInfo) {},
+      transactionStart(_i: TransactionInfo) {},
+      transactionEnd(_i: TransactionInfo) {},
+      retry(_i: RetryInfo) {},
+      cache(_i: CacheInfo) {},
+      circuit(_i: CircuitEventInfo) {},
+      connectionHealth(_i: ConnectionHealthInfo) {},
+      fallback(_i: FallbackInfo) {},
+      hedgedWin(_i: HedgedWinInfo) {}
     };
     // attach optional analysis
-    (custom as unknown as { analysis?: (i: unknown) => void }).analysis = (i) => received.push(i);
+    (custom as unknown as { analysis?: (i: QueryAnalysisInfo) => void }).analysis = (i) =>
+      received.push(i);
     const comp = new CompositeSqlLogger(custom);
     comp.analysis({
       sql: 's',
       params: [],
       durationMs: 10,
-      provider: 'sqlite',
+      provider: 'postgresql',
       slow: true,
       recommendations: ['idx']
     });

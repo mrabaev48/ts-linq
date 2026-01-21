@@ -154,7 +154,7 @@ describe('CLI - Migration Status / Rollback / Dry-Run (tests-new)', () => {
   class MinimalProvider extends DatabaseProvider {
     constructor() {
       super('mock://');
-      (this as unknown as { providerName: string }).providerName = 'sqlite';
+      (this as unknown as { providerName: string }).providerName = 'test';
     }
     async connect() {}
     async disconnect() {}

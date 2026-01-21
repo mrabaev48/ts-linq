@@ -24,7 +24,7 @@ export class MySqlIndexBuilder {
     const kind = this.buildKind(index);
     const cols = this.buildColumnsList(index);
     const vis = index.mysqlVisibility ? ` ${index.mysqlVisibility}` : '';
-    return `CREATE ${kind}INDEX IF NOT EXISTS ${index.name} ON ${table} (${cols})${vis}`;
+    return `CREATE ${kind}INDEX IF NOT EXISTS \`${index.name}\` ON \`${table}\` (${cols})${vis}`;
   }
 
   private isValidIndexSpec(index: {
@@ -62,7 +62,7 @@ export class MySqlIndexBuilder {
     expressions?: string[];
   }): string {
     const parts: string[] = [];
-    for (const c of index.columns) parts.push(index.orders?.[c] ? `${c} ${index.orders[c]}` : c);
+    for (const c of index.columns) parts.push(index.orders?.[c] ? `\`${c}\` ${index.orders[c]}` : `\`${c}\``);
     for (const e of index.expressions || []) parts.push(`(${e})`);
     return parts.join(', ');
   }

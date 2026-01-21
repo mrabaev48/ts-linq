@@ -11,7 +11,11 @@ module.exports = {
         tsconfig: {
           experimentalDecorators: true,
           emitDecoratorMetadata: true,
-          lib: ['ES2021', 'DOM']
+          lib: ['ES2021', 'DOM'],
+          baseUrl: '.',
+          paths: {
+            '@ts-linq/orm': ['packages/orm/src']
+          }
         }
       }
     ]
@@ -36,11 +40,10 @@ module.exports = {
     '^@ts-linq/plugin-soft-delete$': '<rootDir>/packages/plugin-soft-delete/src',
     '^@ts-linq/sql-visitor$': '<rootDir>/packages/sql-visitor/src',
     '^@ts-linq/telemetry$': '<rootDir>/packages/telemetry/src',
-    '^@ts-linq/provider-sqlite$': '<rootDir>/packages/provider-sqlite/src',
     '^@ts-linq/provider-postgres$': '<rootDir>/packages/provider-postgres/src',
     '^@ts-linq/provider-mysql$': '<rootDir>/packages/provider-mysql/src',
     '^@ts-linq/provider-mssql$': '<rootDir>/packages/provider-mssql/src',
-    '^@ts-linq/dialect-sqlite$': '<rootDir>/packages/dialect-sqlite/src',
+
     '^@ts-linq/dialect-postgres$': '<rootDir>/packages/dialect-postgres/src',
     '^@ts-linq/dialect-mysql$': '<rootDir>/packages/dialect-mysql/src',
     '^@ts-linq/dialect-mssql$': '<rootDir>/packages/dialect-mssql/src',

@@ -1,4 +1,4 @@
-import { MySqlProvider } from '@ts-linq/provider-mysql';
+import { MySqlProvider } from '../src/MySqlProvider';
 
 describe('MySqlProvider CRUD (smoke)', () => {
   const url = process.env.MYSQL_URL;

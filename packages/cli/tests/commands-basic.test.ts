@@ -7,7 +7,7 @@ import { SeedCommand } from '../src/commands/SeedCommand';
 import { ConsoleLogger } from '../src/adapters/ConsoleLogger';
 
 class FakeProvider implements Partial<DatabaseProvider> {
-  public providerLabel = 'sqlite' as const;
+  public providerLabel = 'postgresql' as const;
   public async connect(): Promise<void> {}
   public async disconnect(): Promise<void> {}
   public async executeNonQuery(_sql: string): Promise<number> {

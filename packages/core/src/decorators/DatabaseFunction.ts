@@ -12,7 +12,7 @@ function isStage3FieldContext(x: unknown): x is {
 export function DatabaseFunction(
   expression:
     | string
-    | { sqlite?: string; postgresql?: string; mysql?: string; mssql?: string; default?: string },
+    | { postgresql?: string; mysql?: string; mssql?: string; default?: string },
   nameOverride?: string
 ) {
   return function DatabaseFunctionDecorator(
@@ -41,7 +41,6 @@ export function DatabaseFunction(
           typeof expression === 'string'
             ? undefined
             : {
-                sqlite: expression.sqlite,
                 postgresql: expression.postgresql,
                 mysql: expression.mysql,
                 mssql: expression.mssql

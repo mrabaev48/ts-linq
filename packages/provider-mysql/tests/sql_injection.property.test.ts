@@ -5,7 +5,7 @@ import type { QueryOptions } from '@ts-linq/types';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
-import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
+
 
 class Z {
   id!: number;
@@ -36,7 +36,7 @@ describe('Parameterization (SQL-injection safety) property-based', () => {
     new PostgresDialect(),
     new MysqlDialect(),
     new MssqlDialect(),
-    new SQLiteDialect()
+
   ];
 
   test('malicious strings never interpolated into SQL (only placeholders appear)', () => {

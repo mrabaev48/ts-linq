@@ -166,14 +166,40 @@ export interface SqlLogger extends Logger {
 
 // SqlLoggerFactory for creating dialect-specific loggers
 export interface SqlLoggerFactory {
-  create(provider: 'sqlite' | 'mysql' | 'postgresql' | 'mssql' | string): SqlLogger | undefined;
+  create(provider: 'mysql' | 'postgresql' | 'mssql' | string): SqlLogger | undefined;
 }
 
 // SQL Dialect interface
 export interface SqlDialect {
-  buildSelect<T>(entityClass: new () => T, options: QueryOptions): {
+  buildSelect<T>(
+    entityClass: new () => T,
+    options: QueryOptions
+  ): {
     query: string;
     parameters: readonly SqlParameter[];
+  };
+  buildInsert?(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): {
+    sql: string;
+    parameters: SqlParameter[];
+    returningPk?: string;
+  };
+  buildUpdate?(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    versionCol?: ColumnMetadata
+  ): {
+    sql: string;
+    parameters: SqlParameter[];
+  };
+  buildDelete?(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): {
+    sql: string;
+    parameters: SqlParameter[];
   };
   quoteIdentifier(identifier: string): string;
 }
@@ -189,10 +215,20 @@ export interface EntityChangeContext {
 // Middleware types
 export interface OrmMiddleware {
   // SQL execution hooks
-  beforeExecute?(info: { sql: string; params: readonly SqlParameter[]; traceId?: string }): Promise<void> | void;
-  afterExecute?(info: { sql: string; params: readonly SqlParameter[]; durationMs: number; traceId?: string; rows?: number }): Promise<void> | void;
+  beforeExecute?(info: {
+    sql: string;
+    params: readonly SqlParameter[];
+    traceId?: string;
+  }): Promise<void> | void;
+  afterExecute?(info: {
+    sql: string;
+    params: readonly SqlParameter[];
+    durationMs: number;
+    traceId?: string;
+    rows?: number;
+  }): Promise<void> | void;
   entityMaterialized?<T>(entity: T | { entity: object; metadata?: any }): void;
-  
+
   // Entity lifecycle hooks
   beforeSave?(context: EntityChangeContext): Promise<void> | void;
   afterSave?(context: EntityChangeContext): Promise<void> | void;
@@ -242,13 +278,6 @@ export interface BaseProviderConfig {
   retryPolicy?: RetryPolicy;
   poolOptions?: ConnectionPoolOptions;
   healthCheck?: ConnectionHealthCheckOptions;
-}
-
-// SQLite provider configuration
-export interface SQLiteConfig extends BaseProviderConfig {
-  file: string;
-  mode?: 'memory' | 'readonly' | 'readwrite';
-  busyTimeoutMs?: number;
 }
 
 // PostgreSQL provider configuration
@@ -328,7 +357,16 @@ export function err<E = Error>(error: E): Result<never, E> {
 }
 
 // Fallback types
-export type FallbackOperation = 'select' | 'count' | 'aggregate' | 'insert' | 'update' | 'delete' | 'first' | 'single' | 'any';
+export type FallbackOperation =
+  | 'select'
+  | 'count'
+  | 'aggregate'
+  | 'insert'
+  | 'update'
+  | 'delete'
+  | 'first'
+  | 'single'
+  | 'any';
 
 export interface FallbackRequest<T = unknown> {
   operation: FallbackOperation;
@@ -425,7 +463,15 @@ export interface CacheOptions {
 }
 
 // Metadata types for decorators
-export type ColumnType = 'INTEGER' | 'TEXT' | 'REAL' | 'BLOB' | 'BOOLEAN' | 'DATE' | 'TIMESTAMP' | string;
+export type ColumnType =
+  | 'INTEGER'
+  | 'TEXT'
+  | 'REAL'
+  | 'BLOB'
+  | 'BOOLEAN'
+  | 'DATE'
+  | 'TIMESTAMP'
+  | string;
 
 export interface ColumnMetadata {
   propertyName: string;

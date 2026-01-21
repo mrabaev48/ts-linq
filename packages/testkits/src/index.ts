@@ -3,3 +3,4 @@ export { DatabaseProvider } from './harness/DatabaseHarness';
 export * from './builders/EntityBuilder';
 export { MockDatabaseProvider, createMockProvider, type MockExecutionResult } from './mocks/MockProvider';
 export * from './fixtures/TestEntities';
+export * from './TestProvider';

@@ -17,13 +17,15 @@ export class MssqlDdlStrategy {
       this.generateColumnDefinition(column)
     );
     if (metadata.primaryKeys && metadata.primaryKeys.length > 0) {
-      const primaryKeyColumns = metadata.primaryKeys.map((pk: any) => {
-        const col = metadata.columns.find((column: any) => column.propertyName === pk);
-        return col ? col.columnName : pk;
-      });
-      columns.push(`PRIMARY KEY (${primaryKeyColumns.join(', ')})`);
+      const pkCols = metadata.primaryKeys.map(
+        (pk: any) => {
+          const col = metadata.columns.find((column: any) => column.propertyName === pk);
+          return `[${col ? col.columnName : pk}]`;
+        }
+      );
+      columns.push(`PRIMARY KEY (${pkCols.join(', ')})`);
     }
-    return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${metadata.tableName}') BEGIN CREATE TABLE ${metadata.tableName} (${columns.join(', ')}) END`;
+    return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${metadata.tableName}') BEGIN CREATE TABLE [${metadata.tableName}] (${columns.join(', ')}) END`;
   }
 
   public generateColumnDefinition(column: ColumnMetadata): string {
@@ -36,9 +38,9 @@ export class MssqlDdlStrategy {
         );
       }
       const persisted = storage === 'PERSISTED' ? ' PERSISTED' : '';
-      return `${column.columnName} AS (${column.computedExpression})${persisted}`;
+      return `[${column.columnName}] AS (${column.computedExpression})${persisted}`;
     }
-    let definition = `${column.columnName} ${this.mapTypeToMssql(column.type)}`;
+    let definition = `[${column.columnName}] ${this.mapTypeToMssql(column.type)}`;
     if (column.length) {
       definition += `(${column.length})`;
     }
@@ -63,6 +65,42 @@ export class MssqlDdlStrategy {
     }
   ): string {
     return this.indexBuilder.buildCreateIndexSql(tableName, index);
+  }
+
+  public generateAddColumnSql(tableName: string, column: any): string {
+    const colDef = this.generateColumnDefinition(column);
+    return `ALTER TABLE [${tableName}] ADD ${colDef}`;
+  }
+
+  public generateDropColumnSql(tableName: string, columnName: string): string {
+    return `ALTER TABLE [${tableName}] DROP COLUMN [${columnName}]`;
+  }
+
+  public generateAlterColumnTypeSql(tableName: string, columnName: string, newType: string): string {
+    const colDef = `[${columnName}] ${this.mapTypeToMssql(newType)}`;
+    return `ALTER TABLE [${tableName}] ALTER COLUMN ${colDef}`;
+  }
+
+  public generateRenameTableSql(tableName: string, newTableName: string): string {
+    return `EXEC sp_rename '${tableName}', '${newTableName}'`;
+  }
+
+  public generateForeignKeySql(tableName: string, fk: { 
+      name: string, 
+      columnName: string, 
+      relatedTableName: string, 
+      relatedColumnName: string,
+      onDelete?: string,
+      onUpdate?: string
+  }): string {
+      let sql = `ALTER TABLE [${tableName}] ADD CONSTRAINT [${fk.name}] FOREIGN KEY ([${fk.columnName}]) REFERENCES [${fk.relatedTableName}] ([${fk.relatedColumnName}])`;
+      if (fk.onDelete && fk.onDelete !== 'NO ACTION') {
+          sql += ` ON DELETE ${fk.onDelete}`;
+      }
+      if (fk.onUpdate && fk.onUpdate !== 'NO ACTION') {
+          sql += ` ON UPDATE ${fk.onUpdate}`;
+      }
+      return sql;
   }
 
   public mapTypeToMssql(type: string): string {

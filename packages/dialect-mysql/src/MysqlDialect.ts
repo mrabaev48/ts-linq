@@ -1,4 +1,4 @@
-import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
+import type { SqlDialect, QueryOptions, SqlParameter, EntityMetadata, ColumnMetadata } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
 import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
@@ -68,5 +68,90 @@ export class MysqlDialect implements SqlDialect {
       return ` LIMIT 18446744073709551615 OFFSET ${options.offset}`;
     }
     return '';
+  }
+  public buildInsert(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    const insertable = metadata.columns.filter(
+      (c) => (!c.isGenerated || entity[c.propertyName] !== undefined) && !c.isComputed
+    );
+    const names = insertable.map((c) => c.columnName);
+    const placeholders = insertable.map(() => '?');
+    const parameters: SqlParameter[] = insertable.map((c) =>
+      this.coerceParameter(entity[c.propertyName])
+    );
+    return {
+      sql: `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
+      parameters
+    };
+  }
+
+  public buildUpdate(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    versionCol?: ColumnMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+    }
+    const primaryKeys = metadata.primaryKeys;
+    const updatable = metadata.columns.filter(
+      (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
+    );
+    const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
+    const setParams: SqlParameter[] = updatable.map((c) =>
+      this.coerceParameter(entity[c.propertyName])
+    );
+    if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
+    const whereClauses: string[] = [];
+    const whereParams: SqlParameter[] = [];
+    for (const pk of primaryKeys) {
+      const col = metadata.columns.find((c) => c.propertyName === pk)!;
+      whereClauses.push(`${col.columnName} = ?`);
+      whereParams.push(this.coerceParameter(entity[pk]));
+    }
+    if (versionCol) {
+      whereClauses.push(`${versionCol.columnName} = ?`);
+      whereParams.push(this.coerceParameter(entity[versionCol.propertyName]));
+    }
+    const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
+    return { sql, parameters: [...setParams, ...whereParams] };
+  }
+
+  public buildDelete(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+    }
+    const whereClauses: string[] = [];
+    const parameters: SqlParameter[] = [];
+    for (const pk of metadata.primaryKeys) {
+      const col = metadata.columns.find((c) => c.propertyName === pk)!;
+      whereClauses.push(`${col.columnName} = ?`);
+      parameters.push(this.coerceParameter(entity[pk]));
+    }
+    const sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClauses.join(' AND ')}`;
+    return { sql, parameters };
+  }
+
+  private coerceParameter(value: unknown): SqlParameter {
+    if (
+      value === null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value instanceof Date ||
+      value instanceof Uint8Array
+    ) {
+      return value as SqlParameter;
+    }
+    try {
+      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+    } catch {
+      return String(value) as unknown as SqlParameter;
+    }
   }
 }

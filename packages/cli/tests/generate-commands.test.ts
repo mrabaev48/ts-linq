@@ -26,7 +26,7 @@ class MemFs {
 }
 
 class ProviderStub implements Partial<DatabaseProvider> {
-  public providerLabel = 'sqlite' as const;
+  public providerLabel = 'postgresql' as const;
   public async executeQuery<T = unknown>(_sql: string, _params?: readonly unknown[]): Promise<T[]> {
     return [] as T[];
   }

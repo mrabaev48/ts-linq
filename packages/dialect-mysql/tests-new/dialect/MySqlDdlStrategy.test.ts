@@ -26,7 +26,7 @@ describe('MySqlDdlStrategy', () => {
 
       const sql = strategy.generateCreateTableSql(metadata);
 
-      expect(sql).toBe('CREATE TABLE IF NOT EXISTS users (id INT NOT NULL, name TEXT)');
+      expect(sql).toBe('CREATE TABLE IF NOT EXISTS `users` (`id` INT NOT NULL, `name` TEXT)');
     });
 
     it('should generate CREATE TABLE with single primary key', () => {
@@ -44,7 +44,7 @@ describe('MySqlDdlStrategy', () => {
       const sql = strategy.generateCreateTableSql(metadata);
 
       expect(sql).toBe(
-        'CREATE TABLE IF NOT EXISTS users (id INT NOT NULL, name TEXT, PRIMARY KEY (id))'
+        'CREATE TABLE IF NOT EXISTS `users` (`id` INT NOT NULL, `name` TEXT, PRIMARY KEY (`id`))'
       );
     });
 
@@ -64,7 +64,7 @@ describe('MySqlDdlStrategy', () => {
       const sql = strategy.generateCreateTableSql(metadata);
 
       expect(sql).toBe(
-        'CREATE TABLE IF NOT EXISTS order_items (order_id INT NOT NULL, product_id INT NOT NULL, quantity INT NOT NULL, PRIMARY KEY (order_id, product_id))'
+        'CREATE TABLE IF NOT EXISTS `order_items` (`order_id` INT NOT NULL, `product_id` INT NOT NULL, `quantity` INT NOT NULL, PRIMARY KEY (`order_id`, `product_id`))'
       );
     });
 
@@ -98,7 +98,7 @@ describe('MySqlDdlStrategy', () => {
       const sql = strategy.generateCreateTableSql(metadata);
 
       expect(sql).toBe(
-        'CREATE TABLE IF NOT EXISTS products (id INT NOT NULL, total DOUBLE GENERATED ALWAYS AS (price * quantity) VIRTUAL, PRIMARY KEY (id))'
+        'CREATE TABLE IF NOT EXISTS `products` (`id` INT NOT NULL, `total` DOUBLE GENERATED ALWAYS AS (price * quantity) VIRTUAL, PRIMARY KEY (`id`))'
       );
     });
 
@@ -125,7 +125,7 @@ describe('MySqlDdlStrategy', () => {
       const sql = strategy.generateCreateTableSql(metadata);
 
       expect(sql).toBe(
-        'CREATE TABLE IF NOT EXISTS products (id INT NOT NULL, total DOUBLE GENERATED ALWAYS AS (price * quantity) STORED, PRIMARY KEY (id))'
+        'CREATE TABLE IF NOT EXISTS `products` (`id` INT NOT NULL, `total` DOUBLE GENERATED ALWAYS AS (price * quantity) STORED, PRIMARY KEY (`id`))'
       );
     });
 
@@ -172,7 +172,7 @@ describe('MySqlDdlStrategy', () => {
       const sql = strategy.generateCreateTableSql(metadata);
 
       expect(sql).toBe(
-        'CREATE TABLE IF NOT EXISTS users (id INT NOT NULL, name TEXT, PRIMARY KEY (unknownColumn))'
+        'CREATE TABLE IF NOT EXISTS `users` (`id` INT NOT NULL, `name` TEXT, PRIMARY KEY (`unknownColumn`))'
       );
     });
   });
@@ -188,7 +188,7 @@ describe('MySqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe('id INT NOT NULL');
+      expect(def).toBe('`id` INT NOT NULL');
     });
 
     it('should generate nullable column without NOT NULL', () => {
@@ -201,7 +201,7 @@ describe('MySqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe('name TEXT');
+      expect(def).toBe('`name` TEXT');
     });
 
     it('should generate column with length', () => {
@@ -215,7 +215,7 @@ describe('MySqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe('code TEXT(50) NOT NULL');
+      expect(def).toBe('`code` TEXT(50) NOT NULL');
     });
 
     it('should generate column with defaultValue', () => {
@@ -229,7 +229,7 @@ describe('MySqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe("status TEXT NOT NULL DEFAULT 'active'");
+      expect(def).toBe("`status` TEXT NOT NULL DEFAULT 'active'");
     });
 
     it('should generate column with defaultExpression', () => {
@@ -243,7 +243,7 @@ describe('MySqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe('created_at DATETIME NOT NULL DEFAULT NOW()');
+      expect(def).toBe('`created_at` DATETIME NOT NULL DEFAULT NOW()');
     });
   });
 
@@ -293,7 +293,7 @@ describe('MySqlDdlStrategy', () => {
         unique: false
       });
 
-      expect(sql).toBe('CREATE INDEX IF NOT EXISTS idx_users_name ON users (name)');
+      expect(sql).toBe('CREATE INDEX IF NOT EXISTS `idx_users_name` ON `users` (`name`)');
     });
 
     it('should generate unique index', () => {
@@ -303,7 +303,7 @@ describe('MySqlDdlStrategy', () => {
         unique: true
       });
 
-      expect(sql).toBe('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email)');
+      expect(sql).toBe('CREATE UNIQUE INDEX IF NOT EXISTS `idx_users_email` ON `users` (`email`)');
     });
 
     it('should generate composite index', () => {
@@ -313,7 +313,7 @@ describe('MySqlDdlStrategy', () => {
         unique: false
       });
 
-      expect(sql).toBe('CREATE INDEX IF NOT EXISTS idx_orders_user_date ON orders (user_id, created_at)');
+      expect(sql).toBe('CREATE INDEX IF NOT EXISTS `idx_orders_user_date` ON `orders` (`user_id`, `created_at`)');
     });
 
     it('should generate index with column orders', () => {
@@ -324,7 +324,7 @@ describe('MySqlDdlStrategy', () => {
         orders: { name: 'DESC' }
       });
 
-      expect(sql).toBe('CREATE INDEX IF NOT EXISTS idx_users_name_desc ON users (name DESC)');
+      expect(sql).toBe('CREATE INDEX IF NOT EXISTS `idx_users_name_desc` ON `users` (`name` DESC)');
     });
 
     it('should generate FULLTEXT index', () => {

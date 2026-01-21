@@ -1,5 +1,10 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@ts-linq/*": ["packages/*/src"]
+    }
+  },
   "include": [
     "packages/*/src/**/*",
     "packages/*/tests/**/*",

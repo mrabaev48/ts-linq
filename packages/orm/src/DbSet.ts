@@ -446,6 +446,20 @@ export class DbSet<T extends object> {
     ).singleOrDefault();
   }
 
+  /** Proxy: fallbackTo. */
+  public fallbackTo(source: any): TypedQueryable<T> {
+    const queryable = new Queryable<T>(
+      this._entityClass,
+      this._provider,
+      this._entityLoader,
+      this._entityCache,
+      this._performance,
+      this._globalFilters
+    ).fallbackTo(source);
+
+    return TypedQueryable.from(queryable);
+  }
+
   /** Count entities */
   public async count(): Promise<number> {
     return await new Queryable<T>(
@@ -487,11 +501,33 @@ export class DbSet<T extends object> {
 
   /** Provider-level bulk insert within a transaction. */
   public async insertMany(entities: T[]): Promise<T[]> {
-    return await this._provider.insertMany<T>(entities, this._entityClass);
+    const result = await this._provider.insertMany<T>(entities, this._entityClass);
+    this.invalidateCountCache();
+    return result;
   }
   /** Provider-level bulk update within a transaction. */
   public async updateMany(entities: T[]): Promise<T[]> {
-    return await this._provider.updateMany<T>(entities, this._entityClass);
+    const result = await this._provider.updateMany<T>(entities, this._entityClass);
+    this.invalidateCountCache();
+    return result;
+  }
+
+  private invalidateCountCache(): void {
+    try {
+      const extCount = this._performance?.countCache;
+      // Check if count cache has invalidateBy method (custom or standard interface)
+      if (!extCount || typeof (extCount as any).invalidateBy !== 'function') return;
+
+      const providerLabel = this._provider.providerLabel;
+      const providerPrefix = providerLabel ? `${providerLabel}|` : '';
+      const ns = this._performance?.cacheNamespace ? `${this._performance.cacheNamespace}|` : '';
+      const entityName = (this._entityClass as any).name;
+
+      const prefix = `${ns}${providerPrefix}${entityName}|count|`;
+      (extCount as any).invalidateBy((key: string) => key.startsWith(prefix));
+    } catch {
+      // ignore errors during cache invalidation
+    }
   }
 
   /** Upsert single entity by primary key existence check (ChangeTracker-based). */

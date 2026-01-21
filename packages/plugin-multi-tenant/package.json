@@ -15,12 +15,14 @@
   },
   "scripts": {
     "build": "echo 'Build temporarily disabled - TypeScript monorepo config issue'",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist *.tsbuildinfo",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
-  "files": ["dist/**/*"],
+  "files": [
+    "dist/**/*"
+  ],
   "dependencies": {
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metadata": "workspace:*"

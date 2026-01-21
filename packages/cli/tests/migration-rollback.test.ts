@@ -5,7 +5,7 @@ import { MigrationsRollbackCommand } from '../src/commands/MigrationsRollbackCom
 import { MigrationRunner } from '@ts-linq/migrations';
 
 class FakeProvider {
-  public providerLabel = 'sqlite';
+  public providerLabel = 'postgresql';
   public applied: Array<{ version: string; name: string; applied_at: string }> = [];
   async connect(): Promise<void> {}
   async disconnect(): Promise<void> {}

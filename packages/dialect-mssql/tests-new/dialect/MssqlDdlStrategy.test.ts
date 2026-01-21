@@ -27,7 +27,7 @@ describe('MssqlDdlStrategy', () => {
       const sql = strategy.generateCreateTableSql(metadata);
 
       expect(sql).toContain("IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'users')");
-      expect(sql).toContain('CREATE TABLE users (id INT NOT NULL, name NVARCHAR(MAX))');
+      expect(sql).toContain('CREATE TABLE [users] ([id] INT NOT NULL, [name] NVARCHAR(MAX))');
       expect(sql).toContain('BEGIN');
       expect(sql).toContain('END');
     });
@@ -46,7 +46,7 @@ describe('MssqlDdlStrategy', () => {
 
       const sql = strategy.generateCreateTableSql(metadata);
 
-      expect(sql).toContain('PRIMARY KEY (id)');
+      expect(sql).toContain('PRIMARY KEY ([id])');
     });
 
     it('should generate CREATE TABLE with composite primary key', () => {
@@ -64,7 +64,7 @@ describe('MssqlDdlStrategy', () => {
 
       const sql = strategy.generateCreateTableSql(metadata);
 
-      expect(sql).toContain('PRIMARY KEY (order_id, product_id)');
+      expect(sql).toContain('PRIMARY KEY ([order_id], [product_id])');
     });
 
     it('should throw error for missing columns', () => {
@@ -96,7 +96,7 @@ describe('MssqlDdlStrategy', () => {
 
       const sql = strategy.generateCreateTableSql(metadata);
 
-      expect(sql).toContain('total AS (price * quantity)');
+      expect(sql).toContain('[total] AS (price * quantity)');
       expect(sql).not.toContain('PERSISTED');
     });
 
@@ -122,7 +122,7 @@ describe('MssqlDdlStrategy', () => {
 
       const sql = strategy.generateCreateTableSql(metadata);
 
-      expect(sql).toContain('total AS (price * quantity) PERSISTED');
+      expect(sql).toContain('[total] AS (price * quantity) PERSISTED');
     });
 
     it('should emit warning for VIRTUAL/STORED computedStorage and use non-persisted', () => {
@@ -147,7 +147,7 @@ describe('MssqlDdlStrategy', () => {
 
       const sql = strategy.generateCreateTableSql(metadata);
 
-      expect(sql).toContain('total AS (a + b)');
+      expect(sql).toContain('[total] AS (a + b)');
       expect(sql).not.toContain('PERSISTED');
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining("computedStorage='VIRTUAL' is not supported")
@@ -168,7 +168,7 @@ describe('MssqlDdlStrategy', () => {
 
       const sql = strategy.generateCreateTableSql(metadata);
 
-      expect(sql).toContain('PRIMARY KEY (unknownColumn)');
+      expect(sql).toContain('PRIMARY KEY ([unknownColumn])');
     });
   });
 
@@ -183,7 +183,7 @@ describe('MssqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe('id INT NOT NULL');
+      expect(def).toBe('[id] INT NOT NULL');
     });
 
     it('should generate nullable column without NOT NULL', () => {
@@ -196,7 +196,7 @@ describe('MssqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe('name NVARCHAR(MAX)');
+      expect(def).toBe('[name] NVARCHAR(MAX)');
     });
 
     it('should generate column with length', () => {
@@ -210,7 +210,7 @@ describe('MssqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe('code NVARCHAR(MAX)(50) NOT NULL');
+      expect(def).toBe('[code] NVARCHAR(MAX)(50) NOT NULL');
     });
 
     it('should generate column with defaultValue', () => {
@@ -224,7 +224,7 @@ describe('MssqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe("status NVARCHAR(MAX) NOT NULL DEFAULT 'active'");
+      expect(def).toBe("[status] NVARCHAR(MAX) NOT NULL DEFAULT 'active'");
     });
 
     it('should generate column with defaultExpression', () => {
@@ -238,7 +238,7 @@ describe('MssqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe('created_at DATETIME2 NOT NULL DEFAULT GETDATE()');
+      expect(def).toBe('[created_at] DATETIME2 NOT NULL DEFAULT GETDATE()');
     });
   });
 

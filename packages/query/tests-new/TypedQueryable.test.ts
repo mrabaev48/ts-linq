@@ -82,7 +82,7 @@ class TestProvider extends DatabaseProvider {
   public async rollbackTransaction(): Promise<void> {}
   public constructor() {
     super('memory://', undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    (this as unknown as { providerName: string }).providerName = 'sqlite';
+    (this as unknown as { providerName: string }).providerName = 'test';
   }
 }
 

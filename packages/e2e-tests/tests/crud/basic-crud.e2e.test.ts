@@ -1,6 +1,6 @@
-import { setupTestDatabase, teardownTestDatabase } from '../setup';
+import { setupTestDatabase, teardownTestDatabase } from '../../src/setup';
 import { Entity, Column, PrimaryKey } from '@ts-linq/core';
-import { DbContext } from '@ts-linq/core';
+import { DbContext } from '@ts-linq/orm';
 import { sampleUsers } from '@ts-linq/testkits';
 
 @Entity({ name: 'users' })
@@ -21,7 +21,7 @@ class User {
   isActive!: boolean;
 }
 
-describe.each(['sqlite', 'postgres', 'mysql', 'mssql'])(
+describe.each(['postgresql', 'mysql', 'mssql'])(
   'E2E CRUD Operations - %s',
   (providerName) => {
     let harness: any;

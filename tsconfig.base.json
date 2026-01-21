@@ -15,9 +15,6 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "moduleResolution": "node",
-    "baseUrl": ".",
-    "paths": {
-      "@ts-linq/*": ["packages/*/src"]
-    }
+    "baseUrl": "."
   }
 }

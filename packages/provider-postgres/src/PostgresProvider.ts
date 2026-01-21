@@ -1,26 +1,13 @@
-import type {
-  EntityMetadata,
-  ColumnMetadata,
-  RetryPolicy,
-  SqlParameter,
-  OrmMiddleware,
-  SoftDeleteOptions,
-  SqlLogger,
-  SqlDialect,
-  ConnectionPoolOptions,
-  ConnectionHealthCheckOptions,
-  PostgresConfig
-} from '@ts-linq/types';
-import {
-  OptimisticConcurrencyError,
-  UniqueConstraintError,
-  DatabaseError,
-  ForeignKeyConstraintError
-} from '@ts-linq/types';
 import { DatabaseProvider } from '@ts-linq/core';
+import { PostgresDdlStrategy, PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { PostgresDialect } from '@ts-linq/dialect-postgres';
-import { PostgresDdlStrategy } from '@ts-linq/dialect-postgres';
+import type { EntityMetadata, PostgresConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
+import {
+  DatabaseError,
+  ForeignKeyConstraintError,
+  OptimisticConcurrencyError,
+  UniqueConstraintError
+} from '@ts-linq/types';
 import { buildPostgresConnectionString } from './buildConnectionString';
 
 // Lazy require to avoid hard dependency if not installed
@@ -176,16 +163,12 @@ export class PostgresProvider extends DatabaseProvider {
   public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const cols = meta.columns.filter((c) => !c.isGenerated && !c.isComputed);
-    const names = cols.map((c) => `"${c.columnName}"`);
-    const placeholders = cols.map((_, i) => `$${i + 1}`);
-    const values: SqlParameter[] = cols.map((c) =>
-      this.coerceToSqlParameter(
-        convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type)
-      )
-    );
-    const sql = `INSERT INTO "${meta.tableName}" (${names.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, values);
+
+    const dialect = this.getDialect();
+    if (!dialect.buildInsert) throw new Error('Dialect does not support buildInsert');
+
+    const { sql, parameters } = dialect.buildInsert(entity as Record<string, unknown>, meta);
+    const rows = await this.executeQuery<Record<string, unknown>>(sql, parameters);
     Object.assign(entity as object, rows[0] as object);
     // notify materialized of inserted row state
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -197,41 +180,21 @@ export class PostgresProvider extends DatabaseProvider {
   public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
-      throw new Error(`No primary key defined for ${entityClass.name}`);
-    }
-    const primaryKeys = meta.primaryKeys;
+
+    const dialect = this.getDialect();
+    if (!dialect.buildUpdate) throw new Error('Dialect does not support buildUpdate');
+
     const versionCol = meta.columns.find((c) => c.isVersion);
-    const setCols = meta.columns.filter(
-      (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
+    const { sql, parameters } = dialect.buildUpdate(
+      entity as Record<string, unknown>,
+      meta,
+      versionCol
     );
-    if (setCols.length === 0) return entity;
-    const sets = setCols.map((c, i) => `"${c.columnName}" = $${i + 1}`);
-    const setVals: SqlParameter[] = setCols.map((c) =>
-      this.coerceToSqlParameter(
-        convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type)
-      )
-    );
-    if (versionCol) {
-      sets.push(`"${versionCol.columnName}" = "${versionCol.columnName}" + 1`);
-    }
-    const where = primaryKeys.map(
-      (pk, i) =>
-        `"${meta.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${setCols.length + i + 1}`
-    );
-    const whereVals: SqlParameter[] = primaryKeys.map((pk) =>
-      this.coerceToSqlParameter((entity as Record<string, unknown>)[pk])
-    );
-    let sql = `UPDATE "${meta.tableName}" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
-    if (versionCol) {
-      sql += ` AND "${versionCol.columnName}" = $${setCols.length + primaryKeys.length + 1}`;
-      whereVals.push(
-        this.coerceToSqlParameter((entity as Record<string, unknown>)[versionCol.propertyName])
-      );
-    }
-    const affected = await this.executeNonQuery(sql, [...setVals, ...whereVals]);
+
+    const affected = await this.executeNonQuery(sql, parameters);
     if (affected === 0) {
-      if (versionCol) throw new OptimisticConcurrencyError('Version mismatch detected during update');
+      if (versionCol)
+        throw new OptimisticConcurrencyError('Version mismatch detected during update');
       throw new Error('No rows were updated. Not found or no changes.');
     }
     if (versionCol) {
@@ -278,18 +241,12 @@ export class PostgresProvider extends DatabaseProvider {
   public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
-      throw new Error(`No primary key defined for ${entityClass.name}`);
-    }
-    const where = meta.primaryKeys.map(
-      (pk, i) =>
-        `"${meta.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${i + 1}`
-    );
-    const vals: SqlParameter[] = meta.primaryKeys.map((pk) =>
-      this.coerceToSqlParameter((entity as Record<string, unknown>)[pk])
-    );
-    const sql = `DELETE FROM "${meta.tableName}" WHERE ${where.join(' AND ')}`;
-    await this.executeNonQuery(sql, vals);
+
+    const dialect = this.getDialect();
+    if (!dialect.buildDelete) throw new Error('Dialect does not support buildDelete');
+
+    const { sql, parameters } = dialect.buildDelete(entity as Record<string, unknown>, meta);
+    await this.executeNonQuery(sql, parameters);
   }
 
   /** Provide SQL dialect for this provider. */
@@ -454,37 +411,6 @@ export class PostgresProvider extends DatabaseProvider {
     const tid = this.currentTraceId;
     this.currentTraceId = undefined;
     this.logger?.transactionEnd?.({ traceId: tid, provider: this.providerName });
-  }
-}
-
-/** Map logical column type to PostgreSQL type name. */
-function mapTypeToPg(type: string): string {
-  switch (type.toUpperCase()) {
-    case 'TEXT':
-    case 'STRING':
-      return 'TEXT';
-    case 'INTEGER':
-    case 'NUMBER':
-      return 'INTEGER';
-    case 'REAL':
-    case 'FLOAT':
-    case 'DOUBLE':
-      return 'DOUBLE PRECISION';
-    case 'BOOLEAN':
-      return 'BOOLEAN';
-    case 'DATETIME':
-    case 'DATE':
-      return 'TIMESTAMPTZ';
-    case 'BLOB':
-      return 'BYTEA';
-    case 'UUID':
-      return 'UUID';
-    case 'JSONB':
-      return 'JSONB';
-    case 'JSON':
-      return 'JSON';
-    default:
-      return 'TEXT';
   }
 }
 

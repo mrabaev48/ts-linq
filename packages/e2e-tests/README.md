@@ -6,7 +6,7 @@ End-to-end tests for ts-linq ORM across all database providers.
 
 ### CRUD Operations (`tests/crud/`)
 - Create, Read, Update, Delete operations
-- Cross-provider testing (SQLite, PostgreSQL, MySQL, MSSQL)
+- Cross-provider testing (PostgreSQL, MySQL, MSSQL)
 - Filtering, sorting, pagination
 
 ### Complex Queries (`tests/queries/`)
@@ -27,8 +27,7 @@ End-to-end tests for ts-linq ORM across all database providers.
 npm test
 
 # Specific provider
-npm run test:sqlite
-npm run test:postgres
+npm run test:postgresql
 npm run test:mysql
 npm run test:mssql
 

@@ -17,10 +17,13 @@
     "@ts-linq/metadata": "workspace:*",
     "@ts-linq/types": "workspace:*"
   },
-  "devDependencies": {"typescript": "^5.4.5"},
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && npm run gen:esm-entry && npm run copy:types",
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
-    "copy:types": "node ../../scripts/copy-types.js"
+    "copy:types": "node ../../scripts/copy-types.js",
+    "clean": "rm -rf dist *.tsbuildinfo"
   }
 }

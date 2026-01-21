@@ -1,11 +1,11 @@
 import { createProviderFromEnv } from '../src/provider-factory';
 import { PostgresProvider } from '@ts-linq/provider-postgres';
 import { MySqlProvider } from '@ts-linq/provider-mysql';
-import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+
 
 jest.mock('@ts-linq/provider-postgres');
 jest.mock('@ts-linq/provider-mysql');
-jest.mock('@ts-linq/provider-sqlite');
+
 
 describe('Provider Factory - Environment Variable Mapping', () => {
   const originalEnv = process.env;
@@ -157,32 +157,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
     });
   });
 
-  describe('SQLite Provider', () => {
-    test('creates SQLite provider with in-memory database by default', () => {
-      process.env.DB_PROVIDER = 'sqlite';
 
-      createProviderFromEnv();
-
-      expect(SQLiteProvider).toHaveBeenCalledWith({ file: ':memory:' });
-    });
-
-    test('creates SQLite provider with custom database path', () => {
-      process.env.DB_PROVIDER = 'sqlite';
-      process.env.SQLITE_URL = './data/test.db';
-
-      createProviderFromEnv();
-
-      expect(SQLiteProvider).toHaveBeenCalledWith({ file: './data/test.db' });
-    });
-
-    test('defaults to SQLite when DB_PROVIDER not set', () => {
-      delete process.env.DB_PROVIDER;
-
-      createProviderFromEnv();
-
-      expect(SQLiteProvider).toHaveBeenCalled();
-    });
-  });
 
   describe('Circuit Breaker Configuration', () => {
     test('configures circuit breaker when env vars provided', () => {
@@ -259,14 +234,6 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       expect(provider).toBe(mockProvider);
     });
 
-    test('development-like SQLite configuration', () => {
-      process.env.DB_PROVIDER = 'sqlite';
-      process.env.SQLITE_URL = ':memory:';
 
-      const provider = createProviderFromEnv();
-
-      expect(SQLiteProvider).toHaveBeenCalledWith({ file: ':memory:' });
-      expect(provider).toBeDefined();
-    });
   });
 });

@@ -34,7 +34,10 @@ class AppDbContext extends DbContext {
 }
 
 async function main() {
-  const context = new AppDbContext({ connectionString: ':memory:', provider: 'sqlite' });
+  const context = new AppDbContext({
+    connectionString: process.env.POSTGRES_URL || 'postgres://postgres:postgres@localhost:5432/ts_linq',
+    provider: 'postgresql'
+  });
   await context.ensureCreated();
 
   // Create an author

@@ -1,3 +1,4 @@
+import * as http from 'http';
 import { describe, it, expect, afterEach } from '@jest/globals';
 import { startPrometheusServer, getPrometheusMetrics } from '../src/utils/PrometheusEndpoint';
 
@@ -14,12 +15,16 @@ const fakeClient = {
 
 describe('Prometheus Endpoint Helpers', () => {
   let closeServer: (() => Promise<void>) | undefined;
+  let lastHandler:
+    | ((req: http.IncomingMessage, res: http.ServerResponse) => void)
+    | undefined;
 
   afterEach(async () => {
     if (closeServer) {
       await closeServer();
       closeServer = undefined;
     }
+    lastHandler = undefined;
   });
 
   it('should return body and contentType even without prom-client', async () => {
@@ -39,72 +44,221 @@ describe('Prometheus Endpoint Helpers', () => {
   });
 
   it('should serve /metrics endpoint with fake client', async () => {
+    const fakeServer = (() => {
+      const serverImpl = {
+        once: (..._args: unknown[]) => serverImpl as unknown as http.Server,
+        off: (..._args: unknown[]) => serverImpl as unknown as http.Server,
+        listen: (...args: unknown[]) => {
+          const last = args.length > 0 ? args[args.length - 1] : undefined;
+          if (typeof last === 'function') (last as () => void)();
+          return serverImpl as unknown as http.Server;
+        },
+        address: () => ({ port: 12345 } as unknown as ReturnType<http.Server['address']>),
+        close: (...args: unknown[]) => {
+          const last = args.length > 0 ? args[args.length - 1] : undefined;
+          if (typeof last === 'function') (last as () => void)();
+          return serverImpl as unknown as http.Server;
+        }
+      };
+      return serverImpl as unknown as http.Server;
+    })();
+
     const { server, port, close } = await startPrometheusServer({
       client: fakeClient,
-      port: 0, // Random available port
-      path: '/metrics'
+      host: '127.0.0.1',
+      port: 0,
+      path: '/metrics',
+      serverFactory: (handler) => {
+        lastHandler = handler;
+        return fakeServer as unknown as http.Server;
+      }
     });
 
     closeServer = close;
-
     expect(server).toBeDefined();
-    expect(port).toBeGreaterThan(0);
+    expect(port).toBe(12345);
+    expect(lastHandler).toBeDefined();
 
-    const res = await fetch(`http://127.0.0.1:${port}/metrics`);
-    const text = await res.text();
+    const resState: { statusCode: number; headers: Record<string, string>; body: string } = {
+      statusCode: 0,
+      headers: {},
+      body: ''
+    };
+    const req = { url: '/metrics' } as unknown as http.IncomingMessage;
+    const res = {
+      get statusCode() {
+        return resState.statusCode;
+      },
+      set statusCode(value: number) {
+        resState.statusCode = value;
+      },
+      setHeader: (k: string, v: string) => {
+        resState.headers[k] = v;
+      },
+      end: (chunk?: unknown) => {
+        resState.body = String(chunk ?? '');
+      }
+    } as unknown as http.ServerResponse;
 
-    expect(res.status).toBe(200);
-    expect(text).toContain('test_metric');
-    expect(text).toContain('42');
+    lastHandler?.(req, res);
+    await Promise.resolve();
+
+    expect(resState.statusCode).toBe(200);
+    expect(resState.headers['Content-Type']).toBe('text/plain; version=0.0.4; charset=utf-8');
+    expect(resState.body).toContain('test_metric');
+    expect(resState.body).toContain('42');
   });
 
   it('should serve metrics on custom path', async () => {
-    const { server, port, close } = await startPrometheusServer({
+    const fakeServer = (() => {
+      const serverImpl = {
+        once: (..._args: unknown[]) => serverImpl as unknown as http.Server,
+        off: (..._args: unknown[]) => serverImpl as unknown as http.Server,
+        listen: (...args: unknown[]) => {
+          const last = args.length > 0 ? args[args.length - 1] : undefined;
+          if (typeof last === 'function') (last as () => void)();
+          return serverImpl as unknown as http.Server;
+        },
+        address: () => ({ port: 12345 } as unknown as ReturnType<http.Server['address']>),
+        close: (...args: unknown[]) => {
+          const last = args.length > 0 ? args[args.length - 1] : undefined;
+          if (typeof last === 'function') (last as () => void)();
+          return serverImpl as unknown as http.Server;
+        }
+      };
+      return serverImpl as unknown as http.Server;
+    })();
+
+    const { close } = await startPrometheusServer({
       client: fakeClient,
+      host: '127.0.0.1',
       port: 0,
-      path: '/custom/metrics'
+      path: '/custom/metrics',
+      serverFactory: (handler) => {
+        lastHandler = handler;
+        return fakeServer as unknown as http.Server;
+      }
     });
 
     closeServer = close;
+    expect(lastHandler).toBeDefined();
 
-    const res = await fetch(`http://127.0.0.1:${port}/custom/metrics`);
-    const text = await res.text();
+    const resState: { statusCode: number; headers: Record<string, string>; body: string } = {
+      statusCode: 0,
+      headers: {},
+      body: ''
+    };
+    const req = { url: '/custom/metrics' } as unknown as http.IncomingMessage;
+    const res = {
+      get statusCode() {
+        return resState.statusCode;
+      },
+      set statusCode(value: number) {
+        resState.statusCode = value;
+      },
+      setHeader: (k: string, v: string) => {
+        resState.headers[k] = v;
+      },
+      end: (chunk?: unknown) => {
+        resState.body = String(chunk ?? '');
+      }
+    } as unknown as http.ServerResponse;
 
-    expect(res.status).toBe(200);
-    expect(text).toContain('test_metric');
+    lastHandler?.(req, res);
+    await Promise.resolve();
+
+    expect(resState.statusCode).toBe(200);
+    expect(resState.body).toContain('test_metric');
   });
 
   it('should return 404 for non-metrics paths', async () => {
-    const { server, port, close } = await startPrometheusServer({
+    const fakeServer = (() => {
+      const serverImpl = {
+        once: (..._args: unknown[]) => serverImpl as unknown as http.Server,
+        off: (..._args: unknown[]) => serverImpl as unknown as http.Server,
+        listen: (...args: unknown[]) => {
+          const last = args.length > 0 ? args[args.length - 1] : undefined;
+          if (typeof last === 'function') (last as () => void)();
+          return serverImpl as unknown as http.Server;
+        },
+        address: () => ({ port: 12345 } as unknown as ReturnType<http.Server['address']>),
+        close: (...args: unknown[]) => {
+          const last = args.length > 0 ? args[args.length - 1] : undefined;
+          if (typeof last === 'function') (last as () => void)();
+          return serverImpl as unknown as http.Server;
+        }
+      };
+      return serverImpl as unknown as http.Server;
+    })();
+
+    const { close } = await startPrometheusServer({
       client: fakeClient,
+      host: '127.0.0.1',
       port: 0,
-      path: '/metrics'
+      path: '/metrics',
+      serverFactory: (handler) => {
+        lastHandler = handler;
+        return fakeServer as unknown as http.Server;
+      }
     });
 
     closeServer = close;
+    expect(lastHandler).toBeDefined();
 
-    const res = await fetch(`http://127.0.0.1:${port}/other`);
+    const resState: { statusCode: number; body: string } = { statusCode: 0, body: '' };
+    const req = { url: '/other' } as unknown as http.IncomingMessage;
+    const res = {
+      get statusCode() {
+        return resState.statusCode;
+      },
+      set statusCode(value: number) {
+        resState.statusCode = value;
+      },
+      end: (chunk?: unknown) => {
+        resState.body = String(chunk ?? '');
+      }
+    } as unknown as http.ServerResponse;
 
-    expect(res.status).toBe(404);
+    lastHandler?.(req, res);
+
+    expect(resState.statusCode).toBe(404);
+    expect(resState.body).toBe('Not Found');
   });
 
   it('should handle server close gracefully', async () => {
-    const { server, port, close } = await startPrometheusServer({
+    const closeSpy = jest.fn();
+    const fakeServer = (() => {
+      const serverImpl = {
+        once: (..._args: unknown[]) => serverImpl as unknown as http.Server,
+        off: (..._args: unknown[]) => serverImpl as unknown as http.Server,
+        listen: (...args: unknown[]) => {
+          const last = args.length > 0 ? args[args.length - 1] : undefined;
+          if (typeof last === 'function') (last as () => void)();
+          return serverImpl as unknown as http.Server;
+        },
+        address: () => ({ port: 12345 } as unknown as ReturnType<http.Server['address']>),
+        close: (...args: unknown[]) => {
+          closeSpy();
+          const last = args.length > 0 ? args[args.length - 1] : undefined;
+          if (typeof last === 'function') (last as () => void)();
+          return serverImpl as unknown as http.Server;
+        }
+      };
+      return serverImpl as unknown as http.Server;
+    })();
+
+    const { close } = await startPrometheusServer({
       client: fakeClient,
+      host: '127.0.0.1',
       port: 0,
-      path: '/metrics'
+      path: '/metrics',
+      serverFactory: (handler) => {
+        lastHandler = handler;
+        return fakeServer as unknown as http.Server;
+      }
     });
 
-    // First request should succeed
-    const res1 = await fetch(`http://127.0.0.1:${port}/metrics`);
-    expect(res1.status).toBe(200);
-
-    // Close server
     await close();
-
-    // Second request should fail
-    await expect(
-      fetch(`http://127.0.0.1:${port}/metrics`)
-    ).rejects.toThrow();
+    expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 });

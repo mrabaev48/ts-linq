@@ -7,5 +7,4 @@ ignoredBuiltDependencies:
   - '@swc/core'
   - cpu-features
   - protobufjs
-  - sqlite3
   - ssh2

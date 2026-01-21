@@ -1,6 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import {
-  SQLiteSchemaInspector,
   PostgresSchemaInspector,
   MySqlSchemaInspector,
   MssqlSchemaInspector
@@ -14,34 +13,7 @@ export class SchemaInspectionService {
   ): Promise<SchemaSnapshot> {
     const label = provider.providerLabel;
 
-    if (label === 'sqlite') {
-      const inspector = new SQLiteSchemaInspector(provider);
-      const tableNames = await inspector.listTables();
-      const actualTables: TableSnapshot[] = [];
-      for (const tableName of tableNames) {
-        const info = await inspector.getTableInfo(tableName);
-        const indexes = await inspector.getIndexes(tableName);
-        actualTables.push({
-          name: tableName,
-          columns: info.columns.map((col) => ({
-            name: col.name,
-            type: this.normalizeType(col.type),
-            nullable: !col.notnull
-          })),
-          primaryKeys: info.columns.filter((col) => col.pk > 0).map((col) => col.name),
-          indexes: indexes.map((i) => ({
-            name: i.name,
-            columns: i.columns,
-            unique: i.unique,
-            where: i.where
-          })),
-          foreignKeys: []
-        });
-      }
-      return { tables: actualTables };
-    }
-
-    // For non-SQLite: mirror expected columns/PKs, fetch actual indexes via dialect inspectors
+    // For supported providers: mirror expected columns/PKs, fetch actual indexes via dialect inspectors
     const fetchIndexes = async (table: string): Promise<IndexDef[]> => {
       if (label === 'postgresql') {
         const ins = new PostgresSchemaInspector(provider);
@@ -83,26 +55,5 @@ export class SchemaInspectionService {
       });
     }
     return { tables: actualTables };
-  }
-
-  private normalizeType(type: string): string {
-    switch (type?.toUpperCase()) {
-      case 'INTEGER':
-      case 'NUMBER':
-        return 'INTEGER';
-      case 'REAL':
-      case 'FLOAT':
-      case 'DOUBLE':
-        return 'REAL';
-      case 'BOOLEAN':
-        return 'INTEGER';
-      case 'DATETIME':
-      case 'DATE':
-        return 'TEXT';
-      case 'BLOB':
-        return 'BLOB';
-      default:
-        return 'TEXT';
-    }
   }
 }

@@ -9,6 +9,11 @@
   "peerDependencies": {
     "@ts-linq/core": "workspace:*"
   },
-  "devDependencies": {"typescript": "^5.4.5"},
-  "scripts": {"build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json"}
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
 }

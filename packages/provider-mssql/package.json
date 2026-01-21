@@ -25,16 +25,18 @@
     "@ts-linq/orm": "workspace:*",
     "@ts-linq/provider-postgres": "workspace:*",
     "@ts-linq/provider-mysql": "workspace:*",
-    "@ts-linq/provider-sqlite": "workspace:*",
+
     "@ts-linq/dialect-postgres": "workspace:*",
     "@ts-linq/dialect-mysql": "workspace:*",
-    "@ts-linq/dialect-sqlite": "workspace:*",
+
     "@ts-linq/query": "workspace:*",
     "@ts-linq/migrations": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && npm run gen:esm-entry && npm run copy:types",
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
-    "copy:types": "node ../../scripts/copy-types.js"
+    "copy:types": "node ../../scripts/copy-types.js",
+    "test": "cd ../.. && npx jest packages/provider-mssql",
+    "clean": "rm -rf dist *.tsbuildinfo"
   }
 }

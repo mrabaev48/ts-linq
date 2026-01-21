@@ -66,7 +66,7 @@ class TestDiffMigration extends DiffBasedMigration {
   public beforeDownStatementCalls: string[] = [];
   public afterDownStatementCalls: string[] = [];
 
-  constructor(provider: DatabaseProvider, diff: SchemaDiff, dialect: Dialect = 'sqlite') {
+  constructor(provider: DatabaseProvider, diff: SchemaDiff, dialect: Dialect = 'postgresql') {
     super();
     this.provider = provider;
     this._diff = diff;
@@ -439,7 +439,7 @@ describe('DiffBasedMigration', () => {
         }
 
         protected dialect(): Dialect {
-          return 'sqlite';
+          return 'postgresql';
         }
 
         protected async diff(): Promise<SchemaDiff> {

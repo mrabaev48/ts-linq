@@ -14,10 +14,12 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.esm.json",
-    "clean": "rm -rf dist"
+    "build": "tsc -b tsconfig.json && tsc -b tsconfig.esm.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
   },
-  "files": ["dist/**/*"],
+  "files": [
+    "dist/**/*"
+  ],
   "dependencies": {
     "@ts-linq/types": "workspace:*"
   },

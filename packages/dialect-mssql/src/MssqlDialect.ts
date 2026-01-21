@@ -1,4 +1,4 @@
-import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
+import type { SqlDialect, QueryOptions, SqlParameter, EntityMetadata, ColumnMetadata } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { MssqlWhereEmitter } from './emitters/MssqlWhereEmitter';
 import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
@@ -80,5 +80,123 @@ export class MssqlDialect implements SqlDialect {
     const fetchNext = hasLimit ? ` FETCH NEXT ${options.limit} ROWS ONLY` : '';
     sql += ` OFFSET ${options.offset} ROWS${fetchNext}`;
     return sql;
+  }
+  /**
+   * Build INSERT statement.
+   */
+  public buildInsert(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[]; returningPk?: string } {
+    const insertable = metadata.columns.filter(
+      (col) => !col.isGenerated || entity[col.propertyName] !== undefined
+    );
+    const columnNames = insertable.map((c) => c.columnName);
+    const placeholders = insertable.map(() => '?');
+    const parameters: SqlParameter[] = insertable.map((c) =>
+      this.coerceParameter(entity[c.propertyName])
+    );
+    let sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) VALUES (${placeholders.join(', ')})`;
+    
+    // Replace ? with @pN
+    sql = this.numberPlaceholders(sql, parameters.length);
+
+    const firstPk = metadata.primaryKeys?.[0];
+    const returningPk =
+      firstPk && metadata.columns.find((c) => c.propertyName === firstPk)?.isGenerated
+        ? firstPk
+        : undefined;
+    return { sql, parameters, returningPk };
+  }
+
+  /**
+   * Build UPDATE statement.
+   */
+  public buildUpdate(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    versionCol?: ColumnMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+    }
+    const primaryKeys = metadata.primaryKeys;
+    const updatable = metadata.columns.filter(
+      (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated
+    );
+    if (updatable.length === 0) throw new Error(`No updatable columns for ${metadata.tableName}`);
+    
+    const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
+    const setParams: SqlParameter[] = updatable.map((c) =>
+      this.coerceParameter(entity[c.propertyName])
+    );
+    
+    if (versionCol) {
+      setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
+    }
+    
+    const whereClauses: string[] = [];
+    const whereParams: SqlParameter[] = [];
+    for (const pk of primaryKeys) {
+      const col = metadata.columns.find((c) => c.propertyName === pk)!;
+      whereClauses.push(`${col.columnName} = ?`);
+      whereParams.push(this.coerceParameter(entity[pk]));
+    }
+    
+    if (versionCol) {
+      whereClauses.push(`${versionCol.columnName} = ?`);
+      whereParams.push(this.coerceParameter(entity[versionCol.propertyName]));
+    }
+    
+    let sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
+    
+    // Replace ? with @pN
+    const allParams = [...setParams, ...whereParams];
+    sql = this.numberPlaceholders(sql, allParams.length);
+    
+    return { sql, parameters: allParams };
+  }
+
+  /**
+   * Build DELETE statement.
+   */
+  public buildDelete(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+    }
+    const whereClauses: string[] = [];
+    const parameters: SqlParameter[] = [];
+    for (const pk of metadata.primaryKeys) {
+      const col = metadata.columns.find((c) => c.propertyName === pk)!;
+      whereClauses.push(`${col.columnName} = ?`);
+      parameters.push(this.coerceParameter(entity[pk]));
+    }
+    let sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClauses.join(' AND ')}`;
+    
+    // Replace ? with @pN
+    sql = this.numberPlaceholders(sql, parameters.length);
+    
+    return { sql, parameters };
+  }
+
+  private coerceParameter(value: unknown): SqlParameter {
+    if (
+      value === null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value instanceof Date ||
+      value instanceof Uint8Array
+    ) {
+      return value as SqlParameter;
+    }
+    try {
+      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+    } catch {
+      return String(value) as unknown as SqlParameter;
+    }
   }
 }

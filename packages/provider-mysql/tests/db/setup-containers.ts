@@ -1,4 +1,4 @@
-/**** Basic Testcontainers setup for DB-backed tests ****/
+/** Basic Testcontainers setup for DB-backed tests */
 
 import type { StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
@@ -7,9 +7,9 @@ let postgres: StartedTestContainer | null = null;
 let mysql: StartedTestContainer | null = null;
 let mssql: StartedTestContainer | null = null;
 
-export async function startDbContainers() {
+export async function startDbContainers(): Promise<void> {
   if (process.env.RUN_DB_TESTS !== '1') return;
-  const db = process.env.DB; // 'postgres' | 'mysql' | 'mssql' | 'sqlite' | undefined
+  const db = process.env.DB; // 'postgres' | 'mysql' | 'mssql' | undefined
   const pgImage = process.env.POSTGRES_IMAGE || 'postgres:15-alpine';
   const mysqlImage = process.env.MYSQL_IMAGE || 'mysql:8';
   const mssqlImage = process.env.MSSQL_IMAGE || 'mcr.microsoft.com/mssql/server:2019-latest';
@@ -45,7 +45,7 @@ export async function startDbContainers() {
   }
 }
 
-export async function stopDbContainers() {
+export async function stopDbContainers(): Promise<void> {
   await Promise.all([
     postgres?.stop().catch(() => {}),
     mysql?.stop().catch(() => {}),
@@ -55,3 +55,4 @@ export async function stopDbContainers() {
   mysql = null;
   mssql = null;
 }
+

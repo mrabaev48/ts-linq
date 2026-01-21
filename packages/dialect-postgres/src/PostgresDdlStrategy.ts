@@ -1,4 +1,5 @@
 import type { EntityMetadata } from '@ts-linq/types';
+import { SqlHelper } from '@ts-linq/core';
 type LoggerLike = { warn(message: string, error?: unknown): void };
 import type { PgIndexSpec } from './builders/PgIndexBuilder';
 import { PgIndexBuilder } from './builders/PgIndexBuilder';
@@ -24,7 +25,14 @@ export class PostgresDdlStrategy {
       }
       const mappedType = this.mapTypeToPg(column.type);
       const notNullSql = column.nullable ? '' : ' NOT NULL';
-      const defaultSql = column.defaultExpression ? ` DEFAULT ${column.defaultExpression}` : '';
+      
+      let defaultSql = '';
+      if (column.defaultExpression) {
+        defaultSql = ` DEFAULT ${column.defaultExpression}`;
+      } else if (column.defaultValue !== undefined) {
+        defaultSql = ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
+      }
+      
       return `"${column.columnName}" ${mappedType}${notNullSql}${defaultSql}`;
     });
     if (entityMetadata.primaryKeys && entityMetadata.primaryKeys.length > 0) {
@@ -56,6 +64,49 @@ export class PostgresDdlStrategy {
     }
   ): string {
     return this.indexBuilder.buildCreateIndexSql(table, index as PgIndexSpec);
+  }
+
+  public generateAddColumnSql(tableName: string, column: any): string {
+    const mappedType = this.mapTypeToPg(column.type);
+    const notNullSql = column.nullable ? '' : ' NOT NULL';
+    let defaultSql = '';
+    if (column.defaultExpression) {
+      defaultSql = ` DEFAULT ${column.defaultExpression}`;
+    } else if (column.defaultValue !== undefined) {
+      defaultSql = ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
+    }
+    return `ALTER TABLE "${tableName}" ADD COLUMN "${column.columnName}" ${mappedType}${notNullSql}${defaultSql}`;
+  }
+
+  public generateDropColumnSql(tableName: string, columnName: string): string {
+    return `ALTER TABLE "${tableName}" DROP COLUMN "${columnName}"`;
+  }
+
+  public generateAlterColumnTypeSql(tableName: string, columnName: string, newType: string): string {
+    const mappedType = this.mapTypeToPg(newType);
+    return `ALTER TABLE "${tableName}" ALTER COLUMN "${columnName}" TYPE ${mappedType}`;
+  }
+
+  public generateRenameTableSql(tableName: string, newTableName: string): string {
+    return `ALTER TABLE "${tableName}" RENAME TO "${newTableName}"`;
+  }
+  
+  public generateForeignKeySql(tableName: string, fk: { 
+      name: string, 
+      columnName: string, 
+      relatedTableName: string, 
+      relatedColumnName: string,
+      onDelete?: string,
+      onUpdate?: string
+  }): string {
+      let sql = `ALTER TABLE "${tableName}" ADD CONSTRAINT "${fk.name}" FOREIGN KEY ("${fk.columnName}") REFERENCES "${fk.relatedTableName}" ("${fk.relatedColumnName}")`;
+      if (fk.onDelete && fk.onDelete !== 'NO ACTION') {
+          sql += ` ON DELETE ${fk.onDelete}`;
+      }
+      if (fk.onUpdate && fk.onUpdate !== 'NO ACTION') {
+          sql += ` ON UPDATE ${fk.onUpdate}`;
+      }
+      return sql;
   }
 
   // index helpers relocated to PgIndexBuilder

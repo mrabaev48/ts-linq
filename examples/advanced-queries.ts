@@ -35,8 +35,9 @@ class ShopDbContext extends DbContext {
 
 async function advancedQueriesExample() {
   const context = new ShopDbContext({
-    connectionString: './shop.db',
-    provider: 'sqlite'
+    connectionString:
+      process.env.POSTGRES_URL || 'postgres://postgres:postgres@localhost:5432/ts_linq',
+    provider: 'postgresql'
   });
 
   try {

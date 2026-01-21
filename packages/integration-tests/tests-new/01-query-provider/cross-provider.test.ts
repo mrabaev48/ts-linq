@@ -1,5 +1,5 @@
 describe('Cross-Provider Compatibility', () => {
-  const providers = ['sqlite', 'postgres', 'mysql', 'mssql'];
+  const providers = ['postgresql', 'mysql', 'mssql'];
 
   describe.each(providers)('%s provider', (providerName) => {
     it.todo('should execute same query across all providers with consistent results');
