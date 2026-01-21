@@ -231,7 +231,6 @@ describe('Decorators', () => {
       class Event {}
       
       DatabaseFunction({
-        sqlite: 'datetime("now")',
         postgresql: 'NOW()',
         mysql: 'NOW()',
         default: 'CURRENT_TIMESTAMP'
@@ -242,7 +241,7 @@ describe('Decorators', () => {
       
       expect(column?.defaultExpression).toBe('CURRENT_TIMESTAMP');
       expect(column?.defaultExpressionDialect).toBeDefined();
-      expect(column?.defaultExpressionDialect?.sqlite).toBe('datetime("now")');
+      expect(column?.defaultExpressionDialect?.postgresql).toBe('NOW()');
     });
   });
 

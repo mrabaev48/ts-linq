@@ -1,6 +1,6 @@
-import { setupTestDatabase, teardownTestDatabase } from '../setup';
+import { setupTestDatabase, teardownTestDatabase } from '../../src/setup';
 import { Entity, Column, PrimaryKey, ManyToOne, OneToMany } from '@ts-linq/core';
-import { DbContext } from '@ts-linq/core';
+import { DbContext } from '@ts-linq/orm';
 
 @Entity({ name: 'authors' })
 class Author {
@@ -10,7 +10,7 @@ class Author {
   @Column()
   name!: string;
 
-  @OneToMany(() => Post, (post: Post) => post.authorId)
+  @OneToMany(() => Post, { inverseSide: 'author' })
   posts?: Post[];
 }
 
@@ -28,10 +28,10 @@ class Post {
   @Column()
   authorId!: number;
 
-  @ManyToOne(() => Author, (author: Author) => author.id)
+  @ManyToOne(() => Author, { inverseSide: 'posts' })
   author?: Author;
 
-  @OneToMany(() => Comment, (comment: Comment) => comment.postId)
+  @OneToMany(() => Comment, { inverseSide: 'post' })
   comments?: Comment[];
 }
 
@@ -46,11 +46,11 @@ class Comment {
   @Column()
   postId!: number;
 
-  @ManyToOne(() => Post, (post: Post) => post.id)
+  @ManyToOne(() => Post, { inverseSide: 'comments' })
   post?: Post;
 }
 
-describe.each(['sqlite'])('E2E Complex Queries - %s', (providerName) => {
+describe.each(['postgresql'])('E2E Complex Queries - %s', (providerName) => {
   let harness: any;
   let provider: any;
   let context: DbContext;

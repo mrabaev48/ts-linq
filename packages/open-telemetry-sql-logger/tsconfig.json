@@ -2,9 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": {
-      "@ts-linq/types": ["../types/dist"]
-    },
+    "paths": {},
     "composite": true,
     "declaration": true,
     "declarationMap": true,

@@ -4,7 +4,7 @@ import type { ColumnMetadata } from '@ts-linq/types';
 export function DatabaseFunction(
   expression:
     | string
-    | { sqlite?: string; postgresql?: string; mysql?: string; mssql?: string; default?: string },
+    | { postgresql?: string; mysql?: string; mssql?: string; default?: string },
   nameOverride?: string
 ): PropertyDecorator {
   return function (target: any, propertyKey: string | symbol): void {
@@ -24,7 +24,6 @@ export function DatabaseFunction(
         typeof expression === 'string'
           ? undefined
           : {
-              sqlite: expression.sqlite,
               postgresql: expression.postgresql,
               mysql: expression.mysql,
               mssql: expression.mssql

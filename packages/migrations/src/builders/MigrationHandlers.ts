@@ -66,7 +66,7 @@ export function buildIndexColumnsList(
   for (const c of columns) {
     const ord = orders?.[c] ? ` ${orders[c]}` : '';
     const collation = collations?.[c]
-      ? dialect === 'postgresql' || dialect === 'sqlite'
+      ? dialect === 'postgresql'
         ? ` COLLATE ${collations[c]}`
         : ''
       : '';

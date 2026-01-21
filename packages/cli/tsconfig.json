@@ -8,7 +8,7 @@
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "@ts-linq/provider-sqlite": ["../provider-sqlite/src"],
+
       "@ts-linq/provider-postgres": ["../provider-postgres/src"],
       "@ts-linq/provider-mysql": ["../provider-mysql/src"],
       "@ts-linq/provider-mssql": ["../provider-mssql/src"]
@@ -20,7 +20,7 @@
     { "path": "../types" },
     { "path": "../core" },
     { "path": "../migrations" },
-    { "path": "../provider-sqlite" },
+
     { "path": "../provider-postgres" },
     { "path": "../provider-mysql" },
     { "path": "../provider-mssql" }

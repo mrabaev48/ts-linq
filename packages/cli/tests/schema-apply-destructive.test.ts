@@ -15,7 +15,7 @@ describe('Schema Apply - Destructive Change Protection', () => {
     process.exitCode = 0;
 
     mockProvider = {
-      providerLabel: 'sqlite',
+      providerLabel: 'postgresql',
       executeNonQuery: jest.fn(async (sql: string) => {
         executedQueries.push(sql);
         return 1;

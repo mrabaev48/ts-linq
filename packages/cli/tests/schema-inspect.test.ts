@@ -2,11 +2,11 @@ import { normalizeDbType, tsTypeForOrm } from '../src/schema-inspect';
 
 describe('schema-inspect helpers', () => {
   it('normalizeDbType maps vendor types to ORM types', () => {
-    expect(normalizeDbType('sqlite', 'integer')).toBe('INTEGER');
+    expect(normalizeDbType('postgresql', 'integer')).toBe('INTEGER');
     expect(normalizeDbType('postgresql', 'uuid')).toBe('UUID');
     expect(normalizeDbType('mysql', 'json')).toBe('JSON');
     expect(normalizeDbType('mssql', 'uniqueidentifier')).toBe('UUID');
-    expect(normalizeDbType('sqlite', 'varchar')).toBe('TEXT');
+    expect(normalizeDbType('postgresql', 'varchar')).toBe('TEXT');
   });
 
   it('tsTypeForOrm returns TS type for ORM type', () => {

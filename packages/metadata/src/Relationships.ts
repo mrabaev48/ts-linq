@@ -33,7 +33,9 @@ export function OneToMany(
     const ctor = target.constructor;
     
     // Resolve targetEntity thunk
-    const resolved = targetEntity();
+    // Start of fix: defer resolution to avoid circular dependency TDZ issues
+    const resolved = targetEntity; // Store function itself
+    // End of fix
     
     const relationship: RelationshipMetadata = {
       propertyName: name,
@@ -60,7 +62,12 @@ export function ManyToOne(
     const name = propertyKey.toString();
     const ctor = target.constructor;
     
-    const resolved = targetEntity();
+    let resolved;
+    try {
+        resolved = targetEntity();
+    } catch (e) {
+        resolved = targetEntity;
+    }
     
     const relationship: RelationshipMetadata = {
       propertyName: name,

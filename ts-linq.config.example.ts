@@ -18,8 +18,8 @@ export default ConfigBuilder
   .cache(true, 'memory')
   .environment('test', {
     database: {
-      provider: 'sqlite',
-      connection: ':memory:'
+      provider: 'postgresql',
+      connection: process.env.DATABASE_URL || 'postgres://localhost:5432/mydb'
     },
     logging: {
       level: 'debug',

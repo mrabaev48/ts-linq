@@ -1,25 +1,8 @@
-import type {
-  EntityMetadata,
-  ColumnMetadata,
-  SqlLogger,
-  RetryPolicy,
-  OrmMiddleware,
-  SoftDeleteOptions,
-  SqlParameter,
-  SqlDialect,
-  ConnectionPoolOptions,
-  ConnectionHealthCheckOptions,
-  MySqlConfig
-} from '@ts-linq/types';
-import {
-  OptimisticConcurrencyError,
-  UniqueConstraintError,
-  DatabaseError
-} from '@ts-linq/types';
+import type { EntityMetadata, MySqlConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
+import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
 import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { MysqlDialect } from '@ts-linq/dialect-mysql';
-import { MySqlDdlStrategy } from '@ts-linq/dialect-mysql';
+import { MysqlDialect, MySqlDdlStrategy } from '@ts-linq/dialect-mysql';
 import { buildMysqlConnectionString } from './buildConnectionString';
 
 /**
@@ -54,6 +37,25 @@ interface MySqlPoolLike {
   query(sql: string, params?: readonly SqlParameter[]): Promise<[unknown]>;
   execute(sql: string, params?: readonly SqlParameter[]): Promise<[unknown]>;
   end(): Promise<void>;
+}
+
+function mapMySqlError(err: unknown): Error {
+  const anyErr = err as { code?: string; message?: string } | undefined;
+  const code = anyErr?.code;
+  const message = anyErr?.message || String(err);
+  if (code === 'ER_DUP_ENTRY') return new UniqueConstraintError(message, code);
+  return new DatabaseError(message ?? 'Unknown error');
+}
+
+function safeRequireMysql2(): { createPool: (connectionString: string) => MySqlPoolLike } {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('mysql2/promise');
+  } catch (e) {
+    throw new Error(
+      'Package "mysql2" is required for MySqlProvider. Install it with: npm install mysql2'
+    );
+  }
 }
 
 export class MySqlProvider extends DatabaseProvider {
@@ -119,18 +121,22 @@ export class MySqlProvider extends DatabaseProvider {
     const sql = this.ddl.generateCreateTableSql(entity);
     await this.executeNonQuery(sql);
     for (const idx of entity.indexes) {
-      await this.executeNonQuery(this.ddl.generateCreateIndexSql(entity.tableName, {
-        ...idx,
-        unique: idx.unique ?? false
-      }));
+      await this.executeNonQuery(
+        this.ddl.generateCreateIndexSql(entity.tableName, {
+          ...idx,
+          unique: idx.unique ?? false
+        })
+      );
     }
   }
 
   public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const { sql, params } = this.generateInsertSql(entity as Record<string, unknown>, metadata);
-    await this.executeNonQuery(sql, params);
+    const dialect = this.getDialect();
+    if (!dialect.buildInsert) throw new Error('Dialect does not support buildInsert');
+    const { sql, parameters } = dialect.buildInsert(entity as Record<string, unknown>, metadata);
+    await this.executeNonQuery(sql, parameters);
     return entity;
   }
 
@@ -138,14 +144,17 @@ export class MySqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const versionCol = metadata.columns.find((c) => c.isVersion);
-    const { sql, params } = this.generateUpdateSql(
+    const dialect = this.getDialect();
+    if (!dialect.buildUpdate) throw new Error('Dialect does not support buildUpdate');
+    const { sql, parameters } = dialect.buildUpdate(
       entity as Record<string, unknown>,
       metadata,
       versionCol
     );
-    const affectedRows = await this.executeNonQuery(sql, params);
+    const affectedRows = await this.executeNonQuery(sql, parameters);
     if (affectedRows === 0) {
-      if (versionCol) throw new OptimisticConcurrencyError('Version mismatch detected during update');
+      if (versionCol)
+        throw new OptimisticConcurrencyError('Version mismatch detected during update');
       throw new Error('No rows were updated.');
     }
     if (versionCol) {
@@ -185,8 +194,10 @@ export class MySqlProvider extends DatabaseProvider {
   public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const { sql, params } = this.generateDeleteSql(entity as Record<string, unknown>, metadata);
-    const affectedRows = await this.executeNonQuery(sql, params);
+    const dialect = this.getDialect();
+    if (!dialect.buildDelete) throw new Error('Dialect does not support buildDelete');
+    const { sql, parameters } = dialect.buildDelete(entity as Record<string, unknown>, metadata);
+    const affectedRows = await this.executeNonQuery(sql, parameters);
     if (affectedRows === 0) throw new Error('No rows were deleted.');
   }
 
@@ -364,72 +375,6 @@ export class MySqlProvider extends DatabaseProvider {
     }
   }
 
-  // DDL generation moved to MySqlDdlStrategy
-  private generateInsertSql(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): { sql: string; params: SqlParameter[] } {
-    const insertable = metadata.columns.filter(
-      (c) => (!c.isGenerated || entity[c.propertyName] !== undefined) && !c.isComputed
-    );
-    const names = insertable.map((c) => c.columnName);
-    const placeholders = insertable.map(() => '?');
-    const params: SqlParameter[] = insertable.map((c) =>
-      this.coerceToSqlParameter(entity[c.propertyName])
-    );
-    return {
-      sql: `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
-      params
-    };
-  }
-  private generateUpdateSql(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata,
-    versionCol?: ColumnMetadata
-  ): { sql: string; params: SqlParameter[] } {
-    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
-      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
-    }
-    const primaryKeys = metadata.primaryKeys;
-    const updatable = metadata.columns.filter(
-      (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
-    );
-    const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
-    const setParams: SqlParameter[] = updatable.map((c) =>
-      this.coerceToSqlParameter(entity[c.propertyName])
-    );
-    if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
-    const whereClauses: string[] = [];
-    const whereParams: SqlParameter[] = [];
-    for (const pk of primaryKeys) {
-      const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      whereClauses.push(`${col.columnName} = ?`);
-      whereParams.push(this.coerceToSqlParameter(entity[pk]));
-    }
-    if (versionCol) {
-      whereClauses.push(`${versionCol.columnName} = ?`);
-      whereParams.push(this.coerceToSqlParameter(entity[versionCol.propertyName]));
-    }
-    const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
-    return { sql, params: [...setParams, ...whereParams] };
-  }
-  private generateDeleteSql(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): { sql: string; params: SqlParameter[] } {
-    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
-      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
-    }
-    const whereClauses: string[] = [];
-    const params: SqlParameter[] = [];
-    for (const pk of metadata.primaryKeys) {
-      const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      whereClauses.push(`${col.columnName} = ?`);
-      params.push(this.coerceToSqlParameter(entity[pk]));
-    }
-    const sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClauses.join(' AND ')}`;
-    return { sql, params };
-  }
   private mapRowToEntity<T extends object>(row: unknown, entityClass: new () => T): T {
     const entity = new entityClass();
     const metadata = MetadataStorage.getEntity(entityClass);
@@ -447,48 +392,5 @@ export class MySqlProvider extends DatabaseProvider {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     this.notifyEntityMaterialized(entity, metadata);
     return entity;
-  }
-}
-
-function mapTypeToMySql(type: string): string {
-  switch (type.toUpperCase()) {
-    case 'TEXT':
-    case 'STRING':
-      return 'TEXT';
-    case 'INTEGER':
-    case 'NUMBER':
-      return 'INT';
-    case 'REAL':
-    case 'FLOAT':
-    case 'DOUBLE':
-      return 'DOUBLE';
-    case 'BOOLEAN':
-      return 'TINYINT(1)';
-    case 'DATETIME':
-    case 'DATE':
-      return 'DATETIME';
-    case 'BLOB':
-      return 'BLOB';
-    default:
-      return 'TEXT';
-  }
-}
-
-function mapMySqlError(err: unknown): Error {
-  const anyErr = err as { code?: string; message?: string } | undefined;
-  const code = anyErr?.code;
-  const message = anyErr?.message || String(err);
-  if (code === 'ER_DUP_ENTRY') return new UniqueConstraintError(message, code);
-  return new DatabaseError(message ?? 'Unknown error');
-}
-
-function safeRequireMysql2(): { createPool: (connectionString: string) => MySqlPoolLike } {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('mysql2/promise');
-  } catch (e) {
-    throw new Error(
-      'Package "mysql2" is required for MySqlProvider. Install it with: npm install mysql2'
-    );
   }
 }

@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist *.tsbuildinfo",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
@@ -34,7 +34,7 @@
     "@ts-linq/core": "workspace:*",
     "@ts-linq/types": "workspace:*",
     "@ts-linq/migrations": "workspace:*",
-    "@ts-linq/provider-sqlite": "workspace:*",
+
     "@ts-linq/provider-postgres": "workspace:*",
     "@ts-linq/provider-mysql": "workspace:*",
     "@ts-linq/provider-mssql": "workspace:*"

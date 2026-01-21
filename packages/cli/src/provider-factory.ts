@@ -4,17 +4,17 @@ import type {
   ConnectionPoolOptions,
   FallbackPolicy
 } from '@ts-linq/types';
-import { SQLiteProvider } from '@ts-linq/provider-sqlite';
+
 import { PostgresProvider } from '@ts-linq/provider-postgres';
 import { MySqlProvider } from '@ts-linq/provider-mysql';
 import { MssqlProvider } from '@ts-linq/provider-mssql';
 
 export function createProviderFromEnv(): DatabaseProvider {
-  const kind = (process.env.DB_PROVIDER || 'sqlite').toLowerCase();
+  const kind = (process.env.DB_PROVIDER || 'postgres').toLowerCase();
   if (isPg(kind)) return createPg();
   if (kind === 'mysql') return createMy();
   if (isMs(kind)) return createMs();
-  return createSqlite();
+  throw new Error(`Unsupported DB_PROVIDER: ${kind}`);
 }
 
 function isPg(kind: string): boolean {
@@ -130,13 +130,7 @@ function createMs(): DatabaseProvider {
   return provider;
 }
 
-function createSqlite(): DatabaseProvider {
-  const conn = process.env.SQLITE_URL || ':memory:';
-  const provider = new SQLiteProvider({ file: conn }) as unknown as DatabaseProvider;
-  const { circuit } = readPoolHealthCircuitFromEnv();
-  if (circuit) provider.configureCircuit(circuit);
-  return provider;
-}
+
 
 function readPoolHealthCircuitFromEnv(): {
   pool?: ConnectionPoolOptions;

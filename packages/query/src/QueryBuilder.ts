@@ -18,7 +18,7 @@ export class QueryBuilder {
   private _cache: SqlCache;
   /**
    * Create a QueryBuilder that delegates SQL generation to a dialect.
-   * @param dialect SqlDialect implementation (default: SQLiteDialect)
+   * @param dialect SqlDialect implementation
    */
   constructor(
     dialect: SqlDialect,

@@ -2,6 +2,7 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { SchemaSnapshotBuilder } from './SchemaSnapshot';
 import type { SchemaSnapshot, ColumnDef } from './DiffTypes';
+import type { Dialect } from './Dialect';
 import { SchemaInspectionService } from './services/SchemaInspectionService';
 import { StepPlanner } from './services/StepPlanner';
 
@@ -10,18 +11,16 @@ export interface MigrationStep {
 }
 
 /**
- * Minimal diff generator (SQLite):
+ * Minimal diff generator:
  * - Create table if missing
  * - Add missing non-nullable columns with default (when possible)
- *
- * Note: For complex ALTERs SQLite often requires table rebuild; here we handle simple adds.
  */
 export class DiffMigrationGenerator {
   constructor(private provider: DatabaseProvider) {}
 
   public async generate(): Promise<MigrationStep[]> {
     const expected: SchemaSnapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
-    const label = this.provider.providerLabel as 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
+    const label = (this.provider.providerLabel || 'postgresql') as Dialect;
     const inspection = new SchemaInspectionService();
     const actual: SchemaSnapshot = await inspection.buildActualSnapshot(this.provider, expected);
     const planner = new StepPlanner();

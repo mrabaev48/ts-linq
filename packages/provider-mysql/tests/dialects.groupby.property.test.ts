@@ -5,7 +5,7 @@ import type { QueryOptions } from '@ts-linq/types';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
-import { SQLiteDialect } from '@ts-linq/dialect-sqlite';
+
 
 class U {
   id!: number;
@@ -54,7 +54,7 @@ describe('JOIN / GROUP BY / HAVING / ORDER (property-based)', () => {
       qid: (s: string) => `\`${s}\``
     },
     { name: 'mssql', qb: () => new QueryBuilder(new MssqlDialect()), qid: (s: string) => `[${s}]` },
-    { name: 'sqlite', qb: () => new QueryBuilder(new SQLiteDialect()), qid: (s: string) => s }
+
   ] as const;
 
   test.each(dialects)('%s: renders JOIN/GROUP BY/HAVING/ORDER consistently', ({ qb, qid }) => {

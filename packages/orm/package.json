@@ -2,12 +2,30 @@
   "name": "@ts-linq/orm",
   "version": "2.0.0-alpha.1",
   "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "dependencies": {
     "@ts-linq/core": "workspace:*",
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metadata": "workspace:*",
     "@ts-linq/query": "workspace:*"
   },
-  "devDependencies": {"typescript": "^5.4.5"},
-  "scripts": {"build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json"}
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
 }

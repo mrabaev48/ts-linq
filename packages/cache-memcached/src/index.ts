@@ -8,3 +8,6 @@ export type {
   MemcachedCountCacheOptions,
   MemjsClientLike as MemcachedCountClientLike
 } from './memcached/MemcachedCountCacheAdapter';
+
+export { MemcachedEntityCacheAdapter } from './memcached/MemcachedEntityCacheAdapter';
+export type { MemcachedEntityCacheOptions } from './memcached/MemcachedEntityCacheAdapter';

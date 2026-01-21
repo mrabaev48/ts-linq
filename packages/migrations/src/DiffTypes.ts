@@ -71,9 +71,9 @@ export interface TableDiff {
   /** Drop these foreign key constraint names from the existing table. */
   fkDrops?: string[];
   // future: fkChanges
-  /** Optional snapshot of expected columns after changes (used for SQLite rebuild). */
+  /** Optional snapshot of expected columns after changes. */
   columnsAfter?: ColumnDef[];
-  /** Optional snapshot of expected primary keys after changes (used for SQLite rebuild). */
+  /** Optional snapshot of expected primary keys after changes. */
   primaryKeysAfter?: string[];
 }
 

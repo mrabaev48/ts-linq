@@ -86,7 +86,7 @@ class MinimalProvider extends DatabaseProvider {
   public executed: string[] = [];
   constructor() {
     super('mock://');
-    (this as unknown as { providerName: string }).providerName = 'sqlite';
+    (this as unknown as { providerName: string }).providerName = 'test';
   }
   public async executeNonQuery(sql: string): Promise<number> {
     this.executed.push(sql);

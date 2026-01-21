@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Minimal CLI: prints SQLite diff SQL using current metadata. */
+/* Minimal CLI: prints diff SQL using current metadata. */
 //
 import { InitCommand } from './commands/InitCommand';
 import { GenerateEntityCommand } from './commands/GenerateEntityCommand';

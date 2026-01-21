@@ -47,10 +47,8 @@ export function buildAddFkSql(
       return `ALTER TABLE ${q(dialect, table)} ADD ${inline}`;
     }
     default: {
-      const name = fk.name ? `CONSTRAINT ${q(dialect, fk.name)} ` : '';
-      const cols = fk.columns.join(', ');
-      const refCols = fk.refColumns.join(', ');
-      return `-- SQLite requires table rebuild to add FK: ${name}(${cols}) -> ${fk.refTable}(${refCols})`;
+      const _exhaustive: never = dialect;
+      return _exhaustive;
     }
   }
 }
@@ -63,7 +61,9 @@ export function buildDropFkSql(dialect: Dialect, table: string, nameRaw: string)
       return `ALTER TABLE ${q(dialect, table)} DROP FOREIGN KEY ${q(dialect, nameRaw)}`;
     case 'mssql':
       return `ALTER TABLE ${q(dialect, table)} DROP CONSTRAINT ${q(dialect, nameRaw)}`;
-    default:
-      return `-- SQLite requires table rebuild to drop FK: ${nameRaw}`;
+    default: {
+      const _exhaustive: never = dialect;
+      return _exhaustive;
+    }
   }
 }

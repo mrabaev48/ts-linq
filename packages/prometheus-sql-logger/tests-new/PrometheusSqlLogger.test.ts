@@ -73,12 +73,12 @@ describe('PrometheusSqlLogger', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient, prefix: 'tsl_' });
     const start = Date.now();
     
-    logger.queryStart?.({ sql: 'SELECT * FROM "Users"', params: [], provider: 'sqlite' });
+    logger.queryStart?.({ sql: 'SELECT * FROM "Users"', params: [], provider: 'postgresql' });
     logger.queryEnd?.({
       sql: 'SELECT * FROM "Users"',
       params: [],
       durationMs: Date.now() - start,
-      provider: 'sqlite'
+      provider: 'postgresql'
     });
     
     // Should not throw - metrics recorded successfully
@@ -111,8 +111,8 @@ describe('PrometheusSqlLogger', () => {
     const hitsBefore = hits.length;
     const missesBefore = misses.length;
     
-    logger.cache?.({ cache: 'count', hit: true, provider: 'sqlite' });
-    logger.cache?.({ cache: 'entityL2', hit: false, provider: 'sqlite' });
+    logger.cache?.({ cache: 'count', hit: true, provider: 'postgresql' });
+    logger.cache?.({ cache: 'entityL2', hit: false, provider: 'postgresql' });
     
     expect(hits.length).toBe(hitsBefore + 1);
     expect(misses.length).toBe(missesBefore + 1);
@@ -120,10 +120,6 @@ describe('PrometheusSqlLogger', () => {
 
   it('should handle multiple queries with different providers', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient, prefix: 'tsl_' });
-    
-    // SQLite query
-    logger.queryStart?.({ sql: 'SELECT * FROM users', params: [], provider: 'sqlite' });
-    logger.queryEnd?.({ sql: 'SELECT * FROM users', params: [], durationMs: 10, provider: 'sqlite' });
     
     // PostgreSQL query
     logger.queryStart?.({ sql: 'SELECT * FROM posts', params: [1], provider: 'postgresql' });
@@ -136,8 +132,8 @@ describe('PrometheusSqlLogger', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient, prefix: 'tsl_' });
     
     // Count cache
-    logger.cache?.({ cache: 'count', hit: true, provider: 'sqlite' });
-    logger.cache?.({ cache: 'count', hit: false, provider: 'sqlite' });
+    logger.cache?.({ cache: 'count', hit: true, provider: 'postgresql' });
+    logger.cache?.({ cache: 'count', hit: false, provider: 'postgresql' });
     
     // Entity L2 cache
     logger.cache?.({ cache: 'entityL2', hit: true, provider: 'postgresql' });

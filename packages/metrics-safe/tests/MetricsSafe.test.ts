@@ -21,7 +21,7 @@ describe('MetricsSafe', () => {
       const payload = {
         cache: 'sqlGen' as const,
         hit: true,
-        provider: 'sqlite'
+        provider: 'postgresql'
       };
 
       safeCache(logger, payload);

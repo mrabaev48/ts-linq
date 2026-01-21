@@ -53,7 +53,7 @@ export class ProviderStub extends DatabaseProvider {
     retryPolicy?: any
   ) {
     super(connectionString, logger, middlewares, softDelete, retryPolicy);
-    this.providerName = 'sqlite';
+    this.providerName = 'test';
   }
   private readonly data: Map<string, any[]> = new Map();
   private readonly seq: Map<string, number> = new Map();
@@ -302,61 +302,6 @@ export class ProviderStub extends DatabaseProvider {
       return combined as unknown as T[];
     }
     // Very small SQL subset: SELECT * FROM <table> [WHERE <col> = ?] [ORDER BY <col> ASC|DESC] [LIMIT N [OFFSET M]]
-    // SQLite schema inspection PRAGMAs and sqlite_master
-    if (/^\s*PRAGMA\s+table_info\(([^)]+)\)/i.test(sql)) {
-      const t = /^\s*PRAGMA\s+table_info\(([^)]+)\)/i.exec(sql)![1];
-      const table = this.data.get(t) || [];
-      const cols = Object.keys(table[0] || {}).map((name, idx) => ({
-        name,
-        type: typeof (table[0] || {})[name] === 'number' ? 'INTEGER' : 'TEXT',
-        notnull: false,
-        dflt_value: null,
-        pk: name === 'id' ? 1 : 0
-      }));
-      const durationMs = Date.now() - startedAt;
-      this.loggerRef?.queryEnd?.({
-        sql,
-        params,
-        durationMs,
-        rows: cols.length,
-        provider: this.providerLabel
-      });
-      return cols as unknown as T[];
-    }
-    if (/^\s*PRAGMA\s+index_list\(([^)]+)\)/i.test(sql)) {
-      const durationMs = Date.now() - startedAt;
-      this.loggerRef?.queryEnd?.({
-        sql,
-        params,
-        durationMs,
-        rows: 0,
-        provider: this.providerLabel
-      });
-      return [] as unknown as T[];
-    }
-    if (/^\s*PRAGMA\s+index_info\(([^)]+)\)/i.test(sql)) {
-      const durationMs = Date.now() - startedAt;
-      this.loggerRef?.queryEnd?.({
-        sql,
-        params,
-        durationMs,
-        rows: 0,
-        provider: this.providerLabel
-      });
-      return [] as unknown as T[];
-    }
-    if (/SELECT\s+name\s+FROM\s+sqlite_master/i.test(sql)) {
-      const names = Array.from(this.data.keys()).map((name) => ({ name }));
-      const durationMs = Date.now() - startedAt;
-      this.loggerRef?.queryEnd?.({
-        sql,
-        params,
-        durationMs,
-        rows: names.length,
-        provider: this.providerLabel
-      });
-      return names as unknown as T[];
-    }
     const mFrom = /FROM\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(sql);
     if (!mFrom) return [] as unknown as T[];
     const tableName = mFrom[1];

@@ -18,11 +18,6 @@
       "import": "./packages/core/dist/esm/index.js",
       "require": "./packages/core/dist/esm/index.js"
     },
-    "./provider-sqlite": {
-      "types": "./packages/provider-sqlite/dist/esm/index.d.ts",
-      "import": "./packages/provider-sqlite/dist/esm/index.js",
-      "require": "./packages/provider-sqlite/dist/esm/index.js"
-    },
     "./provider-postgres": {
       "types": "./packages/provider-postgres/dist/esm/index.d.ts",
       "import": "./packages/provider-postgres/dist/esm/index.js",
@@ -62,16 +57,15 @@
     "build:core": "turbo run build --filter=@ts-linq/core",
     "build:query": "turbo run build --filter=@ts-linq/query",
     "build:orm": "turbo run build --filter=@ts-linq/orm",
-    "build:dialect-sqlite": "turbo run build --filter=@ts-linq/dialect-sqlite",
+
     "build:dialect-postgres": "turbo run build --filter=@ts-linq/dialect-postgres",
     "build:dialect-mysql": "turbo run build --filter=@ts-linq/dialect-mysql",
     "build:dialect-mssql": "turbo run build --filter=@ts-linq/dialect-mssql",
-    "build:dialects": "turbo run build --filter=@ts-linq/dialect-sqlite --filter=@ts-linq/dialect-postgres --filter=@ts-linq/dialect-mysql --filter=@ts-linq/dialect-mssql",
-    "build:provider-sqlite": "turbo run build --filter=@ts-linq/provider-sqlite",
+    "build:dialects": "turbo run build --filter=@ts-linq/dialect-postgres --filter=@ts-linq/dialect-mysql --filter=@ts-linq/dialect-mssql",
     "build:provider-postgres": "turbo run build --filter=@ts-linq/provider-postgres",
     "build:provider-mysql": "turbo run build --filter=@ts-linq/provider-mysql",
     "build:provider-mssql": "turbo run build --filter=@ts-linq/provider-mssql",
-    "build:providers": "turbo run build --filter=@ts-linq/provider-sqlite --filter=@ts-linq/provider-postgres --filter=@ts-linq/provider-mysql --filter=@ts-linq/provider-mssql",
+    "build:providers": "turbo run build --filter=@ts-linq/provider-postgres --filter=@ts-linq/provider-mysql --filter=@ts-linq/provider-mssql",
     "build:cli": "turbo run build --filter=@ts-linq/cli",
     "build:config": "turbo run build --filter=@ts-linq/config",
     "build:migrations": "turbo run build --filter=@ts-linq/migrations",
@@ -99,7 +93,7 @@
     "example:advanced": "ts-node examples/advanced-queries.ts",
     "example:basic": "ts-node examples/basic-usage.ts",
     "example:migrations": "ts-node examples/migrations.ts",
-    "example:sqlite": "ts-node examples/sqlite-app.ts",
+
     "example:postgres": "ts-node examples/postgres-app.ts",
     "example:mysql": "ts-node examples/mysql-app.ts",
     "example:mssql": "ts-node examples/mssql-app.ts",
@@ -114,7 +108,7 @@
     "database",
     "entity-framework",
     "linq",
-    "sqlite",
+
     "postgresql",
     "mysql",
     "mssql"
@@ -148,8 +142,8 @@
     "prettier": "^3.3.3",
     "rollup": "^2.79.1",
     "rollup-plugin-terser": "^7.0.2",
-    "source-map-explorer": "^2.5.3",
-    "sqlite3": "^5.1.7",
+
+
     "testcontainers": "^10.9.0",
     "ts-jest": "^29.4.5",
     "tsd": "^0.30.7",

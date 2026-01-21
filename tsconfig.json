@@ -20,14 +20,11 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "baseUrl": ".",
-    "paths": {
-      "@ts-linq/*": ["packages/*/src"]
-    }
+    "paths": {}
   },
   "files": [],
   "references": [
     { "path": "packages/core" },
-    { "path": "packages/sqlite" },
     { "path": "packages/postgres" },
     { "path": "packages/mysql" },
     { "path": "packages/mssql" },

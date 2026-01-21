@@ -39,7 +39,7 @@ describe('PrometheusSqlLogger - Query Analysis', () => {
       sql: 'SELECT * FROM users WHERE age > 18',
       params: [],
       durationMs: 123,
-      provider: 'sqlite',
+      provider: 'postgresql',
       slow: true,
       explainPlan: { plan: 'SCAN users' }
     };
@@ -69,12 +69,12 @@ describe('PrometheusSqlLogger - Query Analysis', () => {
   it('should record analysis for different database providers', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient as any, prefix: 'tsl_' });
     
-    // SQLite slow query
+    // PostgreSQL slow query
     logger.analysis?.({
       sql: 'SELECT * FROM products',
       params: [],
       durationMs: 250,
-      provider: 'sqlite',
+      provider: 'postgresql',
       slow: true,
       explainPlan: { plan: 'FULL SCAN' }
     });
@@ -108,7 +108,7 @@ describe('PrometheusSqlLogger - Query Analysis', () => {
       sql: 'SELECT * FROM users',
       params: [],
       durationMs: 100,
-      provider: 'sqlite',
+      provider: 'postgresql',
       slow: true
     };
     

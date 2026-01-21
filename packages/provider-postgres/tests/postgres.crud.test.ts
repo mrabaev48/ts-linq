@@ -1,4 +1,4 @@
-import { PostgresProvider } from '@ts-linq/provider-postgres';
+import { PostgresProvider } from '../src';
 
 describe('PostgresProvider CRUD (smoke)', () => {
   const url = process.env.POSTGRES_URL;

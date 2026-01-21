@@ -1,4 +1,4 @@
-import { MssqlProvider } from '@ts-linq/provider-mssql';
+import { MssqlProvider } from '../src';
 
 describe('MssqlProvider CRUD (smoke)', () => {
   const url = process.env.MSSQL_URL;

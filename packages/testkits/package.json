@@ -15,15 +15,17 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist *.tsbuildinfo"
   },
-  "files": ["dist/**/*"],
+  "files": [
+    "dist/**/*"
+  ],
   "dependencies": {
     "@ts-linq/types": "workspace:*",
-    "@ts-linq/core": "workspace:*"
+    "@ts-linq/core": "workspace:*",
+    "@ts-linq/metadata": "workspace:*"
   },
   "peerDependencies": {
-    "@ts-linq/provider-sqlite": "workspace:*",
     "@ts-linq/provider-postgres": "workspace:*",
     "@ts-linq/provider-mysql": "workspace:*",
     "@ts-linq/provider-mssql": "workspace:*"

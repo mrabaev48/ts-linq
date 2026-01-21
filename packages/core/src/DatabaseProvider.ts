@@ -33,7 +33,7 @@ export abstract class DatabaseProvider {
   private lastExecuteStartedAt?: number;
   protected softDelete?: SoftDeleteOptions;
   protected retryPolicy?: RetryPolicy;
-  /** Logical provider name for logging/metrics (sqlite|postgresql|mysql|mssql|unknown). */
+  /** Logical provider name for logging/metrics (postgresql|mysql|mssql|unknown). */
   protected providerName: string = 'unknown';
   /** Optional generic pool options forwarded to the underlying driver. */
   protected poolOptions?: ConnectionPoolOptions;

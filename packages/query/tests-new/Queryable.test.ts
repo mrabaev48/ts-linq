@@ -82,7 +82,7 @@ class TestProvider extends DatabaseProvider {
   public constructor() {
     // providerName label is used for cache keys/metrics
     super('memory://', undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    (this as unknown as { providerName: string }).providerName = 'sqlite';
+    (this as unknown as { providerName: string }).providerName = 'test';
   }
 }
 

@@ -1,1 +1,1 @@
-export type Dialect = 'sqlite' | 'postgresql' | 'mysql' | 'mssql';
+export type Dialect = 'postgresql' | 'mysql' | 'mssql';

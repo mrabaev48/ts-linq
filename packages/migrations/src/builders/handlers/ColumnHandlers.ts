@@ -20,8 +20,10 @@ export function handleColumnRenames(td: TableDiff, dialect: Dialect, up: string[
       case 'mssql':
         up.push(`EXEC sp_rename '${td.table}.${rn.from}', '${rn.to}', 'COLUMN'`);
         break;
-      default:
-        up.push(`-- SQLite column rename requires pragma or rebuild: ${rn.from} -> ${rn.to}`);
+      default: {
+        const _exhaustive: never = dialect;
+        return _exhaustive;
+      }
     }
   }
 }
@@ -45,9 +47,8 @@ export function renderColumn(dialect: Dialect, c: ColumnDef): string {
         return `${q(dialect, c.name)} AS (${(c as { computedExpression: string }).computedExpression})${persisted}`;
       }
       default: {
-        const kind =
-          (c as { computedStorage?: string }).computedStorage === 'STORED' ? 'STORED' : 'VIRTUAL';
-        return `${q(dialect, c.name)} GENERATED ALWAYS AS (${(c as { computedExpression: string }).computedExpression}) ${kind}`;
+        const _exhaustive: never = dialect;
+        return _exhaustive;
       }
     }
   }
@@ -80,7 +81,6 @@ export function buildAddColumnSql(
 }
 
 export function buildDropColumnSql(dialect: Dialect, table: string, name: string): string {
-  if (dialect === 'sqlite') return `-- DROP COLUMN ${name} is not supported directly in SQLite`;
   return `ALTER TABLE ${q(dialect, table)} DROP COLUMN ${q(dialect, name)}`;
 }
 
@@ -100,8 +100,10 @@ export function buildAlterTypeSql(
       return `ALTER TABLE ${tableName} MODIFY COLUMN ${columnName} ${mappedType}`;
     case 'mssql':
       return `ALTER TABLE ${tableName} ALTER COLUMN ${columnName} ${mappedType}`;
-    default:
-      return `-- ALTER TYPE not supported for sqlite; requires rebuild`;
+    default: {
+      const _exhaustive: never = dialect;
+      return _exhaustive;
+    }
   }
 }
 
@@ -120,7 +122,9 @@ export function buildAlterNullSql(
       return `-- MySQL requires full type in MODIFY for nullability; include in type alter`;
     case 'mssql':
       return `-- MSSQL requires full type in ALTER COLUMN for nullability; include in type alter`;
-    default:
-      return `-- SQLite nullability alter requires rebuild`;
+    default: {
+      const _exhaustive: never = dialect;
+      return _exhaustive;
+    }
   }
 }

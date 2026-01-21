@@ -4,8 +4,8 @@ describe('OpenTelemetrySqlLogger (tests-new)', () => {
   test('does nothing when @opentelemetry/api is not present', () => {
     const logger = new OpenTelemetrySqlLogger('svc');
     // no throw on start/end without tracer
-    logger.queryStart({ sql: 'SELECT 1', params: [], provider: 'sqlite' });
-    logger.queryEnd({ sql: 'SELECT 1', params: [], durationMs: 5, provider: 'sqlite' });
+    logger.queryStart({ sql: 'SELECT 1', params: [], provider: 'postgresql' });
+    logger.queryEnd({ sql: 'SELECT 1', params: [], durationMs: 5, provider: 'postgresql' });
   });
 
   test('masks SQL and sets span attributes when tracer is available', () => {
@@ -42,7 +42,7 @@ describe('OpenTelemetrySqlLogger (tests-new)', () => {
     const logger = new Otel('svc', { maskSql: true, maskPatterns: [/users/gi] });
     logger.queryStart({
       sql: "select * from users where name = 'John'",
-      params: [{ name: 'p1', value: 1 }],
+      params: [1],
       provider: 'postgresql',
       traceId: 't1'
     });
@@ -123,7 +123,7 @@ describe('OpenTelemetrySqlLogger (tests-new)', () => {
       params: [],
       durationMs: 50,
       slow: true,
-      provider: 'sqlite',
+      provider: 'postgresql',
       recommendations: ['add index']
     });
     expect(attrs['db.analysis.duration_ms']).toBe(50);

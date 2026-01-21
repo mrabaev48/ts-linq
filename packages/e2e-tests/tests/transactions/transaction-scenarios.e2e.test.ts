@@ -1,6 +1,6 @@
-import { setupTestDatabase, teardownTestDatabase } from '../setup';
+import { setupTestDatabase, teardownTestDatabase } from '../../src/setup';
 import { Entity, Column, PrimaryKey } from '@ts-linq/core';
-import { DbContext } from '@ts-linq/core';
+import { DbContext } from '@ts-linq/orm';
 
 @Entity({ name: 'accounts' })
 class Account {
@@ -14,7 +14,7 @@ class Account {
   balance!: number;
 }
 
-describe.each(['sqlite'])('E2E Transactions - %s', (providerName) => {
+describe.each(['postgresql'])('E2E Transactions - %s', (providerName) => {
   let harness: any;
   let provider: any;
   let context: DbContext;

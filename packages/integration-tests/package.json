@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "test": "jest -c jest.config.js",
-    "test:watch": "jest -c jest.config.js --watch"
+    "test:watch": "jest -c jest.config.js --watch",
+    "clean": "rm -rf dist *.tsbuildinfo"
   },
   "devDependencies": {
     "@ts-linq/core": "workspace:*",
@@ -15,18 +16,21 @@
     "@ts-linq/migrations": "workspace:*",
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metadata": "workspace:*",
-    "@ts-linq/dialect-sqlite": "workspace:*",
+
     "@ts-linq/dialect-postgres": "workspace:*",
     "@ts-linq/dialect-mysql": "workspace:*",
     "@ts-linq/dialect-mssql": "workspace:*",
-    "@ts-linq/provider-sqlite": "workspace:*",
+
     "@ts-linq/provider-postgres": "workspace:*",
     "@ts-linq/provider-mysql": "workspace:*",
     "@ts-linq/provider-mssql": "workspace:*",
     "@ts-linq/testkits": "workspace:*",
-    "sqlite3": "^5.1.6",
+    "@ts-linq/cache-redis": "workspace:*",
+    "@ts-linq/cache-memcached": "workspace:*",
+
     "typescript": "^5.4.5",
+    "@ts-linq/prometheus-sql-logger": "workspace:*",
+    "@ts-linq/open-telemetry-sql-logger": "workspace:*",
     "@types/node": "^24.3.0"
   }
 }
-

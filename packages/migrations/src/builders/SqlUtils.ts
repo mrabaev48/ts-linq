@@ -38,13 +38,6 @@ export function mapType(dialect: Dialect, t: string): string {
       bool: 'BIT',
       date: 'DATETIME2',
       float: 'FLOAT'
-    },
-    sqlite: {
-      int: 'INTEGER',
-      text: 'TEXT',
-      bool: 'INTEGER',
-      date: 'TEXT',
-      float: 'REAL'
     }
   };
   return perDialect[dialect][group];
@@ -67,7 +60,6 @@ export function formatValue(dialect: Dialect, v: unknown): string {
       case 'postgresql':
         return v ? 'TRUE' : 'FALSE';
       case 'mysql':
-      case 'sqlite':
       default:
         return v ? '1' : '0';
       case 'mssql':

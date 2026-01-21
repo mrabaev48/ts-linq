@@ -169,12 +169,14 @@ export class MssqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
-    const { sql, params, returningPk } = this.generateInsertSql(
+    const dialect = this.getDialect() as MssqlDialect;
+    const { sql, parameters, returningPk } = dialect.buildInsert(
       entity as Record<string, unknown>,
       metadata
     );
+    
     // For MSSQL, to retrieve identity we need a separate SELECT SCOPE_IDENTITY() or OUTPUT clause.
-    const affected = await this.executeNonQuery(sql, params);
+    const affected = await this.executeNonQuery(sql, parameters);
     if (affected > 0 && returningPk) {
       const rows = await this.executeQuery<{ id: number }>(
         'SELECT CAST(SCOPE_IDENTITY() AS INT) AS id'
@@ -192,12 +194,15 @@ export class MssqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const versionCol = metadata.columns.find((c) => c.isVersion);
-    const { sql, params } = this.generateUpdateSql(
+    
+    const dialect = this.getDialect() as MssqlDialect;
+    const { sql, parameters } = dialect.buildUpdate(
       entity as Record<string, unknown>,
       metadata,
       versionCol
     );
-    const affectedRows = await this.executeNonQuery(sql, params);
+
+    const affectedRows = await this.executeNonQuery(sql, parameters);
     if (affectedRows === 0) {
       if (versionCol) throw new OptimisticConcurrencyError('Version mismatch detected during update');
       throw new Error('No rows were updated.');
@@ -215,8 +220,11 @@ export class MssqlProvider extends DatabaseProvider {
   public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const { sql, params } = this.generateDeleteSql(entity as Record<string, unknown>, metadata);
-    const affectedRows = await this.executeNonQuery(sql, params);
+    
+    const dialect = this.getDialect() as MssqlDialect;
+    const { sql, parameters } = dialect.buildDelete(entity as Record<string, unknown>, metadata);
+    
+    const affectedRows = await this.executeNonQuery(sql, parameters);
     if (affectedRows === 0) throw new Error('No rows were deleted.');
   }
 
@@ -437,81 +445,6 @@ export class MssqlProvider extends DatabaseProvider {
   /** Provide SQL dialect for this provider. */
   public getDialect(): SqlDialect {
     return new MssqlDialect();
-  }
-
-  // Private helpers
-  // DDL generation moved to MssqlDdlStrategy
-
-  private generateInsertSql(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): { sql: string; params: SqlParameter[]; returningPk?: string } {
-    const insertable = metadata.columns.filter(
-      (col) => !col.isGenerated || entity[col.propertyName] !== undefined
-    );
-    const columnNames = insertable.map((c) => c.columnName);
-    const placeholders = insertable.map(() => '?');
-    const params: SqlParameter[] = insertable.map((c) =>
-      this.coerceToSqlParameter(entity[c.propertyName])
-    );
-    const sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) VALUES (${placeholders.join(', ')})`;
-    const firstPk = metadata.primaryKeys?.[0];
-    const returningPk =
-      firstPk && metadata.columns.find((c) => c.propertyName === firstPk)?.isGenerated
-        ? firstPk
-        : undefined;
-    return { sql, params, returningPk };
-  }
-
-  private generateUpdateSql(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata,
-    versionCol?: ColumnMetadata
-  ): { sql: string; params: SqlParameter[] } {
-    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
-      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
-    }
-    const primaryKeys = metadata.primaryKeys;
-    const updatable = metadata.columns.filter(
-      (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated
-    );
-    if (updatable.length === 0) throw new Error(`No updatable columns for ${metadata.tableName}`);
-    const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
-    const setParams: SqlParameter[] = updatable.map((c) =>
-      this.coerceToSqlParameter(entity[c.propertyName])
-    );
-    if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
-    const whereClauses: string[] = [];
-    const whereParams: SqlParameter[] = [];
-    for (const pk of primaryKeys) {
-      const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      whereClauses.push(`${col.columnName} = ?`);
-      whereParams.push(this.coerceToSqlParameter(entity[pk]));
-    }
-    if (versionCol) {
-      whereClauses.push(`${versionCol.columnName} = ?`);
-      whereParams.push(this.coerceToSqlParameter(entity[versionCol.propertyName]));
-    }
-    const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
-    return { sql, params: [...setParams, ...whereParams] };
-  }
-
-  private generateDeleteSql(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): { sql: string; params: SqlParameter[] } {
-    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
-      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
-    }
-    const whereClauses: string[] = [];
-    const params: SqlParameter[] = [];
-    for (const pk of metadata.primaryKeys) {
-      const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      whereClauses.push(`${col.columnName} = ?`);
-      params.push(this.coerceToSqlParameter(entity[pk]));
-    }
-    const sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClauses.join(' AND ')}`;
-    return { sql, params };
   }
 
   private mapRowToEntity<T extends object>(row: unknown, entityClass: new () => T): T {

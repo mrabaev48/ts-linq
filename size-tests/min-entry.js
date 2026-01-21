@@ -3,7 +3,7 @@ import { QueryBuilder } from '../packages/core/dist/esm/query/QueryBuilder.js';
 import '../packages/core/dist/esm/decorators/Entity.js';
 
 export function makeCtx() {
-  return new DbContext({ provider: 'sqlite' });
+  return new DbContext({ provider: 'postgresql' });
 }
 
 export function qb() {

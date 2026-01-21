@@ -409,10 +409,27 @@ export abstract class DbContext {
 
   private invalidateSqlCacheByNames(changedNames: ReadonlySet<string>): void {
     try {
-      const qb = require('../query/QueryBuilder') as {
-        QueryBuilder: { invalidateForEntity: (name: string) => number };
-      };
-      for (const name of changedNames) qb.QueryBuilder.invalidateForEntity(name);
+      const sqlCache = this._performanceOptions?.sqlCache as { invalidateBy?: (m: (k: string) => boolean) => number } | undefined;
+      
+      if (sqlCache?.invalidateBy) {
+        // Use instance cache if available
+        const providerLabel = this._provider.providerLabel;
+        const providerPrefix = providerLabel ? `${providerLabel}|` : '';
+        const ns = this._performanceOptions?.cacheNamespace ? `${this._performanceOptions.cacheNamespace}|` : '';
+        
+        for (const name of changedNames) {
+           const prefix = `${ns}${providerPrefix}${name}|`;
+           // Matching logic should align with QueryBuilder.buildCacheKey
+           // Key format: [ns|][provider|]EntityName|...
+           sqlCache.invalidateBy((key) => key.startsWith(prefix));
+        }
+      } else {
+        // Fallback to static global cache
+        const qb = require('../query/QueryBuilder') as {
+          QueryBuilder: { invalidateForEntity: (name: string) => number };
+        };
+        for (const name of changedNames) qb.QueryBuilder.invalidateForEntity(name);
+      }
     } catch (e) {
       // logInternalError('DbContext.invalidateCachesAfterSave.sqlCache', e);
     }
@@ -423,11 +440,19 @@ export abstract class DbContext {
       const extCount: { invalidateBy?: (m: (k: string) => boolean) => number } | undefined =
         this._performanceOptions?.countCache;
       if (!extCount?.invalidateBy) return;
+
+      const providerLabel = this._provider.providerLabel;
+      const providerPrefix = providerLabel ? `${providerLabel}|` : '';
+      const ns = this._performanceOptions?.cacheNamespace ? `${this._performanceOptions.cacheNamespace}|` : '';
+      
       for (const name of changedNames) {
-        extCount.invalidateBy((k) => k.startsWith(name + '|count|'));
+        // Match keys starting with [Namespace|][Provider|]EntityName|count|
+        // We match strictly on the prefix to avoid accidental invalidation of similarly named entities
+        const prefix = `${ns}${providerPrefix}${name}|count|`;
+        extCount.invalidateBy((key) => key.startsWith(prefix));
       }
-    } catch (e) {
-      // logInternalError('DbContext.invalidateCachesAfterSave.countCache', e);
+    } catch (error) {
+      // logInternalError('DbContext.invalidateCachesAfterSave.countCache', error);
     }
   }
 
