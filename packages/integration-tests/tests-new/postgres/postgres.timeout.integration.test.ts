@@ -15,12 +15,15 @@ d('[integration][postgres] statement timeout', () => {
     });
     await p.connect();
     try {
-      await p.executeNonQuery('SET statement_timeout = 50');
+      // statement_timeout is session-scoped; use a transaction to ensure both statements run on the same connection
+      await p.beginTransaction();
+      await p.executeNonQuery('SET LOCAL statement_timeout = 50');
       await expect(p.executeQuery('SELECT pg_sleep(0.2)')).rejects.toBeInstanceOf(DatabaseError);
     } finally {
       try {
-        await p.executeNonQuery('RESET statement_timeout');
+        await p.rollbackTransaction();
       } catch {}
+      await p.disconnect();
     }
   });
 });
