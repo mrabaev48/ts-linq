@@ -29,7 +29,7 @@ describe('Specification Pattern', () => {
     it('should return provided expression', () => {
       const expr: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'age' },
+        left: { type: 'MemberAccess', path: ['age'] },
         operator: ComparisonOperator.Gte,
         right: { type: 'Literal', value: 18 }
       };
@@ -105,14 +105,14 @@ describe('Specification Pattern', () => {
       it('should combine expressions with AND', () => {
         const expr1: BinaryExpressionNode = {
           type: 'BinaryExpression',
-          left: { type: 'Identifier', name: 'age' },
+          left: { type: 'MemberAccess', path: ['age'] },
           operator: ComparisonOperator.Gte,
           right: { type: 'Literal', value: 18 }
         };
 
         const expr2: BinaryExpressionNode = {
           type: 'BinaryExpression',
-          left: { type: 'Identifier', name: 'active' },
+          left: { type: 'MemberAccess', path: ['active'] },
           operator: ComparisonOperator.Eq,
           right: { type: 'Literal', value: true }
         };
@@ -134,11 +134,9 @@ describe('Specification Pattern', () => {
         const result = composite.toExpression();
         expect(result).not.toBeNull();
         expect(result?.type).toBe('LogicalExpression');
-        
-        const logicalResult = result as any;
-        if (logicalResult) {
-          expect(logicalResult.operator).toBe('AND');
-          expect(logicalResult.expressions).toHaveLength(2);
+        if (result && result.type === 'LogicalExpression') {
+          expect(result.operator).toBe('AND');
+          expect(result.expressions).toHaveLength(2);
         }
       });
     });
@@ -184,14 +182,14 @@ describe('Specification Pattern', () => {
       it('should combine expressions with OR', () => {
         const expr1: BinaryExpressionNode = {
           type: 'BinaryExpression',
-          left: { type: 'Identifier', name: 'age' },
+          left: { type: 'MemberAccess', path: ['age'] },
           operator: ComparisonOperator.Gte,
           right: { type: 'Literal', value: 65 }
         };
 
         const expr2: BinaryExpressionNode = {
           type: 'BinaryExpression',
-          left: { type: 'Identifier', name: 'age' },
+          left: { type: 'MemberAccess', path: ['age'] },
           operator: ComparisonOperator.Lt,
           right: { type: 'Literal', value: 18 }
         };
@@ -207,11 +205,9 @@ describe('Specification Pattern', () => {
         const result = composite.toExpression();
         expect(result).not.toBeNull();
         expect(result?.type).toBe('LogicalExpression');
-        
-        const logicalResult = result as any;
-        if (logicalResult) {
-          expect(logicalResult.operator).toBe('OR');
-          expect(logicalResult.expressions).toHaveLength(2);
+        if (result && result.type === 'LogicalExpression') {
+          expect(result.operator).toBe('OR');
+          expect(result.expressions).toHaveLength(2);
         }
       });
     });
@@ -231,7 +227,7 @@ describe('Specification Pattern', () => {
         
         const binaryExpr: BinaryExpressionNode = {
           type: 'BinaryExpression',
-          left: { type: 'Identifier', name: 'age' },
+          left: { type: 'MemberAccess', path: ['age'] },
           operator: ComparisonOperator.Gt,
           right: { type: 'Literal', value: 18 }
         };
@@ -245,10 +241,8 @@ describe('Specification Pattern', () => {
 
         const result = composite.toExpression();
         expect(result).not.toBeNull();
-        
-        const logicalResult = result as any;
-        if (logicalResult) {
-          expect(logicalResult.expressions).toHaveLength(1);
+        if (result && result.type === 'LogicalExpression') {
+          expect(result.expressions).toHaveLength(1);
         }
       });
 

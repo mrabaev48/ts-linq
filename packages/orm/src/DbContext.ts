@@ -1,5 +1,6 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import { ChangeTracker } from './ChangeTracker';
+import type { DbSetContext } from './DbSetContext';
 import { EntityLoader } from '@ts-linq/core';
 import type { LoadingOptions } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
@@ -687,14 +688,19 @@ export abstract class DbContext {
     for (const entity of entities) {
       if (!entity.target) continue;
       const original = getOriginal(entity.target);
+      const context: DbSetContext = {
+        provider: this._provider,
+        changeTracker: this._changeTracker,
+        entityLoader: this._entityLoader,
+        entityCache: this._entityCache,
+        performance: this._performanceOptions,
+        globalFilters: this._globalFilters,
+        softDeleteOptions: this._softDelete
+      };
+      
       const dbSet = new DbSet<object>(
         original as unknown as new () => object,
-        this._provider,
-        this._changeTracker,
-        this._entityLoader,
-        this._entityCache,
-        this._performanceOptions,
-        this._globalFilters
+        context
       );
       this._dbSets.set(original, dbSet);
 

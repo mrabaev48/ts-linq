@@ -49,7 +49,7 @@ describe('DbSet', () => {
       loggerRef: undefined
     } as any;
 
-    dbSet = new DbSet(User, mockProvider, changeTracker);
+    dbSet = new DbSet(User, { provider: mockProvider, changeTracker });
   });
 
   describe('constructor', () => {
@@ -59,7 +59,7 @@ describe('DbSet', () => {
     });
 
     it('should create DbSet for different entity types', () => {
-      const productSet = new DbSet(Product, mockProvider, changeTracker);
+      const productSet = new DbSet(Product, { provider: mockProvider, changeTracker });
       expect(productSet._entityClass).toBe(Product);
     });
   });
@@ -305,7 +305,7 @@ describe('DbSet', () => {
 
   describe('cross-entity scenarios', () => {
     it('should track entities of different types separately', () => {
-      const productSet = new DbSet(Product, mockProvider, changeTracker);
+      const productSet = new DbSet(Product, { provider: mockProvider, changeTracker });
       
       const user = Object.assign(new User(), { id: 1, name: 'John', email: 'john@test.com' });
       const product = Object.assign(new Product(), { id: 1, title: 'Widget', price: 9.99 });
@@ -317,7 +317,7 @@ describe('DbSet', () => {
     });
 
     it('should allow same ChangeTracker for multiple DbSets', () => {
-      const productSet = new DbSet(Product, mockProvider, changeTracker);
+      const productSet = new DbSet(Product, { provider: mockProvider, changeTracker });
       
       const user = Object.assign(new User(), { id: 1, name: 'John', email: 'john@test.com' });
       const product = Object.assign(new Product(), { id: 1, title: 'Widget', price: 9.99 });

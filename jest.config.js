@@ -14,7 +14,14 @@ module.exports = {
           lib: ['ES2021', 'DOM'],
           baseUrl: '.',
           paths: {
-            '@ts-linq/orm': ['packages/orm/src']
+            '@ts-linq/orm': ['packages/orm/src'],
+            '@ts-linq/migrations': ['packages/migrations/src'],
+            '@ts-linq/dialect-postgres': ['packages/dialect-postgres/src'],
+            '@ts-linq/dialect-mysql': ['packages/dialect-mysql/src'],
+            '@ts-linq/dialect-mssql': ['packages/dialect-mssql/src'],
+            '@ts-linq/provider-postgres': ['packages/provider-postgres/src'],
+            '@ts-linq/provider-mysql': ['packages/provider-mysql/src'],
+            '@ts-linq/provider-mssql': ['packages/provider-mssql/src']
           }
         }
       }

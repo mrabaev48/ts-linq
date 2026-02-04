@@ -1,7 +1,9 @@
-import { Queryable } from '../src/Queryable';
-import { MetadataStorage } from '@ts-linq/metadata';
 import { DatabaseProvider } from '@ts-linq/core';
+import { ComparisonOperator } from '@ts-linq/ast';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
+
+import { Queryable } from '../src/Queryable';
 
 class User {
   id!: number;
@@ -124,7 +126,15 @@ describe('Queryable (tests-new)', () => {
     const provider = new TestProvider();
     provider.setRows([{ id: 3, name: 'Carol' }]);
     const q = new Queryable(User, provider)
-      .where((u) => u.id > 1)
+      .whereCompiled({
+        ast: {
+          type: 'BinaryExpression',
+          left: { type: 'MemberAccess', path: ['id'] },
+          operator: ComparisonOperator.Gt,
+          right: { type: 'Literal', value: 1 }
+        },
+        parameters: []
+      })
       .orderBy((u) => u.id)
       .skip(0)
       .take(10);
@@ -142,7 +152,15 @@ describe('Queryable (tests-new)', () => {
       undefined,
       { enableCountCache: true, countCacheTtlMs: 10_000 },
       undefined
-    ).where((u) => u.id > 0);
+    ).whereCompiled({
+      ast: {
+        type: 'BinaryExpression',
+        left: { type: 'MemberAccess', path: ['id'] },
+        operator: ComparisonOperator.Gt,
+        right: { type: 'Literal', value: 0 }
+      },
+      parameters: []
+    });
     const n1 = await q.count();
     expect(n1).toBe(42);
     // Изменим провайдер, но второй вызов должен прийти из кэша
@@ -161,8 +179,26 @@ describe('Queryable (tests-new)', () => {
     expect(any).toBe(true);
     // Пустой результат для firstOrDefault()
     provider.setRows([]);
-    const firstOrDefault = await new Queryable(User, provider).where((u) => u.id === -1).firstOrDefault();
+    const firstOrDefault = await new Queryable(User, provider)
+      .whereCompiled({
+        ast: {
+          type: 'BinaryExpression',
+          left: { type: 'MemberAccess', path: ['id'] },
+          operator: ComparisonOperator.Eq,
+          right: { type: 'Literal', value: -1 }
+        },
+        parameters: []
+      })
+      .firstOrDefault();
     expect(firstOrDefault).toBeNull();
+  });
+
+  test('where() throws a helpful error when transformer is missing', () => {
+    const provider = new TestProvider();
+    const q = new Queryable(User, provider);
+    expect(() => q.where((u) => u.id > 0)).toThrow(
+      "ts-linq(where): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
+    );
   });
 });
 

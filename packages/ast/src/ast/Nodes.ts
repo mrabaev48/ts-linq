@@ -13,30 +13,75 @@ export enum ComparisonOperator {
   Lte = '<='
 }
 
-/** Base interface for all AST nodes. */
-export interface ExpressionNode {
-  type: string;
+/** Unary operators supported by the minimal AST. */
+export enum UnaryOperator {
+  Not = 'NOT'
 }
 
-export interface IdentifierNode extends ExpressionNode {
-  type: 'Identifier';
-  name: string;
-}
+import type { SqlParameter } from '@ts-linq/types';
 
-export interface LiteralNode extends ExpressionNode {
+/**
+ * Base SQL-compatible literal value.
+ *
+ * Note: This mirrors `SqlParameter` to keep the AST serializable and safe for SQL parameterization.
+ */
+export type SqlLiteralValue = SqlParameter;
+
+/** Literal value node (parameterized value). */
+export interface LiteralNode {
   type: 'Literal';
-  value: string | number | boolean | null;
+  value: SqlLiteralValue;
 }
 
-export interface BinaryExpressionNode extends ExpressionNode {
+/**
+ * Member access node representing a column/property path.
+ *
+ * Examples:
+ * - `userId` -> `['userId']`
+ * - `profile.age` -> `['profile','age']`
+ */
+export interface MemberAccessNode {
+  type: 'MemberAccess';
+  path: readonly string[];
+}
+
+/**
+ * Reference to a runtime parameter by index.
+ * The SQL generator must resolve it against `inputParameters[index]`.
+ */
+export interface ParameterRefNode {
+  type: 'ParameterRef';
+  index: number;
+}
+
+export interface BinaryExpressionNode {
   type: 'BinaryExpression';
-  left: IdentifierNode;
+  left: MemberAccessNode;
   operator: ComparisonOperator;
-  right: LiteralNode;
+  right: LiteralNode | ParameterRefNode;
 }
 
-export interface LogicalExpressionNode extends ExpressionNode {
+export interface LogicalExpressionNode {
   type: 'LogicalExpression';
   operator: LogicalOperator;
-  expressions: ExpressionNode[];
+  expressions: readonly ExpressionNode[];
 }
+
+export interface UnaryExpressionNode {
+  type: 'UnaryExpression';
+  operator: UnaryOperator.Not;
+  operand: ExpressionNode;
+}
+
+/**
+ * Minimal query expression tree supported by `@ts-linq/ast`.
+ *
+ * This is a strict discriminated union: unknown node types are rejected by SQL generation.
+ */
+export type ExpressionNode =
+  | LiteralNode
+  | MemberAccessNode
+  | ParameterRefNode
+  | BinaryExpressionNode
+  | LogicalExpressionNode
+  | UnaryExpressionNode;

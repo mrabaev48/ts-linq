@@ -8,6 +8,7 @@ import { Queryable, TypedQueryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
 import type { GlobalFilter, PerformanceOptions } from '@ts-linq/types';
 import type { PrimaryKeyOf } from '@ts-linq/core';
+import type { DbSetContext } from './DbSetContext';
 
 /**
  * Represents a typed set of entities and provides CRUD and LINQ-like operations
@@ -21,25 +22,22 @@ export class DbSet<T extends object> {
   private _entityCache: EntityCacheLike | undefined;
   private _performance: PerformanceOptions | undefined;
   private _globalFilters: GlobalFilter[] | undefined;
+  private _softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions;
   // Default chunk size; can be overridden via PerformanceOptions.inClauseChunkSize
   private static readonly DEFAULT_IN_CHUNK_SIZE = 1000;
 
   constructor(
     entityClass: new () => T,
-    provider: DatabaseProvider,
-    changeTracker: ChangeTracker,
-    entityLoader?: EntityLoader,
-    entityCache?: EntityCacheLike,
-    performance?: PerformanceOptions,
-    globalFilters?: GlobalFilter[]
+    context: DbSetContext
   ) {
     this._entityClass = entityClass;
-    this._provider = provider;
-    this._changeTracker = changeTracker;
-    this._entityLoader = entityLoader;
-    this._entityCache = entityCache;
-    this._performance = performance;
-    this._globalFilters = globalFilters;
+    this._provider = context.provider;
+    this._changeTracker = context.changeTracker;
+    this._entityLoader = context.entityLoader;
+    this._entityCache = context.entityCache;
+    this._performance = context.performance;
+    this._globalFilters = context.globalFilters;
+    this._softDeleteOptions = context.softDeleteOptions;
   }
 
   /** Add an entity to be inserted */
@@ -93,7 +91,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     )
       .where((e: any) => (e as unknown as Record<string, unknown>)[pk] === id)
       .firstOrDefault();
@@ -110,7 +109,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).toArray();
   }
 
@@ -119,7 +119,7 @@ export class DbSet<T extends object> {
     if (!ids || ids.length === 0) return [];
     const metadata = MetadataStorage.getEntity(this._entityClass);
     if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0) {
-      // Fallback: issue sequential finds (kept for completeness; generally not used)
+      // Fallback: issue sequential finds
       const results: T[] = [];
       for (const id of ids) {
         const found = await this.find(id);
@@ -129,27 +129,35 @@ export class DbSet<T extends object> {
     }
     const pk = metadata.primaryKeys[0];
     const column = metadata.columns.find((c: any) => c.propertyName === pk)?.columnName || pk;
+    
     // Cross-query optimization: deduplicate and chunk large IN lists
     const uniqueIds = Array.from(new Set(ids as unknown as unknown[]));
     if (uniqueIds.length === 0) return [];
     const chunkSize = (this._performance as any)?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
-    if (uniqueIds.length <= chunkSize) {
-      return await this._provider.findWhereIn(
+    
+    const runChunk = async (chunk: unknown[]) => {
+      return await new Queryable<T>(
         this._entityClass,
-        column,
-        uniqueIds as unknown as unknown[]
-      );
+        this._provider,
+        this._entityLoader,
+        this._entityCache,
+        this._performance,
+        this._globalFilters,
+        this._softDeleteOptions
+      )
+      .whereIn(pk as keyof T & string, chunk as any[])
+      .toArray();
+    };
+
+    if (uniqueIds.length <= chunkSize) {
+      return await runChunk(uniqueIds);
     }
     const aggregated: T[] = [];
     const total = uniqueIds.length;
     let chunks = 0;
     for (let i = 0; i < uniqueIds.length; i += chunkSize) {
       const chunk = uniqueIds.slice(i, i + chunkSize);
-      const part = await this._provider.findWhereIn(
-        this._entityClass,
-        column,
-        chunk as unknown as unknown[]
-      );
+      const part = await runChunk(chunk);
       aggregated.push(...part);
       chunks++;
     }
@@ -188,32 +196,35 @@ export class DbSet<T extends object> {
     values: ReadonlyArray<T[K]>
   ): Promise<T[]> {
     if (!values || values.length === 0) return [];
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    const columnName = metadata
-      ? metadata.columns.find((c: any) => c.propertyName === property || c.columnName === property)
-          ?.columnName || String(property)
-      : String(property);
     // Cross-query optimization: deduplicate inputs and split into chunks
     const uniqueValues = Array.from(new Set(values as unknown as unknown[]));
     if (uniqueValues.length === 0) return [];
+    
     const chunkSize = (this._performance as any)?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
+    
+    const runChunk = async (chunk: unknown[]) => {
+      return await new Queryable<T>(
+        this._entityClass,
+        this._provider,
+        this._entityLoader,
+        this._entityCache,
+        this._performance,
+        this._globalFilters,
+        this._softDeleteOptions
+      )
+      .whereIn(property, chunk as any[])
+      .toArray();
+    };
+
     if (uniqueValues.length <= chunkSize) {
-      return await this._provider.findWhereIn(
-        this._entityClass as unknown as new () => T,
-        columnName,
-        uniqueValues as unknown as unknown[]
-      );
+      return await runChunk(uniqueValues);
     }
     const aggregated: T[] = [];
     const total = uniqueValues.length;
     let chunks = 0;
     for (let i = 0; i < uniqueValues.length; i += chunkSize) {
       const chunk = uniqueValues.slice(i, i + chunkSize);
-      const part = await this._provider.findWhereIn(
-        this._entityClass as unknown as new () => T,
-        columnName,
-        chunk as unknown as unknown[]
-      );
+      const part = await runChunk(chunk);
       aggregated.push(...part);
       chunks++;
     }
@@ -234,7 +245,7 @@ export class DbSet<T extends object> {
         chunks,
         size: total,
         entity: (this._entityClass as unknown as { name?: string }).name || 'Unknown',
-        column: columnName,
+        column: String(property),
         provider: this._provider.providerLabel
       });
     } catch {
@@ -251,7 +262,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).where(predicate);
 
     return TypedQueryable.from(queryable);
@@ -265,7 +277,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).whereExists(subquery);
 
     return TypedQueryable.from(queryable);
@@ -281,7 +294,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).whereInSubquery(column, subquery);
 
     return TypedQueryable.from(queryable);
@@ -295,7 +309,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).select(selector);
 
     return TypedQueryable.from(queryable);
@@ -309,7 +324,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).orderBy(keySelector);
 
     return TypedQueryable.from(queryable);
@@ -323,7 +339,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).orderByDescending(keySelector);
 
     return TypedQueryable.from(queryable);
@@ -337,7 +354,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).take(count);
 
     return TypedQueryable.from(queryable);
@@ -351,7 +369,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).skip(count);
 
     return TypedQueryable.from(queryable);
@@ -365,7 +384,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).distinct();
 
     return TypedQueryable.from(queryable);
@@ -379,7 +399,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).union(other);
 
     return TypedQueryable.from(queryable);
@@ -392,7 +413,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).unionAll(other);
 
     return TypedQueryable.from(queryable);
@@ -406,7 +428,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).first();
   }
 
@@ -418,7 +441,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).firstOrDefault();
   }
 
@@ -430,7 +454,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).single();
   }
 
@@ -442,7 +467,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).singleOrDefault();
   }
 
@@ -454,7 +480,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).fallbackTo(source);
 
     return TypedQueryable.from(queryable);
@@ -468,7 +495,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).count();
   }
 
@@ -480,7 +508,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).any();
   }
 
@@ -493,7 +522,8 @@ export class DbSet<T extends object> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     ).include(selector);
 
     return TypedQueryable.from(queryable);
@@ -565,6 +595,16 @@ export class DbSet<T extends object> {
     const ids = pairs.filter((p) => p.id !== undefined && p.id !== null).map((p) => p.id);
     if (ids.length > 0) {
       // Fetch existing ids in one go if provider supports findWhereIn for PK column
+      // We can use findWhereIn SAFE wrapper logic (via Queryable) if we want soft delete check,
+      // BUT for UPSERT, we probably want to find even deleted rows?
+      // Soft Delete typically means "treat as missing for reads".
+      // If we attempt to UPSERT a Soft-Deleted row... do we Revive it? Or insert a duplicate?
+      // If Unique Key constraint exists on PK (it does), Insert will fail.
+      // So Update is the only valid path.
+      // If we Update a soft-deleted row, we might accidentally "undelete" it if we save isDeleted=0?
+      // Or we just update other fields and it stays deleted?
+      // For now, let's keep using direct provider access for UPSERT checks to ensure we find "physical" rows
+      // because DB constraints don't care about soft delete.
       const pkCol = metadata.columns.find((c: any) => c.propertyName === pk);
       const existingRows = await this._provider.findWhereIn(
         this._entityClass as unknown as new () => T,

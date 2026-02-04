@@ -1,37 +1,32 @@
-import type { DatabaseProvider } from '@ts-linq/core';
+import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
+import { SqlVisitor, type ExpressionNode } from '@ts-linq/ast';
+import { safeCache, safeCacheEvicted, safeCacheSize } from '@ts-linq/metrics-safe';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
-  WhereClause,
+  EntityCacheLike,
+  FallbackOperation,
+  FallbackPolicy,
+  FallbackRequest,
+  GlobalFilter,
+  JoinType,
   OrderByClause,
   PerformanceOptions,
-  Result,
-  GlobalFilter,
-  SqlParameter,
-  EntityCacheLike
-} from '@ts-linq/types';
-import { ok, err } from '@ts-linq/types';
-import type { CteDefinition } from '@ts-linq/types';
-import { QueryBuilder } from './QueryBuilder';
-import { PredicateParser } from './PredicateParser';
-import { SqlVisitor } from '@ts-linq/ast';
-import { QueryModel } from './QueryModel';
-import type { EntityLoader } from '@ts-linq/core';
-// LoadingStrategy not used directly here; keep imports minimal
-import { RowMaterializer } from './RowMaterializer';
-import { IncludePlanner } from './IncludePlanner';
-// EntityCache not used directly here
-import type { CountCache } from './CountCache';
-import { JoinPredicateParser } from './JoinPredicateParser';
-import { GlobalFilterApplier } from './GlobalFilterApplier';
-import { safeCache, safeCacheEvicted, safeCacheSize } from '@ts-linq/metrics-safe';
-import { logInternalError } from './InternalLogger';
-import type {
-  FallbackRequest,
   QueryFallback,
-  FallbackPolicy,
-  FallbackOperation,
-  JoinType
+  Result,
+  SqlParameter,
+  WhereClause
 } from '@ts-linq/types';
+import type { CteDefinition } from '@ts-linq/types';
+import { err, ok } from '@ts-linq/types';
+
+import type { CountCache } from './CountCache';
+import { GlobalFilterApplier } from './GlobalFilterApplier';
+import { IncludePlanner } from './IncludePlanner';
+import { logInternalError } from './InternalLogger';
+import { JoinPredicateParser } from './JoinPredicateParser';
+import { QueryBuilder } from './QueryBuilder';
+import { QueryModel } from './QueryModel';
+import { RowMaterializer } from './RowMaterializer';
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
@@ -41,7 +36,6 @@ export class Queryable<T> {
   private _entityClass: new () => T;
   private _provider: DatabaseProvider;
   private _model: QueryModel = new QueryModel();
-  private _fallbackPredicates: Array<(entity: T) => boolean> = [];
   private _entityLoader?: EntityLoader;
   private _entityCache?: EntityCacheLike;
   private _performance?: PerformanceOptions;
@@ -68,8 +62,6 @@ export class Queryable<T> {
   private static readonly REGEX_SIMPLE_OBJECT = /=>\s*\{([^}]+)\}/;
   private static readonly REGEX_PROP_IN_OBJECT = /\w+:\s*\w+\.(\w+)/;
   private static readonly REGEX_ANY_PROP = /(\w+)/;
-  private static readonly PREDICATE_CACHE_MAX = 1000;
-  private static _predicateSqlCache: Map<string, WhereClause> = new Map();
   private static readonly SELECTOR_CACHE_MAX = 1000;
   private static _selectorPropsCache: Map<string, string[]> = new Map();
   private static _keySelectorCache: Map<string, string> = new Map();
@@ -78,6 +70,8 @@ export class Queryable<T> {
   private static _fallbackWindowStart: number = 0;
   private static _fallbackUsedInWindow: number = 0;
   private static _fallbackLastAttemptAt: number = 0;
+
+  private _softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions;
 
   /**
    * Create a new Queryable bound to an entity type and provider.
@@ -91,7 +85,8 @@ export class Queryable<T> {
     entityLoader?: EntityLoader,
     entityCache?: EntityCacheLike,
     performance?: PerformanceOptions,
-    globalFilters?: GlobalFilter[]
+    globalFilters?: GlobalFilter[],
+    softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions
   ) {
     this._entityClass = entityClass;
     this._provider = provider;
@@ -99,6 +94,7 @@ export class Queryable<T> {
     this._entityCache = entityCache;
     this._performance = performance;
     this._globalFilters = globalFilters;
+    this._softDeleteOptions = softDeleteOptions;
     this._externalCountCache = performance?.countCache;
     this._sqlBuilder = new QueryBuilder(
       provider.getDialect() as any,
@@ -140,7 +136,8 @@ export class Queryable<T> {
       this._entityLoader,
       this._entityCache,
       this._performance,
-      this._globalFilters
+      this._globalFilters,
+      this._softDeleteOptions
     );
     clonedQueryable._model = this._model.clone();
     // preserve where signature for accurate count cache keys
@@ -148,8 +145,53 @@ export class Queryable<T> {
     // preserve includes, fallbacks and client-side predicates
     clonedQueryable._includes = [...this._includes];
     clonedQueryable._fallbacks = [...this._fallbacks];
-    clonedQueryable._fallbackPredicates = [...this._fallbackPredicates];
     return clonedQueryable;
+  }
+
+  /**
+   * Adds a WHERE IN clause for a specific column.
+   * Efficiently handles large lists of values.
+   * filter: column IN (v1, v2, ...)
+   */
+  public whereIn<K extends keyof T & string>(column: K, values: ReadonlyArray<T[K]>): Queryable<T> {
+    if (!values || values.length === 0) {
+      // IN (empty) matches nothing; ensure we return empty set.
+      // We add a condition "1 = 0"
+      this._model.where = this._model.where || [];
+      this._model.where.push({ condition: '1 = 0', parameters: [] });
+      this._whereSignature += '|1=0:[]';
+      return this;
+    }
+    
+    // Resolve column name from metadata (if available) or use property name
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    const dbColumn = metadata
+      ? metadata.columns.find((c) => c.propertyName === column || c.columnName === column)?.columnName || column
+      : column;
+
+    const quotedCol = this._provider.getDialect().quoteIdentifier(dbColumn);
+    
+    const whereClause: WhereClause = {
+      condition: `${quotedCol} IN (${values.map(() => '?').join(', ')})`,
+      parameters: values as unknown as SqlParameter[]
+    };
+    
+    this._model.where = this._model.where || [];
+    this._model.where.push(whereClause);
+    const sigParams = values.length > 5 ? `[${values.length} values]` : JSON.stringify(values);
+    this._whereSignature += `|${column}IN:${sigParams}`;
+    
+    return this;
+  }
+
+  /** Apply configured global filters to the provided query model. */
+  private applyGlobalFiltersToModel(model: QueryModel & { where?: WhereClause[] }): void {
+    this._globalFilterApplier.apply(
+      this._entityClass,
+      model,
+      this._softDeleteOptions ?? this._provider.softDeleteOptions, // Fallback to provider for backward compat temporarily, or prefer local
+      this._globalFilters
+    );
   }
 
   /**
@@ -183,14 +225,34 @@ export class Queryable<T> {
   }
 
   /**
-   * Adds a filter predicate to the query. If the predicate cannot be parsed
-   * into SQL, it is stored and applied in-memory after fetching.
+   * Adds a filter predicate to the query.
    *
    * @example
    * const cheap = await context.products.where(p => p.price < 100).toArray();
    */
   public where(predicate: (entity: T) => boolean): Queryable<T> {
-    this.addWhereOrFallback(predicate);
+    // Runtime predicate parsing is intentionally not supported.
+    // Use the compile-time transformer which rewrites `where(...)` into `whereCompiled(...)`.
+    throw new Error(
+      "ts-linq(where): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
+    );
+  }
+
+  /**
+   * Adds a filter predicate that has been compiled to a query AST at build time.
+   *
+   * This method is intended to be called only by the compile-time transformer.
+   */
+  public whereCompiled(input: {
+    readonly ast: ExpressionNode;
+    readonly parameters: readonly SqlParameter[];
+  }): Queryable<T> {
+    const visitor = new SqlVisitor();
+    const { condition, parameters } = visitor.toSql(input.ast, input.parameters);
+    const whereClause: WhereClause = { condition, parameters };
+    this._model.where = this._model.where || [];
+    this._model.where.push(whereClause);
+    this._whereSignature += `|${whereClause.condition}:${JSON.stringify(whereClause.parameters)}`;
     return this;
   }
 
@@ -415,16 +477,28 @@ export class Queryable<T> {
     if (!this._model.groupBy) {
       throw new Error('having() requires a preceding groupBy()');
     }
-    const parser = new PredicateParser<T>();
-    const ast = parser.parse(predicate);
-    if (ast) {
-      const visitor = new SqlVisitor();
-      const { condition, parameters } = visitor.toSql(ast);
-      this._model.groupBy.having = { condition, parameters };
-    } else {
-      // Fallback to a tautology if cannot parse; predicates on aggregates are not parsed yet
-      this._model.groupBy.having = { condition: '1=1', parameters: [] };
+    // Runtime predicate parsing is intentionally not supported.
+    // Use the compile-time transformer which rewrites `having(...)` into `havingCompiled(...)`.
+    throw new Error(
+      "ts-linq(having): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
+    );
+  }
+
+  /**
+   * Adds a HAVING predicate that has been compiled to a query AST at build time.
+   *
+   * This method is intended to be called only by the compile-time transformer.
+   */
+  public havingCompiled(input: {
+    readonly ast: ExpressionNode;
+    readonly parameters: readonly SqlParameter[];
+  }): Queryable<T> {
+    if (!this._model.groupBy) {
+      throw new Error('havingCompiled() requires a preceding groupBy()');
     }
+    const visitor = new SqlVisitor();
+    const { condition, parameters } = visitor.toSql(input.ast, input.parameters);
+    this._model.groupBy.having = { condition, parameters };
     return this;
   }
 
@@ -777,10 +851,10 @@ export class Queryable<T> {
     try {
       const primaryPromise = this._provider
         .executeQuery<{ count: number }>(countSql, params)
-        .then((rows) => rows[0]?.count ?? 0);
+        .then((rows: Array<{ count: number }>) => rows[0]?.count ?? 0);
       const winner = await Promise.race([
-        primaryPromise.then((n) => ({ k: 'p', n }) as const),
-        fallbackCountPromise.then((n) => ({ k: 'f', n }) as const)
+        primaryPromise.then((n: number) => ({ k: 'p', n }) as const),
+        fallbackCountPromise.then((n: number) => ({ k: 'f', n }) as const)
       ]);
       if (winner.k === 'p') return winner.n;
       if (typeof winner.n === 'number' && winner.n >= 0) {
@@ -819,63 +893,7 @@ export class Queryable<T> {
     return entities.length > 0;
   }
 
-  // helpers copied from previous QueryBuilder for parsing
-  /** Adds a SQL where clause if possible, else stores predicate for in-memory filtering. */
-  private addWhereOrFallback(predicate: (entity: T) => boolean): void {
-    const cacheKey = predicate.toString();
-    const cached = Queryable._predicateSqlCache.get(cacheKey);
-    if (cached) {
-      this._model.where = this._model.where || [];
-      // clone parameters array to avoid accidental mutations across queries
-      this._model.where.push({ condition: cached.condition, parameters: [...cached.parameters] });
-      // update where signature on cache hit as well
-      this._whereSignature += `|${cached.condition}:${JSON.stringify(cached.parameters)}`;
-      return;
-    }
-    const parser = new PredicateParser<T>();
-    const ast = parser.parse(predicate);
-    if (!ast) {
-      this._fallbackPredicates.push(predicate);
-      return;
-    }
-    const visitor = new SqlVisitor();
-    const { condition, parameters } = visitor.toSql(ast);
-    const whereClause: WhereClause = {
-      condition,
-      parameters
-    };
-    this._model.where = this._model.where || [];
-    this._model.where.push(whereClause);
-    // update where signature for faster count cache keys
-    this._whereSignature += `|${whereClause.condition}:${JSON.stringify(whereClause.parameters)}`;
-    // cache with simple FIFO eviction
-    if (Queryable._predicateSqlCache.size >= Queryable.PREDICATE_CACHE_MAX) {
-      const firstKey = Queryable._predicateSqlCache.keys().next().value;
-      if (firstKey !== undefined) Queryable._predicateSqlCache.delete(firstKey);
-    }
-    Queryable._predicateSqlCache.set(cacheKey, {
-      condition: whereClause.condition,
-      parameters: [...whereClause.parameters]
-    });
-  }
-
-  /** Applies all stored fallback predicates (runtime filters). */
-  private applyFallbackPredicates(entities: T[]): T[] {
-    if (this._fallbackPredicates.length === 0) return entities;
-    let result = entities;
-    for (const predicate of this._fallbackPredicates) {
-      result = result.filter((entityItem) => {
-        try {
-          return predicate(entityItem);
-        } catch {
-          return false;
-        }
-      });
-    }
-    return result;
-  }
-
-  /** Executes provided model, maps rows to entities and applies fallback predicates. */
+  /** Executes provided model and maps rows to entities. */
   private async executeAndMaterialize(model: QueryModel): Promise<T[]> {
     // propagate CTE to options via from field when present
     if (this._cte) {
@@ -942,7 +960,6 @@ export class Queryable<T> {
     rows: ReadonlyArray<Record<string, unknown>>
   ): Promise<T[]> {
     let entities = rows.map((row) => this._materializer.mapRowToEntity(row));
-    entities = this.applyFallbackPredicates(entities);
     await this._includePlanner.populateIncludes(entities, this._includes, model.limit);
     return entities;
   }
@@ -952,7 +969,6 @@ export class Queryable<T> {
     label: string,
     model: QueryModel
   ): Promise<T[]> {
-    entities = this.applyFallbackPredicates(entities);
     if (this._performance?.fallbackPolicy?.allowIncludesOnFallback === 'attempt') {
       try {
         await this._includePlanner.populateIncludes(entities, this._includes, model.limit);
@@ -1548,13 +1564,4 @@ export class Queryable<T> {
     return JoinPredicateParser.parse(onStr, leftTable, rightTable, leftMeta, rightMeta);
   }
 
-  /** Apply configured global filters to the provided query model. */
-  private applyGlobalFiltersToModel(model: QueryModel & { where?: WhereClause[] }): void {
-    this._globalFilterApplier.apply(
-      this._entityClass,
-      model,
-      this._provider.softDeleteOptions,
-      this._globalFilters
-    );
-  }
 }

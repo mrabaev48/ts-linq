@@ -1,8 +1,10 @@
-import { TypedQueryable } from '../src/TypedQueryable';
-import { Queryable } from '../src/Queryable';
-import { MetadataStorage } from '@ts-linq/metadata';
 import { DatabaseProvider } from '@ts-linq/core';
+import { ComparisonOperator } from '@ts-linq/ast';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
+
+import { Queryable } from '../src/Queryable';
+import { TypedQueryable } from '../src/TypedQueryable';
 
 class User {
   id!: number;
@@ -115,7 +117,15 @@ describe('TypedQueryable (tests-new)', () => {
       { id: 1, name: 'A' }
     ]);
     const typed = TypedQueryable.from(new Queryable(User, provider))
-      .where((u) => u.id >= 1)
+      .whereCompiled({
+        ast: {
+          type: 'BinaryExpression',
+          left: { type: 'MemberAccess', path: ['id'] },
+          operator: ComparisonOperator.Gte,
+          right: { type: 'Literal', value: 1 }
+        },
+        parameters: []
+      })
       .orderBy((u) => u.id, 'DESC')
       .thenBy((u) => u.name);
     const items = await typed.toArray();

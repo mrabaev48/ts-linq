@@ -55,6 +55,68 @@ main().catch((e) => {
 });
 ```
 
+## Compile-time predicate transformer (recommended)
+
+`@ts-linq/query` no longer parses predicates at runtime via `Function#toString()` and regex.
+Instead, a compile-time transformer rewrites:
+
+```ts
+q.where(u => u.age >= minAge && !u.isActive)
+```
+
+into:
+
+```ts
+q.whereCompiled({ ast, parameters })
+```
+
+### Setup (ts-patch)
+
+1. Install `ts-patch` as a dev dependency and patch your local TypeScript installation:
+
+```bash
+npm i -D ts-patch
+npx ts-patch install
+```
+
+2. Add the plugin to your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "plugins": [
+      {
+        "transform": "@ts-linq/transformer",
+        "type": "program"
+      }
+    ]
+  }
+}
+```
+
+3. Compile using `tspc` (ts-patch compiler wrapper):
+
+```bash
+npx tspc -p tsconfig.json
+```
+
+### Supported expression subset (v1)
+
+- `ArrowFunction` with a single parameter, expression body (not a block)
+- `&&` → `LogicalOperator.And`
+- `!` → `UnaryOperator.Not`
+- comparisons: `===`, `==`, `>`, `>=`, `<`, `<=`
+- left operand: member access rooted at the lambda parameter (`u.profile.age`)
+- right operand: literal (`number|string|boolean|null`) or a closure value (no lambda param references)
+
+### Breaking change / migration
+
+- Runtime `PredicateParser` has been removed.
+- Calling `where(...)` or `having(...)` without the transformer will throw:
+  `ts-linq(where): compile-time transformer is required...`
+- If your environment cannot run the transformer, you can call `whereCompiled(...)` / `havingCompiled(...)`
+  manually (but you lose the nice `where(u => ...)` UX).
+
 ## Local PostgreSQL via Docker
 
 This repository ships a minimal `docker-compose.yml` for PostgreSQL.
@@ -71,6 +133,7 @@ Monorepo packages live under `packages/`.
 - `@ts-linq/types` — shared types
 - `@ts-linq/metadata` — decorators + metadata storage
 - `@ts-linq/query` — query model + SQL generation helpers
+- `@ts-linq/transformer` — compile-time predicate transformer (`where(...)` → `whereCompiled(...)`)
 - `@ts-linq/orm` — `DbContext`, `DbSet`, change tracking
 - `@ts-linq/migrations` — schema diff + migration helpers
 - Providers:

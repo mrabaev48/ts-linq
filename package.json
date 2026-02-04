@@ -81,6 +81,7 @@
     "build:plugin-soft-delete": "turbo run build --filter=@ts-linq/plugin-soft-delete",
     "build:integration-nestjs": "turbo run build --filter=@ts-linq/integration-nestjs",
     "build:examples": "turbo run build --filter=@ts-linq/examples",
+    "build:transformer": "turbo run build --filter=@ts-linq/transformer",
     "build:e2e-tests": "turbo run build --filter=@ts-linq/e2e-tests",
     "test": "jest",
     "test:unit": "jest -c ./jest.unit.config.js",
@@ -97,6 +98,9 @@
     "example:postgres": "ts-node examples/postgres-app.ts",
     "example:mysql": "ts-node examples/mysql-app.ts",
     "example:mssql": "ts-node examples/mssql-app.ts",
+
+    "ts-patch:install": "ts-patch install",
+    "ts-patch:compile:examples": "tspc -p packages/examples/tsconfig.json",
     "docs": "typedoc",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -146,6 +150,7 @@
 
     "testcontainers": "^10.9.0",
     "ts-jest": "^29.4.5",
+    "ts-patch": "^3.3.0",
     "tsd": "^0.30.7",
     "turbo": "^2.5.8",
     "typedoc": "^0.28.12",
