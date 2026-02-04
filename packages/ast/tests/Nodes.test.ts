@@ -1,11 +1,14 @@
 import {
   LogicalOperator,
   ComparisonOperator,
+  UnaryOperator,
   type ExpressionNode,
-  type IdentifierNode,
   type LiteralNode,
   type BinaryExpressionNode,
-  type LogicalExpressionNode
+  type LogicalExpressionNode,
+  type MemberAccessNode,
+  type ParameterRefNode,
+  type UnaryExpressionNode
 } from '../src/ast/Nodes';
 
 describe('AST Nodes', () => {
@@ -53,25 +56,53 @@ describe('AST Nodes', () => {
     });
   });
 
-  describe('IdentifierNode', () => {
-    it('should represent an identifier with name', () => {
-      const node: IdentifierNode = {
-        type: 'Identifier',
-        name: 'userId'
+  describe('UnaryOperator enum', () => {
+    it('should have NOT operator', () => {
+      expect(UnaryOperator.Not).toBe('NOT');
+    });
+  });
+
+  describe('MemberAccessNode', () => {
+    it('should represent a member access path', () => {
+      const node: MemberAccessNode = {
+        type: 'MemberAccess',
+        path: ['userId']
       };
 
-      expect(node.type).toBe('Identifier');
-      expect(node.name).toBe('userId');
+      expect(node.type).toBe('MemberAccess');
+      expect(node.path).toEqual(['userId']);
     });
 
     it('should extend ExpressionNode', () => {
-      const node: IdentifierNode = {
-        type: 'Identifier',
-        name: 'column'
+      const node: MemberAccessNode = {
+        type: 'MemberAccess',
+        path: ['profile', 'age']
       };
 
       const expr: ExpressionNode = node;
-      expect(expr.type).toBe('Identifier');
+      expect(expr.type).toBe('MemberAccess');
+    });
+  });
+
+  describe('ParameterRefNode', () => {
+    it('should reference a runtime parameter by index', () => {
+      const node: ParameterRefNode = {
+        type: 'ParameterRef',
+        index: 0
+      };
+
+      expect(node.type).toBe('ParameterRef');
+      expect(node.index).toBe(0);
+    });
+
+    it('should extend ExpressionNode', () => {
+      const node: ParameterRefNode = {
+        type: 'ParameterRef',
+        index: 1
+      };
+
+      const expr: ExpressionNode = node;
+      expect(expr.type).toBe('ParameterRef');
     });
   });
 
@@ -134,15 +165,18 @@ describe('AST Nodes', () => {
     it('should represent a comparison expression', () => {
       const node: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'age' },
+        left: { type: 'MemberAccess', path: ['age'] },
         operator: ComparisonOperator.Gt,
         right: { type: 'Literal', value: 18 }
       };
 
       expect(node.type).toBe('BinaryExpression');
-      expect(node.left.name).toBe('age');
+      expect(node.left.path).toEqual(['age']);
       expect(node.operator).toBe('>');
-      expect(node.right.value).toBe(18);
+      expect(node.right.type).toBe('Literal');
+      if (node.right.type === 'Literal') {
+        expect(node.right.value).toBe(18);
+      }
     });
 
     it('should support all comparison operators', () => {
@@ -154,10 +188,10 @@ describe('AST Nodes', () => {
         ComparisonOperator.Lte
       ];
 
-      operators.forEach(op => {
+      operators.forEach((op) => {
         const node: BinaryExpressionNode = {
           type: 'BinaryExpression',
-          left: { type: 'Identifier', name: 'x' },
+          left: { type: 'MemberAccess', path: ['x'] },
           operator: op,
           right: { type: 'Literal', value: 10 }
         };
@@ -169,7 +203,7 @@ describe('AST Nodes', () => {
     it('should extend ExpressionNode', () => {
       const node: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'id' },
+        left: { type: 'MemberAccess', path: ['id'] },
         operator: ComparisonOperator.Eq,
         right: { type: 'Literal', value: 1 }
       };
@@ -183,14 +217,14 @@ describe('AST Nodes', () => {
     it('should represent AND expression', () => {
       const expr1: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'age' },
+        left: { type: 'MemberAccess', path: ['age'] },
         operator: ComparisonOperator.Gt,
         right: { type: 'Literal', value: 18 }
       };
       
       const expr2: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'status' },
+        left: { type: 'MemberAccess', path: ['status'] },
         operator: ComparisonOperator.Eq,
         right: { type: 'Literal', value: 'active' }
       };
@@ -209,14 +243,14 @@ describe('AST Nodes', () => {
     it('should represent OR expression', () => {
       const expr1: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'role' },
+        left: { type: 'MemberAccess', path: ['role'] },
         operator: ComparisonOperator.Eq,
         right: { type: 'Literal', value: 'admin' }
       };
       
       const expr2: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'role' },
+        left: { type: 'MemberAccess', path: ['role'] },
         operator: ComparisonOperator.Eq,
         right: { type: 'Literal', value: 'moderator' }
       };
@@ -234,21 +268,21 @@ describe('AST Nodes', () => {
     it('should support nested logical expressions', () => {
       const activeExpr: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'active' },
+        left: { type: 'MemberAccess', path: ['active'] },
         operator: ComparisonOperator.Eq,
         right: { type: 'Literal', value: true }
       };
       
       const adminExpr: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'role' },
+        left: { type: 'MemberAccess', path: ['role'] },
         operator: ComparisonOperator.Eq,
         right: { type: 'Literal', value: 'admin' }
       };
       
       const ownerExpr: BinaryExpressionNode = {
         type: 'BinaryExpression',
-        left: { type: 'Identifier', name: 'role' },
+        left: { type: 'MemberAccess', path: ['role'] },
         operator: ComparisonOperator.Eq,
         right: { type: 'Literal', value: 'owner' }
       };
@@ -288,6 +322,31 @@ describe('AST Nodes', () => {
       };
 
       expect(node.expressions).toHaveLength(0);
+    });
+  });
+
+  describe('UnaryExpressionNode', () => {
+    it('should represent NOT expression over a member access', () => {
+      const node: UnaryExpressionNode = {
+        type: 'UnaryExpression',
+        operator: UnaryOperator.Not,
+        operand: { type: 'MemberAccess', path: ['isActive'] }
+      };
+
+      expect(node.type).toBe('UnaryExpression');
+      expect(node.operator).toBe('NOT');
+      expect(node.operand.type).toBe('MemberAccess');
+    });
+
+    it('should extend ExpressionNode', () => {
+      const node: UnaryExpressionNode = {
+        type: 'UnaryExpression',
+        operator: UnaryOperator.Not,
+        operand: { type: 'MemberAccess', path: ['flag'] }
+      };
+
+      const expr: ExpressionNode = node;
+      expect(expr.type).toBe('UnaryExpression');
     });
   });
 });

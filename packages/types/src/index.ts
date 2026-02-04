@@ -291,6 +291,8 @@ export interface PostgresConfig extends BaseProviderConfig {
   applicationName?: string;
   schema?: string;
   connectionTimeoutMs?: number;
+  /** Optional: Inject existing pg.Pool instance */
+  pool?: any;
 }
 
 // MySQL provider configuration
@@ -303,6 +305,8 @@ export interface MySqlConfig extends BaseProviderConfig {
   socketPath?: string;
   charset?: string;
   timezone?: string;
+  /** Optional: Inject existing mysql2 Pool instance */
+  pool?: any;
 }
 
 // MSSQL provider configuration
@@ -320,6 +324,8 @@ export interface MssqlConfig extends BaseProviderConfig {
   connectionTimeout?: number;
   applicationName?: string;
   options?: Record<string, unknown>;
+  /** Optional: Inject existing mssql ConnectionPool instance */
+  pool?: any;
 }
 
 // Global filter

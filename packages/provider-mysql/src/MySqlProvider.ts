@@ -62,6 +62,7 @@ export class MySqlProvider extends DatabaseProvider {
   private pool: MySqlPoolLike | null = null;
   private ddl = new MySqlDdlStrategy();
   private readonly config: MySqlConfig;
+  private ownsPool = true;
 
   constructor(config: MySqlConfig) {
     const connectionString = buildMysqlConnectionString(config);
@@ -80,19 +81,27 @@ export class MySqlProvider extends DatabaseProvider {
 
   public async connect(): Promise<void> {
     if (this.isConnected) return;
-    const mysql = safeRequireMysql2();
-    const opts = this.poolOptions || {};
-    // Map generic pool options to mysql2 pool options when available
-    const mysqlConfig: Record<string, unknown> = { uri: this.connectionString };
-    if (typeof opts.max === 'number') mysqlConfig.connectionLimit = opts.max;
-    if (typeof opts.acquireTimeoutMs === 'number')
-      mysqlConfig.acquireTimeout = opts.acquireTimeoutMs;
-    if (typeof opts.connectionTimeoutMs === 'number')
-      mysqlConfig.connectTimeout = opts.connectionTimeoutMs;
-    // Note: mysql2 uses waitForConnections/queueLimit; idle timeout is managed by server or 'idleTimeout' in some forks
-    this.pool = (mysql as unknown as { createPool: (config: unknown) => MySqlPoolLike }).createPool(
-      mysqlConfig
-    );
+
+    if (this.config.pool) {
+      this.pool = this.config.pool;
+      this.ownsPool = false;
+    } else {
+      const mysql = safeRequireMysql2();
+      const opts = this.poolOptions || {};
+      // Map generic pool options to mysql2 pool options when available
+      const mysqlConfig: Record<string, unknown> = { uri: this.connectionString };
+      if (typeof opts.max === 'number') mysqlConfig.connectionLimit = opts.max;
+      if (typeof opts.acquireTimeoutMs === 'number')
+        mysqlConfig.acquireTimeout = opts.acquireTimeoutMs;
+      if (typeof opts.connectionTimeoutMs === 'number')
+        mysqlConfig.connectTimeout = opts.connectionTimeoutMs;
+      // Note: mysql2 uses waitForConnections/queueLimit; idle timeout is managed by server or 'idleTimeout' in some forks
+      this.pool = (mysql as unknown as { createPool: (config: unknown) => MySqlPoolLike }).createPool(
+        mysqlConfig
+      );
+      this.ownsPool = true;
+    }
+
     this.isConnected = true;
     // Health checks
     await (async () => {
@@ -110,7 +119,7 @@ export class MySqlProvider extends DatabaseProvider {
 
   public async disconnect(): Promise<void> {
     this.stopHealthChecks();
-    if (this.pool) {
+    if (this.pool && this.ownsPool) {
       await this.pool.end();
       this.pool = null;
     }
@@ -212,28 +221,32 @@ export class MySqlProvider extends DatabaseProvider {
     }
     const pk = metadata.primaryKeys[0];
     const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
-    let sql = `SELECT * FROM ${metadata.tableName} WHERE ${pkCol.columnName} = ?`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` AND ${flag} = 0`;
-    }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, [
-      this.coerceToSqlParameter(id)
-    ]);
+
+    const where: import('@ts-linq/types').WhereClause[] = [
+      {
+        condition: `${this.getDialect().quoteIdentifier(pkCol.columnName)} = ?`,
+        parameters: [this.coerceToSqlParameter(id)]
+      }
+    ];
+
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.length ? this.mapRowToEntity(rows[0], entityClass) : null;
   }
 
   public async findAll<T extends object>(entityClass: new () => T): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    let sql = `SELECT * FROM ${metadata.tableName}`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` WHERE ${flag} = 0`;
-    }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql);
+
+    const where: import('@ts-linq/types').WhereClause[] = [];
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
@@ -243,14 +256,24 @@ export class MySqlProvider extends DatabaseProvider {
   ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+    
+    // Note: SqlHelper.buildWhereClause produces a string like "col1 = ? AND col2 = ?"
+    // We wrap it in a single WhereClause
     const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
-    let sql = `SELECT * FROM ${metadata.tableName} WHERE ${whereClause}`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` AND ${flag} = 0`;
+    
+    const where: import('@ts-linq/types').WhereClause[] = [];
+    if (whereClause) {
+      where.push({
+        condition: whereClause,
+        parameters: params
+      });
     }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, params);
+
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
@@ -262,19 +285,26 @@ export class MySqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     if (!values?.length) return [];
+    
     const columnMeta = metadata.columns.find(
       (c) => c.propertyName === column || c.columnName === column
     );
     const columnName = columnMeta ? columnMeta.columnName : column;
     const placeholders = values.map(() => '?').join(', ');
-    let sql2 = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql2 += ` AND ${flag} = 0`;
-    }
-    const coerced: SqlParameter[] = values.map((v) => this.coerceToSqlParameter(v));
-    const rows = await this.executeQuery<Record<string, unknown>>(sql2, coerced);
+    const coerced = values.map((v) => this.coerceToSqlParameter(v));
+
+    const where: import('@ts-linq/types').WhereClause[] = [
+      {
+        condition: `${this.getDialect().quoteIdentifier(columnName)} IN (${placeholders})`,
+        parameters: coerced
+      }
+    ];
+
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 

@@ -1,3 +1,6 @@
+import type { ExpressionNode } from '@ts-linq/ast';
+import type { SqlParameter } from '@ts-linq/types';
+
 import type { Queryable } from './Queryable';
 
 /**
@@ -93,6 +96,19 @@ export class TypedQueryable<TEntity> {
    */
   where(predicate: TypedPredicate<TEntity>): TypedQueryable<TEntity> {
     const resultQueryable = this._queryable.where(predicate);
+    return new TypedQueryable(resultQueryable);
+  }
+
+  /**
+   * Adds a filter predicate that has been compiled to a query AST at build time.
+   *
+   * This method is intended to be called only by the compile-time transformer.
+   */
+  whereCompiled(input: {
+    readonly ast: ExpressionNode;
+    readonly parameters: readonly SqlParameter[];
+  }): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.whereCompiled(input);
     return new TypedQueryable(resultQueryable);
   }
 

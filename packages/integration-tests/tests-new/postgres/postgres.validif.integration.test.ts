@@ -32,6 +32,14 @@ describe('[integration][postgres] Conditional Validation with real DB', () => {
     return;
   }
 
+  const providerConfig = {
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: process.env.POSTGRES_PORT ? parseInt(process.env.POSTGRES_PORT) : 5432,
+    database: process.env.POSTGRES_DB || 'test',
+    user: process.env.POSTGRES_USER || 'postgres',
+    password: process.env.POSTGRES_PASSWORD
+  } as const;
+
   beforeEach(() => {
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(Article, 'Articles');
@@ -61,6 +69,18 @@ describe('[integration][postgres] Conditional Validation with real DB', () => {
         addInitializer: (fn: (this: unknown) => void) => fn.call(Article.prototype)
       } as any
     );
+  });
+
+  beforeEach(async () => {
+    // Ensure schema is recreated with correct identity/defaults.
+    // `ensureCreated()` uses `CREATE TABLE IF NOT EXISTS`, so we must drop first to avoid stale schema.
+    const p = new PostgresProvider(providerConfig);
+    await p.connect();
+    try {
+      await p.executeNonQuery('DROP TABLE IF EXISTS "Articles"');
+    } finally {
+      await p.disconnect();
+    }
   });
 
   test('rejects invalid entity', async () => {

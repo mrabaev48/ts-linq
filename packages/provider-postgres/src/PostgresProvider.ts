@@ -57,6 +57,7 @@ export class PostgresProvider extends DatabaseProvider {
   private transactionClient?: PgClientLike;
   private ddl = new PostgresDdlStrategy();
   private readonly config: PostgresConfig;
+  private ownsPool = true;
 
   /** Map a row object to a new entity instance using entity metadata and notify middleware. */
   private mapRowToEntity<T extends object>(row: unknown, entityClass: new () => T): T {
@@ -112,19 +113,26 @@ export class PostgresProvider extends DatabaseProvider {
     }
   }
 
-  /** Open a connection pool to PostgreSQL using the connection string. */
+  /** Open a connection pool to PostgreSQL using the connection string, or use injected pool. */
   public async connect(): Promise<void> {
-    if (!Pg) throw new Error('pg module is not installed');
-    const { Pool } = Pg;
-    const poolOpts = this.poolOptions || {};
-    // Map generic pool options to pg.Pool config when available
-    const pgConfig: Record<string, unknown> = { connectionString: this.connectionString };
-    if (typeof poolOpts.max === 'number') pgConfig.max = poolOpts.max;
-    if (typeof poolOpts.idleTimeoutMs === 'number')
-      pgConfig.idleTimeoutMillis = poolOpts.idleTimeoutMs;
-    if (typeof poolOpts.connectionTimeoutMs === 'number')
-      pgConfig.connectionTimeoutMillis = poolOpts.connectionTimeoutMs;
-    this.pool = new Pool(pgConfig as { connectionString: string });
+    if (this.config.pool) {
+      this.pool = this.config.pool;
+      this.ownsPool = false;
+    } else {
+      if (!Pg) throw new Error('pg module is not installed');
+      const { Pool } = Pg;
+      const poolOpts = this.poolOptions || {};
+      // Map generic pool options to pg.Pool config when available
+      const pgConfig: Record<string, unknown> = { connectionString: this.connectionString };
+      if (typeof poolOpts.max === 'number') pgConfig.max = poolOpts.max;
+      if (typeof poolOpts.idleTimeoutMs === 'number')
+        pgConfig.idleTimeoutMillis = poolOpts.idleTimeoutMs;
+      if (typeof poolOpts.connectionTimeoutMs === 'number')
+        pgConfig.connectionTimeoutMillis = poolOpts.connectionTimeoutMs;
+      this.pool = new Pool(pgConfig as { connectionString: string });
+      this.ownsPool = true;
+    }
+    
     this.isConnected = true;
     // Start health checks if enabled
     await (async () => {
@@ -142,7 +150,9 @@ export class PostgresProvider extends DatabaseProvider {
   /** Gracefully dispose of the connection pool. */
   public async disconnect(): Promise<void> {
     this.stopHealthChecks();
-    if (this.pool) await this.pool.end();
+    if (this.pool && this.ownsPool) {
+       await this.pool.end();
+    }
     this.isConnected = false;
   }
 
@@ -272,32 +282,33 @@ export class PostgresProvider extends DatabaseProvider {
     }
     const pk = meta.primaryKeys[0];
     const col = meta.columns.find((c) => c.propertyName === pk)?.columnName || pk;
-    let sql = `SELECT * FROM "${meta.tableName}" WHERE "${col}" = $1`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` AND "${flag}" = FALSE`;
-    }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, [
-      this.coerceToSqlParameter(id)
-    ]);
+
+    const where: import('@ts-linq/types').WhereClause[] = [
+      { condition: `"${col}" = ?`, parameters: [this.coerceToSqlParameter(id)] }
+    ];
+
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
+    
     const firstRow = rows[0];
     if (!firstRow) return null;
-    const entity = this.mapRowToEntity(firstRow, entityClass);
-    return entity;
+    return this.mapRowToEntity(firstRow, entityClass);
   }
 
   /** Fetch all rows for the given entity type. */
   public async findAll<T extends object>(entityClass: new () => T): Promise<T[]> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    let sql = `SELECT * FROM "${meta.tableName}"`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` WHERE "${flag}" = FALSE`;
-    }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql);
+
+    const where: import('@ts-linq/types').WhereClause[] = [];
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
@@ -308,19 +319,21 @@ export class PostgresProvider extends DatabaseProvider {
   ): Promise<T[]> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+
     const keys = Object.keys(conditions);
-    const clauses = keys.map(
-      (k, i) =>
-        `"${meta.columns.find((c) => c.propertyName === k || c.columnName === k)?.columnName || k}" = $${i + 1}`
-    );
-    const vals = keys.map((k) => this.coerceToSqlParameter(conditions[k]));
-    let sql = `SELECT * FROM "${meta.tableName}" WHERE ${clauses.join(' AND ')}`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` AND "${flag}" = FALSE`;
-    }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, vals);
+    const where: import('@ts-linq/types').WhereClause[] = keys.map((k) => {
+      const colName = meta.columns.find((c) => c.propertyName === k || c.columnName === k)?.columnName || k;
+      return {
+        condition: `"${colName}" = ?`,
+        parameters: [this.coerceToSqlParameter(conditions[k])]
+      };
+    });
+
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
@@ -333,18 +346,23 @@ export class PostgresProvider extends DatabaseProvider {
     if (!values || values.length === 0) return [];
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    const col =
+    
+    const colName =
       meta.columns.find((c) => c.propertyName === column || c.columnName === column)?.columnName ||
       column;
-    let sql = `SELECT * FROM "${meta.tableName}" WHERE "${col}" = ANY($1)`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` AND "${flag}" = FALSE`;
-    }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, [
-      values as unknown as SqlParameter
-    ]);
+
+    const where: import('@ts-linq/types').WhereClause[] = [
+      {
+        condition: `"${colName}" = ANY(?)`,
+        parameters: [values as unknown as SqlParameter]
+      }
+    ];
+
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 

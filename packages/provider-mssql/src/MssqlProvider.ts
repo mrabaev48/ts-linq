@@ -77,6 +77,7 @@ export class MssqlProvider extends DatabaseProvider {
   private tx: MssqlTransactionLike | null = null;
   private ddl = new MssqlDdlStrategy();
   private readonly config: MssqlConfig;
+  private ownsPool = true;
 
   /** Create provider with MSSQL configuration. */
   constructor(config: MssqlConfig) {
@@ -97,25 +98,34 @@ export class MssqlProvider extends DatabaseProvider {
   /** Open a connection pool to MSSQL server. */
   public async connect(): Promise<void> {
     if (this.isConnected) return;
-    const mssql = safeRequireMssql();
-    // Map generic pool options into mssql.ConnectionPool config if available
-    const opts = this.poolOptions || {};
-    const config: Record<string, unknown> = { connectionString: this.connectionString };
-    if (typeof opts.max === 'number') config.pool = { ...(config.pool as object), max: opts.max };
-    if (typeof opts.min === 'number') config.pool = { ...(config.pool as object), min: opts.min };
-    if (typeof opts.idleTimeoutMs === 'number')
-      config.pool = { ...(config.pool as object), idleTimeoutMillis: opts.idleTimeoutMs };
-    if (typeof opts.acquireTimeoutMs === 'number')
-      config.pool = { ...(config.pool as object), acquireTimeoutMillis: opts.acquireTimeoutMs };
-    if (typeof opts.connectionTimeoutMs === 'number')
-      config.connectionTimeout = opts.connectionTimeoutMs;
-    this.pool = new (
-      mssql as unknown as { ConnectionPool: new (cfg: unknown) => MssqlConnectionPoolLike }
-    ).ConnectionPool(config);
-    await this.pool.connect();
+
+    if (this.config.pool) {
+      this.pool = this.config.pool;
+      this.ownsPool = false;
+    } else {
+      const mssql = safeRequireMssql();
+      // Map generic pool options into mssql.ConnectionPool config if available
+      const opts = this.poolOptions || {};
+      const config: Record<string, unknown> = { connectionString: this.connectionString };
+      if (typeof opts.max === 'number') config.pool = { ...(config.pool as object), max: opts.max };
+      if (typeof opts.min === 'number') config.pool = { ...(config.pool as object), min: opts.min };
+      if (typeof opts.idleTimeoutMs === 'number')
+        config.pool = { ...(config.pool as object), idleTimeoutMillis: opts.idleTimeoutMs };
+      if (typeof opts.acquireTimeoutMs === 'number')
+        config.pool = { ...(config.pool as object), acquireTimeoutMillis: opts.acquireTimeoutMs };
+      if (typeof opts.connectionTimeoutMs === 'number')
+        config.connectionTimeout = opts.connectionTimeoutMs;
+      this.pool = new (
+        mssql as unknown as { ConnectionPool: new (cfg: unknown) => MssqlConnectionPoolLike }
+      ).ConnectionPool(config);
+      await this.pool.connect();
+      this.ownsPool = true;
+    }
+    
     this.isConnected = true;
     // Health checks
     this.startHealthChecks(async () => {
+      const mssql = safeRequireMssql();
       const started = Date.now();
       const req = new (
         mssql as unknown as {
@@ -139,7 +149,7 @@ export class MssqlProvider extends DatabaseProvider {
       }
       this.tx = null;
     }
-    if (this.pool) {
+    if (this.pool && this.ownsPool) {
       try {
         await this.pool.close();
       } catch {
@@ -276,15 +286,20 @@ export class MssqlProvider extends DatabaseProvider {
     }
     const pk = metadata.primaryKeys[0];
     const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
-    let sql = `SELECT * FROM ${metadata.tableName} WHERE ${pkCol.columnName} = ?`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` AND ${flag} = 0`;
-    }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, [
-      this.coerceToSqlParameter(id)
-    ]);
+
+    const where: import('@ts-linq/types').WhereClause[] = [
+      {
+        condition: `${this.getDialect().quoteIdentifier(pkCol.columnName)} = ?`,
+        parameters: [this.coerceToSqlParameter(id)]
+      }
+    ];
+
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
+    
     if (rows.length === 0) return null;
     return this.mapRowToEntity(rows[0], entityClass);
   }
@@ -293,13 +308,13 @@ export class MssqlProvider extends DatabaseProvider {
   public async findAll<T extends object>(entityClass: new () => T): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    let sql = `SELECT * FROM ${metadata.tableName}`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` WHERE ${flag} = 0`;
-    }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql);
+    
+    const where: import('@ts-linq/types').WhereClause[] = [];
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
@@ -310,14 +325,22 @@ export class MssqlProvider extends DatabaseProvider {
   ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+    
     const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
-    let sql = `SELECT * FROM ${metadata.tableName} WHERE ${whereClause}`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` AND ${flag} = 0`;
+    
+    const where: import('@ts-linq/types').WhereClause[] = [];
+    if (whereClause) {
+      where.push({
+        condition: whereClause,
+        parameters: params
+      });
     }
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, params);
+
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
@@ -330,19 +353,26 @@ export class MssqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     if (!Array.isArray(values) || values.length === 0) return [];
+    
     const columnMeta = metadata.columns.find(
       (c) => c.propertyName === column || c.columnName === column
     );
     const columnName = columnMeta ? columnMeta.columnName : column;
     const placeholders = values.map(() => '?').join(', ');
-    let sql = `SELECT * FROM ${metadata.tableName} WHERE ${columnName} IN (${placeholders})`;
-    if (this.softDelete?.enabled) {
-      const flag = this.softDelete.column ?? 'isDeleted';
-      const has = metadata.columns.some((c) => c.propertyName === flag || c.columnName === flag);
-      if (has) sql += ` AND ${flag} = 0`;
-    }
-    const coerced: SqlParameter[] = values.map((v) => this.coerceToSqlParameter(v));
-    const rows = await this.executeQuery<Record<string, unknown>>(sql, coerced);
+    const coerced = values.map((v) => this.coerceToSqlParameter(v));
+
+    const where: import('@ts-linq/types').WhereClause[] = [
+      {
+        condition: `${this.getDialect().quoteIdentifier(columnName)} IN (${placeholders})`,
+        parameters: coerced
+      }
+    ];
+
+
+
+    const dialect = this.getDialect();
+    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 

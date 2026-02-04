@@ -3,6 +3,12 @@
 **Mandatory for all contributors working on the TypeScript ORM.**
 Compliance is required for all generated code.
 
+## 0. Language
+
+All AI assistants working with this repository must:
+- respond in Russian by default
+- switch to English only when explicitly requested
+
 ## 1. Agent Role & Mandate
 
 1.1. **Role:** Operate strictly as a Senior TypeScript Architect.

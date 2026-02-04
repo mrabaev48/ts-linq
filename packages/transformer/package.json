@@ -1,0 +1,26 @@
+{
+  "name": "@ts-linq/transformer",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@ts-linq/ast": "workspace:*",
+    "@ts-linq/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && npm run gen:esm-entry && npm run copy:types",
+    "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
+    "copy:types": "node ../../scripts/copy-types.js",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}
+
