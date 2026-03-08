@@ -6,7 +6,7 @@ import { LoadingStrategy } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable, TypedQueryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
-import type { GlobalFilter, PerformanceOptions } from '@ts-linq/types';
+import type { GlobalFilter, PerformanceOptions, QueryFallback } from '@ts-linq/types';
 import type { PrimaryKeyOf } from '@ts-linq/core';
 import type { DbSetContext } from './DbSetContext';
 
@@ -94,7 +94,7 @@ export class DbSet<T extends object> {
       this._globalFilters,
       this._softDeleteOptions
     )
-      .where((e: any) => (e as unknown as Record<string, unknown>)[pk] === id)
+      .where((e) => (e as unknown as Record<string, unknown>)[pk] === id)
       .firstOrDefault();
   }
 
@@ -128,14 +128,15 @@ export class DbSet<T extends object> {
       return results;
     }
     const pk = metadata.primaryKeys[0];
-    const column = metadata.columns.find((c: any) => c.propertyName === pk)?.columnName || pk;
+    const column = metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk;
     
     // Cross-query optimization: deduplicate and chunk large IN lists
-    const uniqueIds = Array.from(new Set(ids as unknown as unknown[]));
+    const uniqueIds = Array.from(new Set(ids));
     if (uniqueIds.length === 0) return [];
-    const chunkSize = (this._performance as any)?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
+    const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
     
-    const runChunk = async (chunk: unknown[]) => {
+    const runChunk = async (chunk: ReadonlyArray<PrimaryKeyOf<T>>) => {
+      const typed = chunk as unknown as ReadonlyArray<T[typeof pk & keyof T]>;
       return await new Queryable<T>(
         this._entityClass,
         this._provider,
@@ -145,7 +146,7 @@ export class DbSet<T extends object> {
         this._globalFilters,
         this._softDeleteOptions
       )
-      .whereIn(pk as keyof T & string, chunk as any[])
+      .whereIn(pk as keyof T & string, typed)
       .toArray();
     };
 
@@ -197,12 +198,12 @@ export class DbSet<T extends object> {
   ): Promise<T[]> {
     if (!values || values.length === 0) return [];
     // Cross-query optimization: deduplicate inputs and split into chunks
-    const uniqueValues = Array.from(new Set(values as unknown as unknown[]));
+    const uniqueValues = Array.from(new Set(values));
     if (uniqueValues.length === 0) return [];
     
-    const chunkSize = (this._performance as any)?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
+    const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
     
-    const runChunk = async (chunk: unknown[]) => {
+    const runChunk = async (chunk: ReadonlyArray<T[K]>) => {
       return await new Queryable<T>(
         this._entityClass,
         this._provider,
@@ -212,7 +213,7 @@ export class DbSet<T extends object> {
         this._globalFilters,
         this._softDeleteOptions
       )
-      .whereIn(property, chunk as any[])
+      .whereIn(property, chunk)
       .toArray();
     };
 
@@ -473,7 +474,7 @@ export class DbSet<T extends object> {
   }
 
   /** Proxy: fallbackTo. */
-  public fallbackTo(source: any): TypedQueryable<T> {
+  public fallbackTo(source: QueryFallback<T>): TypedQueryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -545,16 +546,15 @@ export class DbSet<T extends object> {
   private invalidateCountCache(): void {
     try {
       const extCount = this._performance?.countCache;
-      // Check if count cache has invalidateBy method (custom or standard interface)
-      if (!extCount || typeof (extCount as any).invalidateBy !== 'function') return;
+      if (!extCount?.invalidateBy) return;
 
       const providerLabel = this._provider.providerLabel;
       const providerPrefix = providerLabel ? `${providerLabel}|` : '';
       const ns = this._performance?.cacheNamespace ? `${this._performance.cacheNamespace}|` : '';
-      const entityName = (this._entityClass as any).name;
+      const entityName = (this._entityClass as unknown as { name?: string }).name || 'Unknown';
 
       const prefix = `${ns}${providerPrefix}${entityName}|count|`;
-      (extCount as any).invalidateBy((key: string) => key.startsWith(prefix));
+      extCount.invalidateBy((key: string) => key.startsWith(prefix));
     } catch {
       // ignore errors during cache invalidation
     }
@@ -588,7 +588,7 @@ export class DbSet<T extends object> {
       throw new Error(`No primary key defined for ${this._entityClass.name}`);
     const pk = metadata.primaryKeys[0];
     // Build list of ids present
-    const pairs: Array<{ entity: T; id: unknown }> = entities.map((e: any) => ({
+    const pairs: Array<{ entity: T; id: unknown }> = entities.map((e) => ({
       entity: e,
       id: (e as unknown as Record<string, unknown>)[pk]
     }));
@@ -605,7 +605,7 @@ export class DbSet<T extends object> {
       // Or we just update other fields and it stays deleted?
       // For now, let's keep using direct provider access for UPSERT checks to ensure we find "physical" rows
       // because DB constraints don't care about soft delete.
-      const pkCol = metadata.columns.find((c: any) => c.propertyName === pk);
+      const pkCol = metadata.columns.find((c) => c.propertyName === pk);
       const existingRows = await this._provider.findWhereIn(
         this._entityClass as unknown as new () => T,
         pkCol ? pkCol.propertyName : pk,

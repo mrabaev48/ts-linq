@@ -1,7 +1,9 @@
+import type { SqlParameter } from '@ts-linq/types';
+
 export interface DatabaseProvider {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
-  execute<T = any>(sql: string, params: any[]): Promise<T[]>;
+  execute<T = Record<string, unknown>>(sql: string, params: readonly SqlParameter[]): Promise<T[]>;
   beginTransaction(): Promise<void>;
   commitTransaction(): Promise<void>;
   rollbackTransaction(): Promise<void>;
@@ -9,13 +11,13 @@ export interface DatabaseProvider {
 
 export interface MockExecutionResult {
   sql: string;
-  params: any[];
-  result: any;
+  params: readonly SqlParameter[];
+  result: unknown[];
 }
 
 export class MockDatabaseProvider implements DatabaseProvider {
   private executions: MockExecutionResult[] = [];
-  private mockResults: Map<string, any> = new Map();
+  private mockResults: Map<string, unknown[]> = new Map();
   private connected = false;
 
   async connect(): Promise<void> {
@@ -26,7 +28,10 @@ export class MockDatabaseProvider implements DatabaseProvider {
     this.connected = false;
   }
 
-  async execute<T = any>(sql: string, params: any[]): Promise<T[]> {
+  async execute<T = Record<string, unknown>>(
+    sql: string,
+    params: readonly SqlParameter[]
+  ): Promise<T[]> {
     // Try exact match first
     let result = this.mockResults.get(sql);
     
@@ -43,9 +48,9 @@ export class MockDatabaseProvider implements DatabaseProvider {
       }
     }
     
-    const finalResult = result || [];
+    const finalResult = result ?? [];
     this.executions.push({ sql, params, result: finalResult });
-    return finalResult;
+    return finalResult as unknown as T[];
   }
 
   async beginTransaction(): Promise<void> {
@@ -60,11 +65,11 @@ export class MockDatabaseProvider implements DatabaseProvider {
     await this.execute('ROLLBACK', []);
   }
 
-  mockResult(sql: string, result: any): void {
+  mockResult(sql: string, result: unknown[]): void {
     this.mockResults.set(sql, result);
   }
 
-  mockResultPattern(pattern: RegExp, result: any): void {
+  mockResultPattern(pattern: RegExp, result: unknown[]): void {
     const key = `__regex__${pattern.source}`;
     this.mockResults.set(key, result);
   }
@@ -105,7 +110,7 @@ export class MockDatabaseProvider implements DatabaseProvider {
     }
   }
 
-  expectParams(expectedParams: any[]): void {
+  expectParams(expectedParams: readonly SqlParameter[]): void {
     const last = this.getLastExecution();
     if (!last) {
       throw new Error('No SQL executed');

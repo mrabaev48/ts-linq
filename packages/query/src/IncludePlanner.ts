@@ -10,7 +10,7 @@ export class IncludePlanner<T> {
   public async populateIncludes(entities: T[], includes: string[], limit?: number): Promise<void> {
     if (!this.entityLoader || includes.length === 0 || limit === 1) return;
     await this.entityLoader.populateRelationshipsMany(entities, this.entityClass, {
-      strategy: 'eager' as any,
+      strategy: LoadingStrategy.Eager,
       includes,
       depth: 1
     });

@@ -61,7 +61,7 @@ export class MultiTenantMiddleware {
 
     // Check if entity has tenant column
     const hasTenantColumn = meta.columns.some(
-      (c: any) => c.propertyName === tenantColumn || c.columnName === tenantColumn
+      (c) => c.propertyName === tenantColumn || c.columnName === tenantColumn
     );
 
     if (!hasTenantColumn) {
@@ -75,7 +75,7 @@ export class MultiTenantMiddleware {
     }
 
     if (context.operation === 'insert' || context.operation === 'update') {
-      context.entity[tenantColumn] = tenantId as any;
+      context.entity[tenantColumn] = tenantId;
     }
   }
 

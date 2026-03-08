@@ -18,8 +18,8 @@ export class MssqlDdlStrategy {
     );
     if (metadata.primaryKeys && metadata.primaryKeys.length > 0) {
       const pkCols = metadata.primaryKeys.map(
-        (pk: any) => {
-          const col = metadata.columns.find((column: any) => column.propertyName === pk);
+        (pk) => {
+          const col = metadata.columns.find((column) => column.propertyName === pk);
           return `[${col ? col.columnName : pk}]`;
         }
       );
@@ -67,7 +67,7 @@ export class MssqlDdlStrategy {
     return this.indexBuilder.buildCreateIndexSql(tableName, index);
   }
 
-  public generateAddColumnSql(tableName: string, column: any): string {
+  public generateAddColumnSql(tableName: string, column: ColumnMetadata): string {
     const colDef = this.generateColumnDefinition(column);
     return `ALTER TABLE [${tableName}] ADD ${colDef}`;
   }

@@ -36,11 +36,11 @@ export class SoftDeleteMiddleware {
 
     // Check if entity has soft delete columns
     const hasFlagColumn = meta.columns.some(
-      (c: any) => c.propertyName === flagColumn || c.columnName === flagColumn
+      (c) => c.propertyName === flagColumn || c.columnName === flagColumn
     );
 
     const hasTimestampColumn = meta.columns.some(
-      (c: any) => c.propertyName === timestampColumn || c.columnName === timestampColumn
+      (c) => c.propertyName === timestampColumn || c.columnName === timestampColumn
     );
 
     if (!hasFlagColumn && !hasTimestampColumn) {

@@ -57,5 +57,5 @@ export function setTenantId(
   options: Partial<MultiTenantOptions> = {}
 ): void {
   const column = options.tenantIdColumn || 'tenantId';
-  entity[column] = tenantId as any;
+  entity[column] = tenantId;
 }

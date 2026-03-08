@@ -10,9 +10,10 @@ export interface PrimaryKeyOptions extends ColumnOptions {
  * Legacy property decorator that marks a property as the primary key.
  */
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     // Ensure entity metadata exists (property decorators run before class decorator)
     let meta = MetadataStorage.getEntity(ctor);

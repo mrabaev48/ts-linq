@@ -1,7 +1,9 @@
+import type { SqlParameter } from '@ts-linq/types';
+
 export interface DatabaseProvider {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
-  execute<T = any>(sql: string, params: any[]): Promise<T[]>;
+  execute<T = Record<string, unknown>>(sql: string, params: readonly SqlParameter[]): Promise<T[]>;
   beginTransaction(): Promise<void>;
   commitTransaction(): Promise<void>;
   rollbackTransaction(): Promise<void>;
@@ -50,7 +52,7 @@ export class DatabaseHarness {
       const placeholders = values.map((_, i) => `?`).join(', ');
       
       const sql = `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
-      await provider.execute(sql, values);
+      await provider.execute(sql, values as unknown as SqlParameter[]);
     }
   }
 

@@ -35,3 +35,6 @@ __test_configs__
 
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# macOS filesystem metadata
+.DS_Store

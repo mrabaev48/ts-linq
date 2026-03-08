@@ -1,6 +1,18 @@
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { EntityMetadata, SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
+import type {
+  ConnectionHealthCheckOptions,
+  ConnectionPoolOptions,
+  EntityMetadata,
+  OrmMiddleware,
+  QueryOptions,
+  RetryPolicy,
+  SoftDeleteOptions,
+  SqlDialect,
+  SqlLogger,
+  SqlParameter
+} from '@ts-linq/types';
+import type { CircuitBreakerOptions } from '@ts-linq/core';
 
 class TestDialect implements SqlDialect {
   public buildSelect(
@@ -35,22 +47,42 @@ class TestDialect implements SqlDialect {
   public quoteIdentifier(identifier: string): string {
     return `\`${identifier}\``;
   }
-  public buildInsert(entity: any, entityClass: any): { sql: string; parameters: SqlParameter[] } {
+  public buildInsert(
+    _entity: Record<string, unknown>,
+    _metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
     return { sql: 'INSERT...', parameters: [] };
   }
-  public buildUpdate(entity: any, entityClass: any): { sql: string; parameters: SqlParameter[] } {
+  public buildUpdate(
+    _entity: Record<string, unknown>,
+    _metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
     return { sql: 'UPDATE...', parameters: [] };
   }
-  public buildDelete(entity: any, entityClass: any): { sql: string; parameters: SqlParameter[] } {
+  public buildDelete(
+    _entity: Record<string, unknown>,
+    _metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
     return { sql: 'DELETE...', parameters: [] };
   }
 }
 
+type TestProviderConfig = {
+  file?: string;
+  logger?: SqlLogger;
+  middlewares?: OrmMiddleware[];
+  softDelete?: SoftDeleteOptions;
+  retryPolicy?: RetryPolicy;
+  poolOptions?: ConnectionPoolOptions;
+  healthCheck?: ConnectionHealthCheckOptions;
+  circuit?: CircuitBreakerOptions;
+};
+
 export class TestProvider extends DatabaseProvider {
   public executionCount = 0;
-  public nextResult: any[] | undefined;
+  public nextResult: Array<Record<string, unknown>> | undefined;
 
-  constructor(configOrConnectionString?: any) {
+  constructor(configOrConnectionString?: string | TestProviderConfig) {
     const config = typeof configOrConnectionString === 'string' 
         ? { file: configOrConnectionString } 
         : (configOrConnectionString || { file: ':memory:' });
@@ -68,7 +100,7 @@ export class TestProvider extends DatabaseProvider {
     this.providerName = 'test';
   }
 
-  private readonly data: Map<string, any[]> = new Map();
+  private readonly data: Map<string, Array<Record<string, unknown>>> = new Map();
   private readonly seq: Map<string, number> = new Map();
   private readonly dialect = new TestDialect();
 
@@ -98,18 +130,19 @@ export class TestProvider extends DatabaseProvider {
     await this.beforeExecute(`INSERT INTO ${meta.tableName}`, []);
     await this.ensureTable(meta);
     const table = this.data.get(meta.tableName)!;
-    const rec: any = {};
+    const rec: Record<string, unknown> = {};
+    const entityRecord = entity as unknown as Record<string, unknown>;
     for (const col of meta.columns) {
-      const val = (entity as any)[col.propertyName];
+      const val = entityRecord[col.propertyName];
       if (val !== undefined) rec[col.columnName] = val;
     }
-    for (const [k, v] of Object.entries(entity as any)) {
+    for (const [k, v] of Object.entries(entityRecord)) {
       if (rec[k] === undefined) rec[k] = v;
     }
     const pks = meta.primaryKeys || [];
     if (pks.length > 0) {
       const pk = pks[0];
-      const pkCol = meta.columns.find((c: any) => c.propertyName === pk);
+      const pkCol = meta.columns.find((c) => c.propertyName === pk);
       if (
         pkCol?.isGenerated &&
         (rec[pkCol.columnName] === undefined || rec[pkCol.columnName] === null)
@@ -117,7 +150,7 @@ export class TestProvider extends DatabaseProvider {
         const next = this.seq.get(meta.tableName)! + 1;
         this.seq.set(meta.tableName, next);
         rec[pkCol.columnName] = next;
-        (entity as any)[pk] = next;
+        entityRecord[pk] = next;
       }
     }
     table.push(rec);
@@ -131,15 +164,16 @@ export class TestProvider extends DatabaseProvider {
     const table = this.data.get(meta.tableName) || [];
     const pks = meta.primaryKeys || [];
     const pk = pks[0];
-    const pkCol = meta.columns.find((c: any) => c.propertyName === pk);
+    const pkCol = meta.columns.find((c) => c.propertyName === pk);
     const pkName = pkCol?.columnName ?? pk;
-    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pk]);
+    const entityRecord = entity as unknown as Record<string, unknown>;
+    const idx = table.findIndex((r) => r[pkName] === entityRecord[pk]);
     const targetIdx = idx >= 0 ? idx : table.length > 0 ? table.length - 1 : -1;
     if (targetIdx >= 0) {
       const row = table[targetIdx];
       for (const col of meta.columns) {
         if (col.propertyName === pk) continue;
-        const val = (entity as any)[col.propertyName];
+        const val = entityRecord[col.propertyName];
         if (val !== undefined) row[col.columnName] = val;
       }
     }
@@ -153,9 +187,10 @@ export class TestProvider extends DatabaseProvider {
     const table = this.data.get(meta.tableName) || [];
     const pks = meta.primaryKeys || [];
     const pk = pks[0];
-    const pkCol = meta.columns.find((c: any) => c.propertyName === pk);
+    const pkCol = meta.columns.find((c) => c.propertyName === pk);
     const pkName = pkCol?.columnName ?? pk;
-    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pk]);
+    const entityRecord = entity as unknown as Record<string, unknown>;
+    const idx = table.findIndex((r) => r[pkName] === entityRecord[pk]);
     if (idx >= 0) {
       table.splice(idx, 1);
     }
@@ -163,18 +198,18 @@ export class TestProvider extends DatabaseProvider {
   }
 
   public async findByPk<T extends object>(
-    pkValue: any,
-    entityClass: Function
+    pkValue: unknown,
+    entityClass: new () => T
   ): Promise<T | null> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     const table = this.data.get(meta.tableName) || [];
     const pks = meta.primaryKeys || [];
     const pk = pks[0];
-    const pkCol = meta.columns.find((c: any) => c.propertyName === pk);
+    const pkCol = meta.columns.find((c) => c.propertyName === pk);
     const pkName = pkCol?.columnName ?? pk;
     const rec = table.find((r) => r[pkName] === pkValue);
     if (!rec) return null;
-    const instance = new (entityClass as any)();
+    const instance = new entityClass();
     for (const col of meta.columns) {
       instance[col.propertyName] = rec[col.columnName];
     }
@@ -182,22 +217,22 @@ export class TestProvider extends DatabaseProvider {
   }
 
   public async findById<T extends object>(
-    id: any,
-    entityClass: Function
+    id: unknown,
+    entityClass: new () => T
   ): Promise<T | null> {
     return this.findByPk(id, entityClass);
   }
 
   public async queryEntities<T extends object>(
     sql: string,
-    params: any[],
-    entityClass: Function
+    params: readonly SqlParameter[],
+    entityClass: new () => T
   ): Promise<T[]> {
-      const rows = await this.doExecuteQuery<any>(sql, params);
+      const rows = await this.doExecuteQuery<Record<string, unknown>>(sql, params);
       const meta = MetadataStorage.getEntity(entityClass);
       
       return rows.map((rec) => {
-          const instance = new (entityClass as any)();
+          const instance = new entityClass();
           if (meta) {
               for (const col of meta.columns) {
                   instance[col.propertyName] = rec[col.columnName];
@@ -223,13 +258,13 @@ export class TestProvider extends DatabaseProvider {
     }
   }
 
-  public async findAll<T extends object>(entityClass: Function): Promise<T[]> {
+  public async findAll<T extends object>(entityClass: new () => T): Promise<T[]> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`SELECT * FROM ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];
     await this.afterExecute(`SELECT * FROM ${meta.tableName}`, [], table.length);
     return table.map((rec) => {
-      const instance = new (entityClass as any)();
+      const instance = new entityClass();
       for (const col of meta.columns) {
         instance[col.propertyName] = rec[col.columnName];
       }
@@ -238,20 +273,27 @@ export class TestProvider extends DatabaseProvider {
   }
 
   public async findWhere<T extends object>(
-      entityClass: Function,
-      where: any
+      entityClass: new () => T,
+      _where: Record<string, unknown>
   ): Promise<T[]> {
       return this.findAll(entityClass); // Stub behavior
   }
   
-  public async findWhereIn<T extends object>(entityClass: Function, column: string, values: any[]): Promise<T[]> {
+  public async findWhereIn<T extends object>(
+    entityClass: new () => T,
+    _column: string,
+    _values: unknown[]
+  ): Promise<T[]> {
       return this.findAll(entityClass); // Stub behavior
   }
 
-  public async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
+  public async doExecuteQuery<T>(
+    sql: string,
+    params: readonly SqlParameter[] = []
+  ): Promise<T[]> {
     this.executionCount++;
     if (this.nextResult) {
-        return this.nextResult as T[];
+        return this.nextResult as unknown as T[];
     }
     // console.log(`[TestProvider] SQL: ${sql}`);
     
@@ -293,7 +335,7 @@ export class TestProvider extends DatabaseProvider {
                         const op = operatorMatch[1];
                         const parts = cond.split(op).map(x => x.trim().replace(/['"`]/g, ''));
                         const col = parts[0];
-                        let val: any = parts[1];
+                        let val: string | number = parts[1];
                         
                         if (val === '?') {
                              return true; // Weak fallback, handled by paramMatches below
@@ -353,10 +395,10 @@ export class TestProvider extends DatabaseProvider {
       table = table.slice(offset, offset + limit);
     }
 
-    return table as T[];
+    return table as unknown as T[];
   }
 
-  public async doExecuteNonQuery(sql: string, params: any[]): Promise<number> {
+  public async doExecuteNonQuery(_sql: string, _params: readonly SqlParameter[]): Promise<number> {
     return 0;
   }
   
@@ -371,7 +413,7 @@ export class TestProvider extends DatabaseProvider {
   public async commit(): Promise<void> {}
   public async rollback(): Promise<void> {}
   
-  public async executeRaw(sql: string, params: any[]): Promise<any> {
+  public async executeRaw(_sql: string, _params: readonly SqlParameter[]): Promise<unknown[]> {
       return [];
   }
 }
