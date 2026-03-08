@@ -15,7 +15,8 @@ import type {
   PerformanceOptions,
   Result,
   SoftDeleteOptions,
-  GlobalFilter
+  GlobalFilter,
+  ValidationRule
 } from '@ts-linq/types';
 import type { 
   DbContextOptions,
@@ -76,10 +77,7 @@ export abstract class DbContext {
   private _updateCmd!: UpdateCommand;
   private _deleteCmd!: DeleteCommand;
   /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
-  private _validationRulesCache: WeakMap<
-    Function,
-    Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }>
-  > = new WeakMap();
+  private _validationRulesCache: WeakMap<Function, ValidationRule[]> = new WeakMap();
 
   /**
    * Create a new database context instance.
@@ -98,7 +96,7 @@ export abstract class DbContext {
       /* ignore */
     }
     this._audit = options.audit;
-    this._globalFilters = options.globalFilters as any;
+    this._globalFilters = options.globalFilters;
     this._diagnostics = options.diagnostics;
     // Start external memory profiler if provided
     try {
@@ -122,8 +120,8 @@ export abstract class DbContext {
     this._updateCmd = new UpdateCommand(this._provider, (c) => this.updateEntityCache(c));
     this._deleteCmd = new DeleteCommand(
       this._provider,
-      (c: any) => this.handleSoftDelete(c),
-      (c: any) => this.removeFromEntityCache(c)
+      (c) => this.handleSoftDelete(c),
+      (c) => this.removeFromEntityCache(c)
     );
     // Initialize optional L2 entity cache
     if (options.performance?.enableEntityCache) {
@@ -136,7 +134,7 @@ export abstract class DbContext {
         );
     }
     // Store performance options for downstream consumers
-    this._performanceOptions = options.performance as any;
+    this._performanceOptions = options.performance;
     // Propagate query performance analysis options into provider if available
     try {
       const analysis = options.performance?.analysis;
@@ -153,7 +151,7 @@ export abstract class DbContext {
       /* ignore */
     }
     // Apply configurable IN() chunk size into loader
-    this._entityLoader.setInChunkSize((this._performanceOptions as any)?.inClauseChunkSize);
+    this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize);
     this._loadingDefaults = options.loading || {};
 
     // Apply loading strategy from options or keep default
@@ -210,7 +208,7 @@ export abstract class DbContext {
     const entities = MetadataStorage.getEntities();
 
     for (const entity of entities) {
-      await this._provider.createTable(entity as any);
+      await this._provider.createTable(entity);
     }
   }
 
@@ -848,7 +846,7 @@ export abstract class DbContext {
     meta: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
     propertyName: string
   ): boolean {
-    return meta.columns.some((c: any) => c.propertyName === propertyName);
+    return meta.columns.some((c) => c.propertyName === propertyName);
   }
 
   private async processChange(change: {
@@ -899,12 +897,12 @@ export abstract class DbContext {
     const meta = MetadataStorage.getEntity(change.entityClass);
     if (!meta) return false;
     const flag = this._softDelete.column ?? 'isDeleted';
-    const deletedAt = (this._softDelete as any).deletedAtColumn ?? 'deletedAt';
-    const hasFlag = meta.columns.some((c: any) => c.propertyName === flag || c.columnName === flag);
+    const deletedAt = this._softDelete.deletedAtColumn ?? 'deletedAt';
+    const hasFlag = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
     if (!hasFlag) return false;
     change.entity[flag] = true as unknown as boolean;
     const hasDeletedAt = meta.columns.some(
-      (c: any) => c.propertyName === deletedAt || c.columnName === deletedAt
+      (c) => c.propertyName === deletedAt || c.columnName === deletedAt
     );
     if (hasDeletedAt) change.entity[deletedAt] = new Date();
     await this._provider.update(change.entity, change.entityClass);
@@ -942,11 +940,11 @@ export abstract class DbContext {
    */
   private getValidationRules(
     entityClass: Function
-  ): Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }> {
+  ): ValidationRule[] {
     const cached = this._validationRulesCache.get(entityClass);
     if (cached) return cached;
     // Stage-3: Use MetadataStorage instead of Reflect API
-    const rules = MetadataStorage.getValidationRules(entityClass).slice() as any;
+    const rules = MetadataStorage.getValidationRules(entityClass).slice();
     this._validationRulesCache.set(entityClass, rules);
     return rules;
   }
@@ -1086,13 +1084,15 @@ export abstract class DbContext {
     try {
       const rules = this.getValidationRules(change.entityClass);
       for (const rule of rules) {
-        const phase = (rule as { phase?: 'onCreate' | 'onUpdate' | 'always' }).phase || 'always';
+        if (!rule.predicate) continue;
+        if (!rule.propertyName) continue;
+        const phase = rule.phase ?? 'always';
         if (phase === 'onCreate' && change.state !== 'added') continue;
         if (phase === 'onUpdate' && change.state !== 'modified') continue;
         const ok = !!rule.predicate(change.entity);
         if (!ok) {
-          const msgKey = (rule as { messageKey?: string }).messageKey;
-          const msgParams = (rule as { messageParams?: Record<string, unknown> }).messageParams;
+          const msgKey = rule.messageKey;
+          const msgParams = rule.messageParams;
           const translated =
             msgKey && this._validationOptions?.translate
               ? this._validationOptions.translate(msgKey, msgParams)
@@ -1121,7 +1121,7 @@ export abstract class DbContext {
   } {
     const table = meta?.tableName || 'unknown_table';
     const typeName = meta?.target?.name || 'UnknownEntity';
-    const col = meta?.columns.find((c: any) => c.propertyName === property)?.columnName || property;
+    const col = meta?.columns.find((c) => c.propertyName === property)?.columnName || property;
     const fullMessage = `${typeName}.${property} (${table}.${col}): ${message}`;
     return {
       entity: table,

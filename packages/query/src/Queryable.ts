@@ -97,10 +97,10 @@ export class Queryable<T> {
     this._softDeleteOptions = softDeleteOptions;
     this._externalCountCache = performance?.countCache;
     this._sqlBuilder = new QueryBuilder(
-      provider.getDialect() as any,
-      provider.loggerRef as any,
+      provider.getDialect(),
+      provider.loggerRef,
       provider.providerLabel,
-      performance?.sqlCache as any,
+      performance?.sqlCache,
       performance?.cacheNamespace
     );
     this._materializer = new RowMaterializer<T>(
@@ -1110,7 +1110,7 @@ export class Queryable<T> {
     const src = this._performance?.fallbackPolicy?.hedged?.sources;
     if (!src || src.length === 0) return this._fallbacks;
     const wanted = new Set(src);
-    return this._fallbacks.filter((fb) => wanted.has(fb.label as any));
+    return this._fallbacks.filter((fb) => wanted.has(fb.label));
   }
 
   /** Try to pass fallback throttle constraints; returns false when fallback should be skipped. */
@@ -1543,7 +1543,7 @@ export class Queryable<T> {
     );
     this._model.joins = this._model.joins || [];
     this._model.joins.push({
-      type: type as any,
+      type,
       table: rightMeta.tableName,
       on: onStr,
       alias

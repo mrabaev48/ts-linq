@@ -1,6 +1,7 @@
 import type { SchemaSnapshot, TableSnapshot, ColumnDef, IndexDef } from './DiffTypes';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { DatabaseProvider } from '@ts-linq/core';
+import type { ColumnMetadata, EntityMetadata, IndexMetadata } from '@ts-linq/types';
 import {
   PostgresSchemaInspector,
   MySqlSchemaInspector,
@@ -19,8 +20,9 @@ export class SchemaSnapshotBuilder {
 
   public buildExpectedFromMetadata(): SchemaSnapshot {
     const entities = MetadataStorage.getEntities();
-    const tables: TableSnapshot[] = entities.map((entityMeta: any) => {
-      const columns: ColumnDef[] = entityMeta.columns.map((column: any) => ({
+    const tables: TableSnapshot[] = entities.map((entityMeta: EntityMetadata) => {
+      const primaryKeyProps = entityMeta.primaryKeys ?? [];
+      const columns: ColumnDef[] = entityMeta.columns.map((column: ColumnMetadata) => ({
         name: column.columnName,
         type: this.mapPortableType(column.type),
         nullable: column.nullable,
@@ -31,16 +33,17 @@ export class SchemaSnapshotBuilder {
             defaultExpressionDialect?: Record<string, string>;
           }
         ).defaultExpression,
-        isPrimaryKey: entityMeta.primaryKeys.includes(column.propertyName),
+        isPrimaryKey: primaryKeyProps.includes(column.propertyName),
         isComputed: (column as { isComputed?: boolean }).isComputed,
         computedExpression: (column as { computedExpression?: string }).computedExpression,
         computedStorage: (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
           .computedStorage
       }));
-      const primaryKeys = entityMeta.primaryKeys.map(
-        (pk: any) => entityMeta.columns.find((column: any) => column.propertyName === pk)?.columnName || pk
+      const primaryKeys = primaryKeyProps.map(
+        (pk) =>
+          entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
       );
-      const indexes = (entityMeta.indexes || []).map((indexDef: any) => ({
+      const indexes = ((entityMeta.indexes || []) as IndexMetadata[]).map((indexDef) => ({
         name: indexDef.name,
         columns: indexDef.columns,
         unique: !!indexDef.unique,

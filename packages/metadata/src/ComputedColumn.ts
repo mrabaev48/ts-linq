@@ -11,9 +11,10 @@ export interface ComputedColumnOptions {
 }
 
 export function ComputedColumn(options: ComputedColumnOptions): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     const columnMetadata: ColumnMetadata = {
       propertyName: name,

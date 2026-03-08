@@ -227,7 +227,9 @@ export interface OrmMiddleware {
     traceId?: string;
     rows?: number;
   }): Promise<void> | void;
-  entityMaterialized?<T>(entity: T | { entity: object; metadata?: any }): void;
+  entityMaterialized?<T extends object>(
+    entity: T | { entity: T; metadata?: EntityMetadata }
+  ): void;
 
   // Entity lifecycle hooks
   beforeSave?(context: EntityChangeContext): Promise<void> | void;
@@ -267,6 +269,8 @@ export interface SoftDeleteOptions {
   enabled?: boolean;
   column?: string;
   columnName?: string;
+  /** Optional timestamp column used by timestamp-based soft delete. */
+  deletedAtColumn?: string;
   type?: 'boolean' | 'timestamp';
 }
 
@@ -292,7 +296,7 @@ export interface PostgresConfig extends BaseProviderConfig {
   schema?: string;
   connectionTimeoutMs?: number;
   /** Optional: Inject existing pg.Pool instance */
-  pool?: any;
+  pool?: object;
 }
 
 // MySQL provider configuration
@@ -306,7 +310,7 @@ export interface MySqlConfig extends BaseProviderConfig {
   charset?: string;
   timezone?: string;
   /** Optional: Inject existing mysql2 Pool instance */
-  pool?: any;
+  pool?: object;
 }
 
 // MSSQL provider configuration
@@ -325,7 +329,7 @@ export interface MssqlConfig extends BaseProviderConfig {
   applicationName?: string;
   options?: Record<string, unknown>;
   /** Optional: Inject existing mssql ConnectionPool instance */
-  pool?: any;
+  pool?: object;
 }
 
 // Global filter
@@ -413,6 +417,8 @@ export interface CountCache {
   get(key: string): number | undefined;
   set(key: string, value: number): void;
   clear(): void;
+  /** Optional targeted invalidation. Should return number of removed entries. */
+  invalidateBy?(matcher: (key: string) => boolean): number;
 }
 
 // SQL Cache interfaces
@@ -445,14 +451,16 @@ export interface PerformanceOptions {
   enableCountCache?: boolean;
   enableEntityCache?: boolean;
   queryTimeout?: number;
-  countCache?: CountCache | any;
+  countCache?: CountCache;
   countCacheTtlMs?: number;
-  sqlCache?: unknown;
+  sqlCache?: SqlCache;
   cacheNamespace?: string;
   fallbackPolicy?: FallbackPolicy;
   entityCache?: EntityCacheLike;
   entityCacheSize?: number;
-  analysis?: unknown;
+  /** Optional IN() chunk size for large value lists. */
+  inClauseChunkSize?: number;
+  analysis?: Record<string, unknown>;
 }
 
 // Loading strategy enum
@@ -597,9 +605,9 @@ export {
 
 // Additional ORM-related properties
 export interface PerformanceOptionsExtended extends PerformanceOptions {
-  inClauseChunkSize?: number;
+  // Backward compatible alias; all fields live in PerformanceOptions.
 }
 
 export interface SoftDeleteOptionsExtended extends SoftDeleteOptions {
-  deletedAtColumn?: string;
+  // Backward compatible alias; all fields live in SoftDeleteOptions.
 }

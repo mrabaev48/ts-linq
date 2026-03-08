@@ -1,4 +1,4 @@
-import type { EntityMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
 import { SqlHelper } from '@ts-linq/core';
 type LoggerLike = { warn(message: string, error?: unknown): void };
 import type { PgIndexSpec } from './builders/PgIndexBuilder';
@@ -11,7 +11,7 @@ export class PostgresDdlStrategy {
     this.indexBuilder = new PgIndexBuilder(logger);
   }
   public generateCreateTableSql(entityMetadata: EntityMetadata): string {
-    const columnSqls = entityMetadata.columns.map((column: any) => {
+    const columnSqls = entityMetadata.columns.map((column: ColumnMetadata) => {
       if (column.isComputed && column.computedExpression) {
         // PostgreSQL supports only STORED
         const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
@@ -49,8 +49,8 @@ export class PostgresDdlStrategy {
     if (entityMetadata.primaryKeys && entityMetadata.primaryKeys.length > 0) {
       const primaryKeySql = entityMetadata.primaryKeys
         .map(
-          (primaryKey: any) =>
-            `"${entityMetadata.columns.find((column: any) => column.propertyName === primaryKey)?.columnName || primaryKey}"`
+          (primaryKey) =>
+            `"${entityMetadata.columns.find((column) => column.propertyName === primaryKey)?.columnName || primaryKey}"`
         )
         .join(', ');
       columnSqls.push(`PRIMARY KEY (${primaryKeySql})`);
@@ -77,7 +77,7 @@ export class PostgresDdlStrategy {
     return this.indexBuilder.buildCreateIndexSql(table, index as PgIndexSpec);
   }
 
-  public generateAddColumnSql(tableName: string, column: any): string {
+  public generateAddColumnSql(tableName: string, column: ColumnMetadata): string {
     const mappedType = this.mapTypeToPg(column.type);
     const notNullSql = column.nullable ? '' : ' NOT NULL';
     let defaultSql = '';

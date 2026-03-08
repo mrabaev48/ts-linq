@@ -22,10 +22,11 @@ function defineRelationship(
   kind: RelationshipMetadata['type'],
   targetEntity: () => Function,
   options: RelationshipOptions,
-  target: any,
+  target: object,
   propertyKey: string | symbol
 ): void {
-  const ctor = (target?.constructor || target) as Function;
+  const ctor =
+    typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
   const propertyName = String(propertyKey);
   
   const relationship: RelationshipMetadata = {
@@ -48,7 +49,7 @@ export function OneToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     defineRelationship('one-to-many', targetEntity, options, target, propertyKey);
   };
 }
@@ -60,7 +61,7 @@ export function ManyToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     defineRelationship('many-to-one', targetEntity, options, target, propertyKey);
   };
 }
@@ -72,7 +73,7 @@ export function OneToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     defineRelationship('one-to-one', targetEntity, options, target, propertyKey);
   };
 }
@@ -84,7 +85,7 @@ export function ManyToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     defineRelationship('many-to-many', targetEntity, options, target, propertyKey);
   };
 }

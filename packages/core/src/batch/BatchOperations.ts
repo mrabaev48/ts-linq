@@ -382,7 +382,7 @@ export class BatchOperations {
       throw new Error('No insertable columns found');
     }
 
-    const columnNames = columns.map((col: any) => col.columnName || col.propertyName);
+    const columnNames = columns.map((col) => col.columnName || col.propertyName);
     const placeholders: string[] = [];
     const allParams: SqlParameter[] = [];
 

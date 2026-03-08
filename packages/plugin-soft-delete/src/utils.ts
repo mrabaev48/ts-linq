@@ -47,12 +47,14 @@ export function isSoftDeleted(
  * Mark entity for hard delete (bypass soft delete)
  */
 export function markForHardDelete(entity: Record<string, unknown>): void {
-  (entity as any).__hardDelete = true;
+  const key = '__hardDelete';
+  entity[key] = true;
 }
 
 /**
  * Check if entity is marked for hard delete
  */
 export function isMarkedForHardDelete(entity: Record<string, unknown>): boolean {
-  return (entity as any).__hardDelete === true;
+  const key = '__hardDelete';
+  return entity[key] === true;
 }

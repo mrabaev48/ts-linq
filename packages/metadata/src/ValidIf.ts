@@ -10,9 +10,10 @@ export function ValidIf(
     messageParams?: Record<string, unknown>;
   }
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     MetadataStorage.addValidationRule(ctor, {
       propertyName: name,
@@ -39,9 +40,10 @@ export function RequiredIfOf<T>(
   condition: EntityPredicate<T>,
   message?: string
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     const predicate = (entity: unknown): boolean => {
       const e = entity as Record<string, unknown>;
@@ -63,9 +65,10 @@ export function RequiredIfOf<T>(
 
 /** Minimum string length constraint for a property. */
 export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
@@ -84,9 +87,10 @@ export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator
 
 /** Maximum string length constraint for a property. */
 export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
@@ -105,9 +109,10 @@ export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator
 
 /** Regex pattern match for a string property. */
 export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
@@ -126,9 +131,10 @@ export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator
 
 /** Numeric range constraint for a property (when value is a number). */
 export function RangeOf<T>(min?: number, max?: number, message?: string): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];

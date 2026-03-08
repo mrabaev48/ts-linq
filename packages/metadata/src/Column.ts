@@ -22,9 +22,10 @@ export interface ColumnOptions {
  * @param options.type - Column type (required for non-TEXT columns). Defaults to TEXT if omitted.
  */
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     // Ensure entity metadata exists (property decorators run before class decorator)
     if (!MetadataStorage.getEntity(ctor)) {

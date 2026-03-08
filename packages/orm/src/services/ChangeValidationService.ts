@@ -1,6 +1,6 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import { ValidationError } from '@ts-linq/types';
-import type { AuditOptions } from '@ts-linq/types';
+import type { AuditOptions, ValidationRule } from '@ts-linq/types';
 
 type ChangeForValidation = {
   entity: Record<string, unknown>;
@@ -12,10 +12,7 @@ type ChangeForValidation = {
 export class ChangeValidationService {
   private readonly translate?: (key: string, params?: Record<string, unknown>) => string;
   private readonly audit?: AuditOptions;
-  private readonly rulesCache: WeakMap<
-    Function,
-    Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }>
-  > = new WeakMap();
+  private readonly rulesCache: WeakMap<Function, ValidationRule[]> = new WeakMap();
 
   constructor(
     translate?: (key: string, params?: Record<string, unknown>) => string,
@@ -52,19 +49,22 @@ export class ChangeValidationService {
     }
 
     if (errors.length > 0) {
-      const error = new ValidationError('Model validation failed');
-      (error as any).errors = errors;
+      type ValidationErrorWithDetails = ValidationError & {
+        errors: typeof errors;
+      };
+      const error = new ValidationError('Model validation failed') as ValidationErrorWithDetails;
+      error.errors = errors;
       throw error;
     }
   }
 
   private getValidationRules(
     entityClass: Function
-  ): Array<{ propertyName: string; predicate: (e: unknown) => boolean; message?: string }> {
+  ): ValidationRule[] {
     const cached = this.rulesCache.get(entityClass);
     if (cached) return cached;
     // Stage-3: Use MetadataStorage instead of Reflect API
-    const rules = MetadataStorage.getValidationRules(entityClass).slice() as any;
+    const rules = MetadataStorage.getValidationRules(entityClass).slice();
     this.rulesCache.set(entityClass, rules);
     return rules;
   }
@@ -204,13 +204,15 @@ export class ChangeValidationService {
     try {
       const rules = this.getValidationRules(change.entityClass);
       for (const rule of rules) {
-        const phase = (rule as { phase?: 'onCreate' | 'onUpdate' | 'always' }).phase || 'always';
+        if (!rule.predicate) continue;
+        if (!rule.propertyName) continue;
+        const phase = rule.phase ?? 'always';
         if (phase === 'onCreate' && change.state !== 'added') continue;
         if (phase === 'onUpdate' && change.state !== 'modified') continue;
         const ok = !!rule.predicate(change.entity);
         if (!ok) {
-          const msgKey = (rule as { messageKey?: string }).messageKey;
-          const msgParams = (rule as { messageParams?: Record<string, unknown> }).messageParams;
+          const msgKey = rule.messageKey;
+          const msgParams = rule.messageParams;
           const translated =
             msgKey && this.translate ? this.translate(msgKey, msgParams) : undefined;
           const baseMsg = translated || rule.message || 'Validation rule failed';
@@ -237,7 +239,7 @@ export class ChangeValidationService {
   } {
     const table = meta?.tableName || 'unknown_table';
     const typeName = meta?.target?.name || 'UnknownEntity';
-    const col = meta?.columns.find((c: any) => c.propertyName === property)?.columnName || property;
+    const col = meta?.columns.find((c) => c.propertyName === property)?.columnName || property;
     const fullMessage = `${typeName}.${property} (${table}.${col}): ${message}`;
     return {
       entity: table,

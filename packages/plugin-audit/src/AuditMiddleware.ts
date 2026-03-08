@@ -60,7 +60,7 @@ export class AuditMiddleware {
     }
 
     if (this.hasProperty(meta, createdByCol) && currentUser !== undefined) {
-      entity[createdByCol] = currentUser as any;
+      entity[createdByCol] = currentUser;
     }
   }
 
@@ -81,7 +81,7 @@ export class AuditMiddleware {
     }
 
     if (this.hasProperty(meta, updatedByCol) && currentUser !== undefined) {
-      entity[updatedByCol] = currentUser as any;
+      entity[updatedByCol] = currentUser;
     }
   }
 
@@ -93,7 +93,7 @@ export class AuditMiddleware {
     propertyName: string
   ): boolean {
     return meta.columns.some(
-      (c: any) => c.propertyName === propertyName || c.columnName === propertyName
+      (c) => c.propertyName === propertyName || c.columnName === propertyName
     );
   }
 

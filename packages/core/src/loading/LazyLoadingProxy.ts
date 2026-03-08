@@ -459,7 +459,7 @@ export class LazyLoadingProxy {
     if (uniqueFkValues.length === 0) return;
 
     const targetPkColumn =
-      meta.columns.find((c: any) => c.propertyName === meta.primaryKeys?.[0])?.columnName ||
+      meta.columns.find((c) => c.propertyName === meta.primaryKeys?.[0])?.columnName ||
       meta.primaryKeys?.[0] || 'id';
     const related = await provider.findWhereIn(targetCtor, targetPkColumn, uniqueFkValues);
     const relatedProxies = this.createMany(related, targetCtor, provider);

@@ -28,9 +28,10 @@ export function OneToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     // Resolve targetEntity thunk
     // Start of fix: defer resolution to avoid circular dependency TDZ issues
@@ -58,9 +59,10 @@ export function ManyToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     let resolved;
     try {
@@ -90,9 +92,10 @@ export function OneToOne(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     const resolved = targetEntity();
     
@@ -117,9 +120,10 @@ export function ManyToMany(
   targetEntity: () => Function,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor = target.constructor;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     
     const resolved = targetEntity();
     

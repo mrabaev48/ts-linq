@@ -23,9 +23,10 @@ export interface ColumnOptions {
  * Uses reflect-metadata for metadata storage.
  */
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
-  return function (target: any, propertyKey: string | symbol): void {
+  return function (target: object, propertyKey: string | symbol): void {
     // For legacy decorators, target is the prototype, target.constructor is the class
-    const ctor = (target?.constructor || target) as Function;
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     const propertyName = String(propertyKey);
     
     const columnMetadata: ColumnMetadata = {

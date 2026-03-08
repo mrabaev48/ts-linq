@@ -13,11 +13,11 @@ export class MySqlDdlStrategy {
     if (!metadata || !metadata.columns) {
       throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
     }
-    const cols: string[] = metadata.columns.map((c: any) => this.generateColumnDefinition(c));
+    const cols: string[] = metadata.columns.map((c) => this.generateColumnDefinition(c));
     if (metadata.primaryKeys && metadata.primaryKeys.length) {
       const pkCols = metadata.primaryKeys.map(
-        (pk: any) => {
-           const col = metadata.columns.find((c: any) => c.propertyName === pk);
+        (pk) => {
+           const col = metadata.columns.find((c) => c.propertyName === pk);
            return `\`${col?.columnName || pk}\``;
         }
       );
@@ -43,7 +43,7 @@ export class MySqlDdlStrategy {
     return this.indexBuilder.buildCreateIndexSql(table, index);
   }
 
-  public generateAddColumnSql(tableName: string, column: any): string {
+  public generateAddColumnSql(tableName: string, column: ColumnMetadata): string {
     const colDef = this.generateColumnDefinition(column);
     return `ALTER TABLE \`${tableName}\` ADD COLUMN ${colDef}`;
   }
