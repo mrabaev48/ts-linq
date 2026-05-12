@@ -33,6 +33,9 @@ import { RowMaterializer } from './RowMaterializer';
  * in a QueryModel and delegates SQL generation to QueryBuilder.
  */
 export class Queryable<T> {
+  /** Used by the compile-time transformer to identify Queryable instances. Do not use at runtime. */
+  declare readonly __tsLinqWhereTransformerBrand: true;
+
   private _entityClass: new () => T;
   private _provider: DatabaseProvider;
   private _model: QueryModel = new QueryModel();
@@ -245,7 +248,7 @@ export class Queryable<T> {
    */
   public whereCompiled(input: {
     readonly ast: ExpressionNode;
-    readonly parameters: readonly SqlParameter[];
+    readonly parameters: readonly unknown[];
   }): Queryable<T> {
     const visitor = new SqlVisitor();
     const { condition, parameters } = visitor.toSql(input.ast, input.parameters);
@@ -491,7 +494,7 @@ export class Queryable<T> {
    */
   public havingCompiled(input: {
     readonly ast: ExpressionNode;
-    readonly parameters: readonly SqlParameter[];
+    readonly parameters: readonly unknown[];
   }): Queryable<T> {
     if (!this._model.groupBy) {
       throw new Error('havingCompiled() requires a preceding groupBy()');
