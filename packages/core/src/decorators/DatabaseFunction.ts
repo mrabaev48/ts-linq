@@ -1,6 +1,5 @@
-import 'reflect-metadata';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { ColumnMetadata } from '../types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { ColumnMetadata } from '@ts-linq/types';
 
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
@@ -13,7 +12,7 @@ function isStage3FieldContext(x: unknown): x is {
 export function DatabaseFunction(
   expression:
     | string
-    | { sqlite?: string; postgresql?: string; mysql?: string; mssql?: string; default?: string },
+    | { postgresql?: string; mysql?: string; mssql?: string; default?: string },
   nameOverride?: string
 ) {
   return function DatabaseFunctionDecorator(
@@ -42,26 +41,12 @@ export function DatabaseFunction(
           typeof expression === 'string'
             ? undefined
             : {
-                sqlite: expression.sqlite,
                 postgresql: expression.postgresql,
                 mysql: expression.mysql,
                 mssql: expression.mssql
               }
       };
       MetadataStorage.addColumn(ctor, columnMetadata);
-
-      // Maintain rehydration store for Entity decorator
-      const existing: ColumnMetadata[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-      const existingColIndex = existing.findIndex((c) => c.propertyName === name);
-      if (existingColIndex > -1) {
-        existing[existingColIndex] = {
-          ...existing[existingColIndex],
-          defaultExpression: expr
-        } as ColumnMetadata;
-      } else {
-        existing.push(columnMetadata);
-      }
-      Reflect.defineMetadata('orm:columns', existing, ctor);
     });
   };
 }

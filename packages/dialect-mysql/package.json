@@ -1,0 +1,32 @@
+{
+  "name": "@ts-linq/dialect-mysql",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "description": "MYSQL SQL dialect for ts-linq ORM",
+  "main": "./dist/esm/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.esm.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@ts-linq/metadata": "workspace:*",
+    "@ts-linq/types": "workspace:*",
+    "@ts-linq/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  }
+}

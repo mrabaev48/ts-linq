@@ -1,0 +1,30 @@
+{
+  "name": "@ts-linq/ast",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "description": "Query AST, parser and specifications for ts-linq ORM",
+  "main": "./dist/esm/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/esm/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && tsc -b tsconfig.esm.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@ts-linq/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  }
+}

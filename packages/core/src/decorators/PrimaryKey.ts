@@ -1,74 +1,39 @@
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { ColumnOptions } from './Column';
+import 'reflect-metadata';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { ColumnMetadata } from '@ts-linq/types';
 
-function isStage3FieldContext(x: unknown): x is {
-  kind: 'field';
-  name: string | symbol;
-  addInitializer?: (fn: (this: unknown) => void) => void;
-} {
-  return !!x && typeof x === 'object' && (x as { kind?: unknown }).kind === 'field' && 'name' in x;
-}
-
-export interface PrimaryKeyOptions extends ColumnOptions {
+export interface PrimaryKeyOptions {
+  name?: string;
+  type?: string;
   autoIncrement?: boolean;
+  version?: boolean;
   branded?: boolean;
 }
 
+/**
+ * Legacy property decorator that marks a column as a primary key.
+ * Uses reflect-metadata for metadata storage.
+ */
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
-  return function PrimaryKeyDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext)) {
-      throw new Error('@PrimaryKey requires TS5 Stage-3 decorators');
-    }
-    const ctx = propOrContext;
-    const name = ctx.name.toString();
-    ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
-      if (!ctor) return;
-      const columnMeta: {
-        propertyName: string;
-        columnName: string;
-        type: string;
-        nullable: boolean;
-        isGenerated: boolean;
-        isVersion: boolean;
-        isBranded?: boolean;
-        brand?: string;
-      } = {
-        propertyName: name,
-        columnName: options?.name || name,
-        type: options?.type || 'INTEGER',
-        nullable: false,
-        isGenerated: !!options?.autoIncrement,
-        isVersion: !!options?.version
-      } as const;
-      MetadataStorage.addColumn(ctor, columnMeta);
-      const existingCols: Array<{
-        propertyName: string;
-        columnName: string;
-        type: string;
-        nullable: boolean;
-        isGenerated: boolean;
-        isVersion: boolean;
-        isBranded?: boolean;
-        brand?: string;
-      }> = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-      existingCols.push(columnMeta);
-      Reflect.defineMetadata('orm:columns', existingCols, ctor);
-
-      MetadataStorage.addPrimaryKey(ctor, name);
-      if (options.branded) {
-        const meta = MetadataStorage.getEntity(ctor);
-        const col = meta?.columns.find((c) => c.propertyName === name) as
-          | typeof columnMeta
-          | undefined;
-        if (col) {
-          col.isBranded = true;
-          col.brand = ctor.name;
-        }
-      }
-      const existingPks: string[] = Reflect.getOwnMetadata('orm:primaryKeys', ctor) || [];
-      if (!existingPks.includes(name)) existingPks.push(name);
-      Reflect.defineMetadata('orm:primaryKeys', existingPks, ctor);
-    });
+  return function (target: object, propertyKey: string | symbol): void {
+    // For legacy decorators, target is the prototype, target.constructor is the class
+    const ctor =
+      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const propertyName = String(propertyKey);
+    
+    const columnMeta: ColumnMetadata = {
+      propertyName,
+      columnName: options?.name || propertyName,
+      type: options?.type || 'INTEGER',
+      nullable: false,
+      isGenerated: !!options?.autoIncrement,
+      isVersion: !!options?.version
+    };
+    
+    // Add column metadata
+    MetadataStorage.addColumn(ctor, columnMeta);
+    
+    // Mark as primary key
+    MetadataStorage.addPrimaryKey(ctor, propertyName);
   };
 }

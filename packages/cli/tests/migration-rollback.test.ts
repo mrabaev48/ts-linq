@@ -2,10 +2,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { MigrationsRollbackCommand } from '../src/commands/MigrationsRollbackCommand';
-import { MigrationRunner } from '@ts-linq/core';
+import { MigrationRunner } from '@ts-linq/migrations';
 
 class FakeProvider {
-  public providerLabel = 'sqlite';
+  public providerLabel = 'postgresql';
   public applied: Array<{ version: string; name: string; applied_at: string }> = [];
   async connect(): Promise<void> {}
   async disconnect(): Promise<void> {}

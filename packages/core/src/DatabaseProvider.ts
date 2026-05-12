@@ -7,14 +7,17 @@ import type {
   SqlParameter,
   ConnectionPoolOptions,
   ConnectionHealthCheckOptions,
+  SqlDialect
+} from '@ts-linq/types';
+import type {
   CircuitBreakerOptions,
   CircuitState,
   QueryPerformanceAnalysisOptions,
   QueryAnalysisInfo
 } from './types';
-import { CircuitOpenError } from './types';
-import type { SqlDialect } from './query/SqlDialect';
 import { logInternalError } from './utils/InternalLogger';
+import { ResilienceManager } from './Resilience/ResilienceManager';
+import { HealthMonitor } from './Health/HealthMonitor';
 
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -31,7 +34,7 @@ export abstract class DatabaseProvider {
   private lastExecuteStartedAt?: number;
   protected softDelete?: SoftDeleteOptions;
   protected retryPolicy?: RetryPolicy;
-  /** Logical provider name for logging/metrics (sqlite|postgresql|mysql|mssql|unknown). */
+  /** Logical provider name for logging/metrics (postgresql|mysql|mssql|unknown). */
   protected providerName: string = 'unknown';
   /** Optional generic pool options forwarded to the underlying driver. */
   protected poolOptions?: ConnectionPoolOptions;
@@ -39,17 +42,12 @@ export abstract class DatabaseProvider {
   protected healthCheck?: ConnectionHealthCheckOptions;
   /** Optional circuit breaker options. */
   protected circuitOptions?: CircuitBreakerOptions;
-  /** Health-check timer handle (if enabled). */
-  private healthTimer?: ReturnType<typeof setInterval>;
-  /** Current health status and failure counter for backoff. */
-  private healthFailures: number = 0;
-  private healthStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-  /** Circuit breaker state. */
-  private circuitState: CircuitState = 'closed';
-  private circuitFailures: number = 0;
-  private circuitOpenedAt?: number;
-  private halfOpenInFlight: number = 0;
-  private circuitOpenBackoffExp: number = 0;
+  
+  /** Resilience manager handling circuit breaker and retries */
+  protected resilienceManager: ResilienceManager;
+  /** Health monitor handling connection checks */
+  protected healthMonitor: HealthMonitor;
+
   /** Optional query performance analysis configuration. */
   protected analysis?: QueryPerformanceAnalysisOptions;
   /** Internal accounting for analysis rate limiting. */
@@ -78,6 +76,21 @@ export abstract class DatabaseProvider {
     this.poolOptions = poolOptions;
     this.healthCheck = healthCheck;
     this.circuitOptions = circuitOptions;
+
+    this.resilienceManager = new ResilienceManager(
+      logger,
+      this.providerName, // Note: providerName is 'unknown' here until subclass sets it, might need update later?
+      circuitOptions,
+      retryPolicy,
+      (e) => this.isTransientError(e)
+    );
+
+    this.healthMonitor = new HealthMonitor(
+      logger,
+      this.providerName,
+      healthCheck,
+      this.resilienceManager
+    );
   }
 
   /** Connect to the database. */
@@ -186,39 +199,37 @@ export abstract class DatabaseProvider {
   }
 
   /**
-   * Retry wrapper with basic exponential backoff + jitter for idempotent operations.
-   * Retries only when not in a transaction and for errors deemed transient.
+   * Retry wrapper using ResilienceManager.
    */
   private async executeWithRetry<T>(
     fn: () => Promise<T>,
     sql: string,
     params: readonly SqlParameter[]
   ): Promise<T> {
-    // Circuit breaker pre-check (short-circuit before any logging/instrumentation)
-    this.preCheckCircuit();
-    const maxAttempts = 3;
-    const baseDelayMs = 50;
-    const startedAt = Date.now();
-    this.logger?.queryStart?.({
+    const context = {
       sql,
       params,
       traceId: this.currentTraceId,
-      provider: this.providerName
-    });
-    this.lastExecuteStartedAt = startedAt;
-    await this.beforeExecute(sql, params);
-    let attempt = 0;
-    // Do not retry within an explicit transaction; also avoid retrying in half-open
-    const allowRetry = !this.inTransaction && this.circuitState === 'closed';
-    // Track half-open probe usage to enforce concurrency cap
-    let decrementHalfOpenOnExit = false;
-    if (this.circuitState === 'half-open') {
-      decrementHalfOpenOnExit = true;
-    }
-    while (true) {
+      inTransaction: this.inTransaction
+    };
+
+    return this.resilienceManager.execute(async () => {
+      const startedAt = Date.now();
+      this.lastExecuteStartedAt = startedAt;
+      
+      this.logger?.queryStart?.({
+        sql,
+        params,
+        traceId: this.currentTraceId,
+        provider: this.providerName
+      });
+
+      await this.beforeExecute(sql, params);
+
       try {
         const result = await fn();
         const durationMs = Date.now() - startedAt;
+        
         this.logger?.queryEnd?.({
           sql,
           params,
@@ -231,19 +242,12 @@ export abstract class DatabaseProvider {
               : undefined,
           provider: this.providerName
         });
+
         await this.maybeAnalyzeQuery({ sql, params, durationMs });
         await this.afterExecute(sql, params, result);
-        // Success path: reset circuit if needed
-        if (this.circuitState === 'half-open') {
-          this.transitionCircuit('closed', 'probe succeeded');
-        }
-        this.circuitFailures = 0;
-        if (decrementHalfOpenOnExit) {
-          this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
-        }
+        
         return result;
       } catch (error) {
-        attempt++;
         const durationMs = Date.now() - startedAt;
         this.logger?.queryEnd?.({
           sql,
@@ -254,58 +258,9 @@ export abstract class DatabaseProvider {
           provider: this.providerName
         });
         await this.maybeAnalyzeQuery({ sql, params, durationMs, error: error as Error });
-        const isTransient = this.isTransientError(error);
-        // Circuit breaker failure accounting
-        const countOnlyTransient = this.circuitOptions?.countTransientOnly ?? true;
-        const shouldCountFailure = !countOnlyTransient || isTransient;
-        if (shouldCountFailure) this.circuitFailures++;
-        // If in half-open, immediate open on first failure
-        if (this.circuitState === 'half-open') {
-          this.openCircuit('half-open probe failed');
-          if (decrementHalfOpenOnExit) {
-            this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
-          }
-          throw error;
-        }
-        // If in closed and threshold exceeded, open circuit
-        const threshold = Math.max(1, this.circuitOptions?.failureThreshold ?? 5);
-        if (this.circuitState === 'closed' && this.circuitFailures >= threshold) {
-          this.openCircuit('failure threshold reached');
-          if (decrementHalfOpenOnExit) {
-            this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
-          }
-          throw error;
-        }
-        const should = this.retryPolicy
-          ? (this.retryPolicy.shouldRetryEx?.({
-              error,
-              attempt,
-              inTransaction: this.inTransaction,
-              sql,
-              params,
-              provider: this.providerName
-            }) ?? this.retryPolicy.shouldRetry(error, attempt, this.inTransaction))
-          : isTransient;
-        if (!allowRetry || !should || attempt >= maxAttempts) {
-          if (decrementHalfOpenOnExit) {
-            this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
-          }
-          throw error;
-        }
-        const jitter = Math.floor(Math.random() * 25);
-        const defaultBackoff = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
-        const backoff = this.retryPolicy ? this.retryPolicy.getDelayMs(attempt) : defaultBackoff;
-        this.logger?.retry?.({
-          sql,
-          params,
-          attempt,
-          traceId: this.currentTraceId,
-          provider: this.providerName
-        });
-        await new Promise((res) => setTimeout(res, backoff));
-        // next attempt
+        throw error;
       }
-    }
+    }, context);
   }
 
   /** Configure query performance analysis at runtime. */
@@ -422,63 +377,68 @@ export abstract class DatabaseProvider {
       message.includes('econnreset')
     );
   }
-  /** Circuit breaker: short-circuit if open or move to half-open if cooldown elapsed. */
-  private preCheckCircuit(): void {
-    const enabled = this.circuitOptions?.enabled ?? true;
-    if (!enabled) return;
-    if (this.circuitState === 'open') {
-      const now = Date.now();
-      const openSince = this.circuitOpenedAt ?? now;
-      const baseOpen = Math.max(1000, this.circuitOptions?.openDurationMs ?? 30000);
-      const cap = Math.max(baseOpen, this.circuitOptions?.maxOpenDurationMs ?? 300000);
-      const factor = Math.min(6, Math.max(0, this.circuitOpenBackoffExp));
-      const openDuration = Math.min(baseOpen * Math.pow(2, factor), cap);
-      if (now - openSince < openDuration) {
-        throw new CircuitOpenError();
-      }
-      // Cooldown elapsed → move to half-open
-      this.transitionCircuit('half-open', 'cooldown elapsed');
-      this.halfOpenInFlight = 0;
-    }
-    if (this.circuitState === 'half-open') {
-      const maxProbes = Math.max(1, this.circuitOptions?.halfOpenMaxCalls ?? 1);
-      if (this.halfOpenInFlight >= maxProbes) {
-        throw new CircuitOpenError('Half-open probes limit reached');
-      }
-      this.halfOpenInFlight += 1;
+
+  /** Current circuit breaker state (for diagnostics/tests). */
+  public get circuitStateLabel(): CircuitState {
+    return this.resilienceManager.state;
+  }
+
+  /** Update circuit breaker options at runtime. */
+  public configureCircuit(options: CircuitBreakerOptions): void {
+    this.circuitOptions = { ...this.circuitOptions, ...options };
+    this.resilienceManager.configureCircuit(options);
+  }
+
+  /** Soft delete configuration if enabled. */
+  public get softDeleteOptions(): SoftDeleteOptions | undefined {
+    return this.softDelete;
+  }
+
+  /** Expose provider label for metrics/loggers. */
+  public get providerLabel(): string {
+    return this.providerName;
+  }
+  /** Expose logger instance for downstream components. */
+  public get loggerRef(): SqlLogger | undefined {
+    return this.logger;
+  }
+
+  /** Configure connection pool and health-check options at runtime. */
+  public configureConnection(options: {
+    pool?: ConnectionPoolOptions;
+    health?: ConnectionHealthCheckOptions;
+  }): void {
+    this.poolOptions = options.pool ?? this.poolOptions;
+    
+    if (options.health) {
+      this.healthCheck = options.health;
+      this.healthMonitor.configure(options.health);
     }
   }
-  private openCircuit(reason: string): void {
-    this.circuitState = 'open';
-    this.circuitOpenedAt = Date.now();
-    this.circuitOpenBackoffExp = Math.min(6, this.circuitOpenBackoffExp + 1);
-    this.logger?.circuit?.({
-      state: 'open',
-      provider: this.providerName,
-      failures: this.circuitFailures,
-      reason,
-      halfOpenInFlight: this.halfOpenInFlight
-    });
+
+  /**
+   * Start periodic connection health checks if enabled.
+   * Providers should call this after establishing a pool.
+   */
+  protected startHealthChecks(runPing: () => Promise<number>): void {
+    this.healthMonitor.start(runPing);
   }
-  private transitionCircuit(state: CircuitState, reason: string): void {
-    this.circuitState = state;
-    if (state === 'closed') {
-      this.circuitFailures = 0;
-      this.circuitOpenedAt = undefined;
-      this.halfOpenInFlight = 0;
-      this.circuitOpenBackoffExp = 0;
-    }
-    if (state === 'open') {
-      this.circuitOpenedAt = Date.now();
-    }
-    this.logger?.circuit?.({
-      state,
-      provider: this.providerName,
-      failures: this.circuitFailures,
-      reason,
-      halfOpenInFlight: this.halfOpenInFlight
-    });
+
+  /** Stop health check scheduler when disconnecting. */
+  protected stopHealthChecks(): void {
+    this.healthMonitor.stop();
   }
+
+  /** Force-open the circuit for a specified duration (ms). */
+  public forceOpen(reason: string, durationMs?: number): void {
+    this.resilienceManager.forceOpen(reason, durationMs);
+  }
+
+  /** Manually reset circuit to closed state. */
+  public manualReset(reason: string = 'manual reset'): void {
+    this.resilienceManager.manualReset(reason);
+  }
+
   /** Provider-specific implementation of non-query execution. */
   protected abstract doExecuteNonQuery(
     sql: string,
@@ -487,7 +447,6 @@ export abstract class DatabaseProvider {
 
   // Template Method hooks
   /** Called before each execute; override for logging/instrumentation. */
-  /** Default no-op hook. Override in providers for logging/instrumentation. */
   protected async beforeExecute(sql: string, params: readonly SqlParameter[]): Promise<void> {
     if (!this.middlewares || this.middlewares.length === 0) return;
     const info = { sql, params, traceId: this.currentTraceId };
@@ -500,7 +459,6 @@ export abstract class DatabaseProvider {
     }
   }
   /** Called after each execute; override for logging/instrumentation. */
-  /** Default no-op hook. Override in providers for logging/instrumentation. */
   protected async afterExecute(
     sql: string,
     params: readonly SqlParameter[],
@@ -558,137 +516,5 @@ export abstract class DatabaseProvider {
    */
   public get inTransactionState(): boolean {
     return this.inTransaction;
-  }
-
-  /** Current circuit breaker state (for diagnostics/tests). */
-  public get circuitStateLabel(): CircuitState {
-    return this.circuitState;
-  }
-
-  /** Update circuit breaker options at runtime. */
-  public configureCircuit(options: CircuitBreakerOptions): void {
-    this.circuitOptions = { ...this.circuitOptions, ...options };
-  }
-
-  /** Soft delete configuration if enabled. */
-  public get softDeleteOptions(): SoftDeleteOptions | undefined {
-    return this.softDelete;
-  }
-
-  /** Expose provider label for metrics/loggers. */
-  public get providerLabel(): string {
-    return this.providerName;
-  }
-  /** Expose logger instance for downstream components. */
-  public get loggerRef(): SqlLogger | undefined {
-    return this.logger;
-  }
-
-  /** Configure connection pool and health-check options at runtime. */
-  public configureConnection(options: {
-    pool?: ConnectionPoolOptions;
-    health?: ConnectionHealthCheckOptions;
-  }): void {
-    this.poolOptions = options.pool ?? this.poolOptions;
-    this.healthCheck = options.health ?? this.healthCheck;
-  }
-
-  /**
-   * Start periodic connection health checks if enabled.
-   * Providers should call this after establishing a pool.
-   */
-  protected startHealthChecks(runPing: () => Promise<number>): void {
-    if (!this.healthCheck?.enabled) return;
-    const minI = this.healthCheck.minIntervalMs ?? this.healthCheck.intervalMs ?? 60000;
-    const maxI = this.healthCheck.maxIntervalMs ?? Math.max(minI * 4, 60000);
-    const degradeN = this.healthCheck.degradeAfterFailures ?? 3;
-    const unhealthyN = this.healthCheck.unhealthyAfterFailures ?? 6;
-    const scheduleNext = (delay: number) => {
-      if (this.healthTimer) clearInterval(this.healthTimer);
-      this.healthTimer = setInterval(() => {
-        void runOnce();
-      }, delay);
-    };
-    const runOnce = async () => {
-      try {
-        const timeoutMs = this.healthCheck?.timeoutMs;
-        const started = Date.now();
-        const pingPromise = runPing();
-        const timed =
-          typeof timeoutMs === 'number' && timeoutMs > 0
-            ? Promise.race([
-                pingPromise,
-                new Promise<number>((_, rej) =>
-                  setTimeout(() => rej(new Error('health-timeout')), timeoutMs)
-                )
-              ])
-            : pingPromise;
-        const latency = await timed;
-        const elapsed = latency ?? Date.now() - started;
-        this.healthFailures = 0;
-        this.healthStatus = 'healthy';
-        this.logger?.connectionHealth?.({
-          healthy: true,
-          latencyMs: elapsed,
-          provider: this.providerName,
-          status: this.healthStatus
-        });
-        // If previously unhealthy opened circuit, close when back to healthy
-        if (this.circuitState !== 'closed') {
-          this.transitionCircuit('closed', 'health restored');
-        }
-        scheduleNext(minI);
-      } catch {
-        this.healthFailures += 1;
-        this.healthStatus =
-          this.healthFailures >= unhealthyN
-            ? 'unhealthy'
-            : this.healthFailures >= degradeN
-              ? 'degraded'
-              : 'healthy';
-        this.logger?.connectionHealth?.({
-          healthy: false,
-          provider: this.providerName,
-          status: this.healthStatus
-        });
-        // Auto-open circuit when unhealthy
-        if (this.healthStatus === 'unhealthy') {
-          this.openCircuit('health unhealthy');
-        }
-        // Exponential backoff within [minI, maxI]
-        const attempt = Math.min(this.healthFailures, 10);
-        const base = Math.min(minI * Math.pow(2, attempt - 1), maxI);
-        const jitter = Math.floor(Math.random() * Math.floor(base * 0.1));
-        const next = Math.min(base + jitter, maxI);
-        scheduleNext(next);
-      }
-    };
-    scheduleNext(minI);
-    // Run first check immediately (non-blocking)
-    void (async () => {
-      await runOnce();
-    })();
-  }
-
-  /** Stop health check scheduler when disconnecting. */
-  protected stopHealthChecks(): void {
-    if (this.healthTimer) {
-      clearInterval(this.healthTimer);
-      this.healthTimer = undefined;
-    }
-  }
-
-  /** Force-open the circuit for a specified duration (ms). */
-  public forceOpen(reason: string, durationMs?: number): void {
-    this.openCircuit(reason || 'manual open');
-    if (typeof durationMs === 'number' && durationMs > 0) {
-      this.circuitOpenedAt =
-        Date.now() - (this.circuitOptions?.openDurationMs ?? 30000) + durationMs;
-    }
-  }
-
-  /** Manually reset circuit to closed state. */
-  public manualReset(reason: string = 'manual reset'): void {
-    this.transitionCircuit('closed', reason);
   }
 }

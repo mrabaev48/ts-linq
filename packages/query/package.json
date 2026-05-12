@@ -1,0 +1,25 @@
+{
+  "name": "@ts-linq/query",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@ts-linq/types": "workspace:*",
+    "@ts-linq/metrics-safe": "workspace:*",
+    "@ts-linq/ast": "workspace:*",
+    "@ts-linq/core": "workspace:*",
+    "@ts-linq/metadata": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && npm run gen:esm-entry && npm run copy:types",
+    "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
+    "copy:types": "node ../../scripts/copy-types.js",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}

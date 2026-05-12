@@ -1,0 +1,10 @@
+packages:
+  - packages/*
+  - packages/e2e-tests
+  - packages/config
+
+ignoredBuiltDependencies:
+  - '@swc/core'
+  - cpu-features
+  - protobufjs
+  - ssh2

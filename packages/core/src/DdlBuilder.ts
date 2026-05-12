@@ -1,4 +1,4 @@
-import type { EntityMetadata } from './types';
+import type { EntityMetadata } from '@ts-linq/types';
 import type { DdlStrategy } from './DdlStrategy';
 
 /**
@@ -23,7 +23,7 @@ export class DdlBuilder {
         this.strategy.generateCreateIndexSql(metadata.tableName, {
           name: idx.name,
           columns: idx.columns,
-          unique: idx.unique
+          unique: idx.unique ?? false
         })
       );
     }

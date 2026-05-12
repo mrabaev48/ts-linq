@@ -3,9 +3,9 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import {
   SchemaSnapshotBuilder,
   SchemaSnapshotSerializer,
-  generateMigrationFromDiff
-} from '@ts-linq/core';
-import { compareSchemas } from '@ts-linq/core';
+  generateMigrationFromDiff,
+  compareSchemas
+} from '@ts-linq/migrations';
 import { resolveDialect, getFlag } from '../utils';
 import type { DbCommand } from './Command';
 import type { Logger } from '../ports/Logger';
@@ -24,7 +24,7 @@ export class SchemaApplyCommand implements DbCommand {
   ) {}
 
   public async runDb(provider: DatabaseProvider, argv: string[]): Promise<void> {
-    const file = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
+    const file = argv[0] || path.resolve(process.cwd(), 'schema.snapshot.json');
     const dryRun = !!getFlag(argv, 'dry-run');
     const force = !!getFlag(argv, 'force');
     if (!this.fsAdapter.exists(file)) {

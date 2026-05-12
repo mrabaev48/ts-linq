@@ -1,0 +1,15 @@
+{
+  "name": "@ts-linq/concurrency",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "dependencies": {
+    "@ts-linq/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && tsc -b tsconfig.esm.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}

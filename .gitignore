@@ -5,5 +5,36 @@
 /cli-plans.md
 /plans.md
 /refactor-plans.md
-/packages/open-telemetry-sql-logger/dist/
 /.cursor/
+
+# Test artifacts
+__test_configs__
+*.heapsnapshot
+/packages/**/.turbo/**
+/packages/**/dist
+/packages/**/dist/**
+#/packages/**/dist/**/
+#/packages/**/dist/**/**
+/.turbo/**
+/.pnpm-store/
+/.pnpm-store/**/**
+/.turbo/cache/*
+/.turbo/
+/packages/**/.turbo
+
+/packages/**/node_modules
+/packages/**/node_modules/
+
+# Generated outputs (do not commit)
+/docs/
+/coverage/
+/jest-results.json
+/unit-jest-results.json
+/unit-jest-results-clean.json
+/size-tests/dist/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# macOS filesystem metadata
+.DS_Store

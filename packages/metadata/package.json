@@ -1,0 +1,18 @@
+{
+  "name": "@ts-linq/metadata",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@ts-linq/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && tsc -b tsconfig.esm.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@ts-linq/sql-visitor",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "description": "SQL visitor for AST transformation",
+  "main": "./dist/index.js",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^24.3.0"
+  }
+}

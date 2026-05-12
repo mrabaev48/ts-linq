@@ -1,21 +1,20 @@
+import type { DatabaseProvider, CircuitBreakerOptions } from '@ts-linq/core';
 import type {
   ConnectionHealthCheckOptions,
   ConnectionPoolOptions,
-  DatabaseProvider,
-  CircuitBreakerOptions,
   FallbackPolicy
-} from '@ts-linq/core';
-import { SQLiteProvider } from '@ts-linq/sqlite';
-import { PostgresProvider } from '@ts-linq/postgres';
-import { MySqlProvider } from '@ts-linq/mysql';
-import { MssqlProvider } from '@ts-linq/mssql';
+} from '@ts-linq/types';
+
+import { PostgresProvider } from '@ts-linq/provider-postgres';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
+import { MssqlProvider } from '@ts-linq/provider-mssql';
 
 export function createProviderFromEnv(): DatabaseProvider {
-  const kind = (process.env.DB_PROVIDER || 'sqlite').toLowerCase();
+  const kind = (process.env.DB_PROVIDER || 'postgres').toLowerCase();
   if (isPg(kind)) return createPg();
   if (kind === 'mysql') return createMy();
   if (isMs(kind)) return createMs();
-  return createSqlite();
+  throw new Error(`Unsupported DB_PROVIDER: ${kind}`);
 }
 
 function isPg(kind: string): boolean {
@@ -30,16 +29,49 @@ function createPg(): DatabaseProvider {
   const url = process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('POSTGRES_URL/DATABASE_URL is required for DB_PROVIDER=postgresql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  // Provider constructors accept pool/health as the last arguments
-  const provider = new PostgresProvider(
-    url,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    pool,
-    health
-  ) as unknown as DatabaseProvider;
+  
+  // Parse PostgreSQL URL
+  const parsed = new URL(url);
+  const params = new URLSearchParams(parsed.search);
+  
+  // Parse SSL configuration - handle both 'ssl' and 'sslmode' parameters
+  // Support all common SSL modes: disable, allow, prefer, require, verify-ca, verify-full
+  let sslConfig: boolean | object | undefined = undefined;
+  const sslParam = params.get('ssl');
+  const sslModeParam = params.get('sslmode');
+  const requireSslParam = params.get('requireSsl') || params.get('require_ssl');
+  
+  if (sslParam) {
+    sslConfig = sslParam === 'true' || sslParam === '1';
+  } else if (requireSslParam) {
+    sslConfig = requireSslParam === 'true' || requireSslParam === '1';
+  } else if (sslModeParam) {
+    // Map sslmode values - enable TLS for require/verify modes, disable for disable, undefined for allow/prefer
+    const mode = sslModeParam.toLowerCase();
+    if (mode === 'disable') {
+      sslConfig = false;
+    } else if (mode === 'allow' || mode === 'prefer') {
+      sslConfig = undefined; // Let pg driver negotiate based on server support
+    } else if (mode === 'require' || mode === 'verify-ca' || mode === 'verify-full') {
+      // Enable TLS with certificate verification for require/verify-* modes
+      // pg driver will handle verification based on system CA certificates
+      sslConfig = { rejectUnauthorized: true };
+    }
+  }
+  
+  const provider = new PostgresProvider({
+    host: parsed.hostname,
+    port: parsed.port ? parseInt(parsed.port) : 5432,
+    database: parsed.pathname.slice(1),
+    user: parsed.username,
+    password: parsed.password,
+    ssl: sslConfig,
+    applicationName: params.get('application_name') || undefined,
+    schema: params.get('schema') || undefined,
+    connectionTimeoutMs: params.get('connect_timeout') ? parseInt(params.get('connect_timeout')!) * 1000 : undefined,
+    poolOptions: pool,
+    healthCheck: health
+  }) as unknown as DatabaseProvider;
   if (circuit) provider.configureCircuit(circuit);
   return provider;
 }
@@ -48,15 +80,23 @@ function createMy(): DatabaseProvider {
   const url = process.env.MYSQL_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('MYSQL_URL/DATABASE_URL is required for DB_PROVIDER=mysql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  const provider = new MySqlProvider(
-    url,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    pool,
-    health
-  ) as unknown as DatabaseProvider;
+  
+  // Parse MySQL URL
+  const parsed = new URL(url);
+  const params = new URLSearchParams(parsed.search);
+  
+  const provider = new MySqlProvider({
+    host: parsed.hostname,
+    port: parsed.port ? parseInt(parsed.port) : 3306,
+    database: parsed.pathname.slice(1),
+    user: parsed.username,
+    password: parsed.password,
+    socketPath: params.get('socketPath') || undefined,
+    charset: params.get('charset') || undefined,
+    timezone: params.get('timezone') || undefined,
+    poolOptions: pool,
+    healthCheck: health
+  }) as unknown as DatabaseProvider;
   if (circuit) provider.configureCircuit(circuit);
   return provider;
 }
@@ -65,26 +105,32 @@ function createMs(): DatabaseProvider {
   const url = process.env.MSSQL_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('MSSQL_URL/DATABASE_URL is required for DB_PROVIDER=mssql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  const provider = new MssqlProvider(
-    url,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    pool,
-    health
-  ) as unknown as DatabaseProvider;
+  
+  // Parse MSSQL connection string (Server=host;Database=db;User Id=user;Password=pass)
+  const parts = url.split(';').reduce((acc, part) => {
+    const [key, value] = part.split('=');
+    if (key && value) acc[key.trim().toLowerCase()] = value.trim();
+    return acc;
+  }, {} as Record<string, string>);
+  
+  const provider = new MssqlProvider({
+    server: parts['server'] || 'localhost',
+    database: parts['database'] || parts['initial catalog'] || '',
+    user: parts['user id'] || parts['uid'],
+    password: parts['password'] || parts['pwd'],
+    encrypt: parts['encrypt'] === 'true' || parts['encrypt'] === 'True',
+    trustServerCertificate: parts['trustservercertificate'] === 'true' || parts['trustservercertificate'] === 'True',
+    integratedSecurity: parts['integrated security'] === 'true' || parts['integrated security'] === 'True',
+    connectionTimeout: parts['connection timeout'] ? parseInt(parts['connection timeout']) : undefined,
+    applicationName: parts['application name'],
+    poolOptions: pool,
+    healthCheck: health
+  }) as unknown as DatabaseProvider;
   if (circuit) provider.configureCircuit(circuit);
   return provider;
 }
 
-function createSqlite(): DatabaseProvider {
-  const conn = process.env.SQLITE_URL || ':memory:';
-  const provider = new SQLiteProvider(conn) as unknown as DatabaseProvider;
-  const { circuit } = readPoolHealthCircuitFromEnv();
-  if (circuit) provider.configureCircuit(circuit);
-  return provider;
-}
+
 
 function readPoolHealthCircuitFromEnv(): {
   pool?: ConnectionPoolOptions;
@@ -147,13 +193,10 @@ function readCircuitFromEnv(): CircuitBreakerOptions | undefined {
  */
 export function readFallbackPolicyFromEnv(): FallbackPolicy | undefined {
   const policy: FallbackPolicy = {} as FallbackPolicy;
-  if (process.env.DB_FALLBACK_ENABLED) policy.enabled = process.env.DB_FALLBACK_ENABLED === 'true';
   if (process.env.DB_FALLBACK_ALLOW_OPS)
     policy.allowOps = process.env.DB_FALLBACK_ALLOW_OPS.split(',').map((s) =>
       s.trim()
     ) as unknown as FallbackPolicy['allowOps'];
-  if (process.env.DB_FALLBACK_SOURCES)
-    policy.sources = process.env.DB_FALLBACK_SOURCES.split(',').map((s) => s.trim());
   // Throttle
   const throttle: NonNullable<FallbackPolicy['throttle']> = {};
   if (process.env.DB_FALLBACK_THROTTLE_MIN_MS)
@@ -169,12 +212,10 @@ export function readFallbackPolicyFromEnv(): FallbackPolicy | undefined {
     hedged.enabled = process.env.DB_FALLBACK_HEDGED_ENABLED === 'true';
   if (process.env.DB_FALLBACK_HEDGED_DELAY_MS)
     hedged.delayMs = Number(process.env.DB_FALLBACK_HEDGED_DELAY_MS);
-  if (process.env.DB_FALLBACK_HEDGED_SOURCES)
-    hedged.sources = process.env.DB_FALLBACK_HEDGED_SOURCES.split(',').map((s) => s.trim());
   if (!isEmpty(hedged)) policy.hedged = hedged;
   // Includes
   if (process.env.DB_FALLBACK_INCLUDES)
-    policy.allowIncludesOnFallback = process.env.DB_FALLBACK_INCLUDES as 'none' | 'attempt';
+    policy.allowIncludesOnFallback = process.env.DB_FALLBACK_INCLUDES as 'attempt' | 'skip' | 'error';
   return isEmpty(policy) ? undefined : policy;
 }
 

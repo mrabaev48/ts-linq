@@ -1,5 +1,5 @@
 import { MemcachedSqlCacheAdapter } from '../src/memcached/MemcachedSqlCacheAdapter';
-import type { SqlCacheEntry } from '@ts-linq/core';
+import type { SqlCacheEntry } from '@ts-linq/types';
 
 class FakeMemjs {
   private m = new Map<string, Buffer>();

@@ -1,7 +1,9 @@
 import 'reflect-metadata';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { IndexMetadata } from '../types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { IndexMetadata } from '@ts-linq/types';
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
+
+// Re-export all decorators
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 export {
   ValidIf,
@@ -12,10 +14,10 @@ export {
   PatternOf,
   RangeOf
 } from './ValidIf';
-
-function isStage3ClassContext(x: unknown): x is ClassDecoratorContext {
-  return !!x && typeof x === 'object';
-}
+export { Entity } from './Entity';
+export { Column } from './Column';
+export { PrimaryKey } from './PrimaryKey';
+export { ManyToOne, OneToMany, OneToOne, ManyToMany } from './Relationships';
 
 export interface IndexOptions {
   name: string;
@@ -57,20 +59,17 @@ export function normalizeIndexOptions(input: IndexInput): IndexMetadata {
   return built;
 }
 
-export function Index(options: IndexInput) {
-  return function IndexDecorator(_target: unknown, context: ClassDecoratorContext) {
-    if (context.kind !== 'class') {
-      throw new Error('@Index requires TS5 Stage-3 decorators');
-    }
-    context.addInitializer?.(function () {
-      const ctor = this as unknown as Function;
-      if (!ctor) return;
-      const meta: IndexMetadata = normalizeIndexOptions(options);
-      const existing: IndexMetadata[] = Reflect.getOwnMetadata('orm:indexes', ctor) || [];
-      existing.push(meta);
-      Reflect.defineMetadata('orm:indexes', existing, ctor);
-    });
+/**
+ * Legacy class decorator that registers an index on the entity.
+ * Uses reflect-metadata for metadata storage.
+ */
+export function Index(options: IndexInput): ClassDecorator {
+  return function <TFunction extends Function>(target: TFunction): TFunction | void {
+    const ctor = target as Function;
+    const meta: IndexMetadata = normalizeIndexOptions(options);
+    
+    MetadataStorage.addIndex(ctor, meta);
+    
+    return target;
   };
 }
-
-// no re-exports from here

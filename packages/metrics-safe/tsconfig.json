@@ -2,7 +2,11 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "lib": ["ES2021", "DOM"],
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true
   },
   "include": ["src/**/*.ts"]
 }

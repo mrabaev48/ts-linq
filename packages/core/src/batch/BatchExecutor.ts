@@ -1,5 +1,5 @@
 import type { DatabaseProvider } from '../DatabaseProvider';
-import type { EntityMetadata, SqlParameter } from '../types';
+import type { EntityMetadata, SqlParameter } from '@ts-linq/types';
 
 export interface BatchExecutionHooks<T> {
   begin?(provider: DatabaseProvider): Promise<void> | void;
