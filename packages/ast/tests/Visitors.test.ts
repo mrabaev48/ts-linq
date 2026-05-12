@@ -1,558 +1,449 @@
-import { BinaryVisitor } from '../src/visitors/BinaryVisitor';
+import { BinaryVisitor, renderPropertyName } from '../src/visitors/BinaryVisitor';
 import { LogicalVisitor } from '../src/visitors/LogicalVisitor';
+import { NullVisitor } from '../src/visitors/NullVisitor';
+import { InVisitor } from '../src/visitors/InVisitor';
+import { MethodVisitor } from '../src/visitors/MethodVisitor';
 import { SqlVisitor } from '../src/ast/SqlVisitor';
-import {
-  ComparisonOperator,
-  LogicalOperator,
-  UnaryOperator,
-  type BinaryExpressionNode,
-  type LogicalExpressionNode,
-  type UnaryExpressionNode,
-  type ExpressionNode
+import type {
+  BinaryNode,
+  LogicalNode,
+  NotNode,
+  PropertyNode,
+  LiteralNode,
+  IsNullNode,
+  IsNotNullNode,
+  InNode,
+  MethodNode,
+  ExpressionNode,
 } from '../src/ast/Nodes';
 import { AstSqlGenerationError } from '../src/errors';
 
-describe('AST Visitors', () => {
-  describe('BinaryVisitor', () => {
-    let visitor: BinaryVisitor;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-    beforeEach(() => {
-      visitor = new BinaryVisitor();
-    });
+const prop = (name: string): PropertyNode => ({ type: 'property', name });
+const propPath = (...segs: string[]): PropertyNode => ({ type: 'property', path: segs });
+const lit = (value: number | string | boolean | null): LiteralNode => ({ type: 'literal', value });
 
-    it('should visit equality comparison', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['id'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 1 }
-      };
+const noop = (): { condition: string; parameters: never[] } => ({ condition: '1=1', parameters: [] });
 
-      const result = visitor.visit(node);
+const makeRecurse =
+  (visitor: SqlVisitor, inputParameters: readonly unknown[] = []) =>
+  (n: ExpressionNode) =>
+    visitor.toSql(n, inputParameters as number[]);
 
-      expect(result.condition).toBe('(id = ?)');
-      expect(result.parameters).toEqual([1]);
-    });
+// ─── BinaryVisitor ────────────────────────────────────────────────────────────
 
-    it('should visit greater than comparison', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['age'] },
-        operator: ComparisonOperator.Gt,
-        right: { type: 'Literal', value: 18 }
-      };
+describe('BinaryVisitor', () => {
+  let visitor: BinaryVisitor;
+  let sqlVisitor: SqlVisitor;
 
-      const result = visitor.visit(node);
-
-      expect(result.condition).toBe('(age > ?)');
-      expect(result.parameters).toEqual([18]);
-    });
-
-    it('should visit greater than or equal comparison', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['salary'] },
-        operator: ComparisonOperator.Gte,
-        right: { type: 'Literal', value: 50000 }
-      };
-
-      const result = visitor.visit(node);
-
-      expect(result.condition).toBe('(salary >= ?)');
-      expect(result.parameters).toEqual([50000]);
-    });
-
-    it('should visit less than comparison', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['price'] },
-        operator: ComparisonOperator.Lt,
-        right: { type: 'Literal', value: 100 }
-      };
-
-      const result = visitor.visit(node);
-
-      expect(result.condition).toBe('(price < ?)');
-      expect(result.parameters).toEqual([100]);
-    });
-
-    it('should visit less than or equal comparison', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['quantity'] },
-        operator: ComparisonOperator.Lte,
-        right: { type: 'Literal', value: 10 }
-      };
-
-      const result = visitor.visit(node);
-
-      expect(result.condition).toBe('(quantity <= ?)');
-      expect(result.parameters).toEqual([10]);
-    });
-
-    it('should handle string values', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['name'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'Alice' }
-      };
-
-      const result = visitor.visit(node);
-
-      expect(result.condition).toBe('(name = ?)');
-      expect(result.parameters).toEqual(['Alice']);
-    });
-
-    it('should handle boolean values', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['active'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: true }
-      };
-
-      const result = visitor.visit(node);
-
-      expect(result.condition).toBe('(active = ?)');
-      expect(result.parameters).toEqual([true]);
-    });
-
-    it('should handle null values', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['deletedAt'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: null }
-      };
-
-      const result = visitor.visit(node);
-
-      expect(result.condition).toBe('(deletedAt = ?)');
-      expect(result.parameters).toEqual([null]);
-    });
-
-    it('should resolve ParameterRef from input parameters', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['age'] },
-        operator: ComparisonOperator.Gte,
-        right: { type: 'ParameterRef', index: 0 }
-      };
-
-      const result = visitor.visit(node, [21]);
-
-      expect(result.condition).toBe('(age >= ?)');
-      expect(result.parameters).toEqual([21]);
-    });
-
-    it('should throw on out-of-range ParameterRef index', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['age'] },
-        operator: ComparisonOperator.Gte,
-        right: { type: 'ParameterRef', index: 1 }
-      };
-
-      expect(() => visitor.visit(node, [21])).toThrow(AstSqlGenerationError);
-    });
-
-    it('should throw on invalid MemberAccess path segment', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['profile', 'age-years'] },
-        operator: ComparisonOperator.Gte,
-        right: { type: 'Literal', value: 18 }
-      };
-
-      expect(() => visitor.visit(node)).toThrow(AstSqlGenerationError);
-    });
+  beforeEach(() => {
+    visitor = new BinaryVisitor();
+    sqlVisitor = new SqlVisitor();
   });
 
-  describe('LogicalVisitor', () => {
-    let visitor: LogicalVisitor;
-
-    beforeEach(() => {
-      visitor = new LogicalVisitor();
-    });
-
-    it('should visit AND expression', () => {
-      const expr1: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['age'] },
-        operator: ComparisonOperator.Gt,
-        right: { type: 'Literal', value: 18 }
-      };
-
-      const expr2: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['active'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: true }
-      };
-
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: [expr1, expr2]
-      };
-
-      const mockVisit = (n: ExpressionNode) => {
-        if (n.type === 'BinaryExpression') {
-          const binary = n as BinaryExpressionNode;
-          const value = binary.right.type === 'Literal' ? binary.right.value : null;
-          return {
-            condition: `(${binary.left.path.join('.')} ${binary.operator} ?)`,
-            parameters: [value]
-          };
-        }
-        return { condition: '1=1', parameters: [] };
-      };
-
-      const result = visitor.visit(node, mockVisit);
-
-      expect(result.condition).toBe('((age > ?) AND (active = ?))');
-      expect(result.parameters).toEqual([18, true]);
-    });
-
-    it('should visit OR expression', () => {
-      const expr1: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['role'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'admin' }
-      };
-
-      const expr2: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['role'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'moderator' }
-      };
-
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.Or,
-        expressions: [expr1, expr2]
-      };
-
-      const mockVisit = (n: ExpressionNode) => {
-        if (n.type === 'BinaryExpression') {
-          const binary = n as BinaryExpressionNode;
-          const value = binary.right.type === 'Literal' ? binary.right.value : null;
-          return {
-            condition: `(${binary.left.path.join('.')} ${binary.operator} ?)`,
-            parameters: [value]
-          };
-        }
-        return { condition: '1=1', parameters: [] };
-      };
-
-      const result = visitor.visit(node, mockVisit);
-
-      expect(result.condition).toBe('((role = ?) OR (role = ?))');
-      expect(result.parameters).toEqual(['admin', 'moderator']);
-    });
-
-    it('should handle multiple expressions', () => {
-      const expr1: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['a'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 1 }
-      };
-
-      const expr2: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['b'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 2 }
-      };
-
-      const expr3: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['c'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 3 }
-      };
-
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: [expr1, expr2, expr3]
-      };
-
-      const mockVisit = (n: ExpressionNode) => {
-        if (n.type === 'BinaryExpression') {
-          const binary = n as BinaryExpressionNode;
-          const value = binary.right.type === 'Literal' ? binary.right.value : null;
-          return {
-            condition: `(${binary.left.path.join('.')} ${binary.operator} ?)`,
-            parameters: [value]
-          };
-        }
-        return { condition: '1=1', parameters: [] };
-      };
-
-      const result = visitor.visit(node, mockVisit);
-
-      expect(result.condition).toBe('((a = ?) AND (b = ?) AND (c = ?))');
-      expect(result.parameters).toEqual([1, 2, 3]);
-    });
-
-    it('should handle empty expressions array', () => {
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: []
-      };
-
-      const mockVisit = () => ({ condition: '1=1', parameters: [] });
-
-      expect(() => visitor.visit(node, mockVisit)).toThrow(AstSqlGenerationError);
-    });
+  it('equality comparison (===)', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '===',
+      left: prop('id'), right: lit(1),
+    };
+    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    expect(result.condition).toBe('(id = ?)');
+    expect(result.parameters).toEqual([1]);
   });
 
-  describe('SqlVisitor', () => {
-    let visitor: SqlVisitor;
+  it('greater than comparison', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '>',
+      left: prop('age'), right: lit(18),
+    };
+    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    expect(result.condition).toBe('(age > ?)');
+    expect(result.parameters).toEqual([18]);
+  });
 
-    beforeEach(() => {
-      visitor = new SqlVisitor();
+  it('greater than or equal', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '>=',
+      left: prop('salary'), right: lit(50000),
+    };
+    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    expect(result.condition).toBe('(salary >= ?)');
+    expect(result.parameters).toEqual([50000]);
+  });
+
+  it('less than', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '<',
+      left: prop('price'), right: lit(100),
+    };
+    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    expect(result.condition).toBe('(price < ?)');
+    expect(result.parameters).toEqual([100]);
+  });
+
+  it('less than or equal', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '<=',
+      left: prop('quantity'), right: lit(10),
+    };
+    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    expect(result.condition).toBe('(quantity <= ?)');
+    expect(result.parameters).toEqual([10]);
+  });
+
+  it('string value', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '===',
+      left: prop('name'), right: lit('Alice'),
+    };
+    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    expect(result.condition).toBe('(name = ?)');
+    expect(result.parameters).toEqual(['Alice']);
+  });
+
+  it('boolean value', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '===',
+      left: prop('active'), right: lit(true),
+    };
+    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    expect(result.condition).toBe('(active = ?)');
+    expect(result.parameters).toEqual([true]);
+  });
+
+  it('null value', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '===',
+      left: prop('deletedAt'), right: lit(null),
+    };
+    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    expect(result.condition).toBe('(deletedAt = ?)');
+    expect(result.parameters).toEqual([null]);
+  });
+
+  it('resolves ParameterRef from input parameters', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '>=',
+      left: prop('age'), right: { type: 'parameterRef', index: 0 },
+    };
+    const result = visitor.visit(node, [21], makeRecurse(sqlVisitor, [21]));
+    expect(result.condition).toBe('(age >= ?)');
+    expect(result.parameters).toEqual([21]);
+  });
+
+  it('throws on out-of-range ParameterRef index', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '>=',
+      left: prop('age'), right: { type: 'parameterRef', index: 5 },
+    };
+    expect(() => visitor.visit(node, [21], makeRecurse(sqlVisitor, [21]))).toThrow(AstSqlGenerationError);
+  });
+
+  it('multi-segment property path', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '>=',
+      left: propPath('profile', 'age'), right: lit(18),
+    };
+    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    expect(result.condition).toBe('(profile.age >= ?)');
+    expect(result.parameters).toEqual([18]);
+  });
+
+  it('renderPropertyName throws for empty node', () => {
+    expect(() => renderPropertyName({ type: 'property' })).toThrow(AstSqlGenerationError);
+  });
+});
+
+// ─── LogicalVisitor ────────────────────────────────────────────────────────────
+
+describe('LogicalVisitor', () => {
+  let visitor: LogicalVisitor;
+
+  beforeEach(() => {
+    visitor = new LogicalVisitor();
+  });
+
+  const binaryResult = (condition: string, params: unknown[]) => () => ({
+    condition,
+    parameters: params as number[],
+  });
+
+  it('AND expression', () => {
+    const node: LogicalNode = {
+      type: 'logical', operator: '&&',
+      left: {} as ExpressionNode,
+      right: {} as ExpressionNode,
+    };
+    const result = visitor.visit(node, (n) => {
+      if (n === node.left)  return { condition: '(age > ?)', parameters: [18] };
+      return { condition: '(active = ?)', parameters: [true] };
     });
+    expect(result.condition).toBe('((age > ?) AND (active = ?))');
+    expect(result.parameters).toEqual([18, true]);
+  });
 
-    it('should convert simple binary expression to SQL', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['userId'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 42 }
-      };
-
-      const result = visitor.toSql(node);
-
-      expect(result.condition).toBe('(userId = ?)');
-      expect(result.parameters).toEqual([42]);
+  it('OR expression', () => {
+    const node: LogicalNode = {
+      type: 'logical', operator: '||',
+      left: {} as ExpressionNode,
+      right: {} as ExpressionNode,
+    };
+    const result = visitor.visit(node, (n) => {
+      if (n === node.left)  return { condition: "(role = ?)", parameters: ['admin'] };
+      return { condition: "(role = ?)", parameters: ['mod'] };
     });
+    expect(result.condition).toBe("((role = ?) OR (role = ?))");
+    expect(result.parameters).toEqual(['admin', 'mod']);
+  });
+});
 
-    it('should convert AND logical expression to SQL', () => {
-      const expr1: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['age'] },
-        operator: ComparisonOperator.Gt,
-        right: { type: 'Literal', value: 18 }
-      };
+// ─── NullVisitor ─────────────────────────────────────────────────────────────
 
-      const expr2: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['active'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: true }
-      };
+describe('NullVisitor', () => {
+  let visitor: NullVisitor;
 
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: [expr1, expr2]
-      };
+  beforeEach(() => { visitor = new NullVisitor(); });
 
-      const result = visitor.toSql(node);
+  it('IS NULL', () => {
+    const node: IsNullNode = { type: 'isNull', property: prop('deletedAt') };
+    const result = visitor.visitIsNull(node);
+    expect(result.condition).toBe('(deletedAt IS NULL)');
+    expect(result.parameters).toEqual([]);
+  });
 
-      expect(result.condition).toBe('((age > ?) AND (active = ?))');
-      expect(result.parameters).toEqual([18, true]);
-    });
+  it('IS NOT NULL', () => {
+    const node: IsNotNullNode = { type: 'isNotNull', property: prop('deletedAt') };
+    const result = visitor.visitIsNotNull(node);
+    expect(result.condition).toBe('(deletedAt IS NOT NULL)');
+    expect(result.parameters).toEqual([]);
+  });
+});
 
-    it('should convert OR logical expression to SQL', () => {
-      const expr1: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['status'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'pending' }
-      };
+// ─── InVisitor ───────────────────────────────────────────────────────────────
 
-      const expr2: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['status'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'processing' }
-      };
+describe('InVisitor', () => {
+  let visitor: InVisitor;
 
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.Or,
-        expressions: [expr1, expr2]
-      };
+  beforeEach(() => { visitor = new InVisitor(); });
 
-      const result = visitor.toSql(node);
+  it('IN with inline literal values', () => {
+    const node: InNode = {
+      type: 'in',
+      property: prop('role'),
+      values: [lit('admin'), lit('mod')] as LiteralNode[],
+    };
+    const result = visitor.visit(node, []);
+    expect(result.condition).toBe('(role IN (?, ?))');
+    expect(result.parameters).toEqual(['admin', 'mod']);
+  });
 
-      expect(result.condition).toBe('((status = ?) OR (status = ?))');
-      expect(result.parameters).toEqual(['pending', 'processing']);
-    });
+  it('IN with empty values → (1 = 0)', () => {
+    const node: InNode = { type: 'in', property: prop('role'), values: [] };
+    const result = visitor.visit(node, []);
+    expect(result.condition).toBe('(1 = 0)');
+  });
 
-    it('should handle nested logical expressions', () => {
-      const activeExpr: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['active'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: true }
-      };
+  it('IN with external array via valuesRef', () => {
+    const roles = ['admin', 'mod'];
+    const node: InNode = { type: 'in', property: prop('role'), valuesRef: 0 };
+    const result = visitor.visit(node, [roles]);
+    expect(result.condition).toBe('(role IN (?, ?))');
+    expect(result.parameters).toEqual(['admin', 'mod']);
+  });
 
-      const adminExpr: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['role'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'admin' }
-      };
+  it('throws when valuesRef resolves to non-array', () => {
+    const node: InNode = { type: 'in', property: prop('x'), valuesRef: 0 };
+    expect(() => visitor.visit(node, ['not-an-array'])).toThrow(AstSqlGenerationError);
+  });
+});
 
-      const modExpr: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['role'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'moderator' }
-      };
+// ─── MethodVisitor ────────────────────────────────────────────────────────────
 
-      const roleOrExpr: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.Or,
-        expressions: [adminExpr, modExpr]
-      };
+describe('MethodVisitor', () => {
+  let visitor: MethodVisitor;
 
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: [activeExpr, roleOrExpr]
-      };
+  beforeEach(() => { visitor = new MethodVisitor(); });
 
-      const result = visitor.toSql(node);
+  it('includes → LIKE %value%', () => {
+    const node: MethodNode = {
+      type: 'method', method: 'includes',
+      object: prop('name'),
+      args: [lit('foo')] as LiteralNode[],
+    };
+    const result = visitor.visit(node, []);
+    expect(result.condition).toBe('(name LIKE ?)');
+    expect(result.parameters).toEqual(['%foo%']);
+  });
 
-      expect(result.condition).toBe('((active = ?) AND ((role = ?) OR (role = ?)))');
-      expect(result.parameters).toEqual([true, 'admin', 'moderator']);
-    });
+  it('startsWith → LIKE value%', () => {
+    const node: MethodNode = {
+      type: 'method', method: 'startsWith',
+      object: prop('name'),
+      args: [lit('Al')] as LiteralNode[],
+    };
+    const result = visitor.visit(node, []);
+    expect(result.condition).toBe('(name LIKE ?)');
+    expect(result.parameters).toEqual(['Al%']);
+  });
 
-    it('should return default condition for unknown node types', () => {
-      const node = {
-        type: 'UnknownExpression'
-      } as unknown as ExpressionNode;
+  it('endsWith → LIKE %value', () => {
+    const node: MethodNode = {
+      type: 'method', method: 'endsWith',
+      object: prop('name'),
+      args: [lit('.ts')] as LiteralNode[],
+    };
+    const result = visitor.visit(node, []);
+    expect(result.condition).toBe('(name LIKE ?)');
+    expect(result.parameters).toEqual(['%.ts']);
+  });
+});
 
-      expect(() => visitor.toSql(node)).toThrow(AstSqlGenerationError);
-    });
+// ─── SqlVisitor (integration) ─────────────────────────────────────────────────
 
-    it('should handle complex queries with multiple operators', () => {
-      const expr1: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['price'] },
-        operator: ComparisonOperator.Gte,
-        right: { type: 'Literal', value: 10 }
-      };
+describe('SqlVisitor', () => {
+  let visitor: SqlVisitor;
 
-      const expr2: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['price'] },
-        operator: ComparisonOperator.Lte,
-        right: { type: 'Literal', value: 100 }
-      };
+  beforeEach(() => { visitor = new SqlVisitor(); });
 
-      const expr3: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['inStock'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: true }
-      };
+  it('simple binary expression', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '===',
+      left: prop('userId'), right: lit(42),
+    };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('(userId = ?)');
+    expect(result.parameters).toEqual([42]);
+  });
 
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: [expr1, expr2, expr3]
-      };
+  it('AND logical expression', () => {
+    const node: LogicalNode = {
+      type: 'logical', operator: '&&',
+      left: { type: 'binary', operator: '>', left: prop('age'), right: lit(18) },
+      right: { type: 'binary', operator: '===', left: prop('active'), right: lit(true) },
+    };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('((age > ?) AND (active = ?))');
+    expect(result.parameters).toEqual([18, true]);
+  });
 
-      const result = visitor.toSql(node);
+  it('OR logical expression', () => {
+    const node: LogicalNode = {
+      type: 'logical', operator: '||',
+      left: { type: 'binary', operator: '===', left: prop('status'), right: lit('pending') },
+      right: { type: 'binary', operator: '===', left: prop('status'), right: lit('processing') },
+    };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('((status = ?) OR (status = ?))');
+    expect(result.parameters).toEqual(['pending', 'processing']);
+  });
 
-      expect(result.condition).toBe('((price >= ?) AND (price <= ?) AND (inStock = ?))');
-      expect(result.parameters).toEqual([10, 100, true]);
-    });
+  it('nested AND inside OR (left-associative)', () => {
+    const a: BinaryNode = { type: 'binary', operator: '===', left: prop('active'), right: lit(true) };
+    const b: BinaryNode = { type: 'binary', operator: '===', left: prop('role'), right: lit('admin') };
+    const c: BinaryNode = { type: 'binary', operator: '===', left: prop('role'), right: lit('mod') };
 
-    it('should support ParameterRef at runtime via input parameters', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['age'] },
-        operator: ComparisonOperator.Gte,
-        right: { type: 'ParameterRef', index: 0 }
-      };
+    // active AND (admin OR mod)
+    const node: LogicalNode = {
+      type: 'logical', operator: '&&', left: a,
+      right: { type: 'logical', operator: '||', left: b, right: c },
+    };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('((active = ?) AND ((role = ?) OR (role = ?)))');
+    expect(result.parameters).toEqual([true, 'admin', 'mod']);
+  });
 
-      const result = visitor.toSql(node, [21]);
+  it('IS NULL', () => {
+    const node: IsNullNode = { type: 'isNull', property: prop('deletedAt') };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('(deletedAt IS NULL)');
+    expect(result.parameters).toEqual([]);
+  });
 
-      expect(result.condition).toBe('(age >= ?)');
-      expect(result.parameters).toEqual([21]);
-    });
+  it('IS NOT NULL', () => {
+    const node: IsNotNullNode = { type: 'isNotNull', property: prop('updatedAt') };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('(updatedAt IS NOT NULL)');
+    expect(result.parameters).toEqual([]);
+  });
 
-    it('should convert NOT over MemberAccess to (= false)', () => {
-      const node: UnaryExpressionNode = {
-        type: 'UnaryExpression',
-        operator: UnaryOperator.Not,
-        operand: { type: 'MemberAccess', path: ['isActive'] }
-      };
+  it('IN expression (inline values)', () => {
+    const node: InNode = {
+      type: 'in', property: prop('role'),
+      values: [lit('admin'), lit('mod')] as LiteralNode[],
+    };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('(role IN (?, ?))');
+    expect(result.parameters).toEqual(['admin', 'mod']);
+  });
 
-      const result = visitor.toSql(node);
+  it('IN expression (external array)', () => {
+    const roles = ['admin', 'mod'];
+    const node: InNode = { type: 'in', property: prop('role'), valuesRef: 0 };
+    const result = visitor.toSql(node, [roles]);
+    expect(result.condition).toBe('(role IN (?, ?))');
+    expect(result.parameters).toEqual(['admin', 'mod']);
+  });
 
-      expect(result.condition).toBe('(isActive = ?)');
-      expect(result.parameters).toEqual([false]);
-    });
+  it('string method: name.startsWith', () => {
+    const node: MethodNode = {
+      type: 'method', method: 'startsWith',
+      object: prop('name'),
+      args: [lit('Al')] as LiteralNode[],
+    };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('(name LIKE ?)');
+    expect(result.parameters).toEqual(['Al%']);
+  });
 
-    it('should convert NOT over a logical expression to NOT (...)', () => {
-      const a: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['age'] },
-        operator: ComparisonOperator.Gt,
-        right: { type: 'Literal', value: 18 }
-      };
-      const b: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['isActive'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: true }
-      };
-      const andExpr: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: [a, b]
-      };
-      const notExpr: UnaryExpressionNode = {
-        type: 'UnaryExpression',
-        operator: UnaryOperator.Not,
-        operand: andExpr
-      };
+  it('NOT over property → (col = false)', () => {
+    const node: NotNode = { type: 'not', operand: prop('isActive') };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('(isActive = ?)');
+    expect(result.parameters).toEqual([false]);
+  });
 
-      const result = visitor.toSql(notExpr);
+  it('NOT over binary expression', () => {
+    const node: NotNode = {
+      type: 'not',
+      operand: { type: 'binary', operator: '>', left: prop('age'), right: lit(18) },
+    };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('(NOT (age > ?))');
+    expect(result.parameters).toEqual([18]);
+  });
 
-      expect(result.condition).toBe('(NOT ((age > ?) AND (isActive = ?)))');
-      expect(result.parameters).toEqual([18, true]);
-    });
+  it('NOT over logical expression', () => {
+    const andNode: LogicalNode = {
+      type: 'logical', operator: '&&',
+      left: { type: 'binary', operator: '>', left: prop('age'), right: lit(18) },
+      right: { type: 'binary', operator: '===', left: prop('active'), right: lit(true) },
+    };
+    const node: NotNode = { type: 'not', operand: andNode };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('(NOT ((age > ?) AND (active = ?)))');
+    expect(result.parameters).toEqual([18, true]);
+  });
 
-    it('should support nested NOT', () => {
-      const inner: UnaryExpressionNode = {
-        type: 'UnaryExpression',
-        operator: UnaryOperator.Not,
-        operand: { type: 'MemberAccess', path: ['isActive'] }
-      };
-      const outer: UnaryExpressionNode = {
-        type: 'UnaryExpression',
-        operator: UnaryOperator.Not,
-        operand: inner
-      };
+  it('ParameterRef at runtime', () => {
+    const node: BinaryNode = {
+      type: 'binary', operator: '>=',
+      left: prop('age'), right: { type: 'parameterRef', index: 0 },
+    };
+    const result = visitor.toSql(node, [21]);
+    expect(result.condition).toBe('(age >= ?)');
+    expect(result.parameters).toEqual([21]);
+  });
 
-      const result = visitor.toSql(outer);
+  it('throws on unknown node type', () => {
+    const node = { type: 'UnknownExpression' } as unknown as ExpressionNode;
+    expect(() => visitor.toSql(node)).toThrow(AstSqlGenerationError);
+  });
 
-      expect(result.condition).toBe('(NOT (isActive = ?))');
-      expect(result.parameters).toEqual([false]);
-    });
-
-    it('should throw on invalid unary operand type', () => {
-      const node: UnaryExpressionNode = {
-        type: 'UnaryExpression',
-        operator: UnaryOperator.Not,
-        operand: { type: 'Literal', value: true }
-      };
-
-      expect(() => visitor.toSql(node)).toThrow(AstSqlGenerationError);
-    });
+  it('throws on unsupported node', () => {
+    const node = {
+      type: 'unsupported', syntaxKind: 0, description: 'test',
+    } as ExpressionNode;
+    expect(() => visitor.toSql(node)).toThrow(AstSqlGenerationError);
   });
 });
