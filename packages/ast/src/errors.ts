@@ -3,13 +3,22 @@ export type AstSqlGenerationErrorCode =
   | 'UNSUPPORTED_NODE_TYPE'
   | 'INVALID_MEMBER_ACCESS_PATH'
   | 'EMPTY_LOGICAL_EXPRESSION'
-  | 'INVALID_UNARY_OPERAND';
+  | 'EMPTY_LOGICAL_BRANCH'
+  | 'INVALID_UNARY_OPERAND'
+  | 'INVALID_PROPERTY_NODE'
+  | 'INVALID_IN_VALUES'
+  | 'INVALID_IN_NODE'
+  | 'INVALID_METHOD_NODE'
+  | 'INVALID_METHOD_ARG'
+  | 'UNSUPPORTED_METHOD';
 
 export interface AstSqlGenerationErrorDetails {
   readonly nodeType?: string;
   readonly parameterIndex?: number;
   readonly memberPath?: readonly string[];
   readonly operandType?: string;
+  readonly syntaxKind?: number;
+  readonly method?: string;
 }
 
 /**
@@ -34,4 +43,3 @@ export class AstSqlGenerationError extends Error {
     this.details = details;
   }
 }
-
