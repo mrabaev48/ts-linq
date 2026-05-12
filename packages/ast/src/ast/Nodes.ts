@@ -1,87 +1,111 @@
-/** Logical operators used in compound boolean expressions. */
-export enum LogicalOperator {
-  And = 'AND',
-  Or = 'OR'
-}
-
-/** Comparison operators supported by the minimal AST. */
-export enum ComparisonOperator {
-  Eq = '=',
-  Gt = '>',
-  Gte = '>=',
-  Lt = '<',
-  Lte = '<='
-}
-
-/** Unary operators supported by the minimal AST. */
-export enum UnaryOperator {
-  Not = 'NOT'
-}
-
 import type { SqlParameter } from '@ts-linq/types';
 
 /**
- * Base SQL-compatible literal value.
- *
- * Note: This mirrors `SqlParameter` to keep the AST serializable and safe for SQL parameterization.
+ * A single property access on the predicate parameter, e.g. `u.age` or `u.profile.city`.
+ * Single-segment paths use `name`; multi-segment paths use `path`.
  */
-export type SqlLiteralValue = SqlParameter;
+export interface PropertyNode {
+  type: 'property';
+  /** Single-segment: `u.age` → `name: "age"` */
+  name?: string;
+  /** Multi-segment: `u.profile.city` → `path: ["profile", "city"]` */
+  path?: string[];
+  /** True when any `?.` appeared in the source chain. */
+  optional?: boolean;
+}
 
-/** Literal value node (parameterized value). */
+/** A literal value embedded directly in the AST. */
 export interface LiteralNode {
-  type: 'Literal';
-  value: SqlLiteralValue;
+  type: 'literal';
+  value: SqlParameter;
 }
 
 /**
- * Member access node representing a column/property path.
- *
- * Examples:
- * - `userId` -> `['userId']`
- * - `profile.age` -> `['profile','age']`
- */
-export interface MemberAccessNode {
-  type: 'MemberAccess';
-  path: readonly string[];
-}
-
-/**
- * Reference to a runtime parameter by index.
- * The SQL generator must resolve it against `inputParameters[index]`.
+ * Reference to a runtime value captured at compile time.
+ * The SQL generator resolves it against `inputParameters[index]`.
  */
 export interface ParameterRefNode {
-  type: 'ParameterRef';
+  type: 'parameterRef';
   index: number;
 }
 
-export interface BinaryExpressionNode {
-  type: 'BinaryExpression';
-  left: MemberAccessNode;
-  operator: ComparisonOperator;
-  right: LiteralNode | ParameterRefNode;
+/** A binary comparison: `left op right`. */
+export interface BinaryNode {
+  type: 'binary';
+  operator: '==' | '===' | '!=' | '!==' | '>' | '<' | '>=' | '<=';
+  left: ExpressionNode;
+  right: ExpressionNode;
 }
 
-export interface LogicalExpressionNode {
-  type: 'LogicalExpression';
-  operator: LogicalOperator;
-  expressions: readonly ExpressionNode[];
+/** A logical combination of two sub-expressions. Supports both AND and OR. */
+export interface LogicalNode {
+  type: 'logical';
+  operator: '&&' | '||';
+  left: ExpressionNode;
+  right: ExpressionNode;
 }
 
-export interface UnaryExpressionNode {
-  type: 'UnaryExpression';
-  operator: UnaryOperator.Not;
+/** Negation of an inner expression (`!expr`). */
+export interface NotNode {
+  type: 'not';
   operand: ExpressionNode;
 }
 
+/** `u.field === null` — renders as `col IS NULL`. */
+export interface IsNullNode {
+  type: 'isNull';
+  property: PropertyNode;
+}
+
+/** `u.field !== null` — renders as `col IS NOT NULL`. */
+export interface IsNotNullNode {
+  type: 'isNotNull';
+  property: PropertyNode;
+}
+
 /**
- * Minimal query expression tree supported by `@ts-linq/ast`.
- *
- * This is a strict discriminated union: unknown node types are rejected by SQL generation.
+ * IN expression from `[...].includes(u.field)` or `arr.includes(u.field)`.
+ * - `values` is populated for inline array literals.
+ * - `valuesRef` (ParameterRef index) is populated for external array variables.
  */
+export interface InNode {
+  type: 'in';
+  property: PropertyNode;
+  values?: LiteralNode[];
+  valuesRef?: number;
+}
+
+/**
+ * String method call: `u.name.includes(arg)`, `u.name.startsWith(arg)`, `u.name.endsWith(arg)`.
+ * Rendered as `col LIKE ?` with the appropriate wildcard pattern.
+ */
+export interface MethodNode {
+  type: 'method';
+  method: 'includes' | 'startsWith' | 'endsWith';
+  object: PropertyNode;
+  args: (LiteralNode | ParameterRefNode)[];
+}
+
+/**
+ * Sentinel emitted by the transformer when it encounters an unsupported expression.
+ * The transformer also emits a compiler Error diagnostic pointing at the source node.
+ * The runtime throws `AstSqlGenerationError` if this node reaches SQL generation.
+ */
+export interface UnsupportedNode {
+  type: 'unsupported';
+  syntaxKind: number;
+  description: string;
+}
+
 export type ExpressionNode =
+  | PropertyNode
   | LiteralNode
-  | MemberAccessNode
   | ParameterRefNode
-  | BinaryExpressionNode
-  | LogicalExpressionNode
-  | UnaryExpressionNode;
+  | BinaryNode
+  | LogicalNode
+  | NotNode
+  | IsNullNode
+  | IsNotNullNode
+  | InNode
+  | MethodNode
+  | UnsupportedNode;

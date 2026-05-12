@@ -49,6 +49,9 @@ type NavigationSelector<TEntity, TProperty> =
  * Uses composition instead of inheritance to avoid type signature conflicts.
  */
 export class TypedQueryable<TEntity> {
+  /** Used by the compile-time transformer to identify TypedQueryable instances. Do not use at runtime. */
+  declare readonly __tsLinqWhereTransformerBrand: true;
+
   private readonly _queryable: Queryable<TEntity>;
 
   constructor(queryable: Queryable<TEntity>) {
@@ -106,7 +109,7 @@ export class TypedQueryable<TEntity> {
    */
   whereCompiled(input: {
     readonly ast: ExpressionNode;
-    readonly parameters: readonly SqlParameter[];
+    readonly parameters: readonly unknown[];
   }): TypedQueryable<TEntity> {
     const resultQueryable = this._queryable.whereCompiled(input);
     return new TypedQueryable(resultQueryable);

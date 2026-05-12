@@ -1,352 +1,195 @@
-import {
-  LogicalOperator,
-  ComparisonOperator,
-  UnaryOperator,
-  type ExpressionNode,
-  type LiteralNode,
-  type BinaryExpressionNode,
-  type LogicalExpressionNode,
-  type MemberAccessNode,
-  type ParameterRefNode,
-  type UnaryExpressionNode
+import type {
+  ExpressionNode,
+  PropertyNode,
+  LiteralNode,
+  ParameterRefNode,
+  BinaryNode,
+  LogicalNode,
+  NotNode,
+  IsNullNode,
+  IsNotNullNode,
+  InNode,
+  MethodNode,
+  UnsupportedNode,
 } from '../src/ast/Nodes';
 
 describe('AST Nodes', () => {
-  describe('LogicalOperator enum', () => {
-    it('should have AND operator', () => {
-      expect(LogicalOperator.And).toBe('AND');
+  describe('PropertyNode', () => {
+    it('single-segment name', () => {
+      const node: PropertyNode = { type: 'property', name: 'userId' };
+      expect(node.type).toBe('property');
+      expect(node.name).toBe('userId');
     });
 
-    it('should have OR operator', () => {
-      expect(LogicalOperator.Or).toBe('OR');
+    it('multi-segment path', () => {
+      const node: PropertyNode = { type: 'property', path: ['profile', 'age'] };
+      expect(node.path).toEqual(['profile', 'age']);
     });
 
-    it('should have exactly 2 operators', () => {
-      const operators = Object.values(LogicalOperator);
-      expect(operators).toHaveLength(2);
-      expect(operators).toEqual(['AND', 'OR']);
-    });
-  });
-
-  describe('ComparisonOperator enum', () => {
-    it('should have equality operator', () => {
-      expect(ComparisonOperator.Eq).toBe('=');
+    it('optional flag', () => {
+      const node: PropertyNode = { type: 'property', name: 'age', optional: true };
+      expect(node.optional).toBe(true);
     });
 
-    it('should have greater than operator', () => {
-      expect(ComparisonOperator.Gt).toBe('>');
-    });
-
-    it('should have greater than or equal operator', () => {
-      expect(ComparisonOperator.Gte).toBe('>=');
-    });
-
-    it('should have less than operator', () => {
-      expect(ComparisonOperator.Lt).toBe('<');
-    });
-
-    it('should have less than or equal operator', () => {
-      expect(ComparisonOperator.Lte).toBe('<=');
-    });
-
-    it('should have exactly 5 comparison operators', () => {
-      const operators = Object.values(ComparisonOperator);
-      expect(operators).toHaveLength(5);
-      expect(operators).toEqual(['=', '>', '>=', '<', '<=']);
-    });
-  });
-
-  describe('UnaryOperator enum', () => {
-    it('should have NOT operator', () => {
-      expect(UnaryOperator.Not).toBe('NOT');
-    });
-  });
-
-  describe('MemberAccessNode', () => {
-    it('should represent a member access path', () => {
-      const node: MemberAccessNode = {
-        type: 'MemberAccess',
-        path: ['userId']
-      };
-
-      expect(node.type).toBe('MemberAccess');
-      expect(node.path).toEqual(['userId']);
-    });
-
-    it('should extend ExpressionNode', () => {
-      const node: MemberAccessNode = {
-        type: 'MemberAccess',
-        path: ['profile', 'age']
-      };
-
+    it('assignable to ExpressionNode', () => {
+      const node: PropertyNode = { type: 'property', name: 'x' };
       const expr: ExpressionNode = node;
-      expect(expr.type).toBe('MemberAccess');
-    });
-  });
-
-  describe('ParameterRefNode', () => {
-    it('should reference a runtime parameter by index', () => {
-      const node: ParameterRefNode = {
-        type: 'ParameterRef',
-        index: 0
-      };
-
-      expect(node.type).toBe('ParameterRef');
-      expect(node.index).toBe(0);
-    });
-
-    it('should extend ExpressionNode', () => {
-      const node: ParameterRefNode = {
-        type: 'ParameterRef',
-        index: 1
-      };
-
-      const expr: ExpressionNode = node;
-      expect(expr.type).toBe('ParameterRef');
+      expect(expr.type).toBe('property');
     });
   });
 
   describe('LiteralNode', () => {
-    it('should support string literals', () => {
-      const node: LiteralNode = {
-        type: 'Literal',
-        value: 'test'
-      };
-
-      expect(node.type).toBe('Literal');
-      expect(node.value).toBe('test');
+    it('string literal', () => {
+      const node: LiteralNode = { type: 'literal', value: 'hello' };
+      expect(node.type).toBe('literal');
+      expect(node.value).toBe('hello');
     });
 
-    it('should support number literals', () => {
-      const node: LiteralNode = {
-        type: 'Literal',
-        value: 42
-      };
-
+    it('number literal', () => {
+      const node: LiteralNode = { type: 'literal', value: 42 };
       expect(node.value).toBe(42);
     });
 
-    it('should support boolean literals', () => {
-      const trueNode: LiteralNode = {
-        type: 'Literal',
-        value: true
-      };
-
-      const falseNode: LiteralNode = {
-        type: 'Literal',
-        value: false
-      };
-
-      expect(trueNode.value).toBe(true);
-      expect(falseNode.value).toBe(false);
+    it('boolean literals', () => {
+      expect(({ type: 'literal', value: true } as LiteralNode).value).toBe(true);
+      expect(({ type: 'literal', value: false } as LiteralNode).value).toBe(false);
     });
 
-    it('should support null literals', () => {
-      const node: LiteralNode = {
-        type: 'Literal',
-        value: null
-      };
-
-      expect(node.value).toBe(null);
-    });
-
-    it('should extend ExpressionNode', () => {
-      const node: LiteralNode = {
-        type: 'Literal',
-        value: 100
-      };
-
-      const expr: ExpressionNode = node;
-      expect(expr.type).toBe('Literal');
+    it('null literal', () => {
+      const node: LiteralNode = { type: 'literal', value: null };
+      expect(node.value).toBeNull();
     });
   });
 
-  describe('BinaryExpressionNode', () => {
-    it('should represent a comparison expression', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['age'] },
-        operator: ComparisonOperator.Gt,
-        right: { type: 'Literal', value: 18 }
-      };
+  describe('ParameterRefNode', () => {
+    it('references runtime parameter by index', () => {
+      const node: ParameterRefNode = { type: 'parameterRef', index: 0 };
+      expect(node.type).toBe('parameterRef');
+      expect(node.index).toBe(0);
+    });
+  });
 
-      expect(node.type).toBe('BinaryExpression');
-      expect(node.left.path).toEqual(['age']);
-      expect(node.operator).toBe('>');
-      expect(node.right.type).toBe('Literal');
-      if (node.right.type === 'Literal') {
-        expect(node.right.value).toBe(18);
+  describe('BinaryNode', () => {
+    it('equality comparison (===)', () => {
+      const node: BinaryNode = {
+        type: 'binary', operator: '===',
+        left: { type: 'property', name: 'age' },
+        right: { type: 'literal', value: 18 },
+      };
+      expect(node.type).toBe('binary');
+      expect(node.operator).toBe('===');
+      expect(node.left.type).toBe('property');
+      expect(node.right.type).toBe('literal');
+    });
+
+    it('supports all comparison operators', () => {
+      const ops: BinaryNode['operator'][] = ['==', '===', '!=', '!==', '>', '<', '>=', '<='];
+      for (const op of ops) {
+        const node: BinaryNode = {
+          type: 'binary', operator: op,
+          left: { type: 'property', name: 'x' },
+          right: { type: 'literal', value: 0 },
+        };
+        expect(node.operator).toBe(op);
       }
     });
+  });
 
-    it('should support all comparison operators', () => {
-      const operators = [
-        ComparisonOperator.Eq,
-        ComparisonOperator.Gt,
-        ComparisonOperator.Gte,
-        ComparisonOperator.Lt,
-        ComparisonOperator.Lte
-      ];
-
-      operators.forEach((op) => {
-        const node: BinaryExpressionNode = {
-          type: 'BinaryExpression',
-          left: { type: 'MemberAccess', path: ['x'] },
-          operator: op,
-          right: { type: 'Literal', value: 10 }
-        };
-
-        expect(node.operator).toBe(op);
-      });
+  describe('LogicalNode', () => {
+    it('AND expression', () => {
+      const node: LogicalNode = {
+        type: 'logical', operator: '&&',
+        left:  { type: 'binary', operator: '>', left: { type: 'property', name: 'age' }, right: { type: 'literal', value: 18 } },
+        right: { type: 'binary', operator: '===', left: { type: 'property', name: 'active' }, right: { type: 'literal', value: true } },
+      };
+      expect(node.type).toBe('logical');
+      expect(node.operator).toBe('&&');
     });
 
-    it('should extend ExpressionNode', () => {
-      const node: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['id'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 1 }
+    it('OR expression', () => {
+      const node: LogicalNode = {
+        type: 'logical', operator: '||',
+        left:  { type: 'binary', operator: '===', left: { type: 'property', name: 'role' }, right: { type: 'literal', value: 'admin' } },
+        right: { type: 'binary', operator: '===', left: { type: 'property', name: 'role' }, right: { type: 'literal', value: 'mod' } },
       };
+      expect(node.operator).toBe('||');
+    });
 
-      const expr: ExpressionNode = node;
-      expect(expr.type).toBe('BinaryExpression');
+    it('nested logical expressions', () => {
+      const inner: LogicalNode = {
+        type: 'logical', operator: '||',
+        left:  { type: 'binary', operator: '===', left: { type: 'property', name: 'role' }, right: { type: 'literal', value: 'admin' } },
+        right: { type: 'binary', operator: '===', left: { type: 'property', name: 'role' }, right: { type: 'literal', value: 'owner' } },
+      };
+      const outer: LogicalNode = {
+        type: 'logical', operator: '&&',
+        left:  { type: 'binary', operator: '===', left: { type: 'property', name: 'active' }, right: { type: 'literal', value: true } },
+        right: inner,
+      };
+      expect(outer.right.type).toBe('logical');
     });
   });
 
-  describe('LogicalExpressionNode', () => {
-    it('should represent AND expression', () => {
-      const expr1: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['age'] },
-        operator: ComparisonOperator.Gt,
-        right: { type: 'Literal', value: 18 }
-      };
-      
-      const expr2: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['status'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'active' }
-      };
-      
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: [expr1, expr2]
-      };
-
-      expect(node.type).toBe('LogicalExpression');
-      expect(node.operator).toBe('AND');
-      expect(node.expressions).toHaveLength(2);
-    });
-
-    it('should represent OR expression', () => {
-      const expr1: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['role'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'admin' }
-      };
-      
-      const expr2: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['role'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'moderator' }
-      };
-      
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.Or,
-        expressions: [expr1, expr2]
-      };
-
-      expect(node.operator).toBe('OR');
-      expect(node.expressions).toHaveLength(2);
-    });
-
-    it('should support nested logical expressions', () => {
-      const activeExpr: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['active'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: true }
-      };
-      
-      const adminExpr: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['role'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'admin' }
-      };
-      
-      const ownerExpr: BinaryExpressionNode = {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['role'] },
-        operator: ComparisonOperator.Eq,
-        right: { type: 'Literal', value: 'owner' }
-      };
-      
-      const roleOrExpr: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.Or,
-        expressions: [adminExpr, ownerExpr]
-      };
-      
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: [activeExpr, roleOrExpr]
-      };
-
-      expect(node.expressions).toHaveLength(2);
-      expect(node.expressions[1].type).toBe('LogicalExpression');
-    });
-
-    it('should extend ExpressionNode', () => {
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: []
-      };
-
-      const expr: ExpressionNode = node;
-      expect(expr.type).toBe('LogicalExpression');
-    });
-
-    it('should support empty expressions array', () => {
-      const node: LogicalExpressionNode = {
-        type: 'LogicalExpression',
-        operator: LogicalOperator.And,
-        expressions: []
-      };
-
-      expect(node.expressions).toHaveLength(0);
+  describe('NotNode', () => {
+    it('negation over property', () => {
+      const node: NotNode = { type: 'not', operand: { type: 'property', name: 'isActive' } };
+      expect(node.type).toBe('not');
+      expect(node.operand.type).toBe('property');
     });
   });
 
-  describe('UnaryExpressionNode', () => {
-    it('should represent NOT expression over a member access', () => {
-      const node: UnaryExpressionNode = {
-        type: 'UnaryExpression',
-        operator: UnaryOperator.Not,
-        operand: { type: 'MemberAccess', path: ['isActive'] }
-      };
-
-      expect(node.type).toBe('UnaryExpression');
-      expect(node.operator).toBe('NOT');
-      expect(node.operand.type).toBe('MemberAccess');
+  describe('IsNullNode / IsNotNullNode', () => {
+    it('IS NULL', () => {
+      const node: IsNullNode = { type: 'isNull', property: { type: 'property', name: 'deletedAt' } };
+      expect(node.type).toBe('isNull');
     });
 
-    it('should extend ExpressionNode', () => {
-      const node: UnaryExpressionNode = {
-        type: 'UnaryExpression',
-        operator: UnaryOperator.Not,
-        operand: { type: 'MemberAccess', path: ['flag'] }
-      };
+    it('IS NOT NULL', () => {
+      const node: IsNotNullNode = { type: 'isNotNull', property: { type: 'property', name: 'publishedAt' } };
+      expect(node.type).toBe('isNotNull');
+    });
+  });
 
-      const expr: ExpressionNode = node;
-      expect(expr.type).toBe('UnaryExpression');
+  describe('InNode', () => {
+    it('inline values', () => {
+      const node: InNode = {
+        type: 'in',
+        property: { type: 'property', name: 'role' },
+        values: [
+          { type: 'literal', value: 'admin' },
+          { type: 'literal', value: 'mod' },
+        ],
+      };
+      expect(node.type).toBe('in');
+      expect(node.values).toHaveLength(2);
+    });
+
+    it('external array reference', () => {
+      const node: InNode = { type: 'in', property: { type: 'property', name: 'role' }, valuesRef: 0 };
+      expect(node.valuesRef).toBe(0);
+    });
+  });
+
+  describe('MethodNode', () => {
+    it('includes method', () => {
+      const node: MethodNode = {
+        type: 'method', method: 'includes',
+        object: { type: 'property', name: 'name' },
+        args: [{ type: 'literal', value: 'foo' }],
+      };
+      expect(node.method).toBe('includes');
+    });
+  });
+
+  describe('UnsupportedNode', () => {
+    it('carries syntaxKind and description', () => {
+      const node: UnsupportedNode = {
+        type: 'unsupported',
+        syntaxKind: 123,
+        description: 'ternary not supported',
+      };
+      expect(node.type).toBe('unsupported');
+      expect(node.syntaxKind).toBe(123);
     });
   });
 });
