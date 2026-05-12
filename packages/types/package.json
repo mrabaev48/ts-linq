@@ -1,0 +1,23 @@
+{
+  "name": "@ts-linq/types",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "description": "Pure type definitions and interfaces for ts-linq (zero dependencies)",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

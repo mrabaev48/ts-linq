@@ -1,6 +1,6 @@
 import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
-import { MigrationRunner } from '@ts-linq/core';
+import { MigrationRunner } from '@ts-linq/migrations';
 import { tryLoadConfig } from '../config';
 import type { DbCommand } from './Command';
 import type { Logger } from '../ports/Logger';

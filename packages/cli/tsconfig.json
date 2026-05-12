@@ -5,9 +5,24 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+
+      "@ts-linq/provider-postgres": ["../provider-postgres/src"],
+      "@ts-linq/provider-mysql": ["../provider-mysql/src"],
+      "@ts-linq/provider-mssql": ["../provider-mssql/src"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests"],
-  "references": [{ "path": "../core" }, { "path": "../sqlite" }]
+  "references": [
+    { "path": "../types" },
+    { "path": "../core" },
+    { "path": "../migrations" },
+
+    { "path": "../provider-postgres" },
+    { "path": "../provider-mysql" },
+    { "path": "../provider-mssql" }
+  ]
 }

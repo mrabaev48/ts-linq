@@ -1,6 +1,5 @@
-import 'reflect-metadata';
-import { MetadataStorage } from '../metadata/MetadataStorage';
-import type { ColumnMetadata } from '../types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { ColumnMetadata } from '@ts-linq/types';
 
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
@@ -40,14 +39,6 @@ export function ComputedColumn(options: ComputedColumnOptions): PropertyDecorato
         computedExpression: options.expression
       };
       MetadataStorage.addColumn(ctor, columnMetadata);
-      const existing: ColumnMetadata[] = Reflect.getOwnMetadata('orm:columns', ctor) || [];
-      const existingColIndex = existing.findIndex((c) => c.propertyName === name);
-      if (existingColIndex > -1) {
-        existing[existingColIndex] = columnMetadata;
-      } else {
-        existing.push(columnMetadata);
-      }
-      Reflect.defineMetadata('orm:columns', existing, ctor);
     });
   };
 }

@@ -1,5 +1,5 @@
 {
-  "name": "composite-sql-logger",
+  "name": "@ts-linq/composite-sql-logger",
   "version": "1.0.0",
   "private": true,
   "description": "Composite SqlLogger (+Factory) for ts-linq (optional package)",
@@ -17,12 +17,15 @@
     "dist/**/*"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
-    "clean": "rm -rf dist",
+    "build": "tsc -b tsconfig.json && tsc -b tsconfig.esm.json",
+    "clean": "rm -rf dist *.tsbuildinfo",
     "prepublishOnly": "npm run clean && npm run build"
   },
+  "dependencies": {
+    "@ts-linq/types": "workspace:*"
+  },
   "peerDependencies": {
-    "@ts-linq/core": "^1.0.0"
+    "@ts-linq/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

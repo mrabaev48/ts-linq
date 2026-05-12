@@ -1,8 +1,8 @@
 import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
-import { MigrationRunner } from '@ts-linq/core';
+import { MigrationRunner } from '@ts-linq/migrations';
 import type { DbCommand } from './Command';
-import type { Migration } from '@ts-linq/core';
+import type { Migration } from '@ts-linq/migrations';
 import type { Logger } from '../ports/Logger';
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
 import type { FileSystem } from '../ports/FileSystem';

@@ -15,11 +15,11 @@ export function getFlag(argv: string[], flag: string): string | boolean | undefi
   return undefined;
 }
 
-export function resolveDialect(label: string): 'sqlite' | 'postgresql' | 'mysql' | 'mssql' {
-  const allowed = ['sqlite', 'postgresql', 'mysql', 'mssql'] as const;
+export function resolveDialect(label: string): 'postgresql' | 'mysql' | 'mssql' {
+  const allowed = ['postgresql', 'mysql', 'mssql'] as const;
   return (allowed as readonly string[]).includes(label)
     ? (label as (typeof allowed)[number])
-    : 'sqlite';
+    : 'postgresql';
 }
 
 export function ensureDir(dirPath: string): void {

@@ -37,13 +37,16 @@ export async function getPrometheusMetrics(
 
 export async function startPrometheusServer(options?: {
   port?: number;
+  host?: string;
   path?: string;
   client?: PromClientWithRegisterLike;
+  serverFactory?: (handler: (req: http.IncomingMessage, res: http.ServerResponse) => void) => http.Server;
 }): Promise<{ server: http.Server; port: number; close: () => Promise<void> }> {
   const port = options?.port ?? 0;
+  const host = options?.host ?? '127.0.0.1';
   const path = options?.path ?? '/metrics';
   const client = options?.client;
-  const server = http.createServer((req, res) => {
+  const handler = (req: http.IncomingMessage, res: http.ServerResponse) => {
     if (req.url === path) {
       getPrometheusMetrics(client)
         .then(({ contentType, body }) => {
@@ -62,8 +65,19 @@ export async function startPrometheusServer(options?: {
     }
     res.statusCode = 404;
     res.end('Not Found');
+  };
+  const server = (options?.serverFactory ?? http.createServer)(handler);
+  await new Promise<void>((resolve, reject) => {
+    const onError = (e: unknown) => {
+      server.off('error', onError);
+      reject(e);
+    };
+    server.once('error', onError);
+    server.listen(port, host, () => {
+      server.off('error', onError);
+      resolve();
+    });
   });
-  await new Promise<void>((resolve) => server.listen(port, resolve));
   const address = server.address();
   const actualPort = typeof address === 'object' && address ? address.port : port || 0;
   const close = async () => await new Promise<void>((resolve) => server.close(() => resolve()));

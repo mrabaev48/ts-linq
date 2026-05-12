@@ -10,11 +10,11 @@ describe('utils', () => {
     expect(getFlag(['cmd'], 'x')).toBeUndefined();
   });
 
-  it('resolveDialect maps allowed or defaults to sqlite', () => {
+  it('resolveDialect maps allowed or defaults to postgresql', () => {
     expect(resolveDialect('postgresql')).toBe('postgresql');
     expect(resolveDialect('mysql')).toBe('mysql');
     expect(resolveDialect('mssql')).toBe('mssql');
-    expect(resolveDialect('unknown')).toBe('sqlite');
+    expect(resolveDialect('unknown')).toBe('postgresql');
   });
 
   it('ensureDir and writeFileIfMissing', () => {

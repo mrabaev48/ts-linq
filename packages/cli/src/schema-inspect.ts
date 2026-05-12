@@ -3,8 +3,6 @@ import type { DatabaseProvider } from '@ts-linq/core';
 export function normalizeDbType(label: string, dbTypeRaw: string): string {
   const t = String(dbTypeRaw || '').toLowerCase();
   switch (label) {
-    case 'sqlite':
-      return mapSqlite(t);
     case 'postgresql':
       return mapPostgres(t);
     case 'mysql':
@@ -12,15 +10,6 @@ export function normalizeDbType(label: string, dbTypeRaw: string): string {
     default:
       return mapMssql(t);
   }
-}
-
-function mapSqlite(t: string): string {
-  if (/int/.test(t)) return 'INTEGER';
-  if (/real|double|float/.test(t)) return 'REAL';
-  if (/blob/.test(t)) return 'BLOB';
-  if (/date|time/.test(t)) return 'DATETIME';
-  if (/bool/.test(t)) return 'BOOLEAN';
-  return 'TEXT';
 }
 
 function mapPostgres(t: string): string {
@@ -94,16 +83,7 @@ export async function inspectTable(
   }>
 > {
   const rows: Array<{ name: string; type: string; nullable: boolean; pk: boolean }> = [];
-  if (label === 'sqlite') {
-    const pragma = await provider.executeQuery<{
-      name: string;
-      type: string;
-      notnull: 0 | 1;
-      pk: 0 | 1;
-    }>(`PRAGMA table_info(${table})`);
-    for (const r of pragma)
-      rows.push({ name: r.name, type: r.type, nullable: !r.notnull, pk: !!r.pk });
-  } else if (label === 'postgresql') {
+  if (label === 'postgresql') {
     const sch = schema || 'public';
     const cols = await provider.executeQuery<{
       column_name: string;
@@ -182,12 +162,6 @@ export async function listAllTables(
   label: string,
   schema?: string
 ): Promise<string[]> {
-  if (label === 'sqlite') {
-    const rows = await provider.executeQuery<{ name: string }>(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
-    );
-    return rows.map((r) => r.name);
-  }
   if (label === 'postgresql') {
     const sch = schema || 'public';
     const rows = await provider.executeQuery<{ tablename: string }>(

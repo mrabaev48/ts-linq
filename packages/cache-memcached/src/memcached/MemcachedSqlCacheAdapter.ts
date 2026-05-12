@@ -1,5 +1,10 @@
-import type { SqlCache, SqlCacheEntry } from '@ts-linq/core';
-import { logInternalError } from '@ts-linq/core';
+import type { SqlCacheEntry } from '@ts-linq/types';
+
+export interface SqlCache {
+  get(key: string): SqlCacheEntry | undefined;
+  set(key: string, value: SqlCacheEntry): void;
+  clear(): void;
+}
 
 export interface MemjsClientLike {
   get(key: string): Promise<{ value: Buffer | null } | null> | { value: Buffer | null } | null;
@@ -47,8 +52,7 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
     if (!b) return null;
     try {
       return b.toString('utf8');
-    } catch (e) {
-      logInternalError('MemcachedSqlCacheAdapter.decode', e);
+    } catch {
       return null;
     }
   }
@@ -69,6 +73,43 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
     return { query: entry.value.query, parameters: [...entry.value.parameters] };
   }
 
+  async getAsync(key: string): Promise<SqlCacheEntry | undefined> {
+    this._metrics.requests++;
+    const entry = this.shadow.get(key);
+    if (entry) {
+      if (this.shadowTtlMs && this.shadowTtlMs > 0 && Date.now() - entry.ts > this.shadowTtlMs) {
+        this.shadow.delete(key);
+        // Fall through to remote fetch
+      } else {
+        this._metrics.hits++;
+        // LRU touch
+        this.shadow.delete(key);
+        this.shadow.set(key, { value: entry.value, ts: entry.ts });
+        return { query: entry.value.query, parameters: [...entry.value.parameters] };
+      }
+    }
+
+    // Shadow miss (or expired) - try remote
+    this._metrics.misses++;
+    try {
+      const remoteResult = await this.client.get(this.k(key));
+      const remoteValue = remoteResult?.value ?? null;
+      const decoded = this.decode(remoteValue);
+      if (!decoded) return undefined;
+
+      const parsed = JSON.parse(decoded) as SqlCacheEntry;
+      // Hydrate shadow
+      this.ensureCapacity();
+      this.shadow.set(key, {
+        value: { query: parsed.query, parameters: [...parsed.parameters] },
+        ts: Date.now()
+      });
+      return { query: parsed.query, parameters: [...parsed.parameters] };
+    } catch {
+      return undefined;
+    }
+  }
+
   set(key: string, value: SqlCacheEntry): void {
     this.ensureCapacity();
     this.shadow.set(key, {
@@ -81,8 +122,8 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
     void (async () => {
       try {
         await this.client.set(this.k(key), payload, options);
-      } catch (e) {
-        logInternalError('MemcachedSqlCacheAdapter.writeThrough', e);
+      } catch {
+        // Ignore write-through errors
       }
     })();
   }
@@ -106,8 +147,8 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
         void (async () => {
           try {
             await this.client.delete(this.k(k));
-          } catch (e) {
-            logInternalError('MemcachedSqlCacheAdapter.invalidate.delete', e);
+          } catch {
+            // Ignore delete errors
           }
         })();
         this._metrics.invalidations++;
@@ -143,8 +184,8 @@ export class MemcachedSqlCacheAdapter implements SqlCache {
       void (async () => {
         try {
           await this.client.delete(this.k(first));
-        } catch (e) {
-          logInternalError('MemcachedSqlCacheAdapter.ensureCapacity.delete', e);
+        } catch {
+          // Ignore delete errors
         }
       })();
     }

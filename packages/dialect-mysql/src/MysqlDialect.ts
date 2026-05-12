@@ -1,0 +1,157 @@
+import type { SqlDialect, QueryOptions, SqlParameter, EntityMetadata, ColumnMetadata } from '@ts-linq/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
+import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
+import { MySqlOrderEmitter } from './emitters/MySqlOrderEmitter';
+import { MySqlGroupEmitter } from './emitters/MySqlGroupEmitter';
+
+/**
+ * MySQL dialect for SELECT generation.
+ *
+ * - Uses LIMIT and OFFSET (LIMIT n OFFSET m)
+ * - Leaves '?' placeholders as-is (mysql2 supports positional params)
+ */
+export class MysqlDialect implements SqlDialect {
+  private readonly whereEmitter = new MySqlWhereEmitter();
+  private readonly joinEmitter = new MySqlJoinEmitter();
+  private readonly orderEmitter = new MySqlOrderEmitter();
+  private readonly groupEmitter = new MySqlGroupEmitter();
+  public quoteIdentifier(identifier: string): string {
+    return `\`${identifier.replace(/`/g, '``')}\``;
+  }
+  /**
+   * Build SELECT for MySQL based on normalized QueryOptions.
+   * @param entityClass Entity constructor to resolve table name
+   * @param options Normalized query options (select/where/order/joins/group/limit/offset)
+   */
+  public buildSelect<T>(
+    entityClass: new () => T,
+    options: QueryOptions
+  ): { query: string; parameters: readonly SqlParameter[] } {
+    const metadata = MetadataStorage.getEntity(entityClass);
+    if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+    const parameters: SqlParameter[] = [];
+    let query = this.buildSelectHead(options);
+    query += this.buildFromClause(options.from ?? metadata.tableName);
+    query += this.joinEmitter.emit(options);
+    this.collectSelectParams(parameters, options);
+    query += this.whereEmitter.emit(parameters, options);
+    query += this.groupEmitter.emit(parameters, options);
+    query += this.orderEmitter.emit(options);
+    query += this.buildLimitOffset(options);
+    return { query, parameters };
+  }
+
+  private buildSelectHead(options: QueryOptions): string {
+    let head = 'SELECT ';
+    if (options.distinct) head += 'DISTINCT ';
+    head += options.select && options.select.length ? options.select.join(', ') : '*';
+    return head;
+  }
+
+  private buildFromClause(tableName: string): string {
+    return ` FROM \`${tableName}\``;
+  }
+
+  private collectSelectParams(parameters: SqlParameter[], options: QueryOptions): void {
+    if (options.selectParams && options.selectParams.length)
+      parameters.push(...options.selectParams);
+  }
+
+  private buildLimitOffset(options: QueryOptions): string {
+    const hasLimit = options.limit !== undefined && options.limit !== null;
+    const hasOffset = options.offset !== undefined && options.offset !== null;
+    if (hasLimit) {
+      return ` LIMIT ${options.limit}` + (hasOffset ? ` OFFSET ${options.offset}` : '');
+    }
+    if (hasOffset) {
+      return ` LIMIT 18446744073709551615 OFFSET ${options.offset}`;
+    }
+    return '';
+  }
+  public buildInsert(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    const insertable = metadata.columns.filter(
+      (c) => (!c.isGenerated || entity[c.propertyName] !== undefined) && !c.isComputed
+    );
+    const names = insertable.map((c) => c.columnName);
+    const placeholders = insertable.map(() => '?');
+    const parameters: SqlParameter[] = insertable.map((c) =>
+      this.coerceParameter(entity[c.propertyName])
+    );
+    return {
+      sql: `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
+      parameters
+    };
+  }
+
+  public buildUpdate(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    versionCol?: ColumnMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+    }
+    const primaryKeys = metadata.primaryKeys;
+    const updatable = metadata.columns.filter(
+      (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
+    );
+    const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
+    const setParams: SqlParameter[] = updatable.map((c) =>
+      this.coerceParameter(entity[c.propertyName])
+    );
+    if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
+    const whereClauses: string[] = [];
+    const whereParams: SqlParameter[] = [];
+    for (const pk of primaryKeys) {
+      const col = metadata.columns.find((c) => c.propertyName === pk)!;
+      whereClauses.push(`${col.columnName} = ?`);
+      whereParams.push(this.coerceParameter(entity[pk]));
+    }
+    if (versionCol) {
+      whereClauses.push(`${versionCol.columnName} = ?`);
+      whereParams.push(this.coerceParameter(entity[versionCol.propertyName]));
+    }
+    const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
+    return { sql, parameters: [...setParams, ...whereParams] };
+  }
+
+  public buildDelete(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata
+  ): { sql: string; parameters: SqlParameter[] } {
+    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
+      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
+    }
+    const whereClauses: string[] = [];
+    const parameters: SqlParameter[] = [];
+    for (const pk of metadata.primaryKeys) {
+      const col = metadata.columns.find((c) => c.propertyName === pk)!;
+      whereClauses.push(`${col.columnName} = ?`);
+      parameters.push(this.coerceParameter(entity[pk]));
+    }
+    const sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClauses.join(' AND ')}`;
+    return { sql, parameters };
+  }
+
+  private coerceParameter(value: unknown): SqlParameter {
+    if (
+      value === null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value instanceof Date ||
+      value instanceof Uint8Array
+    ) {
+      return value as SqlParameter;
+    }
+    try {
+      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+    } catch {
+      return String(value) as unknown as SqlParameter;
+    }
+  }
+}

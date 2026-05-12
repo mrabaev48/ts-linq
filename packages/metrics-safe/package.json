@@ -1,15 +1,15 @@
 {
-  "name": "metrics-safe",
+  "name": "@ts-linq/metrics-safe",
   "version": "1.0.0",
   "private": true,
   "description": "Safe helpers for optional metrics/logging in ts-linq",
   "main": "./dist/index.js",
-  "module": "./dist/index.esm.js",
+  "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
+      "import": "./dist/esm/index.js",
       "require": "./dist/index.js"
     }
   },
@@ -20,13 +20,10 @@
     "build": "npm run build:cjs && npm run build:esm && npm run gen:esm-entry",
     "build:cjs": "tsc -p tsconfig.json",
     "build:esm": "tsc -p tsconfig.esm.json",
-    "gen:esm-entry": "node scripts/gen-esm-entry.cjs",
-    "clean": "rm -rf dist",
-    "prepublishOnly": "npm run clean && npm run build"
+    "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
   },
-  "peerDependencies": {
-    "@ts-linq/core": "^1.0.0"
-  },
+  "peerDependencies": {},
   "devDependencies": {
     "typescript": "^5.4.5",
     "@types/node": "^24.3.0"

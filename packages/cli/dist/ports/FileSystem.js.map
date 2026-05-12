@@ -1,1 +1,0 @@
-{"version":3,"file":"FileSystem.js","sourceRoot":"","sources":["../../src/ports/FileSystem.ts"],"names":[],"mappings":"","sourcesContent":["export interface FileSystem {\n  exists(path: string): boolean;\n  readText(path: string): string;\n  writeText(path: string, contents: string): void;\n  ensureDir(path: string): void;\n  readDir(path: string): string[];\n}\n"]}

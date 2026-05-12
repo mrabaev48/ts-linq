@@ -1,4 +1,4 @@
-import type { SqlLogger, SqlLoggerFactory } from '@ts-linq/core';
+import type { SqlLogger, SqlLoggerFactory } from '@ts-linq/types';
 import { CompositeSqlLogger } from './CompositeSqlLogger';
 
 export class CompositeSqlLoggerFactory implements SqlLoggerFactory {
@@ -13,7 +13,7 @@ export class CompositeSqlLoggerFactory implements SqlLoggerFactory {
     this.factories = options.factories ?? [];
     this.statics = options.loggers ?? [];
   }
-  create(provider: 'sqlite' | 'mysql' | 'postgresql' | 'mssql' | string): SqlLogger | undefined {
+  create(provider: 'mysql' | 'postgresql' | 'mssql' | string): SqlLogger | undefined {
     const delegates: SqlLogger[] = [];
     for (const f of this.factories) {
       try {

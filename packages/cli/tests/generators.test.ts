@@ -5,7 +5,7 @@ describe('generators', () => {
   it('EntityTemplateBuilder builds default and from columns', () => {
     const b = new EntityTemplateBuilder();
     const def = b.buildDefault('User', 'users');
-    expect(def).toContain("@Entity('users')");
+    expect(def).toContain("@Entity({ name: 'users' })");
     expect(def).toContain('export class User');
 
     const tpl = b.buildFromColumns('User', 'users', [

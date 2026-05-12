@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist *.tsbuildinfo",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
@@ -31,8 +31,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@ts-linq/core": "^1.0.0",
-    "@ts-linq/sqlite": "^1.0.0"
+    "@ts-linq/core": "workspace:*",
+    "@ts-linq/types": "workspace:*",
+    "@ts-linq/migrations": "workspace:*",
+
+    "@ts-linq/provider-postgres": "workspace:*",
+    "@ts-linq/provider-mysql": "workspace:*",
+    "@ts-linq/provider-mssql": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

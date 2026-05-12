@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { SchemaSnapshotBuilder, SchemaSnapshotSerializer } from '@ts-linq/core';
+import { SchemaSnapshotBuilder, SchemaSnapshotSerializer } from '@ts-linq/migrations';
 import type { Command } from './Command';
 import type { Logger } from '../ports/Logger';
 import { ConsoleLogger } from '../adapters/ConsoleLogger';

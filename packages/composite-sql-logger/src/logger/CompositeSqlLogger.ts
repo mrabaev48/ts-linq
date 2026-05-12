@@ -9,12 +9,52 @@ import type {
   ConnectionHealthInfo,
   FallbackInfo,
   QueryAnalysisInfo
-} from '@ts-linq/core';
+} from '@ts-linq/types';
 
 export class CompositeSqlLogger implements SqlLogger {
   private readonly delegates: ReadonlyArray<SqlLogger>;
   constructor(...delegates: Array<SqlLogger | undefined | null>) {
     this.delegates = delegates.filter(Boolean) as SqlLogger[];
+  }
+  debug(message: string, meta?: Record<string, unknown>): void {
+    for (const d of this.delegates) {
+      try {
+        d.debug(message, meta);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[CompositeSqlLogger] debug delegate error', e);
+      }
+    }
+  }
+  info(message: string, meta?: Record<string, unknown>): void {
+    for (const d of this.delegates) {
+      try {
+        d.info(message, meta);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[CompositeSqlLogger] info delegate error', e);
+      }
+    }
+  }
+  warn(message: string, meta?: Record<string, unknown>): void {
+    for (const d of this.delegates) {
+      try {
+        d.warn(message, meta);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[CompositeSqlLogger] warn delegate error', e);
+      }
+    }
+  }
+  error(message: string, meta?: Record<string, unknown>): void {
+    for (const d of this.delegates) {
+      try {
+        d.error(message, meta);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[CompositeSqlLogger] error delegate error', e);
+      }
+    }
   }
   queryStart(info: QueryStartInfo): void {
     for (const d of this.delegates) {

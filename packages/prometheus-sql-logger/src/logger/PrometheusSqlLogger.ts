@@ -1,4 +1,4 @@
-import type { SqlLogger, SqlParameter } from '@ts-linq/core';
+import type { SqlLogger, SqlParameter } from '@ts-linq/types';
 
 type LabelValues = Record<string, string>;
 
@@ -344,6 +344,19 @@ export class PrometheusSqlLogger implements SqlLogger {
         } catch {}
       });
     }
+  }
+
+  public debug(_message: string, _meta?: Record<string, unknown>): void {
+    // No-op: Prometheus metrics don't log text messages
+  }
+  public info(_message: string, _meta?: Record<string, unknown>): void {
+    // No-op: Prometheus metrics don't log text messages
+  }
+  public warn(_message: string, _meta?: Record<string, unknown>): void {
+    // No-op: Prometheus metrics don't log text messages
+  }
+  public error(_message: string, _meta?: Record<string, unknown>): void {
+    // No-op: Prometheus metrics don't log text messages
   }
 
   public queryStart(_info?: {

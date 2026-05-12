@@ -1,10 +1,20 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": ["src/*"],
+      "@ts-linq/metrics-safe": ["../metrics-safe/dist"]
+    },
     "module": "ES2020",
     "target": "ES2020",
-    "outDir": "./dist/esm",
+    "declaration": true,
+    "declarationMap": true,
     "sourceMap": true,
-    "inlineSources": true
-  }
+    "inlineSources": true,
+    "outDir": "./dist/esm",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"]
 }

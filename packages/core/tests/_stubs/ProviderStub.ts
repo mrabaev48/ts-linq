@@ -3,24 +3,31 @@
 /* eslint-disable max-lines-per-function */
 /* eslint-disable complexity */
 import { DatabaseProvider } from '../../src/DatabaseProvider';
-import { MetadataStorage } from '../../src/metadata/MetadataStorage';
-import type { EntityMetadata } from '../../src/types';
-import type { SqlDialect } from '../../src/query/SqlDialect';
-import type { QueryOptions, SqlParameter } from '../../src/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityMetadata, SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
 
 class TestDialect implements SqlDialect {
+  public quoteIdentifier(identifier: string): string {
+    return `"${identifier.replace(/"/g, '""')}"`;
+  }
+
   public buildSelect(
     entityClass: new () => unknown,
     options: QueryOptions
   ): { query: string; parameters: SqlParameter[] } {
     const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
     let query = `SELECT ${options.distinct ? 'DISTINCT ' : ''}${
-      options.select?.length ? (options.select as string[]).join(', ') : '*'
+      options.select?.length ? options.select.join(', ') : '*'
     } FROM ${meta.tableName}`;
     const parameters: SqlParameter[] = [];
-    if (options.where && options.where.length) {
-      query += ' WHERE ' + options.where.map((w) => w.condition).join(' AND ');
-      for (const w of options.where) parameters.push(...w.parameters);
+    const whereArray = Array.isArray(options.where)
+      ? options.where
+      : options.where
+        ? [options.where]
+        : [];
+    if (whereArray.length) {
+      query += ' WHERE ' + whereArray.map((w) => w.condition).join(' AND ');
+      for (const w of whereArray) parameters.push(...w.parameters);
     }
     if (options.orderBy && options.orderBy.length) {
       query += ' ORDER BY ' + options.orderBy.map((o) => `${o.column} ${o.direction}`).join(', ');
@@ -46,7 +53,7 @@ export class ProviderStub extends DatabaseProvider {
     retryPolicy?: any
   ) {
     super(connectionString, logger, middlewares, softDelete, retryPolicy);
-    this.providerName = 'sqlite';
+    this.providerName = 'test';
   }
   private readonly data: Map<string, any[]> = new Map();
   private readonly seq: Map<string, number> = new Map();
@@ -86,7 +93,7 @@ export class ProviderStub extends DatabaseProvider {
       if (rec[k] === undefined) rec[k] = v;
     }
     // auto-increment primary key
-    if (meta.primaryKeys.length > 0) {
+    if (meta.primaryKeys && meta.primaryKeys.length > 0) {
       const pk = meta.primaryKeys[0];
       const pkCol = meta.columns.find((c) => c.propertyName === pk);
       if (
@@ -108,15 +115,16 @@ export class ProviderStub extends DatabaseProvider {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`UPDATE ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];
-    const pk = meta.primaryKeys[0];
+    const pk = meta.primaryKeys?.[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
-    const pkName = pkCol?.columnName ?? pk;
-    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pk]);
+    const pkProp = pk ?? pkCol?.propertyName ?? 'id';
+    const pkName = pkCol?.columnName ?? pkProp;
+    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pkProp]);
     const targetIdx = idx >= 0 ? idx : table.length > 0 ? table.length - 1 : -1;
     if (targetIdx >= 0) {
       const row = table[targetIdx];
       for (const col of meta.columns) {
-        if (col.propertyName === pk) continue;
+        if (col.propertyName === pkProp) continue;
         const val = (entity as any)[col.propertyName];
         if (val !== undefined) row[col.columnName] = val;
       }
@@ -139,17 +147,18 @@ export class ProviderStub extends DatabaseProvider {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`DELETE FROM ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];
-    const pk = meta.primaryKeys[0];
+    const pk = meta.primaryKeys?.[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
-    const pkName = pkCol?.columnName ?? pk;
-    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pk]);
+    const pkProp = pk ?? pkCol?.propertyName ?? 'id';
+    const pkName = pkCol?.columnName ?? pkProp;
+    const idx = table.findIndex((r) => r[pkName] === (entity as any)[pkProp]);
     if (idx >= 0) {
       const sd = this.softDelete;
-      if (sd?.enabled) {
+      if (sd?.enabled && sd.column) {
         // soft delete: mark flag and timestamp
         const row = table[idx];
         row[sd.column] = true;
-        if (sd.deletedAtColumn) row[sd.deletedAtColumn] = new Date();
+        if ((sd as any).deletedAtColumn) row[(sd as any).deletedAtColumn] = new Date();
         await this.afterExecute(`UPDATE ${meta.tableName} /* soft-delete */`, [], 1);
       } else {
         table.splice(idx, 1);
@@ -168,9 +177,10 @@ export class ProviderStub extends DatabaseProvider {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`SELECT * FROM ${meta.tableName} WHERE id = ?`, [id as SqlParameter]);
     const table = this.data.get(meta.tableName) || [];
-    const pk = meta.primaryKeys[0];
+    const pk = meta.primaryKeys?.[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
-    const pkName = pkCol?.columnName ?? pk;
+    const pkProp = pk ?? pkCol?.propertyName ?? 'id';
+    const pkName = pkCol?.columnName ?? pkProp;
     let row = table.find((r) => r[pkName] === id);
     if (this.softDelete?.enabled && this.softDelete.column && row && row[this.softDelete.column]) {
       row = undefined;
@@ -188,13 +198,15 @@ export class ProviderStub extends DatabaseProvider {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`SELECT * FROM ${meta.tableName}`, []);
     const table = (this.data.get(meta.tableName) || []).slice();
-    const pk = meta.primaryKeys[0];
+    const pk = meta.primaryKeys?.[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
-    const pkName = pkCol?.columnName ?? pk;
+    const pkProp = pk ?? pkCol?.propertyName ?? 'id';
+    const pkName = pkCol?.columnName ?? pkProp;
     // apply soft-delete filter if configured
     let rows = table;
     if (this.softDelete?.enabled && this.softDelete.column) {
-      rows = rows.filter((r) => !r[this.softDelete!.column]);
+      const col = this.softDelete.column;
+      rows = rows.filter((r) => !r[col]);
     }
     rows.sort((a, b) => (a[pkName] ?? 0) - (b[pkName] ?? 0));
     const res = rows.map((r) => this.materialize(entityClass, r));
@@ -213,7 +225,8 @@ export class ProviderStub extends DatabaseProvider {
     const entries = Object.entries(conditions);
     let rows = table;
     if (this.softDelete?.enabled && this.softDelete.column) {
-      rows = rows.filter((r) => !r[this.softDelete!.column]);
+      const col = this.softDelete.column;
+      rows = rows.filter((r) => !r[col]);
     }
     const res = rows
       .filter((r) => entries.every(([k, v]) => r[k] === v))
@@ -289,68 +302,14 @@ export class ProviderStub extends DatabaseProvider {
       return combined as unknown as T[];
     }
     // Very small SQL subset: SELECT * FROM <table> [WHERE <col> = ?] [ORDER BY <col> ASC|DESC] [LIMIT N [OFFSET M]]
-    // SQLite schema inspection PRAGMAs and sqlite_master
-    if (/^\s*PRAGMA\s+table_info\(([^)]+)\)/i.test(sql)) {
-      const t = /^\s*PRAGMA\s+table_info\(([^)]+)\)/i.exec(sql)![1];
-      const table = this.data.get(t) || [];
-      const cols = Object.keys(table[0] || {}).map((name, idx) => ({
-        name,
-        type: typeof (table[0] || {})[name] === 'number' ? 'INTEGER' : 'TEXT',
-        notnull: false,
-        dflt_value: null,
-        pk: name === 'id' ? 1 : 0
-      }));
-      const durationMs = Date.now() - startedAt;
-      this.loggerRef?.queryEnd?.({
-        sql,
-        params,
-        durationMs,
-        rows: cols.length,
-        provider: this.providerLabel
-      });
-      return cols as unknown as T[];
-    }
-    if (/^\s*PRAGMA\s+index_list\(([^)]+)\)/i.test(sql)) {
-      const durationMs = Date.now() - startedAt;
-      this.loggerRef?.queryEnd?.({
-        sql,
-        params,
-        durationMs,
-        rows: 0,
-        provider: this.providerLabel
-      });
-      return [] as unknown as T[];
-    }
-    if (/^\s*PRAGMA\s+index_info\(([^)]+)\)/i.test(sql)) {
-      const durationMs = Date.now() - startedAt;
-      this.loggerRef?.queryEnd?.({
-        sql,
-        params,
-        durationMs,
-        rows: 0,
-        provider: this.providerLabel
-      });
-      return [] as unknown as T[];
-    }
-    if (/SELECT\s+name\s+FROM\s+sqlite_master/i.test(sql)) {
-      const names = Array.from(this.data.keys()).map((name) => ({ name }));
-      const durationMs = Date.now() - startedAt;
-      this.loggerRef?.queryEnd?.({
-        sql,
-        params,
-        durationMs,
-        rows: names.length,
-        provider: this.providerLabel
-      });
-      return names as unknown as T[];
-    }
     const mFrom = /FROM\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(sql);
     if (!mFrom) return [] as unknown as T[];
     const tableName = mFrom[1];
     let rows = (this.data.get(tableName) || []).slice();
     if (this.softDelete?.enabled && this.softDelete.column) {
       // Always hide soft-deleted rows for unit-test simplicity
-      rows = rows.filter((r) => !r[this.softDelete!.column]);
+      const col = this.softDelete.column;
+      rows = rows.filter((r) => !r[col]);
     }
 
     const whereEq = /WHERE\s+([A-Za-z_"\[\]]+)\s*=\s*\?/i.exec(sql);

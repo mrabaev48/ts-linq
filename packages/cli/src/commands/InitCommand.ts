@@ -19,7 +19,6 @@ export class InitCommand implements Command {
     "strict": true,
     "skipLibCheck": true,
     "useDefineForClassFields": true,
-    "emitDecoratorMetadata": true,
     "sourceMap": true,
     "outDir": "dist",
     "baseUrl": ".",
@@ -31,8 +30,8 @@ export class InitCommand implements Command {
 `;
 
     const configTs = `export default {
-  provider: process.env.DB_PROVIDER || 'sqlite',
-  connection: process.env.DATABASE_URL || process.env.SQLITE_URL || 'file:app.db',
+  provider: process.env.DB_PROVIDER || 'postgres',
+  connection: process.env.DATABASE_URL || 'postgres://user:pass@localhost:5432/db',
   migrations: './migrations',
   entities: './src/entities'
 };
@@ -40,30 +39,33 @@ export class InitCommand implements Command {
 
     const userEntity = `import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 
-@Entity('users')
+@Entity({ name: 'users' })
 export class User {
-  @PrimaryKey()
+  @PrimaryKey({ type: 'INTEGER', autoIncrement: true })
   public id!: number;
 
-  @Column()
+  @Column({ type: 'TEXT', nullable: false })
   public name!: string;
+
+  @Column({ type: 'DATETIME', nullable: false })
+  public createdAt!: Date;
 }
 `;
 
-    const dbContext = `import 'reflect-metadata';
-import { DbContext } from '@ts-linq/core';
-import { SQLiteProvider } from '@ts-linq/sqlite';
+    const dbContext = `import { DbContext } from '@ts-linq/core';
+import { PostgresProvider } from '@ts-linq/provider-postgres';
 
 export class AppDbContext extends DbContext {
   public constructor() {
-    super({ provider: new SQLiteProvider(process.env.SQLITE_URL || 'file:app.db') });
+    super({ provider: new PostgresProvider({
+      connectionString: process.env.DATABASE_URL || 'postgres://user:pass@localhost:5432/db'
+    }) });
   }
 }
 `;
 
-    const envExample = `# Database provider: sqlite | postgresql | mysql | mssql
-DB_PROVIDER=sqlite
-SQLITE_URL=file:app.db
+    const envExample = `# Database provider: postgresql | mysql | mssql
+DB_PROVIDER=postgres
 # POSTGRES_URL=postgres://user:pass@localhost:5432/db
 # MYSQL_URL=mysql://user:pass@localhost:3306/db
 # MSSQL_URL=mssql://user:pass@localhost:1433/db

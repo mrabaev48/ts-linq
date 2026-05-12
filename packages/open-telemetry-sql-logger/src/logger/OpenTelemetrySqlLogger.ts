@@ -1,5 +1,4 @@
-import type { SqlLogger, SqlParameter } from '@ts-linq/core';
-import { logInternalError } from '@ts-linq/core';
+import type { SqlLogger, SqlParameter } from '@ts-linq/types';
 
 interface OtelLike {
   trace: {
@@ -20,8 +19,8 @@ function safeRequireOtel(): OtelLike | undefined {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const otel = require('@opentelemetry/api') as OtelLike;
     if (otel && otel.trace && typeof otel.trace.getTracer === 'function') return otel;
-  } catch (e) {
-    logInternalError('OpenTelemetrySqlLogger.safeRequireOtel', e);
+  } catch {
+    // Silently fail if OpenTelemetry is not installed
   }
   return undefined;
 }
@@ -54,11 +53,24 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
     for (const re of this.maskPatterns) {
       try {
         s = s.replace(re, '[REDACTED]');
-      } catch (e) {
-        logInternalError('OpenTelemetrySqlLogger.mask.replace', e);
+      } catch {
+        // Ignore regex errors
       }
     }
     return s;
+  }
+
+  public debug(_message: string, _meta?: Record<string, unknown>): void {
+    // No-op: OpenTelemetry doesn't log text messages directly
+  }
+  public info(_message: string, _meta?: Record<string, unknown>): void {
+    // No-op: OpenTelemetry doesn't log text messages directly
+  }
+  public warn(_message: string, _meta?: Record<string, unknown>): void {
+    // No-op: OpenTelemetry doesn't log text messages directly
+  }
+  public error(_message: string, _meta?: Record<string, unknown>): void {
+    // No-op: OpenTelemetry doesn't log text messages directly
   }
 
   queryStart(info: {
@@ -128,8 +140,8 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
       }
       // Do not attach SQL text here to avoid duplication and sensitive data; rely on db.statement in query span
       span.end();
-    } catch (e) {
-      logInternalError('OpenTelemetrySqlLogger.analysis', e);
+    } catch {
+      // Ignore errors in analysis
     }
   }
 }
