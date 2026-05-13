@@ -1,0 +1,258 @@
+import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '@ts-linq/types';
+import { ValidationError } from '@ts-linq/types';
+import { EntityMetadataBuilder } from './EntityMetadata';
+import { PendingMetadataCollector } from './PendingMetadataCollector';
+
+/**
+ * Isolated, injectable metadata store for entity classes.
+ *
+ * Unlike the process-wide `MetadataStorage` singleton, each `MetadataRegistry`
+ * instance is fully independent — making it safe to use in parallel tests,
+ * multi-tenant setups, or any scenario that requires isolated entity schemas.
+ *
+ * Pass an instance via `DbContextOptions.registry`; decorators still write to
+ * the process-wide default via `MetadataStorage`, which is always available as
+ * a fallback when no registry is supplied.
+ */
+export class MetadataRegistry {
+  private entities: Map<Function, EntityMetadata> = new Map();
+  private builders: Map<Function, EntityMetadataBuilder> = new Map();
+
+  // ─── Normalization ────────────────────────────────────────────────────────
+
+  private normalizeTarget<T extends Function>(target: T): T {
+    if (!target || typeof target !== 'function') return target;
+    try {
+      const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
+        .getOwnMetadata;
+      const maybe = getOwn?.('orm:original', target);
+      const original = typeof maybe === 'function' ? (maybe as T) : undefined;
+      return original ?? target;
+    } catch {
+      return target;
+    }
+  }
+
+  // ─── Builder helpers ──────────────────────────────────────────────────────
+
+  private getOrCreateBuilder(target: Function): EntityMetadataBuilder {
+    const key = this.normalizeTarget(target);
+    if (!this.builders.has(key)) {
+      this.builders.set(key, new EntityMetadataBuilder(key));
+    }
+    return this.builders.get(key)!;
+  }
+
+  private finalizeEntity(target: Function): void {
+    const key = this.normalizeTarget(target);
+    if (this.builders.has(key)) {
+      const metadata = this.builders.get(key)!.build();
+      this.entities.set(key, metadata);
+      this.builders.delete(key);
+    }
+  }
+
+  private collectPendingMetadata(target: Function): void {
+    const pendingColumns = PendingMetadataCollector.getColumns(target);
+    const pendingPrimaryKeys = PendingMetadataCollector.getPrimaryKeys(target);
+    const pendingIndexes = PendingMetadataCollector.getIndexes(target);
+    const pendingRelationships = PendingMetadataCollector.getRelationships(target);
+
+    if (pendingColumns.size > 0 || pendingPrimaryKeys.size > 0 ||
+        pendingIndexes.length > 0 || pendingRelationships.size > 0) {
+      for (const [, columnMeta] of pendingColumns.entries()) {
+        this.addColumnMetadata(target, columnMeta);
+      }
+      for (const propertyName of pendingPrimaryKeys) {
+        this.addPrimaryKeyMetadata(target, propertyName);
+      }
+      for (const indexMeta of pendingIndexes) {
+        this.addIndexMetadata(target, indexMeta);
+      }
+      for (const [, relationMeta] of pendingRelationships.entries()) {
+        this.addRelationshipMetadata(target, relationMeta);
+      }
+      PendingMetadataCollector.clear(target);
+    }
+  }
+
+  // ─── Private mutation helpers ─────────────────────────────────────────────
+
+  private registerEntity(target: Function, tableName?: string): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized && tableName) {
+      finalized.tableName = tableName;
+      return;
+    }
+    const builder = this.getOrCreateBuilder(target);
+    if (tableName) builder.setTableName(tableName);
+  }
+
+  private addColumnMetadata(target: Function, column: ColumnMetadata): void {
+    if (column.defaultExpression !== undefined && column.defaultValue !== undefined) {
+      throw new ValidationError(
+        `Column ${column.columnName} cannot have both defaultExpression and defaultValue`
+      );
+    }
+    if (column.isComputed) {
+      if (column.defaultValue !== undefined || column.defaultExpression !== undefined) {
+        throw new ValidationError(
+          `Computed column ${column.columnName} cannot have defaultValue/defaultExpression`
+        );
+      }
+      if (column.isGenerated) {
+        throw new ValidationError(`Computed column ${column.columnName} cannot be marked as isGenerated`);
+      }
+      if (column.isVersion) {
+        throw new ValidationError(`Computed column ${column.columnName} cannot be a version column`);
+      }
+      (column as { isReadOnly?: boolean }).isReadOnly = true;
+    }
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      if (!finalized.columns.some((c) => c.propertyName === column.propertyName)) {
+        finalized.columns = [...finalized.columns, column];
+      }
+      return;
+    }
+    this.getOrCreateBuilder(target).addColumn(column);
+  }
+
+  private addPrimaryKeyMetadata(target: Function, propertyName: string): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      if (!finalized.primaryKeys?.includes(propertyName)) {
+        finalized.primaryKeys = [...(finalized.primaryKeys || []), propertyName];
+      }
+      return;
+    }
+    this.getOrCreateBuilder(target).addPrimaryKey(propertyName);
+  }
+
+  private addRelationshipMetadata(target: Function, relationship: RelationshipMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.relationships = [...finalized.relationships, relationship];
+      return;
+    }
+    this.getOrCreateBuilder(target).addRelationship(relationship);
+  }
+
+  private addIndexMetadata(target: Function, index: IndexMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      if (finalized.indexes.some((i) => i.name === index.name)) {
+        throw new ValidationError(
+          `Duplicate index name '${index.name}' on entity '${finalized.tableName}'`
+        );
+      }
+      const existingCols = new Set(finalized.columns.map((c) => [c.columnName, c.propertyName]).flat());
+      const missing = index.columns.filter((c) => !existingCols.has(c));
+      if (missing.length > 0) {
+        throw new ValidationError(
+          `Index '${index.name}' on entity '${finalized.tableName}' references unknown columns: ${missing.join(', ')}`
+        );
+      }
+      finalized.indexes = [...finalized.indexes, index];
+      return;
+    }
+    const builder = this.getOrCreateBuilder(target);
+    const snapshot = builder.build();
+    if ((snapshot.indexes || []).some((i) => i.name === index.name)) {
+      throw new ValidationError(
+        `Duplicate index name '${index.name}' on entity '${snapshot.tableName}'`
+      );
+    }
+    const existingCols = new Set((snapshot.columns || []).map((c) => [c.columnName, c.propertyName]).flat());
+    const missing = index.columns.filter((c) => !existingCols.has(c));
+    if (missing.length > 0) {
+      throw new ValidationError(
+        `Index '${index.name}' on entity '${snapshot.tableName}' references unknown columns: ${missing.join(', ')}`
+      );
+    }
+    builder.addIndex(index);
+  }
+
+  private addValidationRuleMetadata(target: Function, rule: ValidationRule): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.validations = [...(finalized.validations || []), rule];
+      return;
+    }
+    this.getOrCreateBuilder(target).addValidationRule(rule);
+  }
+
+  // ─── Public API ───────────────────────────────────────────────────────────
+
+  public getEntity(target: Function): EntityMetadata | undefined {
+    if (!target || typeof target !== 'function') return undefined;
+    try {
+      const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
+        .getOwnMetadata;
+      const maybe = getOwn?.('orm:original', target);
+      const original = typeof maybe === 'function' ? maybe : target;
+      const key = this.normalizeTarget(original as Function);
+      if (this.builders.has(key)) {
+        this.collectPendingMetadata(key);
+        this.finalizeEntity(key);
+      }
+      const meta = this.entities.get(key);
+      if (!meta) return undefined;
+      return original !== target ? { ...meta, target } : meta;
+    } catch {
+      const key = this.normalizeTarget(target);
+      if (this.builders.has(key)) {
+        this.collectPendingMetadata(key);
+        this.finalizeEntity(key);
+      }
+      return this.entities.get(key);
+    }
+  }
+
+  public getEntities(): EntityMetadata[] {
+    for (const target of this.builders.keys()) {
+      this.finalizeEntity(target);
+    }
+    return Array.from(this.entities.values());
+  }
+
+  public getValidationRules(target: Function): ValidationRule[] {
+    return this.getEntity(target)?.validations ?? [];
+  }
+
+  public addEntity(target: Function, tableName?: string): void {
+    this.registerEntity(target, tableName);
+  }
+
+  public addColumn(target: Function, column: ColumnMetadata): void {
+    this.addColumnMetadata(target, column);
+  }
+
+  public addPrimaryKey(target: Function, propertyName: string): void {
+    this.addPrimaryKeyMetadata(target, propertyName);
+  }
+
+  public addRelationship(target: Function, relationship: RelationshipMetadata): void {
+    this.addRelationshipMetadata(target, relationship);
+  }
+
+  public addIndex(target: Function, index: IndexMetadata): void {
+    this.addIndexMetadata(target, index);
+  }
+
+  public addValidationRule(target: Function, rule: ValidationRule): void {
+    this.addValidationRuleMetadata(target, rule);
+  }
+
+  /** Clear all stored metadata and pending builders. */
+  public clear(): void {
+    this.entities.clear();
+    this.builders.clear();
+  }
+}
