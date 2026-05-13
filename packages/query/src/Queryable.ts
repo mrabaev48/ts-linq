@@ -20,8 +20,6 @@ import type { CountCache } from './CountCache';
 import { AggregateOperations } from './AggregateOperations';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { IncludePlanner } from './IncludePlanner';
-import { JoinPredicateParser } from './JoinPredicateParser';
-import { PropertyExtractor } from './PropertyExtractor';
 import { QueryBuilder } from './QueryBuilder';
 import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
@@ -220,32 +218,62 @@ export class Queryable<T> {
   }
 
   /**
-   * Add INNER JOIN to the query.
-   * @param otherCtor Joined entity constructor
-   * @param on Predicate (a,b) => a.prop === b.prop
-   * @param alias Optional alias for the joined table
+   * @deprecated Runtime predicate parsing is not supported — use `innerJoinOn(leftKey, rightKey)`.
    */
   public innerJoin<TOther>(
+    _otherCtor: new () => TOther,
+    _on: (left: T, right: TOther) => boolean,
+    _alias?: string
+  ): Queryable<T> {
+    throw new Error(
+      "ts-linq(innerJoin): runtime predicate parsing is not supported. " +
+      "Use innerJoinOn(leftKey, rightKey) for type-safe joins."
+    );
+  }
+
+  /**
+   * @deprecated Runtime predicate parsing is not supported — use `leftJoinOn(leftKey, rightKey)`.
+   */
+  public leftJoin<TOther>(
+    _otherCtor: new () => TOther,
+    _on: (left: T, right: TOther) => boolean,
+    _alias?: string
+  ): Queryable<T> {
+    throw new Error(
+      "ts-linq(leftJoin): runtime predicate parsing is not supported. " +
+      "Use leftJoinOn(leftKey, rightKey) for type-safe joins."
+    );
+  }
+
+  /**
+   * Add a type-safe INNER JOIN on a single equality key pair.
+   *
+   * @example
+   * context.books.innerJoinOn(Author, 'authorId', 'id')
+   */
+  public innerJoinOn<TOther>(
     otherCtor: new () => TOther,
-    on: (left: T, right: TOther) => boolean,
+    leftKey: keyof T & string,
+    rightKey: keyof TOther & string,
     alias?: string
   ): Queryable<T> {
-    this.addJoin('INNER', otherCtor, on, alias);
+    this._addJoinOn('INNER', otherCtor, leftKey, rightKey, alias);
     return this;
   }
 
   /**
-   * Add LEFT JOIN to the query.
-   * @param otherCtor Joined entity constructor
-   * @param on Predicate (a,b) => a.prop === b.prop
-   * @param alias Optional alias for the joined table
+   * Add a type-safe LEFT JOIN on a single equality key pair.
+   *
+   * @example
+   * context.books.leftJoinOn(Author, 'authorId', 'id')
    */
-  public leftJoin<TOther>(
+  public leftJoinOn<TOther>(
     otherCtor: new () => TOther,
-    on: (left: T, right: TOther) => boolean,
+    leftKey: keyof T & string,
+    rightKey: keyof TOther & string,
     alias?: string
   ): Queryable<T> {
-    this.addJoin('LEFT', otherCtor, on, alias);
+    this._addJoinOn('LEFT', otherCtor, leftKey, rightKey, alias);
     return this;
   }
 
@@ -888,44 +916,25 @@ export class Queryable<T> {
     return cloned;
   }
 
-  /** Add a JOIN clause into the model using simple predicate parsing. */
-  private addJoin<TOther>(
+  private _addJoinOn<TOther>(
     type: 'INNER' | 'LEFT',
     otherCtor: new () => TOther,
-    on: (left: T, right: TOther) => boolean,
+    leftKey: string,
+    rightKey: string,
     alias?: string
   ): void {
     const leftMeta = MetadataStorage.getEntity(this._entityClass);
     const rightMeta = MetadataStorage.getEntity(otherCtor);
-    if (!leftMeta || !rightMeta) throw new Error('Entity metadata not found for join');
-    const onStr = this.parseJoinPredicate(
-      on.toString(),
-      leftMeta.tableName,
-      rightMeta.tableName,
-      leftMeta,
-      rightMeta
-    );
-    this._model.joins = this._model.joins || [];
+    if (!leftMeta || !rightMeta) throw new Error('ts-linq: entity metadata not found for join');
+    const leftCol = leftMeta.columns.find(c => c.propertyName === leftKey)?.columnName ?? leftKey;
+    const rightCol = rightMeta.columns.find(c => c.propertyName === rightKey)?.columnName ?? rightKey;
+    this._model.joins = this._model.joins ?? [];
     this._model.joins.push({
       type,
       table: rightMeta.tableName,
-      on: onStr,
-      alias
+      on: `${leftMeta.tableName}.${leftCol} = ${rightMeta.tableName}.${rightCol}`,
+      alias,
     });
-  }
-
-  /**
-   * Parse a two-parameter predicate into a SQL ON expression.
-   * Supports pattern: (a,b) => a.prop === b.prop
-   */
-  private parseJoinPredicate(
-    onStr: string,
-    leftTable: string,
-    rightTable: string,
-    leftMeta: { columns: Array<{ propertyName: string; columnName: string }> },
-    rightMeta: { columns: Array<{ propertyName: string; columnName: string }> }
-  ): string {
-    return JoinPredicateParser.parse(onStr, leftTable, rightTable, leftMeta, rightMeta);
   }
 
 }

@@ -1,5 +1,4 @@
 export * from './Queryable';
-export * from './PropertyExtractor';
 export * from './TypedQueryable';
 export * from './QueryBuilder';
 export * from './QueryModel';
