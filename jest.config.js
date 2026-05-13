@@ -14,14 +14,36 @@ module.exports = {
           lib: ['ES2021', 'DOM'],
           baseUrl: '.',
           paths: {
+            '@ts-linq/types': ['packages/types/src'],
+            '@ts-linq/metadata': ['packages/metadata/src'],
+            '@ts-linq/core': ['packages/core/src'],
             '@ts-linq/orm': ['packages/orm/src'],
+            '@ts-linq/query': ['packages/query/src'],
+            '@ts-linq/ast': ['packages/ast/src'],
+            '@ts-linq/cache': ['packages/cache/src'],
+            '@ts-linq/cache-memcached': ['packages/cache-memcached/src'],
+            '@ts-linq/cache-redis': ['packages/cache-redis/src'],
+            '@ts-linq/metrics-safe': ['packages/metrics-safe/src'],
             '@ts-linq/migrations': ['packages/migrations/src'],
+            '@ts-linq/concurrency': ['packages/concurrency/src'],
+            '@ts-linq/config': ['packages/config/src'],
+            '@ts-linq/pagination': ['packages/pagination/src'],
+            '@ts-linq/plugin-audit': ['packages/plugin-audit/src'],
+            '@ts-linq/plugin-multi-tenant': ['packages/plugin-multi-tenant/src'],
+            '@ts-linq/plugin-soft-delete': ['packages/plugin-soft-delete/src'],
+            '@ts-linq/sql-visitor': ['packages/sql-visitor/src'],
+            '@ts-linq/telemetry': ['packages/telemetry/src'],
             '@ts-linq/dialect-postgres': ['packages/dialect-postgres/src'],
             '@ts-linq/dialect-mysql': ['packages/dialect-mysql/src'],
             '@ts-linq/dialect-mssql': ['packages/dialect-mssql/src'],
             '@ts-linq/provider-postgres': ['packages/provider-postgres/src'],
             '@ts-linq/provider-mysql': ['packages/provider-mysql/src'],
-            '@ts-linq/provider-mssql': ['packages/provider-mssql/src']
+            '@ts-linq/provider-mssql': ['packages/provider-mssql/src'],
+            '@ts-linq/testkits': ['packages/testkits/src'],
+            '@ts-linq/composite-sql-logger': ['packages/composite-sql-logger/src'],
+            '@ts-linq/prometheus-sql-logger': ['packages/prometheus-sql-logger/src'],
+            '@ts-linq/open-telemetry-sql-logger': ['packages/open-telemetry-sql-logger/src'],
+            '@ts-linq/integration-nestjs': ['packages/integration-nestjs/src']
           }
         }
       }

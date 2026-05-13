@@ -28,6 +28,12 @@ export interface TrackedEntity {
 /** Options for constructing a database context */
 export interface DbContextOptions {
   provider: DatabaseProvider;
+  /**
+   * Metadata registry to use for this context.
+   * Defaults to the process-wide registry (`MetadataStorage.getInstance()`).
+   * Provide an isolated `MetadataRegistry` for multi-tenant setups or test isolation.
+   */
+  registry?: import('@ts-linq/metadata').MetadataRegistry;
   performance?: import('@ts-linq/types').PerformanceOptions;
   loading?: import('@ts-linq/types').LoadingDefaults;
   softDelete?: import('@ts-linq/types').SoftDeleteOptions;
