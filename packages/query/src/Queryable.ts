@@ -1,5 +1,5 @@
 import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
-import { SqlVisitor, type ExpressionNode } from '@ts-linq/ast';
+import { SqlVisitor, type ColumnResolver, type ExpressionNode, type PropertyNode } from '@ts-linq/ast';
 import { safeCache, safeCacheEvicted, safeCacheSize } from '@ts-linq/metrics-safe';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
@@ -251,7 +251,7 @@ export class Queryable<T> {
     readonly parameters: readonly unknown[];
   }): Queryable<T> {
     const visitor = new SqlVisitor();
-    const { condition, parameters } = visitor.toSql(input.ast, input.parameters);
+    const { condition, parameters } = visitor.toSql(input.ast, input.parameters, this.buildColumnResolver());
     const whereClause: WhereClause = { condition, parameters };
     this._model.where = this._model.where || [];
     this._model.where.push(whereClause);
@@ -500,7 +500,7 @@ export class Queryable<T> {
       throw new Error('havingCompiled() requires a preceding groupBy()');
     }
     const visitor = new SqlVisitor();
-    const { condition, parameters } = visitor.toSql(input.ast, input.parameters);
+    const { condition, parameters } = visitor.toSql(input.ast, input.parameters, this.buildColumnResolver());
     this._model.groupBy.having = { condition, parameters };
     return this;
   }
@@ -938,6 +938,37 @@ export class Queryable<T> {
       // Exhausted fallbacks; rethrow original error
       throw error;
     }
+  }
+
+  /**
+   * Builds a ColumnResolver that maps TypeScript property names to SQL column names
+   * using entity metadata. Falls back to the property name when no mapping is found
+   * (e.g., entity has no metadata, or the column has no explicit name decorator).
+   *
+   * For multi-segment paths (u.profile.city), only the last segment is resolved
+   * against the entity's own columns; prefix segments are left as-is.
+   */
+  private buildColumnResolver(): ColumnResolver | undefined {
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    if (!metadata || metadata.columns.length === 0) return undefined;
+
+    return (node: PropertyNode): string => {
+      const lastSegment = node.name ?? node.path?.[node.path.length - 1];
+      const col = lastSegment !== undefined
+        ? metadata.columns.find(c => c.propertyName === lastSegment)
+        : undefined;
+      const resolvedName = col?.columnName ?? lastSegment;
+
+      if (node.name !== undefined) {
+        return resolvedName ?? node.name;
+      }
+      if (node.path !== undefined && node.path.length > 0) {
+        if (resolvedName === undefined) return node.path.join('.');
+        return [...node.path.slice(0, -1), resolvedName].join('.');
+      }
+      // Guard — renderPropertyName will throw INVALID_PROPERTY_NODE before this
+      return '';
+    };
   }
 
   /** Decide whether a caught error qualifies for graceful degradation. */
