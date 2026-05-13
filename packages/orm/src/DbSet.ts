@@ -15,7 +15,7 @@ import type { DbSetContext } from './DbSetContext';
  * for a specific entity type.
  */
 export class DbSet<T extends object> {
-  public _entityClass: new () => T;
+  private readonly _entityClass: new () => T;
   private _provider: DatabaseProvider;
   private _changeTracker: ChangeTracker;
   private _entityLoader: EntityLoader | undefined;
@@ -38,6 +38,11 @@ export class DbSet<T extends object> {
     this._performance = context.performance;
     this._globalFilters = context.globalFilters;
     this._softDeleteOptions = context.softDeleteOptions;
+  }
+
+  /** The entity constructor this set operates on. */
+  get entityClass(): new () => T {
+    return this._entityClass;
   }
 
   /** Add an entity to be inserted */

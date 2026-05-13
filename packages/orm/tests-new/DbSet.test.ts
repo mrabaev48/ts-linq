@@ -55,12 +55,12 @@ describe('DbSet', () => {
   describe('constructor', () => {
     it('should create DbSet with required parameters', () => {
       expect(dbSet).toBeDefined();
-      expect(dbSet._entityClass).toBe(User);
+      expect(dbSet.entityClass).toBe(User);
     });
 
     it('should create DbSet for different entity types', () => {
       const productSet = new DbSet(Product, { provider: mockProvider, changeTracker });
-      expect(productSet._entityClass).toBe(Product);
+      expect(productSet.entityClass).toBe(Product);
     });
   });
 
