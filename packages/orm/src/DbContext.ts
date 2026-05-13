@@ -1,4 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
+import { Queryable, QueryBuilder } from '@ts-linq/query';
 import { ChangeTracker } from './ChangeTracker';
 import type { DbSetContext } from './DbSetContext';
 import { EntityLoader } from '@ts-linq/core';
@@ -231,21 +232,27 @@ export abstract class DbContext {
         originalValues?: object;
       }>
     );
-    let affectedRows = 0;
-    for (const change of changes) {
-      const normalized = this.normalizeChange(change);
-      this.applyAudit(normalized);
-      affectedRows += await this.processChange(normalized);
-    }
-    // Smart invalidation after successful DML
     const normalizedForInvalidation = normalizedForValidation.map((c) => ({
       entity: c.entity,
       entityClass: c.entityClass,
       state: c.state
     }));
-    this.invalidateCachesAfterSave(normalizedForInvalidation);
-    this._changeTracker.acceptAllChanges();
-    return affectedRows;
+    await this._provider.beginTransaction();
+    try {
+      let affectedRows = 0;
+      for (const change of changes) {
+        const normalized = this.normalizeChange(change);
+        this.applyAudit(normalized);
+        affectedRows += await this.processChange(normalized);
+      }
+      await this._provider.commitTransaction();
+      this.invalidateCachesAfterSave(normalizedForInvalidation);
+      this._changeTracker.acceptAllChanges();
+      return affectedRows;
+    } catch (error) {
+      await this._provider.rollbackTransaction();
+      throw error;
+    }
   }
 
   /** Try-version of saveChanges without throwing exceptions. */
@@ -273,9 +280,7 @@ export abstract class DbContext {
     // Invalidate count cache after commit to avoid stale totals across contexts
     // This is a coarse-grained approach since count cache is global
     try {
-      (
-        require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }
-      ).Queryable.clearCountCache();
+      Queryable.clearCountCache();
       // Smart invalidation: clear L2 cache for entities that declare dependencies
       this.invalidateCachesOnCommit();
       if (this._entityCache) {
@@ -321,9 +326,7 @@ export abstract class DbContext {
       }
     }
     try {
-      (
-        require('../query/Queryable') as { Queryable: { clearCountCache: () => void } }
-      ).Queryable.clearCountCache();
+      Queryable.clearCountCache();
     } catch (e) {
       // logInternalError('DbContext.rollbackTransaction.countCacheClear', e);
     }
@@ -365,7 +368,7 @@ export abstract class DbContext {
 
   private computeNeedFullL2Clear(changedNames: ReadonlySet<string>): boolean {
     try {
-      const entities = require('../metadata/MetadataStorage').MetadataStorage.getEntities();
+      const entities = MetadataStorage.getEntities();
       for (const e of entities) {
         const meta = (
           Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown }
@@ -424,10 +427,7 @@ export abstract class DbContext {
         }
       } else {
         // Fallback to static global cache
-        const qb = require('../query/QueryBuilder') as {
-          QueryBuilder: { invalidateForEntity: (name: string) => number };
-        };
-        for (const name of changedNames) qb.QueryBuilder.invalidateForEntity(name);
+        for (const name of changedNames) QueryBuilder.invalidateForEntity(name);
       }
     } catch (e) {
       // logInternalError('DbContext.invalidateCachesAfterSave.sqlCache', e);
@@ -473,10 +473,7 @@ export abstract class DbContext {
     },
     invalidateByEntity: (entityNames: ReadonlyArray<string>): void => {
       try {
-        const qb = require('../query/QueryBuilder') as {
-          QueryBuilder: { invalidateForEntity: (name: string) => number };
-        };
-        for (const name of entityNames) qb.QueryBuilder.invalidateForEntity(name);
+        for (const name of entityNames) QueryBuilder.invalidateForEntity(name);
       } catch (e) {
         // logInternalError('DbContext.cache.invalidateByEntity.sqlCache', e);
       }

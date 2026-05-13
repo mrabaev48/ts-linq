@@ -1376,12 +1376,9 @@ export class Queryable<T> {
 
   /** Check if all elements satisfy a condition (EF-style) */
   public async all(predicate: (entity: T) => boolean): Promise<boolean> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-
-    // For efficiency, we'll check if any element does NOT satisfy the condition
-    // If none exist that violate it, then all satisfy it
-    const violatingElement = await this.where((entity) => !predicate(entity)).firstOrDefault();
-    return violatingElement === null;
+    throw new Error(
+      "ts-linq(all): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
+    );
   }
 
   /** Calculate average of a numeric property (EF-style) */
