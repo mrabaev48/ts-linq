@@ -41,7 +41,7 @@ describe('Pagination Integration - Offset', () => {
 
     it('should skip and take', async () => {
         const page = await context.set(PageItem)
-            .orderBy(x => x.value)
+            .orderBy('value')
             .skip(5)
             .take(5)
             .toArray();
@@ -53,7 +53,7 @@ describe('Pagination Integration - Offset', () => {
 
     it('should paginate to end', async () => {
         const page = await context.set(PageItem)
-            .orderBy(x => x.value)
+            .orderBy('value')
             .skip(15)
             .take(10)
             .toArray();

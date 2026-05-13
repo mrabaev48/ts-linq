@@ -42,7 +42,7 @@ describe('Pagination Integration - Keyset', () => {
     it('should fetch next page using last id', async () => {
         // Page 1
         const page1 = await context.set(KeysetItem)
-            .orderBy(x => x.id)
+            .orderBy('id')
             .take(5)
             .toArray();
         
@@ -53,7 +53,7 @@ describe('Pagination Integration - Keyset', () => {
         // Page 2 (Keyset)
         const page2 = await context.set(KeysetItem)
             .where(x => x.id > lastId)
-            .orderBy(x => x.id)
+            .orderBy('id')
             .take(5)
             .toArray();
 
@@ -65,7 +65,7 @@ describe('Pagination Integration - Keyset', () => {
         const lastId = 20;
         const page = await context.set(KeysetItem)
             .where(x => x.id > lastId)
-            .orderBy(x => x.id)
+            .orderBy('id')
             .take(5)
             .toArray();
         
