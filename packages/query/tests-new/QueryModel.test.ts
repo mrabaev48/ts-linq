@@ -258,6 +258,23 @@ describe('QueryModel', () => {
       expect(cloned.unions![0].entity).toBe(TestEntity);
       expect(cloned.unions![1].entity).toBe(OtherEntity);
     });
+
+    it('should clone setOp field in unions', () => {
+      const original = new QueryModel();
+      const other = new QueryModel();
+
+      original.unions = [
+        { all: false, setOp: 'EXCEPT', other, entity: class E {} as new () => unknown },
+        { all: false, setOp: 'INTERSECT', other, entity: class E {} as new () => unknown },
+        { all: false, other, entity: class E {} as new () => unknown }
+      ];
+
+      const cloned = original.clone();
+
+      expect(cloned.unions![0].setOp).toBe('EXCEPT');
+      expect(cloned.unions![1].setOp).toBe('INTERSECT');
+      expect(cloned.unions![2].setOp).toBeUndefined();
+    });
   });
 
   describe('immutability', () => {
