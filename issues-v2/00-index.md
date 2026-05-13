@@ -68,6 +68,7 @@ PR #21 произвёл масштабный split: `packages/core` разбит
 | [14](./14-keyset-paginate-hardcoded-placeholder.md) | `packages/query/src/Queryable.ts` | **keysetPaginate хардкодит `?` placeholder** |
 | [15](./15-excessive-unknown-casts.md) | Весь проект | **143+ `as unknown as` — хуже чем в v1** |
 | [16](./16-monkey-patch-toarray.md) | `packages/query/src/Queryable.ts` | **except/intersect/concat monkey-patch toArray** |
+| [17](./17-remove-function-string-parsing.md) | `packages/query/src/Queryable.ts` | **Runtime-парсинг стрелочных функций — 11 методов, удалить полностью** |
 
 ---
 
@@ -98,6 +99,7 @@ PR #21 произвёл масштабный split: `packages/core` разбит
 14. **Issue #11** — DbSet._entityClass приватность
 15. **Issue #13** — timer lifecycle
 16. **Issue #15** — аудит `as unknown as`
+17. **Issue #17** — полный переход на трансформер; удалить runtime-парсинг функций
 
 ---
 
