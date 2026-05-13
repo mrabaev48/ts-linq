@@ -1,14 +1,11 @@
 import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
 import { SqlVisitor, type ColumnResolver, type ExpressionNode, type PropertyNode } from '@ts-linq/ast';
-import { safeCache, safeCacheEvicted, safeCacheSize } from '@ts-linq/metrics-safe';
+import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
   EntityCacheLike,
-  FallbackOperation,
   FallbackPolicy,
-  FallbackRequest,
   GlobalFilter,
-  JoinType,
   OrderByClause,
   PerformanceOptions,
   QueryFallback,
@@ -20,11 +17,13 @@ import type { CteDefinition } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
 
 import type { CountCache } from './CountCache';
+import { AggregateOperations } from './AggregateOperations';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { IncludePlanner } from './IncludePlanner';
-import { logInternalError } from './InternalLogger';
 import { JoinPredicateParser } from './JoinPredicateParser';
+import { PropertyExtractor } from './PropertyExtractor';
 import { QueryBuilder } from './QueryBuilder';
+import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
 import { RowMaterializer } from './RowMaterializer';
 
@@ -61,6 +60,11 @@ export class Queryable<T> {
   private _throttle = { windowStart: 0, usedInWindow: 0, lastAttemptAt: 0 };
 
   private _softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions;
+
+  /** Execution delegate: primary + fallback + hedging paths. Re-created in clone() with shared throttle ref. */
+  private _executor!: QueryExecutor<T>;
+  /** Stateless aggregate operations. Shared by reference across all clones. */
+  private _aggregates!: AggregateOperations<T>;
 
   /**
    * Create a new Queryable bound to an entity type and provider.
@@ -109,6 +113,21 @@ export class Queryable<T> {
         fallbackPolicy: { ...defaults, ...(this._performance?.fallbackPolicy || {}) }
       };
     }
+    this._executor = new QueryExecutor<T>(
+      this._entityClass,
+      this._provider,
+      this._sqlBuilder,
+      this._materializer,
+      this._includePlanner,
+      this._fallbacks,
+      this._performance,
+      this._throttle
+    );
+    this._aggregates = new AggregateOperations<T>(
+      this._entityClass,
+      this._provider,
+      this._sqlBuilder
+    );
   }
 
   /**
@@ -138,6 +157,19 @@ export class Queryable<T> {
     clonedQueryable._fallbacks = [...this._fallbacks];
     // share throttle state by reference so all clones in a chain see the same counters
     clonedQueryable._throttle = this._throttle;
+    // Re-create executor with the cloned fallbacks array and shared throttle reference
+    clonedQueryable._executor = new QueryExecutor<T>(
+      this._entityClass,
+      this._provider,
+      this._sqlBuilder,
+      clonedQueryable._materializer,
+      clonedQueryable._includePlanner,
+      clonedQueryable._fallbacks,
+      this._performance,
+      this._throttle
+    );
+    // AggregateOperations is stateless — share the same instance
+    clonedQueryable._aggregates = this._aggregates;
     return clonedQueryable;
   }
 
@@ -155,7 +187,7 @@ export class Queryable<T> {
       this._whereSignature += '|1=0:[]';
       return this;
     }
-    
+
     // Resolve column name from metadata (if available) or use property name
     const metadata = MetadataStorage.getEntity(this._entityClass);
     const dbColumn = metadata
@@ -163,17 +195,17 @@ export class Queryable<T> {
       : column;
 
     const quotedCol = this._provider.getDialect().quoteIdentifier(dbColumn);
-    
+
     const whereClause: WhereClause = {
       condition: `${quotedCol} IN (${values.map(() => '?').join(', ')})`,
       parameters: values as unknown as SqlParameter[]
     };
-    
+
     this._model.where = this._model.where || [];
     this._model.where.push(whereClause);
     const sigParams = values.length > 5 ? `[${values.length} values]` : JSON.stringify(values);
     this._whereSignature += `|${column}IN:${sigParams}`;
-    
+
     return this;
   }
 
@@ -182,7 +214,7 @@ export class Queryable<T> {
     this._globalFilterApplier.apply(
       this._entityClass,
       model,
-      this._softDeleteOptions ?? this._provider.softDeleteOptions, // Fallback to provider for backward compat temporarily, or prefer local
+      this._softDeleteOptions ?? this._provider.softDeleteOptions,
       this._globalFilters
     );
   }
@@ -232,7 +264,7 @@ export class Queryable<T> {
   }
 
   /**
-   * Adds a filter predicate that has been compiled to a query AST at build time.
+   * Adds a WHERE predicate that has been compiled to a query AST at build time.
    *
    * This method is intended to be called only by the compile-time transformer.
    */
@@ -300,15 +332,12 @@ export class Queryable<T> {
 
   /** With CTE support: define a named subquery and return a Queryable bound to that CTE. */
   public withCte(name: string, subquery: Queryable<unknown>): Queryable<T> {
-    // Build subquery SQL once and stash into model via FROM override
     const { query } = subquery._sqlBuilder.generateFromModel(
       subquery._entityClass as unknown as new () => unknown,
       subquery._model
     );
     const cloned = this.clone();
-    // naive: store CTE name; real provider should prepend WITH clause at execution time
     cloned._model.from = name;
-    // store CTE definition also in options-compatible form for dialects
     cloned._cte = { name, sql: query };
     return cloned;
   }
@@ -511,8 +540,7 @@ export class Queryable<T> {
     this.applyGlobalFiltersToModel(queryModel);
     queryModel.limit = size;
     queryModel.offset = (page - 1) * size;
-    const items = await this.executeAndMaterialize(queryModel);
-
+    const items = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
     const total = await this.count();
     return { items, total, page, size };
   }
@@ -550,7 +578,7 @@ export class Queryable<T> {
     }
 
     this.applyGlobalFiltersToModel(queryModel);
-    const items = await this.executeAndMaterialize(queryModel);
+    const items = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
     const last =
       items.length > 0 ? (items[items.length - 1] as unknown as Record<string, unknown>) : null;
     const nextAfter = last ? (last[propName] as T[TKey] | null) : null;
@@ -584,7 +612,7 @@ export class Queryable<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
-    return this.executeAndMaterialize(queryModel);
+    return this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
   }
 
   /** Returns the first entity or throws if none.
@@ -596,7 +624,7 @@ export class Queryable<T> {
     const queryModel = this._model.clone();
     queryModel.limit = 1;
     this.applyGlobalFiltersToModel(queryModel);
-    const entities = await this.executeAndMaterialize(queryModel);
+    const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
     if (!entities.length) throw new Error('Sequence contains no elements');
     return entities[0];
   }
@@ -618,7 +646,7 @@ export class Queryable<T> {
     const queryModel = this._model.clone();
     queryModel.limit = 1;
     this.applyGlobalFiltersToModel(queryModel);
-    const entities = await this.executeAndMaterialize(queryModel);
+    const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
     return entities[0] ?? null;
   }
   /** Ensures exactly one result; throws if 0 or more than 1.
@@ -676,7 +704,9 @@ export class Queryable<T> {
         });
         return hit.value;
       }
-      const pending = this.executeCountQuery(metadata.tableName);
+      const queryModel = this._model.clone();
+      this.applyGlobalFiltersToModel(queryModel);
+      const pending = this._executor.executeCount(metadata.tableName, queryModel);
       this._inflightCounts.set(key, pending);
       let value: number;
       try {
@@ -703,7 +733,9 @@ export class Queryable<T> {
       });
       return value;
     }
-    return this.executeCountQuery(metadata.tableName);
+    const queryModel = this._model.clone();
+    this.applyGlobalFiltersToModel(queryModel);
+    return this._executor.executeCount(metadata.tableName, queryModel);
   }
 
   private buildCountCacheKey(table: string): string {
@@ -712,161 +744,10 @@ export class Queryable<T> {
     return `${ns}${provider}${this._entityClass.name}|count|${table}|${this._whereSignature}`;
   }
 
-  private async executeCountQuery(table: string): Promise<number> {
-    const queryModel = this._model.clone();
-    this.applyGlobalFiltersToModel(queryModel);
-    const { sql: query, params: parameters } = this.buildCountSqlAndParams(queryModel, table);
-    // Hedged count race if enabled
-    const hedge = this._performance?.fallbackPolicy?.hedged;
-    if (hedge?.enabled && this._fallbacks.length > 0 && this.isOpAllowedForFallback('count')) {
-      const hedged = await this.racePrimaryWithFallbackCount(query, parameters, queryModel);
-      if (hedged !== null) return hedged;
-    }
-    try {
-      const results = await this._provider.executeQuery<{ count: number }>(query, parameters);
-      return results[0]?.count ?? 0;
-    } catch (error) {
-      if (!this.isDegradableError(error) || this._fallbacks.length === 0) throw error;
-      if (!this.tryEnterFallbackThrottle()) throw error;
-      const n = await this.tryFallbackCountSequential(queryModel);
-      if (n !== null) return n;
-      throw error;
-    }
-  }
-
   /** Resolve a TypeScript property name to its database column name via entity metadata. */
   private resolveColumnName(propName: string): string {
     const meta = MetadataStorage.getEntity(this._entityClass);
     return meta?.columns.find((c) => c.propertyName === propName)?.columnName ?? propName;
-  }
-
-  /** Build COUNT SQL and params from a query model in a single pass. */
-  private buildCountSqlAndParams(
-    queryModel: QueryModel,
-    table: string
-  ): {
-    sql: string;
-    params: SqlParameter[];
-  } {
-    const tableName = table;
-    let sql = `SELECT COUNT(*) as count FROM ${tableName}`;
-    const params: SqlParameter[] = [];
-    if (queryModel.where && queryModel.where.length > 0) {
-      let first = true;
-      sql += ' WHERE ';
-      for (const wc of queryModel.where) {
-        if (!first) sql += ' AND ';
-        first = false;
-        sql += wc.condition;
-        for (let i = 0; i < wc.parameters.length; i++) params.push(wc.parameters[i]);
-      }
-    }
-    return { sql, params };
-  }
-
-  /** Sequential fallback for count(): server-count if available, else SELECT length. */
-  private async tryFallbackCountSequential(queryModel: QueryModel): Promise<number | null> {
-    const normal = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
-    const req: FallbackRequest<T> = {
-      operation: "count" as FallbackOperation,
-      entityClass: this._entityClass,
-      entity: this._entityClass,
-      sql: normal.query,
-      params: normal.parameters
-    };
-    for (const fb of this._fallbacks) {
-      try {
-        this._provider.loggerRef?.fallback?.({
-          provider: this._provider.providerLabel,
-          fallback: fb.label,
-          attempted: true
-        });
-        if (typeof fb.fetchCount === 'function') {
-          const n = await fb.fetchCount(req);
-          if (typeof n === 'number') return n;
-        }
-        const data = await fb.fetch(req);
-        if (data && data.length >= 0) return (data as unknown as unknown[]).length;
-      } catch (fbErr) {
-        this._provider.loggerRef?.fallback?.({
-          provider: this._provider.providerLabel,
-          fallback: fb.label,
-          attempted: true,
-          succeeded: false,
-          error: fbErr as Error
-        });
-        continue;
-      }
-    }
-    return null;
-  }
-
-  /** Race primary COUNT with delayed fallback count (server-side if available). */
-  private async racePrimaryWithFallbackCount(
-    countSql: string,
-    params: readonly SqlParameter[],
-    queryModel: QueryModel
-  ): Promise<number | null> {
-    const hedge = this._performance?.fallbackPolicy?.hedged;
-    if (!hedge?.enabled) return null;
-    const normal = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
-    const req: FallbackRequest<T> = {
-      operation: "count" as FallbackOperation,
-      entityClass: this._entityClass,
-      entity: this._entityClass,
-      sql: normal.query,
-      params: normal.parameters
-    };
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-    const fallbacks = this.getHedgedFallbacks();
-    const fallbackCountPromise = (async () => {
-      await sleep(Math.max(0, hedge.delayMs ?? 15));
-      for (const fb of fallbacks) {
-        try {
-          if (typeof fb.fetchCount === 'function') {
-            const n = await fb.fetchCount(req);
-            if (typeof n === 'number') return n;
-          }
-          const data = await fb.fetch(req);
-          if (data && data.length >= 0) return (data as unknown as unknown[]).length;
-        } catch (e) {
-          logInternalError('hedged.startFallback.fetch', e);
-          continue;
-        }
-      }
-      return -1;
-    })();
-    try {
-      const primaryPromise = this._provider
-        .executeQuery<{ count: number }>(countSql, params)
-        .then((rows: Array<{ count: number }>) => rows[0]?.count ?? 0);
-      const winner = await Promise.race([
-        primaryPromise.then((n: number) => ({ k: 'p', n }) as const),
-        fallbackCountPromise.then((n: number) => ({ k: 'f', n }) as const)
-      ]);
-      if (winner.k === 'p') return winner.n;
-      if (typeof winner.n === 'number' && winner.n >= 0) {
-        try {
-          this._provider.loggerRef?.hedgedWin?.({
-            provider: this._provider.providerLabel,
-            operation: 'count',
-            fallback: 'unknown'
-          });
-          this._provider.loggerRef?.fallback?.({
-            provider: this._provider.providerLabel,
-            fallback: 'unknown',
-            attempted: true,
-            succeeded: true
-          });
-        } catch (e) {
-          logInternalError('hedged.select.hedgedWin', e);
-        }
-        return winner.n;
-      }
-      return await primaryPromise;
-    } catch {
-      return null;
-    }
   }
   /** Returns true if at least one row matches the query.
    * @example
@@ -877,58 +758,13 @@ export class Queryable<T> {
     const queryModel = this._model.clone();
     queryModel.limit = 1;
     this.applyGlobalFiltersToModel(queryModel);
-    const entities = await this.executeAndMaterialize(queryModel);
+    const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
     return entities.length > 0;
-  }
-
-  /** Executes provided model and maps rows to entities. */
-  private async executeAndMaterialize(model: QueryModel): Promise<T[]> {
-    // propagate CTE to options via from field when present
-    if (this._cte) {
-      // monkey-attach for dialects that look into QueryOptions
-      (model as unknown as { cte?: CteDefinition }).cte = this._cte;
-    }
-    const sql = this._sqlBuilder.generateFromModel(this._entityClass, model);
-    // Hedged requests: optionally race fallback after a short delay
-    const hedge = this._performance?.fallbackPolicy?.hedged;
-    if (hedge?.enabled && this._fallbacks.length > 0 && this.isOpAllowedForFallback('select')) {
-      const winner = await this.racePrimaryWithFallback(
-        () => this._provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters),
-        sql,
-        hedge.delayMs ?? 15,
-        this.getHedgedFallbacks()
-      );
-      if (winner.source === 'primary') {
-        return await this.handlePrimaryRows(model, winner.rows);
-      } else {
-        return await this.handleFallbackEntities(
-          (winner.rows as unknown as T[]).slice(),
-          winner.label || 'unknown',
-          model
-        );
-      }
-    }
-    try {
-      const rows = await this._provider.executeQuery<Record<string, unknown>>(
-        sql.query,
-        sql.parameters
-      );
-      return await this.handlePrimaryRows(model, rows);
-    } catch (error) {
-      if (!this.isOpAllowedForFallback('select')) throw error;
-      if (!this.isDegradableError(error) || this._fallbacks.length === 0) throw error;
-      if (!this.tryEnterFallbackThrottle()) throw error;
-      const entities = await this.tryFallbackSelectSequential(sql, model);
-      if (entities) return entities;
-      // Exhausted fallbacks; rethrow original error
-      throw error;
-    }
   }
 
   /**
    * Builds a ColumnResolver that maps TypeScript property names to SQL column names
-   * using entity metadata. Falls back to the property name when no mapping is found
-   * (e.g., entity has no metadata, or the column has no explicit name decorator).
+   * using entity metadata. Falls back to the property name when no mapping is found.
    *
    * For multi-segment paths (u.profile.city), only the last segment is resolved
    * against the entity's own columns; prefix segments are left as-is.
@@ -951,374 +787,8 @@ export class Queryable<T> {
         if (resolvedName === undefined) return node.path.join('.');
         return [...node.path.slice(0, -1), resolvedName].join('.');
       }
-      // Guard — renderPropertyName will throw INVALID_PROPERTY_NODE before this
       return '';
     };
-  }
-
-  /** Decide whether a caught error qualifies for graceful degradation. */
-  private isDegradableError(error: unknown): boolean {
-    if (!error) return false;
-    const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
-    return (
-      message.includes('circuit') ||
-      message.includes('timeout') ||
-      message.includes('connection') ||
-      message.includes('too many connections') ||
-      message.includes('econnreset')
-    );
-  }
-
-  private isOpAllowedForFallback(op: FallbackOperation): boolean {
-    const allow = this._performance?.fallbackPolicy?.allowOps;
-    return !allow || allow.includes(op);
-  }
-
-  private async handlePrimaryRows(
-    model: QueryModel,
-    rows: ReadonlyArray<Record<string, unknown>>
-  ): Promise<T[]> {
-    let entities = rows.map((row) => this._materializer.mapRowToEntity(row));
-    await this._includePlanner.populateIncludes(entities, this._includes, model.limit);
-    return entities;
-  }
-
-  private async handleFallbackEntities(
-    entities: T[],
-    label: string,
-    model: QueryModel
-  ): Promise<T[]> {
-    if (this._performance?.fallbackPolicy?.allowIncludesOnFallback === 'attempt') {
-      try {
-        await this._includePlanner.populateIncludes(entities, this._includes, model.limit);
-      } catch {}
-    }
-    this._provider.loggerRef?.fallback?.({
-      provider: this._provider.providerLabel,
-      fallback: label,
-      attempted: true,
-      succeeded: true,
-      isStale: true,
-      asOf: Date.now(),
-      source: label
-    });
-    return entities;
-  }
-
-  private async tryFallbackSelectSequential(
-    sql: { query: string; parameters: readonly SqlParameter[] },
-    model: QueryModel
-  ): Promise<T[] | null> {
-    const req: FallbackRequest<T> = {
-      operation: "count" as FallbackOperation,
-      entityClass: this._entityClass,
-      entity: this._entityClass,
-      sql: sql.query,
-      params: sql.parameters
-    };
-    for (const fb of this._fallbacks) {
-      try {
-        this._provider.loggerRef?.fallback?.({
-          provider: this._provider.providerLabel,
-          fallback: fb.label,
-          attempted: true
-        });
-        const data = await fb.fetch(req);
-        if (data && data.length >= 0) {
-          return await this.handleFallbackEntities(
-            (data as unknown as T[]).slice(),
-            fb.label,
-            model
-          );
-        }
-      } catch (fbErr) {
-        this._provider.loggerRef?.fallback?.({
-          provider: this._provider.providerLabel,
-          fallback: fb.label,
-          attempted: true,
-          succeeded: false,
-          error: fbErr as Error
-        });
-        continue;
-      }
-    }
-    return null;
-  }
-
-  /** Race primary query with a delayed fallback request; returns the earlier result. */
-  private async racePrimaryWithFallback(
-    primary: () => Promise<ReadonlyArray<Record<string, unknown>>>,
-    sql: { query: string; parameters: readonly SqlParameter[] },
-    delayMs: number,
-    fallbacks: ReadonlyArray<QueryFallback<T>>
-  ): Promise<
-    | { source: 'primary'; rows: ReadonlyArray<Record<string, unknown>> }
-    | { source: 'fallback'; rows: ReadonlyArray<unknown>; label: string }
-  > {
-    let fallbackStarted = false;
-    const req: FallbackRequest<T> = {
-      operation: "count" as FallbackOperation,
-      entityClass: this._entityClass,
-      entity: this._entityClass,
-      sql: sql.query,
-      params: sql.parameters
-    };
-    const startFallback = async (): Promise<{ rows: ReadonlyArray<unknown>; label: string }> => {
-      fallbackStarted = true;
-      for (const fb of fallbacks) {
-        try {
-          const data = await fb.fetch(req);
-          if (data && data.length >= 0)
-            return { rows: data as unknown as ReadonlyArray<unknown>, label: fb.label };
-        } catch {
-          continue;
-        }
-      }
-      // no data
-      return { rows: [] as unknown as ReadonlyArray<unknown>, label: 'none' };
-    };
-
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-    const fallbackPromise = (async () => {
-      await sleep(Math.max(0, delayMs));
-      return await startFallback();
-    })();
-    try {
-      const primaryPromise = primary();
-      const winner = await Promise.race([
-        primaryPromise.then((rows) => ({ k: 'p', rows }) as const),
-        fallbackPromise.then((v) => ({ k: 'f', rows: v.rows, label: v.label }) as const)
-      ]);
-      if (winner.k === 'p') {
-        return { source: 'primary', rows: winner.rows };
-      } else {
-        // record hedged win
-        try {
-          (
-            this._provider.loggerRef as unknown as {
-              hedgedWin?: (p: { provider?: string; operation: string; fallback: string }) => void;
-            }
-          )?.hedgedWin?.({
-            provider: this._provider.providerLabel,
-            operation: 'select',
-            fallback: winner.label || 'unknown'
-          });
-        } catch (e) {
-          logInternalError('hedged.select.hedgedWin', e);
-        }
-        this._provider.loggerRef?.fallback?.({
-          provider: this._provider.providerLabel,
-          fallback: winner.label || 'unknown',
-          attempted: true,
-          succeeded: true
-        });
-        return { source: 'fallback', rows: winner.rows, label: winner.label || 'unknown' };
-      }
-    } catch {
-      // If primary failed early and fallback not started yet, await fallback fully
-      if (!fallbackStarted) {
-        const v = await startFallback();
-        return { source: 'fallback', rows: v.rows, label: v.label };
-      }
-      throw new Error('hedged failed');
-    }
-  }
-
-  /** Select hedged fallbacks based on policy-specified source labels. */
-  private getHedgedFallbacks(): ReadonlyArray<QueryFallback<T>> {
-    const src = this._performance?.fallbackPolicy?.hedged?.sources;
-    if (!src || src.length === 0) return this._fallbacks;
-    const wanted = new Set(src);
-    return this._fallbacks.filter((fb) => wanted.has(fb.label));
-  }
-
-  /** Try to pass fallback throttle constraints; returns false when fallback should be skipped. */
-  private tryEnterFallbackThrottle(): boolean {
-    const throttle = this._performance?.fallbackPolicy?.throttle;
-    if (!throttle) return true;
-    const now = Date.now();
-    // minInterval guard
-    const minInterval = Math.max(0, throttle.minIntervalMs ?? 0);
-    const jitter = Math.max(0, Math.min(1, throttle.jitterRatio ?? 0));
-    const effectiveInterval =
-      minInterval > 0 && jitter > 0
-        ? Math.floor(minInterval * (1 + Math.random() * jitter))
-        : minInterval;
-    if (minInterval > 0) {
-      const since = now - this._throttle.lastAttemptAt;
-      if (since < effectiveInterval) {
-        // emit throttled metric if available
-        this._provider.loggerRef?.fallback?.({
-          provider: this._provider.providerLabel,
-          fallback: 'n/a',
-          attempted: false,
-          throttled: true
-        });
-        return false;
-      }
-    }
-    // window counter guard (60s)
-    const maxPerMinute = Math.max(0, throttle.maxPerMinute ?? 0);
-    if (maxPerMinute > 0) {
-      const windowMs = 60_000;
-      if (now - this._throttle.windowStart >= windowMs) {
-        this._throttle.windowStart = now;
-        this._throttle.usedInWindow = 0;
-      }
-      if (this._throttle.usedInWindow >= maxPerMinute) return false;
-      this._throttle.usedInWindow += 1;
-    }
-    this._throttle.lastAttemptAt = now;
-    return true;
-  }
-
-  /**
-   * Map a raw database row object to a new entity instance using metadata.
-   * Falls back to shallow assign when no metadata is available.
-   */
-  private mapRowToEntity(row: unknown): T {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (this.shouldUseL2Cache(metadata)) {
-      const cached = this.tryGetFromCache(row, metadata!);
-      if (cached) return cached;
-      const entity = this.materializeEntity(row, metadata!);
-      this.rememberInCache(row, metadata!, entity);
-      this.notifyMaterialized(entity, metadata);
-      return entity;
-    }
-    const entity = this.materializeEntity(row, metadata || null);
-    this.notifyMaterialized(entity, metadata);
-    return entity;
-  }
-
-  private shouldUseL2Cache(
-    metadata: ReturnType<typeof MetadataStorage.getEntity> | undefined
-  ): boolean {
-    return (
-      !!this._performance?.enableEntityCache &&
-      !!this._entityCache &&
-      !!metadata &&
-      !!metadata.primaryKeys &&
-      metadata.primaryKeys.length > 0
-    );
-  }
-
-  private tryGetFromCache(
-    row: unknown,
-    metadata: {
-      primaryKeys?: string[];
-      columns: Array<{ propertyName: string; columnName: string }>;
-    }
-  ): T | null {
-    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) return null;
-    const pkProp = metadata.primaryKeys[0];
-    const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
-    const idValue = pkCol
-      ? (row as Record<string, unknown>)[pkCol.columnName]
-      : (row as Record<string, unknown>)[pkProp];
-    const cached = this._entityCache!.get<T>(this._entityClass, idValue);
-    if (!cached) {
-      this._provider.loggerRef?.cache?.({
-        cache: 'entityL2',
-        hit: false,
-        provider: this._provider.providerLabel
-      });
-      return null;
-    }
-    this._provider.loggerRef?.cache?.({
-      cache: 'entityL2',
-      hit: true,
-      provider: this._provider.providerLabel
-    });
-    return cached;
-  }
-
-  private materializeEntity(
-    row: unknown,
-    metadata: { columns: Array<{ propertyName: string; columnName: string; type: string }> } | null
-  ): T {
-    const entity = new this._entityClass();
-    if (metadata) {
-      for (const column of metadata.columns) {
-        const r = row as Record<string, unknown>;
-        const val = r.hasOwnProperty(column.columnName)
-          ? r[column.columnName]
-          : r[column.propertyName];
-        if (val !== undefined) {
-          (entity as unknown as Record<string, unknown>)[column.propertyName] = this.convertValue(
-            val,
-            column.type
-          );
-        }
-      }
-    } else {
-      Object.assign(entity as object, row as object);
-    }
-    return entity;
-  }
-
-  private rememberInCache(
-    row: unknown,
-    metadata: {
-      primaryKeys?: string[];
-      columns: Array<{ propertyName: string; columnName: string }>;
-    },
-    entity: T
-  ): void {
-    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) return;
-    const pkProp = metadata.primaryKeys[0];
-    const pkCol = metadata.columns.find((c) => c.propertyName === pkProp);
-    const idValue = pkCol
-      ? (row as Record<string, unknown>)[pkCol.columnName]
-      : (row as Record<string, unknown>)[pkProp];
-    this._entityCache!.set(this._entityClass, idValue, entity);
-    this._provider.loggerRef?.cache?.({
-      cache: 'entityL2',
-      hit: false,
-      provider: this._provider.providerLabel
-    });
-    try {
-      (
-        this._provider.loggerRef as unknown as {
-          cacheSize?: (p: { cache: 'entityL2'; size: number; provider?: string }) => void;
-        }
-      )?.cacheSize?.({
-        cache: 'entityL2',
-        size: this._entityCache!.size?.() ?? -1,
-        provider: this._provider.providerLabel
-      });
-    } catch {
-      // ignore debug metric errors
-    }
-  }
-
-  private notifyMaterialized(entity: T, metadata?: unknown): void {
-    try {
-      if (metadata)
-        (
-          this._provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }
-        ).notifyEntityMaterialized?.(entity, metadata);
-    } catch {
-      // ignore debug metric errors
-    }
-  }
-  /**
-   * Convert a primitive DB value to a runtime value according to column type.
-   */
-  private convertValue(value: unknown, type: string): unknown {
-    if (value == null) return value;
-    switch (type.toUpperCase()) {
-      case 'BOOLEAN':
-        return Boolean(value);
-      case 'INTEGER':
-      case 'NUMBER':
-        return Number(value);
-      case 'DATETIME':
-      case 'DATE':
-        return new Date(value as string | number | Date);
-      default:
-        return value;
-    }
   }
 
   /** Attach an AbortSignal to cancel execution before hitting the provider. */
@@ -1340,98 +810,44 @@ export class Queryable<T> {
   public async average<K extends keyof T>(key: K): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
-    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
-    const { query, parameters } = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
-    const aggSql = `SELECT AVG(${quotedCol}) AS _result, COUNT(*) AS _count FROM (${query}) AS _agg`;
-    const rows = await this._provider.executeQuery<{ _result: number | null; _count: number }>(
-      aggSql,
-      parameters
-    );
-    if (Number(rows[0]?._count ?? 0) === 0) throw new Error('Sequence contains no elements');
-    return Number(rows[0]._result ?? 0);
+    return this._aggregates.average(queryModel, colName);
   }
 
   /** Calculate sum of a numeric property (EF-style) */
   public async sum<K extends keyof T>(key: K): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
-    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
-    const { query, parameters } = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
-    const aggSql = `SELECT COALESCE(SUM(${quotedCol}), 0) AS _result FROM (${query}) AS _agg`;
-    const rows = await this._provider.executeQuery<{ _result: number }>(aggSql, parameters);
-    return Number(rows[0]?._result ?? 0);
+    return this._aggregates.sum(queryModel, colName);
   }
 
   /** Find minimum value of a property (EF-style) */
   public async min<K extends keyof T>(key: K): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
-    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
-    const { query, parameters } = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
-    const aggSql = `SELECT MIN(${quotedCol}) AS _result, COUNT(*) AS _count FROM (${query}) AS _agg`;
-    const rows = await this._provider.executeQuery<{ _result: T[K] | null; _count: number }>(
-      aggSql,
-      parameters
-    );
-    if (Number(rows[0]?._count ?? 0) === 0) throw new Error('Sequence contains no elements');
-    return rows[0]._result as T[K];
+    return this._aggregates.min<K>(queryModel, colName);
   }
 
   /** Find maximum value of a property (EF-style) */
   public async max<K extends keyof T>(key: K): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
-    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
-    const { query, parameters } = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
-    const aggSql = `SELECT MAX(${quotedCol}) AS _result, COUNT(*) AS _count FROM (${query}) AS _agg`;
-    const rows = await this._provider.executeQuery<{ _result: T[K] | null; _count: number }>(
-      aggSql,
-      parameters
-    );
-    if (Number(rows[0]?._count ?? 0) === 0) throw new Error('Sequence contains no elements');
-    return rows[0]._result as T[K];
+    return this._aggregates.max<K>(queryModel, colName);
   }
 
   /** Check if the sequence contains a specific element (EF-style) */
   public async contains(item: T): Promise<boolean> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const meta = MetadataStorage.getEntity(this._entityClass);
-    if (meta && meta.primaryKeys && meta.primaryKeys.length > 0) {
-      const pk = meta.primaryKeys[0];
-      const colMeta = meta.columns.find((c) => c.propertyName === pk);
-      const colName = colMeta?.columnName ?? pk;
-      const itemId = (item as unknown as Record<string, unknown>)[pk];
-      if (itemId !== undefined && itemId !== null) {
-        const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
-        const queryModel = this._model.clone();
-        this.applyGlobalFiltersToModel(queryModel);
-        queryModel.where = queryModel.where ?? [];
-        queryModel.where.push({
-          condition: `${quotedCol} = ?`,
-          parameters: [itemId as SqlParameter]
-        });
-        queryModel.limit = 1;
-        const { query, parameters } = this._sqlBuilder.generateFromModel(
-          this._entityClass,
-          queryModel
-        );
-        const countSql = `SELECT COUNT(*) AS _count FROM (${query}) AS _exists`;
-        const rows = await this._provider.executeQuery<{ _count: number }>(countSql, parameters);
-        return Number(rows[0]?._count ?? 0) > 0;
-      }
-    }
-    // Fallback: no metadata or no primary key
-    const entities = await this.toArray();
-    const itemJson = JSON.stringify(item);
-    return entities.some((entity) => JSON.stringify(entity) === itemJson);
+    const queryModel = this._model.clone();
+    this.applyGlobalFiltersToModel(queryModel);
+    return this._aggregates.contains(queryModel, item, () => this.toArray());
   }
 
   /** Get elements that are in this sequence but not in the other (SQL EXCEPT). */
