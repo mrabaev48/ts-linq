@@ -15,6 +15,8 @@ export class QueryModel {
   distinct?: boolean;
   unions?: Array<{
     all: boolean;
+    /** When set, overrides `all` and emits the named set operation instead of UNION/UNION ALL. */
+    setOp?: 'EXCEPT' | 'INTERSECT';
     other: QueryModel;
     entity: new () => unknown;
   }>;
@@ -50,6 +52,7 @@ export class QueryModel {
     clonedModel.unions = this.unions
       ? this.unions.map((unionItem) => ({
           all: unionItem.all,
+          setOp: unionItem.setOp,
           other: unionItem.other.clone(),
           entity: unionItem.entity
         }))
