@@ -1,4 +1,4 @@
-import { BinaryVisitor, renderPropertyName } from '../src/visitors/BinaryVisitor';
+import { BinaryVisitor, renderPropertyName, type ColumnResolver } from '../src/visitors/BinaryVisitor';
 import { LogicalVisitor } from '../src/visitors/LogicalVisitor';
 import { NullVisitor } from '../src/visitors/NullVisitor';
 import { InVisitor } from '../src/visitors/InVisitor';
@@ -445,5 +445,115 @@ describe('SqlVisitor', () => {
       type: 'unsupported', syntaxKind: 0, description: 'test',
     } as ExpressionNode;
     expect(() => visitor.toSql(node)).toThrow(AstSqlGenerationError);
+  });
+});
+
+// ─── ColumnResolver ───────────────────────────────────────────────────────────
+
+describe('ColumnResolver', () => {
+  const snakeCaseResolver: ColumnResolver = (node) => {
+    const raw = node.name ?? node.path?.[node.path.length - 1] ?? '';
+    const colName = raw.replace(/([A-Z])/g, '_$1').toLowerCase();
+    if (node.path && node.path.length > 1) {
+      return [...node.path.slice(0, -1), colName].join('.');
+    }
+    return colName;
+  };
+
+  describe('SqlVisitor.toSql with resolver', () => {
+    let visitor: SqlVisitor;
+    beforeEach(() => { visitor = new SqlVisitor(); });
+
+    it('resolves single property name via resolver', () => {
+      const node: BinaryNode = {
+        type: 'binary', operator: '===',
+        left: prop('userId'), right: lit(42),
+      };
+      const result = visitor.toSql(node, [], snakeCaseResolver);
+      expect(result.condition).toBe('(user_id = ?)');
+      expect(result.parameters).toEqual([42]);
+    });
+
+    it('resolves property name in IS NULL', () => {
+      const node: IsNullNode = { type: 'isNull', property: prop('deletedAt') };
+      const result = visitor.toSql(node, [], snakeCaseResolver);
+      expect(result.condition).toBe('(deleted_at IS NULL)');
+    });
+
+    it('resolves property name in IS NOT NULL', () => {
+      const node: IsNotNullNode = { type: 'isNotNull', property: prop('createdAt') };
+      const result = visitor.toSql(node, [], snakeCaseResolver);
+      expect(result.condition).toBe('(created_at IS NOT NULL)');
+    });
+
+    it('resolves property name in IN expression', () => {
+      const node: InNode = {
+        type: 'in',
+        property: prop('roleId'),
+        values: [lit(1), lit(2)] as LiteralNode[],
+      };
+      const result = visitor.toSql(node, [], snakeCaseResolver);
+      expect(result.condition).toBe('(role_id IN (?, ?))');
+    });
+
+    it('resolves property name in LIKE (startsWith)', () => {
+      const node: MethodNode = {
+        type: 'method', method: 'startsWith',
+        object: prop('firstName'),
+        args: [lit('Jo')] as LiteralNode[],
+      };
+      const result = visitor.toSql(node, [], snakeCaseResolver);
+      expect(result.condition).toBe('(first_name LIKE ?)');
+      expect(result.parameters).toEqual(['Jo%']);
+    });
+
+    it('resolves property name in NOT (property)', () => {
+      const node: NotNode = { type: 'not', operand: prop('isActive') };
+      const result = visitor.toSql(node, [], snakeCaseResolver);
+      expect(result.condition).toBe('(is_active = ?)');
+      expect(result.parameters).toEqual([false]);
+    });
+
+    it('resolves through AND logical expression', () => {
+      const node: LogicalNode = {
+        type: 'logical', operator: '&&',
+        left: { type: 'binary', operator: '===', left: prop('userId'), right: lit(1) },
+        right: { type: 'isNull', property: prop('deletedAt') },
+      };
+      const result = visitor.toSql(node, [], snakeCaseResolver);
+      expect(result.condition).toBe('((user_id = ?) AND (deleted_at IS NULL))');
+    });
+
+    it('resolves through OR logical expression', () => {
+      const node: LogicalNode = {
+        type: 'logical', operator: '||',
+        left: { type: 'binary', operator: '===', left: prop('userId'), right: lit(1) },
+        right: { type: 'binary', operator: '===', left: prop('roleId'), right: lit(2) },
+      };
+      const result = visitor.toSql(node, [], snakeCaseResolver);
+      expect(result.condition).toBe('((user_id = ?) OR (role_id = ?))');
+    });
+
+    it('falls back to original property name when no resolver is supplied', () => {
+      const node: BinaryNode = {
+        type: 'binary', operator: '===',
+        left: prop('userId'), right: lit(42),
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('(userId = ?)');
+    });
+  });
+
+  describe('renderPropertyName with resolver', () => {
+    it('uses resolver result over node.name', () => {
+      const node: PropertyNode = { type: 'property', name: 'userId' };
+      const resolver: ColumnResolver = () => 'user_id';
+      expect(renderPropertyName(node, resolver)).toBe('user_id');
+    });
+
+    it('without resolver uses node.name', () => {
+      const node: PropertyNode = { type: 'property', name: 'userId' };
+      expect(renderPropertyName(node)).toBe('userId');
+    });
   });
 });

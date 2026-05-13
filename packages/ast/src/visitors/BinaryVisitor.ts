@@ -2,15 +2,23 @@ import type { SqlParameter } from '@ts-linq/types';
 import { AstSqlGenerationError } from '../errors';
 import type { BinaryNode, ExpressionNode, LiteralNode, ParameterRefNode, PropertyNode } from '../ast/Nodes';
 
+/**
+ * Maps a PropertyNode to its SQL column name.
+ * Called by SqlVisitor when converting AST property references to SQL identifiers.
+ * If no resolver is supplied, the TypeScript property name is used as-is.
+ */
+export type ColumnResolver = (property: PropertyNode) => string;
+
 export class BinaryVisitor {
   public visit(
     node: BinaryNode,
     inputParameters: readonly unknown[],
-    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] }
+    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] },
+    resolver?: ColumnResolver
   ): { condition: string; parameters: SqlParameter[] } {
     const sqlOp = this.mapOperator(node.operator);
-    const leftSql = this.renderOperand(node.left, inputParameters, recurse);
-    const rightSql = this.renderOperand(node.right, inputParameters, recurse);
+    const leftSql = this.renderOperand(node.left, inputParameters, recurse, resolver);
+    const rightSql = this.renderOperand(node.right, inputParameters, recurse, resolver);
     return {
       condition: `(${leftSql.fragment} ${sqlOp} ${rightSql.fragment})`,
       parameters: [...leftSql.params, ...rightSql.params],
@@ -33,10 +41,11 @@ export class BinaryVisitor {
   private renderOperand(
     node: ExpressionNode,
     inputParameters: readonly unknown[],
-    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] }
+    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] },
+    resolver?: ColumnResolver
   ): { fragment: string; params: SqlParameter[] } {
     if (node.type === 'property') {
-      return { fragment: renderPropertyName(node), params: [] };
+      return { fragment: renderPropertyName(node, resolver), params: [] };
     }
     if (node.type === 'literal') {
       return { fragment: '?', params: [node.value] };
@@ -50,7 +59,8 @@ export class BinaryVisitor {
   }
 }
 
-export function renderPropertyName(node: PropertyNode): string {
+export function renderPropertyName(node: PropertyNode, resolver?: ColumnResolver): string {
+  if (resolver) return resolver(node);
   if (node.name !== undefined) return node.name;
   if (node.path !== undefined && node.path.length > 0) return node.path.join('.');
   throw new AstSqlGenerationError(
