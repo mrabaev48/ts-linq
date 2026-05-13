@@ -1,11 +1,11 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { Queryable, QueryBuilder } from '@ts-linq/query';
+import { Queryable, QueryBuilder, InMemoryCountCache } from '@ts-linq/query';
 import { ChangeTracker } from './ChangeTracker';
 import type { DbSetContext } from './DbSetContext';
 import { EntityLoader } from '@ts-linq/core';
 import type { LoadingOptions } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/metadata';
+import { MetadataStorage, type MetadataRegistry } from '@ts-linq/metadata';
 import { LazyLoadingProxy } from '@ts-linq/core';
 import { DbSet } from './DbSet';
 import { InsertCommand } from './commands/InsertCommand';
@@ -58,6 +58,7 @@ function getOriginal<T extends Function>(target: T): T {
  */
 export abstract class DbContext {
   private _provider: DatabaseProvider;
+  private _registry: MetadataRegistry;
   private _changeTracker: ChangeTracker;
   private _entityLoader: EntityLoader;
   private _dbSets: Map<Function, DbSet<object>> = new Map();
@@ -115,7 +116,8 @@ export abstract class DbContext {
       this._audit
     );
 
-    this._changeTracker = new ChangeTracker();
+    this._registry = options.registry ?? MetadataStorage.getInstance();
+    this._changeTracker = new ChangeTracker(this._registry);
     this._entityLoader = new EntityLoader(this._provider);
     this._insertCmd = new InsertCommand(this._provider, (c) => this.updateEntityCache(c));
     this._updateCmd = new UpdateCommand(this._provider, (c) => this.updateEntityCache(c));
@@ -134,8 +136,10 @@ export abstract class DbContext {
           this._provider.providerLabel
         );
     }
-    // Store performance options for downstream consumers
-    this._performanceOptions = options.performance;
+    // Store performance options; auto-inject per-context count cache when none supplied
+    this._performanceOptions = options.performance?.countCache
+      ? options.performance
+      : { ...options.performance, countCache: new InMemoryCountCache() };
     // Propagate query performance analysis options into provider if available
     try {
       const analysis = options.performance?.analysis;
@@ -195,7 +199,7 @@ export abstract class DbContext {
     await this._provider.connect();
 
     // Unconditionally pre-warm Stage-3 field decorators by instantiating each entity once
-    const prereg = MetadataStorage.getEntities();
+    const prereg = this._registry.getEntities();
     for (const e of prereg) {
       try {
         if (!e.target) continue;
@@ -206,7 +210,7 @@ export abstract class DbContext {
         // ignore constructors with side-effects/args
       }
     }
-    const entities = MetadataStorage.getEntities();
+    const entities = this._registry.getEntities();
 
     for (const entity of entities) {
       await this._provider.createTable(entity);
@@ -220,6 +224,7 @@ export abstract class DbContext {
    * @returns Number of affected rows.
    */
   public async saveChanges(): Promise<number> {
+    this._changeTracker.detectChanges();
     const changes = this._changeTracker.getChanges();
     if (!changes || changes.length === 0) return 0;
     this.prefillDefaults(changes);
@@ -280,7 +285,7 @@ export abstract class DbContext {
     // Invalidate count cache after commit to avoid stale totals across contexts
     // This is a coarse-grained approach since count cache is global
     try {
-      Queryable.clearCountCache();
+      this._performanceOptions?.countCache?.clear();
       // Smart invalidation: clear L2 cache for entities that declare dependencies
       this.invalidateCachesOnCommit();
       if (this._entityCache) {
@@ -326,7 +331,7 @@ export abstract class DbContext {
       }
     }
     try {
-      Queryable.clearCountCache();
+      this._performanceOptions?.countCache?.clear();
     } catch (e) {
       // logInternalError('DbContext.rollbackTransaction.countCacheClear', e);
     }
@@ -368,7 +373,7 @@ export abstract class DbContext {
 
   private computeNeedFullL2Clear(changedNames: ReadonlySet<string>): boolean {
     try {
-      const entities = MetadataStorage.getEntities();
+      const entities = this._registry.getEntities();
       for (const e of entities) {
         const meta = (
           Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown }
@@ -678,7 +683,7 @@ export abstract class DbContext {
    * getters that delegate to `set(Entity)`.
    */
   private initializeDbSets(): void {
-    const entities = MetadataStorage.getEntities();
+    const entities = this._registry.getEntities();
 
     for (const entity of entities) {
       if (!entity.target) continue;
@@ -730,7 +735,7 @@ export abstract class DbContext {
     }> = [];
     for (const change of changes) {
       if (change.state !== 'added' && change.state !== 'modified') continue;
-      const meta = MetadataStorage.getEntity(change.entityClass);
+      const meta = this._registry.getEntity(change.entityClass);
       if (!meta) continue;
       const audit = this._audit?.enabled ? this._audit : undefined;
       const auditNames = this.extractAuditNames(audit);
@@ -750,7 +755,7 @@ export abstract class DbContext {
   ): void {
     for (const change of changes) {
       if (change.state !== 'added') continue;
-      const meta = MetadataStorage.getEntity(change.entityClass);
+      const meta = this._registry.getEntity(change.entityClass);
       if (!meta) continue;
       for (const col of meta.columns) {
         const record = change.entity as Record<string, unknown>;
@@ -800,7 +805,7 @@ export abstract class DbContext {
     state: string;
   }): void {
     if (!this._audit?.enabled) return;
-    const meta = MetadataStorage.getEntity(change.entityClass);
+    const meta = this._registry.getEntity(change.entityClass);
     if (!meta) return;
     const names = this.extractAuditNames(this._audit);
     if (!names) return;
@@ -891,7 +896,7 @@ export abstract class DbContext {
     entityClass: Function;
   }): Promise<boolean> {
     if (!this._softDelete?.enabled) return false;
-    const meta = MetadataStorage.getEntity(change.entityClass);
+    const meta = this._registry.getEntity(change.entityClass);
     if (!meta) return false;
     const flag = this._softDelete.column ?? 'isDeleted';
     const deletedAt = this._softDelete.deletedAtColumn ?? 'deletedAt';
@@ -928,7 +933,7 @@ export abstract class DbContext {
   }
 
   private getPrimaryKey(entityClass: Function): string | undefined {
-    const meta = MetadataStorage.getEntity(entityClass);
+    const meta = this._registry.getEntity(entityClass);
     return meta?.primaryKeys?.[0];
   }
 
@@ -941,7 +946,7 @@ export abstract class DbContext {
     const cached = this._validationRulesCache.get(entityClass);
     if (cached) return cached;
     // Stage-3: Use MetadataStorage instead of Reflect API
-    const rules = MetadataStorage.getValidationRules(entityClass).slice();
+    const rules = this._registry.getValidationRules(entityClass).slice();
     this._validationRulesCache.set(entityClass, rules);
     return rules;
   }
