@@ -211,7 +211,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
 
     test('Query with ordering', async () => {
       const ordered = await context.set(User)
-        .orderBy(u => u.name)
+        .orderBy('name')
         .toArray();
 
       expect(ordered[0].name).toBe('Alice');
@@ -220,13 +220,13 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
 
     test('Query with pagination', async () => {
       const page1 = await context.set(User)
-        .orderBy(u => u.name)
+        .orderBy('name')
         .skip(0)
         .take(2)
         .toArray();
 
       const page2 = await context.set(User)
-        .orderBy(u => u.name)
+        .orderBy('name')
         .skip(2)
         .take(2)
         .toArray();

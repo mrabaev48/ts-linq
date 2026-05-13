@@ -14,11 +14,6 @@ type TypedSelector<TEntity, TResult> = (entity: TEntity) => TResult;
 type TypedPredicate<TEntity> = (entity: TEntity) => boolean;
 
 /**
- * Type-safe ordering selector function restricted to entity keys.
- */
-type TypedOrderSelector<TEntity, K extends keyof TEntity> = (entity: TEntity) => TEntity[K];
-
-/**
  * Extract only relationship properties from an entity.
  * Relationship properties are arrays or objects (not primitives).
  */
@@ -33,14 +28,6 @@ type RelationshipProperties<T> = {
           : K
       : never;
 }[keyof T];
-
-/**
- * Type-safe navigation selector that only allows relationship properties.
- */
-type NavigationSelector<TEntity, TProperty> =
-  TProperty extends TEntity[RelationshipProperties<TEntity>]
-    ? (entity: TEntity) => TProperty
-    : never;
 
 /**
  * Compile-time typed wrapper around Queryable that provides type safety
@@ -116,42 +103,37 @@ export class TypedQueryable<TEntity> {
   }
 
   /**
-   * Type-safe ORDER BY with property validation.
+   * Type-safe ORDER BY with property key validation.
    *
    * @example
    * ```typescript
-   * users.orderBy(u => u.createdAt, 'DESC')
-   * users.orderBy(u => u.name) // defaults to ASC
+   * users.orderBy('createdAt', 'DESC')
+   * users.orderBy('name') // defaults to ASC
    * ```
    */
-  orderBy<K extends keyof TEntity>(
-    keySelector: TypedOrderSelector<TEntity, K>,
-    direction: 'ASC' | 'DESC' = 'ASC'
-  ): TypedQueryable<TEntity> {
+  orderBy<K extends keyof TEntity>(key: K, direction: 'ASC' | 'DESC' = 'ASC'): TypedQueryable<TEntity> {
     const resultQueryable =
       direction === 'DESC'
-        ? this._queryable.orderByDescending(keySelector)
-        : this._queryable.orderBy(keySelector);
+        ? this._queryable.orderByDescending(key)
+        : this._queryable.orderBy(key);
     return new TypedQueryable(resultQueryable);
   }
 
   /**
    * Type-safe INCLUDE for relationships with compile-time validation.
-   * Only allows including properties that are actual relationships.
+   * Only allows including properties that are actual relationships (arrays or nested objects).
    *
    * @example
    * ```typescript
    * // ✅ Valid - including existing relationship
-   * users.include(u => u.orders)
+   * users.include('orders')
    *
    * // ❌ Compile error - not a relationship property
-   * users.include(u => u.name)
+   * users.include('name')
    * ```
    */
-  include<TProperty extends TEntity[RelationshipProperties<TEntity>]>(
-    navigationSelector: (entity: TEntity) => TProperty
-  ): TypedQueryable<TEntity> {
-    const resultQueryable = this._queryable.include(navigationSelector);
+  include<K extends RelationshipProperties<TEntity> & string>(key: K): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.include(key as keyof TEntity & string);
     return new TypedQueryable(resultQueryable);
   }
 
@@ -183,10 +165,8 @@ export class TypedQueryable<TEntity> {
    * Type-safe secondary ordering in ascending order.
    * Must be used after orderBy() or orderByDescending().
    */
-  thenBy<K extends keyof TEntity>(
-    keySelector: TypedOrderSelector<TEntity, K>
-  ): TypedQueryable<TEntity> {
-    const resultQueryable = this._queryable.thenBy(keySelector);
+  thenBy<K extends keyof TEntity>(key: K): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.thenBy(key);
     return new TypedQueryable(resultQueryable);
   }
 
@@ -194,10 +174,8 @@ export class TypedQueryable<TEntity> {
    * Type-safe secondary ordering in descending order.
    * Must be used after orderBy() or orderByDescending().
    */
-  thenByDescending<K extends keyof TEntity>(
-    keySelector: TypedOrderSelector<TEntity, K>
-  ): TypedQueryable<TEntity> {
-    const resultQueryable = this._queryable.thenByDescending(keySelector);
+  thenByDescending<K extends keyof TEntity>(key: K): TypedQueryable<TEntity> {
+    const resultQueryable = this._queryable.thenByDescending(key);
     return new TypedQueryable(resultQueryable);
   }
 
@@ -304,35 +282,29 @@ export class TypedQueryable<TEntity> {
   /**
    * Calculate average of a numeric property (EF-style with type safety)
    */
-  async average<K extends keyof TEntity>(
-    selector: (entity: TEntity) => TEntity[K]
-  ): Promise<number> {
-    return await this._queryable.average(selector);
+  async average<K extends keyof TEntity>(key: K): Promise<number> {
+    return await this._queryable.average(key);
   }
 
   /**
    * Calculate sum of a numeric property (EF-style with type safety)
    */
-  async sum<K extends keyof TEntity>(selector: (entity: TEntity) => TEntity[K]): Promise<number> {
-    return await this._queryable.sum(selector);
+  async sum<K extends keyof TEntity>(key: K): Promise<number> {
+    return await this._queryable.sum(key);
   }
 
   /**
    * Find minimum value of a property (EF-style with type safety)
    */
-  async min<K extends keyof TEntity>(
-    selector: (entity: TEntity) => TEntity[K]
-  ): Promise<TEntity[K]> {
-    return await this._queryable.min(selector);
+  async min<K extends keyof TEntity>(key: K): Promise<TEntity[K]> {
+    return await this._queryable.min(key);
   }
 
   /**
    * Find maximum value of a property (EF-style with type safety)
    */
-  async max<K extends keyof TEntity>(
-    selector: (entity: TEntity) => TEntity[K]
-  ): Promise<TEntity[K]> {
-    return await this._queryable.max(selector);
+  async max<K extends keyof TEntity>(key: K): Promise<TEntity[K]> {
+    return await this._queryable.max(key);
   }
 
   /**

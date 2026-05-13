@@ -15,7 +15,7 @@ import { transformExpression, type TransformContext } from './expression';
 import { makeObject, makeArray, prop, str, num } from './utils';
 
 const BRAND = '__tsLinqWhereTransformerBrand';
-const TARGET_METHODS = new Set(['where', 'having']);
+const TARGET_METHODS = new Set(['where', 'having', 'select']);
 
 // ─── Scope guard ──────────────────────────────────────────────────────────────
 
@@ -34,6 +34,96 @@ function receiverIsQueryable(
 
 // ─── Call rewriting ───────────────────────────────────────────────────────────
 
+/**
+ * Rewrite select(e => ...) into selectCompiled({ fields: [...] }).
+ * Supports:
+ *   e => e.prop                              → fields: ['prop']
+ *   e => ({ id: e.id, name: e.name })        → fields: ['id', 'name']
+ *   e => { return { id: e.id } }             → compile error (block body)
+ */
+function rewriteSelectCall(
+  call: ts.CallExpression,
+  checker: ts.TypeChecker,
+  ctx: ts.TransformationContext
+): ts.CallExpression | null {
+  const expr = call.expression;
+  if (!ts.isPropertyAccessExpression(expr)) return null;
+
+  const receiver = expr.expression;
+  if (!receiverIsQueryable(checker, receiver)) return null;
+
+  const arg0 = call.arguments[0];
+  if (arg0 === undefined) return null;
+
+  if (!ts.isArrowFunction(arg0)) {
+    emitError(ctx, arg0, `select() selector must be an arrow function, not ${ts.SyntaxKind[arg0.kind]}.`);
+    return call;
+  }
+
+  if (ts.isBlock(arg0.body)) {
+    emitError(ctx, arg0.body, `select() selector must be a concise arrow (expression body, not a block statement).`);
+    return call;
+  }
+
+  const firstParam = arg0.parameters[0];
+  if (!firstParam || !ts.isIdentifier(firstParam.name)) {
+    emitError(ctx, arg0, `select() selector must have exactly one identifier parameter.`);
+    return call;
+  }
+
+  const paramName = firstParam.name.text;
+  const body = arg0.body;
+
+  // Unwrap parenthesized expression: e => ({ ... }) → ObjectLiteralExpression
+  const unwrapped =
+    ts.isParenthesizedExpression(body) ? body.expression : body;
+
+  const fields: ts.StringLiteral[] = [];
+
+  if (ts.isObjectLiteralExpression(unwrapped)) {
+    // e => ({ id: e.id, name: e.name }) — extract accessed property names
+    for (const element of unwrapped.properties) {
+      if (ts.isPropertyAssignment(element) && ts.isPropertyAccessExpression(element.initializer)) {
+        const access = element.initializer;
+        if (ts.isIdentifier(access.expression) && access.expression.text === paramName) {
+          fields.push(str(access.name.text));
+          continue;
+        }
+      }
+      // Unsupported shape — emit error and bail out
+      emitError(
+        ctx,
+        element,
+        `select() projection property must be a simple property access (e.g. { name: e.name }). ` +
+        `Computed values, spreads, and method calls are not supported.`
+      );
+      return call;
+    }
+  } else if (ts.isPropertyAccessExpression(unwrapped)) {
+    // e => e.prop — single field
+    if (ts.isIdentifier(unwrapped.expression) && unwrapped.expression.text === paramName) {
+      fields.push(str(unwrapped.name.text));
+    } else {
+      emitError(ctx, unwrapped, `select() selector must access a property of the entity parameter (e.g. e => e.name).`);
+      return call;
+    }
+  } else {
+    emitError(
+      ctx,
+      unwrapped,
+      `select() selector body must be a property access or an object literal (e.g. e => e.name or e => ({ id: e.id })).`
+    );
+    return call;
+  }
+
+  const compiledArg = makeObject([
+    prop('fields', makeArray(fields)),
+  ]);
+
+  const callee = ts.factory.createPropertyAccessExpression(receiver, 'selectCompiled');
+  return ts.factory.createCallExpression(callee, call.typeArguments, [compiledArg]);
+}
+
 function rewriteCall(
   call: ts.CallExpression,
   checker: ts.TypeChecker,
@@ -44,6 +134,11 @@ function rewriteCall(
 
   const methodName = expr.name.text;
   if (!TARGET_METHODS.has(methodName)) return null;
+
+  // select() uses a different rewrite strategy (field extraction, not AST serialization)
+  if (methodName === 'select') {
+    return rewriteSelectCall(call, checker, ctx);
+  }
 
   const receiver = expr.expression;
   if (!receiverIsQueryable(checker, receiver)) return null;
