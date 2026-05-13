@@ -1,5 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { Queryable, QueryBuilder, InMemoryCountCache } from '@ts-linq/query';
+import { Queryable, QueryBuilder, InMemoryCountCache, EnhancedSqlCache } from '@ts-linq/query';
 import { ChangeTracker } from './ChangeTracker';
 import type { DbSetContext } from './DbSetContext';
 import { EntityLoader } from '@ts-linq/core';
@@ -80,6 +80,8 @@ export abstract class DbContext {
   private _deleteCmd!: DeleteCommand;
   /** Cache of validation rules per entity class to avoid repeated metadata lookups. */
   private _validationRulesCache: WeakMap<Function, ValidationRule[]> = new WeakMap();
+  /** SQL cache created and owned by this context (undefined when user supplied their own). */
+  private _ownedSqlCache?: EnhancedSqlCache;
 
   /**
    * Create a new database context instance.
@@ -136,10 +138,23 @@ export abstract class DbContext {
           this._provider.providerLabel
         );
     }
-    // Store performance options; auto-inject per-context count cache when none supplied
+    // Create an owned SQL cache when none is supplied so that dispose() can stop its timer.
+    // When the user passes their own SqlCache we leave ownership with them.
+    this._ownedSqlCache = options.performance?.sqlCache
+      ? undefined
+      : new EnhancedSqlCache();
+
+    // Store performance options; auto-inject per-context count cache when none supplied.
+    // Preserve the original ternary form to avoid exposing a pre-existing CountCache ↔
+    // InMemoryCountCache type mismatch to TypeScript's widening rules.
     this._performanceOptions = options.performance?.countCache
       ? options.performance
       : { ...options.performance, countCache: new InMemoryCountCache() };
+
+    // Inject owned SQL cache without touching the countCache assignment above.
+    if (this._ownedSqlCache) {
+      this._performanceOptions = { ...this._performanceOptions, sqlCache: this._ownedSqlCache };
+    }
     // Propagate query performance analysis options into provider if available
     try {
       const analysis = options.performance?.analysis;
@@ -478,7 +493,15 @@ export abstract class DbContext {
     },
     invalidateByEntity: (entityNames: ReadonlyArray<string>): void => {
       try {
-        for (const name of entityNames) QueryBuilder.invalidateForEntity(name);
+        const sqlCache = this._performanceOptions?.sqlCache as
+          | { invalidateBy?: (m: (k: string) => boolean) => number }
+          | undefined;
+        for (const name of entityNames) {
+          if (sqlCache?.invalidateBy) {
+            const prefix = name + '|';
+            sqlCache.invalidateBy((k) => k.startsWith(prefix) || k.includes(`|${name}|`));
+          }
+        }
       } catch (e) {
         // logInternalError('DbContext.cache.invalidateByEntity.sqlCache', e);
       }
@@ -547,6 +570,7 @@ export abstract class DbContext {
    */
   public async dispose(): Promise<void> {
     await this._provider.disconnect();
+    this._ownedSqlCache?.dispose();
     // Stop external memory profiler if started
     try {
       this._memoryProfiler?.stop?.();
