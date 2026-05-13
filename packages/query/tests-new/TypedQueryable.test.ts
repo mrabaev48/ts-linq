@@ -1,5 +1,4 @@
 import { DatabaseProvider } from '@ts-linq/core';
-import { ComparisonOperator } from '@ts-linq/ast';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
 
@@ -119,15 +118,15 @@ describe('TypedQueryable (tests-new)', () => {
     const typed = TypedQueryable.from(new Queryable(User, provider))
       .whereCompiled({
         ast: {
-          type: 'BinaryExpression',
-          left: { type: 'MemberAccess', path: ['id'] },
-          operator: ComparisonOperator.Gte,
-          right: { type: 'Literal', value: 1 }
+          type: 'binary',
+          left: { type: 'property', path: ['id'] },
+          operator: '>=',
+          right: { type: 'literal', value: 1 }
         },
         parameters: []
       })
-      .orderBy((u) => u.id, 'DESC')
-      .thenBy((u) => u.name);
+      .orderBy('id', 'DESC')
+      .thenBy('name');
     const items = await typed.toArray();
     expect(items.length).toBe(2);
   });
@@ -148,7 +147,7 @@ describe('TypedQueryable (tests-new)', () => {
       Array.from({ length: 3 }, (_, i) => ({ id: i + 1, name: `U${i + 1}` }))
     );
     provider.setCount(3);
-    const typed = TypedQueryable.from(new Queryable(User, provider).orderBy((u) => u.id));
+    const typed = TypedQueryable.from(new Queryable(User, provider).orderBy('id'));
     const page = await typed.paginate(1, 2);
     expect(page.items.length).toBe(2);
     expect(page.total).toBe(3);

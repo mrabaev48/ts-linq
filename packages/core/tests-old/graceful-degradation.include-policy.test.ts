@@ -47,7 +47,7 @@ describe('Graceful Degradation - include policy', () => {
       .fallbackTo(fb)
       .withFallbackPolicy({ allowIncludesOnFallback: 'none' });
 
-    const res = await q.include((u) => (u as unknown as { posts: Post[] }).posts).toArray();
+    const res = await q.include('posts').toArray();
     // Since selection uses fallback, ensure rows are present
     expect(Array.isArray(res)).toBe(true);
     // Fallback may return 0..N; important that it doesn't crash and include is not attempted
@@ -75,7 +75,7 @@ describe('Graceful Degradation - include policy', () => {
       .fallbackTo(fb)
       .withFallbackPolicy({ allowIncludesOnFallback: 'attempt' });
 
-    const res = await q.include((u) => (u as unknown as { posts: Post[] }).posts).toArray();
+    const res = await q.include('posts').toArray();
     expect(Array.isArray(res)).toBe(true);
   });
 });
