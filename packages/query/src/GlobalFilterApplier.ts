@@ -19,7 +19,7 @@ export class GlobalFilterApplier {
         (c) => c.propertyName === flagPropOrCol || c.columnName === flagPropOrCol
       );
       if (col) {
-        model.where.push({ condition: `${col.columnName} = 0`, parameters: [] });
+        model.where.push({ condition: `${col.columnName} = ?`, parameters: [false] });
       }
     }
 

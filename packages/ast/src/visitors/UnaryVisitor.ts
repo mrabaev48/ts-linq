@@ -1,18 +1,19 @@
 import type { SqlParameter } from '@ts-linq/types';
 import { AstSqlGenerationError } from '../errors';
 import type { ExpressionNode, NotNode } from '../ast/Nodes';
-import { renderPropertyName } from './BinaryVisitor';
+import { renderPropertyName, type ColumnResolver } from './BinaryVisitor';
 
 export class UnaryVisitor {
   public visit(
     node: NotNode,
-    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] }
+    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] },
+    resolver?: ColumnResolver
   ): { condition: string; parameters: SqlParameter[] } {
     const operand = node.operand;
 
     // `!u.boolField` → `(col = false)`
     if (operand.type === 'property') {
-      return { condition: `(${renderPropertyName(operand)} = ?)`, parameters: [false] };
+      return { condition: `(${renderPropertyName(operand, resolver)} = ?)`, parameters: [false] };
     }
 
     // `!(expr)` → `(NOT expr)`
