@@ -94,7 +94,7 @@ export class DbSet<T extends object> {
       this._globalFilters,
       this._softDeleteOptions
     )
-      .where((e) => (e as unknown as Record<string, unknown>)[pk] === id)
+      .whereIn(pk, [id as T[typeof pk]])
       .firstOrDefault();
   }
 
