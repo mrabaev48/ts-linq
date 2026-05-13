@@ -44,10 +44,8 @@ export class Queryable<T> {
   private _performance?: PerformanceOptions;
   private _includes: string[] = [];
   private _sqlBuilder: QueryBuilder;
-  private static _countCache: Map<string, { value: number; ts: number }> = new Map();
-  private static readonly _COUNT_CACHE_MAX = 2000;
-  // Single-flight deduplication for concurrent count() calls
-  private static _inflightCounts: Map<string, Promise<number>> = new Map();
+  // Single-flight deduplication for concurrent count() calls (per-chain instance)
+  private _inflightCounts: Map<string, Promise<number>> = new Map();
   private _externalCountCache?: CountCache;
   private _abortSignal?: AbortSignal;
   private _globalFilters?: GlobalFilter[];
@@ -69,10 +67,8 @@ export class Queryable<T> {
   private static _selectorPropsCache: Map<string, string[]> = new Map();
   private static _keySelectorCache: Map<string, string> = new Map();
   private static _includePropCache: Map<string, string> = new Map();
-  // Global fallback throttle state (per-process)
-  private static _fallbackWindowStart: number = 0;
-  private static _fallbackUsedInWindow: number = 0;
-  private static _fallbackLastAttemptAt: number = 0;
+  // Per-chain fallback throttle state (shared by reference through clone())
+  private _throttle = { windowStart: 0, usedInWindow: 0, lastAttemptAt: 0 };
 
   private _softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions;
 
@@ -125,10 +121,12 @@ export class Queryable<T> {
     }
   }
 
-  /** Clear global count() cache (used on transaction rollback to avoid stale values). */
+  /**
+   * @deprecated Count cache is now owned per-context via `PerformanceOptions.countCache`.
+   * This method is a no-op kept for backward compatibility.
+   */
   public static clearCountCache(): void {
-    Queryable._countCache.clear();
-    // We don't have a global logger here; size metric is emitted by callers when appropriate.
+    // no-op: count cache is now owned by the DbContext (per-context InMemoryCountCache).
   }
 
   /** Create a shallow clone sharing provider/loader but copying model. */
@@ -148,6 +146,8 @@ export class Queryable<T> {
     // preserve includes, fallbacks and client-side predicates
     clonedQueryable._includes = [...this._includes];
     clonedQueryable._fallbacks = [...this._fallbacks];
+    // share throttle state by reference so all clones in a chain see the same counters
+    clonedQueryable._throttle = this._throttle;
     return clonedQueryable;
   }
 
@@ -661,16 +661,11 @@ export class Queryable<T> {
     if (!metadata) throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
     if (this._performance?.enableCountCache) {
       const key = this.buildCountCacheKey(metadata.tableName);
-      const inflight = Queryable._inflightCounts.get(key);
+      const inflight = this._inflightCounts.get(key);
       if (inflight) return inflight;
       const ttl = this._performance.countCacheTtlMs ?? 0;
-      const hit = this._externalCountCache?.get(key) ?? Queryable._countCache.get(key);
+      const hit = this._externalCountCache?.get(key);
       if (hit && (ttl <= 0 || Date.now() - hit.ts <= ttl)) {
-        // LRU touch for internal cache
-        if (!this._externalCountCache) {
-          Queryable._countCache.delete(key);
-          Queryable._countCache.set(key, hit);
-        }
         safeCache(this._provider.loggerRef, {
           cache: 'count',
           hit: true,
@@ -685,31 +680,18 @@ export class Queryable<T> {
         return hit.value;
       }
       const pending = this.executeCountQuery(metadata.tableName);
-      Queryable._inflightCounts.set(key, pending);
+      this._inflightCounts.set(key, pending);
       let value: number;
       try {
         value = await pending;
       } finally {
-        Queryable._inflightCounts.delete(key);
+        this._inflightCounts.delete(key);
       }
       const entry = { value, ts: Date.now() };
       if (this._externalCountCache) this._externalCountCache.set(key, entry);
-      else {
-        if (Queryable._countCache.size >= Queryable._COUNT_CACHE_MAX) {
-          const firstKey = Queryable._countCache.keys().next().value;
-          if (firstKey !== undefined) {
-            Queryable._countCache.delete(firstKey);
-            safeCacheEvicted(this._provider.loggerRef, {
-              cache: 'count',
-              provider: this._provider.providerLabel
-            });
-          }
-        }
-        Queryable._countCache.set(key, entry);
-      }
       safeCacheSize(this._provider.loggerRef, {
         cache: 'count',
-        size: this._externalCountCache ? -1 : Queryable._countCache.size,
+        size: -1,
         provider: this._provider.providerLabel
       });
       safeCache(this._provider.loggerRef, {
@@ -1160,7 +1142,7 @@ export class Queryable<T> {
         ? Math.floor(minInterval * (1 + Math.random() * jitter))
         : minInterval;
     if (minInterval > 0) {
-      const since = now - Queryable._fallbackLastAttemptAt;
+      const since = now - this._throttle.lastAttemptAt;
       if (since < effectiveInterval) {
         // emit throttled metric if available
         this._provider.loggerRef?.fallback?.({
@@ -1176,14 +1158,14 @@ export class Queryable<T> {
     const maxPerMinute = Math.max(0, throttle.maxPerMinute ?? 0);
     if (maxPerMinute > 0) {
       const windowMs = 60_000;
-      if (now - Queryable._fallbackWindowStart >= windowMs) {
-        Queryable._fallbackWindowStart = now;
-        Queryable._fallbackUsedInWindow = 0;
+      if (now - this._throttle.windowStart >= windowMs) {
+        this._throttle.windowStart = now;
+        this._throttle.usedInWindow = 0;
       }
-      if (Queryable._fallbackUsedInWindow >= maxPerMinute) return false;
-      Queryable._fallbackUsedInWindow += 1;
+      if (this._throttle.usedInWindow >= maxPerMinute) return false;
+      this._throttle.usedInWindow += 1;
     }
-    Queryable._fallbackLastAttemptAt = now;
+    this._throttle.lastAttemptAt = now;
     return true;
   }
 

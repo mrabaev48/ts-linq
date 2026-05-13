@@ -1,3 +1,4 @@
+export * from './MetadataRegistry';
 export * from './MetadataStorage';
 export * from './PendingMetadataCollector';
 export * from './EntityMetadata';

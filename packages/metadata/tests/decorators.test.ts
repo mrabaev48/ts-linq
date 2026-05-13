@@ -135,7 +135,12 @@ describe('Decorators', () => {
       
       expect(relationship).toBeDefined();
       expect(relationship?.type).toBe('one-to-many');
-      expect(relationship?.targetEntity).toBe(Post);
+      // OneToMany defers thunk resolution to avoid circular-dependency TDZ issues;
+      // the stored value is the thunk function, resolved via call site.
+      const resolvedTarget = typeof relationship?.targetEntity === 'function'
+        ? (relationship.targetEntity as () => Function)()
+        : relationship?.targetEntity;
+      expect(resolvedTarget).toBe(Post);
       expect(relationship?.inverseSide).toBe('author');
     });
 
