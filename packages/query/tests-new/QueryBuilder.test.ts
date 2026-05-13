@@ -362,6 +362,66 @@ describe('QueryBuilder', () => {
       expect(result.parameters).toHaveLength(2);
       expect(result.parameters).toEqual([1, 100]);
     });
+
+    it('should handle EXCEPT queries via setOp', () => {
+      const model = new QueryModel();
+      model.select = ['id'];
+
+      const otherModel = new QueryModel();
+      otherModel.select = ['id'];
+
+      model.unions = [
+        { entity: TestEntity as new () => unknown, other: otherModel, all: false, setOp: 'EXCEPT' }
+      ];
+
+      mockDialect.buildSelect.mockReturnValue({
+        query: 'SELECT id FROM TestEntity',
+        parameters: []
+      });
+
+      const result = builder.generateFromModel(TestEntity, model);
+
+      expect(result.query).toBe('SELECT id FROM TestEntity EXCEPT SELECT id FROM TestEntity');
+    });
+
+    it('should handle INTERSECT queries via setOp', () => {
+      const model = new QueryModel();
+      model.select = ['id'];
+
+      const otherModel = new QueryModel();
+      otherModel.select = ['id'];
+
+      model.unions = [
+        { entity: TestEntity as new () => unknown, other: otherModel, all: false, setOp: 'INTERSECT' }
+      ];
+
+      mockDialect.buildSelect.mockReturnValue({
+        query: 'SELECT id FROM TestEntity',
+        parameters: []
+      });
+
+      const result = builder.generateFromModel(TestEntity, model);
+
+      expect(result.query).toBe('SELECT id FROM TestEntity INTERSECT SELECT id FROM TestEntity');
+    });
+
+    it('should not affect UNION/UNION ALL when setOp is absent', () => {
+      const model = new QueryModel();
+      const otherModel = new QueryModel();
+
+      model.unions = [{ entity: TestEntity as new () => unknown, other: otherModel, all: true }];
+
+      mockDialect.buildSelect.mockReturnValue({
+        query: 'SELECT id FROM TestEntity',
+        parameters: []
+      });
+
+      const result = builder.generateFromModel(TestEntity, model);
+
+      expect(result.query).toContain('UNION ALL');
+      expect(result.query).not.toContain('EXCEPT');
+      expect(result.query).not.toContain('INTERSECT');
+    });
   });
 
   describe('caching', () => {

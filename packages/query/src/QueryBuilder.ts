@@ -86,13 +86,14 @@ export class QueryBuilder {
       distinct: model.distinct
     };
     const base = this.generateSql(entityClass, opts);
-    // Handle UNION/UNION ALL chains
+    // Handle UNION / UNION ALL / EXCEPT / INTERSECT chains
     if (model.unions && model.unions.length > 0) {
       let sql = `${base.query}`;
       const params: SqlParameter[] = [...base.parameters];
       for (const unionEntry of model.unions) {
         const next = this.generateFromModel(unionEntry.entity, unionEntry.other);
-        sql += unionEntry.all ? ` UNION ALL ${next.query}` : ` UNION ${next.query}`;
+        const kw = unionEntry.setOp ?? (unionEntry.all ? 'UNION ALL' : 'UNION');
+        sql += ` ${kw} ${next.query}`;
         params.push(...next.parameters);
       }
       return { query: sql, parameters: params };

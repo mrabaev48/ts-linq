@@ -536,26 +536,32 @@ export class Queryable<T> {
     size: number
   ): Promise<{ items: T[]; pageSize: number; nextAfter: T[TKey] | null }> {
     if (size < 1) throw new Error('keysetPaginate requires size >= 1');
+    const propName = String(key);
+    const meta = MetadataStorage.getEntity(this._entityClass);
+    const colName = meta?.columns.find((c) => c.propertyName === propName)?.columnName ?? propName;
+    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
+
     const queryModel = this._model.clone();
-    // Ensure order by key ASC (append if missing)
-    queryModel.orderBy = queryModel.orderBy || [];
-    const hasOrderByKey = queryModel.orderBy.some((o) => o.column === String(key));
-    if (!hasOrderByKey) queryModel.orderBy.push({ column: String(key), direction: 'ASC' });
+    queryModel.orderBy = queryModel.orderBy ?? [];
+    const hasOrderByKey = queryModel.orderBy.some(
+      (o) => o.column === colName || o.column === propName
+    );
+    if (!hasOrderByKey) queryModel.orderBy.push({ column: colName, direction: 'ASC' });
     queryModel.limit = size;
+
     if (after !== null && after !== undefined) {
-      // Add where key > after
-      const whereClause: WhereClause = {
-        condition: `${String(key)} > ?`,
+      queryModel.where = queryModel.where ?? [];
+      queryModel.where.push({
+        condition: `${quotedCol} > ?`,
         parameters: [after as unknown as SqlParameter]
-      };
-      queryModel.where = queryModel.where || [];
-      queryModel.where.push(whereClause);
+      });
     }
+
     this.applyGlobalFiltersToModel(queryModel);
     const items = await this.executeAndMaterialize(queryModel);
     const last =
       items.length > 0 ? (items[items.length - 1] as unknown as Record<string, unknown>) : null;
-    const nextAfter = last ? (last[String(key)] as T[TKey] | null) : null;
+    const nextAfter = last ? (last[propName] as T[TKey] | null) : null;
     return { items, pageSize: size, nextAfter };
   }
 
@@ -735,6 +741,25 @@ export class Queryable<T> {
       if (n !== null) return n;
       throw error;
     }
+  }
+
+  /** Extract a simple property name from an arrow/function selector, e.g. `e => e.amount` → `"amount"`. */
+  private extractPropertyName<K extends keyof T>(selector: (entity: T) => T[K]): string {
+    const str = selector.toString();
+    const arrowMatch = /=>\s*[a-zA-Z_$][\w$]*\.([a-zA-Z_$][\w$]*)/.exec(str);
+    if (arrowMatch) return arrowMatch[1];
+    const returnMatch = /return\s+[a-zA-Z_$][\w$]*\.([a-zA-Z_$][\w$]*)/.exec(str);
+    if (returnMatch) return returnMatch[1];
+    throw new Error(
+      `ts-linq: cannot extract property name from selector. ` +
+        `Use a simple property accessor like \`e => e.propertyName\`. Got: ${str}`
+    );
+  }
+
+  /** Resolve a TypeScript property name to its database column name via entity metadata. */
+  private resolveColumnName(propName: string): string {
+    const meta = MetadataStorage.getEntity(this._entityClass);
+    return meta?.columns.find((c) => c.propertyName === propName)?.columnName ?? propName;
   }
 
   /** Build COUNT SQL and params from a query model in a single pass. */
@@ -1397,143 +1422,136 @@ export class Queryable<T> {
   /** Calculate average of a numeric property (EF-style) */
   public async average<K extends keyof T>(selector: (entity: T) => T[K]): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-
-    const entities = await this.toArray();
-    if (entities.length === 0) throw new Error('Sequence contains no elements');
-
-    const values = entities.map((e) => {
-      const value = selector(e);
-      return typeof value === 'number' ? value : Number(value) || 0;
-    });
-
-    return values.reduce((sum, val) => sum + val, 0) / values.length;
+    const colName = this.resolveColumnName(this.extractPropertyName(selector));
+    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
+    const queryModel = this._model.clone();
+    this.applyGlobalFiltersToModel(queryModel);
+    const { query, parameters } = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
+    const aggSql = `SELECT AVG(${quotedCol}) AS _result, COUNT(*) AS _count FROM (${query}) AS _agg`;
+    const rows = await this._provider.executeQuery<{ _result: number | null; _count: number }>(
+      aggSql,
+      parameters
+    );
+    if (Number(rows[0]?._count ?? 0) === 0) throw new Error('Sequence contains no elements');
+    return Number(rows[0]._result ?? 0);
   }
 
   /** Calculate sum of a numeric property (EF-style) */
   public async sum<K extends keyof T>(selector: (entity: T) => T[K]): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-
-    const entities = await this.toArray();
-    const values = entities.map((e) => {
-      const value = selector(e);
-      return typeof value === 'number' ? value : Number(value) || 0;
-    });
-
-    return values.reduce((sum, val) => sum + val, 0);
+    const colName = this.resolveColumnName(this.extractPropertyName(selector));
+    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
+    const queryModel = this._model.clone();
+    this.applyGlobalFiltersToModel(queryModel);
+    const { query, parameters } = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
+    const aggSql = `SELECT COALESCE(SUM(${quotedCol}), 0) AS _result FROM (${query}) AS _agg`;
+    const rows = await this._provider.executeQuery<{ _result: number }>(aggSql, parameters);
+    return Number(rows[0]?._result ?? 0);
   }
 
   /** Find minimum value of a property (EF-style) */
   public async min<K extends keyof T>(selector: (entity: T) => T[K]): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-
-    const entities = await this.toArray();
-    if (entities.length === 0) throw new Error('Sequence contains no elements');
-
-    let minValue = selector(entities[0]);
-    for (let i = 1; i < entities.length; i++) {
-      const value = selector(entities[i]);
-      if (value < minValue) minValue = value;
-    }
-
-    return minValue;
+    const colName = this.resolveColumnName(this.extractPropertyName(selector));
+    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
+    const queryModel = this._model.clone();
+    this.applyGlobalFiltersToModel(queryModel);
+    const { query, parameters } = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
+    const aggSql = `SELECT MIN(${quotedCol}) AS _result, COUNT(*) AS _count FROM (${query}) AS _agg`;
+    const rows = await this._provider.executeQuery<{ _result: T[K] | null; _count: number }>(
+      aggSql,
+      parameters
+    );
+    if (Number(rows[0]?._count ?? 0) === 0) throw new Error('Sequence contains no elements');
+    return rows[0]._result as T[K];
   }
 
   /** Find maximum value of a property (EF-style) */
   public async max<K extends keyof T>(selector: (entity: T) => T[K]): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-
-    const entities = await this.toArray();
-    if (entities.length === 0) throw new Error('Sequence contains no elements');
-
-    let maxValue = selector(entities[0]);
-    for (let i = 1; i < entities.length; i++) {
-      const value = selector(entities[i]);
-      if (value > maxValue) maxValue = value;
-    }
-
-    return maxValue;
+    const colName = this.resolveColumnName(this.extractPropertyName(selector));
+    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
+    const queryModel = this._model.clone();
+    this.applyGlobalFiltersToModel(queryModel);
+    const { query, parameters } = this._sqlBuilder.generateFromModel(this._entityClass, queryModel);
+    const aggSql = `SELECT MAX(${quotedCol}) AS _result, COUNT(*) AS _count FROM (${query}) AS _agg`;
+    const rows = await this._provider.executeQuery<{ _result: T[K] | null; _count: number }>(
+      aggSql,
+      parameters
+    );
+    if (Number(rows[0]?._count ?? 0) === 0) throw new Error('Sequence contains no elements');
+    return rows[0]._result as T[K];
   }
 
   /** Check if the sequence contains a specific element (EF-style) */
   public async contains(item: T): Promise<boolean> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-
-    // For entities, use primary key comparison if available
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (metadata && metadata.primaryKeys && metadata.primaryKeys.length > 0) {
-      const pk = metadata.primaryKeys[0];
+    const meta = MetadataStorage.getEntity(this._entityClass);
+    if (meta && meta.primaryKeys && meta.primaryKeys.length > 0) {
+      const pk = meta.primaryKeys[0];
+      const colMeta = meta.columns.find((c) => c.propertyName === pk);
+      const colName = colMeta?.columnName ?? pk;
       const itemId = (item as unknown as Record<string, unknown>)[pk];
-
       if (itemId !== undefined && itemId !== null) {
-        // Use primary key based comparison for efficiency
-        const entities = await this.toArray();
-        return entities.some(
-          (entity) => (entity as unknown as Record<string, unknown>)[pk] === itemId
+        const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
+        const queryModel = this._model.clone();
+        this.applyGlobalFiltersToModel(queryModel);
+        queryModel.where = queryModel.where ?? [];
+        queryModel.where.push({
+          condition: `${quotedCol} = ?`,
+          parameters: [itemId as SqlParameter]
+        });
+        queryModel.limit = 1;
+        const { query, parameters } = this._sqlBuilder.generateFromModel(
+          this._entityClass,
+          queryModel
         );
+        const countSql = `SELECT COUNT(*) AS _count FROM (${query}) AS _exists`;
+        const rows = await this._provider.executeQuery<{ _count: number }>(countSql, parameters);
+        return Number(rows[0]?._count ?? 0) > 0;
       }
     }
-
-    // Fallback to deep equality comparison using JSON serialization
+    // Fallback: no metadata or no primary key
     const entities = await this.toArray();
     const itemJson = JSON.stringify(item);
     return entities.some((entity) => JSON.stringify(entity) === itemJson);
   }
 
-  /** Get elements that are in this sequence but not in the other (EF-style) */
+  /** Get elements that are in this sequence but not in the other (SQL EXCEPT). */
   public except(other: Queryable<T>): Queryable<T> {
-    // Implement using client-side filtering since SQL EXCEPT support varies by provider
     const cloned = this.clone();
-
-    // Add a custom filter to exclude elements that exist in the other sequence
-    const boundOriginal = cloned.toArray.bind(cloned);
-    cloned.toArray = async function (this: Queryable<T>): Promise<T[]> {
-      const thisResults = await boundOriginal();
-      const otherResults = await other.toArray();
-
-      // Create a Set for O(1) lookup performance
-      const otherSet = new Set(otherResults.map((item) => JSON.stringify(item)));
-
-      return thisResults.filter((item) => !otherSet.has(JSON.stringify(item)));
-    }.bind(cloned);
-
+    cloned._model.unions = cloned._model.unions ?? [];
+    cloned._model.unions.push({
+      all: false,
+      setOp: 'EXCEPT',
+      other: other._model.clone(),
+      entity: other._entityClass as unknown as new () => unknown
+    });
     return cloned;
   }
 
-  /** Get elements that are in both sequences (EF-style) */
+  /** Get elements that are in both sequences (SQL INTERSECT). */
   public intersect(other: Queryable<T>): Queryable<T> {
-    // Implement using client-side filtering since SQL INTERSECT support varies by provider
     const cloned = this.clone();
-
-    // Add a custom filter to include only elements that exist in both sequences
-    const boundOriginal2 = cloned.toArray.bind(cloned);
-    cloned.toArray = async function (this: Queryable<T>): Promise<T[]> {
-      const thisResults = await boundOriginal2();
-      const otherResults = await other.toArray();
-
-      // Create a Set for O(1) lookup performance
-      const otherSet = new Set(otherResults.map((item) => JSON.stringify(item)));
-
-      return thisResults.filter((item) => otherSet.has(JSON.stringify(item)));
-    }.bind(cloned);
-
+    cloned._model.unions = cloned._model.unions ?? [];
+    cloned._model.unions.push({
+      all: false,
+      setOp: 'INTERSECT',
+      other: other._model.clone(),
+      entity: other._entityClass as unknown as new () => unknown
+    });
     return cloned;
   }
 
-  /** Concatenate with another sequence (EF-style) */
+  /** Concatenate with another sequence, preserving order (SQL UNION ALL). */
   public concat(other: Queryable<T>): Queryable<T> {
-    // Implement proper concatenation by combining results in order
     const cloned = this.clone();
-
-    // Override toArray to concatenate results while maintaining order
-    const boundOriginal3 = cloned.toArray.bind(cloned);
-    cloned.toArray = async function (this: Queryable<T>): Promise<T[]> {
-      const thisResults = await boundOriginal3();
-      const otherResults = await other.toArray();
-
-      // Concatenate maintaining order: this sequence first, then other
-      return [...thisResults, ...otherResults];
-    }.bind(cloned);
-
+    cloned._model.unions = cloned._model.unions ?? [];
+    cloned._model.unions.push({
+      all: true,
+      other: other._model.clone(),
+      entity: other._entityClass as unknown as new () => unknown
+    });
     return cloned;
   }
 
