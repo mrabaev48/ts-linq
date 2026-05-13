@@ -339,6 +339,36 @@ export class TypedQueryable<TEntity> {
   }
 
   /**
+   * Type-safe INNER JOIN on a single equality key pair.
+   *
+   * @example
+   * context.books.innerJoinOn(Author, 'authorId', 'id')
+   */
+  innerJoinOn<TOther>(
+    otherCtor: new () => TOther,
+    leftKey: keyof TEntity & string,
+    rightKey: keyof TOther & string,
+    alias?: string
+  ): TypedQueryable<TEntity> {
+    return new TypedQueryable(this._queryable.innerJoinOn(otherCtor, leftKey, rightKey, alias));
+  }
+
+  /**
+   * Type-safe LEFT JOIN on a single equality key pair.
+   *
+   * @example
+   * context.books.leftJoinOn(Author, 'authorId', 'id')
+   */
+  leftJoinOn<TOther>(
+    otherCtor: new () => TOther,
+    leftKey: keyof TEntity & string,
+    rightKey: keyof TOther & string,
+    alias?: string
+  ): TypedQueryable<TEntity> {
+    return new TypedQueryable(this._queryable.leftJoinOn(otherCtor, leftKey, rightKey, alias));
+  }
+
+  /**
    * Access the underlying Queryable for advanced operations.
    * Use with caution as this bypasses type safety.
    */

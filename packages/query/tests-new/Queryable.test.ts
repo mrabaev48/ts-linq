@@ -10,6 +10,12 @@ class User {
   name!: string;
 }
 
+class Post {
+  id!: number;
+  userId!: number;
+  title!: string;
+}
+
 class TestDialect implements SqlDialect {
   public buildSelect<T>(
     entityClass: new () => T,
@@ -207,6 +213,120 @@ describe('Queryable (tests-new)', () => {
     expect(() => q.select((u) => u.name)).toThrow(
       "ts-linq(select): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
     );
+  });
+
+  describe('innerJoin / leftJoin (deprecated predicate overloads)', () => {
+    it('innerJoin() throws a helpful error', () => {
+      const provider = new TestProvider();
+      const q = new Queryable(User, provider);
+      expect(() =>
+        q.innerJoin(User, (_a, _b) => true)
+      ).toThrow(
+        'ts-linq(innerJoin): runtime predicate parsing is not supported. Use innerJoinOn(leftKey, rightKey) for type-safe joins.'
+      );
+    });
+
+    it('leftJoin() throws a helpful error', () => {
+      const provider = new TestProvider();
+      const q = new Queryable(User, provider);
+      expect(() =>
+        q.leftJoin(User, (_a, _b) => true)
+      ).toThrow(
+        'ts-linq(leftJoin): runtime predicate parsing is not supported. Use leftJoinOn(leftKey, rightKey) for type-safe joins.'
+      );
+    });
+  });
+
+  describe('innerJoinOn / leftJoinOn', () => {
+    function registerPostMetadata(): void {
+      MetadataStorage.addEntity(Post, 'posts');
+      MetadataStorage.addColumn(Post, {
+        propertyName: 'id',
+        columnName: 'post_id',
+        type: 'INTEGER',
+        primaryKey: true
+      });
+      MetadataStorage.addColumn(Post, {
+        propertyName: 'userId',
+        columnName: 'user_id',
+        type: 'INTEGER'
+      });
+      MetadataStorage.addColumn(Post, {
+        propertyName: 'title',
+        columnName: 'title',
+        type: 'TEXT'
+      });
+    }
+
+    beforeEach(() => {
+      registerUserMetadata();
+      registerPostMetadata();
+    });
+
+    it('innerJoinOn() adds INNER JOIN with correct ON clause using column name mapping', () => {
+      const provider = new TestProvider();
+      const q = new Queryable(User, provider);
+      q.innerJoinOn(Post, 'id', 'userId');
+      const model = (q as unknown as { _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> } })._model;
+      expect(model.joins).toHaveLength(1);
+      expect(model.joins[0]!.type).toBe('INNER');
+      expect(model.joins[0]!.table).toBe('posts');
+      expect(model.joins[0]!.on).toBe('users.id = posts.user_id');
+      expect(model.joins[0]!.alias).toBeUndefined();
+    });
+
+    it('leftJoinOn() adds LEFT JOIN with correct ON clause using column name mapping', () => {
+      const provider = new TestProvider();
+      const q = new Queryable(User, provider);
+      q.leftJoinOn(Post, 'id', 'userId');
+      const model = (q as unknown as { _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> } })._model;
+      expect(model.joins).toHaveLength(1);
+      expect(model.joins[0]!.type).toBe('LEFT');
+      expect(model.joins[0]!.table).toBe('posts');
+      expect(model.joins[0]!.on).toBe('users.id = posts.user_id');
+    });
+
+    it('innerJoinOn() respects optional alias', () => {
+      const provider = new TestProvider();
+      const q = new Queryable(User, provider);
+      q.innerJoinOn(Post, 'id', 'userId', 'p');
+      const model = (q as unknown as { _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> } })._model;
+      expect(model.joins[0]!.alias).toBe('p');
+    });
+
+    it('innerJoinOn() falls back to property name when column metadata is missing', () => {
+      MetadataStorage.getInstance().clear();
+      MetadataStorage.addEntity(User, 'users');
+      MetadataStorage.addColumn(User, { propertyName: 'id', columnName: 'id', type: 'INTEGER' });
+      MetadataStorage.addColumn(User, { propertyName: 'name', columnName: 'name', type: 'TEXT' });
+      // Register Post without column metadata to test fallback
+      MetadataStorage.addEntity(Post, 'posts');
+      MetadataStorage.addColumn(Post, { propertyName: 'userId', columnName: 'userId', type: 'INTEGER' });
+      MetadataStorage.addColumn(Post, { propertyName: 'id', columnName: 'id', type: 'INTEGER' });
+
+      const provider = new TestProvider();
+      const q = new Queryable(User, provider);
+      q.innerJoinOn(Post, 'id', 'userId');
+      const model = (q as unknown as { _model: { joins: Array<{ on: string }> } })._model;
+      expect(model.joins[0]!.on).toBe('users.id = posts.userId');
+    });
+
+    it('multiple joinOn() calls accumulate joins', () => {
+      const provider = new TestProvider();
+      const q = new Queryable(User, provider);
+      q.innerJoinOn(Post, 'id', 'userId').leftJoinOn(Post, 'id', 'userId', 'p2');
+      const model = (q as unknown as { _model: { joins: Array<unknown> } })._model;
+      expect(model.joins).toHaveLength(2);
+    });
+
+    it('throws when entity metadata is not registered', () => {
+      MetadataStorage.getInstance().clear();
+      const provider = new TestProvider();
+      const q = new Queryable(User, provider);
+      expect(() => q.innerJoinOn(Post, 'id', 'userId')).toThrow(
+        'ts-linq: entity metadata not found for join'
+      );
+    });
   });
 });
 
