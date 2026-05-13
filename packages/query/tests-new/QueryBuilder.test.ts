@@ -33,11 +33,10 @@ describe('QueryBuilder', () => {
     } as unknown as jest.Mocked<SqlDialect>;
 
     builder = new QueryBuilder(mockDialect);
-    QueryBuilder.clearCache();
   });
 
   afterEach(() => {
-    QueryBuilder.clearCache();
+    builder.dispose();
   });
 
   describe('constructor', () => {
@@ -498,24 +497,36 @@ describe('QueryBuilder', () => {
   });
 
   describe('cache management', () => {
-    it('clearCache() should reset global cache', () => {
+    it('clearCache() should reset instance cache', () => {
       const options: QueryOptions = {};
 
       builder.generateSql(TestEntity, options);
-      QueryBuilder.clearCache();
+      builder.clearCache();
       builder.generateSql(TestEntity, options);
 
       expect(mockDialect.buildSelect).toHaveBeenCalledTimes(2);
     });
 
-    it('disposeCache() should reset global cache', () => {
+    it('dispose() should clear instance cache', () => {
       const options: QueryOptions = {};
 
       builder.generateSql(TestEntity, options);
-      QueryBuilder.disposeCache();
+      builder.dispose();
+      // Re-create after dispose since cache is cleared
+      builder = new QueryBuilder(mockDialect);
       builder.generateSql(TestEntity, options);
 
       expect(mockDialect.buildSelect).toHaveBeenCalledTimes(2);
+    });
+
+    it('static clearCache() is a backward-compat no-op', () => {
+      // Should not throw
+      expect(() => QueryBuilder.clearCache()).not.toThrow();
+    });
+
+    it('static disposeCache() is a backward-compat no-op', () => {
+      // Should not throw
+      expect(() => QueryBuilder.disposeCache()).not.toThrow();
     });
   });
 

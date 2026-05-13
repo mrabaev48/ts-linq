@@ -53,7 +53,7 @@ describe('DbSet + SqlCache Integration', () => {
   });
 
   afterEach(async () => {
-    // await context.dispose();
+    await context.dispose();
   });
 
   it.skip('should cache SELECT query results', async () => {

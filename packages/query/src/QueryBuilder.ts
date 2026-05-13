@@ -9,8 +9,6 @@ import { EnhancedSqlCache } from './EnhancedSqlCache';
  * from an entity class and accumulated query options.
  */
 export class QueryBuilder {
-  /** Default enhanced cache instance */
-  private static _defaultCache: EnhancedSqlCache = new EnhancedSqlCache();
   private _dialect: SqlDialect;
   private _logger?: SqlLogger;
   private _providerName?: string;
@@ -30,7 +28,9 @@ export class QueryBuilder {
     this._dialect = dialect;
     this._logger = logger;
     this._providerName = providerName;
-    this._cache = cache ?? QueryBuilder._defaultCache;
+    // Per-instance cache with no background timer when no external cache is provided.
+    // Avoids global setInterval leaks; DbContext injects a shared EnhancedSqlCache instead.
+    this._cache = cache ?? new EnhancedSqlCache({ defaultTtl: 0 });
     this._namespace = namespace;
   }
   /** Generate SQL from QueryOptions with enhanced caching. */
@@ -101,16 +101,29 @@ export class QueryBuilder {
     return base;
   }
 
-  /** Clears the global SQL cache. Useful for tests or after metadata changes. */
-  public static clearCache(): void {
-    QueryBuilder._defaultCache.clear();
+  /** Clear this instance's SQL cache. */
+  public clearCache(): void {
+    this._cache.clear();
   }
 
-  /** Dispose of the global cache resources. Useful for cleanup. */
-  public static disposeCache(): void {
-    QueryBuilder._defaultCache.dispose();
-    QueryBuilder._defaultCache = new EnhancedSqlCache();
+  /** Dispose of this instance's cache resources (stops any background timers). */
+  public dispose(): void {
+    if (this._cache instanceof EnhancedSqlCache) {
+      this._cache.dispose();
+    }
   }
+
+  /**
+   * @deprecated Static cache has been removed. Use instance `clearCache()`.
+   * This is now a no-op kept for backward compatibility.
+   */
+  public static clearCache(): void {}
+
+  /**
+   * @deprecated Static cache has been removed. Use instance `dispose()`.
+   * This is now a no-op kept for backward compatibility.
+   */
+  public static disposeCache(): void {}
 
   /** Get cache metrics for performance monitoring (if using EnhancedSqlCache). */
   public getCacheMetrics() {
@@ -212,15 +225,21 @@ export class QueryBuilder {
   }
 
   /**
-   * Targeted invalidation helper: remove cached SQL entries for the given entity name.
+   * Targeted invalidation: remove cached SQL entries for the given entity name.
    */
-  public static invalidateForEntity(entityName: string): number {
+  public invalidateForEntity(entityName: string): number {
     const matcher = (k: string) => k.startsWith(entityName + '|');
-    const cache = QueryBuilder._defaultCache as unknown as {
+    const cache = this._cache as unknown as {
       invalidateBy?: (m: (k: string) => boolean) => number;
     };
-    return cache.invalidateBy
-      ? cache.invalidateBy(matcher)
-      : (QueryBuilder._defaultCache.clear(), 0);
+    return cache.invalidateBy ? cache.invalidateBy(matcher) : (this._cache.clear(), 0);
+  }
+
+  /**
+   * @deprecated Static cache has been removed. Invalidate via DbContext or the instance method.
+   * This is now a no-op kept for backward compatibility.
+   */
+  public static invalidateForEntity(_entityName: string): number {
+    return 0;
   }
 }
