@@ -69,6 +69,8 @@ PR #21 произвёл масштабный split: `packages/core` разбит
 | [15](./15-excessive-unknown-casts.md) | Весь проект | **143+ `as unknown as` — хуже чем в v1** |
 | [16](./16-monkey-patch-toarray.md) | `packages/query/src/Queryable.ts` | **except/intersect/concat monkey-patch toArray** |
 | [17](./17-remove-function-string-parsing.md) | `packages/query/src/Queryable.ts` | **Runtime-парсинг стрелочных функций — 11 методов, удалить полностью** |
+| [18](./18-join-runtime-predicate-parsing.md) | `packages/query/src/Queryable.ts`, `JoinPredicateParser.ts` | **`join()` парсит ON-предикат через `.toString()` + regex** |
+| [19](./19-dead-parsing-methods-in-property-extractor.md) | `packages/query/src/PropertyExtractor.ts` | **`extractPropertyName` и `extractIncludeProperty` — мёртвый код после issue #17** |
 
 ---
 
