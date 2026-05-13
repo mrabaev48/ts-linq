@@ -2,6 +2,7 @@ import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
 
+import { InMemoryCountCache } from '../src/CountCache';
 import { Queryable } from '../src/Queryable';
 
 class User {
@@ -149,7 +150,7 @@ describe('Queryable (tests-new)', () => {
       provider,
       undefined,
       undefined,
-      { enableCountCache: true, countCacheTtlMs: 10_000 },
+      { enableCountCache: true, countCacheTtlMs: 10_000, countCache: new InMemoryCountCache(10_000) },
       undefined
     ).whereCompiled({
       ast: {
