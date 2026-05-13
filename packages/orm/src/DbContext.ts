@@ -62,6 +62,7 @@ export abstract class DbContext {
   private _changeTracker: ChangeTracker;
   private _entityLoader: EntityLoader;
   private _dbSets: Map<Function, DbSet<object>> = new Map();
+  private _decoratedDbSets: Map<Function, DbSet<object>> = new Map();
   private _defaultLoadingStrategy: LoadingStrategy = LoadingStrategy.Eager;
   private _entityCache?: EntityCacheLike;
   private _performanceOptions?: PerformanceOptions;
@@ -184,10 +185,19 @@ export abstract class DbContext {
     if (!this._dbSets.has(normalized)) {
       throw new Error(`DbSet for ${entityClass.name} is not configured`);
     }
-    const dbSet = this._dbSets.get(normalized) as unknown as DbSet<T>;
-    // Ensure the DbSet reflects the exact (possibly decorated) class passed in
-    dbSet._entityClass = entityClass;
-    return dbSet;
+    // Fast path: no decoration — return the shared instance unchanged
+    if ((entityClass as unknown) === normalized) {
+      return this._dbSets.get(normalized) as unknown as DbSet<T>;
+    }
+    // Decorated class: return a scoped DbSet that uses the decorated constructor.
+    // Cached to avoid allocating on every call.
+    if (!this._decoratedDbSets.has(entityClass)) {
+      this._decoratedDbSets.set(
+        entityClass,
+        new DbSet<object>(entityClass as unknown as new () => object, this.buildDbSetContext())
+      );
+    }
+    return this._decoratedDbSets.get(entityClass) as unknown as DbSet<T>;
   }
 
   /**
@@ -682,25 +692,27 @@ export abstract class DbContext {
    * code expects different names, prefer `set(Entity)` or add your own proxy
    * getters that delegate to `set(Entity)`.
    */
+  private buildDbSetContext(): DbSetContext {
+    return {
+      provider: this._provider,
+      changeTracker: this._changeTracker,
+      entityLoader: this._entityLoader,
+      entityCache: this._entityCache,
+      performance: this._performanceOptions,
+      globalFilters: this._globalFilters,
+      softDeleteOptions: this._softDelete
+    };
+  }
+
   private initializeDbSets(): void {
     const entities = this._registry.getEntities();
 
     for (const entity of entities) {
       if (!entity.target) continue;
       const original = getOriginal(entity.target);
-      const context: DbSetContext = {
-        provider: this._provider,
-        changeTracker: this._changeTracker,
-        entityLoader: this._entityLoader,
-        entityCache: this._entityCache,
-        performance: this._performanceOptions,
-        globalFilters: this._globalFilters,
-        softDeleteOptions: this._softDelete
-      };
-      
       const dbSet = new DbSet<object>(
         original as unknown as new () => object,
-        context
+        this.buildDbSetContext()
       );
       this._dbSets.set(original, dbSet);
 
