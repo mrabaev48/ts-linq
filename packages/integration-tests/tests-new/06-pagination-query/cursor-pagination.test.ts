@@ -37,14 +37,14 @@ describe('Pagination Integration - Cursor', () => {
 
     it('should paginate using opaque cursors', async () => {
         // Page 1
-        const page1 = await context.set(CursorItem).take(5).orderBy(x => x.id).toArray();
+        const page1 = await context.set(CursorItem).take(5).orderBy('id').toArray();
         const cursor = toCursor(page1[page1.length - 1].id);
 
         // Page 2
         const lastId = fromCursor(cursor);
         const page2 = await context.set(CursorItem)
             .where(x => x.id > lastId)
-            .orderBy(x => x.id)
+            .orderBy('id')
             .take(5)
             .toArray();
 

@@ -57,16 +57,6 @@ export class Queryable<T> {
   private _cte?: CteDefinition;
   // Lightweight signature of WHERE clauses for fast count() cache keys
   private _whereSignature: string = '[]';
-  // Predicates and parsing optimizations
-  private static readonly REGEX_SINGLE_PROP = /=>\s*\w+\.(\w+)/;
-  private static readonly REGEX_OBJECT = /=>\s*\(\s*\{([^}]+)\}\s*\)/;
-  private static readonly REGEX_SIMPLE_OBJECT = /=>\s*\{([^}]+)\}/;
-  private static readonly REGEX_PROP_IN_OBJECT = /\w+:\s*\w+\.(\w+)/;
-  private static readonly REGEX_ANY_PROP = /(\w+)/;
-  private static readonly SELECTOR_CACHE_MAX = 1000;
-  private static _selectorPropsCache: Map<string, string[]> = new Map();
-  private static _keySelectorCache: Map<string, string> = new Map();
-  private static _includePropCache: Map<string, string> = new Map();
   // Per-chain fallback throttle state (shared by reference through clone())
   private _throttle = { windowStart: 0, usedInWindow: 0, lastAttemptAt: 0 };
 
@@ -330,7 +320,17 @@ export class Queryable<T> {
    * @example
    * const names = await context.authors.select(a => a.name).toArray();
    */
-  public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
+  public select<TResult>(_selector: (entity: T) => TResult): Queryable<TResult> {
+    throw new Error(
+      "ts-linq(select): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
+    );
+  }
+
+  /**
+   * Projected SELECT with a pre-computed field list provided by the compile-time transformer.
+   * Do not call this method directly — it is emitted by the transformer when rewriting select().
+   */
+  public selectCompiled<TResult>(input: { readonly fields: readonly string[] }): Queryable<TResult> {
     const next = new Queryable<TResult>(
       this._entityClass as unknown as new () => TResult,
       this._provider,
@@ -339,10 +339,7 @@ export class Queryable<T> {
       this._performance
     );
     next._model = this._model.clone();
-    const selectorStr = selector.toString();
-    const properties = this.extractPropertiesFromSelector(selectorStr);
-    next._model.select = properties;
-    // propagate fallbacks so projections also degrade gracefully
+    next._model.select = [...input.fields];
     (next as unknown as { _fallbacks: Array<QueryFallback<TResult>> })._fallbacks = [
       ...((this as unknown as { _fallbacks: Array<QueryFallback<TResult>> })._fallbacks || [])
     ];
@@ -350,15 +347,14 @@ export class Queryable<T> {
   }
 
   /**
-   * Adds ASC ordering by key selector.
-   * @param keySelector Sort key selector.
+   * Adds ASC ordering by property key.
+   * @param key Property name of the entity to sort by.
    *
    * @example
-   * const ordered = await context.books.orderBy(b => b.title).toArray();
+   * const ordered = await context.books.orderBy('title').toArray();
    */
-  public orderBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-    const keySelectorStr = keySelector.toString();
-    const column = this.extractPropertyFromKeySelector(keySelectorStr);
+  public orderBy<K extends keyof T>(key: K): Queryable<T> {
+    const column = this.resolveColumnName(key as string);
     const orderByClause: OrderByClause = { column, direction: 'ASC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
@@ -366,15 +362,14 @@ export class Queryable<T> {
   }
 
   /**
-   * Adds DESC ordering by key selector.
-   * @param keySelector Sort key selector.
+   * Adds DESC ordering by property key.
+   * @param key Property name of the entity to sort by descending.
    *
    * @example
-   * const latest = await context.books.orderByDescending(b => b.id).take(5).toArray();
+   * const latest = await context.books.orderByDescending('id').take(5).toArray();
    */
-  public orderByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-    const keySelectorStr = keySelector.toString();
-    const column = this.extractPropertyFromKeySelector(keySelectorStr);
+  public orderByDescending<K extends keyof T>(key: K): Queryable<T> {
+    const column = this.resolveColumnName(key as string);
     const orderByClause: OrderByClause = { column, direction: 'DESC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
@@ -383,14 +378,13 @@ export class Queryable<T> {
 
   /**
    * Adds secondary ASC ordering. Must be used after orderBy() or orderByDescending().
-   * @param keySelector Sort key selector for secondary sort.
+   * @param key Property name for the secondary sort.
    *
    * @example
-   * const sorted = await context.users.orderBy(u => u.lastName).thenBy(u => u.firstName).toArray();
+   * const sorted = await context.users.orderBy('lastName').thenBy('firstName').toArray();
    */
-  public thenBy<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-    const keySelectorStr = keySelector.toString();
-    const column = this.extractPropertyFromKeySelector(keySelectorStr);
+  public thenBy<K extends keyof T>(key: K): Queryable<T> {
+    const column = this.resolveColumnName(key as string);
     const orderByClause: OrderByClause = { column, direction: 'ASC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
@@ -399,14 +393,13 @@ export class Queryable<T> {
 
   /**
    * Adds secondary DESC ordering. Must be used after orderBy() or orderByDescending().
-   * @param keySelector Sort key selector for secondary sort.
+   * @param key Property name for the secondary sort descending.
    *
    * @example
-   * const sorted = await context.users.orderBy(u => u.lastName).thenByDescending(u => u.age).toArray();
+   * const sorted = await context.users.orderBy('lastName').thenByDescending('age').toArray();
    */
-  public thenByDescending<TKey>(keySelector: (entity: T) => TKey): Queryable<T> {
-    const keySelectorStr = keySelector.toString();
-    const column = this.extractPropertyFromKeySelector(keySelectorStr);
+  public thenByDescending<K extends keyof T>(key: K): Queryable<T> {
+    const column = this.resolveColumnName(key as string);
     const orderByClause: OrderByClause = { column, direction: 'DESC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
@@ -423,7 +416,7 @@ export class Queryable<T> {
   }
   /** Skips given number of rows.
    * @example
-   * const page2 = await context.products.orderBy(p => p.id).skip(10).take(10).toArray();
+   * const page2 = await context.products.orderBy('id').skip(10).take(10).toArray();
    */
   public skip(count: number): Queryable<T> {
     this._model.offset = count;
@@ -460,21 +453,20 @@ export class Queryable<T> {
   }
 
   /**
-   * Group results by selected columns.
+   * Group results by a property key.
    * @example
-   * const q = context.books.groupBy(b => b.authorId);
+   * const q = context.books.groupBy('authorId');
    */
-  public groupBy(selector: (entity: T) => unknown): Queryable<T> {
-    const selectorStr = selector.toString();
-    const columns = this.extractPropertiesFromSelector(selectorStr);
-    this._model.groupBy = { columns };
+  public groupBy<K extends keyof T>(key: K): Queryable<T> {
+    const column = this.resolveColumnName(key as string);
+    this._model.groupBy = { columns: [column] };
     return this;
   }
 
   /**
    * Apply HAVING predicate to an existing groupBy.
    * @example
-   * const q = context.books.groupBy(b => b.authorId).having(() => true);
+   * const q = context.books.groupBy('authorId').having(() => true);
    */
   public having(predicate: (entity: T) => boolean): Queryable<T> {
     if (!this._model.groupBy) {
@@ -508,7 +500,7 @@ export class Queryable<T> {
   /**
    * Paginate by page number and size. Applies ORDER BY fallback if missing.
    * @example
-   * const page1 = await context.books.orderBy(b => b.id).paginate(1, 20);
+   * const page1 = await context.books.orderBy('id').paginate(1, 20);
    */
   public async paginate(
     page: number,
@@ -528,7 +520,7 @@ export class Queryable<T> {
   /**
    * Keyset pagination helper. Requires a monotonic key (e.g., id).
    * @example
-   * const page = await context.books.orderBy(b => b.id).keysetPaginate('id', lastId, 20);
+   * const page = await context.books.orderBy('id').keysetPaginate('id', lastId, 20);
    */
   public async keysetPaginate<TKey extends keyof T>(
     key: TKey,
@@ -566,22 +558,21 @@ export class Queryable<T> {
   }
 
   /**
-   * Adds eager-loading of a relationship using a property selector.
+   * Adds eager-loading of a relationship by property name.
    * Validates the relationship against entity metadata.
    *
    * @example
-   * const authors = await context.authors.include(a => a.books).where(a => a.id === 1).toArray();
+   * const authors = await context.authors.include('books').where(a => a.id === 1).toArray();
    */
-  public include(selector: (entity: T) => unknown): Queryable<T> {
-    const prop = this.extractIncludeProperty(selector);
+  public include<K extends keyof T & string>(key: K): Queryable<T> {
     const metadata = MetadataStorage.getEntity(this._entityClass);
-    const valid = metadata?.relationships.some((r) => r.propertyName === prop);
+    const valid = metadata?.relationships.some((r) => r.propertyName === key);
     if (!valid) {
       throw new Error(
-        `Invalid include '${prop}' for ${this._entityClass.name}. Define relationship '${prop}' via decorators or fix the name.`
+        `Invalid include '${key}' for ${this._entityClass.name}. Define relationship '${key}' via decorators or fix the name.`
       );
     }
-    if (!this._includes.includes(prop)) this._includes.push(prop);
+    if (!this._includes.includes(key)) this._includes.push(key);
     return this;
   }
 
@@ -598,7 +589,7 @@ export class Queryable<T> {
 
   /** Returns the first entity or throws if none.
    * @example
-   * const first = await context.books.orderBy(b => b.id).first();
+   * const first = await context.books.orderBy('id').first();
    */
   public async first(): Promise<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
@@ -741,19 +732,6 @@ export class Queryable<T> {
       if (n !== null) return n;
       throw error;
     }
-  }
-
-  /** Extract a simple property name from an arrow/function selector, e.g. `e => e.amount` → `"amount"`. */
-  private extractPropertyName<K extends keyof T>(selector: (entity: T) => T[K]): string {
-    const str = selector.toString();
-    const arrowMatch = /=>\s*[a-zA-Z_$][\w$]*\.([a-zA-Z_$][\w$]*)/.exec(str);
-    if (arrowMatch) return arrowMatch[1];
-    const returnMatch = /return\s+[a-zA-Z_$][\w$]*\.([a-zA-Z_$][\w$]*)/.exec(str);
-    if (returnMatch) return returnMatch[1];
-    throw new Error(
-      `ts-linq: cannot extract property name from selector. ` +
-        `Use a simple property accessor like \`e => e.propertyName\`. Got: ${str}`
-    );
   }
 
   /** Resolve a TypeScript property name to its database column name via entity metadata. */
@@ -1194,67 +1172,6 @@ export class Queryable<T> {
     return true;
   }
 
-  /** Extracts include property name from a lambda selector. */
-  private extractIncludeProperty(selector: (entity: T) => unknown): string {
-    const selectorStr = selector.toString();
-    const cached = Queryable._includePropCache.get(selectorStr);
-    if (cached) return cached;
-    const match = selectorStr.match(Queryable.REGEX_SINGLE_PROP);
-    if (match && match[1]) {
-      Queryable._includePropCache.set(selectorStr, match[1]);
-      return match[1];
-    }
-    throw new Error(`Unable to parse include selector: ${selectorStr}`);
-  }
-
-  /**
-   * Extract property names from a projection selector function string.
-   * Supports single property, object destructuring, and simple object literal forms.
-   */
-  private extractPropertiesFromSelector(selectorStr: string): string[] {
-    const cached = Queryable._selectorPropsCache.get(selectorStr);
-    if (cached) return [...cached];
-    const singleMatch = selectorStr.match(Queryable.REGEX_SINGLE_PROP);
-    if (singleMatch) return [singleMatch[1]];
-    const objectMatch = selectorStr.match(Queryable.REGEX_OBJECT);
-    if (objectMatch) {
-      const props = objectMatch[1].split(',');
-      const result = props.map((prop) => {
-        const match = prop.match(Queryable.REGEX_PROP_IN_OBJECT);
-        return match ? match[1] : prop.trim();
-      });
-      Queryable._selectorPropsCache.set(selectorStr, [...result]);
-      return result;
-    }
-    const simpleObjectMatch = selectorStr.match(Queryable.REGEX_SIMPLE_OBJECT);
-    if (simpleObjectMatch) {
-      const props = simpleObjectMatch[1].split(',');
-      const result = props.map((prop) => {
-        const match =
-          prop.match(Queryable.REGEX_PROP_IN_OBJECT) || prop.match(Queryable.REGEX_ANY_PROP);
-        return match ? match[1] : prop.trim();
-      });
-      Queryable._selectorPropsCache.set(selectorStr, [...result]);
-      return result;
-    }
-    return ['*'];
-  }
-
-  /**
-   * Extract a single property name from a key selector function string.
-   * Throws if parsing fails.
-   */
-  private extractPropertyFromKeySelector(keySelectorStr: string): string {
-    const cached = Queryable._keySelectorCache.get(keySelectorStr);
-    if (cached) return cached;
-    const match = keySelectorStr.match(Queryable.REGEX_SINGLE_PROP);
-    if (match) {
-      Queryable._keySelectorCache.set(keySelectorStr, match[1]);
-      return match[1];
-    }
-    throw new Error(`Unable to parse key selector: ${keySelectorStr}`);
-  }
-
   /**
    * Map a raw database row object to a new entity instance using metadata.
    * Falls back to shallow assign when no metadata is available.
@@ -1420,9 +1337,9 @@ export class Queryable<T> {
   }
 
   /** Calculate average of a numeric property (EF-style) */
-  public async average<K extends keyof T>(selector: (entity: T) => T[K]): Promise<number> {
+  public async average<K extends keyof T>(key: K): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const colName = this.resolveColumnName(this.extractPropertyName(selector));
+    const colName = this.resolveColumnName(key as string);
     const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
@@ -1437,9 +1354,9 @@ export class Queryable<T> {
   }
 
   /** Calculate sum of a numeric property (EF-style) */
-  public async sum<K extends keyof T>(selector: (entity: T) => T[K]): Promise<number> {
+  public async sum<K extends keyof T>(key: K): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const colName = this.resolveColumnName(this.extractPropertyName(selector));
+    const colName = this.resolveColumnName(key as string);
     const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
@@ -1450,9 +1367,9 @@ export class Queryable<T> {
   }
 
   /** Find minimum value of a property (EF-style) */
-  public async min<K extends keyof T>(selector: (entity: T) => T[K]): Promise<T[K]> {
+  public async min<K extends keyof T>(key: K): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const colName = this.resolveColumnName(this.extractPropertyName(selector));
+    const colName = this.resolveColumnName(key as string);
     const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);
@@ -1467,9 +1384,9 @@ export class Queryable<T> {
   }
 
   /** Find maximum value of a property (EF-style) */
-  public async max<K extends keyof T>(selector: (entity: T) => T[K]): Promise<T[K]> {
+  public async max<K extends keyof T>(key: K): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const colName = this.resolveColumnName(this.extractPropertyName(selector));
+    const colName = this.resolveColumnName(key as string);
     const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
     const queryModel = this._model.clone();
     this.applyGlobalFiltersToModel(queryModel);

@@ -153,7 +153,7 @@ describe.each(['postgresql', 'mysql', 'mssql'])(
       }
 
       const userSet = context.set(User);
-      const sortedUsers = await userSet.orderBy(u => u.name).toArray();
+      const sortedUsers = await userSet.orderBy('name').toArray();
       
       for (let i = 1; i < sortedUsers.length; i++) {
         expect(sortedUsers[i].name >= sortedUsers[i - 1].name).toBe(true);

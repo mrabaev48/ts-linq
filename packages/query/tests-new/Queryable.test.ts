@@ -1,5 +1,4 @@
 import { DatabaseProvider } from '@ts-linq/core';
-import { ComparisonOperator } from '@ts-linq/ast';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
 
@@ -128,14 +127,14 @@ describe('Queryable (tests-new)', () => {
     const q = new Queryable(User, provider)
       .whereCompiled({
         ast: {
-          type: 'BinaryExpression',
-          left: { type: 'MemberAccess', path: ['id'] },
-          operator: ComparisonOperator.Gt,
-          right: { type: 'Literal', value: 1 }
+          type: 'binary',
+          left: { type: 'property', path: ['id'] },
+          operator: '>',
+          right: { type: 'literal', value: 1 }
         },
         parameters: []
       })
-      .orderBy((u) => u.id)
+      .orderBy('id')
       .skip(0)
       .take(10);
     const res = await q.toArray();
@@ -154,10 +153,10 @@ describe('Queryable (tests-new)', () => {
       undefined
     ).whereCompiled({
       ast: {
-        type: 'BinaryExpression',
-        left: { type: 'MemberAccess', path: ['id'] },
-        operator: ComparisonOperator.Gt,
-        right: { type: 'Literal', value: 0 }
+        type: 'binary',
+        left: { type: 'property', path: ['id'] },
+        operator: '>',
+        right: { type: 'literal', value: 0 }
       },
       parameters: []
     });
@@ -172,7 +171,7 @@ describe('Queryable (tests-new)', () => {
   test('first()/firstOrDefault()/any() работают поверх провайдера', async () => {
     const provider = new TestProvider();
     provider.setRows([{ id: 10, name: 'D' }]);
-    const q = new Queryable(User, provider).orderBy((u) => u.id);
+    const q = new Queryable(User, provider).orderBy('id');
     const first = await q.first();
     expect(first.id).toBe(10);
     const any = await q.any();
@@ -182,10 +181,10 @@ describe('Queryable (tests-new)', () => {
     const firstOrDefault = await new Queryable(User, provider)
       .whereCompiled({
         ast: {
-          type: 'BinaryExpression',
-          left: { type: 'MemberAccess', path: ['id'] },
-          operator: ComparisonOperator.Eq,
-          right: { type: 'Literal', value: -1 }
+          type: 'binary',
+          left: { type: 'property', path: ['id'] },
+          operator: '===',
+          right: { type: 'literal', value: -1 }
         },
         parameters: []
       })
@@ -198,6 +197,14 @@ describe('Queryable (tests-new)', () => {
     const q = new Queryable(User, provider);
     expect(() => q.where((u) => u.id > 0)).toThrow(
       "ts-linq(where): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
+    );
+  });
+
+  test('select() throws a helpful error when transformer is missing', () => {
+    const provider = new TestProvider();
+    const q = new Queryable(User, provider);
+    expect(() => q.select((u) => u.name)).toThrow(
+      "ts-linq(select): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
     );
   });
 });

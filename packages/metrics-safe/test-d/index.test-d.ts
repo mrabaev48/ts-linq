@@ -75,29 +75,31 @@ expectType<Promise<User[]>>(users.findWhereIn('name', ['Alice', 'Bob']));
 // @ts-expect-error - wrong value type for property
 users.findWhereIn('name', [uid]);
 
-// TypedQueryable: orderBy/thenBy only accept entity keys and value types
+// TypedQueryable: orderBy/thenBy only accept entity keys
 type U_Order = { id: number; name: string; age: number; createdAt: Date };
 declare const qOrder: Queryable<U_Order>;
 const tqOrder = new TypedQueryable(qOrder);
 // valid
-tqOrder.orderBy((u) => u.name);
-tqOrder.orderBy((u) => u.age, 'DESC');
-tqOrder.thenBy((u) => u.createdAt);
-tqOrder.thenByDescending((u) => u.id);
+tqOrder.orderBy('name');
+tqOrder.orderBy('age', 'DESC');
+tqOrder.thenBy('createdAt');
+tqOrder.thenByDescending('id');
 // invalid: non-existent key
 // @ts-expect-error
-tqOrder.orderBy((u) => u.nonExistent);
+tqOrder.orderBy('nonExistent');
 
 // TypedQueryable: include only allows relationship properties
 type Order_Rel = { id: number; userId: number };
 type UserEx_Rel = { id: number; name: string; orders: Order_Rel[]; manager?: UserEx_Rel | null };
 declare const qRel: Queryable<UserEx_Rel>;
 const tqRel = new TypedQueryable(qRel);
-// valid relationships
-tqRel.include((u) => u.orders);
-tqRel.include((u) => u.name);
+// valid relationship
+tqRel.include('orders');
+// invalid: 'name' is a primitive, not a relationship
+// @ts-expect-error
+tqRel.include('name');
 
-// TypedQueryable: result type inference for select
+// TypedQueryable: select() throws at runtime (transformer required), type still inferred
 type U_Select = { id: number; name: string; age: number };
 declare const qSel: Queryable<U_Select>;
 const tqSel = new TypedQueryable(qSel);
