@@ -25,9 +25,9 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
-    { "path": "packages/postgres" },
-    { "path": "packages/mysql" },
-    { "path": "packages/mssql" },
+    { "path": "packages/provider-postgres" },
+    { "path": "packages/provider-mysql" },
+    { "path": "packages/provider-mssql" },
     { "path": "packages/cli" },
     { "path": "packages/cache-redis" },
     { "path": "packages/cache-memcached" }

@@ -116,7 +116,7 @@ export class PostgresProvider extends DatabaseProvider {
   /** Open a connection pool to PostgreSQL using the connection string, or use injected pool. */
   public async connect(): Promise<void> {
     if (this.config.pool) {
-      this.pool = this.config.pool;
+      this.pool = this.config.pool as PgPoolLike;
       this.ownsPool = false;
     } else {
       if (!Pg) throw new Error('pg module is not installed');

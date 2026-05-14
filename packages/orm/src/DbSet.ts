@@ -142,18 +142,8 @@ export class DbSet<T extends object> {
     const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
     
     const runChunk = async (chunk: ReadonlyArray<PrimaryKeyOf<T>>) => {
-      const typed = chunk as unknown as ReadonlyArray<T[typeof pk & keyof T]>;
-      return await new Queryable<T>(
-        this._entityClass,
-        this._provider,
-        this._entityLoader,
-        this._entityCache,
-        this._performance,
-        this._globalFilters,
-        this._softDeleteOptions
-      )
-      .whereIn(pk as keyof T & string, typed)
-      .toArray();
+      const typed = chunk as unknown as unknown[];
+      return await this._provider.findWhereIn<T>(this._entityClass, column, typed);
     };
 
     if (uniqueIds.length <= chunkSize) {
@@ -301,8 +291,8 @@ export class DbSet<T extends object> {
     return TypedQueryable.from(queryable);
   }
 
-  /** Order by a property (EF-style with type safety) */
-  public orderBy<TKey>(keySelector: (entity: T) => TKey): TypedQueryable<T> {
+  /** Order by a property ascending */
+  public orderBy<K extends keyof T>(key: K): TypedQueryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -311,13 +301,13 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters,
       this._softDeleteOptions
-    ).orderBy(keySelector);
+    ).orderBy(key);
 
     return TypedQueryable.from(queryable);
   }
 
-  /** Order by descending (EF-style with type safety) */
-  public orderByDescending<TKey>(keySelector: (entity: T) => TKey): TypedQueryable<T> {
+  /** Order by a property descending */
+  public orderByDescending<K extends keyof T>(key: K): TypedQueryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -326,7 +316,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters,
       this._softDeleteOptions
-    ).orderByDescending(keySelector);
+    ).orderByDescending(key);
 
     return TypedQueryable.from(queryable);
   }
@@ -498,9 +488,8 @@ export class DbSet<T extends object> {
     ).any();
   }
 
-  /** Start a query with eager includes using a property selector. */
-  /** Include related entities for eager loading (EF-style with type safety) */
-  public include(selector: (entity: T) => unknown): TypedQueryable<T> {
+  /** Include related entities for eager loading */
+  public include<K extends keyof T & string>(key: K): TypedQueryable<T> {
     const queryable = new Queryable<T>(
       this._entityClass,
       this._provider,
@@ -509,7 +498,7 @@ export class DbSet<T extends object> {
       this._performance,
       this._globalFilters,
       this._softDeleteOptions
-    ).include(selector);
+    ).include(key);
 
     return TypedQueryable.from(queryable);
   }
