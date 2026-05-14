@@ -77,7 +77,7 @@ export class PostgresDdlStrategy {
     return this.indexBuilder.buildCreateIndexSql(table, index as PgIndexSpec);
   }
 
-  public generateAddColumnSql(tableName: string, column: ColumnMetadata): string {
+  public generateAddColumnSql(tableName: string, column: Omit<ColumnMetadata, 'propertyName'>): string {
     const mappedType = this.mapTypeToPg(column.type);
     const notNullSql = column.nullable ? '' : ' NOT NULL';
     let defaultSql = '';
