@@ -236,6 +236,44 @@ export class EnhancedSqlCache implements SqlCache {
   }
 
   /**
+   * Remove all entries whose original key satisfies `matcher`.
+   * Handles both uncompressed keys (store key == original key) and
+   * compressed keys (original key is in keyMap, store key is a hash).
+   * Returns the number of entries removed.
+   */
+  invalidateBy(matcher: (key: string) => boolean): number {
+    let removed = 0;
+
+    // Phase 1: resolve compressed store-keys for long keys stored via keyMap.
+    const compressedToDelete = new Set<string>();
+    for (const [original, compressed] of this.keyMap) {
+      if (matcher(original)) {
+        compressedToDelete.add(compressed);
+        this.keyMap.delete(original);
+      }
+    }
+
+    // Phase 2: delete from store in a single pass.
+    for (const key of Array.from(this.store.keys())) {
+      const shouldDelete =
+        compressedToDelete.has(key) ||
+        // Uncompressed entry: the store key IS the original key.
+        (!key.startsWith('hash_') && matcher(key));
+      if (shouldDelete) {
+        this.store.delete(key);
+        removed++;
+      }
+    }
+
+    if (this.options.enableMetrics && removed > 0) {
+      this.metrics.evictions += removed;
+      this.metrics.currentSize = this.store.size;
+    }
+
+    return removed;
+  }
+
+  /**
    * Warm cache with frequently used queries
    */
   warm(entries: Array<{ key: string; value: SqlCacheEntry; ttl?: number }>): void {
