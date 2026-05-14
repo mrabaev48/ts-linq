@@ -25,18 +25,20 @@ class TestCountCache implements CountCache {
 
   public constructor(private readonly maxSize: number = 100) {}
 
-  public get(key: string): CountCacheEntry | undefined {
-    return this.store.get(key);
+  public get(key: string): number | undefined {
+    const entry = this.store.get(key);
+    if (!entry) return undefined;
+    return entry.value;
   }
 
-  public set(key: string, entry: CountCacheEntry): void {
+  public set(key: string, value: number): void {
     if (this.store.size >= this.maxSize) {
       const firstKey = this.store.keys().next().value;
       if (firstKey !== undefined) {
         this.store.delete(firstKey);
       }
     }
-    this.store.set(key, entry);
+    this.store.set(key, { value, ts: Date.now() });
   }
 
   public clear(): void {

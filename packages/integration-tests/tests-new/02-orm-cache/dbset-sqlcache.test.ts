@@ -48,8 +48,7 @@ describe('DbSet + SqlCache Integration', () => {
     await context.ensureCreated();
     
     // Seed
-    provider.nextResult = []; // Initialize to avoid undefined error
-    provider.nextResult.push([{ id: 1, name: 'Alice', age: 25 }]); // For first queries if needed
+    provider.nextResult = [{ id: 1, name: 'Alice', age: 25 }];
   });
 
   afterEach(async () => {
@@ -62,7 +61,7 @@ describe('DbSet + SqlCache Integration', () => {
     
     // Act 1: First execution
     provider.executionCount = 0;
-    provider.nextResult = [[{ id: 1, name: 'Alice', age: 25 }]]; // returns array of rows
+    provider.nextResult = [{ id: 1, name: 'Alice', age: 25 }];
     await users.where(u => u.age > 20).toArray();
     
     expect(provider.executionCount).toBe(1);
@@ -79,14 +78,14 @@ describe('DbSet + SqlCache Integration', () => {
 
   it('should use cache key based on SQL + parameters', async () => {
     const users = context.set(User);
-    
+
     provider.executionCount = 0;
-    provider.nextResult = [[{ id: 1 }]];
-    await users.where(u => u.age > 20).toArray();
-    
-    provider.nextResult = [[{ id: 2 }]];
-    await users.where(u => u.age > 25).toArray();
-    
+    provider.nextResult = [{ id: 1 }];
+    await users.orderBy('age').toArray();
+
+    provider.nextResult = [{ id: 2 }];
+    await users.orderByDescending('age').toArray();
+
     expect(provider.executionCount).toBe(2);
     expect(sqlCache.size()).toBe(2);
   });
@@ -107,7 +106,7 @@ describe('DbSet + SqlCache Integration', () => {
     await users.where(u => u.age > 20).toArray();
     expect(sqlCache.size()).toBe(1);
     
-    provider.nextResult = [[{ id: 1, name: 'Alice', age: 25 }]]; 
+    provider.nextResult = [{ id: 1, name: 'Alice', age: 25 }];
     const alice = await users.where(u => u.name === 'Alice').first();
     alice.age = 26;
     context.set(User).update(alice);
@@ -120,7 +119,7 @@ describe('DbSet + SqlCache Integration', () => {
     const users = context.set(User);
     await users.where(u => u.age > 20).toArray();
     
-    provider.nextResult = [[{ id: 1, name: 'Bob', age: 30 }]];
+    provider.nextResult = [{ id: 1, name: 'Bob', age: 30 }];
     const bob = await users.where(u => u.name === 'Bob').first();
     context.set(User).remove(bob);
     await context.saveChanges();
@@ -134,14 +133,14 @@ describe('DbSet + SqlCache Integration', () => {
       context = new TestDbContext(provider, sqlCache); 
       
       const users = context.set(User);
-      provider.nextResult = [[{ id: 1 }]];
+      provider.nextResult = [{ id: 1 }];
       await users.toArray();
       expect(sqlCache.size()).toBe(1);
 
       // Wait 60ms
       await new Promise(r => setTimeout(r, 60));
 
-      provider.nextResult = [[{ id: 1 }]];
+      provider.nextResult = [{ id: 1 }];
       provider.executionCount = 0;
       await users.toArray();
 
@@ -156,9 +155,9 @@ describe('DbSet + SqlCache Integration', () => {
       // Actually Context.cache.warmUp takes an array of functions to execute.
       
       provider.executionCount = 0;
-      provider.nextResult = [[{ id: 1 }]];
-      
-      await context.cache.warmUp({ 
+      provider.nextResult = [{ id: 1 }];
+
+      await context.cache.warmUp({
           queries: [
               () => context.set(User).where(u => u.id === 1).toArray()
           ]
@@ -179,18 +178,18 @@ describe('DbSet + SqlCache Integration', () => {
       context = new TestDbContext(provider, sqlCache);
 
       // 1
-      provider.nextResult = [[]];
-      await context.set(User).where(u => u.id === 1).toArray();
+      provider.nextResult = [];
+      await context.set(User).take(1).toArray();
       // 2
-      provider.nextResult = [[]];
-      await context.set(User).where(u => u.id === 2).toArray();
-      
+      provider.nextResult = [];
+      await context.set(User).take(2).toArray();
+
       expect(sqlCache.size()).toBe(2);
 
       // 3 -> Should evict 1 (LRU if implemented, or FIFO)
-      provider.nextResult = [[]];
-      await context.set(User).where(u => u.id === 3).toArray();
-      
+      provider.nextResult = [];
+      await context.set(User).take(3).toArray();
+
       expect(sqlCache.size()).toBe(2);
       expect(sqlCache.getMetrics().evictions).toBe(1);
   });
@@ -202,18 +201,18 @@ describe('DbSet + SqlCache Integration', () => {
       // But if user meant "should NOT cache", then let's verify if that's the default behavior.
       // Assuming for now it DOES cache unless told otherwise, but we check uniqueness.
       
-      provider.nextResult = [[]];
+      provider.nextResult = [];
       await context.set(User).skip(1).take(1).toArray();
       const size1 = sqlCache.size();
-      
-      provider.nextResult = [[]];
+
+      provider.nextResult = [];
       await context.set(User).skip(1).take(1).toArray();
-      
+
       // Should hit cache (no size increase)
       expect(sqlCache.size()).toBe(size1);
-      
+
       // Different skip
-      provider.nextResult = [[]];
+      provider.nextResult = [];
       await context.set(User).skip(2).take(1).toArray();
       expect(sqlCache.size()).toBe(size1 + 1);
   });

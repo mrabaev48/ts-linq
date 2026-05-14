@@ -43,7 +43,7 @@ export class MySqlDdlStrategy {
     return this.indexBuilder.buildCreateIndexSql(table, index);
   }
 
-  public generateAddColumnSql(tableName: string, column: ColumnMetadata): string {
+  public generateAddColumnSql(tableName: string, column: Omit<ColumnMetadata, 'propertyName'>): string {
     const colDef = this.generateColumnDefinition(column);
     return `ALTER TABLE \`${tableName}\` ADD COLUMN ${colDef}`;
   }
@@ -79,7 +79,7 @@ export class MySqlDdlStrategy {
       return sql;
   }
 
-  public generateColumnDefinition(column: ColumnMetadata): string {
+  public generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string {
     if (column.isComputed && column.computedExpression) {
       const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
         .computedStorage;
