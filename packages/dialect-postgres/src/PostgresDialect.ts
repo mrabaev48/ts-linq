@@ -6,6 +6,9 @@ import type {
   QueryOptions,
   SqlDialect,
   SqlParameter,
+  SqlQueryResult,
+  SqlWithParams,
+  SqlWithReturning,
   WhereClause
 } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
@@ -37,7 +40,7 @@ export class PostgresDialect implements SqlDialect {
   public buildSelect<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): { query: string; parameters: readonly SqlParameter[] } {
+  ): SqlQueryResult {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const parameters: SqlParameter[] = [];
@@ -139,7 +142,7 @@ export class PostgresDialect implements SqlDialect {
   public buildInsert(
     entity: Record<string, unknown>,
     metadata: EntityMetadata
-  ): { sql: string; parameters: SqlParameter[] } {
+  ): SqlWithReturning {
     const primaryKeys = new Set<string>(metadata.primaryKeys ?? []);
     const hasValue = (propertyName: string): boolean => {
       const v = entity[propertyName];
@@ -167,7 +170,7 @@ export class PostgresDialect implements SqlDialect {
     entity: Record<string, unknown>,
     metadata: EntityMetadata,
     versionCol?: ColumnMetadata
-  ): { sql: string; parameters: SqlParameter[] } {
+  ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for ${metadata.tableName}`);
     }
@@ -206,7 +209,7 @@ export class PostgresDialect implements SqlDialect {
   public buildDelete(
     entity: Record<string, unknown>,
     metadata: EntityMetadata
-  ): { sql: string; parameters: SqlParameter[] } {
+  ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for ${metadata.tableName}`);
     }

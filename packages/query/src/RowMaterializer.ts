@@ -105,11 +105,7 @@ export class RowMaterializer<T> {
       provider: this.provider.providerLabel
     });
     try {
-      (
-        this.provider.loggerRef as unknown as {
-          cacheSize?: (p: { cache: 'entityL2'; size: number; provider?: string }) => void;
-        }
-      )?.cacheSize?.({
+      this.provider.loggerRef?.cacheSize?.({
         cache: 'entityL2',
         size: this.entityCache.size?.() ?? -1,
         provider: this.provider.providerLabel

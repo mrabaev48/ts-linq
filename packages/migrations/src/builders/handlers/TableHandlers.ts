@@ -5,8 +5,8 @@ import { renderColumn } from './ColumnHandlers';
 import { buildInlineFkSql } from './ForeignKeyHandlers';
 
 export function handleTableRename(td: TableDiff, dialect: Dialect, up: string[]): void {
-  if ((td as unknown as { renameTo?: string }).renameTo) {
-    const to = (td as unknown as { renameTo?: string }).renameTo as string;
+  if (td.renameTo) {
+    const to = td.renameTo;
     switch (dialect) {
       case 'postgresql':
         up.push(`ALTER TABLE ${q(dialect, td.table)} RENAME TO ${q(dialect, to)}`);

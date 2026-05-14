@@ -25,17 +25,12 @@ export class SchemaSnapshotBuilder {
       const columns: ColumnDef[] = entityMeta.columns.map((column: ColumnMetadata) => ({
         name: column.columnName,
         type: this.mapPortableType(column.type),
-        nullable: column.nullable,
+        nullable: column.nullable ?? true,
         defaultValue: column.defaultValue,
-        defaultExpression: (
-          column as {
-            defaultExpression?: string;
-            defaultExpressionDialect?: Record<string, string>;
-          }
-        ).defaultExpression,
+        defaultExpression: column.defaultExpression,
         isPrimaryKey: primaryKeyProps.includes(column.propertyName),
-        isComputed: (column as { isComputed?: boolean }).isComputed,
-        computedExpression: (column as { computedExpression?: string }).computedExpression,
+        isComputed: column.isComputed,
+        computedExpression: column.computedExpression,
         computedStorage: (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
           .computedStorage
       }));

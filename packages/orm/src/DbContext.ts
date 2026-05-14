@@ -5,7 +5,7 @@ import type { DbSetContext } from './DbSetContext';
 import { EntityLoader } from '@ts-linq/core';
 import type { LoadingOptions } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
-import { MetadataStorage, type MetadataRegistry } from '@ts-linq/metadata';
+import { MetadataStorage, type MetadataRegistry, reflectGetOwnMetadata } from '@ts-linq/metadata';
 import { LazyLoadingProxy } from '@ts-linq/core';
 import { DbSet } from './DbSet';
 import { InsertCommand } from './commands/InsertCommand';
@@ -25,6 +25,7 @@ import type {
   MemoryProfilerLike 
 } from '@ts-linq/core';
 import { ok, err, ValidationError } from '@ts-linq/types';
+import type { AuditColumnNames, NormalizedChange, ValidationErrorDetail } from './types';
 import type { 
   EntityCacheLike,
   LoadingDefaults,
@@ -34,14 +35,8 @@ import { EntityCache } from '@ts-linq/core';
 // import { logInternalError } from '@ts-linq/core'; // REMOVED
 
 function getOriginal<T extends Function>(target: T): T {
-  try {
-    const gm = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
-      .getOwnMetadata;
-    const original = (gm?.('orm:original', target) as T | undefined) || target;
-    return original;
-  } catch {
-    return target;
-  }
+  const maybe = reflectGetOwnMetadata('orm:original', target);
+  return (maybe as T | undefined) ?? target;
 }
 
 /**
@@ -95,8 +90,7 @@ export abstract class DbContext {
     this._softDelete = options.softDelete;
     // Propagate soft-delete settings into provider for GlobalFilterApplier and ProviderStub
     try {
-      (this._provider as unknown as { softDelete?: SoftDeleteOptions }).softDelete =
-        options.softDelete;
+      this._provider.configureSoftDelete(options.softDelete);
     } catch {
       /* ignore */
     }
@@ -159,14 +153,8 @@ export abstract class DbContext {
     // Propagate query performance analysis options into provider if available
     try {
       const analysis = options.performance?.analysis;
-      if (
-        analysis &&
-        typeof (this._provider as unknown as { configureQueryAnalysis?: (o: unknown) => void })
-          .configureQueryAnalysis === 'function'
-      ) {
-        (
-          this._provider as unknown as { configureQueryAnalysis: (o: unknown) => void }
-        ).configureQueryAnalysis(analysis as unknown);
+      if (analysis) {
+        this._provider.configureQueryAnalysis(analysis);
       }
     } catch {
       /* ignore */
@@ -193,9 +181,7 @@ export abstract class DbContext {
    * @returns Configured `DbSet` instance.
    */
   public set<T extends object>(entityClass: new () => T): DbSet<T> {
-    const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
-      .getOwnMetadata;
-    const maybe = getOwn?.('orm:original', entityClass);
+    const maybe = reflectGetOwnMetadata('orm:original', entityClass);
     const normalized = typeof maybe === 'function' ? maybe : entityClass;
     if (!this._dbSets.has(normalized)) {
       throw new Error(`DbSet for ${entityClass.name} is not configured`);
@@ -400,9 +386,7 @@ export abstract class DbContext {
     try {
       const entities = this._registry.getEntities();
       for (const e of entities) {
-        const meta = (
-          Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown }
-        ).getOwnMetadata?.('orm:cachePolicy', e.target as Function) as
+        const meta = reflectGetOwnMetadata('orm:cachePolicy', e.target as Function) as
           | { invalidateOn?: ReadonlyArray<string> }
           | undefined;
         if (meta?.invalidateOn && meta.invalidateOn.some((n) => changedNames.has(n))) {
@@ -529,38 +513,20 @@ export abstract class DbContext {
     },
     reportMetrics: (): void => {
       try {
-        const sqlCache = (
-          this as unknown as {
-            _sqlBuilder?: { getCacheMetrics?: () => { currentSize?: number } };
-          }
-        )._sqlBuilder;
-        const sqlMetrics = sqlCache?.getCacheMetrics?.();
+        const sqlMetrics = this._ownedSqlCache?.getMetrics?.();
         const countCache = this._performanceOptions?.countCache;
-        const countMetrics = (
-          countCache as unknown as { getMetrics?: () => { currentSize?: number } }
-        )?.getMetrics?.();
-        const logger = this._provider.loggerRef as unknown as {
-          cacheSize?: (p: {
-            cache: 'sqlGen' | 'count' | 'entityL2';
-            size: number;
-            provider?: string;
-          }) => void;
-          cache?: (p: {
-            cache: 'sqlGen' | 'count' | 'entityL2';
-            hit: boolean;
-            provider?: string;
-          }) => void;
-        };
+        const countMetrics = countCache?.getMetrics?.();
+        const logger = this._provider.loggerRef;
         if (sqlMetrics)
           logger?.cacheSize?.({
             cache: 'sqlGen',
-            size: (sqlMetrics as { currentSize?: number }).currentSize ?? -1,
+            size: sqlMetrics.currentSize ?? -1,
             provider: this._provider.providerLabel
           });
         if (countMetrics)
           logger?.cacheSize?.({
             cache: 'count',
-            size: (countMetrics as { currentSize?: number }).currentSize ?? -1,
+            size: countMetrics.currentSize ?? -1,
             provider: this._provider.providerLabel
           });
         if (this._entityCache)
@@ -859,7 +825,7 @@ export abstract class DbContext {
   private applyCreatedAudit(
     meta: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
     entity: Record<string, unknown>,
-    names: { createdAt: string; updatedAt: string; createdBy: string; updatedBy: string },
+    names: AuditColumnNames,
     now: Date,
     currentUser: unknown
   ): void {
@@ -871,7 +837,7 @@ export abstract class DbContext {
   private applyUpdatedAudit(
     meta: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
     entity: Record<string, unknown>,
-    names: { createdAt: string; updatedAt: string; createdBy: string; updatedBy: string },
+    names: AuditColumnNames,
     now: Date,
     currentUser: unknown
   ): void {
@@ -887,11 +853,7 @@ export abstract class DbContext {
     return meta.columns.some((c) => c.propertyName === propertyName);
   }
 
-  private async processChange(change: {
-    entity: Record<string, unknown>;
-    entityClass: Function;
-    state: string;
-  }): Promise<number> {
+  private async processChange(change: NormalizedChange): Promise<number> {
     switch (change.state) {
       case 'added':
         await this.applyInsert(change);
@@ -906,31 +868,19 @@ export abstract class DbContext {
     }
   }
 
-  private async applyInsert(change: {
-    entity: Record<string, unknown>;
-    entityClass: Function;
-  }): Promise<void> {
+  private async applyInsert(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): Promise<void> {
     await this._insertCmd.execute({ ...change, state: 'added' });
   }
 
-  private async applyUpdate(change: {
-    entity: Record<string, unknown>;
-    entityClass: Function;
-  }): Promise<void> {
+  private async applyUpdate(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): Promise<void> {
     await this._updateCmd.execute({ ...change, state: 'modified' });
   }
 
-  private async applyDelete(change: {
-    entity: Record<string, unknown>;
-    entityClass: Function;
-  }): Promise<boolean> {
+  private async applyDelete(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): Promise<boolean> {
     return await this._deleteCmd.execute({ ...change, state: 'deleted' });
   }
 
-  private async handleSoftDelete(change: {
-    entity: Record<string, unknown>;
-    entityClass: Function;
-  }): Promise<boolean> {
+  private async handleSoftDelete(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): Promise<boolean> {
     if (!this._softDelete?.enabled) return false;
     const meta = this._registry.getEntity(change.entityClass);
     if (!meta) return false;
@@ -948,20 +898,14 @@ export abstract class DbContext {
     return true;
   }
 
-  private updateEntityCache(change: {
-    entity: Record<string, unknown>;
-    entityClass: Function;
-  }): void {
+  private updateEntityCache(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): void {
     if (!this._entityCache) return;
     const pk = this.getPrimaryKey(change.entityClass);
     if (!pk) return;
     this._entityCache.set(change.entityClass, change.entity[pk], change.entity);
   }
 
-  private removeFromEntityCache(change: {
-    entity: Record<string, unknown>;
-    entityClass: Function;
-  }): void {
+  private removeFromEntityCache(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): void {
     if (!this._entityCache) return;
     const pk = this.getPrimaryKey(change.entityClass);
     if (!pk) return;
@@ -989,7 +933,7 @@ export abstract class DbContext {
 
   private extractAuditNames(
     audit?: AuditOptions
-  ): { createdAt: string; updatedAt: string; createdBy: string; updatedBy: string } | undefined {
+  ): AuditColumnNames | undefined {
     if (!audit) return undefined;
     return {
       createdAt: audit.timeColumns?.createdAt ?? audit.createdAtColumn ?? 'createdAt',
@@ -1002,12 +946,8 @@ export abstract class DbContext {
   private validateComputedColumn(
     meta: ReturnType<typeof MetadataStorage.getEntity>,
     col: { propertyName: string; isComputed?: boolean },
-    change: {
-      entity: Record<string, unknown>;
-      state: string;
-      originalValues?: object;
-    },
-    errors: Array<{ entity: string; property: string; message: string; fullMessage?: string }>
+    change: Pick<NormalizedChange, 'entity' | 'state' | 'originalValues'>,
+    errors: ValidationErrorDetail[]
   ): void {
     if (!col.isComputed) return;
     const value = change.entity[col.propertyName];
@@ -1044,12 +984,10 @@ export abstract class DbContext {
       length?: number;
       defaultValue?: unknown;
     },
-    change: { entity: Record<string, unknown>; state: string },
+    change: Pick<NormalizedChange, 'entity' | 'state'>,
     audit: AuditOptions | undefined,
-    auditNames:
-      | { createdAt: string; updatedAt: string; createdBy: string; updatedBy: string }
-      | undefined,
-    errors: Array<{ entity: string; property: string; message: string; fullMessage?: string }>
+    auditNames: AuditColumnNames | undefined,
+    errors: ValidationErrorDetail[]
   ): void {
     const value = change.entity[col.propertyName];
     const isGeneratedPk = this.isGeneratedPrimaryKey(meta, col, change);
@@ -1092,9 +1030,7 @@ export abstract class DbContext {
 
   private canBeSatisfiedByAudit(
     audit: AuditOptions | undefined,
-    auditNames:
-      | { createdAt: string; updatedAt: string; createdBy: string; updatedBy: string }
-      | undefined,
+    auditNames: AuditColumnNames | undefined,
     state: string,
     propertyName: string
   ): boolean {
@@ -1115,9 +1051,9 @@ export abstract class DbContext {
   }
 
   private runConditionalValidations(
-    change: { entity: Record<string, unknown>; entityClass: Function; state: string },
+    change: NormalizedChange,
     meta: ReturnType<typeof MetadataStorage.getEntity>,
-    errors: Array<{ entity: string; property: string; message: string; fullMessage?: string }>
+    errors: ValidationErrorDetail[]
   ): void {
     try {
       const rules = this.getValidationRules(change.entityClass);
@@ -1148,15 +1084,7 @@ export abstract class DbContext {
     meta: ReturnType<typeof MetadataStorage.getEntity>,
     property: string,
     message: string
-  ): {
-    entity: string;
-    property: string;
-    message: string;
-    entityClass?: string;
-    table?: string;
-    column?: string;
-    fullMessage?: string;
-  } {
+  ): ValidationErrorDetail {
     const table = meta?.tableName || 'unknown_table';
     const typeName = meta?.target?.name || 'UnknownEntity';
     const col = meta?.columns.find((c) => c.propertyName === property)?.columnName || property;

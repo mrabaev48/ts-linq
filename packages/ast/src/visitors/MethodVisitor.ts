@@ -1,14 +1,14 @@
-import type { SqlParameter } from '@ts-linq/types';
 import { AstSqlGenerationError } from '../errors';
 import type { LiteralNode, MethodNode, ParameterRefNode } from '../ast/Nodes';
 import { renderPropertyName, resolveParameterRef, type ColumnResolver } from './BinaryVisitor';
+import type { ConditionFragment } from '../types';
 
 export class MethodVisitor {
   public visit(
     node: MethodNode,
     inputParameters: readonly unknown[],
     resolver?: ColumnResolver
-  ): { condition: string; parameters: SqlParameter[] } {
+  ): ConditionFragment {
     const col = renderPropertyName(node.object, resolver);
     const arg0 = node.args[0];
 

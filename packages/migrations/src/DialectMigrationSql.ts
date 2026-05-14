@@ -1,4 +1,4 @@
-import type { SchemaDiff, TableDiff } from './DiffTypes';
+import type { SchemaDiff, TableDiff, MigrationSql } from './DiffTypes';
 import type { Dialect } from './Dialect';
 // no local SQL utils needed here; builders render SQL
 import { TablesSqlBuilder } from './builders/TablesSqlBuilder';
@@ -12,7 +12,7 @@ export type { Dialect };
 export function generateMigrationFromDiff(
   diff: SchemaDiff,
   dialect: Dialect
-): { up: string[]; down: string[] } {
+): MigrationSql {
   return new MigrationSqlBuilder(dialect).build(diff);
 }
 
@@ -30,7 +30,7 @@ class MigrationSqlBuilder {
     this.columns = new ColumnsSqlBuilder(dialect);
   }
 
-  public build(diff: SchemaDiff): { up: string[]; down: string[] } {
+  public build(diff: SchemaDiff): MigrationSql {
     const up: string[] = [];
     const down: string[] = [];
     for (const tableDiff of diff.tables) this.handleTable(tableDiff, up, down);

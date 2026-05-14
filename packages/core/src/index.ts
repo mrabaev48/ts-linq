@@ -69,5 +69,6 @@ export * from './loading/LazyLoadingProxy';
 export * from './utils/SqlHelper';
 export * from './utils/RetryPolicies';
 export * from './utils/EntityCache';
+export * from './utils/ctorName';
 // export * from './utils/InternalLogger'; // Removed
 export * from './utils/PrometheusEndpoint';

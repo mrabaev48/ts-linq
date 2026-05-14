@@ -3,6 +3,7 @@ import { ChangeTracker } from './ChangeTracker';
 import { EntityLoader } from '@ts-linq/core';
 import type { LoadingOptions } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
+import { ctorName } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable, TypedQueryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
@@ -168,22 +169,11 @@ export class DbSet<T extends object> {
       chunks++;
     }
     try {
-      (
-        this._provider.loggerRef as unknown as {
-          crossQuery?: (p: {
-            op: 'IN-chunk';
-            chunks: number;
-            size: number;
-            entity: string;
-            column: string;
-            provider?: string;
-          }) => void;
-        }
-      )?.crossQuery?.({
+      this._provider.loggerRef?.crossQuery?.({
         op: 'IN-chunk',
         chunks,
         size: total,
-        entity: (this._entityClass as unknown as { name?: string }).name || 'Unknown',
+        entity: ctorName(this._entityClass),
         column,
         provider: this._provider.providerLabel
       });
@@ -235,22 +225,11 @@ export class DbSet<T extends object> {
       chunks++;
     }
     try {
-      (
-        this._provider.loggerRef as unknown as {
-          crossQuery?: (p: {
-            op: 'IN-chunk';
-            chunks: number;
-            size: number;
-            entity: string;
-            column: string;
-            provider?: string;
-          }) => void;
-        }
-      )?.crossQuery?.({
+      this._provider.loggerRef?.crossQuery?.({
         op: 'IN-chunk',
         chunks,
         size: total,
-        entity: (this._entityClass as unknown as { name?: string }).name || 'Unknown',
+        entity: ctorName(this._entityClass),
         column: String(property),
         provider: this._provider.providerLabel
       });
@@ -556,7 +535,7 @@ export class DbSet<T extends object> {
       const providerLabel = this._provider.providerLabel;
       const providerPrefix = providerLabel ? `${providerLabel}|` : '';
       const ns = this._performance?.cacheNamespace ? `${this._performance.cacheNamespace}|` : '';
-      const entityName = (this._entityClass as unknown as { name?: string }).name || 'Unknown';
+      const entityName = ctorName(this._entityClass);
 
       const prefix = `${ns}${providerPrefix}${entityName}|count|`;
       extCount.invalidateBy((key: string) => key.startsWith(prefix));

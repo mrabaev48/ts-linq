@@ -1,14 +1,14 @@
-import type { SqlParameter } from '@ts-linq/types';
 import { AstSqlGenerationError } from '../errors';
 import type { ExpressionNode, NotNode } from '../ast/Nodes';
 import { renderPropertyName, type ColumnResolver } from './BinaryVisitor';
+import type { ConditionFragment } from '../types';
 
 export class UnaryVisitor {
   public visit(
     node: NotNode,
-    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] },
+    recurse: (n: ExpressionNode) => ConditionFragment,
     resolver?: ColumnResolver
-  ): { condition: string; parameters: SqlParameter[] } {
+  ): ConditionFragment {
     const operand = node.operand;
 
     // `!u.boolField` → `(col = false)`
