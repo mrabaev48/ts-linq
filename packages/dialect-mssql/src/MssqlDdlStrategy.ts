@@ -28,7 +28,7 @@ export class MssqlDdlStrategy {
     return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${metadata.tableName}') BEGIN CREATE TABLE [${metadata.tableName}] (${columns.join(', ')}) END`;
   }
 
-  public generateColumnDefinition(column: ColumnMetadata): string {
+  public generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string {
     if (column.isComputed && column.computedExpression) {
       const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
         .computedStorage;
@@ -67,7 +67,7 @@ export class MssqlDdlStrategy {
     return this.indexBuilder.buildCreateIndexSql(tableName, index);
   }
 
-  public generateAddColumnSql(tableName: string, column: ColumnMetadata): string {
+  public generateAddColumnSql(tableName: string, column: Omit<ColumnMetadata, 'propertyName'>): string {
     const colDef = this.generateColumnDefinition(column);
     return `ALTER TABLE [${tableName}] ADD ${colDef}`;
   }

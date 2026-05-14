@@ -2,7 +2,7 @@ import type { CountCache } from '@ts-linq/types';
 
 export type { CountCache };
 
-interface CountCacheEntry {
+export interface CountCacheEntry {
   value: number;
   ts: number;
 }

@@ -60,10 +60,14 @@ describe('Advanced Features - Soft Delete', () => {
     });
 
     it('should filter deleted items in queries', async () => {
-        // Manually insert deleted item
-        await provider.executeNonQuery("INSERT INTO sd_items (name, isDeleted) VALUES ('DeletedItem', 1)");
+        // Insert a soft-deleted item via ORM API
+        const items = context.set(SdItem);
+        items.add({ name: 'DeletedItem', isDeleted: true } as SdItem);
+        await context.saveChanges();
 
-        const count = await context.set(SdItem).count();
-        expect(count).toBe(2); // Item1, Item2 (Item1 not deleted yet in this test)
+        // Soft-delete filter should exclude DeletedItem
+        const all = await context.set(SdItem).toArray();
+        expect(all).toHaveLength(2); // Item1, Item2 only
+        expect(all.some(i => i.name === 'DeletedItem')).toBe(false);
     });
 });

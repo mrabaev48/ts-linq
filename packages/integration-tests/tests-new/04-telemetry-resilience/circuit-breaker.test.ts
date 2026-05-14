@@ -10,6 +10,10 @@ class FaultyProvider extends TestProvider {
         super(config);
     }
 
+    protected isTransientError(_error: unknown): boolean {
+        return false;
+    }
+
     public async doExecuteQuery<T>(sql: string, params: any[] = []): Promise<T[]> {
         if (this.shouldFail) throw new DatabaseError(this.failMessage);
         return super.doExecuteQuery(sql, params);
@@ -22,10 +26,11 @@ describe('Telemetry Integration - Circuit Breaker', () => {
   beforeEach(async () => {
     provider = new FaultyProvider({
         file: ':memory:',
-        circuit: { 
+        circuit: {
             enabled: true,
             failureThreshold: 3,
-            openDurationMs: 1000 // default is 30s, make it shorter for tests
+            openDurationMs: 1000, // default is 30s, make it shorter for tests
+            countTransientOnly: false
         }
     });
     await provider.connect();
@@ -65,12 +70,13 @@ describe('Telemetry Integration - Circuit Breaker', () => {
   });
 
   it('should transition to half-open after cooldown', async () => {
-      // Configure with short open duration for this test
-      provider.configureCircuit({ openDurationMs: 50 });
-      provider.forceOpen('test'); 
+      // Configure with short open duration for this test.
+      // Use 10ms so that even with backoff factor=1 (first open), effective duration = 20ms < 100ms wait.
+      provider.configureCircuit({ openDurationMs: 10 });
+      provider.forceOpen('test');
       expect(provider.circuitStateLabel).toBe('open');
 
-      await new Promise(r => setTimeout(r, 60));
+      await new Promise(r => setTimeout(r, 100));
 
       // Attempt triggers state check -> moves to half-open -> executes
       // We make sure it succeeds
@@ -82,9 +88,9 @@ describe('Telemetry Integration - Circuit Breaker', () => {
   });
 
   it('should re-open if half-open probe fails', async () => {
-      provider.configureCircuit({ openDurationMs: 50 });
+      provider.configureCircuit({ openDurationMs: 10 });
       provider.forceOpen('test');
-      await new Promise(r => setTimeout(r, 60));
+      await new Promise(r => setTimeout(r, 100));
 
       // Next call attempts half-open
       provider.shouldFail = true;

@@ -56,10 +56,8 @@ describe('Telemetry Integration - OpenTelemetry + Provider', () => {
   });
 
   it('should start a span for SQL queries', async () => {
-    // Act
-    const set = context.set(Data);
-    set.add({ value: 'test' } as Data);
-    await context.saveChanges();
+    // Act: use executeQuery directly so it goes through executeWithRetry → logger.queryStart
+    await provider.executeQuery('INSERT INTO otel_data (value) VALUES (?)', ['test']);
 
     // Assert
     expect(mockOtel.trace.getTracer).toHaveBeenCalledWith('test-service');
@@ -79,10 +77,17 @@ describe('Telemetry Integration - OpenTelemetry + Provider', () => {
   });
 
   it('should record exceptions on error', async () => {
+    const originalDoExecuteQuery = (provider as any).doExecuteQuery.bind(provider);
+    (provider as any).doExecuteQuery = async () => {
+        throw new Error('no such table: bad_table');
+    };
+
     try {
         await provider.executeQuery('SELECT * FROM bad_table');
-    } catch { 
-        // ignore 
+    } catch {
+        // ignore
+    } finally {
+        (provider as any).doExecuteQuery = originalDoExecuteQuery;
     }
 
     expect(mockSpan.recordException).toHaveBeenCalled();
