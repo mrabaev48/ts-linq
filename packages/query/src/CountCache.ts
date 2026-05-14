@@ -1,23 +1,10 @@
-export interface CountCacheEntry {
+import type { CountCache } from '@ts-linq/types';
+
+export type { CountCache };
+
+interface CountCacheEntry {
   value: number;
   ts: number;
-}
-
-export interface CountCache {
-  get(key: string): CountCacheEntry | undefined;
-  set(key: string, entry: CountCacheEntry): void;
-  clear(): void;
-  /** Optional targeted invalidation. Should return number of removed entries. */
-  invalidateBy?(matcher: (key: string) => boolean): number;
-  /** Optional metrics exposure for monitoring. */
-  getMetrics?(): {
-    currentSize: number;
-    totalRequests?: number;
-    hits?: number;
-    misses?: number;
-    evictions?: number;
-    invalidations?: number;
-  };
 }
 
 /** In-memory CountCache with TTL and max size (FIFO eviction). */
@@ -27,21 +14,21 @@ export class InMemoryCountCache implements CountCache {
     private ttlMs: number = 10_000,
     private maxSize: number = 2000
   ) {}
-  get(key: string): CountCacheEntry | undefined {
+  get(key: string): number | undefined {
     const hit = this.store.get(key);
     if (!hit) return undefined;
     if (this.ttlMs > 0 && Date.now() - hit.ts > this.ttlMs) {
       this.store.delete(key);
       return undefined;
     }
-    return hit;
+    return hit.value;
   }
-  set(key: string, entry: CountCacheEntry): void {
+  set(key: string, value: number): void {
     if (this.store.size >= this.maxSize) {
       const first = this.store.keys().next().value;
       if (first !== undefined) this.store.delete(first);
     }
-    this.store.set(key, entry);
+    this.store.set(key, { value, ts: Date.now() });
   }
   clear(): void {
     this.store.clear();

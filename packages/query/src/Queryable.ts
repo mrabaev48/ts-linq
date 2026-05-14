@@ -3,6 +3,7 @@ import { SqlVisitor, type ColumnResolver, type ExpressionNode, type PropertyNode
 import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
+  CountCache,
   EntityCacheLike,
   FallbackPolicy,
   GlobalFilter,
@@ -15,8 +16,6 @@ import type {
 } from '@ts-linq/types';
 import type { CteDefinition } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
-
-import type { CountCache } from './CountCache';
 import { AggregateOperations } from './AggregateOperations';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { IncludePlanner } from './IncludePlanner';
@@ -718,7 +717,7 @@ export class Queryable<T> {
       if (inflight) return inflight;
       const ttl = this._performance.countCacheTtlMs ?? 0;
       const hit = this._externalCountCache?.get(key);
-      if (hit && (ttl <= 0 || Date.now() - hit.ts <= ttl)) {
+      if (hit !== undefined) {
         safeCache(this._provider.loggerRef, {
           cache: 'count',
           hit: true,
@@ -730,7 +729,7 @@ export class Queryable<T> {
           hit: true,
           provider: this._provider.providerLabel
         });
-        return hit.value;
+        return hit;
       }
       const queryModel = this._model.clone();
       this.applyGlobalFiltersToModel(queryModel);
@@ -742,8 +741,7 @@ export class Queryable<T> {
       } finally {
         this._inflightCounts.delete(key);
       }
-      const entry = { value, ts: Date.now() };
-      if (this._externalCountCache) this._externalCountCache.set(key, entry);
+      if (this._externalCountCache) this._externalCountCache.set(key, value);
       safeCacheSize(this._provider.loggerRef, {
         cache: 'count',
         size: -1,

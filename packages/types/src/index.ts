@@ -426,7 +426,7 @@ export interface FallbackPolicy {
   allowOps?: FallbackOperation[];
   allowIncludesOnFallback?: 'attempt' | 'skip' | 'error';
   hedged?: {
-    sources?: QueryFallback[];
+    sources?: string[];
     timeout?: number;
     enabled?: boolean;
     delayMs?: number;

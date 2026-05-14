@@ -1,11 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import fc from 'fast-check';
-import {
-  ComparisonOperator,
-  LogicalOperator,
-  SqlVisitor,
-  type ExpressionNode
-} from '@ts-linq/ast';
+import { SqlVisitor, type ExpressionNode } from '@ts-linq/ast';
 
 type Row = { price: number; stock: number };
 
@@ -31,22 +26,20 @@ describe('Property-Based Testing: Predicate SQL vs JS Filtering', () => {
         (rows, X, Y) => {
           const pred = (a: Row) => a.price >= X && a.stock > Y;
           const ast: ExpressionNode = {
-            type: 'LogicalExpression',
-            operator: LogicalOperator.And,
-            expressions: [
-              {
-                type: 'BinaryExpression',
-                left: { type: 'MemberAccess', path: ['price'] },
-                operator: ComparisonOperator.Gte,
-                right: { type: 'ParameterRef', index: 0 }
-              },
-              {
-                type: 'BinaryExpression',
-                left: { type: 'MemberAccess', path: ['stock'] },
-                operator: ComparisonOperator.Gt,
-                right: { type: 'ParameterRef', index: 1 }
-              }
-            ]
+            type: 'logical',
+            operator: '&&',
+            left: {
+              type: 'binary',
+              left: { type: 'property', path: ['price'] },
+              operator: '>=',
+              right: { type: 'parameterRef', index: 0 }
+            },
+            right: {
+              type: 'binary',
+              left: { type: 'property', path: ['stock'] },
+              operator: '>',
+              right: { type: 'parameterRef', index: 1 }
+            }
           };
 
           const { parameters } = visitor.toSql(ast, [X, Y]);
@@ -78,10 +71,10 @@ describe('Property-Based Testing: Predicate SQL vs JS Filtering', () => {
         (rows, targetPrice) => {
           const pred = (a: Row) => a.price === targetPrice;
           const ast: ExpressionNode = {
-            type: 'BinaryExpression',
-            left: { type: 'MemberAccess', path: ['price'] },
-            operator: ComparisonOperator.Eq,
-            right: { type: 'ParameterRef', index: 0 }
+            type: 'binary',
+            left: { type: 'property', path: ['price'] },
+            operator: '===',
+            right: { type: 'parameterRef', index: 0 }
           };
 
           const { parameters } = visitor.toSql(ast, [targetPrice]);

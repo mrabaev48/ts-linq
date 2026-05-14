@@ -83,7 +83,7 @@ export class MySqlProvider extends DatabaseProvider {
     if (this.isConnected) return;
 
     if (this.config.pool) {
-      this.pool = this.config.pool;
+      this.pool = this.config.pool as MySqlPoolLike;
       this.ownsPool = false;
     } else {
       const mysql = safeRequireMysql2();

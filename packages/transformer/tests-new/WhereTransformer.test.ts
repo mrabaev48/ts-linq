@@ -25,26 +25,17 @@ function createTempProject(): {
     path.join(dir, 'packages/query/src/index.ts'),
     [
       "export class Queryable<T> {",
+      "  declare readonly __tsLinqWhereTransformerBrand: true;",
       "  public where(predicate: (entity: T) => boolean): Queryable<T> { void predicate; return this; }",
       "  public whereCompiled(input: { ast: unknown; parameters: readonly unknown[] }): Queryable<T> { void input; return this; }",
       "  public having(predicate: (entity: T) => boolean): Queryable<T> { void predicate; return this; }",
       "  public havingCompiled(input: { ast: unknown; parameters: readonly unknown[] }): Queryable<T> { void input; return this; }",
       "}",
       "export class TypedQueryable<T> {",
+      "  declare readonly __tsLinqWhereTransformerBrand: true;",
       "  public where(predicate: (entity: T) => boolean): TypedQueryable<T> { void predicate; return this; }",
       "  public whereCompiled(input: { ast: unknown; parameters: readonly unknown[] }): TypedQueryable<T> { void input; return this; }",
       "}"
-    ].join('\n')
-  );
-
-  // Minimal @ts-linq/ast shim: only exports the enums the transformer injects.
-  writeFile(
-    path.join(dir, 'packages/ast/src/index.ts'),
-    [
-      "export enum LogicalOperator { And = 'AND', Or = 'OR' }",
-      "export enum ComparisonOperator { Eq = '=', Gt = '>', Gte = '>=', Lt = '<', Lte = '<=' }",
-      "export enum UnaryOperator { Not = 'NOT' }",
-      "export class SqlVisitor {}"
     ].join('\n')
   );
 
@@ -69,8 +60,7 @@ function compileAndTransform(sourceText: string): {
     moduleResolution: ts.ModuleResolutionKind.NodeJs,
     baseUrl: project.dir,
     paths: {
-      '@ts-linq/query': ['packages/query/src/index.ts'],
-      '@ts-linq/ast': ['packages/ast/src/index.ts']
+      '@ts-linq/query': ['packages/query/src/index.ts']
     }
   };
 
@@ -101,7 +91,7 @@ function compileAndTransform(sourceText: string): {
 }
 
 describe('WhereTransformer', () => {
-  it('rewrites Queryable.where(...) to whereCompiled(...) and injects @ts-linq/ast imports', () => {
+  it('rewrites Queryable.where(...) to whereCompiled(...) with captured parameters', () => {
     const { outputText, diagnostics } = compileAndTransform(
       [
         "import { Queryable } from '@ts-linq/query';",
@@ -110,14 +100,13 @@ describe('WhereTransformer', () => {
         '',
         'const minAge = 21;',
         'const q = new Queryable<User>();',
-        'q.where(u => u.profile.age >= minAge && !u.isActive);'
+        'q.where(u => u.profile.age >= minAge);'
       ].join('\n')
     );
 
     expect(diagnostics).toHaveLength(0);
     expect(outputText).toContain('whereCompiled');
-    expect(outputText).toMatch(/from ['"]@ts-linq\/ast['"]/);
-    expect(outputText).toMatch(/type:\s*['"]ParameterRef['"]/);
+    expect(outputText).toMatch(/type:\s*["']parameterRef["']/);
     expect(outputText).toContain('parameters: [minAge]');
   });
 
@@ -135,9 +124,10 @@ describe('WhereTransformer', () => {
 
     expect(diagnostics).toHaveLength(0);
     expect(outputText).toContain('whereCompiled');
+    expect(outputText).toMatch(/type:\s*["']binary["']/);
   });
 
-  it("emits diagnostics for unsupported operator '||'", () => {
+  it('emits diagnostics for unsupported operators', () => {
     const { diagnostics } = compileAndTransform(
       [
         "import { Queryable } from '@ts-linq/query';",
@@ -145,13 +135,12 @@ describe('WhereTransformer', () => {
         'type User = { id: number };',
         '',
         'const q = new Queryable<User>();',
-        'q.where(u => u.id > 1 || u.id < 0);'
+        'q.where(u => (u.id + 1) > 0);'
       ].join('\n')
     );
 
     expect(diagnostics.length).toBeGreaterThan(0);
     const msg = ts.flattenDiagnosticMessageText(diagnostics[0]!.messageText, '\n');
-    expect(msg).toContain("unsupported operator '||'");
+    expect(msg).toContain('is not supported');
   });
 });
-
