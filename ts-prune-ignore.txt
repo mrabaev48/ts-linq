@@ -1,0 +1,19 @@
+# Public package entrypoints
+packages/*/src/index.ts
+
+# CLI entrypoints
+packages/*/src/cli.ts
+packages/*/src/main.ts
+packages/*/src/bin.ts
+
+# Type declaration files
+*.d.ts
+
+# Test utilities may be imported dynamically by tests
+test-utils
+testing
+fixtures
+mocks
+
+# Generated files
+generated

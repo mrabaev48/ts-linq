@@ -15,7 +15,8 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.json && tsc -b tsconfig.esm.json",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit"
   },
   "files": [
     "dist/**/*"

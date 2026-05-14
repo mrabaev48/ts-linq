@@ -31,6 +31,12 @@
       "cache": false,
       "persistent": true
     },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "inputs": ["src/**/*.ts", "tsconfig*.json", "package.json"],
+      "outputs": [],
+      "cache": true
+    },
     "lint": {
       "outputs": [],
       "cache": true
