@@ -31,6 +31,7 @@
     "build:esm": "tsc -p tsconfig.esm.json",
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
     "copy:types": "node ../../scripts/copy-types.js",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit"
   }
 }

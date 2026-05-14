@@ -21,7 +21,8 @@
     "build:cjs": "tsc -p tsconfig.json",
     "build:esm": "tsc -p tsconfig.esm.json",
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {},
   "devDependencies": {

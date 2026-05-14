@@ -22,7 +22,8 @@
     "build:esm": "tsc -p tsconfig.esm.json",
     "gen:esm-entry": "node scripts/gen-esm-entry.cjs",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "prepublishOnly": "npm run clean && npm run build"
+    "prepublishOnly": "npm run clean && npm run build",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "orm",

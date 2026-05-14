@@ -25,7 +25,6 @@
     "@ts-linq/query": "workspace:*",
     "@ts-linq/dialect-mysql": "workspace:*",
     "@ts-linq/dialect-mssql": "workspace:*",
-
     "@ts-linq/migrations": "workspace:*"
   },
   "scripts": {
@@ -33,6 +32,7 @@
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
     "copy:types": "node ../../scripts/copy-types.js",
     "test": "cd ../.. && npx jest packages/provider-postgres",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit"
   }
 }
