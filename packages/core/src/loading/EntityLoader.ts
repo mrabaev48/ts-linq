@@ -3,6 +3,7 @@ import { LoadingStrategy } from './LoadingStrategy';
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { LazyLoadingProxy } from './LazyLoadingProxy';
+import { ctorName } from '../utils/ctorName';
 
 /**
  * Service responsible for loading entities with either lazy or eager strategy,
@@ -396,22 +397,11 @@ export class EntityLoader {
       }
       related = acc;
       try {
-        (
-          this._provider.loggerRef as unknown as {
-            crossQuery?: (p: {
-              op: 'IN-chunk';
-              chunks: number;
-              size: number;
-              entity: string;
-              column: string;
-              provider?: string;
-            }) => void;
-          }
-        )?.crossQuery?.({
+        this._provider.loggerRef?.crossQuery?.({
           op: 'IN-chunk',
           chunks,
           size: uniqueFkValues.length,
-          entity: (targetCtor as unknown as { name?: string }).name || 'Unknown',
+          entity: ctorName(targetCtor as abstract new (...args: any[]) => any),
           column: targetPkColumn,
           provider: this._provider.providerLabel
         });
@@ -485,22 +475,11 @@ export class EntityLoader {
       }
       related = acc;
       try {
-        (
-          this._provider.loggerRef as unknown as {
-            crossQuery?: (p: {
-              op: 'IN-chunk';
-              chunks: number;
-              size: number;
-              entity: string;
-              column: string;
-              provider?: string;
-            }) => void;
-          }
-        )?.crossQuery?.({
+        this._provider.loggerRef?.crossQuery?.({
           op: 'IN-chunk',
           chunks,
           size: uniqueParentIds.length,
-          entity: (targetCtor as unknown as { name?: string }).name || 'Unknown',
+          entity: ctorName(targetCtor as abstract new (...args: any[]) => any),
           column: foreignKeyName,
           provider: this._provider.providerLabel
         });

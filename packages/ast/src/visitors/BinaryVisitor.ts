@@ -1,6 +1,7 @@
 import type { SqlParameter } from '@ts-linq/types';
 import { AstSqlGenerationError } from '../errors';
 import type { BinaryNode, ExpressionNode, LiteralNode, ParameterRefNode, PropertyNode } from '../ast/Nodes';
+import type { ConditionFragment, SqlFragment } from '../types';
 
 /**
  * Maps a PropertyNode to its SQL column name.
@@ -13,9 +14,9 @@ export class BinaryVisitor {
   public visit(
     node: BinaryNode,
     inputParameters: readonly unknown[],
-    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] },
+    recurse: (n: ExpressionNode) => ConditionFragment,
     resolver?: ColumnResolver
-  ): { condition: string; parameters: SqlParameter[] } {
+  ): ConditionFragment {
     const sqlOp = this.mapOperator(node.operator);
     const leftSql = this.renderOperand(node.left, inputParameters, recurse, resolver);
     const rightSql = this.renderOperand(node.right, inputParameters, recurse, resolver);
@@ -41,9 +42,9 @@ export class BinaryVisitor {
   private renderOperand(
     node: ExpressionNode,
     inputParameters: readonly unknown[],
-    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] },
+    recurse: (n: ExpressionNode) => ConditionFragment,
     resolver?: ColumnResolver
-  ): { fragment: string; params: SqlParameter[] } {
+  ): SqlFragment {
     if (node.type === 'property') {
       return { fragment: renderPropertyName(node, resolver), params: [] };
     }

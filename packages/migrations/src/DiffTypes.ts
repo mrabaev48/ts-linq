@@ -81,6 +81,11 @@ export interface SchemaDiff {
   tables: TableDiff[];
 }
 
+export interface MigrationSql {
+  up: string[];
+  down: string[];
+}
+
 export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot): SchemaDiff {
   const diffs: TableDiff[] = [];
   const actualByName = new Map(actual.tables.map((t) => [t.name, t] as const));

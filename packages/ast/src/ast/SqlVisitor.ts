@@ -1,4 +1,3 @@
-import type { SqlParameter } from '@ts-linq/types';
 import { BinaryVisitor, type ColumnResolver } from '../visitors/BinaryVisitor';
 import { LogicalVisitor } from '../visitors/LogicalVisitor';
 import { UnaryVisitor } from '../visitors/UnaryVisitor';
@@ -7,6 +6,7 @@ import { InVisitor } from '../visitors/InVisitor';
 import { MethodVisitor } from '../visitors/MethodVisitor';
 import { AstSqlGenerationError } from '../errors';
 import type { ExpressionNode } from './Nodes';
+import type { ConditionFragment } from '../types';
 
 /**
  * Converts a compiled ExpressionNode tree into a SQL WHERE fragment with parameters.
@@ -27,7 +27,7 @@ export class SqlVisitor {
     node: ExpressionNode,
     inputParameters: readonly unknown[] = [],
     resolver?: ColumnResolver
-  ): { condition: string; parameters: SqlParameter[] } {
+  ): ConditionFragment {
     const recurse = (n: ExpressionNode) => this.toSql(n, inputParameters, resolver);
 
     switch (node.type) {

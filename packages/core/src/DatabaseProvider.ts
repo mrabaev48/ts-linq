@@ -341,14 +341,12 @@ export abstract class DatabaseProvider {
     };
     try {
       // Prefer dedicated hook if logger implements it; otherwise fallback to middleware afterExecute users
-      (this.logger as unknown as { analysis?: (i: QueryAnalysisInfo) => void })?.analysis?.(
-        payload
-      );
+      this.logger?.analysis?.(payload);
       // Also notify middlewares if they expose analysis
       if (this.middlewares && this.middlewares.length > 0) {
         for (const mw of this.middlewares) {
           try {
-            (mw as unknown as { analysis?: (i: QueryAnalysisInfo) => void }).analysis?.(payload);
+            mw.analysis?.(payload);
           } catch (e) {
             logInternalError('DatabaseProvider.maybeAnalyzeQuery.middleware', e);
           }
@@ -392,6 +390,11 @@ export abstract class DatabaseProvider {
   /** Soft delete configuration if enabled. */
   public get softDeleteOptions(): SoftDeleteOptions | undefined {
     return this.softDelete;
+  }
+
+  /** Configure soft-delete settings at runtime. */
+  public configureSoftDelete(options?: SoftDeleteOptions): void {
+    this.softDelete = options;
   }
 
   /** Expose provider label for metrics/loggers. */

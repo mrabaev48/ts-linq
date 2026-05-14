@@ -26,25 +26,7 @@ export {
 } from './handlers/TableHandlers';
 
 export function handleIndexCreates(td: TableDiff, dialect: Dialect, up: string[]): void {
-  const ic = (
-    td as unknown as {
-      indexCreates?: Array<{
-        name: string;
-        columns: string[];
-        unique?: boolean;
-        where?: string;
-        orders?: { [column: string]: 'ASC' | 'DESC' };
-        collations?: { [column: string]: string };
-        nulls?: { [column: string]: 'FIRST' | 'LAST' };
-        expressions?: string[];
-        using?: 'btree' | 'hash' | 'gin' | 'gist';
-        concurrently?: boolean;
-        withParams?: Record<string, string | number | boolean>;
-        mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
-        include?: string[];
-      }>;
-    }
-  ).indexCreates;
+  const ic = td.indexCreates;
   if (!ic || ic.length === 0) return;
   for (const idx of ic) {
     const hasCols = Array.isArray(idx.columns) && idx.columns.length > 0;
@@ -80,18 +62,7 @@ export function buildIndexColumnsList(
 export { handleIndexDrops } from './handlers/IndexHandlers';
 
 export function handleFkCreates(td: TableDiff, dialect: Dialect, up: string[]): void {
-  const fkc = (
-    td as unknown as {
-      fkCreates?: Array<{
-        name?: string;
-        columns: string[];
-        refTable: string;
-        refColumns: string[];
-        onDelete?: string;
-        onUpdate?: string;
-      }>;
-    }
-  ).fkCreates;
+  const fkc = td.fkCreates;
   if (!fkc || fkc.length === 0) return;
   for (const fk of fkc) {
     const okCols = Array.isArray(fk.columns) && fk.columns.length > 0;
