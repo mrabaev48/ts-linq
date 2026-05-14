@@ -100,7 +100,7 @@ export class MssqlProvider extends DatabaseProvider {
     if (this.isConnected) return;
 
     if (this.config.pool) {
-      this.pool = this.config.pool;
+      this.pool = this.config.pool as MssqlConnectionPoolLike;
       this.ownsPool = false;
     } else {
       const mssql = safeRequireMssql();

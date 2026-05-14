@@ -211,7 +211,7 @@ export class TestProvider extends DatabaseProvider {
     if (!rec) return null;
     const instance = new entityClass();
     for (const col of meta.columns) {
-      instance[col.propertyName] = rec[col.columnName];
+      (instance as Record<string, unknown>)[col.propertyName] = rec[col.columnName];
     }
     return instance;
   }
@@ -235,7 +235,7 @@ export class TestProvider extends DatabaseProvider {
           const instance = new entityClass();
           if (meta) {
               for (const col of meta.columns) {
-                  instance[col.propertyName] = rec[col.columnName];
+                  (instance as Record<string, unknown>)[col.propertyName] = rec[col.columnName];
               }
           } else {
               Object.assign(instance, rec);
@@ -266,7 +266,7 @@ export class TestProvider extends DatabaseProvider {
     return table.map((rec) => {
       const instance = new entityClass();
       for (const col of meta.columns) {
-        instance[col.propertyName] = rec[col.columnName];
+        (instance as Record<string, unknown>)[col.propertyName] = rec[col.columnName];
       }
       return instance;
     });
@@ -312,8 +312,8 @@ export class TestProvider extends DatabaseProvider {
         const orderCol = orderMatch[1];
         const dir = orderMatch[2] || 'ASC';
         table = [...table].sort((a, b) => {
-          const aVal = a[orderCol];
-          const bVal = b[orderCol];
+          const aVal = a[orderCol] as number | string;
+          const bVal = b[orderCol] as number | string;
           if (aVal < bVal) return dir === 'ASC' ? -1 : 1;
           if (aVal > bVal) return dir === 'ASC' ? 1 : -1;
           return 0;
@@ -344,16 +344,16 @@ export class TestProvider extends DatabaseProvider {
                         // Try parsing numbers
                         if (!isNaN(Number(val))) val = Number(val);
 
-                        const rowVal = rec[col];
-                        
+                        const rowVal = rec[col] as number | string | null;
+
                         switch (op) {
                             case '=': return rowVal == val;
-                            case '!=': 
+                            case '!=':
                             case '<>': return rowVal != val;
-                            case '>': return rowVal > val;
-                            case '>=': return rowVal >= val;
-                            case '<': return rowVal < val;
-                            case '<=': return rowVal <= val;
+                            case '>': return (rowVal as number) > (val as number);
+                            case '>=': return (rowVal as number) >= (val as number);
+                            case '<': return (rowVal as number) < (val as number);
+                            case '<=': return (rowVal as number) <= (val as number);
                         }
                     }
                     return true;
@@ -368,17 +368,16 @@ export class TestProvider extends DatabaseProvider {
                      return paramMatches.every(m => {
                          const col = m[1];
                          const op = m[2];
-                         const val = params[matchIndex++];
-                         
-                         const rowVal = rec[col];
+                         const val = params[matchIndex++] as number | string | null;
+                         const rowVal = rec[col] as number | string | null;
                          switch (op) {
                             case '=': return rowVal == val;
-                            case '!=': 
+                            case '!=':
                             case '<>': return rowVal != val;
-                            case '>': return rowVal > val;
-                            case '>=': return rowVal >= val;
-                            case '<': return rowVal < val;
-                            case '<=': return rowVal <= val;
+                            case '>': return val != null && (rowVal as number) > (val as number);
+                            case '>=': return val != null && (rowVal as number) >= (val as number);
+                            case '<': return val != null && (rowVal as number) < (val as number);
+                            case '<=': return val != null && (rowVal as number) <= (val as number);
                             default: return true;
                         }
                      });
