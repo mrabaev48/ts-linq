@@ -3,7 +3,7 @@ import type { Dialect } from '../../Dialect';
 import { q } from '../SqlUtils';
 
 export function handleIndexDrops(td: TableDiff, dialect: Dialect, up: string[]): void {
-  const id = (td as unknown as { indexDrops?: string[] }).indexDrops;
+  const id = td.indexDrops;
   if (!id || id.length === 0) return;
   for (const nameRaw of id) {
     switch (dialect) {

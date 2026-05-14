@@ -1,4 +1,4 @@
-import type { SchemaDiff, TableDiff } from './DiffTypes';
+import type { SchemaDiff, TableDiff, MigrationSql } from './DiffTypes';
 import type { Dialect } from './DialectMigrationSql';
 import { generateMigrationFromDiff } from './DialectMigrationSql';
 
@@ -327,7 +327,7 @@ export class MigrationBuilder {
     }
   }
 
-  toSql(dialect: Dialect): { up: string[]; down: string[] } {
+  toSql(dialect: Dialect): MigrationSql {
     return generateMigrationFromDiff(this.toDiff(), dialect);
   }
 }

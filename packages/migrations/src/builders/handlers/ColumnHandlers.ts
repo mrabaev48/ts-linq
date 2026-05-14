@@ -3,8 +3,7 @@ import type { Dialect } from '../../Dialect';
 import { q, mapType, formatValue } from '../SqlUtils';
 
 export function handleColumnRenames(td: TableDiff, dialect: Dialect, up: string[]): void {
-  const rns = (td as unknown as { columnRenames?: Array<{ from: string; to: string }> })
-    .columnRenames;
+  const rns = td.columnRenames;
   if (!rns || rns.length === 0) return;
   for (const rn of rns) {
     if (!rn.from || !rn.to) continue;
@@ -29,22 +28,17 @@ export function handleColumnRenames(td: TableDiff, dialect: Dialect, up: string[
 }
 
 export function renderColumn(dialect: Dialect, c: ColumnDef): string {
-  if (
-    (c as { isComputed?: boolean }).isComputed &&
-    (c as { computedExpression?: string }).computedExpression
-  ) {
+  if (c.isComputed && c.computedExpression) {
     switch (dialect) {
       case 'postgresql':
-        return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${(c as { computedExpression: string }).computedExpression}) STORED`;
+        return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${c.computedExpression}) STORED`;
       case 'mysql': {
-        const kind =
-          (c as { computedStorage?: string }).computedStorage === 'STORED' ? 'STORED' : 'VIRTUAL';
-        return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${(c as { computedExpression: string }).computedExpression}) ${kind}`;
+        const kind = c.computedStorage === 'STORED' ? 'STORED' : 'VIRTUAL';
+        return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${c.computedExpression}) ${kind}`;
       }
       case 'mssql': {
-        const persisted =
-          (c as { computedStorage?: string }).computedStorage === 'PERSISTED' ? ' PERSISTED' : '';
-        return `${q(dialect, c.name)} AS (${(c as { computedExpression: string }).computedExpression})${persisted}`;
+        const persisted = c.computedStorage === 'PERSISTED' ? ' PERSISTED' : '';
+        return `${q(dialect, c.name)} AS (${c.computedExpression})${persisted}`;
       }
       default: {
         const _exhaustive: never = dialect;
@@ -52,9 +46,8 @@ export function renderColumn(dialect: Dialect, c: ColumnDef): string {
       }
     }
   }
-  const dialectMap =
-    (c as { defaultExpressionDialect?: Record<string, string> }).defaultExpressionDialect || {};
-  const defExpr = dialectMap[dialect] || (c as { defaultExpression?: string }).defaultExpression;
+  const dialectMap = (c as { defaultExpressionDialect?: Record<string, string> }).defaultExpressionDialect || {};
+  const defExpr = dialectMap[dialect] || c.defaultExpression;
   const defSql = defExpr
     ? ` DEFAULT ${defExpr}`
     : c.defaultValue !== undefined

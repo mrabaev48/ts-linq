@@ -2,6 +2,7 @@ import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadat
 import { ValidationError } from '@ts-linq/types';
 import { EntityMetadataBuilder } from './EntityMetadata';
 import { PendingMetadataCollector } from './PendingMetadataCollector';
+import { reflectGetOwnMetadata } from './reflectUtils';
 
 /**
  * Isolated, injectable metadata store for entity classes.
@@ -22,15 +23,9 @@ export class MetadataRegistry {
 
   private normalizeTarget<T extends Function>(target: T): T {
     if (!target || typeof target !== 'function') return target;
-    try {
-      const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
-        .getOwnMetadata;
-      const maybe = getOwn?.('orm:original', target);
-      const original = typeof maybe === 'function' ? (maybe as T) : undefined;
-      return original ?? target;
-    } catch {
-      return target;
-    }
+    const maybe = reflectGetOwnMetadata('orm:original', target);
+    const original = typeof maybe === 'function' ? (maybe as T) : undefined;
+    return original ?? target;
   }
 
   // ─── Builder helpers ──────────────────────────────────────────────────────
@@ -193,9 +188,7 @@ export class MetadataRegistry {
   public getEntity(target: Function): EntityMetadata | undefined {
     if (!target || typeof target !== 'function') return undefined;
     try {
-      const getOwn = (Reflect as unknown as { getOwnMetadata?: (k: string, t: Function) => unknown })
-        .getOwnMetadata;
-      const maybe = getOwn?.('orm:original', target);
+      const maybe = reflectGetOwnMetadata('orm:original', target);
       const original = typeof maybe === 'function' ? maybe : target;
       const key = this.normalizeTarget(original as Function);
       if (this.builders.has(key)) {

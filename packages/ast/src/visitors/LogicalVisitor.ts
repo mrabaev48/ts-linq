@@ -1,12 +1,12 @@
 import type { ExpressionNode, LogicalNode } from '../ast/Nodes';
-import type { SqlParameter } from '@ts-linq/types';
 import { AstSqlGenerationError } from '../errors';
+import type { ConditionFragment } from '../types';
 
 export class LogicalVisitor {
   public visit(
     node: LogicalNode,
-    recurse: (n: ExpressionNode) => { condition: string; parameters: SqlParameter[] }
-  ): { condition: string; parameters: SqlParameter[] } {
+    recurse: (n: ExpressionNode) => ConditionFragment
+  ): ConditionFragment {
     const left = recurse(node.left);
     const right = recurse(node.right);
 
