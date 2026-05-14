@@ -149,6 +149,23 @@ export interface QueryAnalysisInfo {
   recommendations?: ReadonlyArray<string>;
 }
 
+// Cross-query chunk logging params
+export interface CrossQueryParams {
+  op: 'IN-chunk';
+  chunks: number;
+  size: number;
+  entity: string;
+  column: string;
+  provider?: string;
+}
+
+// Cache size reporting params
+export interface CacheSizeInfo {
+  cache: 'sqlGen' | 'count' | 'entityL2';
+  size: number;
+  provider?: string;
+}
+
 // SqlLogger extends Logger with additional methods for database event logging
 export interface SqlLogger extends Logger {
   cache?(info: CacheInfo): void;
@@ -162,6 +179,8 @@ export interface SqlLogger extends Logger {
   fallback?(info: FallbackInfo): void;
   hedgedWin?(info: HedgedWinInfo): void;
   analysis?(info: QueryAnalysisInfo): void;
+  crossQuery?(params: CrossQueryParams): void;
+  cacheSize?(params: CacheSizeInfo): void;
 }
 
 // SqlLoggerFactory for creating dialect-specific loggers
@@ -169,39 +188,56 @@ export interface SqlLoggerFactory {
   create(provider: 'mysql' | 'postgresql' | 'mssql' | string): SqlLogger | undefined;
 }
 
+// SQL dialect result types
+export interface SqlQueryResult {
+  query: string;
+  parameters: readonly SqlParameter[];
+}
+
+export interface SqlWithParams {
+  sql: string;
+  parameters: SqlParameter[];
+}
+
+export interface SqlWithReturning extends SqlWithParams {
+  returningPk?: string;
+}
+
 // SQL Dialect interface
 export interface SqlDialect {
   buildSelect<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): {
-    query: string;
-    parameters: readonly SqlParameter[];
-  };
+  ): SqlQueryResult;
   buildInsert?(
     entity: Record<string, unknown>,
     metadata: EntityMetadata
-  ): {
-    sql: string;
-    parameters: SqlParameter[];
-    returningPk?: string;
-  };
+  ): SqlWithReturning;
   buildUpdate?(
     entity: Record<string, unknown>,
     metadata: EntityMetadata,
     versionCol?: ColumnMetadata
-  ): {
-    sql: string;
-    parameters: SqlParameter[];
-  };
+  ): SqlWithParams;
   buildDelete?(
     entity: Record<string, unknown>,
     metadata: EntityMetadata
-  ): {
-    sql: string;
-    parameters: SqlParameter[];
-  };
+  ): SqlWithParams;
   quoteIdentifier(identifier: string): string;
+}
+
+// Middleware hook parameter types
+export interface BeforeExecuteInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  traceId?: string;
+}
+
+export interface AfterExecuteInfo {
+  sql: string;
+  params: readonly SqlParameter[];
+  durationMs: number;
+  traceId?: string;
+  rows?: number;
 }
 
 // Middleware context types
@@ -215,21 +251,12 @@ export interface EntityChangeContext {
 // Middleware types
 export interface OrmMiddleware {
   // SQL execution hooks
-  beforeExecute?(info: {
-    sql: string;
-    params: readonly SqlParameter[];
-    traceId?: string;
-  }): Promise<void> | void;
-  afterExecute?(info: {
-    sql: string;
-    params: readonly SqlParameter[];
-    durationMs: number;
-    traceId?: string;
-    rows?: number;
-  }): Promise<void> | void;
+  beforeExecute?(info: BeforeExecuteInfo): Promise<void> | void;
+  afterExecute?(info: AfterExecuteInfo): Promise<void> | void;
   entityMaterialized?<T extends object>(
     entity: T | { entity: T; metadata?: EntityMetadata }
   ): void;
+  analysis?(info: QueryAnalysisInfo): void;
 
   // Entity lifecycle hooks
   beforeSave?(context: EntityChangeContext): Promise<void> | void;
@@ -412,6 +439,16 @@ export interface FallbackPolicy {
   };
 }
 
+// Cache metrics
+export interface SqlCacheMetrics {
+  currentSize: number;
+  totalRequests?: number;
+  hits?: number;
+  misses?: number;
+  evictions?: number;
+  invalidations?: number;
+}
+
 // Count cache interface
 export interface CountCache {
   get(key: string): number | undefined;
@@ -419,6 +456,8 @@ export interface CountCache {
   clear(): void;
   /** Optional targeted invalidation. Should return number of removed entries. */
   invalidateBy?(matcher: (key: string) => boolean): number;
+  /** Optional metrics exposure for monitoring. */
+  getMetrics?(): Pick<SqlCacheMetrics, 'currentSize'>;
 }
 
 // SQL Cache interfaces
@@ -435,14 +474,7 @@ export interface SqlCache {
   /** Optional targeted invalidation. Should return number of removed entries. */
   invalidateBy?(matcher: (key: string) => boolean): number;
   /** Optional metrics exposure for monitoring. */
-  getMetrics?(): {
-    currentSize: number;
-    totalRequests?: number;
-    hits?: number;
-    misses?: number;
-    evictions?: number;
-    invalidations?: number;
-  };
+  getMetrics?(): SqlCacheMetrics;
 }
 
 // Performance options

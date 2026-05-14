@@ -229,11 +229,7 @@ export class QueryExecutor<T> {
         return { source: 'primary', rows: winner.rows };
       } else {
         try {
-          (
-            this.provider.loggerRef as unknown as {
-              hedgedWin?: (p: { provider?: string; operation: string; fallback: string }) => void;
-            }
-          )?.hedgedWin?.({
+          this.provider.loggerRef?.hedgedWin?.({
             provider: this.provider.providerLabel,
             operation: 'select',
             fallback: winner.label || 'unknown'

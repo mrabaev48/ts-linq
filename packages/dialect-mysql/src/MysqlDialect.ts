@@ -1,4 +1,4 @@
-import type { SqlDialect, QueryOptions, SqlParameter, EntityMetadata, ColumnMetadata } from '@ts-linq/types';
+import type { SqlDialect, QueryOptions, SqlParameter, EntityMetadata, ColumnMetadata, SqlQueryResult, SqlWithParams, SqlWithReturning } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
 import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
@@ -27,7 +27,7 @@ export class MysqlDialect implements SqlDialect {
   public buildSelect<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): { query: string; parameters: readonly SqlParameter[] } {
+  ): SqlQueryResult {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const parameters: SqlParameter[] = [];
@@ -72,7 +72,7 @@ export class MysqlDialect implements SqlDialect {
   public buildInsert(
     entity: Record<string, unknown>,
     metadata: EntityMetadata
-  ): { sql: string; parameters: SqlParameter[] } {
+  ): SqlWithReturning {
     const insertable = metadata.columns.filter(
       (c) => (!c.isGenerated || entity[c.propertyName] !== undefined) && !c.isComputed
     );
@@ -91,7 +91,7 @@ export class MysqlDialect implements SqlDialect {
     entity: Record<string, unknown>,
     metadata: EntityMetadata,
     versionCol?: ColumnMetadata
-  ): { sql: string; parameters: SqlParameter[] } {
+  ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for entity ${metadata.tableName}`);
     }
@@ -122,7 +122,7 @@ export class MysqlDialect implements SqlDialect {
   public buildDelete(
     entity: Record<string, unknown>,
     metadata: EntityMetadata
-  ): { sql: string; parameters: SqlParameter[] } {
+  ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for entity ${metadata.tableName}`);
     }

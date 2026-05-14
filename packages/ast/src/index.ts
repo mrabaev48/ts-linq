@@ -3,6 +3,7 @@ export * from './ast/Nodes';
 export * from './ast/SqlVisitor';
 export * from './errors';
 export * from './spec/Specification';
+export * from './types';
 export * from './visitors/BinaryVisitor';
 export * from './visitors/LogicalVisitor';
 export * from './visitors/UnaryVisitor';

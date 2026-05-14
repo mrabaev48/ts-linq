@@ -3,7 +3,7 @@ import type { Dialect } from '../../Dialect';
 import { q } from '../SqlUtils';
 
 export function handleFkDrops(td: TableDiff, dialect: Dialect, up: string[]): void {
-  const fkd = (td as unknown as { fkDrops?: string[] }).fkDrops;
+  const fkd = td.fkDrops;
   if (!fkd || fkd.length === 0) return;
   for (const nameRaw of fkd) up.push(buildDropFkSql(dialect, td.table, nameRaw));
 }

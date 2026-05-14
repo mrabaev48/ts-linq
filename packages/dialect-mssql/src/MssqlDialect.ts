@@ -1,4 +1,4 @@
-import type { SqlDialect, QueryOptions, SqlParameter, EntityMetadata, ColumnMetadata } from '@ts-linq/types';
+import type { SqlDialect, QueryOptions, SqlParameter, EntityMetadata, ColumnMetadata, SqlQueryResult, SqlWithParams, SqlWithReturning } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { MssqlWhereEmitter } from './emitters/MssqlWhereEmitter';
 import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
@@ -29,7 +29,7 @@ export class MssqlDialect implements SqlDialect {
   public buildSelect<T>(
     entityClass: new () => T,
     options: QueryOptions
-  ): { query: string; parameters: readonly SqlParameter[] } {
+  ): SqlQueryResult {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
@@ -87,7 +87,7 @@ export class MssqlDialect implements SqlDialect {
   public buildInsert(
     entity: Record<string, unknown>,
     metadata: EntityMetadata
-  ): { sql: string; parameters: SqlParameter[]; returningPk?: string } {
+  ): SqlWithReturning {
     const insertable = metadata.columns.filter(
       (col) => !col.isGenerated || entity[col.propertyName] !== undefined
     );
@@ -116,7 +116,7 @@ export class MssqlDialect implements SqlDialect {
     entity: Record<string, unknown>,
     metadata: EntityMetadata,
     versionCol?: ColumnMetadata
-  ): { sql: string; parameters: SqlParameter[] } {
+  ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for entity ${metadata.tableName}`);
     }
@@ -163,7 +163,7 @@ export class MssqlDialect implements SqlDialect {
   public buildDelete(
     entity: Record<string, unknown>,
     metadata: EntityMetadata
-  ): { sql: string; parameters: SqlParameter[] } {
+  ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for entity ${metadata.tableName}`);
     }
