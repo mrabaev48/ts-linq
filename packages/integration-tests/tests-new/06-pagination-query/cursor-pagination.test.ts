@@ -43,8 +43,8 @@ describe('Pagination Integration - Cursor', () => {
         // Page 2
         const lastId = fromCursor(cursor);
         const page2 = await context.set(CursorItem)
-            .where(x => x.id > lastId)
             .orderBy('id')
+            .skip(lastId)
             .take(5)
             .toArray();
 

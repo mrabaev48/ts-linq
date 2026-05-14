@@ -141,7 +141,7 @@ export class ResilienceManager {
     if (this.circuitState === 'open') {
       const now = Date.now();
       const openSince = this.circuitOpenedAt ?? now;
-      const baseOpen = Math.max(1000, this.circuitOptions?.openDurationMs ?? 30000);
+      const baseOpen = this.circuitOptions?.openDurationMs ?? 30000;
       const cap = Math.max(baseOpen, this.circuitOptions?.maxOpenDurationMs ?? 300000);
       const factor = Math.min(6, Math.max(0, this.circuitOpenBackoffExp));
       const openDuration = Math.min(baseOpen * Math.pow(2, factor), cap);

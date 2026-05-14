@@ -454,11 +454,7 @@ export abstract class DatabaseProvider {
     if (!this.middlewares || this.middlewares.length === 0) return;
     const info = { sql, params, traceId: this.currentTraceId };
     for (const mw of this.middlewares) {
-      try {
-        await mw.beforeExecute?.(info);
-      } catch (e) {
-        logInternalError('DatabaseProvider.beforeExecute.middleware', e);
-      }
+      await mw.beforeExecute?.(info);
     }
   }
   /** Called after each execute; override for logging/instrumentation. */
