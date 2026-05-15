@@ -21,6 +21,14 @@ describe('Type Exports', () => {
     expect(types.LoadingStrategy.Explicit).toBe('explicit');
   });
 
+  it('should export EntityState enum', () => {
+    expect(types.EntityState).toBeDefined();
+    expect(types.EntityState.Unchanged).toBe('unchanged');
+    expect(types.EntityState.Added).toBe('added');
+    expect(types.EntityState.Modified).toBe('modified');
+    expect(types.EntityState.Deleted).toBe('deleted');
+  });
+
   it('should not export any unexpected runtime values', () => {
     const exportedKeys = Object.keys(types);
     const expectedExports = [
@@ -31,7 +39,8 @@ describe('Type Exports', () => {
       'ValidationError',
       'ok',
       'err',
-      'LoadingStrategy'
+      'LoadingStrategy',
+      'EntityState'
     ];
 
     expect(exportedKeys.sort()).toEqual(expectedExports.sort());
