@@ -32,6 +32,7 @@ import type {
   AuditOptions
 } from '@ts-linq/types';
 import { EntityCache } from '@ts-linq/core';
+import { safeCacheSize } from '@ts-linq/metrics-safe';
 // import { logInternalError } from '@ts-linq/core'; // REMOVED
 
 function getOriginal<T extends Function>(target: T): T {
@@ -300,12 +301,6 @@ export abstract class DbContext {
       // Smart invalidation: clear L2 cache for entities that declare dependencies
       this.invalidateCachesOnCommit();
       if (this._entityCache) {
-        const { safeCacheSize } = require('@ts-linq/metrics-safe') as {
-          safeCacheSize: (
-            logger: unknown,
-            payload: { cache: 'entityL2'; size: number; provider?: string }
-          ) => void;
-        };
         safeCacheSize(this._provider.loggerRef, {
           cache: 'entityL2',
           size: this._entityCache.size?.() ?? -1,
@@ -326,12 +321,6 @@ export abstract class DbContext {
     if (this._entityCache) {
       try {
         this._entityCache.clear();
-        const { safeCacheSize } = require('@ts-linq/metrics-safe') as {
-          safeCacheSize: (
-            logger: unknown,
-            payload: { cache: 'entityL2'; size: number; provider?: string }
-          ) => void;
-        };
         safeCacheSize(this._provider.loggerRef, {
           cache: 'entityL2',
           size: this._entityCache.size?.() ?? 0,
