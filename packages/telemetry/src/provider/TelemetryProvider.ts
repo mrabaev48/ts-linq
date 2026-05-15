@@ -14,40 +14,23 @@ import type {
   CacheSizeInfo,
 } from '@ts-linq/types';
 
-interface OtelLike {
-  trace: {
-    getTracer(name: string): TracerLike;
-  };
-}
-
-interface TracerLike {
+export interface TracerLike {
   startSpan(name: string, options?: { attributes?: Record<string, unknown> }): SpanLike;
 }
 
-interface SpanLike {
+export interface SpanLike {
   setAttribute(key: string, value: string | number | boolean): void;
   recordException(error: { name: string; message: string }): void;
   setStatus(status: { code: number; message?: string }): void;
   end(): void;
 }
 
-// OTel status codes: 1 = OK, 2 = ERROR
+// OTel status codes per the OpenTelemetry specification
 const STATUS_OK = 1;
 const STATUS_ERROR = 2;
 
-function safeRequireOtel(): OtelLike | undefined {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const otel = require('@opentelemetry/api') as OtelLike;
-    if (otel?.trace && typeof otel.trace.getTracer === 'function') return otel;
-  } catch {
-    // OpenTelemetry is optional — gracefully degrade when not installed
-  }
-  return undefined;
-}
-
 export interface TelemetryProviderOptions {
-  serviceName?: string;
+  tracer?: TracerLike;
   maskSql?: boolean;
   maskPatterns?: ReadonlyArray<RegExp>;
 }
@@ -60,7 +43,7 @@ export class TelemetryProvider implements SqlLogger {
   private readonly maskPatterns: ReadonlyArray<RegExp>;
 
   constructor(options?: TelemetryProviderOptions) {
-    this.tracer = safeRequireOtel()?.trace.getTracer(options?.serviceName ?? 'ts-linq');
+    this.tracer = options?.tracer;
     this.maskSql = !!options?.maskSql;
     this.maskPatterns = options?.maskPatterns ?? [];
   }
