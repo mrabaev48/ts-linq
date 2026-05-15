@@ -1,6 +1,6 @@
-import type { ExpressionNode, LogicalNode } from '../ast/Nodes';
-import { AstSqlGenerationError } from '../errors';
-import type { ConditionFragment } from '../types';
+import type { ExpressionNode, LogicalNode } from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
+import type { ConditionFragment } from '@ts-linq/ast';
 
 export class LogicalVisitor {
   public visit(

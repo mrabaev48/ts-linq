@@ -9,6 +9,7 @@
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metrics-safe": "workspace:*",
     "@ts-linq/ast": "workspace:*",
+    "@ts-linq/sql-visitor": "workspace:*",
     "@ts-linq/core": "workspace:*",
     "@ts-linq/metadata": "workspace:*"
   },
