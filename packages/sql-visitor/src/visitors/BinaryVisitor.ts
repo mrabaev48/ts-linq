@@ -2,6 +2,7 @@ import type { SqlParameter } from '@ts-linq/types';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { BinaryNode, ExpressionNode, LiteralNode, ParameterRefNode, PropertyNode } from '@ts-linq/ast';
 import type { ConditionFragment, SqlFragment } from '@ts-linq/ast';
+import { ParameterState, ParameterStyle } from '../ParameterStyle';
 
 /**
  * Maps a PropertyNode to its SQL column name.
@@ -14,11 +15,12 @@ export class BinaryVisitor {
     node: BinaryNode,
     inputParameters: readonly unknown[],
     recurse: (n: ExpressionNode) => ConditionFragment,
-    resolver?: ColumnResolver
+    resolver?: ColumnResolver,
+    state: ParameterState = new ParameterState(ParameterStyle.Question)
   ): ConditionFragment {
     const sqlOp = this.mapOperator(node.operator);
-    const leftSql = this.renderOperand(node.left, inputParameters, recurse, resolver);
-    const rightSql = this.renderOperand(node.right, inputParameters, recurse, resolver);
+    const leftSql = this.renderOperand(node.left, inputParameters, recurse, resolver, state);
+    const rightSql = this.renderOperand(node.right, inputParameters, recurse, resolver, state);
     return {
       condition: `(${leftSql.fragment} ${sqlOp} ${rightSql.fragment})`,
       parameters: [...leftSql.params, ...rightSql.params],
@@ -42,16 +44,17 @@ export class BinaryVisitor {
     node: ExpressionNode,
     inputParameters: readonly unknown[],
     recurse: (n: ExpressionNode) => ConditionFragment,
-    resolver?: ColumnResolver
+    resolver: ColumnResolver | undefined,
+    state: ParameterState
   ): SqlFragment {
     if (node.type === 'property') {
       return { fragment: renderPropertyName(node, resolver), params: [] };
     }
     if (node.type === 'literal') {
-      return { fragment: '?', params: [node.value] };
+      return { fragment: state.next(), params: [node.value] };
     }
     if (node.type === 'parameterRef') {
-      return { fragment: '?', params: [resolveParameterRef(node, inputParameters) as SqlParameter] };
+      return { fragment: state.next(), params: [resolveParameterRef(node, inputParameters) as SqlParameter] };
     }
     const inner = recurse(node);
     return { fragment: inner.condition, params: inner.parameters };

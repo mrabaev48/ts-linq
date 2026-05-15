@@ -24,7 +24,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-003 | Critical | SOLID, Clean Code, Maintainability | Queryable god class (55 methods, 938 LOC) | [ISSUE-003-queryable-god-class.md](ISSUE-003-queryable-god-class.md) |
 | ISSUE-004 | Critical | SOLID, Clean Code, Maintainability | DbContext god class (48 methods, 1102 LOC) | [ISSUE-004-dbcontext-god-class.md](ISSUE-004-dbcontext-god-class.md) |
 | ISSUE-005 | ~~Critical~~ | ~~Clean Architecture, Maintainability~~ | ~~@ts-linq/sql-visitor is an unimplemented stub~~ ✅ **FIXED** | [ISSUE-005-sql-visitor-stub.md](ISSUE-005-sql-visitor-stub.md) |
-| ISSUE-006 | Critical | Clean Architecture, Dependency Boundary | AST visitors hardcode SQL syntax | [ISSUE-006-ast-visitors-hardcode-sql.md](ISSUE-006-ast-visitors-hardcode-sql.md) |
+| ISSUE-006 | ~~Critical~~ | ~~Clean Architecture, Dependency Boundary~~ | ~~AST visitors hardcode SQL syntax~~ ✅ **FIXED** | [ISSUE-006-ast-visitors-hardcode-sql.md](ISSUE-006-ast-visitors-hardcode-sql.md) |
 | ISSUE-007 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~Dynamic require() in DbContext is ESM-incompatible~~ ✅ **FIXED** | [ISSUE-007-dynamic-require-esm-incompatible.md](ISSUE-007-dynamic-require-esm-incompatible.md) |
 | ISSUE-008 | High | Dependency Boundary, Build/Tooling | CLI eagerly imports all three database providers | [ISSUE-008-cli-eager-loads-all-providers.md](ISSUE-008-cli-eager-loads-all-providers.md) |
 | ISSUE-009 | High | SOLID, Maintainability | Cache coherency logic scattered across DbContext | [ISSUE-009-cache-coherency-scattered.md](ISSUE-009-cache-coherency-scattered.md) |
@@ -59,8 +59,8 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 
 ## Top Architectural Risks
 
-### 1. ~~AST–SQL Coupling (ISSUE-005 + ISSUE-006)~~ ISSUE-005 ✅ FIXED
-~~The `@ts-linq/ast` package — which should be the dialect-agnostic expression layer — currently contains all SQL generation logic. The `@ts-linq/sql-visitor` package meant to own this logic is a stub.~~ `@ts-linq/sql-visitor` is now fully implemented: all visitor classes (`BinaryVisitor`, `LogicalVisitor`, `UnaryVisitor`, `NullVisitor`, `InVisitor`, `MethodVisitor`) and `SqlVisitor` have been moved from `@ts-linq/ast` into `@ts-linq/sql-visitor`. The ast package retains only pure node type definitions. ISSUE-006 (dialect-specific positional params `$1`/`@p1`) remains open.
+### 1. ~~AST–SQL Coupling (ISSUE-005 + ISSUE-006)~~ ✅ BOTH FIXED
+~~The `@ts-linq/ast` package — which should be the dialect-agnostic expression layer — currently contains all SQL generation logic. The `@ts-linq/sql-visitor` package meant to own this logic is a stub.~~ Both issues are now resolved: all visitor classes (`BinaryVisitor`, `LogicalVisitor`, `UnaryVisitor`, `NullVisitor`, `InVisitor`, `MethodVisitor`) and `SqlVisitor` live in `@ts-linq/sql-visitor`; the AST package retains only pure node type definitions. A `ParameterStyle` enum (`Question`/`Positional`/`Named`) and `ParameterState` class were introduced in `@ts-linq/sql-visitor`, making `SqlVisitor` fully dialect-aware: `new SqlVisitor(ParameterStyle.Positional)` produces `$1, $2` placeholders natively.
 
 ### 2. God Classes in Query and ORM Layers (ISSUE-003 + ISSUE-004 + ISSUE-017)
 `Queryable` (938 LOC, 55 methods), `DbContext` (1102 LOC, 48 methods), and `DbSet` (604 LOC, 35 methods) concentrate enormous scope in three classes. This makes unit testing impossible without full provider setup, violates SRP at every level, and creates a maintenance bottleneck where any new ORM feature requires modifying an already-large class.
@@ -86,7 +86,7 @@ Having domain types (`EntityState`, `DbContextOptions`, `QueryStartInfo`, etc.) 
 4. ~~**ISSUE-012** — Align Jest `moduleNameMapper` to `dist/` paths (test/build consistency)~~ ✅ Done
 
 ### Phase 2 — Fix Architectural Layer Violations (Weeks 3–5)
-5. ~~**ISSUE-005**~~ ✅ Done — **ISSUE-006** — Move remaining dialect-specific SQL syntax to `@ts-linq/sql-visitor` extensions
+5. ~~**ISSUE-005**~~ ✅ Done — ~~**ISSUE-006**~~ ✅ Done — `ParameterStyle` enum introduced; `SqlVisitor` accepts dialect-specific placeholder style
 6. **ISSUE-002** — Consolidate type ownership into `@ts-linq/types`
 7. **ISSUE-016** — Add CI check for phantom dependencies; fix `@ts-linq/orm` missing dep declaration
 8. **ISSUE-008** — Lazy-load providers in CLI
