@@ -4,12 +4,12 @@
   "private": true,
   "description": "Contract and integration test utilities",
   "main": "./dist/index.js",
-  "module": "./dist/index.esm.js",
+  "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
+      "import": "./dist/esm/index.js",
       "require": "./dist/index.js"
     }
   },

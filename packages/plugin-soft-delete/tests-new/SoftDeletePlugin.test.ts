@@ -73,7 +73,9 @@ describe('plugin-soft-delete: SoftDeleteMiddleware', () => {
     const handled = await mw.handleSoftDelete({
       entity: e,
       entityClass: class Post {},
-      operation: 'delete'
+      operation: 'delete',
+
+      state: 'deleted',
     });
     expect(handled).toBe(true);
     expect(e.isDeleted).toBe(true);
@@ -86,7 +88,9 @@ describe('plugin-soft-delete: SoftDeleteMiddleware', () => {
     const handled = await mw.handleSoftDelete({
       entity: e,
       entityClass: class Post {},
-      operation: 'restore'
+      operation: 'restore',
+
+      state: 'modified',
     });
     expect(handled).toBe(true);
     expect(e.isDeleted).toBe(false);
@@ -99,7 +103,9 @@ describe('plugin-soft-delete: SoftDeleteMiddleware', () => {
     const r1 = await mwDisabled.handleSoftDelete({
       entity: e,
       entityClass: class A {},
-      operation: 'delete'
+      operation: 'delete',
+
+      state: 'deleted',
     });
     expect(r1).toBe(false);
     MetadataStorage.__setColumns([]); // no meta
@@ -107,7 +113,9 @@ describe('plugin-soft-delete: SoftDeleteMiddleware', () => {
     const r2 = await mw.handleSoftDelete({
       entity: e,
       entityClass: class B {},
-      operation: 'delete'
+      operation: 'delete',
+
+      state: 'deleted',
     });
     expect(r2).toBe(false);
   });

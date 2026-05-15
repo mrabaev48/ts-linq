@@ -1,4 +1,4 @@
-import type { OrmMiddleware } from '@ts-linq/types';
+import type { EntityChangeContext, OrmMiddleware } from '@ts-linq/types';
 
 /**
  * Soft delete configuration options
@@ -33,9 +33,7 @@ export interface SoftDeleteOptions {
 /**
  * Context passed to soft delete middleware
  */
-export interface SoftDeleteContext {
-  entity: Record<string, unknown>;
-  entityClass: Function;
+export interface SoftDeleteContext extends EntityChangeContext {
   operation: 'delete' | 'restore' | 'hardDelete';
 }
 

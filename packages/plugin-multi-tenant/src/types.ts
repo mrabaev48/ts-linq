@@ -1,4 +1,4 @@
-import type { OrmMiddleware } from '@ts-linq/types';
+import type { EntityChangeContext, OrmMiddleware } from '@ts-linq/types';
 
 /**
  * Multi-tenant configuration options
@@ -33,9 +33,7 @@ export interface MultiTenantOptions {
 /**
  * Context passed to multi-tenant middleware
  */
-export interface TenantContext {
-  entity: Record<string, unknown>;
-  entityClass: Function;
+export interface TenantContext extends EntityChangeContext {
   operation: 'query' | 'insert' | 'update' | 'delete';
   tenantId?: string | number;
 }
