@@ -7747,45 +7747,9 @@
           "followable": true,
           "couldNotResolve": false,
           "matchesDoNotFollow": false,
-          "circular": true,
-          "cycle": [
-            {
-              "name": "packages/core/src/Health/HealthMonitor.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/Resilience/ResilienceManager.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/types/index.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/DatabaseProvider.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            }
-          ],
+          "circular": false,
           "valid": false,
           "rules": [
-            {
-              "severity": "error",
-              "name": "no-circular"
-            },
             {
               "severity": "warn",
               "name": "no-private-package-internals"
@@ -7810,37 +7774,9 @@
           "followable": true,
           "couldNotResolve": false,
           "matchesDoNotFollow": false,
-          "circular": true,
-          "cycle": [
-            {
-              "name": "packages/core/src/Resilience/ResilienceManager.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/types/index.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/DatabaseProvider.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            }
-          ],
+          "circular": false,
           "valid": false,
           "rules": [
-            {
-              "severity": "error",
-              "name": "no-circular"
-            },
             {
               "severity": "warn",
               "name": "no-private-package-internals"
@@ -7866,31 +7802,9 @@
           "followable": true,
           "couldNotResolve": false,
           "matchesDoNotFollow": false,
-          "circular": true,
-          "cycle": [
-            {
-              "name": "packages/core/src/types/index.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/DatabaseProvider.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            }
-          ],
+          "circular": false,
           "valid": false,
           "rules": [
-            {
-              "severity": "error",
-              "name": "no-circular"
-            },
             {
               "severity": "warn",
               "name": "no-private-package-internals"
@@ -7930,7 +7844,6 @@
         }
       ],
       "dependents": [
-        "packages/core/src/types/index.ts",
         "packages/core/src/batch/BatchExecutor.ts",
         "packages/core/src/batch/BatchOperations.ts",
         "packages/core/src/index.ts",
@@ -7963,45 +7876,9 @@
           "followable": true,
           "couldNotResolve": false,
           "matchesDoNotFollow": false,
-          "circular": true,
-          "cycle": [
-            {
-              "name": "packages/core/src/Resilience/ResilienceManager.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/types/index.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/DatabaseProvider.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/Health/HealthMonitor.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            }
-          ],
+          "circular": false,
           "valid": false,
           "rules": [
-            {
-              "severity": "error",
-              "name": "no-circular"
-            },
             {
               "severity": "warn",
               "name": "no-private-package-internals"
@@ -8036,37 +7913,9 @@
           "followable": true,
           "couldNotResolve": false,
           "matchesDoNotFollow": false,
-          "circular": true,
-          "cycle": [
-            {
-              "name": "packages/core/src/types/index.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/DatabaseProvider.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/Resilience/ResilienceManager.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            }
-          ],
+          "circular": false,
           "valid": false,
           "rules": [
-            {
-              "severity": "error",
-              "name": "no-circular"
-            },
             {
               "severity": "warn",
               "name": "no-private-package-internals"
@@ -8092,37 +7941,9 @@
           "followable": true,
           "couldNotResolve": false,
           "matchesDoNotFollow": false,
-          "circular": true,
-          "cycle": [
-            {
-              "name": "packages/core/src/types/index.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/DatabaseProvider.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/Resilience/ResilienceManager.ts",
-              "dependencyTypes": [
-                "local",
-                "import"
-              ]
-            }
-          ],
+          "circular": false,
           "valid": false,
           "rules": [
-            {
-              "severity": "error",
-              "name": "no-circular"
-            },
             {
               "severity": "warn",
               "name": "no-private-package-internals"
@@ -8143,58 +7964,7 @@
     },
     {
       "source": "packages/core/src/types/index.ts",
-      "dependencies": [
-        {
-          "dynamic": false,
-          "module": "../DatabaseProvider",
-          "moduleSystem": "es6",
-          "exoticallyRequired": false,
-          "dependencyTypes": [
-            "local",
-            "type-only",
-            "import"
-          ],
-          "resolved": "packages/core/src/DatabaseProvider.ts",
-          "coreModule": false,
-          "followable": true,
-          "couldNotResolve": false,
-          "matchesDoNotFollow": false,
-          "circular": true,
-          "cycle": [
-            {
-              "name": "packages/core/src/DatabaseProvider.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            },
-            {
-              "name": "packages/core/src/types/index.ts",
-              "dependencyTypes": [
-                "local",
-                "type-only",
-                "import"
-              ]
-            }
-          ],
-          "valid": false,
-          "rules": [
-            {
-              "severity": "error",
-              "name": "no-circular"
-            },
-            {
-              "severity": "warn",
-              "name": "no-private-package-internals"
-            },
-            {
-              "severity": "info",
-              "name": "no-any-in-internal-api-files"
-            }
-          ]
-        }
-      ],
+      "dependencies": [],
       "dependents": [
         "packages/core/src/DatabaseProvider.ts",
         "packages/core/src/Resilience/ResilienceManager.ts",
@@ -16018,49 +15788,11 @@
               "name": "no-any-in-internal-api-files"
             }
           ]
-        },
-        {
-          "dynamic": false,
-          "module": "@ts-linq/metrics-safe",
-          "moduleSystem": "cjs",
-          "exoticallyRequired": false,
-          "dependencyTypes": [
-            "unknown"
-          ],
-          "resolved": "@ts-linq/metrics-safe",
-          "coreModule": false,
-          "followable": false,
-          "couldNotResolve": true,
-          "matchesDoNotFollow": false,
-          "circular": false,
-          "valid": false,
-          "rules": [
-            {
-              "severity": "info",
-              "name": "no-any-in-internal-api-files"
-            }
-          ]
         }
       ],
       "dependents": [
         "packages/orm/src/index.ts",
         "packages/orm/tests/integration/DbContext.CRUD.test.ts"
-      ],
-      "orphan": false,
-      "valid": true
-    },
-    {
-      "source": "@ts-linq/metrics-safe",
-      "followable": false,
-      "coreModule": false,
-      "couldNotResolve": true,
-      "matchesDoNotFollow": false,
-      "dependencyTypes": [
-        "unknown"
-      ],
-      "dependencies": [],
-      "dependents": [
-        "packages/orm/src/DbContext.ts"
       ],
       "orphan": false,
       "valid": true
@@ -20087,6 +19819,50 @@
       "valid": true
     },
     {
+      "source": "packages/telemetry/src/index.ts",
+      "dependencies": [
+        {
+          "dynamic": false,
+          "module": "./provider/TelemetryProvider",
+          "moduleSystem": "es6",
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "export"
+          ],
+          "resolved": "packages/telemetry/src/provider/TelemetryProvider.ts",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "warn",
+              "name": "no-private-package-internals"
+            },
+            {
+              "severity": "info",
+              "name": "no-any-in-internal-api-files"
+            }
+          ]
+        }
+      ],
+      "dependents": [],
+      "orphan": false,
+      "valid": true
+    },
+    {
+      "source": "packages/telemetry/src/provider/TelemetryProvider.ts",
+      "dependencies": [],
+      "dependents": [
+        "packages/telemetry/src/index.ts"
+      ],
+      "orphan": false,
+      "valid": true
+    },
+    {
       "source": "packages/testkits/src/TestProvider.ts",
       "dependencies": [],
       "dependents": [
@@ -20750,123 +20526,6 @@
   ],
   "summary": {
     "violations": [
-      {
-        "type": "cycle",
-        "from": "packages/core/src/DatabaseProvider.ts",
-        "to": "packages/core/src/Health/HealthMonitor.ts",
-        "unresolvedTo": "./Health/HealthMonitor",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ],
-        "rule": {
-          "severity": "error",
-          "name": "no-circular"
-        },
-        "cycle": [
-          {
-            "name": "packages/core/src/Health/HealthMonitor.ts",
-            "dependencyTypes": [
-              "local",
-              "import"
-            ]
-          },
-          {
-            "name": "packages/core/src/Resilience/ResilienceManager.ts",
-            "dependencyTypes": [
-              "local",
-              "type-only",
-              "import"
-            ]
-          },
-          {
-            "name": "packages/core/src/types/index.ts",
-            "dependencyTypes": [
-              "local",
-              "import"
-            ]
-          },
-          {
-            "name": "packages/core/src/DatabaseProvider.ts",
-            "dependencyTypes": [
-              "local",
-              "type-only",
-              "import"
-            ]
-          }
-        ]
-      },
-      {
-        "type": "cycle",
-        "from": "packages/core/src/DatabaseProvider.ts",
-        "to": "packages/core/src/Resilience/ResilienceManager.ts",
-        "unresolvedTo": "./Resilience/ResilienceManager",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ],
-        "rule": {
-          "severity": "error",
-          "name": "no-circular"
-        },
-        "cycle": [
-          {
-            "name": "packages/core/src/Resilience/ResilienceManager.ts",
-            "dependencyTypes": [
-              "local",
-              "import"
-            ]
-          },
-          {
-            "name": "packages/core/src/types/index.ts",
-            "dependencyTypes": [
-              "local",
-              "import"
-            ]
-          },
-          {
-            "name": "packages/core/src/DatabaseProvider.ts",
-            "dependencyTypes": [
-              "local",
-              "type-only",
-              "import"
-            ]
-          }
-        ]
-      },
-      {
-        "type": "cycle",
-        "from": "packages/core/src/DatabaseProvider.ts",
-        "to": "packages/core/src/types/index.ts",
-        "unresolvedTo": "./types",
-        "dependencyTypes": [
-          "local",
-          "type-only",
-          "import"
-        ],
-        "rule": {
-          "severity": "error",
-          "name": "no-circular"
-        },
-        "cycle": [
-          {
-            "name": "packages/core/src/types/index.ts",
-            "dependencyTypes": [
-              "local",
-              "type-only",
-              "import"
-            ]
-          },
-          {
-            "name": "packages/core/src/DatabaseProvider.ts",
-            "dependencyTypes": [
-              "local",
-              "type-only",
-              "import"
-            ]
-          }
-        ]
-      },
       {
         "type": "cycle",
         "from": "packages/migrations/src/comparators/ColumnComparator.ts",
@@ -23946,21 +23605,6 @@
       },
       {
         "type": "dependency",
-        "from": "packages/core/src/types/index.ts",
-        "to": "packages/core/src/DatabaseProvider.ts",
-        "unresolvedTo": "../DatabaseProvider",
-        "dependencyTypes": [
-          "local",
-          "type-only",
-          "import"
-        ],
-        "rule": {
-          "severity": "warn",
-          "name": "no-private-package-internals"
-        }
-      },
-      {
-        "type": "dependency",
         "from": "packages/core/src/utils/EntityCache.ts",
         "to": "packages/core/src/utils/InternalLogger.ts",
         "unresolvedTo": "./InternalLogger",
@@ -26370,6 +26014,20 @@
           "local",
           "type-only",
           "import"
+        ],
+        "rule": {
+          "severity": "warn",
+          "name": "no-private-package-internals"
+        }
+      },
+      {
+        "type": "dependency",
+        "from": "packages/telemetry/src/index.ts",
+        "to": "packages/telemetry/src/provider/TelemetryProvider.ts",
+        "unresolvedTo": "./provider/TelemetryProvider",
+        "dependencyTypes": [
+          "local",
+          "export"
         ],
         "rule": {
           "severity": "warn",
@@ -29625,21 +29283,6 @@
       },
       {
         "type": "dependency",
-        "from": "packages/core/src/types/index.ts",
-        "to": "packages/core/src/DatabaseProvider.ts",
-        "unresolvedTo": "../DatabaseProvider",
-        "dependencyTypes": [
-          "local",
-          "type-only",
-          "import"
-        ],
-        "rule": {
-          "severity": "info",
-          "name": "no-any-in-internal-api-files"
-        }
-      },
-      {
-        "type": "dependency",
         "from": "packages/core/src/utils/EntityCache.ts",
         "to": "packages/core/src/utils/InternalLogger.ts",
         "unresolvedTo": "./InternalLogger",
@@ -31069,19 +30712,6 @@
       {
         "type": "dependency",
         "from": "packages/orm/src/DbContext.ts",
-        "to": "@ts-linq/metrics-safe",
-        "unresolvedTo": "@ts-linq/metrics-safe",
-        "dependencyTypes": [
-          "unknown"
-        ],
-        "rule": {
-          "severity": "info",
-          "name": "no-any-in-internal-api-files"
-        }
-      },
-      {
-        "type": "dependency",
-        "from": "packages/orm/src/DbContext.ts",
         "to": "packages/orm/src/ChangeTracker.ts",
         "unresolvedTo": "./ChangeTracker",
         "dependencyTypes": [
@@ -32218,6 +31848,20 @@
       },
       {
         "type": "dependency",
+        "from": "packages/telemetry/src/index.ts",
+        "to": "packages/telemetry/src/provider/TelemetryProvider.ts",
+        "unresolvedTo": "./provider/TelemetryProvider",
+        "dependencyTypes": [
+          "local",
+          "export"
+        ],
+        "rule": {
+          "severity": "info",
+          "name": "no-any-in-internal-api-files"
+        }
+      },
+      {
+        "type": "dependency",
         "from": "packages/testkits/src/index.ts",
         "to": "packages/testkits/src/fixtures/TestEntities.ts",
         "unresolvedTo": "./fixtures/TestEntities",
@@ -32343,12 +31987,12 @@
         }
       }
     ],
-    "error": 5,
+    "error": 2,
     "warn": 395,
-    "info": 411,
+    "info": 410,
     "ignore": 0,
-    "totalCruised": 470,
-    "totalDependenciesCruised": 682,
+    "totalCruised": 471,
+    "totalDependenciesCruised": 681,
     "optionsUsed": {
       "baseDir": "/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq",
       "combinedDependencies": false,

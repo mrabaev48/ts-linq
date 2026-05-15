@@ -61,7 +61,9 @@ describe('SoftDeleteMiddleware', () => {
       const context: SoftDeleteContext = {
         entity: { id: 1, name: 'Test' },
         entityClass: Product,
-        operation: 'delete'
+        operation: 'delete',
+
+        state: 'deleted',
       };
 
       const result = await mw.handleSoftDelete(context);
@@ -75,7 +77,9 @@ describe('SoftDeleteMiddleware', () => {
       const context: SoftDeleteContext = {
         entity,
         entityClass: Product,
-        operation: 'delete'
+        operation: 'delete',
+
+        state: 'deleted',
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -89,7 +93,9 @@ describe('SoftDeleteMiddleware', () => {
       const context: SoftDeleteContext = {
         entity,
         entityClass: Product,
-        operation: 'delete'
+        operation: 'delete',
+
+        state: 'deleted',
       };
 
       const beforeDelete = new Date();
@@ -105,7 +111,9 @@ describe('SoftDeleteMiddleware', () => {
       const context: SoftDeleteContext = {
         entity,
         entityClass: Product,
-        operation: 'delete'
+        operation: 'delete',
+
+        state: 'deleted',
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -120,7 +128,9 @@ describe('SoftDeleteMiddleware', () => {
       const context: SoftDeleteContext = {
         entity,
         entityClass: User,
-        operation: 'delete'
+        operation: 'delete',
+
+        state: 'deleted',
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -134,7 +144,9 @@ describe('SoftDeleteMiddleware', () => {
       const context: SoftDeleteContext = {
         entity,
         entityClass: Product,
-        operation: 'restore'
+        operation: 'restore',
+
+        state: 'modified',
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -148,7 +160,9 @@ describe('SoftDeleteMiddleware', () => {
       const context: SoftDeleteContext = {
         entity,
         entityClass: Product,
-        operation: 'restore'
+        operation: 'restore',
+
+        state: 'modified',
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -167,7 +181,9 @@ describe('SoftDeleteMiddleware', () => {
       const context: SoftDeleteContext = {
         entity,
         entityClass: Product,
-        operation: 'restore'
+        operation: 'restore',
+
+        state: 'modified',
       };
 
       const result = await middleware.handleSoftDelete(context);

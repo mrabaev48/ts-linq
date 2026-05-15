@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-    "build": "echo 'Build temporarily disabled - TypeScript monorepo config issue'",
+    "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist *.tsbuildinfo",
     "test": "jest",
     "test:watch": "jest --watch",
