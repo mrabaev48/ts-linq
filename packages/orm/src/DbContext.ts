@@ -86,7 +86,7 @@ export abstract class DbContext {
    */
   constructor(options: DbContextOptions) {
     // Initialize database provider from options
-    this._provider = options.provider;
+    this._provider = options.provider as DatabaseProvider;
     this._softDelete = options.softDelete;
     // Propagate soft-delete settings into provider for GlobalFilterApplier and ProviderStub
     try {
