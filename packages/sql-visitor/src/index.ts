@@ -1,4 +1,5 @@
 export { SqlVisitor } from './SqlVisitor';
+export { ParameterStyle, ParameterState } from './ParameterStyle';
 export { BinaryVisitor, renderPropertyName, resolveParameterRef } from './visitors/BinaryVisitor';
 export { LogicalVisitor } from './visitors/LogicalVisitor';
 export { UnaryVisitor } from './visitors/UnaryVisitor';

@@ -3,12 +3,14 @@ import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { InNode } from '@ts-linq/ast';
 import { renderPropertyName, resolveParameterRef, type ColumnResolver } from './BinaryVisitor';
 import type { ConditionFragment } from '@ts-linq/ast';
+import { ParameterState, ParameterStyle } from '../ParameterStyle';
 
 export class InVisitor {
   public visit(
     node: InNode,
     inputParameters: readonly unknown[],
-    resolver?: ColumnResolver
+    resolver?: ColumnResolver,
+    state: ParameterState = new ParameterState(ParameterStyle.Question)
   ): ConditionFragment {
     const col = renderPropertyName(node.property, resolver);
 
@@ -16,7 +18,7 @@ export class InVisitor {
       if (node.values.length === 0) {
         return { condition: '(1 = 0)', parameters: [] };
       }
-      const placeholders = node.values.map(() => '?').join(', ');
+      const placeholders = node.values.map(() => state.next()).join(', ');
       const params = node.values.map((v) => v.value);
       return { condition: `(${col} IN (${placeholders}))`, parameters: params };
     }
@@ -33,7 +35,7 @@ export class InVisitor {
       if (arr.length === 0) {
         return { condition: '(1 = 0)', parameters: [] };
       }
-      const placeholders = (arr as unknown[]).map(() => '?').join(', ');
+      const placeholders = (arr as unknown[]).map(() => state.next()).join(', ');
       return { condition: `(${col} IN (${placeholders}))`, parameters: arr as SqlParameter[] };
     }
 

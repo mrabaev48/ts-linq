@@ -4,6 +4,7 @@ import { NullVisitor } from '../src/visitors/NullVisitor';
 import { InVisitor } from '../src/visitors/InVisitor';
 import { MethodVisitor } from '../src/visitors/MethodVisitor';
 import { SqlVisitor } from '../src/SqlVisitor';
+import { ParameterStyle } from '../src/ParameterStyle';
 import type {
   BinaryNode,
   LogicalNode,
@@ -546,6 +547,178 @@ describe('ColumnResolver', () => {
     it('without resolver uses node.name', () => {
       const node: PropertyNode = { type: 'property', name: 'userId' };
       expect(renderPropertyName(node)).toBe('userId');
+    });
+  });
+});
+
+// ─── ParameterStyle ───────────────────────────────────────────────────────────
+
+describe('ParameterStyle', () => {
+  describe('Positional ($1, $2, ...)', () => {
+    let visitor: SqlVisitor;
+    beforeEach(() => { visitor = new SqlVisitor(ParameterStyle.Positional); });
+
+    it('single binary node → $1', () => {
+      const node: BinaryNode = {
+        type: 'binary', operator: '>',
+        left: prop('age'), right: lit(18),
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('(age > $1)');
+      expect(result.parameters).toEqual([18]);
+    });
+
+    it('AND expression → $1 and $2', () => {
+      const node: LogicalNode = {
+        type: 'logical', operator: '&&',
+        left: { type: 'binary', operator: '>', left: prop('age'), right: lit(18) },
+        right: { type: 'binary', operator: '===', left: prop('active'), right: lit(true) },
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('((age > $1) AND (active = $2))');
+      expect(result.parameters).toEqual([18, true]);
+    });
+
+    it('OR expression → $1 and $2', () => {
+      const node: LogicalNode = {
+        type: 'logical', operator: '||',
+        left: { type: 'binary', operator: '===', left: prop('status'), right: lit('a') },
+        right: { type: 'binary', operator: '===', left: prop('status'), right: lit('b') },
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('((status = $1) OR (status = $2))');
+      expect(result.parameters).toEqual(['a', 'b']);
+    });
+
+    it('IN expression (3 values) → $1, $2, $3', () => {
+      const node: InNode = {
+        type: 'in', property: prop('role'),
+        values: [lit('admin'), lit('mod'), lit('viewer')] as LiteralNode[],
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('(role IN ($1, $2, $3))');
+      expect(result.parameters).toEqual(['admin', 'mod', 'viewer']);
+    });
+
+    it('IN with external array → $1, $2', () => {
+      const roles = ['admin', 'mod'];
+      const node: InNode = { type: 'in', property: prop('role'), valuesRef: 0 };
+      const result = visitor.toSql(node, [roles]);
+      expect(result.condition).toBe('(role IN ($1, $2))');
+      expect(result.parameters).toEqual(['admin', 'mod']);
+    });
+
+    it('string method (startsWith) → LIKE $1', () => {
+      const node: MethodNode = {
+        type: 'method', method: 'startsWith',
+        object: prop('name'),
+        args: [lit('Al')] as LiteralNode[],
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('(name LIKE $1)');
+      expect(result.parameters).toEqual(['Al%']);
+    });
+
+    it('NOT over property → $1', () => {
+      const node: NotNode = { type: 'not', operand: prop('isActive') };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('(isActive = $1)');
+      expect(result.parameters).toEqual([false]);
+    });
+
+    it('nested AND inside OR numbers continuously', () => {
+      const a: BinaryNode = { type: 'binary', operator: '===', left: prop('active'), right: lit(true) };
+      const b: BinaryNode = { type: 'binary', operator: '===', left: prop('role'), right: lit('admin') };
+      const c: BinaryNode = { type: 'binary', operator: '===', left: prop('role'), right: lit('mod') };
+      const node: LogicalNode = {
+        type: 'logical', operator: '&&', left: a,
+        right: { type: 'logical', operator: '||', left: b, right: c },
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('((active = $1) AND ((role = $2) OR (role = $3)))');
+      expect(result.parameters).toEqual([true, 'admin', 'mod']);
+    });
+
+    it('ParameterRef resolves to positional placeholder', () => {
+      const node: BinaryNode = {
+        type: 'binary', operator: '>=',
+        left: prop('age'), right: { type: 'parameterRef', index: 0 },
+      };
+      const result = visitor.toSql(node, [21]);
+      expect(result.condition).toBe('(age >= $1)');
+      expect(result.parameters).toEqual([21]);
+    });
+  });
+
+  describe('Named (@p1, @p2, ...)', () => {
+    let visitor: SqlVisitor;
+    beforeEach(() => { visitor = new SqlVisitor(ParameterStyle.Named); });
+
+    it('single binary node → @p1', () => {
+      const node: BinaryNode = {
+        type: 'binary', operator: '>',
+        left: prop('age'), right: lit(18),
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('(age > @p1)');
+      expect(result.parameters).toEqual([18]);
+    });
+
+    it('AND expression → @p1 and @p2', () => {
+      const node: LogicalNode = {
+        type: 'logical', operator: '&&',
+        left: { type: 'binary', operator: '>', left: prop('age'), right: lit(18) },
+        right: { type: 'binary', operator: '===', left: prop('active'), right: lit(true) },
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('((age > @p1) AND (active = @p2))');
+      expect(result.parameters).toEqual([18, true]);
+    });
+
+    it('string method (startsWith) → LIKE @p1', () => {
+      const node: MethodNode = {
+        type: 'method', method: 'startsWith',
+        object: prop('name'),
+        args: [lit('Al')] as LiteralNode[],
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('(name LIKE @p1)');
+      expect(result.parameters).toEqual(['Al%']);
+    });
+
+    it('IN expression (2 values) → @p1, @p2', () => {
+      const node: InNode = {
+        type: 'in', property: prop('role'),
+        values: [lit('admin'), lit('mod')] as LiteralNode[],
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('(role IN (@p1, @p2))');
+      expect(result.parameters).toEqual(['admin', 'mod']);
+    });
+  });
+
+  describe('Question (default, backward compat)', () => {
+    it('default constructor still produces ?', () => {
+      const visitor = new SqlVisitor();
+      const node: BinaryNode = {
+        type: 'binary', operator: '===',
+        left: prop('id'), right: lit(1),
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('(id = ?)');
+      expect(result.parameters).toEqual([1]);
+    });
+
+    it('explicit Question style produces ?', () => {
+      const visitor = new SqlVisitor(ParameterStyle.Question);
+      const node: LogicalNode = {
+        type: 'logical', operator: '&&',
+        left: { type: 'binary', operator: '>', left: prop('age'), right: lit(18) },
+        right: { type: 'binary', operator: '===', left: prop('active'), right: lit(true) },
+      };
+      const result = visitor.toSql(node);
+      expect(result.condition).toBe('((age > ?) AND (active = ?))');
+      expect(result.parameters).toEqual([18, true]);
     });
   });
 });
