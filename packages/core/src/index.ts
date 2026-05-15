@@ -29,7 +29,8 @@ export {
   type FallbackInfo,
   type RetryDecisionInfo,
   type QueryPerformanceAnalysisOptions,
-  type QueryAnalysisInfo
+  type QueryAnalysisInfo,
+  type IDatabaseProvider
 } from './types';
 
 // Decorators

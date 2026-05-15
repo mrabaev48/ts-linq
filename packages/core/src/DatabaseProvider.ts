@@ -13,7 +13,8 @@ import type {
   CircuitBreakerOptions,
   CircuitState,
   QueryPerformanceAnalysisOptions,
-  QueryAnalysisInfo
+  QueryAnalysisInfo,
+  IDatabaseProvider
 } from './types';
 import { logInternalError } from './utils/InternalLogger';
 import { ResilienceManager } from './Resilience/ResilienceManager';
@@ -24,7 +25,7 @@ import { HealthMonitor } from './Health/HealthMonitor';
  * implement all abstract methods to support connections, CRUD operations,
  * simple querying and transaction management.
  */
-export abstract class DatabaseProvider {
+export abstract class DatabaseProvider implements IDatabaseProvider {
   protected connectionString: string;
   protected isConnected: boolean = false;
   protected inTransaction: boolean = false;
