@@ -1,28 +1,8 @@
-// Core-specific types only - NO re-exports from other packages
-// Consumers should import directly from @ts-linq/types when needed
+// Core-specific types only - canonical location for types tightly coupled to core internals.
+// Domain contracts (EntityState, TrackedEntity) and logger event types live in @ts-linq/types.
+// Consumers should import those directly from @ts-linq/types.
 
-import type { SqlCache } from '@ts-linq/types';
-import type { CountCache as CountCacheType } from '@ts-linq/types';
-
-/**
- * Core-specific types that don't belong in @ts-linq/types
- */
-
-/** Entity state for change tracking */
-export enum EntityState {
-  Unchanged = 'unchanged',
-  Added = 'added',
-  Modified = 'modified',
-  Deleted = 'deleted'
-}
-
-/** Internal structure representing a tracked entity and its state */
-export interface TrackedEntity {
-  entity: object;
-  entityClass: Function;
-  state: EntityState;
-  originalValues?: object;
-}
+import type { SqlCache, CountCache as CountCacheType, CircuitState } from '@ts-linq/types';
 
 /**
  * Structural contract for a database provider.
@@ -102,9 +82,6 @@ export interface DbContextOptions {
   diagnostics?: DiagnosticsOptions;
 }
 
-/** Circuit Breaker finite states */
-export type CircuitState = 'closed' | 'open' | 'half-open';
-
 /** Circuit Breaker options */
 export interface CircuitBreakerOptions {
   enabled?: boolean;
@@ -147,7 +124,6 @@ export interface LoadingOptions {
   depth?: number;
 }
 
-
 /** Query result with metadata */
 export interface QueryResult<T> {
   rows: T[];
@@ -166,75 +142,6 @@ export interface AggregateResult {
 
 // Core-specific utility type
 export type PrimaryKeyOf<T> = T extends { id: infer K } ? K : unknown;
-
-// NO re-exports - consumers import directly from @ts-linq/metadata
-
-// Extended logger types
-export type ConnectionHealthStatus = 'healthy' | 'degraded' | 'unhealthy';
-
-export interface QueryStartInfo {
-  sql: string;
-  params: readonly import('@ts-linq/types').SqlParameter[];
-  traceId?: string;
-  provider?: string;
-}
-
-export interface QueryEndInfo {
-  sql: string;
-  params: readonly import('@ts-linq/types').SqlParameter[];
-  durationMs: number;
-  traceId?: string;
-  rows?: number;
-  error?: Error;
-  provider?: string;
-}
-
-export interface RetryInfo {
-  sql: string;
-  params: readonly import('@ts-linq/types').SqlParameter[];
-  attempt: number;
-  traceId?: string;
-  provider?: string;
-}
-
-export interface TransactionInfo {
-  traceId?: string;
-  provider?: string;
-}
-
-export interface CacheInfo {
-  cache: 'sqlGen' | 'entityL2' | 'count';
-  hit: boolean;
-  provider?: string;
-  ttl?: boolean;
-}
-
-export interface ConnectionHealthInfo {
-  healthy: boolean;
-  latencyMs?: number;
-  provider?: string;
-  status?: ConnectionHealthStatus;
-}
-
-export interface CircuitEventInfo {
-  state: CircuitState;
-  provider?: string;
-  failures?: number;
-  reason?: string;
-  halfOpenInFlight?: number;
-}
-
-export interface FallbackInfo {
-  provider?: string;
-  fallback: string;
-  attempted: boolean;
-  succeeded?: boolean;
-  error?: Error;
-  throttled?: boolean;
-  isStale?: boolean;
-  asOf?: number;
-  source?: string;
-}
 
 export interface RetryDecisionInfo {
   error: unknown;
@@ -255,16 +162,6 @@ export interface QueryPerformanceAnalysisOptions {
   explainTimeoutMs?: number;
   maxExplainChars?: number;
   onlySelect?: boolean;
-}
-
-export interface QueryAnalysisInfo {
-  sql: string;
-  params: readonly import('@ts-linq/types').SqlParameter[];
-  durationMs: number;
-  provider?: string;
-  slow?: boolean;
-  explainPlan?: unknown;
-  recommendations?: ReadonlyArray<string>;
 }
 
 export class CircuitOpenError extends Error {

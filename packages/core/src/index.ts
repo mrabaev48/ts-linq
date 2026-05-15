@@ -3,13 +3,27 @@
  * change tracking, loading utilities, and base provider abstractions.
  */
 
-// Core-specific types only (NOT re-exporting from @ts-linq/types)
+// Backward-compatible re-exports from @ts-linq/types (canonical location for these types)
+export { EntityState } from '@ts-linq/types';
+export type {
+  TrackedEntity,
+  ConnectionHealthStatus,
+  CircuitState,
+  QueryStartInfo,
+  QueryEndInfo,
+  RetryInfo,
+  TransactionInfo,
+  CacheInfo,
+  ConnectionHealthInfo,
+  CircuitEventInfo,
+  FallbackInfo,
+  QueryAnalysisInfo,
+} from '@ts-linq/types';
+
+// Core-specific types (tightly coupled to core internals)
 export {
-  EntityState,
   CircuitOpenError,
-  type TrackedEntity,
   type DbContextOptions,
-  type CircuitState,
   type CircuitBreakerOptions,
   type MemorySampleInfo,
   type MemoryProfilerLike,
@@ -18,19 +32,9 @@ export {
   type QueryResult,
   type AggregateResult,
   type PrimaryKeyOf,
-  type ConnectionHealthStatus,
-  type QueryStartInfo,
-  type QueryEndInfo,
-  type RetryInfo,
-  type TransactionInfo,
-  type CacheInfo,
-  type ConnectionHealthInfo,
-  type CircuitEventInfo,
-  type FallbackInfo,
   type RetryDecisionInfo,
   type QueryPerformanceAnalysisOptions,
-  type QueryAnalysisInfo,
-  type IDatabaseProvider
+  type IDatabaseProvider,
 } from './types';
 
 // Decorators
