@@ -3,7 +3,7 @@ import { LogicalVisitor } from '../src/visitors/LogicalVisitor';
 import { NullVisitor } from '../src/visitors/NullVisitor';
 import { InVisitor } from '../src/visitors/InVisitor';
 import { MethodVisitor } from '../src/visitors/MethodVisitor';
-import { SqlVisitor } from '../src/ast/SqlVisitor';
+import { SqlVisitor } from '../src/SqlVisitor';
 import type {
   BinaryNode,
   LogicalNode,
@@ -15,16 +15,14 @@ import type {
   InNode,
   MethodNode,
   ExpressionNode,
-} from '../src/ast/Nodes';
-import { AstSqlGenerationError } from '../src/errors';
+} from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const prop = (name: string): PropertyNode => ({ type: 'property', name });
 const propPath = (...segs: string[]): PropertyNode => ({ type: 'property', path: segs });
 const lit = (value: number | string | boolean | null): LiteralNode => ({ type: 'literal', value });
-
-const noop = (): { condition: string; parameters: never[] } => ({ condition: '1=1', parameters: [] });
 
 const makeRecurse =
   (visitor: SqlVisitor, inputParameters: readonly unknown[] = []) =>
@@ -162,11 +160,6 @@ describe('LogicalVisitor', () => {
 
   beforeEach(() => {
     visitor = new LogicalVisitor();
-  });
-
-  const binaryResult = (condition: string, params: unknown[]) => () => ({
-    condition,
-    parameters: params as number[],
   });
 
   it('AND expression', () => {
@@ -343,7 +336,6 @@ describe('SqlVisitor', () => {
     const b: BinaryNode = { type: 'binary', operator: '===', left: prop('role'), right: lit('admin') };
     const c: BinaryNode = { type: 'binary', operator: '===', left: prop('role'), right: lit('mod') };
 
-    // active AND (admin OR mod)
     const node: LogicalNode = {
       type: 'logical', operator: '&&', left: a,
       right: { type: 'logical', operator: '||', left: b, right: c },

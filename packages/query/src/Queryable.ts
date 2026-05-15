@@ -1,5 +1,6 @@
 import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
-import { SqlVisitor, type ColumnResolver, type ExpressionNode, type PropertyNode } from '@ts-linq/ast';
+import { SqlVisitor, type ColumnResolver } from '@ts-linq/sql-visitor';
+import type { ExpressionNode, PropertyNode } from '@ts-linq/ast';
 import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
