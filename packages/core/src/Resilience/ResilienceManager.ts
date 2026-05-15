@@ -1,5 +1,5 @@
-import type { RetryPolicy, SqlLogger, SqlParameter } from '@ts-linq/types';
-import type { CircuitBreakerOptions, CircuitState } from '../types';
+import type { RetryPolicy, SqlLogger, SqlParameter, CircuitState } from '@ts-linq/types';
+import type { CircuitBreakerOptions } from '../types';
 import { CircuitOpenError } from '../types';
 
 export interface ResilienceContext {
