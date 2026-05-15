@@ -749,6 +749,10 @@ importers:
         version: 5.9.3
 
   packages/telemetry:
+    dependencies:
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
