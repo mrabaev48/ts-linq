@@ -1,11 +1,10 @@
 import type { SqlParameter } from '@ts-linq/types';
-import { AstSqlGenerationError } from '../errors';
-import type { BinaryNode, ExpressionNode, LiteralNode, ParameterRefNode, PropertyNode } from '../ast/Nodes';
-import type { ConditionFragment, SqlFragment } from '../types';
+import { AstSqlGenerationError } from '@ts-linq/ast';
+import type { BinaryNode, ExpressionNode, LiteralNode, ParameterRefNode, PropertyNode } from '@ts-linq/ast';
+import type { ConditionFragment, SqlFragment } from '@ts-linq/ast';
 
 /**
  * Maps a PropertyNode to its SQL column name.
- * Called by SqlVisitor when converting AST property references to SQL identifiers.
  * If no resolver is supplied, the TypeScript property name is used as-is.
  */
 export type ColumnResolver = (property: PropertyNode) => string;
@@ -54,7 +53,6 @@ export class BinaryVisitor {
     if (node.type === 'parameterRef') {
       return { fragment: '?', params: [resolveParameterRef(node, inputParameters) as SqlParameter] };
     }
-    // Nested expression (e.g. coalesce, another binary — emit as subexpression)
     const inner = recurse(node);
     return { fragment: inner.condition, params: inner.parameters };
   }

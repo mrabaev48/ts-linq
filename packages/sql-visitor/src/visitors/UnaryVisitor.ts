@@ -1,7 +1,7 @@
-import { AstSqlGenerationError } from '../errors';
-import type { ExpressionNode, NotNode } from '../ast/Nodes';
+import { AstSqlGenerationError } from '@ts-linq/ast';
+import type { ExpressionNode, NotNode } from '@ts-linq/ast';
 import { renderPropertyName, type ColumnResolver } from './BinaryVisitor';
-import type { ConditionFragment } from '../types';
+import type { ConditionFragment } from '@ts-linq/ast';
 
 export class UnaryVisitor {
   public visit(

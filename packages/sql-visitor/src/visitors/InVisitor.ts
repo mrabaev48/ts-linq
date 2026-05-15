@@ -1,8 +1,8 @@
 import type { SqlParameter } from '@ts-linq/types';
-import { AstSqlGenerationError } from '../errors';
-import type { InNode } from '../ast/Nodes';
+import { AstSqlGenerationError } from '@ts-linq/ast';
+import type { InNode } from '@ts-linq/ast';
 import { renderPropertyName, resolveParameterRef, type ColumnResolver } from './BinaryVisitor';
-import type { ConditionFragment } from '../types';
+import type { ConditionFragment } from '@ts-linq/ast';
 
 export class InVisitor {
   public visit(

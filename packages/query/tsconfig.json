@@ -5,7 +5,8 @@
     "paths": {
       "@src/*": ["src/*"],
       "@ts-linq/metrics-safe": ["../metrics-safe/dist"],
-      "@ts-linq/metadata": ["../metadata/dist"]
+      "@ts-linq/metadata": ["../metadata/dist"],
+      "@ts-linq/sql-visitor": ["../sql-visitor/dist"]
     },
     "composite": true,
     "declaration": true,
@@ -21,6 +22,7 @@
     { "path": "../types" },
     { "path": "../core" },
     { "path": "../ast" },
+    { "path": "../sql-visitor" },
     { "path": "../metrics-safe" },
     { "path": "../metadata" }
   ]
