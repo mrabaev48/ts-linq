@@ -78,7 +78,9 @@ describe('plugin-multi-tenant: MultiTenantMiddleware', () => {
     await mw.applyTenant({
       entity,
       entityClass: class Org {},
-      operation: 'insert'
+      operation: 'insert',
+
+      state: 'added',
     });
     expect(entity.tenantId).toBe('ACME');
   });
@@ -90,7 +92,9 @@ describe('plugin-multi-tenant: MultiTenantMiddleware', () => {
       mw.applyTenant({
         entity,
         entityClass: class Org {},
-        operation: 'insert'
+        operation: 'insert',
+
+        state: 'added',
       })
     ).rejects.toThrow('No tenant context available');
   });
@@ -102,7 +106,9 @@ describe('plugin-multi-tenant: MultiTenantMiddleware', () => {
     await mw.applyTenant({
       entity,
       entityClass: class Org {},
-      operation: 'insert'
+      operation: 'insert',
+
+      state: 'added',
     });
     expect(Object.keys(entity).length).toBe(0);
   });

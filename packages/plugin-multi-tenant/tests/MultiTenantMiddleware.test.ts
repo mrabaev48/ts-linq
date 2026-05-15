@@ -58,7 +58,9 @@ describe('MultiTenantMiddleware', () => {
       const context: TenantContext = {
         entity,
         entityClass: Order,
-        operation: 'insert'
+        operation: 'insert',
+
+        state: 'added',
       };
 
       await mw.applyTenant(context);
@@ -115,7 +117,9 @@ describe('MultiTenantMiddleware', () => {
       const context: TenantContext = {
         entity,
         entityClass: Order,
-        operation: 'insert'
+        operation: 'insert',
+
+        state: 'added',
       };
 
       await middleware.applyTenant(context);
@@ -129,7 +133,9 @@ describe('MultiTenantMiddleware', () => {
       const context: TenantContext = {
         entity,
         entityClass: Order,
-        operation: 'update'
+        operation: 'update',
+
+        state: 'modified',
       };
 
       await middleware.applyTenant(context);
@@ -144,6 +150,8 @@ describe('MultiTenantMiddleware', () => {
         entity,
         entityClass: Order,
         operation: 'insert',
+
+        state: 'added',
         tenantId: 300
       };
 
@@ -158,7 +166,9 @@ describe('MultiTenantMiddleware', () => {
       const context: TenantContext = {
         entity,
         entityClass: Invoice,
-        operation: 'insert'
+        operation: 'insert',
+
+        state: 'added',
       };
 
       await middleware.applyTenant(context);
@@ -171,7 +181,9 @@ describe('MultiTenantMiddleware', () => {
       const context: TenantContext = {
         entity,
         entityClass: Order,
-        operation: 'insert'
+        operation: 'insert',
+
+        state: 'added',
       };
 
       await expect(middleware.applyTenant(context)).rejects.toThrow(
@@ -185,7 +197,9 @@ describe('MultiTenantMiddleware', () => {
       const context: TenantContext = {
         entity,
         entityClass: Order,
-        operation: 'insert'
+        operation: 'insert',
+
+        state: 'added',
       };
 
       await expect(mw.applyTenant(context)).resolves.not.toThrow();
@@ -283,7 +297,9 @@ describe('MultiTenantMiddleware', () => {
       const context: TenantContext = {
         entity,
         entityClass: CustomEntity,
-        operation: 'insert'
+        operation: 'insert',
+
+        state: 'added',
       };
 
       await mw.applyTenant(context);

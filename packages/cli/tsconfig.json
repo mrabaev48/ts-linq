@@ -9,9 +9,9 @@
     "baseUrl": ".",
     "paths": {
 
-      "@ts-linq/provider-postgres": ["../provider-postgres/src"],
-      "@ts-linq/provider-mysql": ["../provider-mysql/src"],
-      "@ts-linq/provider-mssql": ["../provider-mssql/src"]
+      "@ts-linq/provider-postgres": ["../provider-postgres/dist"],
+      "@ts-linq/provider-mysql": ["../provider-mysql/dist"],
+      "@ts-linq/provider-mssql": ["../provider-mssql/dist"]
     }
   },
   "include": ["src/**/*"],
