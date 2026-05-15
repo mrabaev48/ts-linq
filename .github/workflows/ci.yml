@@ -21,6 +21,8 @@ jobs:
         run: node packages/cli/dist/cli.js config:check || true
       - name: Lint
         run: npm run lint
+      - name: Phantom dependency check
+        run: node scripts/check-phantom-deps.js
       - name: Unit tests
         run: npm run test --workspaces --if-present
       - name: Integration DB tests (containers)

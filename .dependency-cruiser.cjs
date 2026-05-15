@@ -107,6 +107,21 @@ module.exports = {
     },
 
     {
+      name: 'no-undeclared-workspaces',
+      severity: 'error',
+      comment:
+        'All @ts-linq/* imports must be declared in the importing package\'s package.json. ' +
+        'Path aliases in tsconfig.json are invisible to package managers and can mask missing runtime dependencies.',
+      from: {
+        path: '^packages/[^/]+/src'
+      },
+      to: {
+        path: '^packages/',
+        dependencyTypes: ['undeclared']
+      }
+    },
+
+    {
       name: 'no-any-in-internal-api-files',
       severity: 'info',
       comment: 'This is a weak signal only. Use TypeScript/ESLint for strict any enforcement.',

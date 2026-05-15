@@ -34,7 +34,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-013 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~@ts-linq/telemetry is a dead stub (no src/)~~ ✅ **FIXED** | [ISSUE-013-telemetry-dead-stub.md](ISSUE-013-telemetry-dead-stub.md) |
 | ISSUE-014 | Medium | SOLID, Maintainability | EnhancedSqlCache is an over-wide class (457 LOC, 19 methods) | [ISSUE-014-enhanced-sql-cache-overwide.md](ISSUE-014-enhanced-sql-cache-overwide.md) |
 | ISSUE-015 | Medium | Build/Tooling, Maintainability | Per-package tsconfig path aliases duplicated 21+ times | [ISSUE-015-tsconfig-path-alias-duplication.md](ISSUE-015-tsconfig-path-alias-duplication.md) |
-| ISSUE-016 | Medium | Dependency Boundary, Build/Tooling | Phantom dependencies via TypeScript path aliases | [ISSUE-016-phantom-deps-tsconfig-paths.md](ISSUE-016-phantom-deps-tsconfig-paths.md) |
+| ISSUE-016 | ~~Medium~~ | ~~Dependency Boundary, Build/Tooling~~ | ~~Phantom dependencies via TypeScript path aliases~~ ✅ **FIXED** | [ISSUE-016-phantom-deps-tsconfig-paths.md](ISSUE-016-phantom-deps-tsconfig-paths.md) |
 | ISSUE-017 | Medium | SOLID, Clean Code | DbSet secondary god class (35 methods, 604 LOC) | [ISSUE-017-dbset-secondary-god-class.md](ISSUE-017-dbset-secondary-god-class.md) |
 | ISSUE-018 | Medium | Maintainability, Testability | saveChanges() opens a transaction without checking for an active one | [ISSUE-018-savechanges-reentrant-transaction.md](ISSUE-018-savechanges-reentrant-transaction.md) |
 | ISSUE-019 | Low | Maintainability, Documentation Drift | @ts-linq/integration-nestjs is an unimplemented placeholder | [ISSUE-019-integration-nestjs-placeholder.md](ISSUE-019-integration-nestjs-placeholder.md) |
@@ -65,8 +65,8 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 ### 2. God Classes in Query and ORM Layers (ISSUE-003 + ISSUE-004 + ISSUE-017)
 `Queryable` (938 LOC, 55 methods), `DbContext` (1102 LOC, 48 methods), and `DbSet` (604 LOC, 35 methods) concentrate enormous scope in three classes. This makes unit testing impossible without full provider setup, violates SRP at every level, and creates a maintenance bottleneck where any new ORM feature requires modifying an already-large class.
 
-### 3. Build and Test Infrastructure Misalignment (~~ISSUE-007~~ ✅ + ~~ISSUE-012~~ ✅ + ~~ISSUE-013~~ ✅ + ISSUE-015 + ISSUE-016)
-The build and test infrastructure has accumulated several independent problems: Jest and TypeScript resolve packages from different locations, ~~a package is referenced in Jest but has no source~~, ~~ESM-incompatible `require()` is used in production code~~ (both fixed), and path aliases mask undeclared dependencies. Collectively these create a false confidence environment where tests may pass locally against code that fails in production ESM contexts.
+### 3. Build and Test Infrastructure Misalignment (~~ISSUE-007~~ ✅ + ~~ISSUE-012~~ ✅ + ~~ISSUE-013~~ ✅ + ~~ISSUE-016~~ ✅ + ISSUE-015)
+The build and test infrastructure has accumulated several independent problems: Jest and TypeScript resolve packages from different locations, ~~a package is referenced in Jest but has no source~~, ~~ESM-incompatible `require()` is used in production code~~ (both fixed), ~~path aliases masked undeclared dependencies~~ (fixed: stale `@ts-linq/metrics-safe` aliases removed from 6 tsconfig files; `scripts/check-phantom-deps.js` added to CI). ISSUE-015 (path alias duplication across 21+ tsconfigs) remains open.
 
 ### ~~4. Core Package Circular Dependency (ISSUE-001)~~ ✅ FIXED
 ~~The single confirmed circular dependency (`DatabaseProvider → HealthMonitor → ResilienceManager → types → DatabaseProvider`) is in the most foundational package. Cycles here affect all packages that depend on `@ts-linq/core` and produce non-deterministic build behavior.~~
@@ -89,7 +89,7 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 ### Phase 2 — Fix Architectural Layer Violations (Weeks 3–5)
 5. ~~**ISSUE-005**~~ ✅ Done — ~~**ISSUE-006**~~ ✅ Done — `ParameterStyle` enum introduced; `SqlVisitor` accepts dialect-specific placeholder style
 6. ~~**ISSUE-002**~~ ✅ Done — Consolidated type ownership: 13 duplicate/domain types moved to `@ts-linq/types`, removed from `@ts-linq/core`; backward-compatible re-exports added
-7. **ISSUE-016** — Add CI check for phantom dependencies; fix `@ts-linq/orm` missing dep declaration
+7. ~~**ISSUE-016**~~ ✅ Done — Removed stale `@ts-linq/metrics-safe` path aliases from 6 tsconfig files; added `scripts/check-phantom-deps.js` CI lint script; wired `no-undeclared-workspaces` rule in dependency-cruiser
 8. **ISSUE-008** — Lazy-load providers in CLI
 
 ### Phase 3 — Reduce Complexity in Core Classes (Weeks 6–10)
