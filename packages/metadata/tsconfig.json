@@ -3,8 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"],
-      "@ts-linq/metrics-safe": ["../metrics-safe/dist"]
+      "@src/*": ["src/*"]
     },
     "composite": true,
     "declaration": true,
@@ -17,7 +16,6 @@
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
   "references": [
-    { "path": "../types" },
-    { "path": "../metrics-safe" }
+    { "path": "../types" }
   ]
 }

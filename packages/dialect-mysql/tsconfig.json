@@ -6,8 +6,7 @@
       "@src/*": ["src/*"],
       "@ts-linq/types": ["../types/dist"],
       "@ts-linq/metadata": ["../metadata/dist"],
-      "@ts-linq/core": ["../core/dist"],
-      "@ts-linq/metrics-safe": ["../metrics-safe/dist"]
+      "@ts-linq/core": ["../core/dist"]
     },
     "composite": true,
     "declaration": true,

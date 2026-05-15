@@ -110,7 +110,8 @@
     "arch:cycles": "madge --circular --extensions ts,tsx --ts-config ./tsconfig.json --exclude 'node_modules|dist|build|coverage|reports|issues-v3|\\.test\\.ts$|\\.spec\\.ts$|\\.d\\.ts$' packages",
     "arch:graph": "mkdir -p reports && madge --extensions ts,tsx --ts-config ./tsconfig.json --exclude 'node_modules|dist|build|coverage|reports|issues-v3|\\.test\\.ts$|\\.spec\\.ts$|\\.d\\.ts$' --image reports/madge-graph.svg packages",
     "arch:dead": "ts-prune | grep -v -f ts-prune-ignore.txt || true",
-    "arch:audit": "pnpm typecheck && pnpm arch:deps && pnpm arch:cycles && pnpm arch:dead"
+    "arch:phantom": "node scripts/check-phantom-deps.js",
+    "arch:audit": "pnpm typecheck && pnpm arch:deps && pnpm arch:cycles && pnpm arch:dead && pnpm arch:phantom"
   },
   "keywords": [
     "orm",
