@@ -20,7 +20,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ID | Severity | Category | Title | File |
 |----|----------|----------|-------|------|
 | ISSUE-001 | ~~Critical~~ | ~~Dependency Boundary, Clean Architecture~~ | ~~Circular dependency in @ts-linq/core~~ ✅ **FIXED** | [ISSUE-001-core-circular-dependency.md](ISSUE-001-core-circular-dependency.md) |
-| ISSUE-002 | Critical | Dependency Boundary, Clean Architecture | Type duplication between @ts-linq/core and @ts-linq/types | [ISSUE-002-type-duplication-core-vs-types.md](ISSUE-002-type-duplication-core-vs-types.md) |
+| ISSUE-002 | ~~Critical~~ | ~~Dependency Boundary, Clean Architecture~~ | ~~Type duplication between @ts-linq/core and @ts-linq/types~~ ✅ **FIXED** | [ISSUE-002-type-duplication-core-vs-types.md](ISSUE-002-type-duplication-core-vs-types.md) |
 | ISSUE-003 | Critical | SOLID, Clean Code, Maintainability | Queryable god class (55 methods, 938 LOC) | [ISSUE-003-queryable-god-class.md](ISSUE-003-queryable-god-class.md) |
 | ISSUE-004 | Critical | SOLID, Clean Code, Maintainability | DbContext god class (48 methods, 1102 LOC) | [ISSUE-004-dbcontext-god-class.md](ISSUE-004-dbcontext-god-class.md) |
 | ISSUE-005 | ~~Critical~~ | ~~Clean Architecture, Maintainability~~ | ~~@ts-linq/sql-visitor is an unimplemented stub~~ ✅ **FIXED** | [ISSUE-005-sql-visitor-stub.md](ISSUE-005-sql-visitor-stub.md) |
@@ -72,8 +72,9 @@ The build and test infrastructure has accumulated several independent problems: 
 ~~The single confirmed circular dependency (`DatabaseProvider → HealthMonitor → ResilienceManager → types → DatabaseProvider`) is in the most foundational package. Cycles here affect all packages that depend on `@ts-linq/core` and produce non-deterministic build behavior.~~
 Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/index.ts`. `DatabaseProvider` now implements the interface; `DbContextOptions.provider` is typed via the interface. `pnpm arch:cycles` reports zero circular dependencies.
 
-### 5. Type Ownership Ambiguity (ISSUE-002)
-Having domain types (`EntityState`, `DbContextOptions`, `QueryStartInfo`, etc.) distributed between `@ts-linq/core/src/types` and `@ts-linq/types` means consumers must import from unpredictable locations, and any future versioning of either package may break the other.
+### ~~5. Type Ownership Ambiguity (ISSUE-002)~~ ✅ FIXED
+~~Having domain types (`EntityState`, `DbContextOptions`, `QueryStartInfo`, etc.) distributed between `@ts-linq/core/src/types` and `@ts-linq/types` means consumers must import from unpredictable locations, and any future versioning of either package may break the other.~~
+`EntityState` and `TrackedEntity` moved to `@ts-linq/types` as canonical definitions. All 11 logger event type duplicates (`QueryStartInfo`, `QueryEndInfo`, `RetryInfo`, `CircuitState`, etc.) removed from `@ts-linq/core/src/types/index.ts`; `@ts-linq/core` now re-exports them from `@ts-linq/types` for backward compatibility. Internal files (`DatabaseProvider.ts`, `ResilienceManager.ts`) updated to import directly from `@ts-linq/types`.
 
 ---
 
@@ -87,7 +88,7 @@ Having domain types (`EntityState`, `DbContextOptions`, `QueryStartInfo`, etc.) 
 
 ### Phase 2 — Fix Architectural Layer Violations (Weeks 3–5)
 5. ~~**ISSUE-005**~~ ✅ Done — ~~**ISSUE-006**~~ ✅ Done — `ParameterStyle` enum introduced; `SqlVisitor` accepts dialect-specific placeholder style
-6. **ISSUE-002** — Consolidate type ownership into `@ts-linq/types`
+6. ~~**ISSUE-002**~~ ✅ Done — Consolidated type ownership: 13 duplicate/domain types moved to `@ts-linq/types`, removed from `@ts-linq/core`; backward-compatible re-exports added
 7. **ISSUE-016** — Add CI check for phantom dependencies; fix `@ts-linq/orm` missing dep declaration
 8. **ISSUE-008** — Lazy-load providers in CLI
 

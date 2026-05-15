@@ -643,3 +643,19 @@ export interface PerformanceOptionsExtended extends PerformanceOptions {
 export interface SoftDeleteOptionsExtended extends SoftDeleteOptions {
   // Backward compatible alias; all fields live in SoftDeleteOptions.
 }
+
+/** Entity state for change tracking */
+export enum EntityState {
+  Unchanged = 'unchanged',
+  Added = 'added',
+  Modified = 'modified',
+  Deleted = 'deleted'
+}
+
+/** Tracked entity with state for change tracking */
+export interface TrackedEntity {
+  entity: object;
+  entityClass: Function;
+  state: EntityState;
+  originalValues?: object;
+}
