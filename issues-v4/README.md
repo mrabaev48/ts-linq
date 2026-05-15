@@ -25,7 +25,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-004 | Critical | SOLID, Clean Code, Maintainability | DbContext god class (48 methods, 1102 LOC) | [ISSUE-004-dbcontext-god-class.md](ISSUE-004-dbcontext-god-class.md) |
 | ISSUE-005 | Critical | Clean Architecture, Maintainability | @ts-linq/sql-visitor is an unimplemented stub | [ISSUE-005-sql-visitor-stub.md](ISSUE-005-sql-visitor-stub.md) |
 | ISSUE-006 | Critical | Clean Architecture, Dependency Boundary | AST visitors hardcode SQL syntax | [ISSUE-006-ast-visitors-hardcode-sql.md](ISSUE-006-ast-visitors-hardcode-sql.md) |
-| ISSUE-007 | High | Build/Tooling, Maintainability | Dynamic require() in DbContext is ESM-incompatible | [ISSUE-007-dynamic-require-esm-incompatible.md](ISSUE-007-dynamic-require-esm-incompatible.md) |
+| ISSUE-007 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~Dynamic require() in DbContext is ESM-incompatible~~ ✅ **FIXED** | [ISSUE-007-dynamic-require-esm-incompatible.md](ISSUE-007-dynamic-require-esm-incompatible.md) |
 | ISSUE-008 | High | Dependency Boundary, Build/Tooling | CLI eagerly imports all three database providers | [ISSUE-008-cli-eager-loads-all-providers.md](ISSUE-008-cli-eager-loads-all-providers.md) |
 | ISSUE-009 | High | SOLID, Maintainability | Cache coherency logic scattered across DbContext | [ISSUE-009-cache-coherency-scattered.md](ISSUE-009-cache-coherency-scattered.md) |
 | ISSUE-010 | High | SOLID, Testability | Mutable shared state in Queryable.clone() | [ISSUE-010-queryable-clone-shared-mutable-state.md](ISSUE-010-queryable-clone-shared-mutable-state.md) |
@@ -65,8 +65,8 @@ The `@ts-linq/ast` package — which should be the dialect-agnostic expression l
 ### 2. God Classes in Query and ORM Layers (ISSUE-003 + ISSUE-004 + ISSUE-017)
 `Queryable` (938 LOC, 55 methods), `DbContext` (1102 LOC, 48 methods), and `DbSet` (604 LOC, 35 methods) concentrate enormous scope in three classes. This makes unit testing impossible without full provider setup, violates SRP at every level, and creates a maintenance bottleneck where any new ORM feature requires modifying an already-large class.
 
-### 3. Build and Test Infrastructure Misalignment (ISSUE-007 + ISSUE-012 + ISSUE-013 + ISSUE-015 + ISSUE-016)
-The build and test infrastructure has accumulated several independent problems: Jest and TypeScript resolve packages from different locations, a package is referenced in Jest but has no source, ESM-incompatible `require()` is used in production code, and path aliases mask undeclared dependencies. Collectively these create a false confidence environment where tests may pass locally against code that fails in production ESM contexts.
+### 3. Build and Test Infrastructure Misalignment (~~ISSUE-007~~ ✅ + ISSUE-012 + ISSUE-013 + ISSUE-015 + ISSUE-016)
+The build and test infrastructure has accumulated several independent problems: Jest and TypeScript resolve packages from different locations, a package is referenced in Jest but has no source, ~~ESM-incompatible `require()` is used in production code~~ (fixed), and path aliases mask undeclared dependencies. Collectively these create a false confidence environment where tests may pass locally against code that fails in production ESM contexts.
 
 ### ~~4. Core Package Circular Dependency (ISSUE-001)~~ ✅ FIXED
 ~~The single confirmed circular dependency (`DatabaseProvider → HealthMonitor → ResilienceManager → types → DatabaseProvider`) is in the most foundational package. Cycles here affect all packages that depend on `@ts-linq/core` and produce non-deterministic build behavior.~~
@@ -81,7 +81,7 @@ Having domain types (`EntityState`, `DbContextOptions`, `QueryStartInfo`, etc.) 
 
 ### Phase 1 — Unblock Correctness and Build (Weeks 1–2)
 1. ~~**ISSUE-001** — Break the circular dependency in `@ts-linq/core` (prerequisite for clean builds)~~ ✅ Done
-2. **ISSUE-007** — Replace `require()` with static `import`; declare `@ts-linq/metrics-safe` as dep (ESM unblock)
+2. ~~**ISSUE-007** — Replace `require()` with static `import`; declare `@ts-linq/metrics-safe` as dep (ESM unblock)~~ ✅ Done
 3. **ISSUE-013** — Implement or remove `@ts-linq/telemetry` (unblock Jest)
 4. **ISSUE-012** — Align Jest `moduleNameMapper` to `dist/` paths (test/build consistency)
 
