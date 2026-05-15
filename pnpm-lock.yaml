@@ -728,6 +728,9 @@ importers:
       '@ts-linq/metrics-safe':
         specifier: workspace:*
         version: link:../metrics-safe
+      '@ts-linq/sql-visitor':
+        specifier: workspace:*
+        version: link:../sql-visitor
       '@ts-linq/types':
         specifier: workspace:*
         version: link:../types
@@ -740,6 +743,13 @@ importers:
         version: 5.9.3
 
   packages/sql-visitor:
+    dependencies:
+      '@ts-linq/ast':
+        specifier: workspace:*
+        version: link:../ast
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^24.3.0

@@ -1,11 +1,17 @@
-import { placeholder } from '../src/index';
+import { SqlVisitor } from '../src/index';
+import type { BinaryNode } from '@ts-linq/ast';
 
-describe('sql-visitor package', () => {
-  it('should export placeholder value', () => {
-    expect(placeholder).toBe('sql-visitor');
-  });
-
-  it('should have string type placeholder', () => {
-    expect(typeof placeholder).toBe('string');
+describe('@ts-linq/sql-visitor exports', () => {
+  it('exports SqlVisitor', () => {
+    expect(SqlVisitor).toBeDefined();
+    const visitor = new SqlVisitor();
+    const node: BinaryNode = {
+      type: 'binary', operator: '===',
+      left: { type: 'property', name: 'id' },
+      right: { type: 'literal', value: 1 },
+    };
+    const result = visitor.toSql(node);
+    expect(result.condition).toBe('(id = ?)');
+    expect(result.parameters).toEqual([1]);
   });
 });
