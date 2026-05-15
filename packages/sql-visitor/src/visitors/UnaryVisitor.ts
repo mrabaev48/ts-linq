@@ -2,18 +2,20 @@ import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { ExpressionNode, NotNode } from '@ts-linq/ast';
 import { renderPropertyName, type ColumnResolver } from './BinaryVisitor';
 import type { ConditionFragment } from '@ts-linq/ast';
+import { ParameterState, ParameterStyle } from '../ParameterStyle';
 
 export class UnaryVisitor {
   public visit(
     node: NotNode,
     recurse: (n: ExpressionNode) => ConditionFragment,
-    resolver?: ColumnResolver
+    resolver?: ColumnResolver,
+    state: ParameterState = new ParameterState(ParameterStyle.Question)
   ): ConditionFragment {
     const operand = node.operand;
 
     // `!u.boolField` → `(col = false)`
     if (operand.type === 'property') {
-      return { condition: `(${renderPropertyName(operand, resolver)} = ?)`, parameters: [false] };
+      return { condition: `(${renderPropertyName(operand, resolver)} = ${state.next()})`, parameters: [false] };
     }
 
     // `!(expr)` → `(NOT expr)`

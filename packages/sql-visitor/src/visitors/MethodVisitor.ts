@@ -2,12 +2,14 @@ import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { LiteralNode, MethodNode, ParameterRefNode } from '@ts-linq/ast';
 import { renderPropertyName, resolveParameterRef, type ColumnResolver } from './BinaryVisitor';
 import type { ConditionFragment } from '@ts-linq/ast';
+import { ParameterState, ParameterStyle } from '../ParameterStyle';
 
 export class MethodVisitor {
   public visit(
     node: MethodNode,
     inputParameters: readonly unknown[],
-    resolver?: ColumnResolver
+    resolver?: ColumnResolver,
+    state: ParameterState = new ParameterState(ParameterStyle.Question)
   ): ConditionFragment {
     const col = renderPropertyName(node.object, resolver);
     const arg0 = node.args[0];
@@ -48,7 +50,7 @@ export class MethodVisitor {
         );
     }
 
-    return { condition: `(${col} LIKE ?)`, parameters: [pattern] };
+    return { condition: `(${col} LIKE ${state.next()})`, parameters: [pattern] };
   }
 }
 
