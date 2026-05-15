@@ -19,7 +19,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 
 | ID | Severity | Category | Title | File |
 |----|----------|----------|-------|------|
-| ISSUE-001 | Critical | Dependency Boundary, Clean Architecture | Circular dependency in @ts-linq/core | [ISSUE-001-core-circular-dependency.md](ISSUE-001-core-circular-dependency.md) |
+| ISSUE-001 | ~~Critical~~ | ~~Dependency Boundary, Clean Architecture~~ | ~~Circular dependency in @ts-linq/core~~ ✅ **FIXED** | [ISSUE-001-core-circular-dependency.md](ISSUE-001-core-circular-dependency.md) |
 | ISSUE-002 | Critical | Dependency Boundary, Clean Architecture | Type duplication between @ts-linq/core and @ts-linq/types | [ISSUE-002-type-duplication-core-vs-types.md](ISSUE-002-type-duplication-core-vs-types.md) |
 | ISSUE-003 | Critical | SOLID, Clean Code, Maintainability | Queryable god class (55 methods, 938 LOC) | [ISSUE-003-queryable-god-class.md](ISSUE-003-queryable-god-class.md) |
 | ISSUE-004 | Critical | SOLID, Clean Code, Maintainability | DbContext god class (48 methods, 1102 LOC) | [ISSUE-004-dbcontext-god-class.md](ISSUE-004-dbcontext-god-class.md) |
@@ -68,8 +68,9 @@ The `@ts-linq/ast` package — which should be the dialect-agnostic expression l
 ### 3. Build and Test Infrastructure Misalignment (ISSUE-007 + ISSUE-012 + ISSUE-013 + ISSUE-015 + ISSUE-016)
 The build and test infrastructure has accumulated several independent problems: Jest and TypeScript resolve packages from different locations, a package is referenced in Jest but has no source, ESM-incompatible `require()` is used in production code, and path aliases mask undeclared dependencies. Collectively these create a false confidence environment where tests may pass locally against code that fails in production ESM contexts.
 
-### 4. Core Package Circular Dependency (ISSUE-001)
-The single confirmed circular dependency (`DatabaseProvider → HealthMonitor → ResilienceManager → types → DatabaseProvider`) is in the most foundational package. Cycles here affect all packages that depend on `@ts-linq/core` and produce non-deterministic build behavior.
+### ~~4. Core Package Circular Dependency (ISSUE-001)~~ ✅ FIXED
+~~The single confirmed circular dependency (`DatabaseProvider → HealthMonitor → ResilienceManager → types → DatabaseProvider`) is in the most foundational package. Cycles here affect all packages that depend on `@ts-linq/core` and produce non-deterministic build behavior.~~
+Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/index.ts`. `DatabaseProvider` now implements the interface; `DbContextOptions.provider` is typed via the interface. `pnpm arch:cycles` reports zero circular dependencies.
 
 ### 5. Type Ownership Ambiguity (ISSUE-002)
 Having domain types (`EntityState`, `DbContextOptions`, `QueryStartInfo`, etc.) distributed between `@ts-linq/core/src/types` and `@ts-linq/types` means consumers must import from unpredictable locations, and any future versioning of either package may break the other.
@@ -79,7 +80,7 @@ Having domain types (`EntityState`, `DbContextOptions`, `QueryStartInfo`, etc.) 
 ## Recommended Refactoring Order
 
 ### Phase 1 — Unblock Correctness and Build (Weeks 1–2)
-1. **ISSUE-001** — Break the circular dependency in `@ts-linq/core` (prerequisite for clean builds)
+1. ~~**ISSUE-001** — Break the circular dependency in `@ts-linq/core` (prerequisite for clean builds)~~ ✅ Done
 2. **ISSUE-007** — Replace `require()` with static `import`; declare `@ts-linq/metrics-safe` as dep (ESM unblock)
 3. **ISSUE-013** — Implement or remove `@ts-linq/telemetry` (unblock Jest)
 4. **ISSUE-012** — Align Jest `moduleNameMapper` to `dist/` paths (test/build consistency)

@@ -3,7 +3,6 @@
 
 import type { SqlCache } from '@ts-linq/types';
 import type { CountCache as CountCacheType } from '@ts-linq/types';
-import type { DatabaseProvider } from '../DatabaseProvider';
 
 /**
  * Core-specific types that don't belong in @ts-linq/types
@@ -25,9 +24,66 @@ export interface TrackedEntity {
   originalValues?: object;
 }
 
+/**
+ * Structural contract for a database provider.
+ * Declared here (not in DatabaseProvider.ts) to break the circular dependency:
+ *   DatabaseProvider → ResilienceManager → types/index → DatabaseProvider
+ * The concrete `DatabaseProvider` abstract class explicitly implements this interface.
+ */
+export interface IDatabaseProvider {
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  createTable(entityMetadata: import('@ts-linq/types').EntityMetadata): Promise<void>;
+  getDialect(): import('@ts-linq/types').SqlDialect;
+  insert<T extends object>(entity: T, entityClass: Function): Promise<T>;
+  update<T extends object>(entity: T, entityClass: Function): Promise<T>;
+  delete<T extends object>(entity: T, entityClass: Function): Promise<void>;
+  findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null>;
+  findAll<T extends object>(entityClass: new () => T): Promise<T[]>;
+  findWhere<T extends object>(
+    entityClass: new () => T,
+    conditions: Record<string, unknown>
+  ): Promise<T[]>;
+  findWhereIn<T extends object>(
+    entityClass: new () => T,
+    column: string,
+    values: unknown[]
+  ): Promise<T[]>;
+  insertMany<T extends object>(entities: T[], entityClass: Function): Promise<T[]>;
+  updateMany<T extends object>(entities: T[], entityClass: Function): Promise<T[]>;
+  upsert<T extends object>(entity: T, entityClass: Function): Promise<T>;
+  upsertMany<T extends object>(entities: T[], entityClass: Function): Promise<T[]>;
+  executeQuery<T>(
+    sql: string,
+    params?: readonly import('@ts-linq/types').SqlParameter[]
+  ): Promise<T[]>;
+  executeNonQuery(
+    sql: string,
+    params?: readonly import('@ts-linq/types').SqlParameter[]
+  ): Promise<number>;
+  configureQueryAnalysis(options?: QueryPerformanceAnalysisOptions): void;
+  readonly circuitStateLabel: CircuitState;
+  configureCircuit(options: CircuitBreakerOptions): void;
+  readonly softDeleteOptions: import('@ts-linq/types').SoftDeleteOptions | undefined;
+  configureSoftDelete(options?: import('@ts-linq/types').SoftDeleteOptions): void;
+  readonly providerLabel: string;
+  readonly loggerRef: import('@ts-linq/types').SqlLogger | undefined;
+  configureConnection(options: {
+    pool?: import('@ts-linq/types').ConnectionPoolOptions;
+    health?: import('@ts-linq/types').ConnectionHealthCheckOptions;
+  }): void;
+  forceOpen(reason: string, durationMs?: number): void;
+  manualReset(reason?: string): void;
+  beginTransaction(): Promise<void>;
+  commitTransaction(): Promise<void>;
+  rollbackTransaction(): Promise<void>;
+  readonly connected: boolean;
+  readonly inTransactionState: boolean;
+}
+
 /** Options for constructing a database context */
 export interface DbContextOptions {
-  provider: DatabaseProvider;
+  provider: IDatabaseProvider;
   /**
    * Metadata registry to use for this context.
    * Defaults to the process-wide registry (`MetadataStorage.getInstance()`).
