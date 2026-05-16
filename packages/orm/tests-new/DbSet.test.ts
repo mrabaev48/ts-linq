@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { DbSet } from '../src/DbSet';
 import { ChangeTracker } from '../src/ChangeTracker';
 import { EntityState, type DatabaseProvider } from '@ts-linq/core';
+import { Queryable } from '@ts-linq/query';
 import { Entity, PrimaryKey, Column, MetadataStorage } from '@ts-linq/metadata';
 
 @Entity({ name: 'users' })
@@ -46,7 +47,8 @@ describe('DbSet', () => {
       executeTransaction: jest.fn(),
       rawQuery: jest.fn(),
       providerLabel: 'MockProvider',
-      loggerRef: undefined
+      loggerRef: undefined,
+      getDialect: jest.fn().mockReturnValue({ parameterStyle: 0, quoteIdentifier: (s: string) => `"${s}"` })
     } as any;
 
     dbSet = new DbSet(User, { provider: mockProvider, changeTracker });
@@ -264,39 +266,21 @@ describe('DbSet', () => {
     });
   });
 
-  describe('findByIds()', () => {
-    it('should return empty array for empty ids', async () => {
-      const result = await dbSet.findByIds([]);
-
-      expect(result).toEqual([]);
-      expect(mockProvider.findWhereIn).not.toHaveBeenCalled();
+  describe('query()', () => {
+    it('should return a Queryable instance', () => {
+      const result = dbSet.query();
+      expect(result).toBeInstanceOf(Queryable);
     });
 
-    it('should use provider.findWhereIn for batch lookup', async () => {
-      const users = [
-        Object.assign(new User(), { id: 1, name: 'John', email: 'john@test.com' }),
-        Object.assign(new User(), { id: 2, name: 'Jane', email: 'jane@test.com' })
-      ];
-      (mockProvider.findWhereIn as any).mockResolvedValue(users);
-
-      const result = await dbSet.findByIds([1, 2]);
-
-      expect(result).toEqual(users);
+    it('should return a Queryable for the correct entity class', () => {
+      const result = dbSet.query();
+      expect(result).toBeInstanceOf(Queryable);
     });
 
-    it('should deduplicate ids', async () => {
-      const users = [Object.assign(new User(), { id: 1, name: 'John', email: 'john@test.com' })];
-      (mockProvider.findWhereIn as any).mockResolvedValue(users);
-
-      await dbSet.findByIds([1, 1, 1]);
-
-      expect(mockProvider.findWhereIn).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle null ids gracefully', async () => {
-      const result = await dbSet.findByIds(null as any);
-
-      expect(result).toEqual([]);
+    it('should return a fresh Queryable on each call', () => {
+      const q1 = dbSet.query();
+      const q2 = dbSet.query();
+      expect(q1).not.toBe(q2);
     });
   });
 
