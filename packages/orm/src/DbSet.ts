@@ -1,6 +1,6 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { ChangeTracker } from './ChangeTracker';
-import { EntityLoader } from '@ts-linq/core';
+import type { ChangeTracker } from './ChangeTracker';
+import type { EntityLoader } from '@ts-linq/core';
 import type { LoadingOptions } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
 import { ctorName } from '@ts-linq/core';
@@ -27,10 +27,7 @@ export class DbSet<T extends object> {
   // Default chunk size; can be overridden via PerformanceOptions.inClauseChunkSize
   private static readonly DEFAULT_IN_CHUNK_SIZE = 1000;
 
-  constructor(
-    entityClass: new () => T,
-    context: DbSetContext
-  ) {
+  constructor(entityClass: new () => T, context: DbSetContext) {
     this._entityClass = entityClass;
     this._provider = context.provider;
     this._changeTracker = context.changeTracker;
@@ -135,12 +132,12 @@ export class DbSet<T extends object> {
     }
     const pk = metadata.primaryKeys[0];
     const column = metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk;
-    
+
     // Cross-query optimization: deduplicate and chunk large IN lists
     const uniqueIds = Array.from(new Set(ids));
     if (uniqueIds.length === 0) return [];
     const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
-    
+
     const runChunk = async (chunk: ReadonlyArray<PrimaryKeyOf<T>>) => {
       const typed = chunk as unknown as unknown[];
       return await this._provider.findWhereIn<T>(this._entityClass, column, typed);
@@ -185,9 +182,9 @@ export class DbSet<T extends object> {
     // Cross-query optimization: deduplicate inputs and split into chunks
     const uniqueValues = Array.from(new Set(values));
     if (uniqueValues.length === 0) return [];
-    
+
     const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
-    
+
     const runChunk = async (chunk: ReadonlyArray<T[K]>) => {
       return await new Queryable<T>(
         this._entityClass,
@@ -198,8 +195,8 @@ export class DbSet<T extends object> {
         this._globalFilters,
         this._softDeleteOptions
       )
-      .whereIn(property, chunk)
-      .toArray();
+        .whereIn(property, chunk)
+        .toArray();
     };
 
     if (uniqueValues.length <= chunkSize) {

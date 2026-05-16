@@ -1,6 +1,6 @@
-import type { TrackedEntity } from "@ts-linq/core";
-import { EntityState } from "@ts-linq/core";
-import { MetadataStorage, type MetadataRegistry } from "@ts-linq/metadata";
+import type { TrackedEntity } from '@ts-linq/core';
+import { EntityState } from '@ts-linq/core';
+import { MetadataStorage, type MetadataRegistry } from '@ts-linq/metadata';
 
 /**
  * Tracks entities and their states (Added, Modified, Deleted, Unchanged)
@@ -192,7 +192,7 @@ export class ChangeTracker {
 
   private cloneObject<T>(obj: T): T {
     if (typeof structuredClone === 'function') {
-      return structuredClone(obj) as T;
+      return structuredClone(obj);
     }
     // Fallback for Node.js < 17
     return JSON.parse(JSON.stringify(obj)) as T;
@@ -219,10 +219,7 @@ export class ChangeTracker {
       const kb = Object.keys(b as object).sort();
       if (ka.join('\x00') !== kb.join('\x00')) return false;
       return ka.every((k) =>
-        this.areObjectsEqual(
-          (a as Record<string, unknown>)[k],
-          (b as Record<string, unknown>)[k]
-        )
+        this.areObjectsEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])
       );
     }
     return false;
