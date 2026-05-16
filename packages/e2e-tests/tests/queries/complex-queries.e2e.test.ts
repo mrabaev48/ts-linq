@@ -50,20 +50,20 @@ class Comment {
   post?: Post;
 }
 
-describe.each(['postgresql'])('E2E Complex Queries - %s', (providerName) => {
+class TestDbContext extends DbContext {}
+
+const run = process.env.SKIP_DB_TESTS !== '1';
+(run ? describe.each(['postgresql']) : describe.skip.each(['postgresql']))('E2E Complex Queries - %s', (providerName) => {
   let harness: any;
   let provider: any;
-  let context: DbContext;
+  let context: TestDbContext;
 
   beforeAll(async () => {
     if (process.env.SKIP_DB_TESTS === '1') {
       return;
     }
     ({ harness, provider } = await setupTestDatabase(providerName as any));
-    context = new DbContext(provider);
-    context.register(Author);
-    context.register(Post);
-    context.register(Comment);
+    context = new TestDbContext({ provider });
     await context.ensureCreated();
 
     // Seed data
@@ -107,7 +107,7 @@ describe.each(['postgresql'])('E2E Complex Queries - %s', (providerName) => {
     if (process.env.SKIP_DB_TESTS === '1') {
       return;
     }
-    await context?.dropDatabase();
+    await (context as any)?.dropDatabase?.();
     await teardownTestDatabase(harness);
   });
 
@@ -117,7 +117,7 @@ describe.each(['postgresql'])('E2E Complex Queries - %s', (providerName) => {
     }
 
     const postSet = context.set(Post);
-    const postsWithAuthors = await postSet.include('author').toArray();
+    const postsWithAuthors = await postSet.query().include('author').toArray();
     
     expect(postsWithAuthors[0].author).toBeDefined();
     expect(postsWithAuthors[0].author?.name).toBe('John Doe');
@@ -130,6 +130,7 @@ describe.each(['postgresql'])('E2E Complex Queries - %s', (providerName) => {
 
     const postSet = context.set(Post);
     const postsWithAll = await postSet
+      .query()
       .include('author')
       .include('comments')
       .toArray();
@@ -145,8 +146,8 @@ describe.each(['postgresql'])('E2E Complex Queries - %s', (providerName) => {
     }
 
     const postSet = context.set(Post);
-    const count = await postSet.count();
-    const firstPost = await postSet.orderBy('id').first();
+    const count = await postSet.query().count();
+    const firstPost = await postSet.query().orderBy('id').first();
     
     expect(count).toBeGreaterThan(0);
     expect(firstPost).toBeDefined();
@@ -159,6 +160,7 @@ describe.each(['postgresql'])('E2E Complex Queries - %s', (providerName) => {
 
     const postSet = context.set(Post);
     const grouped = await postSet
+      .query()
       .groupBy('authorId')
       .toArray();
 
@@ -172,6 +174,7 @@ describe.each(['postgresql'])('E2E Complex Queries - %s', (providerName) => {
 
     const postSet = context.set(Post);
     const filtered = await postSet
+      .query()
       .where(p => p.title.includes('First'))
       .where(p => p.authorId > 0)
       .toArray();

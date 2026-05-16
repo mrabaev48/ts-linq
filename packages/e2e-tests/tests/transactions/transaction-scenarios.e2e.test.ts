@@ -14,18 +14,20 @@ class Account {
   balance!: number;
 }
 
-describe.each(['postgresql'])('E2E Transactions - %s', (providerName) => {
+class TestDbContext extends DbContext {}
+
+const run = process.env.SKIP_DB_TESTS !== '1';
+(run ? describe.each(['postgresql']) : describe.skip.each(['postgresql']))('E2E Transactions - %s', (providerName) => {
   let harness: any;
   let provider: any;
-  let context: DbContext;
+  let context: TestDbContext;
 
   beforeEach(async () => {
     if (process.env.SKIP_DB_TESTS === '1') {
       return;
     }
     ({ harness, provider } = await setupTestDatabase(providerName as any));
-    context = new DbContext(provider);
-    context.register(Account);
+    context = new TestDbContext({ provider });
     await context.ensureCreated();
   });
 
@@ -33,7 +35,7 @@ describe.each(['postgresql'])('E2E Transactions - %s', (providerName) => {
     if (process.env.SKIP_DB_TESTS === '1') {
       return;
     }
-    await context?.dropDatabase();
+    await (context as any)?.dropDatabase?.();
     await teardownTestDatabase(harness);
   });
 
@@ -54,7 +56,7 @@ describe.each(['postgresql'])('E2E Transactions - %s', (providerName) => {
     
     await context.commitTransaction();
 
-    const accounts = await accountSet.toArray();
+    const accounts = await accountSet.query().toArray();
     expect(accounts).toHaveLength(1);
     expect(accounts[0].balance).toBe(1000);
   });
@@ -76,7 +78,7 @@ describe.each(['postgresql'])('E2E Transactions - %s', (providerName) => {
     
     await context.rollbackTransaction();
 
-    const accounts = await accountSet.toArray();
+    const accounts = await accountSet.query().toArray();
     expect(accounts).toHaveLength(0);
   });
 
@@ -106,7 +108,7 @@ describe.each(['postgresql'])('E2E Transactions - %s', (providerName) => {
     await context.commitTransaction();
     await context.commitTransaction();
 
-    const accounts = await accountSet.toArray();
+    const accounts = await accountSet.query().toArray();
     expect(accounts).toHaveLength(2);
   });
 
@@ -142,7 +144,7 @@ describe.each(['postgresql'])('E2E Transactions - %s', (providerName) => {
     
     await context.commitTransaction();
 
-    const accounts = await accountSet.toArray();
+    const accounts = await accountSet.query().toArray();
     const alice = accounts.find(a => a.name === 'Alice');
     const bob = accounts.find(a => a.name === 'Bob');
     
