@@ -55,25 +55,13 @@ expectType<UserId>({} as UserPk);
 // @ts-expect-error - OrderId is not assignable to UserPk
 const wrongPk: UserPk = {} as OrderId;
 
-// DbSet.find must accept branded PK type
+// DbSet.query() returns a Queryable for the entity type
 declare const users: DbSet<User>;
-expectType<Promise<User | null>>(users.find(uid));
-// @ts-expect-error - raw number should not be accepted if PK is branded
-users.find(123);
+expectType<Queryable<User>>(users.query());
 
-// DbSet.findByIds must accept arrays of branded PK
-expectType<Promise<User[]>>(users.findByIds([uid]));
-// @ts-expect-error - raw numbers array should be rejected when PK is branded
-users.findByIds([1, 2, 3]);
-
-// DbSet.findWhereIn must be type-safe on property and values
-expectType<Promise<User[]>>(users.findWhereIn('id', [uid]));
-// @ts-expect-error - raw number array is invalid for branded id property
-users.findWhereIn('id', [1, 2, 3]);
-// Non-branded property accepts correct primitive values
-expectType<Promise<User[]>>(users.findWhereIn('name', ['Alice', 'Bob']));
-// @ts-expect-error - wrong value type for property
-users.findWhereIn('name', [uid]);
+// All querying now goes through query() — type-safety is enforced by Queryable.whereIn
+const usersQuery = users.query();
+expectType<Queryable<User>>(usersQuery);
 
 // TypedQueryable: orderBy/thenBy only accept entity keys
 type U_Order = { id: number; name: string; age: number; createdAt: Date };
