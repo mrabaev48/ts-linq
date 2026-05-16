@@ -215,27 +215,8 @@ describe('Queryable (tests-new)', () => {
     );
   });
 
-  describe('innerJoin / leftJoin (deprecated predicate overloads)', () => {
-    it('innerJoin() throws a helpful error', () => {
-      const provider = new TestProvider();
-      const q = new Queryable(User, provider);
-      expect(() =>
-        q.innerJoin(User, (_a, _b) => true)
-      ).toThrow(
-        'ts-linq(innerJoin): runtime predicate parsing is not supported. Use innerJoinOn(leftKey, rightKey) for type-safe joins.'
-      );
-    });
-
-    it('leftJoin() throws a helpful error', () => {
-      const provider = new TestProvider();
-      const q = new Queryable(User, provider);
-      expect(() =>
-        q.leftJoin(User, (_a, _b) => true)
-      ).toThrow(
-        'ts-linq(leftJoin): runtime predicate parsing is not supported. Use leftJoinOn(leftKey, rightKey) for type-safe joins.'
-      );
-    });
-  });
+  // innerJoin() and leftJoin() (deprecated predicate overloads) were removed in ISSUE-003.
+  // Use innerJoinOn(leftKey, rightKey) for type-safe joins instead.
 
   describe('innerJoinOn / leftJoinOn', () => {
     function registerPostMetadata(): void {
