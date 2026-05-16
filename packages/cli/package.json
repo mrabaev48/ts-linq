@@ -34,7 +34,9 @@
   "dependencies": {
     "@ts-linq/core": "workspace:*",
     "@ts-linq/types": "workspace:*",
-    "@ts-linq/migrations": "workspace:*",
+    "@ts-linq/migrations": "workspace:*"
+  },
+  "optionalDependencies": {
     "@ts-linq/provider-postgres": "workspace:*",
     "@ts-linq/provider-mysql": "workspace:*",
     "@ts-linq/provider-mssql": "workspace:*"

@@ -20,7 +20,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
   });
 
   describe('PostgreSQL Provider', () => {
-    test('creates provider with pool and health options from environment', () => {
+    test('creates provider with pool and health options from environment', async () => {
       process.env.DB_PROVIDER = 'postgresql';
       process.env.POSTGRES_URL = 'postgres://user:pass@localhost:5432/testdb';
       process.env.DB_POOL_MIN = '2';
@@ -37,7 +37,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       process.env.DB_HEALTH_DEGRADE_AFTER = '3';
       process.env.DB_HEALTH_UNHEALTHY_AFTER = '5';
 
-      createProviderFromEnv();
+      await createProviderFromEnv();
 
       expect(PostgresProvider).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -67,11 +67,11 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       );
     });
 
-    test('creates provider without optional pool/health when env vars not set', () => {
+    test('creates provider without optional pool/health when env vars not set', async () => {
       process.env.DB_PROVIDER = 'pg';
       process.env.POSTGRES_URL = 'postgres://localhost/db';
 
-      createProviderFromEnv();
+      await createProviderFromEnv();
 
       expect(PostgresProvider).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -86,11 +86,11 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       );
     });
 
-    test('uses DATABASE_URL fallback when POSTGRES_URL not set', () => {
+    test('uses DATABASE_URL fallback when POSTGRES_URL not set', async () => {
       process.env.DB_PROVIDER = 'postgres';
       process.env.DATABASE_URL = 'postgres://fallback/db';
 
-      createProviderFromEnv();
+      await createProviderFromEnv();
 
       expect(PostgresProvider).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -105,19 +105,19 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       );
     });
 
-    test('throws error when neither POSTGRES_URL nor DATABASE_URL provided', () => {
+    test('throws error when neither POSTGRES_URL nor DATABASE_URL provided', async () => {
       process.env.DB_PROVIDER = 'postgresql';
       delete process.env.POSTGRES_URL;
       delete process.env.DATABASE_URL;
 
-      expect(() => createProviderFromEnv()).toThrow(
+      await expect(createProviderFromEnv()).rejects.toThrow(
         'POSTGRES_URL/DATABASE_URL is required for DB_PROVIDER=postgresql'
       );
     });
   });
 
   describe('MySQL Provider', () => {
-    test('creates MySQL provider with pool and health options', () => {
+    test('creates MySQL provider with pool and health options', async () => {
       process.env.DB_PROVIDER = 'mysql';
       process.env.MYSQL_URL = 'mysql://user:pass@localhost:3306/testdb';
       process.env.DB_POOL_MIN = '1';
@@ -125,7 +125,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       process.env.DB_HEALTH_ENABLED = 'true';
       process.env.DB_HEALTH_INTERVAL_MS = '30000';
 
-      createProviderFromEnv();
+      await createProviderFromEnv();
 
       expect(MySqlProvider).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -146,12 +146,12 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       );
     });
 
-    test('throws error when MYSQL_URL not provided', () => {
+    test('throws error when MYSQL_URL not provided', async () => {
       process.env.DB_PROVIDER = 'mysql';
       delete process.env.MYSQL_URL;
       delete process.env.DATABASE_URL;
 
-      expect(() => createProviderFromEnv()).toThrow(
+      await expect(createProviderFromEnv()).rejects.toThrow(
         'MYSQL_URL/DATABASE_URL is required for DB_PROVIDER=mysql'
       );
     });
@@ -160,7 +160,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
 
 
   describe('Circuit Breaker Configuration', () => {
-    test('configures circuit breaker when env vars provided', () => {
+    test('configures circuit breaker when env vars provided', async () => {
       const mockProvider = {
         configureCircuit: jest.fn()
       };
@@ -172,7 +172,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       process.env.DB_CB_THRESHOLD = '5';
       process.env.DB_CB_OPEN_MS = '60000';
 
-      createProviderFromEnv();
+      await createProviderFromEnv();
 
       expect(mockProvider.configureCircuit).toHaveBeenCalledWith({
         enabled: true,
@@ -183,7 +183,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
   });
 
   describe('Real-world scenarios', () => {
-    test('production-like PostgreSQL configuration', () => {
+    test('production-like PostgreSQL configuration', async () => {
       process.env.DB_PROVIDER = 'postgresql';
       process.env.POSTGRES_URL = 'postgres://prod_user:secret@prod-db.example.com:5432/appdb';
       process.env.DB_POOL_MIN = '5';
@@ -202,7 +202,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       };
       (PostgresProvider as jest.Mock).mockReturnValue(mockProvider);
 
-      const provider = createProviderFromEnv();
+      const provider = await createProviderFromEnv();
 
       expect(PostgresProvider).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -26,7 +26,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-005 | ~~Critical~~ | ~~Clean Architecture, Maintainability~~ | ~~@ts-linq/sql-visitor is an unimplemented stub~~ ✅ **FIXED** | [ISSUE-005-sql-visitor-stub.md](ISSUE-005-sql-visitor-stub.md) |
 | ISSUE-006 | ~~Critical~~ | ~~Clean Architecture, Dependency Boundary~~ | ~~AST visitors hardcode SQL syntax~~ ✅ **FIXED** | [ISSUE-006-ast-visitors-hardcode-sql.md](ISSUE-006-ast-visitors-hardcode-sql.md) |
 | ISSUE-007 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~Dynamic require() in DbContext is ESM-incompatible~~ ✅ **FIXED** | [ISSUE-007-dynamic-require-esm-incompatible.md](ISSUE-007-dynamic-require-esm-incompatible.md) |
-| ISSUE-008 | High | Dependency Boundary, Build/Tooling | CLI eagerly imports all three database providers | [ISSUE-008-cli-eager-loads-all-providers.md](ISSUE-008-cli-eager-loads-all-providers.md) |
+| ISSUE-008 | ~~High~~ | ~~Dependency Boundary, Build/Tooling~~ | ~~CLI eagerly imports all three database providers~~ ✅ **FIXED** | [ISSUE-008-cli-eager-loads-all-providers.md](ISSUE-008-cli-eager-loads-all-providers.md) |
 | ISSUE-009 | High | SOLID, Maintainability | Cache coherency logic scattered across DbContext | [ISSUE-009-cache-coherency-scattered.md](ISSUE-009-cache-coherency-scattered.md) |
 | ISSUE-010 | High | SOLID, Testability | Mutable shared state in Queryable.clone() | [ISSUE-010-queryable-clone-shared-mutable-state.md](ISSUE-010-queryable-clone-shared-mutable-state.md) |
 | ISSUE-011 | High | Testability, Clean Architecture | MetadataStorage singleton causes test pollution | [ISSUE-011-metadata-storage-singleton.md](ISSUE-011-metadata-storage-singleton.md) |
@@ -90,7 +90,7 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 5. ~~**ISSUE-005**~~ ✅ Done — ~~**ISSUE-006**~~ ✅ Done — `ParameterStyle` enum introduced; `SqlVisitor` accepts dialect-specific placeholder style
 6. ~~**ISSUE-002**~~ ✅ Done — Consolidated type ownership: 13 duplicate/domain types moved to `@ts-linq/types`, removed from `@ts-linq/core`; backward-compatible re-exports added
 7. ~~**ISSUE-016**~~ ✅ Done — Removed stale `@ts-linq/metrics-safe` path aliases from 6 tsconfig files; added `scripts/check-phantom-deps.js` CI lint script; wired `no-undeclared-workspaces` rule in dependency-cruiser
-8. **ISSUE-008** — Lazy-load providers in CLI
+8. ~~**ISSUE-008**~~ ✅ Done — Lazy-load providers in CLI; `createProviderFromEnv()` now async with dynamic `import()` per branch; providers moved to `optionalDependencies`
 
 ### Phase 3 — Reduce Complexity in Core Classes (Weeks 6–10)
 9. **ISSUE-009** — Extract `CacheCoordinator` from `DbContext`

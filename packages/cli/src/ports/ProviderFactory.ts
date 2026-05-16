@@ -1,5 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 
 export interface ProviderFactory {
-  create(): DatabaseProvider;
+  create(): Promise<DatabaseProvider>;
 }
