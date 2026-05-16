@@ -11,15 +11,15 @@ import type {
   OrderByClause,
   PerformanceOptions,
   QueryFallback,
-  Result,
   SqlParameter,
   WhereClause
 } from '@ts-linq/types';
 import type { CteDefinition } from '@ts-linq/types';
-import { err, ok } from '@ts-linq/types';
 import { AggregateOperations } from './AggregateOperations';
+import { FallbackManager } from './FallbackManager';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { IncludePlanner } from './IncludePlanner';
+import { PaginationBuilder } from './PaginationBuilder';
 import { QueryBuilder } from './QueryBuilder';
 import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
@@ -49,15 +49,15 @@ export class Queryable<T> {
   private _globalFilterApplier = new GlobalFilterApplier();
   private _materializer!: RowMaterializer<T>;
   private _includePlanner!: IncludePlanner<T>;
-  private _fallbacks: Array<QueryFallback<T>> = [];
-  // Internal storage for CTE info (used by providers that support WITH ...)
-  private _cte?: CteDefinition;
   // Lightweight signature of WHERE clauses for fast count() cache keys
   private _whereSignature: string = '[]';
-  // Per-chain fallback throttle state (shared by reference through clone())
-  private _throttle = { windowStart: 0, usedInWindow: 0, lastAttemptAt: 0 };
+  // Internal storage for CTE info (used by providers that support WITH ...)
+  private _cte?: CteDefinition;
 
   private _softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions;
+
+  /** Fallback state: source list + per-chain throttle counters. */
+  private _fallbackManager: FallbackManager<T> = FallbackManager.create<T>();
 
   /** Execution delegate: primary + fallback + hedging paths. Re-created in clone() with shared throttle ref. */
   private _executor!: QueryExecutor<T>;
@@ -117,23 +117,14 @@ export class Queryable<T> {
       this._sqlBuilder,
       this._materializer,
       this._includePlanner,
-      this._fallbacks,
-      this._performance,
-      this._throttle
+      this._fallbackManager,
+      this._performance
     );
     this._aggregates = new AggregateOperations<T>(
       this._entityClass,
       this._provider,
       this._sqlBuilder
     );
-  }
-
-  /**
-   * @deprecated Count cache is now owned per-context via `PerformanceOptions.countCache`.
-   * This method is a no-op kept for backward compatibility.
-   */
-  public static clearCountCache(): void {
-    // no-op: count cache is now owned by the DbContext (per-context InMemoryCountCache).
   }
 
   /** Create a shallow clone sharing provider/loader but copying model. */
@@ -150,21 +141,19 @@ export class Queryable<T> {
     clonedQueryable._model = this._model.clone();
     // preserve where signature for accurate count cache keys
     clonedQueryable._whereSignature = this._whereSignature;
-    // preserve includes, fallbacks and client-side predicates
+    // preserve includes and client-side predicates
     clonedQueryable._includes = [...this._includes];
-    clonedQueryable._fallbacks = [...this._fallbacks];
-    // share throttle state by reference so all clones in a chain see the same counters
-    clonedQueryable._throttle = this._throttle;
-    // Re-create executor with the cloned fallbacks array and shared throttle reference
+    // Clone copies fallbacks but SHARES throttle by reference (same chain semantics)
+    clonedQueryable._fallbackManager = this._fallbackManager.clone();
+    // Re-create executor with the cloned FallbackManager (throttle shared by reference inside)
     clonedQueryable._executor = new QueryExecutor<T>(
       this._entityClass,
       this._provider,
       this._sqlBuilder,
       clonedQueryable._materializer,
       clonedQueryable._includePlanner,
-      clonedQueryable._fallbacks,
-      this._performance,
-      this._throttle
+      clonedQueryable._fallbackManager,
+      this._performance
     );
     // AggregateOperations is stateless — share the same instance
     clonedQueryable._aggregates = this._aggregates;
@@ -218,34 +207,6 @@ export class Queryable<T> {
   }
 
   /**
-   * @deprecated Runtime predicate parsing is not supported — use `innerJoinOn(leftKey, rightKey)`.
-   */
-  public innerJoin<TOther>(
-    _otherCtor: new () => TOther,
-    _on: (left: T, right: TOther) => boolean,
-    _alias?: string
-  ): Queryable<T> {
-    throw new Error(
-      "ts-linq(innerJoin): runtime predicate parsing is not supported. " +
-      "Use innerJoinOn(leftKey, rightKey) for type-safe joins."
-    );
-  }
-
-  /**
-   * @deprecated Runtime predicate parsing is not supported — use `leftJoinOn(leftKey, rightKey)`.
-   */
-  public leftJoin<TOther>(
-    _otherCtor: new () => TOther,
-    _on: (left: T, right: TOther) => boolean,
-    _alias?: string
-  ): Queryable<T> {
-    throw new Error(
-      "ts-linq(leftJoin): runtime predicate parsing is not supported. " +
-      "Use leftJoinOn(leftKey, rightKey) for type-safe joins."
-    );
-  }
-
-  /**
    * Add a type-safe INNER JOIN on a single equality key pair.
    *
    * @example
@@ -279,6 +240,9 @@ export class Queryable<T> {
 
   /**
    * Adds a filter predicate to the query.
+   * NOTE: This stub must remain — the compile-time transformer (`@ts-linq/transformer`)
+   * rewrites `where(...)` calls into `whereCompiled(...)`. TypeScript type-checks the
+   * pre-transformed source, so the method must exist in the type signature.
    *
    * @example
    * const cheap = await context.products.where(p => p.price < 100).toArray();
@@ -314,7 +278,7 @@ export class Queryable<T> {
    * Fallbacks are tried in the order they are registered until one succeeds.
    */
   public fallbackTo(source: QueryFallback<T>): Queryable<T> {
-    this._fallbacks.push(source);
+    this._fallbackManager.add(source);
     return this;
   }
 
@@ -372,7 +336,8 @@ export class Queryable<T> {
 
   /**
    * Projects selected properties. Returns a new Queryable of the projected type.
-   * @param selector Projection selector.
+   * NOTE: This stub must remain — the compile-time transformer (`@ts-linq/transformer`)
+   * rewrites `select(...)` calls into `selectCompiled(...)`.
    *
    * @example
    * const names = await context.authors.select(a => a.name).toArray();
@@ -397,9 +362,8 @@ export class Queryable<T> {
     );
     next._model = this._model.clone();
     next._model.select = [...input.fields];
-    (next as unknown as { _fallbacks: Array<QueryFallback<TResult>> })._fallbacks = [
-      ...((this as unknown as { _fallbacks: Array<QueryFallback<TResult>> })._fallbacks || [])
-    ];
+    (next as unknown as { _fallbackManager: FallbackManager<TResult> })._fallbackManager =
+      (this._fallbackManager as unknown as FallbackManager<TResult>);
     return next;
   }
 
@@ -522,6 +486,9 @@ export class Queryable<T> {
 
   /**
    * Apply HAVING predicate to an existing groupBy.
+   * NOTE: This stub must remain — the compile-time transformer rewrites
+   * `having(...)` into `havingCompiled(...)`.
+   *
    * @example
    * const q = context.books.groupBy('authorId').having(() => true);
    */
@@ -555,62 +522,46 @@ export class Queryable<T> {
   }
 
   /**
-   * Paginate by page number and size. Applies ORDER BY fallback if missing.
+   * Paginate by page number and size. Delegates logic to PaginationBuilder.
    * @example
    * const page1 = await context.books.orderBy('id').paginate(1, 20);
    */
-  public async paginate(
+  public paginate(
     page: number,
     size: number
   ): Promise<{ items: T[]; total: number; page: number; size: number }> {
-    if (page < 1 || size < 1) throw new Error('paginate requires page >= 1 and size >= 1');
-    const queryModel = this._model.clone();
-    this.applyGlobalFiltersToModel(queryModel);
-    queryModel.limit = size;
-    queryModel.offset = (page - 1) * size;
-    const items = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
-    const total = await this.count();
-    return { items, total, page, size };
+    return new PaginationBuilder<T>(
+      this._entityClass,
+      this._provider,
+      this._executor,
+      this._model,
+      this._includes,
+      this._cte,
+      (m) => this.applyGlobalFiltersToModel(m),
+      () => this.count()
+    ).paginate(page, size);
   }
 
   /**
-   * Keyset pagination helper. Requires a monotonic key (e.g., id).
+   * Keyset pagination helper. Delegates logic to PaginationBuilder.
    * @example
    * const page = await context.books.orderBy('id').keysetPaginate('id', lastId, 20);
    */
-  public async keysetPaginate<TKey extends keyof T>(
+  public keysetPaginate<TKey extends keyof T>(
     key: TKey,
     after: T[TKey] | null,
     size: number
   ): Promise<{ items: T[]; pageSize: number; nextAfter: T[TKey] | null }> {
-    if (size < 1) throw new Error('keysetPaginate requires size >= 1');
-    const propName = String(key);
-    const meta = MetadataStorage.getEntity(this._entityClass);
-    const colName = meta?.columns.find((c) => c.propertyName === propName)?.columnName ?? propName;
-    const quotedCol = this._provider.getDialect().quoteIdentifier(colName);
-
-    const queryModel = this._model.clone();
-    queryModel.orderBy = queryModel.orderBy ?? [];
-    const hasOrderByKey = queryModel.orderBy.some(
-      (o) => o.column === colName || o.column === propName
-    );
-    if (!hasOrderByKey) queryModel.orderBy.push({ column: colName, direction: 'ASC' });
-    queryModel.limit = size;
-
-    if (after !== null && after !== undefined) {
-      queryModel.where = queryModel.where ?? [];
-      queryModel.where.push({
-        condition: `${quotedCol} > ?`,
-        parameters: [after as unknown as SqlParameter]
-      });
-    }
-
-    this.applyGlobalFiltersToModel(queryModel);
-    const items = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
-    const last =
-      items.length > 0 ? (items[items.length - 1] as unknown as Record<string, unknown>) : null;
-    const nextAfter = last ? (last[propName] as T[TKey] | null) : null;
-    return { items, pageSize: size, nextAfter };
+    return new PaginationBuilder<T>(
+      this._entityClass,
+      this._provider,
+      this._executor,
+      this._model,
+      this._includes,
+      this._cte,
+      (m) => this.applyGlobalFiltersToModel(m),
+      () => this.count()
+    ).keysetPaginate(key, after, size);
   }
 
   /**
@@ -656,15 +607,7 @@ export class Queryable<T> {
     if (!entities.length) throw new Error('Sequence contains no elements');
     return entities[0];
   }
-  /** Try-version of first without throwing exceptions. */
-  public async tryFirst(): Promise<Result<T, Error>> {
-    try {
-      const value = await this.first();
-      return ok(value);
-    } catch (error) {
-      return err(error as Error);
-    }
-  }
+
   /** Returns the first entity or null.
    * @example
    * const maybe = await context.books.where(b => b.id > 10000).firstOrDefault();
@@ -677,6 +620,7 @@ export class Queryable<T> {
     const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
     return entities[0] ?? null;
   }
+
   /** Ensures exactly one result; throws if 0 or more than 1.
    * @example
    * const book = await context.books.where(b => b.id === 1).single();
@@ -687,15 +631,7 @@ export class Queryable<T> {
     if (results.length > 1) throw new Error('Sequence contains more than one element');
     return results[0];
   }
-  /** Try-version of single without throwing exceptions. */
-  public async trySingle(): Promise<Result<T, Error>> {
-    try {
-      const value = await this.single();
-      return ok(value);
-    } catch (error) {
-      return err(error as Error);
-    }
-  }
+
   /** Returns one or null; throws if more than 1.
    * @example
    * const maybe = await context.books.where(b => b.id === 9999).singleOrDefault();
@@ -705,6 +641,7 @@ export class Queryable<T> {
     if (results.length > 1) throw new Error('Sequence contains more than one element');
     return results[0] ?? null;
   }
+
   /** Returns the number of rows that match the current query.
    * @example
    * const count = await context.products.where(p => p.price >= 100).count();
@@ -776,6 +713,7 @@ export class Queryable<T> {
     const meta = MetadataStorage.getEntity(this._entityClass);
     return meta?.columns.find((c) => c.propertyName === propName)?.columnName ?? propName;
   }
+
   /** Returns true if at least one row matches the query.
    * @example
    * const exists = await context.products.where(p => p.name === 'Laptop').any();
@@ -824,16 +762,7 @@ export class Queryable<T> {
     return this;
   }
 
-  // Additional Entity Framework-style LINQ methods
-
-  /** Check if all elements satisfy a condition (EF-style) */
-  public async all(predicate: (entity: T) => boolean): Promise<boolean> {
-    throw new Error(
-      "ts-linq(all): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
-    );
-  }
-
-  /** Calculate average of a numeric property (EF-style) */
+  /** Calculate average of a numeric property */
   public async average<K extends keyof T>(key: K): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
@@ -842,7 +771,7 @@ export class Queryable<T> {
     return this._aggregates.average(queryModel, colName);
   }
 
-  /** Calculate sum of a numeric property (EF-style) */
+  /** Calculate sum of a numeric property */
   public async sum<K extends keyof T>(key: K): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
@@ -851,7 +780,7 @@ export class Queryable<T> {
     return this._aggregates.sum(queryModel, colName);
   }
 
-  /** Find minimum value of a property (EF-style) */
+  /** Find minimum value of a property */
   public async min<K extends keyof T>(key: K): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
@@ -860,7 +789,7 @@ export class Queryable<T> {
     return this._aggregates.min<K>(queryModel, colName);
   }
 
-  /** Find maximum value of a property (EF-style) */
+  /** Find maximum value of a property */
   public async max<K extends keyof T>(key: K): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
@@ -869,7 +798,7 @@ export class Queryable<T> {
     return this._aggregates.max<K>(queryModel, colName);
   }
 
-  /** Check if the sequence contains a specific element (EF-style) */
+  /** Check if the sequence contains a specific element */
   public async contains(item: T): Promise<boolean> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this._model.clone();
@@ -935,5 +864,4 @@ export class Queryable<T> {
       alias,
     });
   }
-
 }
