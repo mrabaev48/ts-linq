@@ -5,11 +5,7 @@ import type {
   FallbackPolicy
 } from '@ts-linq/types';
 
-import { PostgresProvider } from '@ts-linq/provider-postgres';
-import { MySqlProvider } from '@ts-linq/provider-mysql';
-import { MssqlProvider } from '@ts-linq/provider-mssql';
-
-export function createProviderFromEnv(): DatabaseProvider {
+export async function createProviderFromEnv(): Promise<DatabaseProvider> {
   const kind = (process.env.DB_PROVIDER || 'postgres').toLowerCase();
   if (isPg(kind)) return createPg();
   if (kind === 'mysql') return createMy();
@@ -25,40 +21,35 @@ function isMs(kind: string): boolean {
   return kind === 'mssql' || kind === 'sqlserver';
 }
 
-function createPg(): DatabaseProvider {
+async function createPg(): Promise<DatabaseProvider> {
   const url = process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('POSTGRES_URL/DATABASE_URL is required for DB_PROVIDER=postgresql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  
-  // Parse PostgreSQL URL
+
   const parsed = new URL(url);
   const params = new URLSearchParams(parsed.search);
-  
-  // Parse SSL configuration - handle both 'ssl' and 'sslmode' parameters
-  // Support all common SSL modes: disable, allow, prefer, require, verify-ca, verify-full
+
   let sslConfig: boolean | object | undefined = undefined;
   const sslParam = params.get('ssl');
   const sslModeParam = params.get('sslmode');
   const requireSslParam = params.get('requireSsl') || params.get('require_ssl');
-  
+
   if (sslParam) {
     sslConfig = sslParam === 'true' || sslParam === '1';
   } else if (requireSslParam) {
     sslConfig = requireSslParam === 'true' || requireSslParam === '1';
   } else if (sslModeParam) {
-    // Map sslmode values - enable TLS for require/verify modes, disable for disable, undefined for allow/prefer
     const mode = sslModeParam.toLowerCase();
     if (mode === 'disable') {
       sslConfig = false;
     } else if (mode === 'allow' || mode === 'prefer') {
-      sslConfig = undefined; // Let pg driver negotiate based on server support
+      sslConfig = undefined;
     } else if (mode === 'require' || mode === 'verify-ca' || mode === 'verify-full') {
-      // Enable TLS with certificate verification for require/verify-* modes
-      // pg driver will handle verification based on system CA certificates
       sslConfig = { rejectUnauthorized: true };
     }
   }
-  
+
+  const { PostgresProvider } = await import('@ts-linq/provider-postgres');
   const provider = new PostgresProvider({
     host: parsed.hostname,
     port: parsed.port ? parseInt(parsed.port) : 5432,
@@ -76,15 +67,15 @@ function createPg(): DatabaseProvider {
   return provider;
 }
 
-function createMy(): DatabaseProvider {
+async function createMy(): Promise<DatabaseProvider> {
   const url = process.env.MYSQL_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('MYSQL_URL/DATABASE_URL is required for DB_PROVIDER=mysql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  
-  // Parse MySQL URL
+
   const parsed = new URL(url);
   const params = new URLSearchParams(parsed.search);
-  
+
+  const { MySqlProvider } = await import('@ts-linq/provider-mysql');
   const provider = new MySqlProvider({
     host: parsed.hostname,
     port: parsed.port ? parseInt(parsed.port) : 3306,
@@ -101,18 +92,18 @@ function createMy(): DatabaseProvider {
   return provider;
 }
 
-function createMs(): DatabaseProvider {
+async function createMs(): Promise<DatabaseProvider> {
   const url = process.env.MSSQL_URL || process.env.DATABASE_URL || '';
   if (!url) throw new Error('MSSQL_URL/DATABASE_URL is required for DB_PROVIDER=mssql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
-  
-  // Parse MSSQL connection string (Server=host;Database=db;User Id=user;Password=pass)
+
   const parts = url.split(';').reduce((acc, part) => {
     const [key, value] = part.split('=');
     if (key && value) acc[key.trim().toLowerCase()] = value.trim();
     return acc;
   }, {} as Record<string, string>);
-  
+
+  const { MssqlProvider } = await import('@ts-linq/provider-mssql');
   const provider = new MssqlProvider({
     server: parts['server'] || 'localhost',
     database: parts['database'] || parts['initial catalog'] || '',

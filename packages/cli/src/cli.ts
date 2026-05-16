@@ -61,7 +61,7 @@ async function main() {
   const maybeDb = command as DbCommand;
   const isDbCommand = typeof maybeDb.runDb === 'function';
   if (isDbCommand) {
-    const provider = createProviderFromEnv();
+    const provider = await createProviderFromEnv();
     try {
       await provider.connect();
       await maybeDb.runDb(provider, argv);
