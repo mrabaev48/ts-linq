@@ -19,8 +19,8 @@ import { RowMaterializer } from './RowMaterializer';
  * Handles all execution paths for a query: primary provider, fallback, and hedged racing.
  * Also owns the count execution path (with fallback/hedging).
  *
- * Queryable creates one executor per instance and re-creates it in clone() so the
- * shared throttle reference remains correct across all clones in a chain.
+ * Queryable creates one executor per instance and re-creates it in clone() with an
+ * independent FallbackManager (deep-copied throttle counters) per clone.
  */
 export class QueryExecutor<T> {
   constructor(
@@ -29,7 +29,7 @@ export class QueryExecutor<T> {
     private readonly sqlBuilder: QueryBuilder,
     private readonly materializer: RowMaterializer<T>,
     private readonly includePlanner: IncludePlanner<T>,
-    /** FallbackManager owns the fallback list and shared throttle state for the chain. */
+    /** FallbackManager owns the fallback list and independent throttle state for this clone. */
     private readonly fallbackManager: FallbackManager<T>,
     private readonly performance: PerformanceOptions | undefined
   ) {}

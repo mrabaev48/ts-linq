@@ -143,9 +143,9 @@ export class Queryable<T> {
     clonedQueryable._whereSignature = this._whereSignature;
     // preserve includes and client-side predicates
     clonedQueryable._includes = [...this._includes];
-    // Clone copies fallbacks but SHARES throttle by reference (same chain semantics)
+    // Clone copies fallbacks (shared cache layers) and deep-copies throttle (independent per clone)
     clonedQueryable._fallbackManager = this._fallbackManager.clone();
-    // Re-create executor with the cloned FallbackManager (throttle shared by reference inside)
+    // Re-create executor with the cloned FallbackManager (independent throttle per clone)
     clonedQueryable._executor = new QueryExecutor<T>(
       this._entityClass,
       this._provider,
