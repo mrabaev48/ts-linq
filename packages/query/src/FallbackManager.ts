@@ -14,7 +14,6 @@ export interface ThrottleState {
  */
 export class FallbackManager<T> {
   readonly fallbacks: Array<QueryFallback<T>> = [];
-  // Writable via the private constructor to allow sharing by reference during clone().
   readonly throttle: ThrottleState;
 
   private constructor(throttle?: ThrottleState) {
@@ -30,12 +29,16 @@ export class FallbackManager<T> {
   }
 
   /**
-   * Clone copies the fallbacks array but SHARES the throttle object by reference.
-   * All clones in a Queryable chain must see the same throttle counters so that
-   * the per-window rate limit is enforced across the whole chain.
+   * Clone copies the fallbacks array (same object references — fallback implementations
+   * such as MemoryFallback represent shared cache layers and are intentionally shared)
+   * and deep-copies the throttle counters so each clone has independent rate-limit state.
+   *
+   * Rationale: a fluent Queryable chain creates a clone per call site; rate-limit
+   * counters from one chain must not bleed into an independent sibling chain.
+   * Fallback objects are stateful cache layers — sharing them across clones is correct.
    */
   clone(): FallbackManager<T> {
-    const copy = new FallbackManager<T>(this.throttle);
+    const copy = new FallbackManager<T>({ ...this.throttle }); // deep-copy counters
     (copy.fallbacks as Array<QueryFallback<T>>).push(...this.fallbacks);
     return copy;
   }
