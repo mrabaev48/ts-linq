@@ -28,7 +28,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-007 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~Dynamic require() in DbContext is ESM-incompatible~~ ✅ **FIXED** | [ISSUE-007-dynamic-require-esm-incompatible.md](ISSUE-007-dynamic-require-esm-incompatible.md) |
 | ISSUE-008 | ~~High~~ | ~~Dependency Boundary, Build/Tooling~~ | ~~CLI eagerly imports all three database providers~~ ✅ **FIXED** | [ISSUE-008-cli-eager-loads-all-providers.md](ISSUE-008-cli-eager-loads-all-providers.md) |
 | ISSUE-009 | ~~High~~ | ~~SOLID, Maintainability~~ | ~~Cache coherency logic scattered across DbContext~~ ✅ **FIXED** | [ISSUE-009-cache-coherency-scattered.md](ISSUE-009-cache-coherency-scattered.md) |
-| ISSUE-010 | High | SOLID, Testability | Mutable shared state in Queryable.clone() | [ISSUE-010-queryable-clone-shared-mutable-state.md](ISSUE-010-queryable-clone-shared-mutable-state.md) |
+| ISSUE-010 | ~~High~~ | ~~SOLID, Testability~~ | ~~Mutable shared state in Queryable.clone()~~ ✅ **FIXED** | [ISSUE-010-queryable-clone-shared-mutable-state.md](ISSUE-010-queryable-clone-shared-mutable-state.md) |
 | ISSUE-011 | ~~High~~ | ~~Testability, Clean Architecture~~ | ~~MetadataStorage singleton causes test pollution~~ ✅ **FIXED** | [ISSUE-011-metadata-storage-singleton.md](ISSUE-011-metadata-storage-singleton.md) |
 | ISSUE-012 | ~~High~~ | ~~Build/Tooling, Testability~~ | ~~Jest and TypeScript resolve packages from different paths~~ ✅ **FIXED** | [ISSUE-012-jest-tsconfig-path-divergence.md](ISSUE-012-jest-tsconfig-path-divergence.md) |
 | ISSUE-013 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~@ts-linq/telemetry is a dead stub (no src/)~~ ✅ **FIXED** | [ISSUE-013-telemetry-dead-stub.md](ISSUE-013-telemetry-dead-stub.md) |
@@ -103,7 +103,7 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 
 ### Phase 4 — Polish and Test Safety (Weeks 11–12)
 13. ~~**ISSUE-011**~~ ✅ Done — `createMetadataRegistry()` factory exported; `reset()` documented and enforced in `beforeEach`; 17 new isolation tests added (`metadata-isolation.test.ts`, `RegistryIsolation.test.ts`)
-14. **ISSUE-010** — Clarify or fix `_throttle` sharing semantics in `Queryable.clone()`
+14. ~~**ISSUE-010**~~ ✅ Done — `FallbackManager.clone()` now deep-copies `ThrottleState`; each clone has independent rate-limit counters; fallback objects remain shared (intentional cache-layer sharing); 3 new isolation tests added (`FallbackManager.test.ts`)
 15. **ISSUE-018** — Add transaction depth tracking to `DbContext`
 16. **ISSUE-014** — Decompose `EnhancedSqlCache` into composable decorators
 17. **ISSUE-015** — Consolidate path aliases into `tsconfig.base.json`
@@ -118,5 +118,5 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 
 - **Dialect layer is clean**: `@ts-linq/dialect-postgres/mysql/mssql`, all provider packages, and all plugin packages (`plugin-audit`, `plugin-soft-delete`, `plugin-multi-tenant`) have correct dependency directions and no SRP violations. No findings were generated for these packages.
 - **ts-prune returned empty output**: All exports in `packages/*/src/index.ts` are in `ts-prune-ignore.txt`. Placeholder exports in `sql-visitor`, `integration-nestjs`, and `telemetry` are covered by the ignore list and would not surface via dead-code analysis alone.
-- **ISSUE-010 throttle sharing**: The comment in source explicitly documents this as intentional. The issue is flagged because concurrent access semantics are not analyzed anywhere in the codebase.
+- ~~**ISSUE-010 throttle sharing**~~: ✅ Fixed — `FallbackManager.clone()` now deep-copies `ThrottleState` (`{ ...this.throttle }`). Each clone has independent rate-limit counters. Fallback objects (e.g., `MemoryFallback`) are still shared by reference as they represent shared cache layers.
 - **No findings for**: `@ts-linq/transformer` (clean, compile-time-only), `@ts-linq/pagination`, `@ts-linq/concurrency`, `@ts-linq/cache`, `@ts-linq/cache-redis`, `@ts-linq/cache-memcached`, `@ts-linq/migrations` — all follow correct dependency direction and have appropriate scopes.

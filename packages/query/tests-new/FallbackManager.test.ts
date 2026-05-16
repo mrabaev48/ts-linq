@@ -33,7 +33,7 @@ describe('FallbackManager', () => {
     expect(mgr.fallbacks[1]!.label).toBe('replica');
   });
 
-  it('clone() copies fallbacks but shares throttle by reference', () => {
+  it('clone() copies fallbacks and deep-copies throttle state', () => {
     const mgr = FallbackManager.create<TestEntity>();
     mgr.add(makeFallback('cache'));
     mgr.throttle.lastAttemptAt = 42;
@@ -45,19 +45,32 @@ describe('FallbackManager', () => {
     expect(copy.fallbacks).not.toBe(mgr.fallbacks);
     expect(copy.fallbacks[0]!.label).toBe('cache');
 
-    // Throttle is shared by reference — same object
-    expect(copy.throttle).toBe(mgr.throttle);
+    // Throttle is a different object but carries the same snapshot values
+    expect(copy.throttle).not.toBe(mgr.throttle);
     expect(copy.throttle.lastAttemptAt).toBe(42);
   });
 
-  it('mutations to throttle in the clone are visible in the original', () => {
+  it('mutations to throttle in the clone do not affect the original', () => {
     const mgr = FallbackManager.create<TestEntity>();
     const copy = mgr.clone();
 
-    // Simulate throttle update in copy (as QueryExecutor would do)
     copy.throttle.usedInWindow = 5;
 
-    expect(mgr.throttle.usedInWindow).toBe(5);
+    expect(mgr.throttle.usedInWindow).toBe(0);
+  });
+
+  it('throttle state is independent between siblings cloned from the same parent', () => {
+    const parent = FallbackManager.create<TestEntity>();
+    const cloneA = parent.clone();
+    const cloneB = parent.clone();
+
+    cloneA.throttle.usedInWindow = 3;
+    cloneB.throttle.lastAttemptAt = 999;
+
+    expect(parent.throttle.usedInWindow).toBe(0);
+    expect(parent.throttle.lastAttemptAt).toBe(0);
+    expect(cloneB.throttle.usedInWindow).toBe(0);
+    expect(cloneA.throttle.lastAttemptAt).toBe(0);
   });
 
   it('adding to copy does not affect original', () => {
