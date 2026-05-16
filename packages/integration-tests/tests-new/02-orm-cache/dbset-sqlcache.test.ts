@@ -62,13 +62,13 @@ describe('DbSet + SqlCache Integration', () => {
     // Act 1: First execution
     provider.executionCount = 0;
     provider.nextResult = [{ id: 1, name: 'Alice', age: 25 }];
-    await users.where(u => u.age > 20).toArray();
+    await users.query().where(u => u.age > 20).toArray();
     
     expect(provider.executionCount).toBe(1);
     expect(sqlCache.size()).toBe(1);
 
     // Act 2: Second execution (same query)
-    await users.where(u => u.age > 20).toArray();
+    await users.query().where(u => u.age > 20).toArray();
     
     // Assert: No new execution
     expect(provider.executionCount).toBe(1); 
@@ -81,10 +81,10 @@ describe('DbSet + SqlCache Integration', () => {
 
     provider.executionCount = 0;
     provider.nextResult = [{ id: 1 }];
-    await users.orderBy('age').toArray();
+    await users.query().orderBy('age').toArray();
 
     provider.nextResult = [{ id: 2 }];
-    await users.orderByDescending('age').toArray();
+    await users.query().orderByDescending('age').toArray();
 
     expect(provider.executionCount).toBe(2);
     expect(sqlCache.size()).toBe(2);
@@ -92,7 +92,7 @@ describe('DbSet + SqlCache Integration', () => {
 
   it.skip('should invalidate cache on INSERT', async () => {
     const users = context.set(User);
-    await users.where(u => u.age > 20).toArray();
+    await users.query().where(u => u.age > 20).toArray();
     expect(sqlCache.size()).toBe(1);
     
     users.add({ name: 'Charlie', age: 35 } as User);
@@ -103,11 +103,11 @@ describe('DbSet + SqlCache Integration', () => {
 
   it.skip('should invalidate cache on UPDATE', async () => {
     const users = context.set(User);
-    await users.where(u => u.age > 20).toArray();
+    await users.query().where(u => u.age > 20).toArray();
     expect(sqlCache.size()).toBe(1);
     
     provider.nextResult = [{ id: 1, name: 'Alice', age: 25 }];
-    const alice = await users.where(u => u.name === 'Alice').first();
+    const alice = await users.query().where(u => u.name === 'Alice').first();
     alice.age = 26;
     context.set(User).update(alice);
     await context.saveChanges();
@@ -117,10 +117,10 @@ describe('DbSet + SqlCache Integration', () => {
 
   it.skip('should invalidate cache on DELETE', async () => {
     const users = context.set(User);
-    await users.where(u => u.age > 20).toArray();
+    await users.query().where(u => u.age > 20).toArray();
     
     provider.nextResult = [{ id: 1, name: 'Bob', age: 30 }];
-    const bob = await users.where(u => u.name === 'Bob').first();
+    const bob = await users.query().where(u => u.name === 'Bob').first();
     context.set(User).remove(bob);
     await context.saveChanges();
     
@@ -134,7 +134,7 @@ describe('DbSet + SqlCache Integration', () => {
       
       const users = context.set(User);
       provider.nextResult = [{ id: 1 }];
-      await users.toArray();
+      await users.query().toArray();
       expect(sqlCache.size()).toBe(1);
 
       // Wait 60ms
@@ -142,7 +142,7 @@ describe('DbSet + SqlCache Integration', () => {
 
       provider.nextResult = [{ id: 1 }];
       provider.executionCount = 0;
-      await users.toArray();
+      await users.query().toArray();
 
       // Should execute again
       expect(provider.executionCount).toBe(1);
@@ -159,7 +159,7 @@ describe('DbSet + SqlCache Integration', () => {
 
       await context.cache.warmUp({
           queries: [
-              () => context.set(User).where(u => u.id === 1).toArray()
+              () => context.set(User).query().where(u => u.id === 1).toArray()
           ]
       });
 
@@ -168,7 +168,7 @@ describe('DbSet + SqlCache Integration', () => {
 
       // Run it again "for real"
       provider.executionCount = 0;
-      await context.set(User).where(u => u.id === 1).toArray();
+      await context.set(User).query().where(u => u.id === 1).toArray();
       expect(provider.executionCount).toBe(0); // Hit cache
       expect(sqlCache.getMetrics().hits).toBe(1);
   });
@@ -179,16 +179,16 @@ describe('DbSet + SqlCache Integration', () => {
 
       // 1
       provider.nextResult = [];
-      await context.set(User).take(1).toArray();
+      await context.set(User).query().take(1).toArray();
       // 2
       provider.nextResult = [];
-      await context.set(User).take(2).toArray();
+      await context.set(User).query().take(2).toArray();
 
       expect(sqlCache.size()).toBe(2);
 
       // 3 -> Should evict 1 (LRU if implemented, or FIFO)
       provider.nextResult = [];
-      await context.set(User).take(3).toArray();
+      await context.set(User).query().take(3).toArray();
 
       expect(sqlCache.size()).toBe(2);
       expect(sqlCache.getMetrics().evictions).toBe(1);
@@ -202,23 +202,23 @@ describe('DbSet + SqlCache Integration', () => {
       // Assuming for now it DOES cache unless told otherwise, but we check uniqueness.
       
       provider.nextResult = [];
-      await context.set(User).skip(1).take(1).toArray();
+      await context.set(User).query().skip(1).take(1).toArray();
       const size1 = sqlCache.size();
 
       provider.nextResult = [];
-      await context.set(User).skip(1).take(1).toArray();
+      await context.set(User).query().skip(1).take(1).toArray();
 
       // Should hit cache (no size increase)
       expect(sqlCache.size()).toBe(size1);
 
       // Different skip
       provider.nextResult = [];
-      await context.set(User).skip(2).take(1).toArray();
+      await context.set(User).query().skip(2).take(1).toArray();
       expect(sqlCache.size()).toBe(size1 + 1);
   });
   
   it('should clear entire cache on demand', async () => {
-    await context.set(User).toArray();
+    await context.set(User).query().toArray();
     expect(sqlCache.size()).toBeGreaterThan(0);
     
     sqlCache.clear();

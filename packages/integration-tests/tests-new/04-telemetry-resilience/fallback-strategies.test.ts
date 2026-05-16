@@ -56,7 +56,7 @@ describe('Telemetry Integration - Fallback Strategies', () => {
     });
 
     it('should use primary if healthy', async () => {
-        const result = await (context.set(Item) as any)
+        const result = await (context.set(Item).query() as any)
             .fallbackTo(fallback)
             .toArray();
 
@@ -67,7 +67,7 @@ describe('Telemetry Integration - Fallback Strategies', () => {
     it('should use fallback if primary fails', async () => {
         provider.shouldFail = true;
 
-        const result = await (context.set(Item) as any)
+        const result = await (context.set(Item).query() as any)
             .fallbackTo(fallback)
             .toArray();
 
@@ -79,7 +79,7 @@ describe('Telemetry Integration - Fallback Strategies', () => {
     it.skip('should support predicates in fallback', async () => {
         provider.shouldFail = true;
 
-        const result = await (context.set(Item) as any)
+        const result = await (context.set(Item).query() as any)
             .fallbackTo(fallback)
             .where((x: any) => x.id === 2)
             .toArray();
@@ -91,7 +91,7 @@ describe('Telemetry Integration - Fallback Strategies', () => {
     it('should count from fallback if primary fails', async () => {
         provider.shouldFail = true;
 
-        const count = await (context.set(Item) as any)
+        const count = await (context.set(Item).query() as any)
             .fallbackTo(fallback)
             .count();
         

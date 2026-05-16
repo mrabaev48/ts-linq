@@ -79,7 +79,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       context.set(User).add(user);
       await context.saveChanges();
 
-      const foundUser = await context.set(User).find(user.id);
+      const foundUser = await context.find(User, user.id);
 
       expect(foundUser).toBeDefined();
       expect(foundUser?.name).toBe('Bob');
@@ -99,7 +99,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       context.set(User).add(bob);
       await context.saveChanges();
 
-      const allUsers = await context.set(User).toArray();
+      const allUsers = await context.set(User).query().toArray();
 
       expect(allUsers).toHaveLength(2);
       expect(allUsers.map((u) => u.name)).toEqual(expect.arrayContaining(['Alice', 'Bob']));
@@ -120,7 +120,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
 
       expect(affected).toBe(1);
 
-      const updated = await context.set(User).find(user.id);
+      const updated = await context.find(User, user.id);
       expect(updated?.email).toBe('charlie@new.com');
       expect(updated?.age).toBe(26);
     });
@@ -139,7 +139,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
 
       expect(affected).toBe(1);
 
-      const deleted = await context.set(User).find(userId);
+      const deleted = await context.find(User, userId);
       expect(deleted).toBeNull();
     });
   });
@@ -157,7 +157,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
 
       expect(affected).toBe(3);
 
-      const allUsers = await context.set(User).toArray();
+      const allUsers = await context.set(User).query().toArray();
       expect(allUsers).toHaveLength(3);
     });
 
@@ -180,7 +180,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
 
       expect(affected).toBe(3);
 
-      const remaining = await context.set(User).toArray();
+      const remaining = await context.set(User).query().toArray();
       expect(remaining).toHaveLength(2);
       expect(remaining.find((u) => u.name === 'UpdatedUser1')).toBeDefined();
       expect(remaining.find((u) => u.name === 'User3')).toBeDefined();
@@ -203,7 +203,11 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
     test('Query with where clause', async () => {
       const adults = await context
         .set(User)
-        .where((u) => (u.age ?? 0) >= 30)
+        .query()
+        .whereCompiled({
+          ast: { type: 'binary', left: { type: 'property', path: ['age'] }, operator: '>=', right: { type: 'literal', value: 30 } },
+          parameters: []
+        })
         .toArray();
 
       expect(adults.length).toBeGreaterThanOrEqual(2);
@@ -211,16 +215,16 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
     });
 
     test('Query with ordering', async () => {
-      const ordered = await context.set(User).orderBy('name').toArray();
+      const ordered = await context.set(User).query().orderBy('name').toArray();
 
       expect(ordered[0].name).toBe('Alice');
       expect(ordered[ordered.length - 1].name).toBe('Diana');
     });
 
     test('Query with pagination', async () => {
-      const page1 = await context.set(User).orderBy('name').skip(0).take(2).toArray();
+      const page1 = await context.set(User).query().orderBy('name').skip(0).take(2).toArray();
 
-      const page2 = await context.set(User).orderBy('name').skip(2).take(2).toArray();
+      const page2 = await context.set(User).query().orderBy('name').skip(2).take(2).toArray();
 
       expect(page1).toHaveLength(2);
       expect(page2).toHaveLength(2);
@@ -231,7 +235,11 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
     test('Query with count', async () => {
       const count = await context
         .set(User)
-        .where((u) => (u.age ?? 0) >= 30)
+        .query()
+        .whereCompiled({
+          ast: { type: 'binary', left: { type: 'property', path: ['age'] }, operator: '>=', right: { type: 'literal', value: 30 } },
+          parameters: []
+        })
         .count();
 
       expect(count).toBeGreaterThanOrEqual(2);
@@ -240,7 +248,11 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
     test('Query with firstOrDefault', async () => {
       const user = await context
         .set(User)
-        .where((u) => u.name === 'Bob')
+        .query()
+        .whereCompiled({
+          ast: { type: 'binary', left: { type: 'property', path: ['name'] }, operator: '===', right: { type: 'literal', value: 'Bob' } },
+          parameters: []
+        })
         .firstOrDefault();
 
       expect(user).toBeDefined();
@@ -251,7 +263,11 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
     test('Query returns null when not found', async () => {
       const user = await context
         .set(User)
-        .where((u) => u.name === 'NonExistent')
+        .query()
+        .whereCompiled({
+          ast: { type: 'binary', left: { type: 'property', path: ['name'] }, operator: '===', right: { type: 'literal', value: 'NonExistent' } },
+          parameters: []
+        })
         .firstOrDefault();
 
       expect(user).toBeNull();
@@ -283,7 +299,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       context.set(Post).add(post2);
       await context.saveChanges();
 
-      const allPosts = await context.set(Post).toArray();
+      const allPosts = await context.set(Post).query().toArray();
       expect(allPosts).toHaveLength(2);
       expect(allPosts.every((p) => p.userId === user.id)).toBe(true);
     });
@@ -299,7 +315,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       context.set(User).add(user);
       await context.saveChanges();
 
-      const found = await context.set(User).find(user.id);
+      const found = await context.find(User, user.id);
       expect(found?.age).toBeUndefined();
     });
 
@@ -317,7 +333,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       context.set(User).add(user2);
       await context.saveChanges();
 
-      const allUsers = await context.set(User).toArray();
+      const allUsers = await context.set(User).query().toArray();
       expect(allUsers).toHaveLength(2);
     });
   });
@@ -345,13 +361,17 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       context.set(Post).update(post);
       await context.saveChanges();
 
-      const foundPost = await context.set(Post).find(post.id);
+      const foundPost = await context.find(Post, post.id);
       expect(foundPost?.title).toBe('My Updated Blog Post');
       expect(foundPost?.content).toContain('Updated content');
 
       const authorPosts = await context
         .set(Post)
-        .where((p) => p.userId === author.id)
+        .query()
+        .whereCompiled({
+          ast: { type: 'binary', left: { type: 'property', path: ['userId'] }, operator: '===', right: { type: 'literal', value: author.id } },
+          parameters: []
+        })
         .toArray();
       expect(authorPosts).toHaveLength(1);
     });
@@ -366,7 +386,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       expect(newUser.id).toBeGreaterThan(0);
 
       const userId = newUser.id;
-      const user = await context.set(User).find(userId);
+      const user = await context.find(User, userId);
       expect(user).toBeDefined();
 
       if (user) {
@@ -375,7 +395,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
         context.set(User).update(user);
         await context.saveChanges();
 
-        const updated = await context.set(User).find(userId);
+        const updated = await context.find(User, userId);
         expect(updated?.age).toBe(28);
         expect(updated?.name).toBe('Jane Smith-Johnson');
       }
@@ -394,7 +414,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       context.set(User).remove(user);
       await context.saveChanges();
 
-      const deactivated = await context.set(User).find(userId);
+      const deactivated = await context.find(User, userId);
       expect(deactivated).toBeNull();
     });
   });
@@ -411,10 +431,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       expect(typeof userSet.add).toBe('function');
       expect(typeof userSet.update).toBe('function');
       expect(typeof userSet.remove).toBe('function');
-      expect(typeof userSet.find).toBe('function');
-      expect(typeof userSet.where).toBe('function');
-      expect(typeof userSet.select).toBe('function');
-      expect(typeof userSet.orderBy).toBe('function');
+      expect(typeof userSet.query).toBe('function');
     });
   });
 });

@@ -21,20 +21,22 @@ class User {
   isActive!: boolean;
 }
 
-describe.each(['postgresql', 'mysql', 'mssql'])(
+class TestDbContext extends DbContext {}
+
+const run = process.env.SKIP_DB_TESTS !== '1';
+(run ? describe.each(['postgresql', 'mysql', 'mssql']) : describe.skip.each(['postgresql', 'mysql', 'mssql']))(
   'E2E CRUD Operations - %s',
   (providerName) => {
     let harness: any;
     let provider: any;
-    let context: DbContext;
+    let context: TestDbContext;
 
     beforeEach(async () => {
       if (process.env.SKIP_DB_TESTS === '1') {
         return;
       }
       ({ harness, provider } = await setupTestDatabase(providerName as any));
-      context = new DbContext(provider);
-      context.register(User);
+      context = new TestDbContext({ provider });
       await context.ensureCreated();
     });
 
@@ -42,7 +44,7 @@ describe.each(['postgresql', 'mysql', 'mssql'])(
       if (process.env.SKIP_DB_TESTS === '1') {
         return;
       }
-      await context?.dropDatabase();
+      await (context as any)?.dropDatabase?.();
       await teardownTestDatabase(harness);
     });
 
@@ -61,7 +63,7 @@ describe.each(['postgresql', 'mysql', 'mssql'])(
       userSet.add(newUser);
       await context.saveChanges();
 
-      const users = await userSet.toArray();
+      const users = await userSet.query().toArray();
       expect(users).toHaveLength(1);
       expect(users[0].name).toBe('Alice');
     });
@@ -80,7 +82,7 @@ describe.each(['postgresql', 'mysql', 'mssql'])(
       }
       await context.saveChanges();
 
-      const users = await userSet.toArray();
+      const users = await userSet.query().toArray();
       expect(users.length).toBe(sampleUsers.length);
     });
 
@@ -106,7 +108,7 @@ describe.each(['postgresql', 'mysql', 'mssql'])(
       userSet.update(user);
       await context.saveChanges();
 
-      const updated = await userSet.where(u => u.id === user.id).firstOrDefault();
+      const updated = await userSet.query().where(u => u.id === user.id).firstOrDefault();
       expect(updated?.name).toBe('Updated Name');
       expect(updated?.age).toBe(35);
     });
@@ -127,12 +129,12 @@ describe.each(['postgresql', 'mysql', 'mssql'])(
       userSet.add(user);
       await context.saveChanges();
 
-      const initialCount = await userSet.count();
+      const initialCount = await userSet.query().count();
       
       userSet.remove(user);
       await context.saveChanges();
 
-      const finalCount = await userSet.count();
+      const finalCount = await userSet.query().count();
       expect(finalCount).toBe(initialCount - 1);
     });
 
@@ -142,7 +144,7 @@ describe.each(['postgresql', 'mysql', 'mssql'])(
       }
 
       const userSet = context.set(User);
-      const activeUsers = await userSet.where(u => u.isActive === true).toArray();
+      const activeUsers = await userSet.query().where(u => u.isActive === true).toArray();
       
       expect(activeUsers.every(u => u.isActive)).toBe(true);
     });
@@ -153,7 +155,7 @@ describe.each(['postgresql', 'mysql', 'mssql'])(
       }
 
       const userSet = context.set(User);
-      const sortedUsers = await userSet.orderBy('name').toArray();
+      const sortedUsers = await userSet.query().orderBy('name').toArray();
       
       for (let i = 1; i < sortedUsers.length; i++) {
         expect(sortedUsers[i].name >= sortedUsers[i - 1].name).toBe(true);
@@ -166,10 +168,10 @@ describe.each(['postgresql', 'mysql', 'mssql'])(
       }
 
       const userSet = context.set(User);
-      const page1 = await userSet.skip(0).take(2).toArray();
-      const page2 = await userSet.skip(2).take(2).toArray();
-      
-      expect(page1).toHaveLength(Math.min(2, await userSet.count()));
+      const page1 = await userSet.query().skip(0).take(2).toArray();
+      const page2 = await userSet.query().skip(2).take(2).toArray();
+
+      expect(page1).toHaveLength(Math.min(2, await userSet.query().count()));
       expect(page1[0].id).not.toBe(page2[0]?.id);
     });
   }
