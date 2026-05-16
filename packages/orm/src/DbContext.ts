@@ -70,6 +70,7 @@ export abstract class DbContext {
   private _cacheCoordinator!: CacheCoordinator;
   private _auditInterceptor!: AuditInterceptor;
   private _softDeleteInterceptor!: SoftDeleteInterceptor;
+  private _transactionDepth = 0;
 
   /**
    * Create a new database context instance.
@@ -246,8 +247,17 @@ export abstract class DbContext {
   }
 
   /**
-   * Save all changes tracked by the change tracker
-   * Similar to Entity Framework's SaveChanges()
+   * Save all changes tracked by the change tracker.
+   * Similar to Entity Framework's SaveChanges().
+   *
+   * When called outside an active transaction, `saveChanges()` opens its own
+   * transaction, commits on success, and rolls back on error.
+   *
+   * When called inside a caller-managed transaction (after `beginTransaction()`),
+   * `saveChanges()` participates in that transaction without opening a nested one.
+   * The caller is responsible for calling `commitTransaction()` or
+   * `rollbackTransaction()`. If `saveChanges()` throws, the change tracker is
+   * NOT reset — the caller should roll back and handle the error.
    *
    * @returns Number of affected rows.
    */
@@ -270,7 +280,11 @@ export abstract class DbContext {
       entityClass: c.entityClass,
       state: c.state
     }));
-    await this._provider.beginTransaction();
+
+    const ownTransaction = !this.isInTransaction;
+    if (ownTransaction) {
+      await this._provider.beginTransaction();
+    }
     try {
       let affectedRows = 0;
       for (const change of changes) {
@@ -278,12 +292,16 @@ export abstract class DbContext {
         this._auditInterceptor.apply(normalized);
         affectedRows += await this.processChange(normalized);
       }
-      await this._provider.commitTransaction();
+      if (ownTransaction) {
+        await this._provider.commitTransaction();
+      }
       this._cacheCoordinator.invalidateAfterMutation(normalizedForInvalidation);
       this._changeTracker.acceptAllChanges();
       return affectedRows;
     } catch (error) {
-      await this._provider.rollbackTransaction();
+      if (ownTransaction) {
+        await this._provider.rollbackTransaction();
+      }
       throw error;
     }
   }
@@ -298,18 +316,29 @@ export abstract class DbContext {
     }
   }
 
-  /**
-   * Start a database transaction
-   */
-  public async beginTransaction(): Promise<void> {
-    await this._provider.beginTransaction();
+  /** Whether a caller-managed transaction is currently active on this context. */
+  public get isInTransaction(): boolean {
+    return this._transactionDepth > 0;
   }
 
   /**
-   * Commit the current transaction
+   * Start a database transaction.
+   * Increments the internal transaction depth counter so that subsequent
+   * `saveChanges()` calls participate in this transaction instead of opening
+   * their own.
+   */
+  public async beginTransaction(): Promise<void> {
+    await this._provider.beginTransaction();
+    this._transactionDepth++;
+  }
+
+  /**
+   * Commit the current transaction.
+   * Decrements the transaction depth counter.
    */
   public async commitTransaction(): Promise<void> {
     await this._provider.commitTransaction();
+    this._transactionDepth = Math.max(0, this._transactionDepth - 1);
     try {
       this._cacheCoordinator.invalidateOnCommit();
       if (this._entityCache) {
@@ -325,10 +354,12 @@ export abstract class DbContext {
   }
 
   /**
-   * Rollback the current transaction
+   * Rollback the current transaction.
+   * Resets the transaction depth counter to zero unconditionally.
    */
   public async rollbackTransaction(): Promise<void> {
     await this._provider.rollbackTransaction();
+    this._transactionDepth = 0;
     this._cacheCoordinator.clearAll();
     if (this._entityCache) {
       try {
