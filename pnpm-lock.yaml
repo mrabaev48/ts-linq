@@ -187,15 +187,6 @@ importers:
       '@ts-linq/migrations':
         specifier: workspace:*
         version: link:../migrations
-      '@ts-linq/provider-mssql':
-        specifier: workspace:*
-        version: link:../provider-mssql
-      '@ts-linq/provider-mysql':
-        specifier: workspace:*
-        version: link:../provider-mysql
-      '@ts-linq/provider-postgres':
-        specifier: workspace:*
-        version: link:../provider-postgres
       '@ts-linq/types':
         specifier: workspace:*
         version: link:../types
@@ -206,6 +197,16 @@ importers:
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
+    optionalDependencies:
+      '@ts-linq/provider-mssql':
+        specifier: workspace:*
+        version: link:../provider-mssql
+      '@ts-linq/provider-mysql':
+        specifier: workspace:*
+        version: link:../provider-mysql
+      '@ts-linq/provider-postgres':
+        specifier: workspace:*
+        version: link:../provider-postgres
 
   packages/composite-sql-logger:
     dependencies:

@@ -22,7 +22,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-001 | ~~Critical~~ | ~~Dependency Boundary, Clean Architecture~~ | ~~Circular dependency in @ts-linq/core~~ ✅ **FIXED** | [ISSUE-001-core-circular-dependency.md](ISSUE-001-core-circular-dependency.md) |
 | ISSUE-002 | ~~Critical~~ | ~~Dependency Boundary, Clean Architecture~~ | ~~Type duplication between @ts-linq/core and @ts-linq/types~~ ✅ **FIXED** | [ISSUE-002-type-duplication-core-vs-types.md](ISSUE-002-type-duplication-core-vs-types.md) |
 | ISSUE-003 | Critical | SOLID, Clean Code, Maintainability | Queryable god class (55 methods, 938 LOC) | [ISSUE-003-queryable-god-class.md](ISSUE-003-queryable-god-class.md) |
-| ISSUE-004 | Critical | SOLID, Clean Code, Maintainability | DbContext god class (48 methods, 1102 LOC) | [ISSUE-004-dbcontext-god-class.md](ISSUE-004-dbcontext-god-class.md) |
+| ISSUE-004 | ~~Critical~~ | ~~SOLID, Clean Code, Maintainability~~ | ~~DbContext god class (48 methods, 1102 LOC)~~ ✅ **FIXED** | [ISSUE-004-dbcontext-god-class.md](ISSUE-004-dbcontext-god-class.md) |
 | ISSUE-005 | ~~Critical~~ | ~~Clean Architecture, Maintainability~~ | ~~@ts-linq/sql-visitor is an unimplemented stub~~ ✅ **FIXED** | [ISSUE-005-sql-visitor-stub.md](ISSUE-005-sql-visitor-stub.md) |
 | ISSUE-006 | ~~Critical~~ | ~~Clean Architecture, Dependency Boundary~~ | ~~AST visitors hardcode SQL syntax~~ ✅ **FIXED** | [ISSUE-006-ast-visitors-hardcode-sql.md](ISSUE-006-ast-visitors-hardcode-sql.md) |
 | ISSUE-007 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~Dynamic require() in DbContext is ESM-incompatible~~ ✅ **FIXED** | [ISSUE-007-dynamic-require-esm-incompatible.md](ISSUE-007-dynamic-require-esm-incompatible.md) |
@@ -62,9 +62,10 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 ### 1. ~~AST–SQL Coupling (ISSUE-005 + ISSUE-006)~~ ✅ BOTH FIXED
 ~~The `@ts-linq/ast` package — which should be the dialect-agnostic expression layer — currently contains all SQL generation logic. The `@ts-linq/sql-visitor` package meant to own this logic is a stub.~~ Both issues are now resolved: all visitor classes (`BinaryVisitor`, `LogicalVisitor`, `UnaryVisitor`, `NullVisitor`, `InVisitor`, `MethodVisitor`) and `SqlVisitor` live in `@ts-linq/sql-visitor`; the AST package retains only pure node type definitions. A `ParameterStyle` enum (`Question`/`Positional`/`Named`) and `ParameterState` class were introduced in `@ts-linq/sql-visitor`, making `SqlVisitor` fully dialect-aware: `new SqlVisitor(ParameterStyle.Positional)` produces `$1, $2` placeholders natively.
 
-### 2. God Classes in Query and ORM Layers (ISSUE-003 + ISSUE-004 + ISSUE-017 + ~~ISSUE-009~~ ✅)
-`Queryable` (938 LOC, 55 methods), `DbContext` (~~1102 LOC, 48 methods~~ → reduced by extraction), and `DbSet` (604 LOC, 35 methods) concentrate enormous scope in three classes. This makes unit testing impossible without full provider setup, violates SRP at every level, and creates a maintenance bottleneck where any new ORM feature requires modifying an already-large class.
+### 2. God Classes in Query and ORM Layers (ISSUE-003 + ~~ISSUE-004~~ ✅ + ISSUE-017 + ~~ISSUE-009~~ ✅)
+`Queryable` (938 LOC, 55 methods), `DbContext` (~~1102 LOC, 48 methods~~ → **reduced to 13 public methods**), and `DbSet` (604 LOC, 35 methods) concentrate enormous scope in three classes. This makes unit testing impossible without full provider setup, violates SRP at every level, and creates a maintenance bottleneck where any new ORM feature requires modifying an already-large class.
 ~~ISSUE-009~~ ✅ **FIXED**: All 8 cache-related methods extracted from `DbContext` into a new `CacheCoordinator` class (`packages/orm/src/services/CacheCoordinator.ts`). `DbContext` now holds a single `_cacheCoordinator` reference and delegates all L2/SQL/count cache operations to it. `CacheCoordinator` is independently unit-testable with mock cache implementations (18 tests added in `tests-new/CacheCoordinator.test.ts`). Adding a fourth cache type now requires changing only `CacheCoordinator`.
+~~ISSUE-004~~ ✅ **FIXED**: Audit logic (6 methods) extracted into `AuditInterceptor` (`packages/orm/src/services/AuditInterceptor.ts`); soft-delete logic (1 method) extracted into `SoftDeleteInterceptor` (`packages/orm/src/services/SoftDeleteInterceptor.ts`); 7 dead validation-duplicate methods removed (superseded by the existing `ChangeValidationService`). `DbContext.saveChanges()` now delegates to `_auditInterceptor.apply()` and `_softDeleteInterceptor.apply()`. Both new classes are injectable via constructor callbacks and are independently unit-testable without a `DatabaseProvider` (22 new tests added in `tests-new/AuditInterceptor.test.ts` and `tests-new/SoftDeleteInterceptor.test.ts`). All four interceptor/service classes are exported from `@ts-linq/orm`.
 
 ### 3. Build and Test Infrastructure Misalignment (~~ISSUE-007~~ ✅ + ~~ISSUE-012~~ ✅ + ~~ISSUE-013~~ ✅ + ~~ISSUE-016~~ ✅ + ISSUE-015)
 The build and test infrastructure has accumulated several independent problems: Jest and TypeScript resolve packages from different locations, ~~a package is referenced in Jest but has no source~~, ~~ESM-incompatible `require()` is used in production code~~ (both fixed), ~~path aliases masked undeclared dependencies~~ (fixed: stale `@ts-linq/metrics-safe` aliases removed from 6 tsconfig files; `scripts/check-phantom-deps.js` added to CI). ISSUE-015 (path alias duplication across 21+ tsconfigs) remains open.
@@ -95,7 +96,7 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 
 ### Phase 3 — Reduce Complexity in Core Classes (Weeks 6–10)
 9. ~~**ISSUE-009**~~ ✅ Done — Extract `CacheCoordinator` from `DbContext`
-10. **ISSUE-004** — Decompose `DbContext` with extracted interceptors for audit, soft-delete, validation
+10. ~~**ISSUE-004**~~ ✅ Done — Decompose `DbContext` with extracted interceptors for audit, soft-delete, validation
 11. **ISSUE-003** — Decompose `Queryable` with `FallbackManager` and delegation to `QueryExecutor`
 12. **ISSUE-017** — Reduce `DbSet` to mutation + `query()` entry point
 
