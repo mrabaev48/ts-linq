@@ -12,9 +12,14 @@ class TestDialect implements SqlDialect {
       options.select?.length ? options.select.join(', ') : '*'
     } FROM ${meta.tableName}`;
     const parameters: SqlParameter[] = [];
-    if (options.where && options.where.length) {
-      query += ' WHERE ' + options.where.map((w) => w.condition).join(' AND ');
-      for (const w of options.where) parameters.push(...w.parameters);
+    const wheres = options.where
+      ? Array.isArray(options.where)
+        ? options.where
+        : [options.where]
+      : [];
+    if (wheres.length) {
+      query += ' WHERE ' + wheres.map((w) => w.condition).join(' AND ');
+      for (const w of wheres) parameters.push(...w.parameters);
     }
     if (options.orderBy && options.orderBy.length) {
       query += ' ORDER BY ' + options.orderBy.map((o) => `${o.column} ${o.direction}`).join(', ');
@@ -28,6 +33,10 @@ class TestDialect implements SqlDialect {
       query += ` LIMIT -1 OFFSET ${options.offset}`;
     }
     return { query, parameters };
+  }
+
+  public quoteIdentifier(identifier: string): string {
+    return `"${identifier}"`;
   }
 }
 
@@ -75,8 +84,9 @@ export class TestProvider extends DatabaseProvider {
     for (const [k, v] of Object.entries(entity as any)) {
       if (rec[k] === undefined) rec[k] = v;
     }
-    if (meta.primaryKeys.length > 0) {
-      const pk = meta.primaryKeys[0];
+    const primaryKeys = meta.primaryKeys ?? [];
+    if (primaryKeys.length > 0) {
+      const pk = primaryKeys[0];
       const pkCol = meta.columns.find((c) => c.propertyName === pk);
       if (
         pkCol?.isGenerated &&
@@ -97,7 +107,7 @@ export class TestProvider extends DatabaseProvider {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`UPDATE ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];
-    const pk = meta.primaryKeys[0];
+    const pk = (meta.primaryKeys ?? [])[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
     const pkName = pkCol?.columnName ?? pk;
     const idx = table.findIndex((r) => r[pkName] === (entity as any)[pk]);
@@ -118,7 +128,7 @@ export class TestProvider extends DatabaseProvider {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`DELETE FROM ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];
-    const pk = meta.primaryKeys[0];
+    const pk = (meta.primaryKeys ?? [])[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
     const pkName = pkCol?.columnName ?? pk;
     const idx = table.findIndex((r) => r[pkName] === (entity as any)[pk]);
@@ -128,23 +138,146 @@ export class TestProvider extends DatabaseProvider {
     await this.afterExecute(`DELETE FROM ${meta.tableName}`, [], 1);
   }
 
-  public async findByPk<T extends object>(pkValue: any, entityClass: Function): Promise<T | null> {
-    const meta = MetadataStorage.getEntity(entityClass)!;
+  public async findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null> {
+    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
     const table = this.data.get(meta.tableName) || [];
-    const pk = meta.primaryKeys[0];
+    const pk = (meta.primaryKeys ?? [])[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
     const pkName = pkCol?.columnName ?? pk;
-    const rec = table.find((r) => r[pkName] === pkValue);
+    const rec = table.find((r) => r[pkName] === id);
     if (!rec) return null;
-    const instance = new (entityClass as any)();
+    const instance = new entityClass();
     for (const col of meta.columns) {
-      instance[col.propertyName] = rec[col.columnName];
+      (instance as any)[col.propertyName] = rec[col.columnName];
     }
     return instance;
   }
 
-  public async findById<T extends object>(id: any, entityClass: Function): Promise<T | null> {
-    return this.findByPk(id, entityClass);
+  public async findAll<T extends object>(entityClass: new () => T): Promise<T[]> {
+    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+    const table = this.data.get(meta.tableName) || [];
+    return table.map((rec) => {
+      const instance = new entityClass();
+      for (const col of meta.columns) {
+        (instance as any)[col.propertyName] = rec[col.columnName];
+      }
+      return instance;
+    });
+  }
+
+  public async findWhere<T extends object>(
+    entityClass: new () => T,
+    conditions: Record<string, unknown>
+  ): Promise<T[]> {
+    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+    const table = this.data.get(meta.tableName) || [];
+    return table
+      .filter((rec) => Object.entries(conditions).every(([k, v]) => rec[k] === v))
+      .map((rec) => {
+        const instance = new entityClass();
+        for (const col of meta.columns) {
+          (instance as any)[col.propertyName] = rec[col.columnName];
+        }
+        return instance;
+      });
+  }
+
+  public async findWhereIn<T extends object>(
+    entityClass: new () => T,
+    column: string,
+    values: unknown[]
+  ): Promise<T[]> {
+    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+    const table = this.data.get(meta.tableName) || [];
+    return table
+      .filter((rec) => values.includes(rec[column]))
+      .map((rec) => {
+        const instance = new entityClass();
+        for (const col of meta.columns) {
+          (instance as any)[col.propertyName] = rec[col.columnName];
+        }
+        return instance;
+      });
+  }
+
+  protected async doExecuteQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]> {
+    const fromMatch = sql.match(/FROM\s+"?(\w+)"?/i);
+    if (!fromMatch) return [];
+    const tableName = fromMatch[1];
+    let rows = [...(this.data.get(tableName) || [])];
+
+    // Apply WHERE filtering
+    const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s+GROUP\s+BY|\s+LIMIT|$)/is);
+    if (whereMatch) {
+      rows = this.filterByWhere(rows, whereMatch[1].trim(), params ? [...params] : []);
+    }
+
+    // Apply ORDER BY (single column simple case)
+    const orderMatch = sql.match(/ORDER\s+BY\s+"?(\w+)"?\s*(ASC|DESC)?(?:\s|,|$)/i);
+    if (orderMatch) {
+      const col = orderMatch[1];
+      const asc = (orderMatch[2] ?? 'ASC').toUpperCase() === 'ASC';
+      rows = [...rows].sort((a, b) => {
+        if (a[col] < b[col]) return asc ? -1 : 1;
+        if (a[col] > b[col]) return asc ? 1 : -1;
+        return 0;
+      });
+    }
+
+    // Apply LIMIT / OFFSET
+    const offsetMatch = sql.match(/OFFSET\s+(\d+)/i);
+    const limitMatch = sql.match(/LIMIT\s+(-?\d+)/i);
+    const offset = offsetMatch ? parseInt(offsetMatch[1]) : 0;
+    const limit = limitMatch ? parseInt(limitMatch[1]) : -1;
+    if (offset > 0) rows = rows.slice(offset);
+    if (limit >= 0) rows = rows.slice(0, limit);
+
+    // COUNT(*) query: return [{count: n}]
+    if (/SELECT\s+COUNT\s*\(\s*\*\s*\)/i.test(sql)) {
+      return [{ count: rows.length }] as unknown as T[];
+    }
+
+    return rows as unknown as T[];
+  }
+
+  private filterByWhere(rows: any[], condition: string, params: any[]): any[] {
+    // Pre-parse conditions once, then apply to each row
+    const parts = condition.split(/\s+AND\s+/i);
+    const parsed: Array<{ col: string; op: string; paramIdx: number } | null> = [];
+    let paramIdx = 0;
+    for (const part of parts) {
+      const stripped = part.trim().replace(/^\(+/, '').replace(/\)+$/, '').trim();
+      const m = stripped.match(/^"?(\w+)"?\s*(=|!=|<>|>=|<=|>|<)\s*\?/);
+      if (m) {
+        parsed.push({ col: m[1], op: m[2], paramIdx: paramIdx++ });
+      } else {
+        parsed.push(null);
+      }
+    }
+    return rows.filter((row) =>
+      parsed.every((p) => {
+        if (!p) return true;
+        const val = params[p.paramIdx];
+        const rv = row[p.col];
+        switch (p.op) {
+          case '=': case '==': case '===': return rv === val;
+          case '!=': case '<>': case '!==': return rv !== val;
+          case '>': return rv > val;
+          case '>=': return rv >= val;
+          case '<': return rv < val;
+          case '<=': return rv <= val;
+          default: return true;
+        }
+      })
+    );
+  }
+
+  protected async doExecuteNonQuery(sql: string, _params?: readonly SqlParameter[]): Promise<number> {
+    if (sql.includes('CREATE TABLE')) return 0;
+    if (sql.includes('INSERT')) return 1;
+    if (sql.includes('UPDATE')) return 1;
+    if (sql.includes('DELETE')) return 1;
+    return 0;
   }
 
   public async queryEntities<T extends object>(
@@ -191,6 +324,10 @@ export class TestProvider extends DatabaseProvider {
     const table = this.data.get(meta.tableName) || [];
     return table.length;
   }
+
+  public async beginTransaction(): Promise<void> {}
+  public async commitTransaction(): Promise<void> {}
+  public async rollbackTransaction(): Promise<void> {}
 
   private async ensureTable(meta: EntityMetadata): Promise<void> {
     if (!this.data.has(meta.tableName)) {
