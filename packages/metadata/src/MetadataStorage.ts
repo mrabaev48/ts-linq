@@ -2,16 +2,41 @@ import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadat
 import { MetadataRegistry } from './MetadataRegistry';
 
 /**
- * Process-wide façade that keeps the legacy static API intact.
+ * Process-wide façade over a lazily-initialized `MetadataRegistry` singleton.
  *
- * All mutation and query methods delegate to an internal `MetadataRegistry`
- * instance (`_defaultRegistry`).  Decorators continue to call these static
- * methods unchanged.
+ * ## How decorators interact with this class
+ * Every decorator (`@Entity`, `@Column`, `@PrimaryKey`, `@Relationship`, `@ValidIf`)
+ * calls the static methods below, which forward to `getInstance()`.  Because class
+ * decorators execute at **module load time**, the metadata is registered in the
+ * singleton before any test setup code runs.
  *
- * For test isolation or multi-tenant scenarios, create a fresh `MetadataRegistry`
- * and pass it to `DbContextOptions.registry` instead of relying on this singleton.
- * You can also swap the default registry via `MetadataStorage.setDefaultRegistry()`
- * for advanced test setups that need to override the process-wide store.
+ * ## Test isolation
+ * For tests that **manually** register entities inside test bodies (no decorator
+ * syntax on module-level classes), call `MetadataStorage.reset()` in `beforeEach`
+ * to start each test with a clean registry:
+ *
+ * ```ts
+ * beforeEach(() => MetadataStorage.reset());
+ * ```
+ *
+ * For tests that use module-level decorated classes, the decorators run once when
+ * the module loads and cannot be re-executed.  Use `getInstance().clear()` in
+ * `afterEach` only if your tests mutate registered metadata between runs.
+ *
+ * ## Multi-tenant isolation
+ * Create independent registries with `createMetadataRegistry()` and populate them
+ * programmatically, then pass each registry to `DbContextOptions.registry`:
+ *
+ * ```ts
+ * import { createMetadataRegistry } from '@ts-linq/metadata';
+ *
+ * const tenantRegistry = createMetadataRegistry();
+ * tenantRegistry.addEntity(User, 'tenant_users');
+ * const ctx = new DbContext({ provider, registry: tenantRegistry });
+ * ```
+ *
+ * A `DbContext` initialized with an explicit registry uses **only** that registry —
+ * it does not inherit entities from the singleton.
  */
 export class MetadataStorage {
   private static _defaultRegistry: MetadataRegistry | undefined;
@@ -35,7 +60,13 @@ export class MetadataStorage {
     MetadataStorage._defaultRegistry = registry;
   }
 
-  /** Reset the default registry to a new empty instance. */
+  /**
+   * Replace the default registry with a new, empty instance.
+   *
+   * Call in `beforeEach` for test suites that register entities programmatically
+   * (i.e. by calling `addEntity` / `addColumn` inside test bodies rather than
+   * relying on module-level class decorators).
+   */
   public static reset(): void {
     MetadataStorage._defaultRegistry = new MetadataRegistry();
   }

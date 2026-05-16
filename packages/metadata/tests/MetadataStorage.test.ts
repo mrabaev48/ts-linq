@@ -1,9 +1,10 @@
 import { MetadataStorage } from '../src/MetadataStorage';
+import { MetadataRegistry } from '../src/MetadataRegistry';
 import type { ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '@ts-linq/types';
 
 describe('MetadataStorage', () => {
-  afterEach(() => {
-    MetadataStorage.getInstance().clear();
+  beforeEach(() => {
+    MetadataStorage.reset();
   });
 
   describe('singleton pattern', () => {
@@ -458,9 +459,9 @@ describe('MetadataStorage', () => {
   describe('branded primary key support', () => {
     it('should support branded primary keys via API', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
-      
+
       const columnMeta: ColumnMetadata & { isBranded?: boolean; brand?: string } = {
         propertyName: 'id',
         columnName: 'id',
@@ -471,18 +472,81 @@ describe('MetadataStorage', () => {
         isBranded: true,
         brand: 'User'
       };
-      
+
       MetadataStorage.addColumn(User, columnMeta);
       MetadataStorage.addPrimaryKey(User, 'id');
-      
+
       const metadata = MetadataStorage.getEntity(User);
       const idColumn = metadata?.columns.find(c => c.propertyName === 'id') as typeof columnMeta | undefined;
-      
+
       expect(idColumn).toBeDefined();
       expect(idColumn?.isGenerated).toBe(true);
       expect(idColumn?.isBranded).toBe(true);
       expect(idColumn?.brand).toBe('User');
       expect(metadata?.primaryKeys).toContain('id');
+    });
+  });
+
+  describe('reset()', () => {
+    it('should discard all entities registered before the call', () => {
+      class User {}
+      MetadataStorage.addEntity(User, 'users');
+      expect(MetadataStorage.getEntities()).toHaveLength(1);
+
+      MetadataStorage.reset();
+
+      expect(MetadataStorage.getEntities()).toHaveLength(0);
+      expect(MetadataStorage.getEntity(User)).toBeUndefined();
+    });
+
+    it('should allow registration after reset', () => {
+      class User {}
+      MetadataStorage.addEntity(User, 'users');
+      MetadataStorage.reset();
+
+      class Fresh {}
+      MetadataStorage.addEntity(Fresh, 'fresh');
+
+      expect(MetadataStorage.getEntities()).toHaveLength(1);
+      expect(MetadataStorage.getEntity(Fresh)).toBeDefined();
+    });
+
+    it('getInstance() after reset() returns a new empty registry', () => {
+      class User {}
+      MetadataStorage.addEntity(User, 'users');
+      const before = MetadataStorage.getInstance();
+
+      MetadataStorage.reset();
+
+      const after = MetadataStorage.getInstance();
+      expect(after).not.toBe(before);
+      expect(after.getEntities()).toHaveLength(0);
+    });
+  });
+
+  describe('setDefaultRegistry()', () => {
+    it('should replace the process-wide registry', () => {
+      class User {}
+      MetadataStorage.addEntity(User, 'users');
+
+      const isolated = new MetadataRegistry();
+      MetadataStorage.setDefaultRegistry(isolated);
+
+      expect(MetadataStorage.getEntities()).toHaveLength(0);
+      expect(MetadataStorage.getInstance()).toBe(isolated);
+    });
+
+    it('should allow restoring the previous registry', () => {
+      class User {}
+      MetadataStorage.addEntity(User, 'users');
+      const original = MetadataStorage.getInstance();
+
+      const temp = new MetadataRegistry();
+      MetadataStorage.setDefaultRegistry(temp);
+      expect(MetadataStorage.getEntities()).toHaveLength(0);
+
+      MetadataStorage.setDefaultRegistry(original);
+      expect(MetadataStorage.getEntities()).toHaveLength(1);
     });
   });
 });

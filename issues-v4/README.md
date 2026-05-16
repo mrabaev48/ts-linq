@@ -29,7 +29,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-008 | ~~High~~ | ~~Dependency Boundary, Build/Tooling~~ | ~~CLI eagerly imports all three database providers~~ ✅ **FIXED** | [ISSUE-008-cli-eager-loads-all-providers.md](ISSUE-008-cli-eager-loads-all-providers.md) |
 | ISSUE-009 | ~~High~~ | ~~SOLID, Maintainability~~ | ~~Cache coherency logic scattered across DbContext~~ ✅ **FIXED** | [ISSUE-009-cache-coherency-scattered.md](ISSUE-009-cache-coherency-scattered.md) |
 | ISSUE-010 | High | SOLID, Testability | Mutable shared state in Queryable.clone() | [ISSUE-010-queryable-clone-shared-mutable-state.md](ISSUE-010-queryable-clone-shared-mutable-state.md) |
-| ISSUE-011 | High | Testability, Clean Architecture | MetadataStorage singleton causes test pollution | [ISSUE-011-metadata-storage-singleton.md](ISSUE-011-metadata-storage-singleton.md) |
+| ISSUE-011 | ~~High~~ | ~~Testability, Clean Architecture~~ | ~~MetadataStorage singleton causes test pollution~~ ✅ **FIXED** | [ISSUE-011-metadata-storage-singleton.md](ISSUE-011-metadata-storage-singleton.md) |
 | ISSUE-012 | ~~High~~ | ~~Build/Tooling, Testability~~ | ~~Jest and TypeScript resolve packages from different paths~~ ✅ **FIXED** | [ISSUE-012-jest-tsconfig-path-divergence.md](ISSUE-012-jest-tsconfig-path-divergence.md) |
 | ISSUE-013 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~@ts-linq/telemetry is a dead stub (no src/)~~ ✅ **FIXED** | [ISSUE-013-telemetry-dead-stub.md](ISSUE-013-telemetry-dead-stub.md) |
 | ISSUE-014 | Medium | SOLID, Maintainability | EnhancedSqlCache is an over-wide class (457 LOC, 19 methods) | [ISSUE-014-enhanced-sql-cache-overwide.md](ISSUE-014-enhanced-sql-cache-overwide.md) |
@@ -102,7 +102,7 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 12. ~~**ISSUE-017**~~ ✅ Done — Reduce `DbSet` to mutation + `query()` entry point
 
 ### Phase 4 — Polish and Test Safety (Weeks 11–12)
-13. **ISSUE-011** — Document and enforce `MetadataStorage.reset()` in test lifecycle
+13. ~~**ISSUE-011**~~ ✅ Done — `createMetadataRegistry()` factory exported; `reset()` documented and enforced in `beforeEach`; 17 new isolation tests added (`metadata-isolation.test.ts`, `RegistryIsolation.test.ts`)
 14. **ISSUE-010** — Clarify or fix `_throttle` sharing semantics in `Queryable.clone()`
 15. **ISSUE-018** — Add transaction depth tracking to `DbContext`
 16. **ISSUE-014** — Decompose `EnhancedSqlCache` into composable decorators

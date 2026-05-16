@@ -9,8 +9,8 @@ import { ValidIf, RequiredIfOf, MinLengthOf, MaxLengthOf, PatternOf, RangeOf } f
 import { CachePolicy, getCachePolicy } from '../src/CachePolicy';
 
 describe('Decorators', () => {
-  afterEach(() => {
-    MetadataStorage.getInstance().clear();
+  beforeEach(() => {
+    MetadataStorage.reset();
   });
 
   describe('@Entity', () => {
