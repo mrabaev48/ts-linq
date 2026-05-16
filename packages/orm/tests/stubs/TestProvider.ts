@@ -325,9 +325,15 @@ export class TestProvider extends DatabaseProvider {
     return table.length;
   }
 
-  public async beginTransaction(): Promise<void> {}
-  public async commitTransaction(): Promise<void> {}
-  public async rollbackTransaction(): Promise<void> {}
+  public async beginTransaction(): Promise<void> {
+    this.inTransaction = true;
+  }
+  public async commitTransaction(): Promise<void> {
+    this.inTransaction = false;
+  }
+  public async rollbackTransaction(): Promise<void> {
+    this.inTransaction = false;
+  }
 
   private async ensureTable(meta: EntityMetadata): Promise<void> {
     if (!this.data.has(meta.tableName)) {
