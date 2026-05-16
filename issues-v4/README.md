@@ -27,7 +27,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-006 | ~~Critical~~ | ~~Clean Architecture, Dependency Boundary~~ | ~~AST visitors hardcode SQL syntax~~ ✅ **FIXED** | [ISSUE-006-ast-visitors-hardcode-sql.md](ISSUE-006-ast-visitors-hardcode-sql.md) |
 | ISSUE-007 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~Dynamic require() in DbContext is ESM-incompatible~~ ✅ **FIXED** | [ISSUE-007-dynamic-require-esm-incompatible.md](ISSUE-007-dynamic-require-esm-incompatible.md) |
 | ISSUE-008 | ~~High~~ | ~~Dependency Boundary, Build/Tooling~~ | ~~CLI eagerly imports all three database providers~~ ✅ **FIXED** | [ISSUE-008-cli-eager-loads-all-providers.md](ISSUE-008-cli-eager-loads-all-providers.md) |
-| ISSUE-009 | High | SOLID, Maintainability | Cache coherency logic scattered across DbContext | [ISSUE-009-cache-coherency-scattered.md](ISSUE-009-cache-coherency-scattered.md) |
+| ISSUE-009 | ~~High~~ | ~~SOLID, Maintainability~~ | ~~Cache coherency logic scattered across DbContext~~ ✅ **FIXED** | [ISSUE-009-cache-coherency-scattered.md](ISSUE-009-cache-coherency-scattered.md) |
 | ISSUE-010 | High | SOLID, Testability | Mutable shared state in Queryable.clone() | [ISSUE-010-queryable-clone-shared-mutable-state.md](ISSUE-010-queryable-clone-shared-mutable-state.md) |
 | ISSUE-011 | High | Testability, Clean Architecture | MetadataStorage singleton causes test pollution | [ISSUE-011-metadata-storage-singleton.md](ISSUE-011-metadata-storage-singleton.md) |
 | ISSUE-012 | ~~High~~ | ~~Build/Tooling, Testability~~ | ~~Jest and TypeScript resolve packages from different paths~~ ✅ **FIXED** | [ISSUE-012-jest-tsconfig-path-divergence.md](ISSUE-012-jest-tsconfig-path-divergence.md) |
@@ -62,8 +62,9 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 ### 1. ~~AST–SQL Coupling (ISSUE-005 + ISSUE-006)~~ ✅ BOTH FIXED
 ~~The `@ts-linq/ast` package — which should be the dialect-agnostic expression layer — currently contains all SQL generation logic. The `@ts-linq/sql-visitor` package meant to own this logic is a stub.~~ Both issues are now resolved: all visitor classes (`BinaryVisitor`, `LogicalVisitor`, `UnaryVisitor`, `NullVisitor`, `InVisitor`, `MethodVisitor`) and `SqlVisitor` live in `@ts-linq/sql-visitor`; the AST package retains only pure node type definitions. A `ParameterStyle` enum (`Question`/`Positional`/`Named`) and `ParameterState` class were introduced in `@ts-linq/sql-visitor`, making `SqlVisitor` fully dialect-aware: `new SqlVisitor(ParameterStyle.Positional)` produces `$1, $2` placeholders natively.
 
-### 2. God Classes in Query and ORM Layers (ISSUE-003 + ISSUE-004 + ISSUE-017)
-`Queryable` (938 LOC, 55 methods), `DbContext` (1102 LOC, 48 methods), and `DbSet` (604 LOC, 35 methods) concentrate enormous scope in three classes. This makes unit testing impossible without full provider setup, violates SRP at every level, and creates a maintenance bottleneck where any new ORM feature requires modifying an already-large class.
+### 2. God Classes in Query and ORM Layers (ISSUE-003 + ISSUE-004 + ISSUE-017 + ~~ISSUE-009~~ ✅)
+`Queryable` (938 LOC, 55 methods), `DbContext` (~~1102 LOC, 48 methods~~ → reduced by extraction), and `DbSet` (604 LOC, 35 methods) concentrate enormous scope in three classes. This makes unit testing impossible without full provider setup, violates SRP at every level, and creates a maintenance bottleneck where any new ORM feature requires modifying an already-large class.
+~~ISSUE-009~~ ✅ **FIXED**: All 8 cache-related methods extracted from `DbContext` into a new `CacheCoordinator` class (`packages/orm/src/services/CacheCoordinator.ts`). `DbContext` now holds a single `_cacheCoordinator` reference and delegates all L2/SQL/count cache operations to it. `CacheCoordinator` is independently unit-testable with mock cache implementations (18 tests added in `tests-new/CacheCoordinator.test.ts`). Adding a fourth cache type now requires changing only `CacheCoordinator`.
 
 ### 3. Build and Test Infrastructure Misalignment (~~ISSUE-007~~ ✅ + ~~ISSUE-012~~ ✅ + ~~ISSUE-013~~ ✅ + ~~ISSUE-016~~ ✅ + ISSUE-015)
 The build and test infrastructure has accumulated several independent problems: Jest and TypeScript resolve packages from different locations, ~~a package is referenced in Jest but has no source~~, ~~ESM-incompatible `require()` is used in production code~~ (both fixed), ~~path aliases masked undeclared dependencies~~ (fixed: stale `@ts-linq/metrics-safe` aliases removed from 6 tsconfig files; `scripts/check-phantom-deps.js` added to CI). ISSUE-015 (path alias duplication across 21+ tsconfigs) remains open.
@@ -93,7 +94,7 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 8. ~~**ISSUE-008**~~ ✅ Done — Lazy-load providers in CLI; `createProviderFromEnv()` now async with dynamic `import()` per branch; providers moved to `optionalDependencies`
 
 ### Phase 3 — Reduce Complexity in Core Classes (Weeks 6–10)
-9. **ISSUE-009** — Extract `CacheCoordinator` from `DbContext`
+9. ~~**ISSUE-009**~~ ✅ Done — Extract `CacheCoordinator` from `DbContext`
 10. **ISSUE-004** — Decompose `DbContext` with extracted interceptors for audit, soft-delete, validation
 11. **ISSUE-003** — Decompose `Queryable` with `FallbackManager` and delegation to `QueryExecutor`
 12. **ISSUE-017** — Reduce `DbSet` to mutation + `query()` entry point
