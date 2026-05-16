@@ -9,7 +9,7 @@ class TestDialect implements SqlDialect {
   ): { query: string; parameters: SqlParameter[] } {
     const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
     let query = `SELECT ${options.distinct ? 'DISTINCT ' : ''}${
-      options.select?.length ? (options.select as string[]).join(', ') : '*'
+      options.select?.length ? options.select.join(', ') : '*'
     } FROM ${meta.tableName}`;
     const parameters: SqlParameter[] = [];
     if (options.where && options.where.length) {
@@ -128,10 +128,7 @@ export class TestProvider extends DatabaseProvider {
     await this.afterExecute(`DELETE FROM ${meta.tableName}`, [], 1);
   }
 
-  public async findByPk<T extends object>(
-    pkValue: any,
-    entityClass: Function
-  ): Promise<T | null> {
+  public async findByPk<T extends object>(pkValue: any, entityClass: Function): Promise<T | null> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     const table = this.data.get(meta.tableName) || [];
     const pk = meta.primaryKeys[0];
@@ -146,10 +143,7 @@ export class TestProvider extends DatabaseProvider {
     return instance;
   }
 
-  public async findById<T extends object>(
-    id: any,
-    entityClass: Function
-  ): Promise<T | null> {
+  public async findById<T extends object>(id: any, entityClass: Function): Promise<T | null> {
     return this.findByPk(id, entityClass);
   }
 

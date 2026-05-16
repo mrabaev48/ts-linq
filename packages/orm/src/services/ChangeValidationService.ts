@@ -58,9 +58,7 @@ export class ChangeValidationService {
     }
   }
 
-  private getValidationRules(
-    entityClass: Function
-  ): ValidationRule[] {
+  private getValidationRules(entityClass: Function): ValidationRule[] {
     const cached = this.rulesCache.get(entityClass);
     if (cached) return cached;
     // Stage-3: Use MetadataStorage instead of Reflect API

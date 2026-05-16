@@ -1,5 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { Queryable, QueryBuilder, InMemoryCountCache, EnhancedSqlCache } from '@ts-linq/query';
+import { Queryable, InMemoryCountCache, EnhancedSqlCache } from '@ts-linq/query';
 import { ChangeTracker } from './ChangeTracker';
 import type { DbSetContext } from './DbSetContext';
 import { EntityLoader } from '@ts-linq/core';
@@ -12,6 +12,7 @@ import { InsertCommand } from './commands/InsertCommand';
 import { UpdateCommand } from './commands/UpdateCommand';
 import { DeleteCommand } from './commands/DeleteCommand';
 import { ChangeValidationService } from './services/ChangeValidationService';
+import { CacheCoordinator } from './services/CacheCoordinator';
 import type {
   PerformanceOptions,
   Result,
@@ -19,18 +20,10 @@ import type {
   GlobalFilter,
   ValidationRule
 } from '@ts-linq/types';
-import type { 
-  DbContextOptions,
-  DiagnosticsOptions, 
-  MemoryProfilerLike 
-} from '@ts-linq/core';
+import type { DbContextOptions, DiagnosticsOptions, MemoryProfilerLike } from '@ts-linq/core';
 import { ok, err, ValidationError } from '@ts-linq/types';
 import type { AuditColumnNames, NormalizedChange, ValidationErrorDetail } from './types';
-import type { 
-  EntityCacheLike,
-  LoadingDefaults,
-  AuditOptions
-} from '@ts-linq/types';
+import type { EntityCacheLike, LoadingDefaults, AuditOptions } from '@ts-linq/types';
 import { EntityCache } from '@ts-linq/core';
 import { safeCacheSize } from '@ts-linq/metrics-safe';
 // import { logInternalError } from '@ts-linq/core'; // REMOVED
@@ -79,6 +72,7 @@ export abstract class DbContext {
   private _validationRulesCache: WeakMap<Function, ValidationRule[]> = new WeakMap();
   /** SQL cache created and owned by this context (undefined when user supplied their own). */
   private _ownedSqlCache?: EnhancedSqlCache;
+  private _cacheCoordinator!: CacheCoordinator;
 
   /**
    * Create a new database context instance.
@@ -117,12 +111,16 @@ export abstract class DbContext {
     this._registry = options.registry ?? MetadataStorage.getInstance();
     this._changeTracker = new ChangeTracker(this._registry);
     this._entityLoader = new EntityLoader(this._provider);
-    this._insertCmd = new InsertCommand(this._provider, (c) => this.updateEntityCache(c));
-    this._updateCmd = new UpdateCommand(this._provider, (c) => this.updateEntityCache(c));
+    this._insertCmd = new InsertCommand(this._provider, (c) =>
+      this._cacheCoordinator.updateEntry(c)
+    );
+    this._updateCmd = new UpdateCommand(this._provider, (c) =>
+      this._cacheCoordinator.updateEntry(c)
+    );
     this._deleteCmd = new DeleteCommand(
       this._provider,
       (c) => this.handleSoftDelete(c),
-      (c) => this.removeFromEntityCache(c)
+      (c) => this._cacheCoordinator.removeEntry(c)
     );
     // Initialize optional L2 entity cache
     if (options.performance?.enableEntityCache) {
@@ -136,9 +134,7 @@ export abstract class DbContext {
     }
     // Create an owned SQL cache when none is supplied so that dispose() can stop its timer.
     // When the user passes their own SqlCache we leave ownership with them.
-    this._ownedSqlCache = options.performance?.sqlCache
-      ? undefined
-      : new EnhancedSqlCache();
+    this._ownedSqlCache = options.performance?.sqlCache ? undefined : new EnhancedSqlCache();
 
     // Store performance options; auto-inject per-context count cache when none supplied.
     // Preserve the original ternary form to avoid exposing a pre-existing CountCache ↔
@@ -151,6 +147,19 @@ export abstract class DbContext {
     if (this._ownedSqlCache) {
       this._performanceOptions = { ...this._performanceOptions, sqlCache: this._ownedSqlCache };
     }
+
+    this._cacheCoordinator = new CacheCoordinator(
+      this._entityCache,
+      this._performanceOptions?.sqlCache as
+        | { invalidateBy?: (m: (k: string) => boolean) => number }
+        | undefined,
+      this._performanceOptions?.countCache,
+      this._provider.providerLabel,
+      this._performanceOptions?.cacheNamespace,
+      this._registry,
+      (ec) => this._registry.getEntity(ec)?.primaryKeys?.[0]
+    );
+
     // Propagate query performance analysis options into provider if available
     try {
       const analysis = options.performance?.analysis;
@@ -263,7 +272,7 @@ export abstract class DbContext {
         affectedRows += await this.processChange(normalized);
       }
       await this._provider.commitTransaction();
-      this.invalidateCachesAfterSave(normalizedForInvalidation);
+      this._cacheCoordinator.invalidateAfterMutation(normalizedForInvalidation);
       this._changeTracker.acceptAllChanges();
       return affectedRows;
     } catch (error) {
@@ -294,12 +303,8 @@ export abstract class DbContext {
    */
   public async commitTransaction(): Promise<void> {
     await this._provider.commitTransaction();
-    // Invalidate count cache after commit to avoid stale totals across contexts
-    // This is a coarse-grained approach since count cache is global
     try {
-      this._performanceOptions?.countCache?.clear();
-      // Smart invalidation: clear L2 cache for entities that declare dependencies
-      this.invalidateCachesOnCommit();
+      this._cacheCoordinator.invalidateOnCommit();
       if (this._entityCache) {
         safeCacheSize(this._provider.loggerRef, {
           cache: 'entityL2',
@@ -317,10 +322,9 @@ export abstract class DbContext {
    */
   public async rollbackTransaction(): Promise<void> {
     await this._provider.rollbackTransaction();
-    // Invalidate L2 cache and count cache on rollback to ensure consistency
+    this._cacheCoordinator.clearAll();
     if (this._entityCache) {
       try {
-        this._entityCache.clear();
         safeCacheSize(this._provider.loggerRef, {
           cache: 'entityL2',
           size: this._entityCache.size?.() ?? 0,
@@ -329,132 +333,6 @@ export abstract class DbContext {
       } catch (e) {
         // logInternalError('DbContext.rollbackTransaction.entityCacheClear', e);
       }
-    }
-    try {
-      this._performanceOptions?.countCache?.clear();
-    } catch (e) {
-      // logInternalError('DbContext.rollbackTransaction.countCacheClear', e);
-    }
-  }
-
-  /**
-   * Smart invalidation hook executed on successful commit.
-   * Current implementation clears entire L2 cache; later can be refined per-entity via metadata.
-   */
-  private invalidateCachesOnCommit(): void {
-    try {
-      if (this._entityCache) this._entityCache.clear();
-      // Future: inspect changeTracker changes and Reflect.getMetadata('orm:cachePolicy', entity)
-      // to perform targeted invalidation per-entity/table.
-    } catch (e) {
-      // logInternalError('DbContext.invalidateCachesOnCommit', e);
-    }
-  }
-
-  /**
-   * Targeted cache invalidation after saveChanges.
-   * - Removes deleted entities from L2 by primary key
-   * - Clears L2 entirely if any dependent CachePolicy requires invalidation
-   * - Clears global count cache (best-effort)
-   */
-  private invalidateCachesAfterSave(
-    changes: Array<{ entity: Record<string, unknown>; entityClass: Function; state: string }>
-  ): void {
-    try {
-      const changedNames = new Set<string>(changes.map((c) => c.entityClass.name));
-      const needFullL2Clear = this.computeNeedFullL2Clear(changedNames);
-      this.removeDeletedFromEntityCache(changes, needFullL2Clear);
-      this.invalidateSqlCacheByNames(changedNames);
-      this.invalidateCountCacheByNames(changedNames);
-    } catch (e) {
-      // logInternalError('DbContext.invalidateCachesAfterSave', e);
-    }
-  }
-
-  private computeNeedFullL2Clear(changedNames: ReadonlySet<string>): boolean {
-    try {
-      const entities = this._registry.getEntities();
-      for (const e of entities) {
-        const meta = reflectGetOwnMetadata('orm:cachePolicy', e.target as Function) as
-          | { invalidateOn?: ReadonlyArray<string> }
-          | undefined;
-        if (meta?.invalidateOn && meta.invalidateOn.some((n) => changedNames.has(n))) {
-          return true;
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    return false;
-  }
-
-  private removeDeletedFromEntityCache(
-    changes: ReadonlyArray<{
-      entity: Record<string, unknown>;
-      entityClass: Function;
-      state: string;
-    }>,
-    needFullClear: boolean
-  ): void {
-    if (!this._entityCache) return;
-    try {
-      for (const c of changes) {
-        if (c.state === 'deleted') {
-          const pk = this.getPrimaryKey(c.entityClass);
-          if (pk !== undefined) {
-            this._entityCache.remove(c.entityClass, c.entity[pk]);
-          }
-        }
-      }
-      if (needFullClear) this._entityCache.clear();
-    } catch (e) {
-      // logInternalError('DbContext.removeDeletedFromEntityCache', e);
-    }
-  }
-
-  private invalidateSqlCacheByNames(changedNames: ReadonlySet<string>): void {
-    try {
-      const sqlCache = this._performanceOptions?.sqlCache as { invalidateBy?: (m: (k: string) => boolean) => number } | undefined;
-      
-      if (sqlCache?.invalidateBy) {
-        // Use instance cache if available
-        const providerLabel = this._provider.providerLabel;
-        const providerPrefix = providerLabel ? `${providerLabel}|` : '';
-        const ns = this._performanceOptions?.cacheNamespace ? `${this._performanceOptions.cacheNamespace}|` : '';
-        
-        for (const name of changedNames) {
-           const prefix = `${ns}${providerPrefix}${name}|`;
-           // Matching logic should align with QueryBuilder.buildCacheKey
-           // Key format: [ns|][provider|]EntityName|...
-           sqlCache.invalidateBy((key) => key.startsWith(prefix));
-        }
-      } else {
-        // Fallback to static global cache
-        for (const name of changedNames) QueryBuilder.invalidateForEntity(name);
-      }
-    } catch (e) {
-      // logInternalError('DbContext.invalidateCachesAfterSave.sqlCache', e);
-    }
-  }
-
-  private invalidateCountCacheByNames(changedNames: ReadonlySet<string>): void {
-    try {
-      const extCount: { invalidateBy?: (m: (k: string) => boolean) => number } | undefined =
-        this._performanceOptions?.countCache;
-      if (!extCount?.invalidateBy) return;
-
-      const providerLabel = this._provider.providerLabel;
-      const providerPrefix = providerLabel ? `${providerLabel}|` : '';
-      const ns = this._performanceOptions?.cacheNamespace ? `${this._performanceOptions.cacheNamespace}|` : '';
-      
-      for (const name of changedNames) {
-        // Match keys starting with [Namespace|][Provider|]EntityName|count|
-        // We match strictly on the prefix to avoid accidental invalidation of similarly named entities
-        const prefix = `${ns}${providerPrefix}${name}|count|`;
-        extCount.invalidateBy((key) => key.startsWith(prefix));
-      }
-    } catch (error) {
-      // logInternalError('DbContext.invalidateCachesAfterSave.countCache', error);
     }
   }
 
@@ -475,30 +353,7 @@ export abstract class DbContext {
       await Promise.all(tasks);
     },
     invalidateByEntity: (entityNames: ReadonlyArray<string>): void => {
-      try {
-        const sqlCache = this._performanceOptions?.sqlCache as
-          | { invalidateBy?: (m: (k: string) => boolean) => number }
-          | undefined;
-        for (const name of entityNames) {
-          if (sqlCache?.invalidateBy) {
-            const prefix = name + '|';
-            sqlCache.invalidateBy((k) => k.startsWith(prefix) || k.includes(`|${name}|`));
-          }
-        }
-      } catch (e) {
-        // logInternalError('DbContext.cache.invalidateByEntity.sqlCache', e);
-      }
-      try {
-        const extCount: { invalidateBy?: (m: (k: string) => boolean) => number } | undefined =
-          this._performanceOptions?.countCache;
-        if (extCount?.invalidateBy) {
-          for (const name of entityNames) {
-            extCount.invalidateBy((k) => k.includes(`|count|`) && k.includes(`${name}|`));
-          }
-        }
-      } catch (e) {
-        // logInternalError('DbContext.cache.invalidateByEntity.countCache', e);
-      }
+      this._cacheCoordinator.invalidateByEntityNames(entityNames);
     },
     reportMetrics: (): void => {
       try {
@@ -857,19 +712,27 @@ export abstract class DbContext {
     }
   }
 
-  private async applyInsert(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): Promise<void> {
+  private async applyInsert(
+    change: Pick<NormalizedChange, 'entity' | 'entityClass'>
+  ): Promise<void> {
     await this._insertCmd.execute({ ...change, state: 'added' });
   }
 
-  private async applyUpdate(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): Promise<void> {
+  private async applyUpdate(
+    change: Pick<NormalizedChange, 'entity' | 'entityClass'>
+  ): Promise<void> {
     await this._updateCmd.execute({ ...change, state: 'modified' });
   }
 
-  private async applyDelete(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): Promise<boolean> {
+  private async applyDelete(
+    change: Pick<NormalizedChange, 'entity' | 'entityClass'>
+  ): Promise<boolean> {
     return await this._deleteCmd.execute({ ...change, state: 'deleted' });
   }
 
-  private async handleSoftDelete(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): Promise<boolean> {
+  private async handleSoftDelete(
+    change: Pick<NormalizedChange, 'entity' | 'entityClass'>
+  ): Promise<boolean> {
     if (!this._softDelete?.enabled) return false;
     const meta = this._registry.getEntity(change.entityClass);
     if (!meta) return false;
@@ -883,22 +746,8 @@ export abstract class DbContext {
     );
     if (hasDeletedAt) change.entity[deletedAt] = new Date();
     await this._provider.update(change.entity, change.entityClass);
-    this.updateEntityCache(change);
+    this._cacheCoordinator.updateEntry(change);
     return true;
-  }
-
-  private updateEntityCache(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): void {
-    if (!this._entityCache) return;
-    const pk = this.getPrimaryKey(change.entityClass);
-    if (!pk) return;
-    this._entityCache.set(change.entityClass, change.entity[pk], change.entity);
-  }
-
-  private removeFromEntityCache(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): void {
-    if (!this._entityCache) return;
-    const pk = this.getPrimaryKey(change.entityClass);
-    if (!pk) return;
-    this._entityCache.remove(change.entityClass, change.entity[pk]);
   }
 
   private getPrimaryKey(entityClass: Function): string | undefined {
@@ -909,9 +758,7 @@ export abstract class DbContext {
   /**
    * Retrieve cached validation rules for an entity class (Reflect metadata → cache).
    */
-  private getValidationRules(
-    entityClass: Function
-  ): ValidationRule[] {
+  private getValidationRules(entityClass: Function): ValidationRule[] {
     const cached = this._validationRulesCache.get(entityClass);
     if (cached) return cached;
     // Stage-3: Use MetadataStorage instead of Reflect API
@@ -920,9 +767,7 @@ export abstract class DbContext {
     return rules;
   }
 
-  private extractAuditNames(
-    audit?: AuditOptions
-  ): AuditColumnNames | undefined {
+  private extractAuditNames(audit?: AuditOptions): AuditColumnNames | undefined {
     if (!audit) return undefined;
     return {
       createdAt: audit.timeColumns?.createdAt ?? audit.createdAtColumn ?? 'createdAt',
