@@ -369,6 +369,22 @@ export class TypedQueryable<TEntity> {
   }
 
   /**
+   * Result-returning variant of first(). Returns ok(T) or err(Error).
+   */
+  async tryFirst(): Promise<import('@ts-linq/types').Result<TEntity, Error>> {
+    const { tryFirst: fn } = await import('./queryUtils');
+    return fn(this._queryable);
+  }
+
+  /**
+   * Result-returning variant of single(). Returns ok(T) or err(Error).
+   */
+  async trySingle(): Promise<import('@ts-linq/types').Result<TEntity, Error>> {
+    const { trySingle: fn } = await import('./queryUtils');
+    return fn(this._queryable);
+  }
+
+  /**
    * Access the underlying Queryable for advanced operations.
    * Use with caution as this bypasses type safety.
    */

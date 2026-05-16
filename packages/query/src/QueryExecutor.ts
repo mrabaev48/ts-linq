@@ -8,6 +8,7 @@ import type {
   SqlParameter
 } from '@ts-linq/types';
 
+import { FallbackManager } from './FallbackManager';
 import { logInternalError } from './InternalLogger';
 import { IncludePlanner } from './IncludePlanner';
 import { QueryBuilder } from './QueryBuilder';
@@ -28,11 +29,9 @@ export class QueryExecutor<T> {
     private readonly sqlBuilder: QueryBuilder,
     private readonly materializer: RowMaterializer<T>,
     private readonly includePlanner: IncludePlanner<T>,
-    /** Live array reference — mutations by Queryable.fallbackTo() are visible here. */
-    private readonly fallbacks: Array<QueryFallback<T>>,
-    private readonly performance: PerformanceOptions | undefined,
-    /** Shared by reference across all clones of a chain so throttle counters are global. */
-    private readonly throttle: { windowStart: number; usedInWindow: number; lastAttemptAt: number }
+    /** FallbackManager owns the fallback list and shared throttle state for the chain. */
+    private readonly fallbackManager: FallbackManager<T>,
+    private readonly performance: PerformanceOptions | undefined
   ) {}
 
   /**
@@ -51,7 +50,7 @@ export class QueryExecutor<T> {
     }
     const sql = this.sqlBuilder.generateFromModel(this.entityClass, model);
     const hedge = this.performance?.fallbackPolicy?.hedged;
-    if (hedge?.enabled && this.fallbacks.length > 0 && this.isOpAllowedForFallback('select')) {
+    if (hedge?.enabled && this.fallbackManager.fallbacks.length > 0 && this.isOpAllowedForFallback('select')) {
       const winner = await this.racePrimaryWithFallback(
         () => this.provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters),
         sql,
@@ -77,7 +76,7 @@ export class QueryExecutor<T> {
       return this.handlePrimaryRows(model, rows, includes);
     } catch (error) {
       if (!this.isOpAllowedForFallback('select')) throw error;
-      if (!this.isDegradableError(error) || this.fallbacks.length === 0) throw error;
+      if (!this.isDegradableError(error) || this.fallbackManager.fallbacks.length === 0) throw error;
       if (!this.tryEnterFallbackThrottle()) throw error;
       const entities = await this.tryFallbackSelectSequential(sql, model, includes);
       if (entities) return entities;
@@ -93,7 +92,7 @@ export class QueryExecutor<T> {
   async executeCount(table: string, model: QueryModel): Promise<number> {
     const { sql: query, params: parameters } = this.buildCountSqlAndParams(model, table);
     const hedge = this.performance?.fallbackPolicy?.hedged;
-    if (hedge?.enabled && this.fallbacks.length > 0 && this.isOpAllowedForFallback('count')) {
+    if (hedge?.enabled && this.fallbackManager.fallbacks.length > 0 && this.isOpAllowedForFallback('count')) {
       const hedged = await this.racePrimaryWithFallbackCount(query, parameters, model);
       if (hedged !== null) return hedged;
     }
@@ -101,7 +100,7 @@ export class QueryExecutor<T> {
       const results = await this.provider.executeQuery<{ count: number }>(query, parameters);
       return results[0]?.count ?? 0;
     } catch (error) {
-      if (!this.isDegradableError(error) || this.fallbacks.length === 0) throw error;
+      if (!this.isDegradableError(error) || this.fallbackManager.fallbacks.length === 0) throw error;
       if (!this.tryEnterFallbackThrottle()) throw error;
       const n = await this.tryFallbackCountSequential(model);
       if (n !== null) return n;
@@ -154,7 +153,7 @@ export class QueryExecutor<T> {
       sql: sql.query,
       params: sql.parameters
     };
-    for (const fb of this.fallbacks) {
+    for (const fb of this.fallbackManager.fallbacks) {
       try {
         this.provider.loggerRef?.fallback?.({
           provider: this.provider.providerLabel,
@@ -256,9 +255,9 @@ export class QueryExecutor<T> {
 
   private getHedgedFallbacks(): ReadonlyArray<QueryFallback<T>> {
     const src = this.performance?.fallbackPolicy?.hedged?.sources;
-    if (!src || src.length === 0) return this.fallbacks;
+    if (!src || src.length === 0) return this.fallbackManager.fallbacks;
     const wanted = new Set(src);
-    return this.fallbacks.filter((fb) => wanted.has(fb.label));
+    return this.fallbackManager.fallbacks.filter((fb) => wanted.has(fb.label));
   }
 
   private tryEnterFallbackThrottle(): boolean {
@@ -272,7 +271,7 @@ export class QueryExecutor<T> {
         ? Math.floor(minInterval * (1 + Math.random() * jitter))
         : minInterval;
     if (minInterval > 0) {
-      const since = now - this.throttle.lastAttemptAt;
+      const since = now - this.fallbackManager.throttle.lastAttemptAt;
       if (since < effectiveInterval) {
         this.provider.loggerRef?.fallback?.({
           provider: this.provider.providerLabel,
@@ -286,14 +285,14 @@ export class QueryExecutor<T> {
     const maxPerMinute = Math.max(0, throttle.maxPerMinute ?? 0);
     if (maxPerMinute > 0) {
       const windowMs = 60_000;
-      if (now - this.throttle.windowStart >= windowMs) {
-        this.throttle.windowStart = now;
-        this.throttle.usedInWindow = 0;
+      if (now - this.fallbackManager.throttle.windowStart >= windowMs) {
+        this.fallbackManager.throttle.windowStart = now;
+        this.fallbackManager.throttle.usedInWindow = 0;
       }
-      if (this.throttle.usedInWindow >= maxPerMinute) return false;
-      this.throttle.usedInWindow += 1;
+      if (this.fallbackManager.throttle.usedInWindow >= maxPerMinute) return false;
+      this.fallbackManager.throttle.usedInWindow += 1;
     }
-    this.throttle.lastAttemptAt = now;
+    this.fallbackManager.throttle.lastAttemptAt = now;
     return true;
   }
 
@@ -342,7 +341,7 @@ export class QueryExecutor<T> {
       sql: normal.query,
       params: normal.parameters
     };
-    for (const fb of this.fallbacks) {
+    for (const fb of this.fallbackManager.fallbacks) {
       try {
         this.provider.loggerRef?.fallback?.({
           provider: this.provider.providerLabel,
