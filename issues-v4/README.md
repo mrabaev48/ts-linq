@@ -36,7 +36,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-015 | Medium | Build/Tooling, Maintainability | Per-package tsconfig path aliases duplicated 21+ times | [ISSUE-015-tsconfig-path-alias-duplication.md](ISSUE-015-tsconfig-path-alias-duplication.md) |
 | ISSUE-016 | ~~Medium~~ | ~~Dependency Boundary, Build/Tooling~~ | ~~Phantom dependencies via TypeScript path aliases~~ ✅ **FIXED** | [ISSUE-016-phantom-deps-tsconfig-paths.md](ISSUE-016-phantom-deps-tsconfig-paths.md) |
 | ISSUE-017 | ~~Medium~~ | ~~SOLID, Clean Code~~ | ~~DbSet secondary god class (35 methods, 604 LOC)~~ ✅ **FIXED** | [ISSUE-017-dbset-secondary-god-class.md](ISSUE-017-dbset-secondary-god-class.md) |
-| ISSUE-018 | Medium | Maintainability, Testability | saveChanges() opens a transaction without checking for an active one | [ISSUE-018-savechanges-reentrant-transaction.md](ISSUE-018-savechanges-reentrant-transaction.md) |
+| ISSUE-018 | ~~Medium~~ | ~~Maintainability, Testability~~ | ~~saveChanges() opens a transaction without checking for an active one~~ ✅ **FIXED** | [ISSUE-018-savechanges-reentrant-transaction.md](ISSUE-018-savechanges-reentrant-transaction.md) |
 | ISSUE-019 | Low | Maintainability, Documentation Drift | @ts-linq/integration-nestjs is an unimplemented placeholder | [ISSUE-019-integration-nestjs-placeholder.md](ISSUE-019-integration-nestjs-placeholder.md) |
 | ISSUE-020 | Low | Clean Code, Maintainability | Global filters repeated at 12 terminal operation call sites | [ISSUE-020-global-filter-repeated-at-every-terminal-op.md](ISSUE-020-global-filter-repeated-at-every-terminal-op.md) |
 | ISSUE-021 | Critical | Dependency Boundary, Clean Architecture | Circular dependencies in @ts-linq/migrations | [ISSUE-021-migrations-circular-dependency.md](ISSUE-021-migrations-circular-dependency.md) |
@@ -104,7 +104,7 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 ### Phase 4 — Polish and Test Safety (Weeks 11–12)
 13. ~~**ISSUE-011**~~ ✅ Done — `createMetadataRegistry()` factory exported; `reset()` documented and enforced in `beforeEach`; 17 new isolation tests added (`metadata-isolation.test.ts`, `RegistryIsolation.test.ts`)
 14. ~~**ISSUE-010**~~ ✅ Done — `FallbackManager.clone()` now deep-copies `ThrottleState`; each clone has independent rate-limit counters; fallback objects remain shared (intentional cache-layer sharing); 3 new isolation tests added (`FallbackManager.test.ts`)
-15. **ISSUE-018** — Add transaction depth tracking to `DbContext`
+15. ~~**ISSUE-018**~~ ✅ Done — Add transaction depth tracking to `DbContext`
 16. **ISSUE-014** — Decompose `EnhancedSqlCache` into composable decorators
 17. **ISSUE-015** — Consolidate path aliases into `tsconfig.base.json`
 
