@@ -67,7 +67,7 @@ describe('DbSet BatchOperations + Cache', () => {
   it('upsertMany should invalidate count cache via ChangeTracker', async () => {
     // 1. Warm cache
     provider.nextResult = [{ count: 5 }];
-    await users.count();
+    await users.query().count();
     expect(countCache.size()).toBe(1);
 
     // 2. upsertMany (mocking findWhereIn to return empty, so all are adds)
@@ -92,7 +92,7 @@ describe('DbSet BatchOperations + Cache', () => {
   it('insertMany should invalidate count cache (Manual Check)', async () => {
      // 1. Warm cache
     provider.nextResult = [{ count: 5 }];
-    await users.count();
+    await users.query().count();
     expect(countCache.size()).toBe(1);
     
     // 2. insertMany (bypasses ChangeTracker)
@@ -111,7 +111,7 @@ describe('DbSet BatchOperations + Cache', () => {
   it('updateMany should invalidate count cache (Manual Check)', async () => {
      // 1. Warm cache
      provider.nextResult = [{ count: 5 }];
-    await users.count();
+    await users.query().count();
     expect(countCache.size()).toBe(1);
     
     // 2. updateMany (bypasses ChangeTracker)

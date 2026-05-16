@@ -53,13 +53,13 @@ describe('Advanced Features - Multi-Tenant (Global Filters)', () => {
 
     it('should filter by tenant', async () => {
         const ctxA = new TenantContext(provider, 'A');
-        const itemsA = await ctxA.set(TenantItem).toArray();
+        const itemsA = await ctxA.set(TenantItem).query().toArray();
         
         expect(itemsA).toHaveLength(2);
         expect(itemsA.every(x => x.tenantId === 'A')).toBe(true);
 
         const ctxB = new TenantContext(provider, 'B');
-        const itemsB = await ctxB.set(TenantItem).toArray();
+        const itemsB = await ctxB.set(TenantItem).query().toArray();
         expect(itemsB).toHaveLength(1);
         expect(itemsB[0].tenantId).toBe('B');
     });

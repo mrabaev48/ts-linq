@@ -54,7 +54,7 @@ describe('Advanced Features - Audit & ChangeTracking', () => {
         context.set(AuditItem).add({ name: 'NewItem' } as AuditItem);
         await context.saveChanges();
 
-        const item = await context.set(AuditItem).first();
+        const item = await context.set(AuditItem).query().first();
         expect(item).toBeDefined();
         expect(item!.createdAt).toBeInstanceOf(Date);
         expect(item!.createdBy).toBe('test-user');
@@ -69,7 +69,7 @@ describe('Advanced Features - Audit & ChangeTracking', () => {
         context.set(AuditItem).add({ name: 'Item' } as AuditItem);
         await context.saveChanges();
         
-        const item = await context.set(AuditItem).first();
+        const item = await context.set(AuditItem).query().first();
         const originalUpdate = item!.updatedAt;
 
         // Wait a bit to ensure timestamp difference
@@ -80,7 +80,7 @@ describe('Advanced Features - Audit & ChangeTracking', () => {
         context.set(AuditItem).update(item!);
         await context.saveChanges();
 
-        const updated = await context.set(AuditItem).first();
+        const updated = await context.set(AuditItem).query().first();
         expect(updated!.updatedAt.getTime()).toBeGreaterThan(originalUpdate.getTime());
     });
 });
