@@ -8,3 +8,10 @@ export * from './PrimaryKey';
 export * from './Relationships';
 export * from './ValidIf';
 export { reflectGetOwnMetadata } from './reflectUtils';
+
+import { MetadataRegistry } from './MetadataRegistry';
+
+/** Creates a new, empty `MetadataRegistry` instance. Use for test isolation or multi-tenant setups. */
+export function createMetadataRegistry(): MetadataRegistry {
+  return new MetadataRegistry();
+}
