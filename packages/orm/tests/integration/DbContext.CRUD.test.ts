@@ -102,7 +102,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       const allUsers = await context.set(User).toArray();
 
       expect(allUsers).toHaveLength(2);
-      expect(allUsers.map(u => u.name)).toEqual(expect.arrayContaining(['Alice', 'Bob']));
+      expect(allUsers.map((u) => u.name)).toEqual(expect.arrayContaining(['Alice', 'Bob']));
     });
 
     test('Update: Modify existing user', async () => {
@@ -152,7 +152,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
         Object.assign(new User(), { name: 'User3', email: 'user3@test.com', age: 30 })
       ];
 
-      users.forEach(u => context.set(User).add(u));
+      users.forEach((u) => context.set(User).add(u));
       const affected = await context.saveChanges();
 
       expect(affected).toBe(3);
@@ -182,9 +182,9 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
 
       const remaining = await context.set(User).toArray();
       expect(remaining).toHaveLength(2);
-      expect(remaining.find(u => u.name === 'UpdatedUser1')).toBeDefined();
-      expect(remaining.find(u => u.name === 'User3')).toBeDefined();
-      expect(remaining.find(u => u.name === 'User2')).toBeUndefined();
+      expect(remaining.find((u) => u.name === 'UpdatedUser1')).toBeDefined();
+      expect(remaining.find((u) => u.name === 'User3')).toBeDefined();
+      expect(remaining.find((u) => u.name === 'User2')).toBeUndefined();
     });
   });
 
@@ -196,40 +196,31 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
         Object.assign(new User(), { name: 'Charlie', email: 'charlie@example.com', age: 35 }),
         Object.assign(new User(), { name: 'Diana', email: 'diana@example.com', age: 28 })
       ];
-      users.forEach(u => context.set(User).add(u));
+      users.forEach((u) => context.set(User).add(u));
       await context.saveChanges();
     });
 
     test('Query with where clause', async () => {
-      const adults = await context.set(User)
-        .where(u => (u.age ?? 0) >= 30)
+      const adults = await context
+        .set(User)
+        .where((u) => (u.age ?? 0) >= 30)
         .toArray();
 
       expect(adults.length).toBeGreaterThanOrEqual(2);
-      expect(adults.every(u => (u.age ?? 0) >= 30)).toBe(true);
+      expect(adults.every((u) => (u.age ?? 0) >= 30)).toBe(true);
     });
 
     test('Query with ordering', async () => {
-      const ordered = await context.set(User)
-        .orderBy('name')
-        .toArray();
+      const ordered = await context.set(User).orderBy('name').toArray();
 
       expect(ordered[0].name).toBe('Alice');
       expect(ordered[ordered.length - 1].name).toBe('Diana');
     });
 
     test('Query with pagination', async () => {
-      const page1 = await context.set(User)
-        .orderBy('name')
-        .skip(0)
-        .take(2)
-        .toArray();
+      const page1 = await context.set(User).orderBy('name').skip(0).take(2).toArray();
 
-      const page2 = await context.set(User)
-        .orderBy('name')
-        .skip(2)
-        .take(2)
-        .toArray();
+      const page2 = await context.set(User).orderBy('name').skip(2).take(2).toArray();
 
       expect(page1).toHaveLength(2);
       expect(page2).toHaveLength(2);
@@ -238,16 +229,18 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
     });
 
     test('Query with count', async () => {
-      const count = await context.set(User)
-        .where(u => (u.age ?? 0) >= 30)
+      const count = await context
+        .set(User)
+        .where((u) => (u.age ?? 0) >= 30)
         .count();
 
       expect(count).toBeGreaterThanOrEqual(2);
     });
 
     test('Query with firstOrDefault', async () => {
-      const user = await context.set(User)
-        .where(u => u.name === 'Bob')
+      const user = await context
+        .set(User)
+        .where((u) => u.name === 'Bob')
         .firstOrDefault();
 
       expect(user).toBeDefined();
@@ -256,8 +249,9 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
     });
 
     test('Query returns null when not found', async () => {
-      const user = await context.set(User)
-        .where(u => u.name === 'NonExistent')
+      const user = await context
+        .set(User)
+        .where((u) => u.name === 'NonExistent')
         .firstOrDefault();
 
       expect(user).toBeNull();
@@ -291,7 +285,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
 
       const allPosts = await context.set(Post).toArray();
       expect(allPosts).toHaveLength(2);
-      expect(allPosts.every(p => p.userId === user.id)).toBe(true);
+      expect(allPosts.every((p) => p.userId === user.id)).toBe(true);
     });
   });
 
@@ -355,8 +349,9 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
       expect(foundPost?.title).toBe('My Updated Blog Post');
       expect(foundPost?.content).toContain('Updated content');
 
-      const authorPosts = await context.set(Post)
-        .where(p => p.userId === author.id)
+      const authorPosts = await context
+        .set(Post)
+        .where((p) => p.userId === author.id)
         .toArray();
       expect(authorPosts).toHaveLength(1);
     });
