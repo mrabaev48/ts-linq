@@ -113,7 +113,7 @@ describe('ChangeTracker + Memcached Integration', () => {
     expect(client.get).toHaveBeenCalledWith(key);
 
     // 2. Second get should hit shadow
-    const r2 = adapter.get(User, 1);
+    const r2 = adapter.get(User, 1) as User | undefined;
     expect(r2).toBeDefined();
     expect(r2?.name).toBe('Bob');
   });

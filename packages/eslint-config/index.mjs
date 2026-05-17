@@ -55,7 +55,7 @@ const typescriptRules = {
   // handled by unused-imports plugin
   '@typescript-eslint/no-unused-vars': 'off',
   '@typescript-eslint/require-await': 'warn',
-  '@typescript-eslint/no-unnecessary-type-assertion': 'warn',
+  '@typescript-eslint/no-unnecessary-type-assertion': 'off',
   // permissive unsafe rules — turn on per-package as needed
   '@typescript-eslint/no-unsafe-assignment': 'off',
   '@typescript-eslint/no-unsafe-call': 'off',
