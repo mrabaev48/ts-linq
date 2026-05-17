@@ -19,7 +19,7 @@ describe('Postgres FK DDL snapshots', () => {
         onUpdate: 'NO ACTION'
       });
     });
-    const sql = mb.toSql('postgresql' as any);
+    const sql = mb.toSql('postgresql');
     expect(sql.up.join('\n')).toMatchInlineSnapshot(`
 "CREATE TABLE IF NOT EXISTS \"parents\" (\"id\" INTEGER NOT NULL, PRIMARY KEY (\"id\"))
 CREATE TABLE IF NOT EXISTS \"children\" (\"id\" INTEGER NOT NULL, \"parent_id\" INTEGER NOT NULL, PRIMARY KEY (\"id\"), FOREIGN KEY (\"parent_id\") REFERENCES \"parents\" (\"id\") ON DELETE CASCADE ON UPDATE NO ACTION)"

@@ -30,5 +30,3 @@ describe('MySQL Provider + QueryBuilder Integration', () => {
     it.todo('should handle deadlock detection');
   });
 });
-
-

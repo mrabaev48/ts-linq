@@ -1,13 +1,18 @@
 import 'reflect-metadata';
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { ChangeTracker } from '../src/ChangeTracker';
-import { MetadataStorage, MetadataRegistry, createMetadataRegistry } from '@ts-linq/metadata';
+
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import { EntityState } from '@ts-linq/core';
+import type { MetadataRegistry } from '@ts-linq/metadata';
+import { createMetadataRegistry, MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata } from '@ts-linq/types';
+
+import { ChangeTracker } from '../src/ChangeTracker';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeRegistry(...entities: Array<{ target: Function; tableName: string }>): MetadataRegistry {
+function makeRegistry(
+  ...entities: Array<{ target: Function; tableName: string }>
+): MetadataRegistry {
   const registry = createMetadataRegistry();
   for (const { target, tableName } of entities) {
     registry.addEntity(target, tableName);

@@ -1,4 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
+
 import type { Migration } from './Migration';
 
 /**

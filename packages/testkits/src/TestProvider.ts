@@ -1,3 +1,4 @@
+import type { CircuitBreakerOptions } from '@ts-linq/core';
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
@@ -12,16 +13,15 @@ import type {
   SqlLogger,
   SqlParameter
 } from '@ts-linq/types';
-import type { CircuitBreakerOptions } from '@ts-linq/core';
 
 class TestDialect implements SqlDialect {
   public buildSelect(
     entityClass: new () => unknown,
     options: QueryOptions
   ): { query: string; parameters: SqlParameter[] } {
-    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+    const meta = MetadataStorage.getEntity(entityClass)!;
     let query = `SELECT ${options.distinct ? 'DISTINCT ' : ''}${
-      options.select?.length ? (options.select as string[]).join(', ') : '*'
+      options.select?.length ? options.select.join(', ') : '*'
     } FROM ${meta.tableName}`;
     const parameters: SqlParameter[] = [];
     if (options.where) {
@@ -83,19 +83,20 @@ export class TestProvider extends DatabaseProvider {
   public nextResult: Array<Record<string, unknown>> | undefined;
 
   constructor(configOrConnectionString?: string | TestProviderConfig) {
-    const config = typeof configOrConnectionString === 'string' 
-        ? { file: configOrConnectionString } 
-        : (configOrConnectionString || { file: ':memory:' });
+    const config =
+      typeof configOrConnectionString === 'string'
+        ? { file: configOrConnectionString }
+        : configOrConnectionString || { file: ':memory:' };
 
     super(
-        config.file || ':memory:', 
-        config.logger, 
-        config.middlewares, 
-        config.softDelete, 
-        config.retryPolicy,
-        config.poolOptions,
-        config.healthCheck, 
-        config.circuit // circuitOptions
+      config.file || ':memory:',
+      config.logger,
+      config.middlewares,
+      config.softDelete,
+      config.retryPolicy,
+      config.poolOptions,
+      config.healthCheck,
+      config.circuit // circuitOptions
     );
     this.providerName = 'test';
   }
@@ -228,20 +229,20 @@ export class TestProvider extends DatabaseProvider {
     params: readonly SqlParameter[],
     entityClass: new () => T
   ): Promise<T[]> {
-      const rows = await this.doExecuteQuery<Record<string, unknown>>(sql, params);
-      const meta = MetadataStorage.getEntity(entityClass);
-      
-      return rows.map((rec) => {
-          const instance = new entityClass();
-          if (meta) {
-              for (const col of meta.columns) {
-                  (instance as Record<string, unknown>)[col.propertyName] = rec[col.columnName];
-              }
-          } else {
-              Object.assign(instance, rec);
-          }
-          return instance;
-      });
+    const rows = await this.doExecuteQuery<Record<string, unknown>>(sql, params);
+    const meta = MetadataStorage.getEntity(entityClass);
+
+    return rows.map((rec) => {
+      const instance = new entityClass();
+      if (meta) {
+        for (const col of meta.columns) {
+          (instance as Record<string, unknown>)[col.propertyName] = rec[col.columnName];
+        }
+      } else {
+        Object.assign(instance, rec);
+      }
+      return instance;
+    });
   }
 
   public async count(entityClass: Function): Promise<number> {
@@ -273,35 +274,32 @@ export class TestProvider extends DatabaseProvider {
   }
 
   public async findWhere<T extends object>(
-      entityClass: new () => T,
-      _where: Record<string, unknown>
+    entityClass: new () => T,
+    _where: Record<string, unknown>
   ): Promise<T[]> {
-      return this.findAll(entityClass); // Stub behavior
+    return this.findAll(entityClass); // Stub behavior
   }
-  
+
   public async findWhereIn<T extends object>(
     entityClass: new () => T,
     _column: string,
     _values: unknown[]
   ): Promise<T[]> {
-      return this.findAll(entityClass); // Stub behavior
+    return this.findAll(entityClass); // Stub behavior
   }
 
-  public async doExecuteQuery<T>(
-    sql: string,
-    params: readonly SqlParameter[] = []
-  ): Promise<T[]> {
+  public async doExecuteQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
     this.executionCount++;
     if (this.nextResult) {
-        return this.nextResult as unknown as T[];
+      return this.nextResult as unknown as T[];
     }
     // console.log(`[TestProvider] SQL: ${sql}`);
-    
+
     // Parse FROM to find table
     const fromMatch = sql.match(/FROM\s+([`"']?\w+[`"']?)/i);
     // console.log(`[TestProvider] SQL: ${sql}, TableMatch: ${fromMatch ? fromMatch[1] : 'None'}`);
     if (!fromMatch) return [];
-    
+
     const tableName = fromMatch[1].replace(/['"`]/g, '');
     let table = this.data.get(tableName) || [];
     // console.log(`[TestProvider] Table: ${tableName}, Rows: ${table.length}`);
@@ -322,68 +320,81 @@ export class TestProvider extends DatabaseProvider {
     }
 
     if (sql.includes('WHERE')) {
-        const match = sql.match(/WHERE\s+(.*?)(\s+ORDER\s+BY|\s+LIMIT|\s*$)/i);
-        if (match) {
-            const wherePart = match[1];
-            const conditions = wherePart.split(/\s+AND\s+/i).map(c => c.trim());
-            
-            table = table.filter(rec => {
-                return conditions.every(cond => {
-                    // Handle inequalities
-                    const operatorMatch = cond.match(/([<>=!]+)/);
-                    if (operatorMatch) {
-                        const op = operatorMatch[1];
-                        const parts = cond.split(op).map(x => x.trim().replace(/['"`]/g, ''));
-                        const col = parts[0];
-                        let val: string | number = parts[1];
-                        
-                        if (val === '?') {
-                             return true; // Weak fallback, handled by paramMatches below
-                        }
-                        
-                        // Try parsing numbers
-                        if (!isNaN(Number(val))) val = Number(val);
+      const match = sql.match(/WHERE\s+(.*?)(\s+ORDER\s+BY|\s+LIMIT|\s*$)/i);
+      if (match) {
+        const wherePart = match[1];
+        const conditions = wherePart.split(/\s+AND\s+/i).map((c) => c.trim());
 
-                        const rowVal = rec[col] as number | string | null;
+        table = table.filter((rec) => {
+          return conditions.every((cond) => {
+            // Handle inequalities
+            const operatorMatch = cond.match(/([<>=!]+)/);
+            if (operatorMatch) {
+              const op = operatorMatch[1];
+              const parts = cond.split(op).map((x) => x.trim().replace(/['"`]/g, ''));
+              const col = parts[0];
+              let val: string | number = parts[1];
 
-                        switch (op) {
-                            case '=': return rowVal == val;
-                            case '!=':
-                            case '<>': return rowVal != val;
-                            case '>': return (rowVal as number) > (val as number);
-                            case '>=': return (rowVal as number) >= (val as number);
-                            case '<': return (rowVal as number) < (val as number);
-                            case '<=': return (rowVal as number) <= (val as number);
-                        }
-                    }
-                    return true;
-                });
-            });
+              if (val === '?') {
+                return true; // Weak fallback, handled by paramMatches below
+              }
 
-            // Better param handling for the specific "tenantId = ?" case in tests
-            const paramMatches = [...sql.matchAll(/[`"']?(\w+)[`"']?\s*([<>=!]+)\s*\?/g)];
-            if (paramMatches.length > 0 && params.length > 0) {
-                 table = table.filter(rec => {
-                     let matchIndex = 0;
-                     return paramMatches.every(m => {
-                         const col = m[1];
-                         const op = m[2];
-                         const val = params[matchIndex++] as number | string | null;
-                         const rowVal = rec[col] as number | string | null;
-                         switch (op) {
-                            case '=': return rowVal == val;
-                            case '!=':
-                            case '<>': return rowVal != val;
-                            case '>': return val != null && (rowVal as number) > (val as number);
-                            case '>=': return val != null && (rowVal as number) >= (val as number);
-                            case '<': return val != null && (rowVal as number) < (val as number);
-                            case '<=': return val != null && (rowVal as number) <= (val as number);
-                            default: return true;
-                        }
-                     });
-                 });
+              // Try parsing numbers
+              if (!isNaN(Number(val))) val = Number(val);
+
+              const rowVal = rec[col] as number | string | null;
+
+              switch (op) {
+                case '=':
+                  return rowVal == val;
+                case '!=':
+                case '<>':
+                  return rowVal != val;
+                case '>':
+                  return (rowVal as number) > (val as number);
+                case '>=':
+                  return (rowVal as number) >= (val as number);
+                case '<':
+                  return (rowVal as number) < (val as number);
+                case '<=':
+                  return (rowVal as number) <= (val as number);
+              }
             }
+            return true;
+          });
+        });
+
+        // Better param handling for the specific "tenantId = ?" case in tests
+        const paramMatches = [...sql.matchAll(/[`"']?(\w+)[`"']?\s*([<>=!]+)\s*\?/g)];
+        if (paramMatches.length > 0 && params.length > 0) {
+          table = table.filter((rec) => {
+            let matchIndex = 0;
+            return paramMatches.every((m) => {
+              const col = m[1];
+              const op = m[2];
+              const val = params[matchIndex++] as number | string | null;
+              const rowVal = rec[col] as number | string | null;
+              switch (op) {
+                case '=':
+                  return rowVal == val;
+                case '!=':
+                case '<>':
+                  return rowVal != val;
+                case '>':
+                  return val != null && (rowVal as number) > (val as number);
+                case '>=':
+                  return val != null && (rowVal as number) >= (val as number);
+                case '<':
+                  return val != null && (rowVal as number) < (val as number);
+                case '<=':
+                  return val != null && (rowVal as number) <= (val as number);
+                default:
+                  return true;
+              }
+            });
+          });
         }
+      }
     }
 
     if (sql.includes('LIMIT')) {
@@ -400,19 +411,19 @@ export class TestProvider extends DatabaseProvider {
   public async doExecuteNonQuery(_sql: string, _params: readonly SqlParameter[]): Promise<number> {
     return 0;
   }
-  
+
   public async beginTransaction(): Promise<void> {}
   public async commitTransaction(): Promise<void> {}
   public async rollbackTransaction(): Promise<void> {}
-  
+
   public async transaction<T>(action: () => Promise<T>): Promise<T> {
     return action();
   }
-  
+
   public async commit(): Promise<void> {}
   public async rollback(): Promise<void> {}
-  
+
   public async executeRaw(_sql: string, _params: readonly SqlParameter[]): Promise<unknown[]> {
-      return [];
+    return [];
   }
 }

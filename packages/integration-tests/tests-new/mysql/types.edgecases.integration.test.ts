@@ -19,8 +19,8 @@ d('[integration][types][mysql] DECIMAL/date', () => {
         'CREATE TABLE `edge_types`(id INT PRIMARY KEY, amount DECIMAL(10,2) NOT NULL, created_at DATETIME NOT NULL)'
       );
       await p.executeNonQuery('INSERT INTO `edge_types`(id, amount, created_at) VALUES(1, ?, ?)', [
-        '1234.56' as unknown as never,
-        '2020-01-02 03:04:05' as unknown as never
+        '1234.56',
+        '2020-01-02 03:04:05'
       ]);
       const rows = await p.executeQuery<{ amount: string; created_at: Date }>(
         'SELECT amount, created_at FROM `edge_types`'

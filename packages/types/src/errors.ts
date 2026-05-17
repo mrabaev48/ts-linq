@@ -1,7 +1,10 @@
 // Error classes - no external dependencies
 
 export class DatabaseError extends Error {
-  constructor(message: string, public readonly cause?: Error) {
+  constructor(
+    message: string,
+    public readonly cause?: Error
+  ) {
     super(message);
     this.name = 'DatabaseError';
   }

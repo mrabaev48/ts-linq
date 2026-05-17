@@ -1,5 +1,4 @@
 import { BatchExecutor } from '../src/batch/BatchExecutor';
-import type { DatabaseProvider } from '../src/DatabaseProvider';
 
 describe('BatchExecutor', () => {
   let mockProvider: any;
@@ -55,10 +54,10 @@ describe('BatchExecutor', () => {
 
     it('should rollback on error when transaction was started by this call', async () => {
       mockProvider._inTxn = false;
-      mockProvider.beginTransaction.mockImplementation(async function(this: any) {
+      mockProvider.beginTransaction.mockImplementation(async function (this: any) {
         this._inTxn = true;
       });
-      
+
       const error = new Error('Test error');
       const mockFn = jest.fn().mockRejectedValue(error);
 

@@ -1,5 +1,5 @@
-import type { TableDiff } from '../../DiffTypes';
 import type { Dialect } from '../../Dialect';
+import type { TableDiff } from '../../DiffTypes';
 import { q } from '../SqlUtils';
 
 export function handleIndexDrops(td: TableDiff, dialect: Dialect, up: string[]): void {

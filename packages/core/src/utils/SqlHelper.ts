@@ -52,13 +52,13 @@ export class SqlHelper {
       value instanceof Date ||
       value instanceof Uint8Array
     ) {
-      return value as SqlParameter;
+      return value;
     }
     // Fallback: JSON-encode objects (including arrays) into TEXT
     try {
-      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+      return JSON.stringify(value ?? null);
     } catch {
-      return String(value) as unknown as SqlParameter;
+      return String(value);
     }
   }
 

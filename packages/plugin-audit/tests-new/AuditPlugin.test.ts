@@ -1,5 +1,5 @@
 import { AuditMiddleware } from '../src/AuditMiddleware';
-import { withAudit, getAuditInfo, hasBeenModified, timeSinceUpdate } from '../src/utils';
+import { getAuditInfo, hasBeenModified, timeSinceUpdate, withAudit } from '../src/utils';
 
 jest.mock('@ts-linq/metadata', () => {
   const columns = new Set<string>();

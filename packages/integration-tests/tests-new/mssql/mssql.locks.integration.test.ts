@@ -36,7 +36,7 @@ d('[integration][mssql] locks (UPDLOCK/HOLDLOCK)', () => {
       const lockedId = rows[0].id;
       await p1.executeNonQuery(
         'SELECT [id] FROM [dbo].[items_lock] WITH (UPDLOCK, HOLDLOCK) WHERE [id]=@p1',
-        [lockedId as unknown as never]
+        [lockedId]
       );
       await expect(
         p2.executeNonQuery('UPDATE [dbo].[items_lock] SET [name]=[name] WHERE [id]=@p1', [

@@ -1,17 +1,18 @@
-import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
 import {
-  SchemaSnapshotBuilder,
-  SchemaSnapshotSerializer,
+  compareSchemas,
   generateMigrationFromDiff,
-  compareSchemas
+  SchemaSnapshotBuilder,
+  SchemaSnapshotSerializer
 } from '@ts-linq/migrations';
-import { resolveDialect, getFlag } from '../utils';
-import type { DbCommand } from './Command';
-import type { Logger } from '../ports/Logger';
+import * as path from 'path';
+
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
-import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
+import type { FileSystem } from '../ports/FileSystem';
+import type { Logger } from '../ports/Logger';
+import { getFlag, resolveDialect } from '../utils';
+import type { DbCommand } from './Command';
 
 export class SchemaApplyCommand implements DbCommand {
   public readonly name = 'schema:apply';
@@ -51,7 +52,7 @@ export class SchemaApplyCommand implements DbCommand {
         process.exitCode = 2;
         return;
       }
-      // eslint-disable-next-line no-await-in-loop
+
       await provider.executeNonQuery(sql);
       applied++;
     }

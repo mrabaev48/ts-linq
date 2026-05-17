@@ -1,7 +1,8 @@
-import type { Command } from './Command';
-import type { Logger } from '../ports/Logger';
-import { ConsoleLogger } from '../adapters/ConsoleLogger';
 import { startPrometheusServer } from '@ts-linq/core';
+
+import { ConsoleLogger } from '../adapters/ConsoleLogger';
+import type { Logger } from '../ports/Logger';
+import type { Command } from './Command';
 
 export class MetricsServeCommand implements Command {
   public readonly name = 'metrics:serve';

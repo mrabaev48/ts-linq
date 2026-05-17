@@ -1,13 +1,14 @@
-import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
-import { MigrationRunner } from '@ts-linq/migrations';
-import type { DbCommand } from './Command';
 import type { Migration } from '@ts-linq/migrations';
-import type { Logger } from '../ports/Logger';
+import { MigrationRunner } from '@ts-linq/migrations';
+import * as path from 'path';
+
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
-import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
 import { tryLoadConfig } from '../config';
+import type { FileSystem } from '../ports/FileSystem';
+import type { Logger } from '../ports/Logger';
+import type { DbCommand } from './Command';
 
 export class MigrationsRollbackCommand implements DbCommand {
   public readonly name = 'migration:rollback';
@@ -48,7 +49,7 @@ export class MigrationsRollbackCommand implements DbCommand {
     return path.resolve(process.cwd(), cfg.migrations || 'migrations');
   }
 
-  private loadAllMigrations(dir: string): Promise<Array<Record<string, unknown>>> {
+  private async loadAllMigrations(dir: string): Promise<Array<Record<string, unknown>>> {
     if (!this.fsAdapter.exists(dir)) return Promise.resolve([] as Array<Record<string, unknown>>);
     const files = this.fsAdapter
       .readDir(dir)
@@ -63,7 +64,6 @@ export class MigrationsRollbackCommand implements DbCommand {
 
   private tryRegisterTsNode(): void {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       require('ts-node/register/transpile-only');
     } catch {
       // ignore if not available
@@ -71,7 +71,6 @@ export class MigrationsRollbackCommand implements DbCommand {
   }
 
   private requireModule(file: string): Record<string, unknown> {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require(file) as Record<string, unknown>;
   }
 

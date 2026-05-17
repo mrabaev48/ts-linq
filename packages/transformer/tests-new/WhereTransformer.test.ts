@@ -24,18 +24,18 @@ function createTempProject(): {
   writeFile(
     path.join(dir, 'packages/query/src/index.ts'),
     [
-      "export class Queryable<T> {",
-      "  declare readonly __tsLinqWhereTransformerBrand: true;",
-      "  public where(predicate: (entity: T) => boolean): Queryable<T> { void predicate; return this; }",
-      "  public whereCompiled(input: { ast: unknown; parameters: readonly unknown[] }): Queryable<T> { void input; return this; }",
-      "  public having(predicate: (entity: T) => boolean): Queryable<T> { void predicate; return this; }",
-      "  public havingCompiled(input: { ast: unknown; parameters: readonly unknown[] }): Queryable<T> { void input; return this; }",
-      "}",
-      "export class TypedQueryable<T> {",
-      "  declare readonly __tsLinqWhereTransformerBrand: true;",
-      "  public where(predicate: (entity: T) => boolean): TypedQueryable<T> { void predicate; return this; }",
-      "  public whereCompiled(input: { ast: unknown; parameters: readonly unknown[] }): TypedQueryable<T> { void input; return this; }",
-      "}"
+      'export class Queryable<T> {',
+      '  declare readonly __tsLinqWhereTransformerBrand: true;',
+      '  public where(predicate: (entity: T) => boolean): Queryable<T> { void predicate; return this; }',
+      '  public whereCompiled(input: { ast: unknown; parameters: readonly unknown[] }): Queryable<T> { void input; return this; }',
+      '  public having(predicate: (entity: T) => boolean): Queryable<T> { void predicate; return this; }',
+      '  public havingCompiled(input: { ast: unknown; parameters: readonly unknown[] }): Queryable<T> { void input; return this; }',
+      '}',
+      'export class TypedQueryable<T> {',
+      '  declare readonly __tsLinqWhereTransformerBrand: true;',
+      '  public where(predicate: (entity: T) => boolean): TypedQueryable<T> { void predicate; return this; }',
+      '  public whereCompiled(input: { ast: unknown; parameters: readonly unknown[] }): TypedQueryable<T> { void input; return this; }',
+      '}'
     ].join('\n')
   );
 
@@ -140,7 +140,7 @@ describe('WhereTransformer', () => {
     );
 
     expect(diagnostics.length).toBeGreaterThan(0);
-    const msg = ts.flattenDiagnosticMessageText(diagnostics[0]!.messageText, '\n');
+    const msg = ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n');
     expect(msg).toContain('is not supported');
   });
 });

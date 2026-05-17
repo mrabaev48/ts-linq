@@ -1,24 +1,25 @@
 import type {
+  CircuitState,
+  ConnectionHealthCheckOptions,
+  ConnectionPoolOptions,
   EntityMetadata,
   OrmMiddleware,
-  RetryPolicy,
-  SqlLogger,
-  SoftDeleteOptions,
-  SqlParameter,
-  ConnectionPoolOptions,
-  ConnectionHealthCheckOptions,
-  SqlDialect,
-  CircuitState,
   QueryAnalysisInfo,
+  RetryPolicy,
+  SoftDeleteOptions,
+  SqlDialect,
+  SqlLogger,
+  SqlParameter
 } from '@ts-linq/types';
+
+import { HealthMonitor } from './Health/HealthMonitor';
+import { ResilienceManager } from './Resilience/ResilienceManager';
 import type {
   CircuitBreakerOptions,
-  QueryPerformanceAnalysisOptions,
-  IDatabaseProvider
+  IDatabaseProvider,
+  QueryPerformanceAnalysisOptions
 } from './types';
 import { logInternalError } from './utils/InternalLogger';
-import { ResilienceManager } from './Resilience/ResilienceManager';
-import { HealthMonitor } from './Health/HealthMonitor';
 
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -43,7 +44,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   protected healthCheck?: ConnectionHealthCheckOptions;
   /** Optional circuit breaker options. */
   protected circuitOptions?: CircuitBreakerOptions;
-  
+
   /** Resilience manager handling circuit breaker and retries */
   protected resilienceManager: ResilienceManager;
   /** Health monitor handling connection checks */
@@ -185,7 +186,11 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   }
   /** Execute a SQL query and return rows mapped as generic objects. */
   public async executeQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
-    return await this.executeWithRetry<T[]>(() => this.doExecuteQuery<T>(sql, params), sql, params);
+    return await this.executeWithRetry<T[]>(
+      async () => this.doExecuteQuery<T>(sql, params),
+      sql,
+      params
+    );
   }
   /** Provider-specific implementation of query execution. */
   protected abstract doExecuteQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]>;
@@ -193,7 +198,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   /** Execute a non-query SQL statement and return affected row count. */
   public async executeNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
     return await this.executeWithRetry<number>(
-      () => this.doExecuteNonQuery(sql, params),
+      async () => this.doExecuteNonQuery(sql, params),
       sql,
       params
     );
@@ -217,7 +222,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     return this.resilienceManager.execute(async () => {
       const startedAt = Date.now();
       this.lastExecuteStartedAt = startedAt;
-      
+
       this.logger?.queryStart?.({
         sql,
         params,
@@ -230,7 +235,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
       try {
         const result = await fn();
         const durationMs = Date.now() - startedAt;
-        
+
         this.logger?.queryEnd?.({
           sql,
           params,
@@ -246,7 +251,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
 
         await this.maybeAnalyzeQuery({ sql, params, durationMs });
         await this.afterExecute(sql, params, result);
-        
+
         return result;
       } catch (error) {
         const durationMs = Date.now() - startedAt;
@@ -359,7 +364,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   }
 
   /** Heuristic recommendations from provider-agnostic plans. */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private deriveRecommendations(_plan: unknown | undefined): ReadonlyArray<string> | undefined {
     // Minimal placeholder: concrete providers can override getExplainPlan with richer structures
     return undefined;
@@ -413,7 +418,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     health?: ConnectionHealthCheckOptions;
   }): void {
     this.poolOptions = options.pool ?? this.poolOptions;
-    
+
     if (options.health) {
       this.healthCheck = options.health;
       this.healthMonitor.configure(options.health);
@@ -490,6 +495,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     const info: { entity: object; metadata?: EntityMetadata } = { entity, metadata };
     for (const mw of this.middlewares) {
       try {
+        // eslint-disable-next-line @typescript-eslint/await-thenable
         await mw.entityMaterialized?.(info);
       } catch (e) {
         logInternalError('DatabaseProvider.notifyEntityMaterialized.middleware', e);

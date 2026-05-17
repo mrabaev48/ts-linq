@@ -1,5 +1,6 @@
-import type { SqlCache, SqlCacheEntry } from '@ts-linq/types';
 import { createHash } from 'node:crypto';
+
+import type { SqlCache, SqlCacheEntry } from '@ts-linq/types';
 
 export interface LruCacheOptions {
   maxSize?: number;
@@ -79,8 +80,7 @@ export class LruCache implements SqlCache {
     // Phase 2: single-pass over store
     for (const key of Array.from(this.store.keys())) {
       const shouldDelete =
-        compressedToDelete.has(key) ||
-        (!key.startsWith('hash_') && matcher(key));
+        compressedToDelete.has(key) || (!key.startsWith('hash_') && matcher(key));
       if (shouldDelete) {
         this.store.delete(key);
         removed++;

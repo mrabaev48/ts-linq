@@ -1,5 +1,5 @@
-import type { TableDiff } from '../../DiffTypes';
 import type { Dialect } from '../../Dialect';
+import type { TableDiff } from '../../DiffTypes';
 import { q } from '../SqlUtils';
 import { renderColumn } from './ColumnHandlers';
 import { buildInlineFkSql } from './ForeignKeyHandlers';

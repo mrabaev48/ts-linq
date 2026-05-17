@@ -1,5 +1,6 @@
-import { RedisSqlCacheAdapter } from '../src/redis/RedisSqlCacheAdapter';
 import type { SqlCacheEntry } from '@ts-linq/types';
+
+import { RedisSqlCacheAdapter } from '../src/redis/RedisSqlCacheAdapter';
 
 class FlakyRedis {
   private m = new Map<string, string>();

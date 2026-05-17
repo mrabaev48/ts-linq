@@ -20,7 +20,9 @@ class StubDialect implements SqlDialect {
     entityClass: new () => T,
     options: unknown
   ): { query: string; parameters: readonly SqlParameter[] } {
-    const meta = MetadataStorage.getEntity(entityClass) || { tableName: (entityClass as { name: string }).name };
+    const meta = MetadataStorage.getEntity(entityClass) || {
+      tableName: (entityClass as { name: string }).name
+    };
     const opts = options as { limit?: number; offset?: number } | undefined;
     const limit = typeof opts?.limit === 'number' ? opts.limit : undefined;
     const offset = typeof opts?.offset === 'number' ? opts.offset : 0;
@@ -36,29 +38,49 @@ class StubProvider extends DatabaseProvider {
   private rows: Record<string, unknown>[] = [];
   private countValue = 0;
   private readonly dialect = new StubDialect();
-  setRows(rows: Record<string, unknown>[]): void { this.rows = rows; }
-  setCount(n: number): void { this.countValue = n; }
+  setRows(rows: Record<string, unknown>[]): void {
+    this.rows = rows;
+  }
+  setCount(n: number): void {
+    this.countValue = n;
+  }
   public async connect(): Promise<void> {}
   public async disconnect(): Promise<void> {}
   public async createTable(): Promise<void> {}
-  public getDialect(): SqlDialect { return this.dialect; }
-  public async insert<T extends object>(e: T): Promise<T> { return e; }
-  public async update<T extends object>(e: T): Promise<T> { return e; }
+  public getDialect(): SqlDialect {
+    return this.dialect;
+  }
+  public async insert<T extends object>(e: T): Promise<T> {
+    return e;
+  }
+  public async update<T extends object>(e: T): Promise<T> {
+    return e;
+  }
   public async delete(): Promise<void> {}
-  public async findById<T extends object>(): Promise<T | null> { return null; }
-  public async findAll<T extends object>(): Promise<T[]> { return [] as unknown as T[]; }
-  public async findWhere<T extends object>(): Promise<T[]> { return [] as unknown as T[]; }
-  public async findWhereIn<T extends object>(): Promise<T[]> { return [] as unknown as T[]; }
+  public async findById<T extends object>(): Promise<T | null> {
+    return null;
+  }
+  public async findAll<T extends object>(): Promise<T[]> {
+    return [];
+  }
+  public async findWhere<T extends object>(): Promise<T[]> {
+    return [];
+  }
+  public async findWhereIn<T extends object>(): Promise<T[]> {
+    return [];
+  }
   protected async doExecuteQuery<T>(sql: string): Promise<T[]> {
     const m = /\/\*LIMIT=(\d+),OFFSET=(\d+)\*\//.exec(sql);
     if (m) {
-      const limit = parseInt(m[1]!, 10);
-      const offset = parseInt(m[2]!, 10);
+      const limit = parseInt(m[1], 10);
+      const offset = parseInt(m[2], 10);
       return this.rows.slice(offset, offset + limit) as unknown as T[];
     }
     return this.rows as unknown as T[];
   }
-  protected async doExecuteNonQuery(): Promise<number> { return 1; }
+  protected async doExecuteNonQuery(): Promise<number> {
+    return 1;
+  }
   public async beginTransaction(): Promise<void> {}
   public async commitTransaction(): Promise<void> {}
   public async rollbackTransaction(): Promise<void> {}
@@ -89,7 +111,12 @@ describe('PaginationBuilder', () => {
   beforeEach(() => {
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(Item, 'items');
-    MetadataStorage.addColumn(Item, { propertyName: 'id', columnName: 'id', type: 'INTEGER', primaryKey: true });
+    MetadataStorage.addColumn(Item, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      primaryKey: true
+    });
     MetadataStorage.addPrimaryKey(Item, 'id');
     MetadataStorage.addColumn(Item, { propertyName: 'name', columnName: 'name', type: 'TEXT' });
   });
@@ -102,7 +129,7 @@ describe('PaginationBuilder', () => {
         { id: 2, name: 'B' },
         { id: 3, name: 'C' },
         { id: 4, name: 'D' },
-        { id: 5, name: 'E' },
+        { id: 5, name: 'E' }
       ]);
       const { executor } = buildDeps(provider);
 
@@ -114,7 +141,10 @@ describe('PaginationBuilder', () => {
         [],
         undefined,
         () => new QueryModel(),
-        async () => { countCalled = true; return 5; }
+        async () => {
+          countCalled = true;
+          return 5;
+        }
       );
 
       const result = await pb.paginate(2, 2);
@@ -131,7 +161,13 @@ describe('PaginationBuilder', () => {
       const provider = new StubProvider();
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 0
+        Item,
+        provider,
+        executor,
+        [],
+        undefined,
+        () => new QueryModel(),
+        async () => 0
       );
 
       await expect(pb.paginate(0, 10)).rejects.toThrow('paginate requires page >= 1 and size >= 1');
@@ -140,10 +176,19 @@ describe('PaginationBuilder', () => {
 
     it('page 1 starts at offset 0', async () => {
       const provider = new StubProvider();
-      provider.setRows([{ id: 10, name: 'X' }, { id: 11, name: 'Y' }]);
+      provider.setRows([
+        { id: 10, name: 'X' },
+        { id: 11, name: 'Y' }
+      ]);
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 2
+        Item,
+        provider,
+        executor,
+        [],
+        undefined,
+        () => new QueryModel(),
+        async () => 2
       );
 
       const result = await pb.paginate(1, 2);
@@ -156,17 +201,34 @@ describe('PaginationBuilder', () => {
       const provider = new StubProvider();
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 0
+        Item,
+        provider,
+        executor,
+        [],
+        undefined,
+        () => new QueryModel(),
+        async () => 0
       );
-      await expect(pb.keysetPaginate('id', null, 0)).rejects.toThrow('keysetPaginate requires size >= 1');
+      await expect(pb.keysetPaginate('id', null, 0)).rejects.toThrow(
+        'keysetPaginate requires size >= 1'
+      );
     });
 
     it('returns correct items and nextAfter when after is null', async () => {
       const provider = new StubProvider();
-      provider.setRows([{ id: 1, name: 'A' }, { id: 2, name: 'B' }]);
+      provider.setRows([
+        { id: 1, name: 'A' },
+        { id: 2, name: 'B' }
+      ]);
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 0
+        Item,
+        provider,
+        executor,
+        [],
+        undefined,
+        () => new QueryModel(),
+        async () => 0
       );
 
       const result = await pb.keysetPaginate('id', null, 2);
@@ -180,7 +242,13 @@ describe('PaginationBuilder', () => {
       provider.setRows([]);
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 0
+        Item,
+        provider,
+        executor,
+        [],
+        undefined,
+        () => new QueryModel(),
+        async () => 0
       );
 
       const result = await pb.keysetPaginate('id', null, 10);

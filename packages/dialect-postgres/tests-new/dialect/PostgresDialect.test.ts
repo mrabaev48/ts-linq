@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { PostgresDialect } from '../../src/PostgresDialect';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { QueryOptions } from '@ts-linq/types';
+
+import { PostgresDialect } from '../../src/PostgresDialect';
 
 class TestEntity {
   id!: number;
@@ -15,8 +16,18 @@ describe('PostgresDialect', () => {
     dialect = new PostgresDialect();
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(TestEntity, 'test_table');
-    MetadataStorage.addColumn(TestEntity, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false });
-    MetadataStorage.addColumn(TestEntity, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: true });
+    MetadataStorage.addColumn(TestEntity, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(TestEntity, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: true
+    });
     MetadataStorage.addPrimaryKey(TestEntity, 'id');
   });
 
@@ -116,7 +127,9 @@ describe('PostgresDialect', () => {
       };
       const result = dialect.buildSelect(TestEntity, options);
 
-      expect(result.query).toBe('SELECT * FROM "test_table" WHERE a = $1 AND b = $2 AND c IN ($3, $4)');
+      expect(result.query).toBe(
+        'SELECT * FROM "test_table" WHERE a = $1 AND b = $2 AND c IN ($3, $4)'
+      );
       expect(result.parameters).toEqual([1, 2, 3, 4]);
     });
   });
@@ -124,9 +137,7 @@ describe('PostgresDialect', () => {
   describe('buildSelect - JOIN clauses', () => {
     it('should build SELECT with INNER JOIN', () => {
       const options: QueryOptions = {
-        joins: [
-          { type: 'INNER', table: 'orders', on: 'orders.user_id = test_table.id' }
-        ]
+        joins: [{ type: 'INNER', table: 'orders', on: 'orders.user_id = test_table.id' }]
       };
       const result = dialect.buildSelect(TestEntity, options);
 
@@ -138,9 +149,7 @@ describe('PostgresDialect', () => {
 
     it('should build SELECT with LEFT JOIN and alias', () => {
       const options: QueryOptions = {
-        joins: [
-          { type: 'LEFT', table: 'orders', alias: 'o', on: 'o.user_id = test_table.id' }
-        ]
+        joins: [{ type: 'LEFT', table: 'orders', alias: 'o', on: 'o.user_id = test_table.id' }]
       };
       const result = dialect.buildSelect(TestEntity, options);
 
@@ -309,14 +318,14 @@ describe('PostgresDialect', () => {
       const options: QueryOptions = {
         cte: {
           name: 'recent_orders',
-          sql: 'SELECT * FROM orders WHERE created_at > NOW() - INTERVAL \'1 day\''
+          sql: "SELECT * FROM orders WHERE created_at > NOW() - INTERVAL '1 day'"
         },
         where: { condition: 'id = ?', parameters: [1] }
       };
       const result = dialect.buildSelect(TestEntity, options);
 
       expect(result.query).toBe(
-        "WITH recent_orders AS (SELECT * FROM orders WHERE created_at > NOW() - INTERVAL '1 day') SELECT * FROM \"test_table\" WHERE id = $1"
+        'WITH recent_orders AS (SELECT * FROM orders WHERE created_at > NOW() - INTERVAL \'1 day\') SELECT * FROM "test_table" WHERE id = $1'
       );
       expect(result.parameters).toEqual([1]);
     });

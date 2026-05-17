@@ -1,7 +1,7 @@
 export enum ParameterStyle {
-  Question   = 'question',    // MySQL / SQLite: ?
-  Positional = 'positional',  // PostgreSQL:     $1, $2, ...
-  Named      = 'named',       // MSSQL:          @p1, @p2, ...
+  Question = 'question', // MySQL / SQLite: ?
+  Positional = 'positional', // PostgreSQL:     $1, $2, ...
+  Named = 'named' // MSSQL:          @p1, @p2, ...
 }
 
 export class ParameterState {
@@ -11,9 +11,12 @@ export class ParameterState {
   next(): string {
     this.counter++;
     switch (this.style) {
-      case ParameterStyle.Question:   return '?';
-      case ParameterStyle.Positional: return `$${this.counter}`;
-      case ParameterStyle.Named:      return `@p${this.counter}`;
+      case ParameterStyle.Question:
+        return '?';
+      case ParameterStyle.Positional:
+        return `$${this.counter}`;
+      case ParameterStyle.Named:
+        return `@p${this.counter}`;
     }
   }
 }

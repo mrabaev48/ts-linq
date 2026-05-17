@@ -388,12 +388,7 @@ export class PrometheusSqlLogger implements SqlLogger {
       try {
         this.queryDuration
           .labels(labels)
-          .observe(
-            duration,
-            info.traceId
-              ? { traceId: info.traceId }
-              : (undefined as unknown as Record<string, unknown>)
-          );
+          .observe(duration, info.traceId ? { traceId: info.traceId } : undefined);
       } catch {
         this.queryDuration.labels(labels).observe(duration);
       }

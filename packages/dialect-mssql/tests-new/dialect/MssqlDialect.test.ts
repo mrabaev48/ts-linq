@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { MssqlDialect } from '../../src/MssqlDialect';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { QueryOptions } from '@ts-linq/types';
+
+import { MssqlDialect } from '../../src/MssqlDialect';
 
 class TestEntity {
   id!: number;
@@ -15,8 +16,18 @@ describe('MssqlDialect', () => {
     dialect = new MssqlDialect();
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(TestEntity, 'test_table');
-    MetadataStorage.addColumn(TestEntity, { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false });
-    MetadataStorage.addColumn(TestEntity, { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: true });
+    MetadataStorage.addColumn(TestEntity, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      nullable: false
+    });
+    MetadataStorage.addColumn(TestEntity, {
+      propertyName: 'name',
+      columnName: 'name',
+      type: 'TEXT',
+      nullable: true
+    });
     MetadataStorage.addPrimaryKey(TestEntity, 'id');
   });
 
@@ -116,7 +127,9 @@ describe('MssqlDialect', () => {
       };
       const result = dialect.buildSelect(TestEntity, options);
 
-      expect(result.query).toBe('SELECT * FROM [test_table] WHERE a = @p1 AND b = @p2 AND c IN (@p3, @p4)');
+      expect(result.query).toBe(
+        'SELECT * FROM [test_table] WHERE a = @p1 AND b = @p2 AND c IN (@p3, @p4)'
+      );
       expect(result.parameters).toEqual([1, 2, 3, 4]);
     });
   });
@@ -124,9 +137,7 @@ describe('MssqlDialect', () => {
   describe('buildSelect - JOIN clauses', () => {
     it('should build SELECT with INNER JOIN', () => {
       const options: QueryOptions = {
-        joins: [
-          { type: 'INNER', table: 'orders', on: 'orders.user_id = test_table.id' }
-        ]
+        joins: [{ type: 'INNER', table: 'orders', on: 'orders.user_id = test_table.id' }]
       };
       const result = dialect.buildSelect(TestEntity, options);
 
@@ -138,9 +149,7 @@ describe('MssqlDialect', () => {
 
     it('should build SELECT with LEFT JOIN and alias', () => {
       const options: QueryOptions = {
-        joins: [
-          { type: 'LEFT', table: 'orders', alias: 'o', on: 'o.user_id = test_table.id' }
-        ]
+        joins: [{ type: 'LEFT', table: 'orders', alias: 'o', on: 'o.user_id = test_table.id' }]
       };
       const result = dialect.buildSelect(TestEntity, options);
 
@@ -264,7 +273,9 @@ describe('MssqlDialect', () => {
       };
       const result = dialect.buildSelect(TestEntity, options);
 
-      expect(result.query).toBe('SELECT * FROM [test_table] ORDER BY (SELECT NULL) OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY');
+      expect(result.query).toBe(
+        'SELECT * FROM [test_table] ORDER BY (SELECT NULL) OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY'
+      );
       expect(result.parameters).toEqual([]);
     });
 

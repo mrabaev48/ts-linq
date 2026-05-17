@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+
 import { PrometheusSqlLogger } from '../src/logger/PrometheusSqlLogger';
 
 type LabelValues = Record<string, string>;
@@ -72,7 +73,7 @@ describe('PrometheusSqlLogger', () => {
   it('should increment counters and observe duration when client provided', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient, prefix: 'tsl_' });
     const start = Date.now();
-    
+
     logger.queryStart?.({ sql: 'SELECT * FROM "Users"', params: [], provider: 'postgresql' });
     logger.queryEnd?.({
       sql: 'SELECT * FROM "Users"',
@@ -80,28 +81,28 @@ describe('PrometheusSqlLogger', () => {
       durationMs: Date.now() - start,
       provider: 'postgresql'
     });
-    
+
     // Should not throw - metrics recorded successfully
     expect(logger).toBeDefined();
   });
 
   it('should no-op when prom-client is not installed', () => {
     const logger = new PrometheusSqlLogger('test');
-    
+
     // Should not throw
     logger.queryStart?.({ sql: 'SELECT 1', params: [] });
     logger.queryEnd?.({ sql: 'SELECT 1', params: [], durationMs: 5 });
-    
+
     expect(logger).toBeDefined();
   });
 
   it('should record retry attempts and transaction gauge when Gauge available', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient, prefix: 'tsl_' });
-    
+
     logger.retry?.({ sql: 'SELECT * FROM X', params: [], attempt: 1, provider: 'postgresql' });
     logger.transactionStart?.({ provider: 'postgresql' });
     logger.transactionEnd?.({ provider: 'postgresql' });
-    
+
     // Should not throw
     expect(logger).toBeDefined();
   });
@@ -110,38 +111,43 @@ describe('PrometheusSqlLogger', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient, prefix: 'tsl_' });
     const hitsBefore = hits.length;
     const missesBefore = misses.length;
-    
+
     logger.cache?.({ cache: 'count', hit: true, provider: 'postgresql' });
     logger.cache?.({ cache: 'entityL2', hit: false, provider: 'postgresql' });
-    
+
     expect(hits.length).toBe(hitsBefore + 1);
     expect(misses.length).toBe(missesBefore + 1);
   });
 
   it('should handle multiple queries with different providers', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient, prefix: 'tsl_' });
-    
+
     // PostgreSQL query
     logger.queryStart?.({ sql: 'SELECT * FROM posts', params: [1], provider: 'postgresql' });
-    logger.queryEnd?.({ sql: 'SELECT * FROM posts', params: [1], durationMs: 25, provider: 'postgresql' });
-    
+    logger.queryEnd?.({
+      sql: 'SELECT * FROM posts',
+      params: [1],
+      durationMs: 25,
+      provider: 'postgresql'
+    });
+
     expect(logger).toBeDefined();
   });
 
   it('should track cache performance across different cache types', () => {
     const logger = new PrometheusSqlLogger('test', { client: fakeClient, prefix: 'tsl_' });
-    
+
     // Count cache
     logger.cache?.({ cache: 'count', hit: true, provider: 'postgresql' });
     logger.cache?.({ cache: 'count', hit: false, provider: 'postgresql' });
-    
+
     // Entity L2 cache
     logger.cache?.({ cache: 'entityL2', hit: true, provider: 'postgresql' });
     logger.cache?.({ cache: 'entityL2', hit: false, provider: 'postgresql' });
-    
+
     // SQL generation cache
     logger.cache?.({ cache: 'sqlGen', hit: true, provider: 'mysql' });
-    
+
     expect(hits.length).toBe(3);
     expect(misses.length).toBe(2);
   });

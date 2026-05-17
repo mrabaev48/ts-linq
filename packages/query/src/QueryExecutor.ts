@@ -8,12 +8,12 @@ import type {
   SqlParameter
 } from '@ts-linq/types';
 
-import { FallbackManager } from './FallbackManager';
+import type { FallbackManager } from './FallbackManager';
+import type { IncludePlanner } from './IncludePlanner';
 import { logInternalError } from './InternalLogger';
-import { IncludePlanner } from './IncludePlanner';
-import { QueryBuilder } from './QueryBuilder';
-import { QueryModel } from './QueryModel';
-import { RowMaterializer } from './RowMaterializer';
+import type { QueryBuilder } from './QueryBuilder';
+import type { QueryModel } from './QueryModel';
+import type { RowMaterializer } from './RowMaterializer';
 
 /**
  * Handles all execution paths for a query: primary provider, fallback, and hedged racing.
@@ -50,9 +50,13 @@ export class QueryExecutor<T> {
     }
     const sql = this.sqlBuilder.generateFromModel(this.entityClass, model);
     const hedge = this.performance?.fallbackPolicy?.hedged;
-    if (hedge?.enabled && this.fallbackManager.fallbacks.length > 0 && this.isOpAllowedForFallback('select')) {
+    if (
+      hedge?.enabled &&
+      this.fallbackManager.fallbacks.length > 0 &&
+      this.isOpAllowedForFallback('select')
+    ) {
       const winner = await this.racePrimaryWithFallback(
-        () => this.provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters),
+        async () => this.provider.executeQuery<Record<string, unknown>>(sql.query, sql.parameters),
         sql,
         hedge.delayMs ?? 15,
         this.getHedgedFallbacks()
@@ -76,7 +80,8 @@ export class QueryExecutor<T> {
       return this.handlePrimaryRows(model, rows, includes);
     } catch (error) {
       if (!this.isOpAllowedForFallback('select')) throw error;
-      if (!this.isDegradableError(error) || this.fallbackManager.fallbacks.length === 0) throw error;
+      if (!this.isDegradableError(error) || this.fallbackManager.fallbacks.length === 0)
+        throw error;
       if (!this.tryEnterFallbackThrottle()) throw error;
       const entities = await this.tryFallbackSelectSequential(sql, model, includes);
       if (entities) return entities;
@@ -92,7 +97,11 @@ export class QueryExecutor<T> {
   async executeCount(table: string, model: QueryModel): Promise<number> {
     const { sql: query, params: parameters } = this.buildCountSqlAndParams(model, table);
     const hedge = this.performance?.fallbackPolicy?.hedged;
-    if (hedge?.enabled && this.fallbackManager.fallbacks.length > 0 && this.isOpAllowedForFallback('count')) {
+    if (
+      hedge?.enabled &&
+      this.fallbackManager.fallbacks.length > 0 &&
+      this.isOpAllowedForFallback('count')
+    ) {
       const hedged = await this.racePrimaryWithFallbackCount(query, parameters, model);
       if (hedged !== null) return hedged;
     }
@@ -100,7 +109,8 @@ export class QueryExecutor<T> {
       const results = await this.provider.executeQuery<{ count: number }>(query, parameters);
       return results[0]?.count ?? 0;
     } catch (error) {
-      if (!this.isDegradableError(error) || this.fallbackManager.fallbacks.length === 0) throw error;
+      if (!this.isDegradableError(error) || this.fallbackManager.fallbacks.length === 0)
+        throw error;
       if (!this.tryEnterFallbackThrottle()) throw error;
       const n = await this.tryFallbackCountSequential(model);
       if (n !== null) return n;
@@ -147,7 +157,7 @@ export class QueryExecutor<T> {
     includes: string[]
   ): Promise<T[] | null> {
     const req: FallbackRequest<T> = {
-      operation: 'count' as FallbackOperation,
+      operation: 'count',
       entityClass: this.entityClass,
       entity: this.entityClass,
       sql: sql.query,
@@ -162,12 +172,7 @@ export class QueryExecutor<T> {
         });
         const data = await fb.fetch(req);
         if (data && data.length >= 0) {
-          return this.handleFallbackEntities(
-            (data as unknown as T[]).slice(),
-            fb.label,
-            model,
-            includes
-          );
+          return this.handleFallbackEntities(data.slice(), fb.label, model, includes);
         }
       } catch (fbErr) {
         this.provider.loggerRef?.fallback?.({
@@ -194,7 +199,7 @@ export class QueryExecutor<T> {
   > {
     let fallbackStarted = false;
     const req: FallbackRequest<T> = {
-      operation: 'count' as FallbackOperation,
+      operation: 'count',
       entityClass: this.entityClass,
       entity: this.entityClass,
       sql: sql.query,
@@ -213,7 +218,7 @@ export class QueryExecutor<T> {
       }
       return { rows: [] as unknown as ReadonlyArray<unknown>, label: 'none' };
     };
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const sleep = async (ms: number) => new Promise((r) => setTimeout(r, ms));
     const fallbackPromise = (async () => {
       await sleep(Math.max(0, delayMs));
       return startFallback();
@@ -335,7 +340,7 @@ export class QueryExecutor<T> {
   private async tryFallbackCountSequential(queryModel: QueryModel): Promise<number | null> {
     const normal = this.sqlBuilder.generateFromModel(this.entityClass, queryModel);
     const req: FallbackRequest<T> = {
-      operation: 'count' as FallbackOperation,
+      operation: 'count',
       entityClass: this.entityClass,
       entity: this.entityClass,
       sql: normal.query,
@@ -377,13 +382,13 @@ export class QueryExecutor<T> {
     if (!hedge?.enabled) return null;
     const normal = this.sqlBuilder.generateFromModel(this.entityClass, queryModel);
     const req: FallbackRequest<T> = {
-      operation: 'count' as FallbackOperation,
+      operation: 'count',
       entityClass: this.entityClass,
       entity: this.entityClass,
       sql: normal.query,
       params: normal.parameters
     };
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const sleep = async (ms: number) => new Promise((r) => setTimeout(r, ms));
     const fallbacks = this.getHedgedFallbacks();
     const fallbackCountPromise = (async () => {
       await sleep(Math.max(0, hedge.delayMs ?? 15));

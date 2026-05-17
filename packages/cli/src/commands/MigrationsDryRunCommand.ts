@@ -1,17 +1,18 @@
-import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
 import {
-  SchemaSnapshotBuilder,
-  SchemaSnapshotSerializer,
+  compareSchemas,
   generateMigrationFromDiff,
-  compareSchemas
+  SchemaSnapshotBuilder,
+  SchemaSnapshotSerializer
 } from '@ts-linq/migrations';
+import * as path from 'path';
+
+import { ConsoleLogger } from '../adapters/ConsoleLogger';
+import { NodeFs } from '../adapters/NodeFs';
+import type { FileSystem } from '../ports/FileSystem';
+import type { Logger } from '../ports/Logger';
 import { resolveDialect } from '../utils';
 import type { DbCommand } from './Command';
-import type { Logger } from '../ports/Logger';
-import { ConsoleLogger } from '../adapters/ConsoleLogger';
-import type { FileSystem } from '../ports/FileSystem';
-import { NodeFs } from '../adapters/NodeFs';
 
 export class MigrationsDryRunCommand implements DbCommand {
   public readonly name = 'migration:dry-run';

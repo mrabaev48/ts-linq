@@ -1,16 +1,16 @@
 import type {
-  ExpressionNode,
-  PropertyNode,
-  LiteralNode,
-  ParameterRefNode,
   BinaryNode,
-  LogicalNode,
-  NotNode,
-  IsNullNode,
-  IsNotNullNode,
+  ExpressionNode,
   InNode,
+  IsNotNullNode,
+  IsNullNode,
+  LiteralNode,
+  LogicalNode,
   MethodNode,
-  UnsupportedNode,
+  NotNode,
+  ParameterRefNode,
+  PropertyNode,
+  UnsupportedNode
 } from '../src/ast/Nodes';
 
 describe('AST Nodes', () => {
@@ -72,9 +72,10 @@ describe('AST Nodes', () => {
   describe('BinaryNode', () => {
     it('equality comparison (===)', () => {
       const node: BinaryNode = {
-        type: 'binary', operator: '===',
+        type: 'binary',
+        operator: '===',
         left: { type: 'property', name: 'age' },
-        right: { type: 'literal', value: 18 },
+        right: { type: 'literal', value: 18 }
       };
       expect(node.type).toBe('binary');
       expect(node.operator).toBe('===');
@@ -86,9 +87,10 @@ describe('AST Nodes', () => {
       const ops: BinaryNode['operator'][] = ['==', '===', '!=', '!==', '>', '<', '>=', '<='];
       for (const op of ops) {
         const node: BinaryNode = {
-          type: 'binary', operator: op,
+          type: 'binary',
+          operator: op,
           left: { type: 'property', name: 'x' },
-          right: { type: 'literal', value: 0 },
+          right: { type: 'literal', value: 0 }
         };
         expect(node.operator).toBe(op);
       }
@@ -98,9 +100,20 @@ describe('AST Nodes', () => {
   describe('LogicalNode', () => {
     it('AND expression', () => {
       const node: LogicalNode = {
-        type: 'logical', operator: '&&',
-        left:  { type: 'binary', operator: '>', left: { type: 'property', name: 'age' }, right: { type: 'literal', value: 18 } },
-        right: { type: 'binary', operator: '===', left: { type: 'property', name: 'active' }, right: { type: 'literal', value: true } },
+        type: 'logical',
+        operator: '&&',
+        left: {
+          type: 'binary',
+          operator: '>',
+          left: { type: 'property', name: 'age' },
+          right: { type: 'literal', value: 18 }
+        },
+        right: {
+          type: 'binary',
+          operator: '===',
+          left: { type: 'property', name: 'active' },
+          right: { type: 'literal', value: true }
+        }
       };
       expect(node.type).toBe('logical');
       expect(node.operator).toBe('&&');
@@ -108,23 +121,51 @@ describe('AST Nodes', () => {
 
     it('OR expression', () => {
       const node: LogicalNode = {
-        type: 'logical', operator: '||',
-        left:  { type: 'binary', operator: '===', left: { type: 'property', name: 'role' }, right: { type: 'literal', value: 'admin' } },
-        right: { type: 'binary', operator: '===', left: { type: 'property', name: 'role' }, right: { type: 'literal', value: 'mod' } },
+        type: 'logical',
+        operator: '||',
+        left: {
+          type: 'binary',
+          operator: '===',
+          left: { type: 'property', name: 'role' },
+          right: { type: 'literal', value: 'admin' }
+        },
+        right: {
+          type: 'binary',
+          operator: '===',
+          left: { type: 'property', name: 'role' },
+          right: { type: 'literal', value: 'mod' }
+        }
       };
       expect(node.operator).toBe('||');
     });
 
     it('nested logical expressions', () => {
       const inner: LogicalNode = {
-        type: 'logical', operator: '||',
-        left:  { type: 'binary', operator: '===', left: { type: 'property', name: 'role' }, right: { type: 'literal', value: 'admin' } },
-        right: { type: 'binary', operator: '===', left: { type: 'property', name: 'role' }, right: { type: 'literal', value: 'owner' } },
+        type: 'logical',
+        operator: '||',
+        left: {
+          type: 'binary',
+          operator: '===',
+          left: { type: 'property', name: 'role' },
+          right: { type: 'literal', value: 'admin' }
+        },
+        right: {
+          type: 'binary',
+          operator: '===',
+          left: { type: 'property', name: 'role' },
+          right: { type: 'literal', value: 'owner' }
+        }
       };
       const outer: LogicalNode = {
-        type: 'logical', operator: '&&',
-        left:  { type: 'binary', operator: '===', left: { type: 'property', name: 'active' }, right: { type: 'literal', value: true } },
-        right: inner,
+        type: 'logical',
+        operator: '&&',
+        left: {
+          type: 'binary',
+          operator: '===',
+          left: { type: 'property', name: 'active' },
+          right: { type: 'literal', value: true }
+        },
+        right: inner
       };
       expect(outer.right.type).toBe('logical');
     });
@@ -140,12 +181,18 @@ describe('AST Nodes', () => {
 
   describe('IsNullNode / IsNotNullNode', () => {
     it('IS NULL', () => {
-      const node: IsNullNode = { type: 'isNull', property: { type: 'property', name: 'deletedAt' } };
+      const node: IsNullNode = {
+        type: 'isNull',
+        property: { type: 'property', name: 'deletedAt' }
+      };
       expect(node.type).toBe('isNull');
     });
 
     it('IS NOT NULL', () => {
-      const node: IsNotNullNode = { type: 'isNotNull', property: { type: 'property', name: 'publishedAt' } };
+      const node: IsNotNullNode = {
+        type: 'isNotNull',
+        property: { type: 'property', name: 'publishedAt' }
+      };
       expect(node.type).toBe('isNotNull');
     });
   });
@@ -157,15 +204,19 @@ describe('AST Nodes', () => {
         property: { type: 'property', name: 'role' },
         values: [
           { type: 'literal', value: 'admin' },
-          { type: 'literal', value: 'mod' },
-        ],
+          { type: 'literal', value: 'mod' }
+        ]
       };
       expect(node.type).toBe('in');
       expect(node.values).toHaveLength(2);
     });
 
     it('external array reference', () => {
-      const node: InNode = { type: 'in', property: { type: 'property', name: 'role' }, valuesRef: 0 };
+      const node: InNode = {
+        type: 'in',
+        property: { type: 'property', name: 'role' },
+        valuesRef: 0
+      };
       expect(node.valuesRef).toBe(0);
     });
   });
@@ -173,9 +224,10 @@ describe('AST Nodes', () => {
   describe('MethodNode', () => {
     it('includes method', () => {
       const node: MethodNode = {
-        type: 'method', method: 'includes',
+        type: 'method',
+        method: 'includes',
         object: { type: 'property', name: 'name' },
-        args: [{ type: 'literal', value: 'foo' }],
+        args: [{ type: 'literal', value: 'foo' }]
       };
       expect(node.method).toBe('includes');
     });
@@ -186,7 +238,7 @@ describe('AST Nodes', () => {
       const node: UnsupportedNode = {
         type: 'unsupported',
         syntaxKind: 123,
-        description: 'ternary not supported',
+        description: 'ternary not supported'
       };
       expect(node.type).toBe('unsupported');
       expect(node.syntaxKind).toBe(123);

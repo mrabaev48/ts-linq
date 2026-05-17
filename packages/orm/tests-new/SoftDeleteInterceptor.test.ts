@@ -1,5 +1,7 @@
 import 'reflect-metadata';
-import { describe, it, expect, jest } from '@jest/globals';
+
+import { describe, expect, it, jest } from '@jest/globals';
+
 import { SoftDeleteInterceptor } from '../src/services/SoftDeleteInterceptor';
 
 // ── Mock helpers ─────────────────────────────────────────────────────────────
@@ -168,8 +170,7 @@ describe('SoftDeleteInterceptor', () => {
     it('uses custom deletedAt column name', async () => {
       const interceptor = new SoftDeleteInterceptor(
         { enabled: true, column: 'isDeleted', deletedAtColumn: 'removed_at' },
-        () =>
-          makeMeta([{ propertyName: 'isDeleted' }, { propertyName: 'removed_at' }]),
+        () => makeMeta([{ propertyName: 'isDeleted' }, { propertyName: 'removed_at' }]),
         makeUpdate(),
         makeCacheUpdate()
       );
@@ -183,8 +184,7 @@ describe('SoftDeleteInterceptor', () => {
     it('matches by columnName when propertyName differs', async () => {
       const interceptor = new SoftDeleteInterceptor(
         { enabled: true },
-        () =>
-          makeMeta([{ propertyName: 'is_deleted', columnName: 'isDeleted' }]),
+        () => makeMeta([{ propertyName: 'is_deleted', columnName: 'isDeleted' }]),
         makeUpdate(),
         makeCacheUpdate()
       );

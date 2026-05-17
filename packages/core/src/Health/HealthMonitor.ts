@@ -1,4 +1,5 @@
 import type { ConnectionHealthCheckOptions, SqlLogger } from '@ts-linq/types';
+
 import type { ResilienceManager } from '../Resilience/ResilienceManager';
 
 export class HealthMonitor {
@@ -20,7 +21,7 @@ export class HealthMonitor {
 
   public start(runPing: () => Promise<number>): void {
     if (!this.options?.enabled) return;
-    
+
     const minI = this.options.minIntervalMs ?? this.options.intervalMs ?? 60000;
     const maxI = this.options.maxIntervalMs ?? Math.max(minI * 4, 60000);
     const degradeN = this.options.degradeAfterFailures ?? 3;
@@ -38,7 +39,7 @@ export class HealthMonitor {
         const timeoutMs = this.options?.timeoutMs;
         const started = Date.now();
         const pingPromise = runPing();
-        
+
         const timed =
           typeof timeoutMs === 'number' && timeoutMs > 0
             ? Promise.race([
@@ -48,13 +49,13 @@ export class HealthMonitor {
                 )
               ])
             : pingPromise;
-            
+
         const latency = await timed;
         const elapsed = latency ?? Date.now() - started;
-        
+
         this.healthFailures = 0;
         this.healthStatus = 'healthy';
-        
+
         this.logger?.connectionHealth?.({
           healthy: true,
           latencyMs: elapsed,
@@ -76,7 +77,7 @@ export class HealthMonitor {
             : this.healthFailures >= degradeN
               ? 'degraded'
               : 'healthy';
-              
+
         this.logger?.connectionHealth?.({
           healthy: false,
           provider: this.providerName,
@@ -87,7 +88,7 @@ export class HealthMonitor {
         if (this.healthStatus === 'unhealthy') {
           // We can't access private openCircuit directly, but we can potentially force it or use a public method
           // Assuming ResilienceManager exposes transitionCircuit or forceOpen
-           this.resilienceManager?.forceOpen('health unhealthy'); 
+          this.resilienceManager?.forceOpen('health unhealthy');
         }
 
         // Exponential backoff within [minI, maxI]
@@ -95,7 +96,7 @@ export class HealthMonitor {
         const base = Math.min(minI * Math.pow(2, attempt - 1), maxI);
         const jitter = Math.floor(Math.random() * Math.floor(base * 0.1));
         const next = Math.min(base + jitter, maxI);
-        
+
         scheduleNext(next);
       }
     };

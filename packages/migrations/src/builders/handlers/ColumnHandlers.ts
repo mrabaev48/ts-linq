@@ -1,6 +1,6 @@
-import type { ColumnDef, TableDiff } from '../../DiffTypes';
 import type { Dialect } from '../../Dialect';
-import { q, mapType, formatValue } from '../SqlUtils';
+import type { ColumnDef, TableDiff } from '../../DiffTypes';
+import { formatValue, mapType, q } from '../SqlUtils';
 
 export function handleColumnRenames(td: TableDiff, dialect: Dialect, up: string[]): void {
   const rns = td.columnRenames;
@@ -46,7 +46,8 @@ export function renderColumn(dialect: Dialect, c: ColumnDef): string {
       }
     }
   }
-  const dialectMap = (c as { defaultExpressionDialect?: Record<string, string> }).defaultExpressionDialect || {};
+  const dialectMap =
+    (c as { defaultExpressionDialect?: Record<string, string> }).defaultExpressionDialect || {};
   const defExpr = dialectMap[dialect] || c.defaultExpression;
   const defSql = defExpr
     ? ` DEFAULT ${defExpr}`

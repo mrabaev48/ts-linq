@@ -1,5 +1,4 @@
 import type { ExpressionNode } from '@ts-linq/ast';
-import type { SqlParameter } from '@ts-linq/types';
 
 import type { Queryable } from './Queryable';
 
@@ -67,7 +66,7 @@ export class TypedQueryable<TEntity> {
    */
   select<TResult>(selector: TypedSelector<TEntity, TResult>): TypedQueryable<TResult> {
     const resultQueryable = this._queryable.select(selector);
-    return new TypedQueryable(resultQueryable as unknown as Queryable<TResult>);
+    return new TypedQueryable(resultQueryable);
   }
 
   /**
@@ -111,11 +110,12 @@ export class TypedQueryable<TEntity> {
    * users.orderBy('name') // defaults to ASC
    * ```
    */
-  orderBy<K extends keyof TEntity>(key: K, direction: 'ASC' | 'DESC' = 'ASC'): TypedQueryable<TEntity> {
+  orderBy<K extends keyof TEntity>(
+    key: K,
+    direction: 'ASC' | 'DESC' = 'ASC'
+  ): TypedQueryable<TEntity> {
     const resultQueryable =
-      direction === 'DESC'
-        ? this._queryable.orderByDescending(key)
-        : this._queryable.orderBy(key);
+      direction === 'DESC' ? this._queryable.orderByDescending(key) : this._queryable.orderBy(key);
     return new TypedQueryable(resultQueryable);
   }
 
@@ -133,7 +133,7 @@ export class TypedQueryable<TEntity> {
    * ```
    */
   include<K extends RelationshipProperties<TEntity> & string>(key: K): TypedQueryable<TEntity> {
-    const resultQueryable = this._queryable.include(key as keyof TEntity & string);
+    const resultQueryable = this._queryable.include(key);
     return new TypedQueryable(resultQueryable);
   }
 

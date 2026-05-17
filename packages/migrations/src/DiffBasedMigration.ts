@@ -1,8 +1,9 @@
-import { Migration } from './Migration';
 import type { DatabaseProvider } from '@ts-linq/core';
-import type { SchemaDiff } from './DiffTypes';
+
 import type { Dialect } from './DialectMigrationSql';
 import { generateMigrationFromDiff } from './DialectMigrationSql';
+import type { SchemaDiff } from './DiffTypes';
+import { Migration } from './Migration';
 
 /**
  * Template Method-style base for migrations that are generated from a SchemaDiff.

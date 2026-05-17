@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
+
 import { MssqlDdlStrategy } from '../../src/MssqlDdlStrategy';
-import type { EntityMetadata, ColumnMetadata } from '@ts-linq/types';
 
 describe('MssqlDdlStrategy', () => {
   let strategy: MssqlDdlStrategy;
@@ -87,7 +88,7 @@ describe('MssqlDdlStrategy', () => {
             nullable: true,
             isComputed: true,
             computedExpression: 'price * quantity'
-          } as ColumnMetadata & { computedExpression?: string }
+          }
         ],
         relationships: [],
         indexes: [],
@@ -364,9 +365,7 @@ describe('MssqlDdlStrategy', () => {
       });
 
       expect(sql).toBe('');
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('invalid index spec')
-      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('invalid index spec'));
     });
 
     it('should emit warning for invalid index spec (no columns)', () => {
@@ -377,9 +376,7 @@ describe('MssqlDdlStrategy', () => {
       });
 
       expect(sql).toBe('');
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('invalid index spec')
-      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('invalid index spec'));
     });
   });
 });

@@ -1,9 +1,9 @@
+import { MetadataStorage } from '@ts-linq/metadata';
+
+import type { DatabaseProvider } from '../DatabaseProvider';
+import { ctorName } from '../utils/ctorName';
 import type { LoadingOptions } from './LoadingStrategy';
 import { LoadingStrategy } from './LoadingStrategy';
-import type { DatabaseProvider } from '../DatabaseProvider';
-import { MetadataStorage } from '@ts-linq/metadata';
-import { LazyLoadingProxy } from './LazyLoadingProxy';
-import { ctorName } from '../utils/ctorName';
 
 /**
  * Service responsible for loading entities with either lazy or eager strategy,
@@ -106,14 +106,17 @@ export class EntityLoader {
     if (depth <= 0) return;
 
     if (metadata.target) {
-      this.validateIncludes(metadata as { relationships: Array<{ propertyName: string }>; target: { name: string } }, options.includes);
+      this.validateIncludes(
+        metadata as { relationships: Array<{ propertyName: string }>; target: { name: string } },
+        options.includes
+      );
     }
 
     for (const relationship of metadata.relationships) {
       if (!this.shouldInclude(relationship.propertyName, options.includes)) continue;
       await this.loadRelationshipByType(
-        entity as unknown,
-        entityClass as unknown as new () => unknown,
+        entity,
+        entityClass,
         metadata,
         relationship as unknown as {
           propertyName: string;
@@ -154,8 +157,8 @@ export class EntityLoader {
     for (const relationship of metadata.relationships) {
       if (!this.shouldInclude(relationship.propertyName, options.includes)) continue;
       await this.loadRelationshipBatchedByType(
-        entities as unknown as unknown[],
-        entityClass as unknown as new () => unknown,
+        entities,
+        entityClass,
         metadata,
         relationship as unknown as {
           propertyName: string;
@@ -263,7 +266,7 @@ export class EntityLoader {
       nextOptions
     );
     if (relatedEntity)
-      (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntity as unknown;
+      (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntity;
   }
 
   private async loadOneToMany(
@@ -281,7 +284,7 @@ export class EntityLoader {
     const relatedEntities = await this._provider.findWhere(targetCtor as new () => object, {
       [foreignKeyName]: parentPkValue
     });
-    (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntities as unknown;
+    (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntities;
   }
 
   private getPrimaryKeyColumnName(meta: {
@@ -307,9 +310,15 @@ export class EntityLoader {
     depth: number
   ): Promise<void> {
     try {
-      const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => unknown;
+      const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
       if (relationship.type === 'one-to-many') {
-        await this.loadOneToMany(entity, { primaryKeys: metadata.primaryKeys ?? [] }, relationship, entityClass, targetCtor);
+        await this.loadOneToMany(
+          entity,
+          { primaryKeys: metadata.primaryKeys ?? [] },
+          relationship,
+          entityClass,
+          targetCtor
+        );
       } else {
         await this.loadToOne(entity, relationship, targetCtor, { ...options, depth: depth - 1 });
       }
@@ -334,7 +343,7 @@ export class EntityLoader {
     options: LoadingOptions,
     depth: number
   ): Promise<void> {
-    const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => unknown;
+    const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
     if (relationship.type === 'one-to-many') {
       await this.loadOneToManyBatched(
         entities,
@@ -401,7 +410,7 @@ export class EntityLoader {
           op: 'IN-chunk',
           chunks,
           size: uniqueFkValues.length,
-          entity: ctorName(targetCtor as abstract new (...args: any[]) => any),
+          entity: ctorName(targetCtor),
           column: targetPkColumn,
           provider: this._provider.providerLabel
         });
@@ -423,14 +432,10 @@ export class EntityLoader {
     }
 
     if (depth - 1 > 0)
-      await this.loadRelationshipsBatched(
-        Array.from(byId.values()),
-        targetCtor as new () => object,
-        {
-          ...options,
-          depth: depth - 1
-        }
-      );
+      await this.loadRelationshipsBatched(Array.from(byId.values()), targetCtor, {
+        ...options,
+        depth: depth - 1
+      });
   }
 
   private async loadOneToManyBatched(
@@ -479,7 +484,7 @@ export class EntityLoader {
           op: 'IN-chunk',
           chunks,
           size: uniqueParentIds.length,
-          entity: ctorName(targetCtor as abstract new (...args: any[]) => any),
+          entity: ctorName(targetCtor),
           column: foreignKeyName,
           provider: this._provider.providerLabel
         });
@@ -496,11 +501,11 @@ export class EntityLoader {
     }
     for (const entityItem of entities) {
       const parentId = (entityItem as Record<string, unknown>)[parentPkProperty];
-      (entityItem as Record<string, unknown>)[relationship.propertyName] = (grouped.get(parentId) ||
-        []) as unknown;
+      (entityItem as Record<string, unknown>)[relationship.propertyName] =
+        grouped.get(parentId) || [];
     }
     if (depth - 1 > 0)
-      await this.loadRelationshipsBatched(related, targetCtor as new () => object, {
+      await this.loadRelationshipsBatched(related, targetCtor, {
         ...options,
         depth: depth - 1
       });

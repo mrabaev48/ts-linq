@@ -1,8 +1,9 @@
-import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { ExpressionNode, NotNode } from '@ts-linq/ast';
-import { renderPropertyName, type ColumnResolver } from './BinaryVisitor';
 import type { ConditionFragment } from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
+
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
+import { type ColumnResolver, renderPropertyName } from './BinaryVisitor';
 
 export class UnaryVisitor {
   public visit(
@@ -15,7 +16,10 @@ export class UnaryVisitor {
 
     // `!u.boolField` → `(col = false)`
     if (operand.type === 'property') {
-      return { condition: `(${renderPropertyName(operand, resolver)} = ${state.next()})`, parameters: [false] };
+      return {
+        condition: `(${renderPropertyName(operand, resolver)} = ${state.next()})`,
+        parameters: [false]
+      };
     }
 
     // `!(expr)` → `(NOT expr)`

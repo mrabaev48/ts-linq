@@ -20,8 +20,8 @@ d('[integration][types][pg] DECIMAL/UUID/date', () => {
         'CREATE TABLE "edge_types"(id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), amount DECIMAL(10,2) NOT NULL, created_at TIMESTAMP NOT NULL)'
       );
       await p.executeNonQuery('INSERT INTO "edge_types"(amount, created_at) VALUES($1, $2)', [
-        '1234.56' as unknown as never,
-        new Date('2020-01-02T03:04:05Z') as unknown as never
+        '1234.56',
+        new Date('2020-01-02T03:04:05Z')
       ]);
       const rows = await p.executeQuery<{ amount: string; created_at: Date }>(
         'SELECT amount::text AS amount, created_at FROM "edge_types"'

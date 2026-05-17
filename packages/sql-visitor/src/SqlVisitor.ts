@@ -1,13 +1,14 @@
-import { BinaryVisitor, type ColumnResolver } from './visitors/BinaryVisitor';
-import { LogicalVisitor } from './visitors/LogicalVisitor';
-import { UnaryVisitor } from './visitors/UnaryVisitor';
-import { NullVisitor } from './visitors/NullVisitor';
-import { InVisitor } from './visitors/InVisitor';
-import { MethodVisitor } from './visitors/MethodVisitor';
-import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { ExpressionNode } from '@ts-linq/ast';
 import type { ConditionFragment } from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
+
 import { ParameterState, ParameterStyle } from './ParameterStyle';
+import { BinaryVisitor, type ColumnResolver } from './visitors/BinaryVisitor';
+import { InVisitor } from './visitors/InVisitor';
+import { LogicalVisitor } from './visitors/LogicalVisitor';
+import { MethodVisitor } from './visitors/MethodVisitor';
+import { NullVisitor } from './visitors/NullVisitor';
+import { UnaryVisitor } from './visitors/UnaryVisitor';
 
 /**
  * Converts a compiled ExpressionNode tree into a SQL WHERE fragment with parameters.
@@ -29,9 +30,7 @@ export class SqlVisitor {
   private readonly inV = new InVisitor();
   private readonly method = new MethodVisitor();
 
-  constructor(
-    private readonly parameterStyle: ParameterStyle = ParameterStyle.Question
-  ) {}
+  constructor(private readonly parameterStyle: ParameterStyle = ParameterStyle.Question) {}
 
   public toSql(
     node: ExpressionNode,

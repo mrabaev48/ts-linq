@@ -1,6 +1,6 @@
 import type { TrackedEntity } from '@ts-linq/core';
 import { EntityState } from '@ts-linq/core';
-import { MetadataStorage, type MetadataRegistry } from '@ts-linq/metadata';
+import { type MetadataRegistry, MetadataStorage } from '@ts-linq/metadata';
 
 /**
  * Tracks entities and their states (Added, Modified, Deleted, Unchanged)
@@ -215,8 +215,8 @@ export class ChangeTracker {
       return a.every((v, i) => this.areObjectsEqual(v, b[i]));
     }
     if (typeof a === 'object' && typeof b === 'object') {
-      const ka = Object.keys(a as object).sort();
-      const kb = Object.keys(b as object).sort();
+      const ka = Object.keys(a).sort();
+      const kb = Object.keys(b).sort();
       if (ka.join('\x00') !== kb.join('\x00')) return false;
       return ka.every((k) =>
         this.areObjectsEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])

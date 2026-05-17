@@ -1,8 +1,9 @@
-import type { DatabaseProvider } from '../DatabaseProvider';
-import type { EntityMetadata, SqlParameter } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { BatchPlan } from './BatchPlan';
+import type { EntityMetadata, SqlParameter } from '@ts-linq/types';
+
+import type { DatabaseProvider } from '../DatabaseProvider';
 import { BatchExecutor } from './BatchExecutor';
+import { BatchPlan } from './BatchPlan';
 
 /**
  * Configuration options for batch operations
@@ -142,9 +143,7 @@ export class BatchOperations {
         entities: successful,
         failedCount: failed.length,
         durationMs
-      } as unknown as BatchOptions['returnDetailedResults'] extends true
-        ? BatchResult<T>
-        : SimpleBatchResult<T>;
+      };
     }
   }
 
@@ -220,9 +219,7 @@ export class BatchOperations {
         entities: successful,
         failedCount: failed.length,
         durationMs
-      } as unknown as BatchOptions['returnDetailedResults'] extends true
-        ? BatchResult<T>
-        : SimpleBatchResult<T>;
+      };
     }
   }
 
@@ -350,9 +347,7 @@ export class BatchOperations {
         entities: successful,
         failedCount: failed.length,
         durationMs
-      } as unknown as BatchOptions['returnDetailedResults'] extends true
-        ? BatchResult<T>
-        : SimpleBatchResult<T>;
+      };
     }
   }
 
@@ -556,13 +551,13 @@ export class BatchOperations {
         totalProcessed: 0,
         durationMs,
         batchCount: 0
-      } as BatchResult<T>;
+      };
     } else {
       return {
         entities: [],
         failedCount: 0,
         durationMs
-      } as SimpleBatchResult<T>;
+      };
     }
   }
 

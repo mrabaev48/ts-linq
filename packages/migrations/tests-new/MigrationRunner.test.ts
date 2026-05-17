@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { MigrationRunner } from '../src/MigrationRunner';
-import { Migration } from '../src/Migration';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { DatabaseProvider } from '@ts-linq/core';
+
+import { Migration } from '../src/Migration';
+import { MigrationRunner } from '../src/MigrationRunner';
 
 class TestMigration extends Migration {
   constructor(
@@ -131,7 +132,9 @@ describe('MigrationRunner', () => {
 
     it('should handle database errors gracefully', async () => {
       const errorProvider = createMockProvider();
-      const mockQuery = errorProvider.executeQuery as jest.MockedFunction<typeof errorProvider.executeQuery>;
+      const mockQuery = errorProvider.executeQuery as jest.MockedFunction<
+        typeof errorProvider.executeQuery
+      >;
       mockQuery.mockRejectedValueOnce(new Error('Table not found'));
 
       const errorRunner = new MigrationRunner(errorProvider);
@@ -143,7 +146,12 @@ describe('MigrationRunner', () => {
 
   describe('addMigration()', () => {
     it('should register migration', () => {
-      const migration = new TestMigration('001', 'Test', async () => {}, async () => {});
+      const migration = new TestMigration(
+        '001',
+        'Test',
+        async () => {},
+        async () => {}
+      );
 
       runner.addMigration(migration);
 
@@ -152,9 +160,24 @@ describe('MigrationRunner', () => {
     });
 
     it('should sort migrations by version', () => {
-      const migration1 = new TestMigration('003', 'Third', async () => {}, async () => {});
-      const migration2 = new TestMigration('001', 'First', async () => {}, async () => {});
-      const migration3 = new TestMigration('002', 'Second', async () => {}, async () => {});
+      const migration1 = new TestMigration(
+        '003',
+        'Third',
+        async () => {},
+        async () => {}
+      );
+      const migration2 = new TestMigration(
+        '001',
+        'First',
+        async () => {},
+        async () => {}
+      );
+      const migration3 = new TestMigration(
+        '002',
+        'Second',
+        async () => {},
+        async () => {}
+      );
 
       runner.addMigration(migration1);
       runner.addMigration(migration2);
@@ -183,7 +206,12 @@ describe('MigrationRunner', () => {
     });
 
     it('should record migration in database', async () => {
-      const migration = new TestMigration('001', 'CreateUsers', async () => {}, async () => {});
+      const migration = new TestMigration(
+        '001',
+        'CreateUsers',
+        async () => {},
+        async () => {}
+      );
       runner.addMigration(migration);
 
       await runner.migrate();
@@ -299,7 +327,12 @@ describe('MigrationRunner', () => {
     });
 
     it('should remove migration record from database', async () => {
-      const migration = new TestMigration('001', 'CreateUsers', async () => {}, async () => {});
+      const migration = new TestMigration(
+        '001',
+        'CreateUsers',
+        async () => {},
+        async () => {}
+      );
       runner.addMigration(migration);
 
       await runner.migrate();
@@ -399,9 +432,9 @@ describe('MigrationRunner', () => {
       runner.addMigration(migration);
 
       await runner.migrate();
-      
+
       (provider.rollbackTransaction as jest.Mock).mockClear();
-      
+
       await expect(runner.rollback()).rejects.toThrow('Failed to rollback migration Test');
 
       expect(provider.rollbackTransaction).toHaveBeenCalledTimes(1);
@@ -431,7 +464,12 @@ describe('MigrationRunner', () => {
 
   describe('transaction handling', () => {
     it('should commit transaction on successful migration', async () => {
-      const migration = new TestMigration('001', 'Test', async () => {}, async () => {});
+      const migration = new TestMigration(
+        '001',
+        'Test',
+        async () => {},
+        async () => {}
+      );
       runner.addMigration(migration);
 
       await runner.migrate();
@@ -460,7 +498,12 @@ describe('MigrationRunner', () => {
     });
 
     it('should commit transaction on successful rollback', async () => {
-      const migration = new TestMigration('001', 'Test', async () => {}, async () => {});
+      const migration = new TestMigration(
+        '001',
+        'Test',
+        async () => {},
+        async () => {}
+      );
       runner.addMigration(migration);
 
       await runner.migrate();

@@ -1,12 +1,13 @@
-import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MigrationRunner } from '@ts-linq/migrations';
-import { tryLoadConfig } from '../config';
-import type { DbCommand } from './Command';
-import type { Logger } from '../ports/Logger';
+import * as path from 'path';
+
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
-import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
+import { tryLoadConfig } from '../config';
+import type { FileSystem } from '../ports/FileSystem';
+import type { Logger } from '../ports/Logger';
+import type { DbCommand } from './Command';
 
 export class MigrationsStatusCommand implements DbCommand {
   public readonly name = 'migration:status';

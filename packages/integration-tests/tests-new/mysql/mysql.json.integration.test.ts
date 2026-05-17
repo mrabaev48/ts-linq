@@ -1,5 +1,5 @@
-import { MySqlProvider } from '@ts-linq/provider-mysql';
 import { DbContext } from '@ts-linq/orm';
+import { MySqlProvider } from '@ts-linq/provider-mysql';
 
 // Gated by RUN_DB_TESTS
 const run = !!process.env.RUN_DB_TESTS;
@@ -50,7 +50,7 @@ const runJson = process.env.MYSQL_JSON === '1';
         ok = false;
       }
       // Diagnostic only; do not fail CI
-      // eslint-disable-next-line no-console
+
       console.log('MySQL JSON_VALID support:', ok);
       expect(true).toBe(true);
     } finally {

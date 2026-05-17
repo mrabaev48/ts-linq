@@ -1,4 +1,5 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
+
 import { QueryModel } from '../src/QueryModel';
 
 describe('QueryModel', () => {
@@ -81,8 +82,8 @@ describe('QueryModel', () => {
       cloned.where![0].condition = 'id != ?';
       cloned.where![0].parameters = [2];
 
-      expect(original.where![0].condition).toBe('id = ?');
-      expect(original.where![0].parameters).toEqual([1]);
+      expect(original.where[0].condition).toBe('id = ?');
+      expect(original.where[0].parameters).toEqual([1]);
       expect(cloned.where![0].condition).toBe('id != ?');
       expect(cloned.where![0].parameters).toEqual([2]);
     });
@@ -97,7 +98,7 @@ describe('QueryModel', () => {
       const cloned = original.clone();
       cloned.orderBy![0].direction = 'DESC';
 
-      expect(original.orderBy![0].direction).toBe('ASC');
+      expect(original.orderBy[0].direction).toBe('ASC');
       expect(cloned.orderBy![0].direction).toBe('DESC');
     });
 
@@ -111,7 +112,7 @@ describe('QueryModel', () => {
       const cloned = original.clone();
       cloned.groupBy!.columns.push('type');
 
-      expect(original.groupBy!.columns).toEqual(['category', 'status']);
+      expect(original.groupBy.columns).toEqual(['category', 'status']);
       expect(cloned.groupBy!.columns).toEqual(['category', 'status', 'type']);
     });
 
@@ -125,7 +126,7 @@ describe('QueryModel', () => {
       const cloned = original.clone();
       cloned.groupBy!.having!.parameters = [10];
 
-      expect(original.groupBy!.having!.parameters).toEqual([5]);
+      expect(original.groupBy.having!.parameters).toEqual([5]);
       expect(cloned.groupBy!.having!.parameters).toEqual([10]);
     });
 
@@ -147,7 +148,7 @@ describe('QueryModel', () => {
       const cloned = original.clone();
       cloned.joins![0].type = 'LEFT';
 
-      expect(original.joins![0].type).toBe('INNER');
+      expect(original.joins[0].type).toBe('INNER');
       expect(cloned.joins![0].type).toBe('LEFT');
     });
 
@@ -177,7 +178,7 @@ describe('QueryModel', () => {
         {
           all: true,
           other: unionModel,
-          entity: class TestEntity {} as new () => unknown
+          entity: class TestEntity {}
         }
       ];
 
@@ -198,7 +199,7 @@ describe('QueryModel', () => {
         {
           all: false,
           other: nestedModel,
-          entity: class Entity {} as new () => unknown
+          entity: class Entity {}
         }
       ];
 
@@ -208,7 +209,7 @@ describe('QueryModel', () => {
         {
           all: true,
           other: middleModel,
-          entity: class Entity {} as new () => unknown
+          entity: class Entity {}
         }
       ];
 
@@ -226,12 +227,12 @@ describe('QueryModel', () => {
         {
           all: true,
           other,
-          entity: class E1 {} as new () => unknown
+          entity: class E1 {}
         },
         {
           all: false,
           other,
-          entity: class E2 {} as new () => unknown
+          entity: class E2 {}
         }
       ];
 
@@ -249,8 +250,8 @@ describe('QueryModel', () => {
       const other = new QueryModel();
 
       original.unions = [
-        { all: false, other, entity: TestEntity as new () => unknown },
-        { all: false, other, entity: OtherEntity as new () => unknown }
+        { all: false, other, entity: TestEntity },
+        { all: false, other, entity: OtherEntity }
       ];
 
       const cloned = original.clone();
@@ -264,9 +265,9 @@ describe('QueryModel', () => {
       const other = new QueryModel();
 
       original.unions = [
-        { all: false, setOp: 'EXCEPT', other, entity: class E {} as new () => unknown },
-        { all: false, setOp: 'INTERSECT', other, entity: class E {} as new () => unknown },
-        { all: false, other, entity: class E {} as new () => unknown }
+        { all: false, setOp: 'EXCEPT', other, entity: class E {} },
+        { all: false, setOp: 'INTERSECT', other, entity: class E {} },
+        { all: false, other, entity: class E {} }
       ];
 
       const cloned = original.clone();
@@ -356,7 +357,7 @@ describe('QueryModel', () => {
       const cloned = original.clone();
 
       expect(cloned.where![0].parameters).toEqual([]);
-      expect(cloned.where![0].parameters).not.toBe(original.where![0].parameters);
+      expect(cloned.where![0].parameters).not.toBe(original.where[0].parameters);
     });
 
     it('should handle empty parameters array in having clause', () => {
@@ -369,9 +370,7 @@ describe('QueryModel', () => {
       const cloned = original.clone();
 
       expect(cloned.groupBy!.having!.parameters).toEqual([]);
-      expect(cloned.groupBy!.having!.parameters).not.toBe(
-        original.groupBy!.having!.parameters
-      );
+      expect(cloned.groupBy!.having!.parameters).not.toBe(original.groupBy.having!.parameters);
     });
   });
 });

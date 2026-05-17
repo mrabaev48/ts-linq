@@ -3,7 +3,7 @@ import type { ColumnMetadata, IndexMetadata, RelationshipMetadata } from '@ts-li
 /**
  * Temporary storage for metadata collected by field decorators
  * before @Entity finalizes and registers them in MetadataStorage.
- * 
+ *
  * Uses WeakMap to avoid memory leaks - entries are garbage collected
  * when the class is no longer referenced.
  */

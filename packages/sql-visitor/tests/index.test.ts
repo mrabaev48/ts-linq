@@ -1,14 +1,16 @@
-import { SqlVisitor, ParameterStyle, ParameterState } from '../src/index';
 import type { BinaryNode } from '@ts-linq/ast';
+
+import { ParameterState, ParameterStyle, SqlVisitor } from '../src/index';
 
 describe('@ts-linq/sql-visitor exports', () => {
   it('exports SqlVisitor', () => {
     expect(SqlVisitor).toBeDefined();
     const visitor = new SqlVisitor();
     const node: BinaryNode = {
-      type: 'binary', operator: '===',
+      type: 'binary',
+      operator: '===',
       left: { type: 'property', name: 'id' },
-      right: { type: 'literal', value: 1 },
+      right: { type: 'literal', value: 1 }
     };
     const result = visitor.toSql(node);
     expect(result.condition).toBe('(id = ?)');
@@ -32,9 +34,10 @@ describe('@ts-linq/sql-visitor exports', () => {
   it('SqlVisitor with ParameterStyle.Positional produces $N placeholders', () => {
     const visitor = new SqlVisitor(ParameterStyle.Positional);
     const node: BinaryNode = {
-      type: 'binary', operator: '===',
+      type: 'binary',
+      operator: '===',
       left: { type: 'property', name: 'id' },
-      right: { type: 'literal', value: 42 },
+      right: { type: 'literal', value: 42 }
     };
     const result = visitor.toSql(node);
     expect(result.condition).toBe('(id = $1)');
@@ -44,9 +47,10 @@ describe('@ts-linq/sql-visitor exports', () => {
   it('SqlVisitor with ParameterStyle.Named produces @pN placeholders', () => {
     const visitor = new SqlVisitor(ParameterStyle.Named);
     const node: BinaryNode = {
-      type: 'binary', operator: '===',
+      type: 'binary',
+      operator: '===',
       left: { type: 'property', name: 'id' },
-      right: { type: 'literal', value: 42 },
+      right: { type: 'literal', value: 42 }
     };
     const result = visitor.toSql(node);
     expect(result.condition).toBe('(id = @p1)');

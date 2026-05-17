@@ -1,8 +1,8 @@
-
 import fs from 'node:fs';
 import path from 'node:path';
-import { DbContext } from '@ts-linq/orm';
+
 import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
+import { DbContext } from '@ts-linq/orm';
 import type { CountCache, CountCacheEntry } from '@ts-linq/query';
 import { TestProvider as MockProvider } from '@ts-linq/testkits';
 
@@ -90,9 +90,9 @@ class TestDbContext extends DbContext {
     provider = new MockProvider();
     countCache = new TestCountCache(options?.maxSize ?? 100);
     context = new TestDbContext(provider, countCache, options?.ttlMs ?? 10_000);
-    
+
     // ensureCreated typically not needed for mock provider but defined in DbContext
-    // await context.ensureCreated(); 
+    // await context.ensureCreated();
 
     const users = context.set(User);
     users.add({ name: 'Alice', age: 25 } as User);
@@ -115,13 +115,19 @@ class TestDbContext extends DbContext {
   it('should cache count() with predicate', async () => {
     const users = context.set(User);
     provider.executionCount = 0;
-    
+
     provider.nextResult = [{ count: 2 }];
 
-    const first = await users.query().where((user: User) => user.age >= 25).count();
+    const first = await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     const callsAfterFirst = provider.executionCount;
 
-    const second = await users.query().where((user: User) => user.age >= 25).count();
+    const second = await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     const callsAfterSecond = provider.executionCount;
 
     expect(first).toBe(2);
@@ -133,8 +139,14 @@ class TestDbContext extends DbContext {
   it('should use different cache keys for different predicates', async () => {
     const users = context.set(User);
 
-    await users.query().where((user: User) => user.age >= 25).count();
-    await users.query().where((user: User) => user.age >= 30).count();
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
+    await users
+      .query()
+      .where((user: User) => user.age >= 30)
+      .count();
 
     expect(countCache.getSize()).toBe(2);
   });
@@ -142,7 +154,10 @@ class TestDbContext extends DbContext {
   it('should invalidate count cache on entity insert', async () => {
     const users = context.set(User);
 
-    await users.query().where((user: User) => user.age >= 25).count();
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     expect(countCache.getSize()).toBeGreaterThan(0);
 
     users.add({ name: 'Carol', age: 40 } as User);
@@ -151,24 +166,36 @@ class TestDbContext extends DbContext {
     expect(countCache.getSize()).toBe(0);
 
     provider.nextResult = [{ count: 3 }];
-    const newCount = await users.query().where((user: User) => user.age >= 25).count();
+    const newCount = await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     expect(newCount).toBe(3);
   });
 
   it('should invalidate count cache on entity delete', async () => {
     const users = context.set(User);
 
-    await users.query().where((user: User) => user.age >= 25).count();
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     expect(countCache.getSize()).toBeGreaterThan(0);
 
-    const toDelete = await users.query().where((user: User) => user.name === 'Alice').first();
+    const toDelete = await users
+      .query()
+      .where((user: User) => user.name === 'Alice')
+      .first();
     users.remove(toDelete);
     await context.saveChanges();
 
     expect(countCache.getSize()).toBe(0);
 
     provider.nextResult = [{ count: 1 }];
-    const newCount = await users.query().where((user: User) => user.age >= 25).count();
+    const newCount = await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     expect(newCount).toBe(1);
   });
 
@@ -177,22 +204,31 @@ class TestDbContext extends DbContext {
     await setupDatabase({ ttlMs: 1_000 });
 
     const users = context.set(User);
-    
+
     jest.useFakeTimers();
     const baseTime = new Date('2025-01-01T00:00:00Z');
     jest.setSystemTime(baseTime);
 
     provider.nextResult = [{ count: 2 }];
-    await users.query().where((user: User) => user.age >= 25).count();
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     const callsAfterFirst = provider.executionCount;
 
     jest.setSystemTime(new Date(baseTime.getTime() + 500));
-    await users.query().where((user: User) => user.age >= 25).count();
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     const callsAfterSecond = provider.executionCount;
 
     jest.setSystemTime(new Date(baseTime.getTime() + 2000));
     provider.nextResult = [{ count: 2 }]; // Need result as it re-executes
-    await users.query().where((user: User) => user.age >= 25).count();
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     const callsAfterThird = provider.executionCount;
 
     jest.useRealTimers();
@@ -203,59 +239,86 @@ class TestDbContext extends DbContext {
 
   it('should NOT invalidate count cache on entity UPDATE (count unchanged)', async () => {
     const users = context.set(User);
-    
-    await users.query().where((user: User) => user.age >= 25).count();
+
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     expect(countCache.getSize()).toBe(1);
-    
+
     // Update Bob's NAME
     provider.nextResult = [{ id: 2, name: 'Bob', age: 30 }];
-    const bob = await users.query().where((user: User) => user.name === 'Bob').first();
+    const bob = await users
+      .query()
+      .where((user: User) => user.name === 'Bob')
+      .first();
     bob.name = 'Bobby';
     users.update(bob);
     await context.saveChanges();
-    
+
     // Expect invalidation (safe default)
     expect(countCache.getSize()).toBe(0);
-    
+
     provider.nextResult = [{ count: 2 }];
-    const count = await users.query().where((user: User) => user.age >= 25).count();
+    const count = await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     expect(count).toBe(2);
   });
 
   it('should evict LRU entries when count cache full', async () => {
     await context.dispose();
     await setupDatabase({ maxSize: 2 });
-    
+
     const users = context.set(User);
-    
-    await users.query().where((user: User) => user.age > 10).count(); // Key 1
-    await users.query().where((user: User) => user.age > 20).count(); // Key 2
-    
+
+    await users
+      .query()
+      .where((user: User) => user.age > 10)
+      .count(); // Key 1
+    await users
+      .query()
+      .where((user: User) => user.age > 20)
+      .count(); // Key 2
+
     expect(countCache.getSize()).toBe(2);
-    
-    await users.query().where((user: User) => user.age >= 25).count(); // Key 3, evicts Key 1
-    
+
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count(); // Key 3, evicts Key 1
+
     expect(countCache.getSize()).toBe(2);
-    
+
     provider.executionCount = 0;
-    
+
     // Key 1 again
     provider.nextResult = [{ count: 2 }];
-    await users.query().where((user: User) => user.age > 10).count(); 
-    expect(provider.executionCount).toBeGreaterThan(0); 
+    await users
+      .query()
+      .where((user: User) => user.age > 10)
+      .count();
+    expect(provider.executionCount).toBeGreaterThan(0);
   });
 
   it('should clear count cache independently', async () => {
     const users = context.set(User);
-    await users.query().where((user: User) => user.age >= 25).count();
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     expect(countCache.getSize()).toBe(1);
-    
+
     countCache.clear();
     expect(countCache.getSize()).toBe(0);
-    
+
     provider.executionCount = 0;
-    provider.nextResult = [{ count: 2 }]; 
-    await users.query().where((user: User) => user.age >= 25).count();
+    provider.nextResult = [{ count: 2 }];
+    await users
+      .query()
+      .where((user: User) => user.age >= 25)
+      .count();
     expect(provider.executionCount).toBeGreaterThan(0);
   });
 });

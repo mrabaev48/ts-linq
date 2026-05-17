@@ -1,5 +1,5 @@
-import { DiffMigrationGenerator } from '@ts-linq/migrations';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { DiffMigrationGenerator } from '@ts-linq/migrations';
 import { MssqlProvider } from '@ts-linq/provider-mssql';
 
 const url = process.env.MSSQL_URL || '';
@@ -41,12 +41,12 @@ d('[integration][mssql] migration round-trip (diff → apply → no diff)', () =
       });
       MetadataStorage.addPrimaryKey(RUserMs, 'id');
 
-      const gen1 = new DiffMigrationGenerator(p as any);
+      const gen1 = new DiffMigrationGenerator(p);
       const steps1 = await gen1.generate();
       expect(steps1.length).toBeGreaterThan(0);
       for (const s of steps1) await p.executeNonQuery(s.sql);
 
-      const gen2 = new DiffMigrationGenerator(p as any);
+      const gen2 = new DiffMigrationGenerator(p);
       const steps2 = await gen2.generate();
       expect(steps2.length).toBe(0);
     } finally {

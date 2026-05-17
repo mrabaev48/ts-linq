@@ -1,9 +1,11 @@
 import 'reflect-metadata';
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
+import type { QueryOptions, SqlDialect } from '@ts-linq/types';
+
 import { QueryBuilder } from '../src/QueryBuilder';
 import { QueryModel } from '../src/QueryModel';
-import type { SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
-import { Entity, Column, PrimaryKey } from '@ts-linq/metadata';
 
 @Entity({})
 class TestEntity {
@@ -209,7 +211,8 @@ describe('QueryBuilder', () => {
       };
 
       mockDialect.buildSelect.mockReturnValue({
-        query: 'SELECT * FROM TestEntity INNER JOIN OtherEntity ON TestEntity.id = OtherEntity.testId',
+        query:
+          'SELECT * FROM TestEntity INNER JOIN OtherEntity ON TestEntity.id = OtherEntity.testId',
         parameters: []
       });
 
@@ -287,7 +290,7 @@ describe('QueryBuilder', () => {
 
       model.unions = [
         {
-          entity: TestEntity as new () => unknown,
+          entity: TestEntity,
           other: otherModel,
           all: false
         }
@@ -317,7 +320,7 @@ describe('QueryBuilder', () => {
 
       model.unions = [
         {
-          entity: TestEntity as new () => unknown,
+          entity: TestEntity,
           other: otherModel,
           all: true
         }
@@ -346,7 +349,7 @@ describe('QueryBuilder', () => {
 
       model.unions = [
         {
-          entity: TestEntity as new () => unknown,
+          entity: TestEntity,
           other: otherModel,
           all: false
         }
@@ -354,7 +357,10 @@ describe('QueryBuilder', () => {
 
       mockDialect.buildSelect
         .mockReturnValueOnce({ query: 'SELECT id FROM TestEntity WHERE id > ?', parameters: [1] })
-        .mockReturnValueOnce({ query: 'SELECT id FROM TestEntity WHERE id < ?', parameters: [100] });
+        .mockReturnValueOnce({
+          query: 'SELECT id FROM TestEntity WHERE id < ?',
+          parameters: [100]
+        });
 
       const result = builder.generateFromModel(TestEntity, model);
 
@@ -369,9 +375,7 @@ describe('QueryBuilder', () => {
       const otherModel = new QueryModel();
       otherModel.select = ['id'];
 
-      model.unions = [
-        { entity: TestEntity as new () => unknown, other: otherModel, all: false, setOp: 'EXCEPT' }
-      ];
+      model.unions = [{ entity: TestEntity, other: otherModel, all: false, setOp: 'EXCEPT' }];
 
       mockDialect.buildSelect.mockReturnValue({
         query: 'SELECT id FROM TestEntity',
@@ -391,7 +395,12 @@ describe('QueryBuilder', () => {
       otherModel.select = ['id'];
 
       model.unions = [
-        { entity: TestEntity as new () => unknown, other: otherModel, all: false, setOp: 'INTERSECT' }
+        {
+          entity: TestEntity,
+          other: otherModel,
+          all: false,
+          setOp: 'INTERSECT'
+        }
       ];
 
       mockDialect.buildSelect.mockReturnValue({
@@ -408,7 +417,7 @@ describe('QueryBuilder', () => {
       const model = new QueryModel();
       const otherModel = new QueryModel();
 
-      model.unions = [{ entity: TestEntity as new () => unknown, other: otherModel, all: true }];
+      model.unions = [{ entity: TestEntity, other: otherModel, all: true }];
 
       mockDialect.buildSelect.mockReturnValue({
         query: 'SELECT id FROM TestEntity',

@@ -26,17 +26,17 @@ export class CompositeSpecification<T> implements Specification<T> {
       .map((s) => s.toExpression())
       .filter((e): e is ExpressionNode => e !== null);
     if (exprs.length === 0) return null;
-    if (exprs.length === 1) return exprs[0]!;
+    if (exprs.length === 1) return exprs[0];
 
     // Fold the list into a left-associative LogicalNode tree
     let result: LogicalNode = {
       type: 'logical',
       operator: this.operator,
-      left: exprs[0]!,
-      right: exprs[1]!,
+      left: exprs[0],
+      right: exprs[1]
     };
     for (let i = 2; i < exprs.length; i++) {
-      result = { type: 'logical', operator: this.operator, left: result, right: exprs[i]! };
+      result = { type: 'logical', operator: this.operator, left: result, right: exprs[i] };
     }
     return result;
   }
@@ -73,5 +73,5 @@ export const Specs = {
   },
   or<T>(...specs: Array<Specification<T>>): Specification<T> {
     return new CompositeSpecification<T>('||', specs);
-  },
+  }
 };

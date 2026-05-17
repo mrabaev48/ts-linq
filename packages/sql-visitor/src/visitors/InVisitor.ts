@@ -1,9 +1,10 @@
-import type { SqlParameter } from '@ts-linq/types';
-import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { InNode } from '@ts-linq/ast';
-import { renderPropertyName, resolveParameterRef, type ColumnResolver } from './BinaryVisitor';
 import type { ConditionFragment } from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
+import type { SqlParameter } from '@ts-linq/types';
+
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
+import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
 
 export class InVisitor {
   public visit(
@@ -24,7 +25,10 @@ export class InVisitor {
     }
 
     if (node.valuesRef !== undefined) {
-      const arr = resolveParameterRef({ type: 'parameterRef', index: node.valuesRef }, inputParameters);
+      const arr = resolveParameterRef(
+        { type: 'parameterRef', index: node.valuesRef },
+        inputParameters
+      );
       if (!Array.isArray(arr)) {
         throw new AstSqlGenerationError(
           'INVALID_IN_VALUES',

@@ -18,12 +18,18 @@ export function CachePolicy(options: CachePolicyOptions): ClassDecorator {
     context?: unknown
   ): TFunction | void {
     // Stage-3 path
-    if (context && typeof context === 'object' && (context as { kind?: unknown }).kind === 'class') {
+    if (
+      context &&
+      typeof context === 'object' &&
+      (context as { kind?: unknown }).kind === 'class'
+    ) {
       cachePolicies.set(target, { ...options });
-      (context as { addInitializer?: (fn: (this: unknown) => void) => void }).addInitializer?.(function (this: unknown) {
-        const ctor = target as unknown as Function;
-        cachePolicies.set(ctor, { ...options });
-      });
+      (context as { addInitializer?: (fn: (this: unknown) => void) => void }).addInitializer?.(
+        function (this: unknown) {
+          const ctor = target as unknown as Function;
+          cachePolicies.set(ctor, { ...options });
+        }
+      );
       return;
     }
     // Fail if not Stage-3

@@ -23,7 +23,7 @@ describe('CLI metrics:serve', () => {
       info: () => {},
       warn: () => {},
       error: () => {}
-    } as any);
+    });
 
     // Act
     await cmd.run(['metrics:serve', '--port', '12345', '--path', '/m']);

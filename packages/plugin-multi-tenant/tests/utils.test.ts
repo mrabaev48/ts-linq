@@ -1,10 +1,11 @@
-import { describe, it, expect } from '@jest/globals';
-import { 
-  withTenant, 
+import { describe, expect, it } from '@jest/globals';
+
+import {
   createTenantScope,
   getTenantId,
   hasTenantColumn,
-  setTenantId
+  setTenantId,
+  withTenant
 } from '../src/utils';
 
 describe('MultiTenant Utils', () => {
@@ -88,9 +89,11 @@ describe('MultiTenant Utils', () => {
 
     it('should work with custom column names', () => {
       const entity = { id: 1, organizationId: 100 };
-      expect(hasTenantColumn(entity, {
-        tenantIdColumn: 'organizationId'
-      })).toBe(true);
+      expect(
+        hasTenantColumn(entity, {
+          tenantIdColumn: 'organizationId'
+        })
+      ).toBe(true);
     });
 
     it('should handle null tenant ID', () => {
@@ -148,7 +151,7 @@ describe('MultiTenant Utils', () => {
 
     it('should handle async functions', async () => {
       const scopedFn = createTenantScope('tenant-abc', async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         return 'async-result';
       });
 

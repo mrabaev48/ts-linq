@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
+
 import { MultiTenantMiddleware } from '../src/MultiTenantMiddleware';
-import { Entity, PrimaryKey, Column } from '@ts-linq/metadata';
 import type { TenantContext } from '../src/types';
 
 @Entity({ name: 'orders' })
@@ -60,7 +61,7 @@ describe('MultiTenantMiddleware', () => {
         entityClass: Order,
         operation: 'insert',
 
-        state: 'added',
+        state: 'added'
       };
 
       await mw.applyTenant(context);
@@ -119,7 +120,7 @@ describe('MultiTenantMiddleware', () => {
         entityClass: Order,
         operation: 'insert',
 
-        state: 'added',
+        state: 'added'
       };
 
       await middleware.applyTenant(context);
@@ -135,7 +136,7 @@ describe('MultiTenantMiddleware', () => {
         entityClass: Order,
         operation: 'update',
 
-        state: 'modified',
+        state: 'modified'
       };
 
       await middleware.applyTenant(context);
@@ -168,7 +169,7 @@ describe('MultiTenantMiddleware', () => {
         entityClass: Invoice,
         operation: 'insert',
 
-        state: 'added',
+        state: 'added'
       };
 
       await middleware.applyTenant(context);
@@ -183,12 +184,10 @@ describe('MultiTenantMiddleware', () => {
         entityClass: Order,
         operation: 'insert',
 
-        state: 'added',
+        state: 'added'
       };
 
-      await expect(middleware.applyTenant(context)).rejects.toThrow(
-        'No tenant context available'
-      );
+      await expect(middleware.applyTenant(context)).rejects.toThrow('No tenant context available');
     });
 
     it('should not throw error in non-strict mode when no tenant is set', async () => {
@@ -199,7 +198,7 @@ describe('MultiTenantMiddleware', () => {
         entityClass: Order,
         operation: 'insert',
 
-        state: 'added',
+        state: 'added'
       };
 
       await expect(mw.applyTenant(context)).resolves.not.toThrow();
@@ -299,7 +298,7 @@ describe('MultiTenantMiddleware', () => {
         entityClass: CustomEntity,
         operation: 'insert',
 
-        state: 'added',
+        state: 'added'
       };
 
       await mw.applyTenant(context);
@@ -312,7 +311,7 @@ describe('MultiTenantMiddleware', () => {
     it('should support async getCurrentTenant function', async () => {
       const mw = new MultiTenantMiddleware({
         getCurrentTenant: async () => {
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
           return 999;
         }
       });

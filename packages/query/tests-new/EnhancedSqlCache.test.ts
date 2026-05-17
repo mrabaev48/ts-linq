@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { EnhancedSqlCache } from '../src/EnhancedSqlCache';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { SqlCacheEntry } from '@ts-linq/types';
+
+import { EnhancedSqlCache } from '../src/EnhancedSqlCache';
 
 const entry = (query = 'SELECT 1'): SqlCacheEntry => ({ query, parameters: [] });
 
@@ -69,7 +70,11 @@ describe('EnhancedSqlCache', () => {
     let cache: EnhancedSqlCache;
 
     beforeEach(() => {
-      cache = new EnhancedSqlCache({ defaultTtl: 0, enableKeyCompression: true, compressionThreshold: 200 });
+      cache = new EnhancedSqlCache({
+        defaultTtl: 0,
+        enableKeyCompression: true,
+        compressionThreshold: 200
+      });
     });
 
     afterEach(() => {

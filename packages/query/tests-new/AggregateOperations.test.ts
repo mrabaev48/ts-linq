@@ -14,9 +14,10 @@ class Order {
 type AggRow = { _result?: number | null; _count?: number };
 
 class TestDialect implements SqlDialect {
-  public buildSelect<T>(
-    entityClass: new () => T
-  ): { query: string; parameters: readonly SqlParameter[] } {
+  public buildSelect<T>(entityClass: new () => T): {
+    query: string;
+    parameters: readonly SqlParameter[];
+  } {
     const meta = MetadataStorage.getEntity(entityClass) || { tableName: entityClass.name };
     return { query: `SELECT * FROM ${meta.tableName}`, parameters: [] };
   }
@@ -36,18 +37,34 @@ class TestProvider extends DatabaseProvider {
   public async connect(): Promise<void> {}
   public async disconnect(): Promise<void> {}
   public async createTable(): Promise<void> {}
-  public getDialect(): SqlDialect { return this.dialect; }
-  public async insert<T extends object>(e: T): Promise<T> { return e; }
-  public async update<T extends object>(e: T): Promise<T> { return e; }
+  public getDialect(): SqlDialect {
+    return this.dialect;
+  }
+  public async insert<T extends object>(e: T): Promise<T> {
+    return e;
+  }
+  public async update<T extends object>(e: T): Promise<T> {
+    return e;
+  }
   public async delete(): Promise<void> {}
-  public async findById<T extends object>(): Promise<T | null> { return null; }
-  public async findAll<T extends object>(): Promise<T[]> { return []; }
-  public async findWhere<T extends object>(): Promise<T[]> { return []; }
-  public async findWhereIn<T extends object>(): Promise<T[]> { return []; }
+  public async findById<T extends object>(): Promise<T | null> {
+    return null;
+  }
+  public async findAll<T extends object>(): Promise<T[]> {
+    return [];
+  }
+  public async findWhere<T extends object>(): Promise<T[]> {
+    return [];
+  }
+  public async findWhereIn<T extends object>(): Promise<T[]> {
+    return [];
+  }
   protected async doExecuteQuery<T>(): Promise<T[]> {
     return this._rows as unknown as T[];
   }
-  protected async doExecuteNonQuery(): Promise<number> { return 0; }
+  protected async doExecuteNonQuery(): Promise<number> {
+    return 0;
+  }
   public async beginTransaction(): Promise<void> {}
   public async commitTransaction(): Promise<void> {}
   public async rollbackTransaction(): Promise<void> {}
@@ -58,11 +75,7 @@ class TestProvider extends DatabaseProvider {
 }
 
 function buildAggregates(provider: TestProvider): AggregateOperations<Order> {
-  const sqlBuilder = new QueryBuilder(
-    provider.getDialect(),
-    undefined,
-    'test'
-  );
+  const sqlBuilder = new QueryBuilder(provider.getDialect(), undefined, 'test');
   return new AggregateOperations<Order>(Order, provider, sqlBuilder);
 }
 
@@ -77,9 +90,18 @@ describe('AggregateOperations', () => {
   beforeEach(() => {
     MetadataStorage.getInstance().clear();
     MetadataStorage.addEntity(Order, 'orders');
-    MetadataStorage.addColumn(Order, { propertyName: 'id', columnName: 'id', type: 'INTEGER', primaryKey: true });
+    MetadataStorage.addColumn(Order, {
+      propertyName: 'id',
+      columnName: 'id',
+      type: 'INTEGER',
+      primaryKey: true
+    });
     MetadataStorage.addPrimaryKey(Order, 'id');
-    MetadataStorage.addColumn(Order, { propertyName: 'amount', columnName: 'amount', type: 'DECIMAL' });
+    MetadataStorage.addColumn(Order, {
+      propertyName: 'amount',
+      columnName: 'amount',
+      type: 'DECIMAL'
+    });
 
     provider = new TestProvider();
     agg = buildAggregates(provider);
@@ -123,9 +145,7 @@ describe('AggregateOperations', () => {
 
     it('throws when sequence is empty', async () => {
       provider.setRows([{ _result: null, _count: 0 }]);
-      await expect(agg.min(makeModel(), 'amount')).rejects.toThrow(
-        'Sequence contains no elements'
-      );
+      await expect(agg.min(makeModel(), 'amount')).rejects.toThrow('Sequence contains no elements');
     });
   });
 
@@ -138,9 +158,7 @@ describe('AggregateOperations', () => {
 
     it('throws when sequence is empty', async () => {
       provider.setRows([{ _result: null, _count: 0 }]);
-      await expect(agg.max(makeModel(), 'amount')).rejects.toThrow(
-        'Sequence contains no elements'
-      );
+      await expect(agg.max(makeModel(), 'amount')).rejects.toThrow('Sequence contains no elements');
     });
   });
 

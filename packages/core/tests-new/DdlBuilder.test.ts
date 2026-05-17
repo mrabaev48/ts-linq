@@ -1,6 +1,7 @@
+import type { EntityMetadata } from '@ts-linq/types';
+
 import { DdlBuilder } from '../src/DdlBuilder';
 import type { DdlStrategy } from '../src/DdlStrategy';
-import type { EntityMetadata, ColumnMetadata, IndexMetadata } from '@ts-linq/types';
 
 describe('DdlBuilder', () => {
   let mockStrategy: jest.Mocked<DdlStrategy>;
@@ -41,7 +42,9 @@ describe('DdlBuilder', () => {
         validations: []
       };
 
-      mockStrategy.generateCreateTableSql.mockReturnValue('CREATE TABLE users (id INTEGER PRIMARY KEY)');
+      mockStrategy.generateCreateTableSql.mockReturnValue(
+        'CREATE TABLE users (id INTEGER PRIMARY KEY)'
+      );
 
       const result = builder.buildCreateTableSql(metadata);
 
@@ -134,7 +137,9 @@ describe('DdlBuilder', () => {
         validations: []
       };
 
-      mockStrategy.generateCreateIndexSql.mockReturnValue('CREATE UNIQUE INDEX idx_email ON users (email)');
+      mockStrategy.generateCreateIndexSql.mockReturnValue(
+        'CREATE UNIQUE INDEX idx_email ON users (email)'
+      );
 
       const result = builder.buildCreateIndexesSql(metadata);
 
@@ -192,12 +197,14 @@ describe('DdlBuilder', () => {
           {
             name: 'idx_created',
             columns: ['createdAt']
-          } as IndexMetadata
+          }
         ],
         validations: []
       };
 
-      mockStrategy.generateCreateIndexSql.mockReturnValue('CREATE INDEX idx_created ON users (createdAt)');
+      mockStrategy.generateCreateIndexSql.mockReturnValue(
+        'CREATE INDEX idx_created ON users (createdAt)'
+      );
 
       const result = builder.buildCreateIndexesSql(metadata);
 
@@ -237,7 +244,9 @@ describe('DdlBuilder', () => {
       };
 
       mockStrategy.generateCreateTableSql.mockReturnValue('CREATE TABLE users (id INTEGER)');
-      mockStrategy.generateCreateIndexSql.mockReturnValue('CREATE UNIQUE INDEX idx_email ON users (email)');
+      mockStrategy.generateCreateIndexSql.mockReturnValue(
+        'CREATE UNIQUE INDEX idx_email ON users (email)'
+      );
 
       const result = builder.buildAll(metadata);
 

@@ -38,7 +38,8 @@ describe('OpenTelemetrySqlLogger (tests-new)', () => {
     jest.doMock('@opentelemetry/api', () => ({ trace: { getTracer: () => tracerMock } }), {
       virtual: true
     });
-    const { OpenTelemetrySqlLogger: Otel } = require('../src/logger/OpenTelemetrySqlLogger') as typeof import('../src/logger/OpenTelemetrySqlLogger');
+    const { OpenTelemetrySqlLogger: Otel } =
+      require('../src/logger/OpenTelemetrySqlLogger') as typeof import('../src/logger/OpenTelemetrySqlLogger');
     const logger = new Otel('svc', { maskSql: true, maskPatterns: [/users/gi] });
     logger.queryStart({
       sql: "select * from users where name = 'John'",
@@ -82,7 +83,8 @@ describe('OpenTelemetrySqlLogger (tests-new)', () => {
     jest.doMock('@opentelemetry/api', () => ({ trace: { getTracer: () => tracer } }), {
       virtual: true
     });
-    const { OpenTelemetrySqlLogger: Otel } = require('../src/logger/OpenTelemetrySqlLogger') as typeof import('../src/logger/OpenTelemetrySqlLogger');
+    const { OpenTelemetrySqlLogger: Otel } =
+      require('../src/logger/OpenTelemetrySqlLogger') as typeof import('../src/logger/OpenTelemetrySqlLogger');
     const logger = new Otel('svc');
     logger.queryStart({ sql: 'select 1', params: [], traceId: 'x' });
     logger.queryEnd({
@@ -116,7 +118,8 @@ describe('OpenTelemetrySqlLogger (tests-new)', () => {
     jest.doMock('@opentelemetry/api', () => ({ trace: { getTracer: () => tracer } }), {
       virtual: true
     });
-    const { OpenTelemetrySqlLogger: Otel } = require('../src/logger/OpenTelemetrySqlLogger') as typeof import('../src/logger/OpenTelemetrySqlLogger');
+    const { OpenTelemetrySqlLogger: Otel } =
+      require('../src/logger/OpenTelemetrySqlLogger') as typeof import('../src/logger/OpenTelemetrySqlLogger');
     const logger = new Otel('svc');
     logger.analysis?.({
       sql: 'select',
@@ -131,5 +134,3 @@ describe('OpenTelemetrySqlLogger (tests-new)', () => {
     expect(String(attrs['db.analysis.recommendations'])).toContain('add index');
   });
 });
-
-

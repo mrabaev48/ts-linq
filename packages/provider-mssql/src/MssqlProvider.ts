@@ -1,21 +1,10 @@
-import type {
-  EntityMetadata,
-  ColumnMetadata,
-  SqlLogger,
-  RetryPolicy,
-  SqlParameter,
-  OrmMiddleware,
-  SoftDeleteOptions,
-  SqlDialect,
-  ConnectionPoolOptions,
-  ConnectionHealthCheckOptions,
-  MssqlConfig
-} from '@ts-linq/types';
-import { OptimisticConcurrencyError } from '@ts-linq/types';
 import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/metadata';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityMetadata, MssqlConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
+import { OptimisticConcurrencyError } from '@ts-linq/types';
+
 import { buildMssqlConnectionString } from './buildConnectionString';
 
 interface MssqlRequestLike {
@@ -121,7 +110,7 @@ export class MssqlProvider extends DatabaseProvider {
       await this.pool.connect();
       this.ownsPool = true;
     }
-    
+
     this.isConnected = true;
     // Health checks
     this.startHealthChecks(async () => {
@@ -184,7 +173,7 @@ export class MssqlProvider extends DatabaseProvider {
       entity as Record<string, unknown>,
       metadata
     );
-    
+
     // For MSSQL, to retrieve identity we need a separate SELECT SCOPE_IDENTITY() or OUTPUT clause.
     const affected = await this.executeNonQuery(sql, parameters);
     if (affected > 0 && returningPk) {
@@ -193,7 +182,7 @@ export class MssqlProvider extends DatabaseProvider {
       );
       const id = rows && rows[0]?.id;
       if (id !== undefined) {
-        (entity as Record<string, unknown>)[returningPk] = id as unknown as SqlParameter;
+        (entity as Record<string, unknown>)[returningPk] = id;
       }
     }
     return entity;
@@ -204,7 +193,7 @@ export class MssqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const versionCol = metadata.columns.find((c) => c.isVersion);
-    
+
     const dialect = this.getDialect() as MssqlDialect;
     const { sql, parameters } = dialect.buildUpdate(
       entity as Record<string, unknown>,
@@ -214,7 +203,8 @@ export class MssqlProvider extends DatabaseProvider {
 
     const affectedRows = await this.executeNonQuery(sql, parameters);
     if (affectedRows === 0) {
-      if (versionCol) throw new OptimisticConcurrencyError('Version mismatch detected during update');
+      if (versionCol)
+        throw new OptimisticConcurrencyError('Version mismatch detected during update');
       throw new Error('No rows were updated.');
     }
     if (versionCol) {
@@ -230,10 +220,10 @@ export class MssqlProvider extends DatabaseProvider {
   public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    
+
     const dialect = this.getDialect() as MssqlDialect;
     const { sql, parameters } = dialect.buildDelete(entity as Record<string, unknown>, metadata);
-    
+
     const affectedRows = await this.executeNonQuery(sql, parameters);
     if (affectedRows === 0) throw new Error('No rows were deleted.');
   }
@@ -294,12 +284,10 @@ export class MssqlProvider extends DatabaseProvider {
       }
     ];
 
-
-
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 });
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
-    
+
     if (rows.length === 0) return null;
     return this.mapRowToEntity(rows[0], entityClass);
   }
@@ -308,9 +296,8 @@ export class MssqlProvider extends DatabaseProvider {
   public async findAll<T extends object>(entityClass: new () => T): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    
-    const where: import('@ts-linq/types').WhereClause[] = [];
 
+    const where: import('@ts-linq/types').WhereClause[] = [];
 
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where });
@@ -325,9 +312,9 @@ export class MssqlProvider extends DatabaseProvider {
   ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    
+
     const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
-    
+
     const where: import('@ts-linq/types').WhereClause[] = [];
     if (whereClause) {
       where.push({
@@ -335,8 +322,6 @@ export class MssqlProvider extends DatabaseProvider {
         parameters: params
       });
     }
-
-
 
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where });
@@ -353,7 +338,7 @@ export class MssqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     if (!Array.isArray(values) || values.length === 0) return [];
-    
+
     const columnMeta = metadata.columns.find(
       (c) => c.propertyName === column || c.columnName === column
     );
@@ -367,8 +352,6 @@ export class MssqlProvider extends DatabaseProvider {
         parameters: coerced
       }
     ];
-
-
 
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where });
@@ -505,12 +488,12 @@ export class MssqlProvider extends DatabaseProvider {
       value instanceof Date ||
       value instanceof Uint8Array
     ) {
-      return value as SqlParameter;
+      return value;
     }
     try {
-      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+      return JSON.stringify(value ?? null);
     } catch {
-      return String(value) as unknown as SqlParameter;
+      return String(value);
     }
   }
 }
@@ -554,7 +537,6 @@ function prepareMssqlSql(
 
 function safeRequireMssql(): MssqlLike {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('mssql');
   } catch (e) {
     throw new Error(

@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
 
@@ -7,7 +8,7 @@ import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
  */
 export interface ColumnOptions {
   name?: string;
-  type?: ColumnType | string;
+  type?: ColumnType;
   nullable?: boolean;
   defaultValue?: unknown;
   length?: number;
@@ -28,7 +29,7 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     const propertyName = String(propertyKey);
-    
+
     const columnMetadata: ColumnMetadata = {
       propertyName,
       columnName: options?.name || propertyName,
@@ -41,7 +42,7 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
       isGenerated: options?.generated || false,
       isVersion: options?.version || false
     };
-    
+
     MetadataStorage.addColumn(ctor, columnMetadata);
   };
 }

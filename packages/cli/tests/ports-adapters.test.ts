@@ -1,8 +1,9 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 import { ConsoleLogger } from '../src/adapters/ConsoleLogger';
 import { NodeFs } from '../src/adapters/NodeFs';
 import type { FileSystem } from '../src/ports/FileSystem';
-import * as fs from 'fs';
-import * as path from 'path';
 
 describe('ConsoleLogger', () => {
   it('delegates to console methods', () => {

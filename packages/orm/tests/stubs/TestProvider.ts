@@ -1,13 +1,13 @@
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { EntityMetadata, SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
+import type { EntityMetadata, QueryOptions, SqlDialect, SqlParameter } from '@ts-linq/types';
 
 class TestDialect implements SqlDialect {
   public buildSelect(
     entityClass: new () => unknown,
     options: QueryOptions
   ): { query: string; parameters: SqlParameter[] } {
-    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+    const meta = MetadataStorage.getEntity(entityClass)!;
     let query = `SELECT ${options.distinct ? 'DISTINCT ' : ''}${
       options.select?.length ? options.select.join(', ') : '*'
     } FROM ${meta.tableName}`;
@@ -138,8 +138,11 @@ export class TestProvider extends DatabaseProvider {
     await this.afterExecute(`DELETE FROM ${meta.tableName}`, [], 1);
   }
 
-  public async findById<T extends object>(id: unknown, entityClass: new () => T): Promise<T | null> {
-    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+  public async findById<T extends object>(
+    id: unknown,
+    entityClass: new () => T
+  ): Promise<T | null> {
+    const meta = MetadataStorage.getEntity(entityClass)!;
     const table = this.data.get(meta.tableName) || [];
     const pk = (meta.primaryKeys ?? [])[0];
     const pkCol = meta.columns.find((c) => c.propertyName === pk);
@@ -154,7 +157,7 @@ export class TestProvider extends DatabaseProvider {
   }
 
   public async findAll<T extends object>(entityClass: new () => T): Promise<T[]> {
-    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+    const meta = MetadataStorage.getEntity(entityClass)!;
     const table = this.data.get(meta.tableName) || [];
     return table.map((rec) => {
       const instance = new entityClass();
@@ -169,7 +172,7 @@ export class TestProvider extends DatabaseProvider {
     entityClass: new () => T,
     conditions: Record<string, unknown>
   ): Promise<T[]> {
-    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+    const meta = MetadataStorage.getEntity(entityClass)!;
     const table = this.data.get(meta.tableName) || [];
     return table
       .filter((rec) => Object.entries(conditions).every(([k, v]) => rec[k] === v))
@@ -187,7 +190,7 @@ export class TestProvider extends DatabaseProvider {
     column: string,
     values: unknown[]
   ): Promise<T[]> {
-    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+    const meta = MetadataStorage.getEntity(entityClass)!;
     const table = this.data.get(meta.tableName) || [];
     return table
       .filter((rec) => values.includes(rec[column]))
@@ -237,7 +240,7 @@ export class TestProvider extends DatabaseProvider {
       return [{ count: rows.length }] as unknown as T[];
     }
 
-    return rows as unknown as T[];
+    return rows;
   }
 
   private filterByWhere(rows: any[], condition: string, params: any[]): any[] {
@@ -260,19 +263,33 @@ export class TestProvider extends DatabaseProvider {
         const val = params[p.paramIdx];
         const rv = row[p.col];
         switch (p.op) {
-          case '=': case '==': case '===': return rv === val;
-          case '!=': case '<>': case '!==': return rv !== val;
-          case '>': return rv > val;
-          case '>=': return rv >= val;
-          case '<': return rv < val;
-          case '<=': return rv <= val;
-          default: return true;
+          case '=':
+          case '==':
+          case '===':
+            return rv === val;
+          case '!=':
+          case '<>':
+          case '!==':
+            return rv !== val;
+          case '>':
+            return rv > val;
+          case '>=':
+            return rv >= val;
+          case '<':
+            return rv < val;
+          case '<=':
+            return rv <= val;
+          default:
+            return true;
         }
       })
     );
   }
 
-  protected async doExecuteNonQuery(sql: string, _params?: readonly SqlParameter[]): Promise<number> {
+  protected async doExecuteNonQuery(
+    sql: string,
+    _params?: readonly SqlParameter[]
+  ): Promise<number> {
     if (sql.includes('CREATE TABLE')) return 0;
     if (sql.includes('INSERT')) return 1;
     if (sql.includes('UPDATE')) return 1;

@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { DiffBasedMigration } from '../src/DiffBasedMigration';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { DatabaseProvider } from '@ts-linq/core';
-import type { SchemaDiff } from '../src/DiffTypes';
+
 import type { Dialect } from '../src/DialectMigrationSql';
+import { DiffBasedMigration } from '../src/DiffBasedMigration';
+import type { SchemaDiff } from '../src/DiffTypes';
 
 jest.mock('../src/DialectMigrationSql', () => ({
   generateMigrationFromDiff: jest.fn((diff: SchemaDiff, dialect: Dialect) => {
@@ -134,7 +135,12 @@ describe('DiffBasedMigration', () => {
   describe('up()', () => {
     it('should execute up statements from diff', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const migration = new TestDiffMigration(provider, diff);
@@ -145,7 +151,12 @@ describe('DiffBasedMigration', () => {
 
     it('should call beforeUp hook', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const migration = new TestDiffMigration(provider, diff);
@@ -157,7 +168,12 @@ describe('DiffBasedMigration', () => {
 
     it('should call afterUp hook', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const migration = new TestDiffMigration(provider, diff);
@@ -170,8 +186,14 @@ describe('DiffBasedMigration', () => {
     it('should call beforeUpStatement for each statement', async () => {
       const diff: SchemaDiff = {
         tables: [
-          { table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } },
-          { table: 'posts', create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          },
+          {
+            table: 'posts',
+            create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
         ]
       };
 
@@ -187,8 +209,14 @@ describe('DiffBasedMigration', () => {
     it('should call afterUpStatement for each statement', async () => {
       const diff: SchemaDiff = {
         tables: [
-          { table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } },
-          { table: 'posts', create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          },
+          {
+            table: 'posts',
+            create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
         ]
       };
 
@@ -203,7 +231,12 @@ describe('DiffBasedMigration', () => {
 
     it('should call hooks in correct order', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const callOrder: string[] = [];
@@ -240,8 +273,14 @@ describe('DiffBasedMigration', () => {
     it('should skip statement when beforeUpStatement returns false', async () => {
       const diff: SchemaDiff = {
         tables: [
-          { table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } },
-          { table: 'posts', create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          },
+          {
+            table: 'posts',
+            create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
         ]
       };
 
@@ -283,7 +322,12 @@ describe('DiffBasedMigration', () => {
 
     it('should pass dialect to generator', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const migration = new TestDiffMigration(provider, diff, 'postgresql');
@@ -297,7 +341,12 @@ describe('DiffBasedMigration', () => {
   describe('down()', () => {
     it('should execute down statements from diff', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const migration = new TestDiffMigration(provider, diff);
@@ -308,7 +357,12 @@ describe('DiffBasedMigration', () => {
 
     it('should call beforeDown hook', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const migration = new TestDiffMigration(provider, diff);
@@ -320,7 +374,12 @@ describe('DiffBasedMigration', () => {
 
     it('should call afterDown hook', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const migration = new TestDiffMigration(provider, diff);
@@ -333,8 +392,14 @@ describe('DiffBasedMigration', () => {
     it('should call beforeDownStatement for each statement', async () => {
       const diff: SchemaDiff = {
         tables: [
-          { table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } },
-          { table: 'posts', create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          },
+          {
+            table: 'posts',
+            create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
         ]
       };
 
@@ -347,8 +412,14 @@ describe('DiffBasedMigration', () => {
     it('should call afterDownStatement for each statement', async () => {
       const diff: SchemaDiff = {
         tables: [
-          { table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } },
-          { table: 'posts', create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          },
+          {
+            table: 'posts',
+            create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
         ]
       };
 
@@ -360,7 +431,12 @@ describe('DiffBasedMigration', () => {
 
     it('should call hooks in correct order', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const callOrder: string[] = [];
@@ -391,14 +467,25 @@ describe('DiffBasedMigration', () => {
       const migration = new OrderedMigration(provider, diff);
       await migration.down();
 
-      expect(callOrder).toEqual(['beforeDown', 'beforeDownStatement', 'afterDownStatement', 'afterDown']);
+      expect(callOrder).toEqual([
+        'beforeDown',
+        'beforeDownStatement',
+        'afterDownStatement',
+        'afterDown'
+      ]);
     });
 
     it('should skip statement when beforeDownStatement returns false', async () => {
       const diff: SchemaDiff = {
         tables: [
-          { table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } },
-          { table: 'posts', create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          },
+          {
+            table: 'posts',
+            create: { name: 'posts', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
         ]
       };
 
@@ -445,7 +532,18 @@ describe('DiffBasedMigration', () => {
         protected async diff(): Promise<SchemaDiff> {
           await new Promise((resolve) => setTimeout(resolve, 10));
           return {
-            tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+            tables: [
+              {
+                table: 'users',
+                create: {
+                  name: 'users',
+                  columns: [],
+                  primaryKeys: [],
+                  indexes: [],
+                  foreignKeys: []
+                }
+              }
+            ]
           };
         }
       }
@@ -484,7 +582,12 @@ describe('DiffBasedMigration', () => {
 
     it('should preserve hook execution even when skipping statements', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       class AllSkippingMigration extends TestDiffMigration {
@@ -515,7 +618,12 @@ describe('DiffBasedMigration', () => {
 
     it('should implement up/down as required by Migration', async () => {
       const diff: SchemaDiff = {
-        tables: [{ table: 'users', create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] } }]
+        tables: [
+          {
+            table: 'users',
+            create: { name: 'users', columns: [], primaryKeys: [], indexes: [], foreignKeys: [] }
+          }
+        ]
       };
 
       const migration = new TestDiffMigration(provider, diff);

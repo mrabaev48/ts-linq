@@ -13,7 +13,7 @@ export function tryLoadConfig(cwd: string): unknown | undefined {
     if (!fs.existsSync(p)) continue;
     try {
       if (name.endsWith('.json')) return JSON.parse(fs.readFileSync(p, 'utf8'));
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+
       const mod = require(p);
       return (mod && (mod.default || mod)) as unknown;
     } catch (e) {

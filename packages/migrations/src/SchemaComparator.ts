@@ -1,6 +1,6 @@
-import type { SchemaSnapshot, SchemaDiff, TableDiff, TableSnapshot } from './DiffTypes';
 import { diffColumns } from './comparators/ColumnComparator';
 import { diffIndexes } from './comparators/IndexComparator';
+import type { SchemaDiff, SchemaSnapshot, TableDiff, TableSnapshot } from './DiffTypes';
 
 function diffExistingTable(
   expectedTable: TableSnapshot,

@@ -36,13 +36,15 @@ export async function setupTestDatabase(provider: 'postgresql' | 'mysql' | 'mssq
   const connectionStrings = {
     postgresql: process.env.POSTGRES_URL || 'postgres://test:test@localhost:5432/testdb',
     mysql: process.env.MYSQL_URL || 'mysql://test:test@localhost:3306/testdb',
-    mssql: process.env.MSSQL_URL || 'Server=localhost,1433;Database=testdb;User Id=sa;Password=YourStrong@Passw0rd;'
+    mssql:
+      process.env.MSSQL_URL ||
+      'Server=localhost,1433;Database=testdb;User Id=sa;Password=YourStrong@Passw0rd;'
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let dbProvider: any;
 
   switch (provider) {
-
     case 'postgresql': {
       const { PostgresProvider } = await import('@ts-linq/provider-postgres');
       dbProvider = new PostgresProvider(parsePostgresUrl(connectionStrings.postgresql));
