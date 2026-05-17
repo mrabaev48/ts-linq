@@ -59,7 +59,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
       await context.commitTransaction();
 
-      const accounts = await accountSet.query().toArray();
+      const accounts = await accountSet.toArray();
       expect(accounts).toHaveLength(1);
       expect(accounts[0].balance).toBe(1000);
     });
@@ -81,7 +81,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
       await context.rollbackTransaction();
 
-      const accounts = await accountSet.query().toArray();
+      const accounts = await accountSet.toArray();
       expect(accounts).toHaveLength(0);
     });
 
@@ -111,7 +111,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       await context.commitTransaction();
       await context.commitTransaction();
 
-      const accounts = await accountSet.query().toArray();
+      const accounts = await accountSet.toArray();
       expect(accounts).toHaveLength(2);
     });
 
@@ -147,7 +147,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
       await context.commitTransaction();
 
-      const accounts = await accountSet.query().toArray();
+      const accounts = await accountSet.toArray();
       const alice = accounts.find((a) => a.name === 'Alice');
       const bob = accounts.find((a) => a.name === 'Bob');
 

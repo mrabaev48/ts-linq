@@ -135,7 +135,7 @@ describe.skip('Telemetry Integration - Prometheus + Provider', () => {
     await context.saveChanges();
 
     // Act
-    await users.query().toArray(); // SELECT
+    await users.toArray(); // SELECT
 
     // Assert
     const duration = (logger as any).queryDuration as MockHistogram;

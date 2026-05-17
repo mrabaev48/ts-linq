@@ -72,7 +72,7 @@ describe('Telemetry Integration - OpenTelemetry + Provider', () => {
   });
 
   it('should end the span and record duration', async () => {
-    await context.set(Data).query().toArray();
+    await context.set(Data).toArray();
 
     expect(mockSpan.setAttribute).toHaveBeenCalledWith('db.duration_ms', expect.any(Number));
     expect(mockSpan.end).toHaveBeenCalled();
