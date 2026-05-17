@@ -105,7 +105,7 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 13. ~~**ISSUE-011**~~ ✅ Done — `createMetadataRegistry()` factory exported; `reset()` documented and enforced in `beforeEach`; 17 new isolation tests added (`metadata-isolation.test.ts`, `RegistryIsolation.test.ts`)
 14. ~~**ISSUE-010**~~ ✅ Done — `FallbackManager.clone()` now deep-copies `ThrottleState`; each clone has independent rate-limit counters; fallback objects remain shared (intentional cache-layer sharing); 3 new isolation tests added (`FallbackManager.test.ts`)
 15. ~~**ISSUE-018**~~ ✅ Done — Add transaction depth tracking to `DbContext`
-16. **ISSUE-014** — Decompose `EnhancedSqlCache` into composable decorators
+16. ~~**ISSUE-014** — Decompose `EnhancedSqlCache` into composable decorators~~ ✅ Done
 17. **ISSUE-015** — Consolidate path aliases into `tsconfig.base.json`
 
 ### Phase 5 — Low Priority (Ongoing)
