@@ -57,6 +57,9 @@ export class Queryable<T> {
 
   private _softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions;
 
+  /** Tracks the last include path for thenInclude() chaining. */
+  private _lastIncludePath: string = '';
+
   /** Fallback state: source list + per-chain throttle counters. */
   private _fallbackManager: FallbackManager<T> = FallbackManager.create<T>();
 
@@ -144,6 +147,7 @@ export class Queryable<T> {
     clonedQueryable._whereSignature = this._whereSignature;
     // preserve includes and client-side predicates
     clonedQueryable._includes = [...this._includes];
+    clonedQueryable._lastIncludePath = this._lastIncludePath;
     // Clone copies fallbacks (shared cache layers) and deep-copies throttle (independent per clone)
     clonedQueryable._fallbackManager = this._fallbackManager.clone();
     // Re-create executor with the cloned FallbackManager (independent throttle per clone)
@@ -216,33 +220,37 @@ export class Queryable<T> {
 
   /**
    * Add a type-safe INNER JOIN on a single equality key pair.
+   * Accepts property name strings or lambda selectors (EF Core style).
    *
    * @example
+   * context.books.innerJoinOn(Author, b => b.authorId, a => a.id)
    * context.books.innerJoinOn(Author, 'authorId', 'id')
    */
   public innerJoinOn<TOther>(
     otherCtor: new () => TOther,
-    leftKey: keyof T & string,
-    rightKey: keyof TOther & string,
+    leftKey: (keyof T & string) | ((entity: T) => unknown),
+    rightKey: (keyof TOther & string) | ((entity: TOther) => unknown),
     alias?: string
   ): Queryable<T> {
-    this._addJoinOn('INNER', otherCtor, leftKey, rightKey, alias);
+    this._addJoinOn('INNER', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
     return this;
   }
 
   /**
    * Add a type-safe LEFT JOIN on a single equality key pair.
+   * Accepts property name strings or lambda selectors (EF Core style).
    *
    * @example
+   * context.books.leftJoinOn(Author, b => b.authorId, a => a.id)
    * context.books.leftJoinOn(Author, 'authorId', 'id')
    */
   public leftJoinOn<TOther>(
     otherCtor: new () => TOther,
-    leftKey: keyof T & string,
-    rightKey: keyof TOther & string,
+    leftKey: (keyof T & string) | ((entity: T) => unknown),
+    rightKey: (keyof TOther & string) | ((entity: TOther) => unknown),
     alias?: string
   ): Queryable<T> {
-    this._addJoinOn('LEFT', otherCtor, leftKey, rightKey, alias);
+    this._addJoinOn('LEFT', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
     return this;
   }
 
@@ -382,14 +390,14 @@ export class Queryable<T> {
   }
 
   /**
-   * Adds ASC ordering by property key.
-   * @param key Property name of the entity to sort by.
+   * Adds ASC ordering by property key or lambda selector.
    *
    * @example
+   * const ordered = await context.books.orderBy(b => b.title).toArray();
    * const ordered = await context.books.orderBy('title').toArray();
    */
-  public orderBy<K extends keyof T>(key: K): Queryable<T> {
-    const column = this.resolveColumnName(key as string);
+  public orderBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => unknown)): Queryable<T> {
+    const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'ASC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
@@ -397,14 +405,15 @@ export class Queryable<T> {
   }
 
   /**
-   * Adds DESC ordering by property key.
-   * @param key Property name of the entity to sort by descending.
+   * Adds DESC ordering by property key or lambda selector.
    *
    * @example
-   * const latest = await context.books.orderByDescending('id').take(5).toArray();
+   * const latest = await context.books.orderByDescending(b => b.id).take(5).toArray();
    */
-  public orderByDescending<K extends keyof T>(key: K): Queryable<T> {
-    const column = this.resolveColumnName(key as string);
+  public orderByDescending<K extends keyof T>(
+    keyOrSelector: K | ((entity: T) => unknown)
+  ): Queryable<T> {
+    const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'DESC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
@@ -413,13 +422,12 @@ export class Queryable<T> {
 
   /**
    * Adds secondary ASC ordering. Must be used after orderBy() or orderByDescending().
-   * @param key Property name for the secondary sort.
    *
    * @example
-   * const sorted = await context.users.orderBy('lastName').thenBy('firstName').toArray();
+   * const sorted = await context.users.orderBy(u => u.lastName).thenBy(u => u.firstName).toArray();
    */
-  public thenBy<K extends keyof T>(key: K): Queryable<T> {
-    const column = this.resolveColumnName(key as string);
+  public thenBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => unknown)): Queryable<T> {
+    const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'ASC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
@@ -428,13 +436,14 @@ export class Queryable<T> {
 
   /**
    * Adds secondary DESC ordering. Must be used after orderBy() or orderByDescending().
-   * @param key Property name for the secondary sort descending.
    *
    * @example
-   * const sorted = await context.users.orderBy('lastName').thenByDescending('age').toArray();
+   * const sorted = await context.users.orderBy(u => u.lastName).thenByDescending(u => u.age).toArray();
    */
-  public thenByDescending<K extends keyof T>(key: K): Queryable<T> {
-    const column = this.resolveColumnName(key as string);
+  public thenByDescending<K extends keyof T>(
+    keyOrSelector: K | ((entity: T) => unknown)
+  ): Queryable<T> {
+    const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'DESC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
@@ -581,13 +590,17 @@ export class Queryable<T> {
   }
 
   /**
-   * Adds eager-loading of a relationship by property name.
-   * Validates the relationship against entity metadata.
+   * Eager-loads a relationship by property name or lambda selector.
+   * Chain .thenInclude() to load nested relationships.
    *
    * @example
-   * const authors = await context.authors.include('books').where(a => a.id === 1).toArray();
+   * const authors = await context.authors.include(a => a.books).toArray();
+   * const authors = await context.authors.include('books').toArray();
    */
-  public include<K extends keyof T & string>(key: K): Queryable<T> {
+  public include<K extends keyof T & string>(
+    keyOrSelector: K | ((entity: T) => unknown)
+  ): Queryable<T> {
+    const key = extractKey(keyOrSelector) as K;
     const metadata = MetadataStorage.getEntity(this._entityClass);
     const valid = metadata?.relationships.some((r) => r.propertyName === key);
     if (!valid) {
@@ -595,7 +608,29 @@ export class Queryable<T> {
         `Invalid include '${key}' for ${this._entityClass.name}. Define relationship '${key}' via decorators or fix the name.`
       );
     }
+    this._lastIncludePath = key;
     if (!this._includes.includes(key)) this._includes.push(key);
+    return this;
+  }
+
+  /**
+   * Eager-loads a nested relationship. Must follow include() or another thenInclude().
+   * Accepts a lambda selector on the navigation entity type.
+   *
+   * @example
+   * const blogs = await context.blogs
+   *   .include(b => b.posts)
+   *   .thenInclude(p => p.comments)
+   *   .toArray();
+   */
+  public thenInclude(selector: (nav: never) => unknown): Queryable<T> {
+    if (!this._lastIncludePath) {
+      throw new Error('thenInclude() must be called after include()');
+    }
+    const nestedKey = extractKey(selector);
+    const path = `${this._lastIncludePath}.${nestedKey}`;
+    this._lastIncludePath = path;
+    if (!this._includes.includes(path)) this._includes.push(path);
     return this;
   }
 
@@ -883,4 +918,25 @@ export class Queryable<T> {
       alias
     });
   }
+}
+
+/**
+ * Extracts a property key string from either a string key or a lambda selector.
+ * Uses a Proxy to intercept the first property access in the lambda.
+ */
+function extractKey<T>(keyOrSelector: keyof T | ((entity: T) => unknown)): string {
+  if (typeof keyOrSelector !== 'function') return String(keyOrSelector);
+  const accessed: string[] = [];
+  const proxy = new Proxy(
+    {},
+    {
+      get(_, prop) {
+        accessed.push(String(prop));
+        return proxy;
+      }
+    }
+  ) as T;
+  keyOrSelector(proxy);
+  if (!accessed.length) throw new Error('Could not extract property name from selector lambda');
+  return accessed[0];
 }

@@ -44,12 +44,12 @@ describe('Advanced Features - Soft Delete', () => {
   });
 
   it('should soft delete entities', async () => {
-    const item = await context.set(SdItem).query().first();
+    const item = await context.set(SdItem).first();
     context.set(SdItem).remove(item);
     await context.saveChanges();
 
     // Verify it's gone from normal query
-    const all = await context.set(SdItem).query().toArray();
+    const all = await context.set(SdItem).toArray();
     expect(all).toHaveLength(1);
     expect(all[0].name).toBe('Item2');
 
@@ -65,7 +65,7 @@ describe('Advanced Features - Soft Delete', () => {
     await context.saveChanges();
 
     // Soft-delete filter should exclude DeletedItem
-    const all = await context.set(SdItem).query().toArray();
+    const all = await context.set(SdItem).toArray();
     expect(all).toHaveLength(2); // Item1, Item2 only
     expect(all.some((i) => i.name === 'DeletedItem')).toBe(false);
   });
