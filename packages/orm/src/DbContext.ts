@@ -185,6 +185,30 @@ export abstract class DbContext {
     }
 
     this.initializeDbSets();
+
+    // Enable "new DbSet(Entity)" property initializer syntax.
+    // Subclass property initializers run after super() returns — this Proxy
+    // intercepts those assignments and injects the database context automatically.
+    const dbSetCtx = this.buildDbSetContext();
+    const dbSetsMap = this._dbSets;
+
+    return new Proxy(this, {
+      set(target: DbContext, prop: string | symbol, value: unknown): boolean {
+        if (typeof prop === 'string' && value instanceof DbSet) {
+          value._injectContext(dbSetCtx);
+          dbSetsMap.set(value.entityClass, value as DbSet<object>);
+          // Override any existing getter (created by initializeDbSets) with a plain value
+          Object.defineProperty(target, prop, {
+            value,
+            writable: true,
+            enumerable: true,
+            configurable: true
+          });
+          return true;
+        }
+        return Reflect.set(target, prop, value);
+      }
+    }) as unknown as this;
   }
 
   /**

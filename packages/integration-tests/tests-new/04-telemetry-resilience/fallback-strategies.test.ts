@@ -55,7 +55,7 @@ describe('Telemetry Integration - Fallback Strategies', () => {
   });
 
   it('should use primary if healthy', async () => {
-    const result = await (context.set(Item).query() as any).fallbackTo(fallback).toArray();
+    const result = await (context.set(Item) as any).fallbackTo(fallback).toArray();
 
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('FromDB');
@@ -64,7 +64,7 @@ describe('Telemetry Integration - Fallback Strategies', () => {
   it('should use fallback if primary fails', async () => {
     provider.shouldFail = true;
 
-    const result = await (context.set(Item).query() as any).fallbackTo(fallback).toArray();
+    const result = await (context.set(Item) as any).fallbackTo(fallback).toArray();
 
     // Should return data from memory fallback
     expect(result).toHaveLength(2);
@@ -74,7 +74,7 @@ describe('Telemetry Integration - Fallback Strategies', () => {
   it.skip('should support predicates in fallback', async () => {
     provider.shouldFail = true;
 
-    const result = await (context.set(Item).query() as any)
+    const result = await (context.set(Item) as any)
       .fallbackTo(fallback)
       .where((x: any) => x.id === 2)
       .toArray();
@@ -86,7 +86,7 @@ describe('Telemetry Integration - Fallback Strategies', () => {
   it('should count from fallback if primary fails', async () => {
     provider.shouldFail = true;
 
-    const count = await (context.set(Item).query() as any).fallbackTo(fallback).count();
+    const count = await (context.set(Item) as any).fallbackTo(fallback).count();
 
     expect(count).toBe(2);
   });

@@ -269,21 +269,21 @@ describe('DbSet', () => {
     });
   });
 
-  describe('query()', () => {
-    it('should return a Queryable instance', () => {
-      const result = dbSet.query();
+  describe('direct query methods', () => {
+    it('orderBy() returns a Queryable instance', () => {
+      const result = dbSet.orderBy('name');
       expect(result).toBeInstanceOf(Queryable);
     });
 
-    it('should return a Queryable for the correct entity class', () => {
-      const result = dbSet.query();
-      expect(result).toBeInstanceOf(Queryable);
-    });
-
-    it('should return a fresh Queryable on each call', () => {
-      const q1 = dbSet.query();
-      const q2 = dbSet.query();
+    it('each call produces a fresh Queryable', () => {
+      const q1 = dbSet.orderBy('name');
+      const q2 = dbSet.orderBy('name');
       expect(q1).not.toBe(q2);
+    });
+
+    it('whereIn() returns a Queryable instance', () => {
+      const result = dbSet.whereIn('name', ['Alice']);
+      expect(result).toBeInstanceOf(Queryable);
     });
   });
 
