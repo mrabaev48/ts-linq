@@ -27,9 +27,17 @@
  */
 
 import * as ts from 'typescript';
+
 import {
-  str, num, prop, makeObject, makeArray, makeUnsupported,
-  emitDiagnostic, syntaxKindName, collectPropertyChain,
+  collectPropertyChain,
+  emitDiagnostic,
+  makeArray,
+  makeObject,
+  makeUnsupported,
+  num,
+  prop,
+  str,
+  syntaxKindName
 } from './utils';
 
 const MAX_DEPTH = 64;
@@ -51,8 +59,7 @@ export function transformExpression(
 ): ts.Expression {
   if (depth > MAX_DEPTH) return makeUnsupported(node, tctx.ctx);
 
-  const recurse = (n: ts.Expression): ts.Expression =>
-    transformExpression(n, tctx, depth + 1);
+  const recurse = (n: ts.Expression): ts.Expression => transformExpression(n, tctx, depth + 1);
 
   // ── 1. Parenthesised — unwrap ─────────────────────────────────────────────
   if (ts.isParenthesizedExpression(node)) {
@@ -102,9 +109,9 @@ export function transformExpression(
   if (ts.isNoSubstitutionTemplateLiteral(node)) return makeLiteral(str(node.text));
 
   // ── 11. Boolean / null keywords ───────────────────────────────────────────
-  if (node.kind === ts.SyntaxKind.TrueKeyword)  return makeLiteral(ts.factory.createTrue());
+  if (node.kind === ts.SyntaxKind.TrueKeyword) return makeLiteral(ts.factory.createTrue());
   if (node.kind === ts.SyntaxKind.FalseKeyword) return makeLiteral(ts.factory.createFalse());
-  if (node.kind === ts.SyntaxKind.NullKeyword)  return makeLiteral(ts.factory.createNull());
+  if (node.kind === ts.SyntaxKind.NullKeyword) return makeLiteral(ts.factory.createNull());
 
   return makeUnsupported(node, tctx.ctx);
 }
@@ -119,30 +126,27 @@ function transformPrefixUnary(
   // `!expr` → NotNode
   if (node.operator === ts.SyntaxKind.ExclamationToken) {
     return makeObject([
-      prop('type',    str('not')),
-      prop('operand', transformExpression(node.operand, tctx, depth + 1)),
+      prop('type', str('not')),
+      prop('operand', transformExpression(node.operand, tctx, depth + 1))
     ]);
   }
 
   // `-number` → negative LiteralNode
-  if (
-    node.operator === ts.SyntaxKind.MinusToken &&
-    ts.isNumericLiteral(node.operand)
-  ) {
+  if (node.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(node.operand)) {
     return makeObject([
-      prop('type',  str('literal')),
-      prop('value', ts.factory.createPrefixUnaryExpression(
-        ts.SyntaxKind.MinusToken,
-        ts.factory.createNumericLiteral(node.operand.text)
-      )),
+      prop('type', str('literal')),
+      prop(
+        'value',
+        ts.factory.createPrefixUnaryExpression(
+          ts.SyntaxKind.MinusToken,
+          ts.factory.createNumericLiteral(node.operand.text)
+        )
+      )
     ]);
   }
 
   // `+number`
-  if (
-    node.operator === ts.SyntaxKind.PlusToken &&
-    ts.isNumericLiteral(node.operand)
-  ) {
+  if (node.operator === ts.SyntaxKind.PlusToken && ts.isNumericLiteral(node.operand)) {
     return makeLiteral(num(node.operand.text));
   }
 
@@ -160,10 +164,10 @@ function transformCallExpression(
     return makeUnsupported(node, tctx.ctx);
   }
 
-  const callee   = node.expression;
+  const callee = node.expression;
   const receiver = callee.expression;
-  const method   = callee.name.text;
-  const arg0     = node.arguments[0] as ts.Expression | undefined;
+  const method = callee.name.text;
+  const arg0 = node.arguments[0] as ts.Expression | undefined;
 
   // Pattern B: ["a","b"].includes(u.role)
   if (method === 'includes' && ts.isArrayLiteralExpression(receiver) && arg0 !== undefined) {
@@ -205,18 +209,26 @@ function transformArrayIncludes(
   }
 
   return makeObject([
-    prop('type',     str('in')),
+    prop('type', str('in')),
     prop('property', propExpr),
-    prop('values',   makeArray(valueLiterals.map(v => makeObject([prop('type', str('literal')), prop('value', v)])))),
+    prop(
+      'values',
+      makeArray(
+        valueLiterals.map((v) => makeObject([prop('type', str('literal')), prop('value', v)]))
+      )
+    )
   ]);
 }
 
-function extractArrayElementLiteral(el: ts.Expression, ctx: ts.TransformationContext): ts.Expression {
+function extractArrayElementLiteral(
+  el: ts.Expression,
+  ctx: ts.TransformationContext
+): ts.Expression {
   if (ts.isStringLiteral(el)) return str(el.text);
   if (ts.isNumericLiteral(el)) return num(el.text);
-  if (el.kind === ts.SyntaxKind.TrueKeyword)  return ts.factory.createTrue();
+  if (el.kind === ts.SyntaxKind.TrueKeyword) return ts.factory.createTrue();
   if (el.kind === ts.SyntaxKind.FalseKeyword) return ts.factory.createFalse();
-  if (el.kind === ts.SyntaxKind.NullKeyword)  return ts.factory.createNull();
+  if (el.kind === ts.SyntaxKind.NullKeyword) return ts.factory.createNull();
   if (
     ts.isPrefixUnaryExpression(el) &&
     el.operator === ts.SyntaxKind.MinusToken &&
@@ -245,9 +257,9 @@ function transformIdentifierIncludes(
   tctx.parameters.push(identNode);
 
   return makeObject([
-    prop('type',      str('in')),
-    prop('property',  propExpr),
-    prop('valuesRef', num(idx)),
+    prop('type', str('in')),
+    prop('property', propExpr),
+    prop('valuesRef', num(idx))
   ]);
 }
 
@@ -265,17 +277,17 @@ function transformStringMethod(
   }
 
   const propNode = buildPropertyNode(chain.segments, chain.hasOptional);
-  const argExprs = Array.from(args).map(a => {
+  const argExprs = Array.from(args).map((a) => {
     const transformed = transformExpression(a, tctx, depth + 1);
     // Only LiteralNode and ParameterRefNode are valid method args
     return transformed;
   });
 
   return makeObject([
-    prop('type',   str('method')),
+    prop('type', str('method')),
     prop('method', str(method)),
     prop('object', propNode),
-    prop('args',   makeArray(argExprs)),
+    prop('args', makeArray(argExprs))
   ]);
 }
 
@@ -283,19 +295,20 @@ function transformStringMethod(
 
 const LOGICAL_OPS: Partial<Record<ts.SyntaxKind, '&&' | '||'>> = {
   [ts.SyntaxKind.AmpersandAmpersandToken]: '&&',
-  [ts.SyntaxKind.BarBarToken]:             '||',
+  [ts.SyntaxKind.BarBarToken]: '||'
 };
 
-const COMPARISON_OPS: Partial<Record<ts.SyntaxKind,
-  '==' | '===' | '!=' | '!==' | '>' | '<' | '>=' | '<='>> = {
-  [ts.SyntaxKind.EqualsEqualsToken]:            '==',
-  [ts.SyntaxKind.EqualsEqualsEqualsToken]:      '===',
-  [ts.SyntaxKind.ExclamationEqualsToken]:       '!=',
+const COMPARISON_OPS: Partial<
+  Record<ts.SyntaxKind, '==' | '===' | '!=' | '!==' | '>' | '<' | '>=' | '<='>
+> = {
+  [ts.SyntaxKind.EqualsEqualsToken]: '==',
+  [ts.SyntaxKind.EqualsEqualsEqualsToken]: '===',
+  [ts.SyntaxKind.ExclamationEqualsToken]: '!=',
   [ts.SyntaxKind.ExclamationEqualsEqualsToken]: '!==',
-  [ts.SyntaxKind.GreaterThanToken]:             '>',
-  [ts.SyntaxKind.LessThanToken]:                '<',
-  [ts.SyntaxKind.GreaterThanEqualsToken]:       '>=',
-  [ts.SyntaxKind.LessThanEqualsToken]:          '<=',
+  [ts.SyntaxKind.GreaterThanToken]: '>',
+  [ts.SyntaxKind.LessThanToken]: '<',
+  [ts.SyntaxKind.GreaterThanEqualsToken]: '>=',
+  [ts.SyntaxKind.LessThanEqualsToken]: '<='
 };
 
 function transformBinaryExpression(
@@ -309,10 +322,10 @@ function transformBinaryExpression(
   const logicalOp = LOGICAL_OPS[opKind];
   if (logicalOp !== undefined) {
     return makeObject([
-      prop('type',     str('logical')),
+      prop('type', str('logical')),
       prop('operator', str(logicalOp)),
-      prop('left',     transformExpression(node.left,  tctx, depth + 1)),
-      prop('right',    transformExpression(node.right, tctx, depth + 1)),
+      prop('left', transformExpression(node.left, tctx, depth + 1)),
+      prop('right', transformExpression(node.right, tctx, depth + 1))
     ]);
   }
 
@@ -323,9 +336,10 @@ function transformBinaryExpression(
   }
 
   emitDiagnostic(
-    tctx.ctx, node.operatorToken,
+    tctx.ctx,
+    node.operatorToken,
     `${tctx.methodName}() predicate: operator "${syntaxKindName(opKind)}" is not supported. ` +
-    'Use only: ===, !==, ==, !=, >, <, >=, <=, &&, ||.',
+      'Use only: ===, !==, ==, !=, >, <, >=, <=, &&, ||.',
     ts.DiagnosticCategory.Error
   );
   return makeUnsupported(node.operatorToken);
@@ -337,7 +351,7 @@ function transformComparisonExpression(
   tctx: TransformContext,
   depth: number
 ): ts.Expression {
-  const leftIsNull  = isNullLiteral(node.left);
+  const leftIsNull = isNullLiteral(node.left);
   const rightIsNull = isNullLiteral(node.right);
 
   // IS NULL / IS NOT NULL detection
@@ -346,10 +360,10 @@ function transformComparisonExpression(
     if (ts.isPropertyAccessExpression(propSide)) {
       const chain = collectPropertyChain(propSide);
       if (chain !== null && chain.root === tctx.paramName) {
-        const nodeType = (cmpOp === '===' || cmpOp === '==') ? 'isNull' : 'isNotNull';
+        const nodeType = cmpOp === '===' || cmpOp === '==' ? 'isNull' : 'isNotNull';
         return makeObject([
-          prop('type',     str(nodeType)),
-          prop('property', buildPropertyNode(chain.segments, chain.hasOptional)),
+          prop('type', str(nodeType)),
+          prop('property', buildPropertyNode(chain.segments, chain.hasOptional))
         ]);
       }
     }
@@ -357,10 +371,10 @@ function transformComparisonExpression(
 
   // Regular comparison
   return makeObject([
-    prop('type',     str('binary')),
+    prop('type', str('binary')),
     prop('operator', str(cmpOp)),
-    prop('left',     transformExpression(node.left,  tctx, depth + 1)),
-    prop('right',    transformExpression(node.right, tctx, depth + 1)),
+    prop('left', transformExpression(node.left, tctx, depth + 1)),
+    prop('right', transformExpression(node.right, tctx, depth + 1))
   ]);
 }
 
@@ -380,10 +394,7 @@ function transformPropertyAccess(
     // Capture it as a ParameterRef
     const idx = tctx.parameters.length;
     tctx.parameters.push(node);
-    return makeObject([
-      prop('type',  str('parameterRef')),
-      prop('index', num(idx)),
-    ]);
+    return makeObject([prop('type', str('parameterRef')), prop('index', num(idx))]);
   }
 
   return buildPropertyNode(segments, hasOptional);
@@ -391,15 +402,13 @@ function transformPropertyAccess(
 
 // ─── Identifier ───────────────────────────────────────────────────────────────
 
-function transformIdentifier(
-  node: ts.Identifier,
-  tctx: TransformContext
-): ts.Expression {
+function transformIdentifier(node: ts.Identifier, tctx: TransformContext): ts.Expression {
   if (node.text === tctx.paramName) {
     emitDiagnostic(
-      tctx.ctx, node,
+      tctx.ctx,
+      node,
       `${tctx.methodName}() predicate: bare parameter "${tctx.paramName}" without a property access is not supported. ` +
-      `Use ${tctx.paramName}.propertyName instead.`,
+        `Use ${tctx.paramName}.propertyName instead.`,
       ts.DiagnosticCategory.Error
     );
     return makeUnsupported(node);
@@ -407,10 +416,7 @@ function transformIdentifier(
   // External variable — capture as ParameterRef
   const idx = tctx.parameters.length;
   tctx.parameters.push(node);
-  return makeObject([
-    prop('type',  str('parameterRef')),
-    prop('index', num(idx)),
-  ]);
+  return makeObject([prop('type', str('parameterRef')), prop('index', num(idx))]);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -420,10 +426,7 @@ function isNullLiteral(node: ts.Expression): boolean {
 }
 
 function makeLiteral(value: ts.Expression): ts.ObjectLiteralExpression {
-  return makeObject([
-    prop('type',  str('literal')),
-    prop('value', value),
-  ]);
+  return makeObject([prop('type', str('literal')), prop('value', value)]);
 }
 
 export function buildPropertyNode(
@@ -435,7 +438,7 @@ export function buildPropertyNode(
   if (segments.length === 1) {
     props.push(prop('name', str(segments[0] ?? '')));
   } else {
-    props.push(prop('path', makeArray(segments.map(s => str(s)))));
+    props.push(prop('path', makeArray(segments.map((s) => str(s)))));
   }
 
   if (optional) {

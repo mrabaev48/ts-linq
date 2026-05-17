@@ -1,32 +1,28 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { Queryable, InMemoryCountCache, EnhancedSqlCache } from '@ts-linq/query';
-import { ChangeTracker } from './ChangeTracker';
-import type { DbSetContext } from './DbSetContext';
-import { EntityLoader } from '@ts-linq/core';
 import type { LoadingOptions } from '@ts-linq/core';
+import type { DbContextOptions, DiagnosticsOptions, MemoryProfilerLike } from '@ts-linq/core';
+import { EntityLoader } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
-import { MetadataStorage, type MetadataRegistry, reflectGetOwnMetadata } from '@ts-linq/metadata';
 import { LazyLoadingProxy } from '@ts-linq/core';
-import { DbSet } from './DbSet';
+import { EntityCache } from '@ts-linq/core';
+import { type MetadataRegistry, MetadataStorage, reflectGetOwnMetadata } from '@ts-linq/metadata';
+import { safeCacheSize } from '@ts-linq/metrics-safe';
+import { EnhancedSqlCache, InMemoryCountCache } from '@ts-linq/query';
+import type { GlobalFilter, PerformanceOptions, Result, SoftDeleteOptions } from '@ts-linq/types';
+import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
+import { err, ok } from '@ts-linq/types';
+
+import { ChangeTracker } from './ChangeTracker';
+import { DeleteCommand } from './commands/DeleteCommand';
 import { InsertCommand } from './commands/InsertCommand';
 import { UpdateCommand } from './commands/UpdateCommand';
-import { DeleteCommand } from './commands/DeleteCommand';
-import { ChangeValidationService } from './services/ChangeValidationService';
-import { CacheCoordinator } from './services/CacheCoordinator';
+import { DbSet } from './DbSet';
+import type { DbSetContext } from './DbSetContext';
 import { AuditInterceptor } from './services/AuditInterceptor';
+import { CacheCoordinator } from './services/CacheCoordinator';
+import { ChangeValidationService } from './services/ChangeValidationService';
 import { SoftDeleteInterceptor } from './services/SoftDeleteInterceptor';
-import type {
-  PerformanceOptions,
-  Result,
-  SoftDeleteOptions,
-  GlobalFilter
-} from '@ts-linq/types';
-import type { DbContextOptions, DiagnosticsOptions, MemoryProfilerLike } from '@ts-linq/core';
-import { ok, err } from '@ts-linq/types';
 import type { NormalizedChange } from './types';
-import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
-import { EntityCache } from '@ts-linq/core';
-import { safeCacheSize } from '@ts-linq/metrics-safe';
 // import { logInternalError } from '@ts-linq/core'; // REMOVED
 
 function getOriginal<T extends Function>(target: T): T {
@@ -115,7 +111,7 @@ export abstract class DbContext {
     );
     this._deleteCmd = new DeleteCommand(
       this._provider,
-      (c) => this._softDeleteInterceptor.apply(c),
+      async (c) => this._softDeleteInterceptor.apply(c),
       (c) => this._cacheCoordinator.removeEntry(c)
     );
     // Initialize optional L2 entity cache
@@ -146,9 +142,7 @@ export abstract class DbContext {
 
     this._cacheCoordinator = new CacheCoordinator(
       this._entityCache,
-      this._performanceOptions?.sqlCache as
-        | { invalidateBy?: (m: (k: string) => boolean) => number }
-        | undefined,
+      this._performanceOptions?.sqlCache,
       this._performanceOptions?.countCache,
       this._provider.providerLabel,
       this._performanceOptions?.cacheNamespace,
@@ -156,15 +150,16 @@ export abstract class DbContext {
       (ec) => this._registry.getEntity(ec)?.primaryKeys?.[0]
     );
 
-    this._auditInterceptor = new AuditInterceptor(
-      options.audit,
-      (ec) => this._registry.getEntity(ec)
+    this._auditInterceptor = new AuditInterceptor(options.audit, (ec) =>
+      this._registry.getEntity(ec)
     );
 
     this._softDeleteInterceptor = new SoftDeleteInterceptor(
       options.softDelete,
       (ec) => this._registry.getEntity(ec),
-      async (entity, cls) => { await this._provider.update(entity, cls); },
+      async (entity, cls) => {
+        await this._provider.update(entity, cls);
+      },
       (c) => this._cacheCoordinator.updateEntry(c)
     );
 
@@ -213,7 +208,7 @@ export abstract class DbContext {
     if (!this._decoratedDbSets.has(entityClass)) {
       this._decoratedDbSets.set(
         entityClass,
-        new DbSet<object>(entityClass as unknown as new () => object, this.buildDbSetContext())
+        new DbSet<object>(entityClass, this.buildDbSetContext())
       );
     }
     return this._decoratedDbSets.get(entityClass) as unknown as DbSet<T>;
@@ -233,7 +228,7 @@ export abstract class DbContext {
       try {
         if (!e.target) continue;
         const original = getOriginal(e.target);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
         const _tmp = new (original as unknown as new () => unknown)();
       } catch {
         // ignore constructors with side-effects/args
@@ -267,14 +262,7 @@ export abstract class DbContext {
     if (!changes || changes.length === 0) return 0;
     this.prefillDefaults(changes);
     const normalizedForValidation = this.normalizeForValidation(changes);
-    this._validationService.validate(
-      normalizedForValidation as Array<{
-        entity: Record<string, unknown>;
-        entityClass: Function;
-        state: string;
-        originalValues?: object;
-      }>
-    );
+    this._validationService.validate(normalizedForValidation);
     const normalizedForInvalidation = normalizedForValidation.map((c) => ({
       entity: c.entity,
       entityClass: c.entityClass,

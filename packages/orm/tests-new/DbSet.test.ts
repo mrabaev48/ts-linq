@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { DbSet } from '../src/DbSet';
-import { ChangeTracker } from '../src/ChangeTracker';
-import { EntityState, type DatabaseProvider } from '@ts-linq/core';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { type DatabaseProvider, EntityState } from '@ts-linq/core';
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
 import { Queryable } from '@ts-linq/query';
-import { Entity, PrimaryKey, Column, MetadataStorage } from '@ts-linq/metadata';
+
+import { ChangeTracker } from '../src/ChangeTracker';
+import { DbSet } from '../src/DbSet';
 
 @Entity({ name: 'users' })
 class User {
@@ -48,7 +49,9 @@ describe('DbSet', () => {
       rawQuery: jest.fn(),
       providerLabel: 'MockProvider',
       loggerRef: undefined,
-      getDialect: jest.fn().mockReturnValue({ parameterStyle: 0, quoteIdentifier: (s: string) => `"${s}"` })
+      getDialect: jest
+        .fn()
+        .mockReturnValue({ parameterStyle: 0, quoteIdentifier: (s: string) => `"${s}"` })
     } as any;
 
     dbSet = new DbSet(User, { provider: mockProvider, changeTracker });

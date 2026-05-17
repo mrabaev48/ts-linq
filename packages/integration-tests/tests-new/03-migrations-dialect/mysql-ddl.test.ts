@@ -1,5 +1,5 @@
-import { Entity, Column, PrimaryKey, MetadataStorage } from '@ts-linq/metadata';
 import { MySqlDdlStrategy } from '@ts-linq/dialect-mysql';
+import { Column, Entity, MetadataStorage, PrimaryKey } from '@ts-linq/metadata';
 
 describe('MySQL Migrations + Dialect Integration', () => {
   const strategy = new MySqlDdlStrategy();
@@ -17,7 +17,7 @@ describe('MySQL Migrations + Dialect Integration', () => {
 
         @Column({ type: 'TEXT', nullable: false })
         name!: string;
-        
+
         @Column({ type: 'BOOLEAN' })
         isActive!: boolean;
 
@@ -27,7 +27,7 @@ describe('MySQL Migrations + Dialect Integration', () => {
 
       const metadata = MetadataStorage.getEntity(User);
       const sql = strategy.generateCreateTableSql(metadata!);
-      
+
       expect(sql).toContain('CREATE TABLE IF NOT EXISTS `users`');
       expect(sql).toContain('`name` TEXT NOT NULL');
       expect(sql).toContain('`isActive` TINYINT(1)');
@@ -42,14 +42,14 @@ describe('MySQL Migrations + Dialect Integration', () => {
 
         @Column({ type: 'INTEGER', defaultValue: 5 })
         retries!: number;
-        
+
         @Column({ type: 'TEXT', defaultValue: 'default' })
         mode!: string;
       }
-      
+
       const metadata = MetadataStorage.getEntity(Config);
       const sql = strategy.generateCreateTableSql(metadata!);
-      
+
       expect(sql).toContain('`retries` INT DEFAULT 5');
       expect(sql).toContain("`mode` TEXT DEFAULT 'default'");
     });
@@ -73,31 +73,33 @@ describe('MySQL Migrations + Dialect Integration', () => {
 
   describe('INDEXES', () => {
     it('should generate CREATE INDEX', () => {
-       const sql = strategy.generateCreateIndexSql('users', {
-         name: 'idx_users_name',
-         columns: ['name'],
-         unique: false
-       });
-       expect(sql).toBe('CREATE INDEX IF NOT EXISTS `idx_users_name` ON `users` (`name`)');
+      const sql = strategy.generateCreateIndexSql('users', {
+        name: 'idx_users_name',
+        columns: ['name'],
+        unique: false
+      });
+      expect(sql).toBe('CREATE INDEX IF NOT EXISTS `idx_users_name` ON `users` (`name`)');
     });
 
     it('should generate CREATE UNIQUE INDEX', () => {
       const sql = strategy.generateCreateIndexSql('users', {
-         name: 'idx_users_email',
-         columns: ['email'],
-         unique: true
+        name: 'idx_users_email',
+        columns: ['email'],
+        unique: true
       });
       expect(sql).toBe('CREATE UNIQUE INDEX IF NOT EXISTS `idx_users_email` ON `users` (`email`)');
     });
-    
-     it('should generate FULLTEXT INDEX', () => {
+
+    it('should generate FULLTEXT INDEX', () => {
       const sql = strategy.generateCreateIndexSql('articles', {
-         name: 'idx_articles_content',
-         columns: ['content'],
-         unique: false,
-         mysqlType: 'FULLTEXT'
+        name: 'idx_articles_content',
+        columns: ['content'],
+        unique: false,
+        mysqlType: 'FULLTEXT'
       });
-      expect(sql).toBe('CREATE FULLTEXT INDEX IF NOT EXISTS `idx_articles_content` ON `articles` (`content`)');
+      expect(sql).toBe(
+        'CREATE FULLTEXT INDEX IF NOT EXISTS `idx_articles_content` ON `articles` (`content`)'
+      );
     });
   });
 
@@ -129,24 +131,28 @@ describe('MySQL Migrations + Dialect Integration', () => {
 
   describe('FOREIGN KEYS', () => {
     it('should generate FOREIGN KEY constraint', () => {
-        const sql = strategy.generateForeignKeySql('posts', {
-            name: 'fk_posts_author',
-            columnName: 'authorId',
-            relatedTableName: 'users',
-            relatedColumnName: 'id'
-        });
-        expect(sql).toBe('ALTER TABLE `posts` ADD CONSTRAINT `fk_posts_author` FOREIGN KEY (`authorId`) REFERENCES `users` (`id`)');
+      const sql = strategy.generateForeignKeySql('posts', {
+        name: 'fk_posts_author',
+        columnName: 'authorId',
+        relatedTableName: 'users',
+        relatedColumnName: 'id'
+      });
+      expect(sql).toBe(
+        'ALTER TABLE `posts` ADD CONSTRAINT `fk_posts_author` FOREIGN KEY (`authorId`) REFERENCES `users` (`id`)'
+      );
     });
     it('should handle ON DELETE/UPDATE actions', () => {
-        const sql = strategy.generateForeignKeySql('comments', {
-            name: 'fk_comments_post',
-            columnName: 'postId',
-            relatedTableName: 'posts',
-            relatedColumnName: 'id',
-            onDelete: 'CASCADE',
-            onUpdate: 'SET NULL'
-        });
-        expect(sql).toBe('ALTER TABLE `comments` ADD CONSTRAINT `fk_comments_post` FOREIGN KEY (`postId`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE SET NULL');
+      const sql = strategy.generateForeignKeySql('comments', {
+        name: 'fk_comments_post',
+        columnName: 'postId',
+        relatedTableName: 'posts',
+        relatedColumnName: 'id',
+        onDelete: 'CASCADE',
+        onUpdate: 'SET NULL'
+      });
+      expect(sql).toBe(
+        'ALTER TABLE `comments` ADD CONSTRAINT `fk_comments_post` FOREIGN KEY (`postId`) REFERENCES `posts` (`id`) ON DELETE CASCADE ON UPDATE SET NULL'
+      );
     });
   });
 });

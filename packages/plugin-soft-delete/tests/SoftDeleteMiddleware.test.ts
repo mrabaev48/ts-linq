@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
+
 import { SoftDeleteMiddleware } from '../src/SoftDeleteMiddleware';
-import { Entity, PrimaryKey, Column, MetadataStorage } from '@ts-linq/metadata';
 import type { SoftDeleteContext } from '../src/types';
 
 @Entity({ name: 'products' })
@@ -63,7 +64,7 @@ describe('SoftDeleteMiddleware', () => {
         entityClass: Product,
         operation: 'delete',
 
-        state: 'deleted',
+        state: 'deleted'
       };
 
       const result = await mw.handleSoftDelete(context);
@@ -79,7 +80,7 @@ describe('SoftDeleteMiddleware', () => {
         entityClass: Product,
         operation: 'delete',
 
-        state: 'deleted',
+        state: 'deleted'
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -95,7 +96,7 @@ describe('SoftDeleteMiddleware', () => {
         entityClass: Product,
         operation: 'delete',
 
-        state: 'deleted',
+        state: 'deleted'
       };
 
       const beforeDelete = new Date();
@@ -113,7 +114,7 @@ describe('SoftDeleteMiddleware', () => {
         entityClass: Product,
         operation: 'delete',
 
-        state: 'deleted',
+        state: 'deleted'
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -130,7 +131,7 @@ describe('SoftDeleteMiddleware', () => {
         entityClass: User,
         operation: 'delete',
 
-        state: 'deleted',
+        state: 'deleted'
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -146,7 +147,7 @@ describe('SoftDeleteMiddleware', () => {
         entityClass: Product,
         operation: 'restore',
 
-        state: 'modified',
+        state: 'modified'
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -162,7 +163,7 @@ describe('SoftDeleteMiddleware', () => {
         entityClass: Product,
         operation: 'restore',
 
-        state: 'modified',
+        state: 'modified'
       };
 
       const result = await middleware.handleSoftDelete(context);
@@ -172,18 +173,18 @@ describe('SoftDeleteMiddleware', () => {
     });
 
     it('should restore both isDeleted and deletedAt', async () => {
-      const entity = { 
-        id: 1, 
-        name: 'Product 1', 
-        isDeleted: true, 
-        deletedAt: new Date() 
+      const entity = {
+        id: 1,
+        name: 'Product 1',
+        isDeleted: true,
+        deletedAt: new Date()
       };
       const context: SoftDeleteContext = {
         entity,
         entityClass: Product,
         operation: 'restore',
 
-        state: 'modified',
+        state: 'modified'
       };
 
       const result = await middleware.handleSoftDelete(context);

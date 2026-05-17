@@ -1,6 +1,6 @@
-import type { SchemaDiff, TableDiff, MigrationSql } from './DiffTypes';
 import type { Dialect } from './DialectMigrationSql';
 import { generateMigrationFromDiff } from './DialectMigrationSql';
+import type { MigrationSql, SchemaDiff, TableDiff } from './DiffTypes';
 
 interface ColumnDef {
   name: string;
@@ -204,7 +204,7 @@ export class MigrationBuilder {
     this.collectIndexChanges(ensure);
     this.collectForeignKeyChanges(ensure);
     this.collectRenames(ensure);
-    return { tables } as SchemaDiff;
+    return { tables };
   }
 
   private collectCreates(tables: TableDiff[]): void {
@@ -248,7 +248,7 @@ export class MigrationBuilder {
     return (t: string): TableDiff => {
       let td = byTable.get(t);
       if (!td) {
-        td = { table: t, columnChanges: [] } as TableDiff;
+        td = { table: t, columnChanges: [] };
         byTable.set(t, td);
         tables.push(td);
       }

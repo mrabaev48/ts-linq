@@ -1,6 +1,5 @@
 import { RedisCountCacheAdapter } from '../src/redis/RedisCountCacheAdapter';
 
-
 class FakeRedis {
   private m = new Map<string, string>();
   async get(key: string): Promise<string | null> {

@@ -1,5 +1,5 @@
-import type { TableDiff } from '../DiffTypes';
 import type { Dialect } from '../Dialect';
+import type { TableDiff } from '../DiffTypes';
 import { handleIndexCreates, handleIndexDrops } from './MigrationHandlers';
 
 export class IndexesSqlBuilder {

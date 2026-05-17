@@ -1,10 +1,10 @@
-import type { QueryOptions, SqlParameter, GroupByClause } from '@ts-linq/types';
+import type { GroupByClause, QueryOptions, SqlParameter } from '@ts-linq/types';
 
 export class MySqlGroupEmitter {
   public emit(parameters: SqlParameter[], options: QueryOptions): string {
     if (!options.groupBy) return '';
-    const groupBy: GroupByClause = Array.isArray(options.groupBy) 
-      ? { columns: options.groupBy } 
+    const groupBy: GroupByClause = Array.isArray(options.groupBy)
+      ? { columns: options.groupBy }
       : options.groupBy;
     let sql = ` GROUP BY ${groupBy.columns.join(', ')}`;
     if (groupBy.having) {

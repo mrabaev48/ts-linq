@@ -31,5 +31,3 @@ describe('MSSQL Provider + QueryBuilder Integration', () => {
     it.todo('should handle OUTPUT parameters from stored proc');
   });
 });
-
-

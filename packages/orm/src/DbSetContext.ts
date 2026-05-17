@@ -1,11 +1,12 @@
 import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
-import type { ChangeTracker } from './ChangeTracker';
 import type {
   EntityCacheLike,
   GlobalFilter,
   PerformanceOptions,
   SoftDeleteOptions
 } from '@ts-linq/types';
+
+import type { ChangeTracker } from './ChangeTracker';
 
 export interface DbSetContext {
   provider: DatabaseProvider;

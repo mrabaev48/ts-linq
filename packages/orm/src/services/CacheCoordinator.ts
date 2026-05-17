@@ -1,6 +1,7 @@
-import type { EntityCacheLike, CountCache } from '@ts-linq/types';
-import { QueryBuilder } from '@ts-linq/query';
 import { reflectGetOwnMetadata } from '@ts-linq/metadata';
+import { QueryBuilder } from '@ts-linq/query';
+import type { CountCache, EntityCacheLike } from '@ts-linq/types';
+
 import type { NormalizedChange } from '../types';
 
 type SqlCacheLike = { invalidateBy?: (m: (k: string) => boolean) => number };

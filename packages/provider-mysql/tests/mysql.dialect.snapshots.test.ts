@@ -49,8 +49,8 @@ describe('MySQL dialect snapshots', () => {
         'MATCH(title, content) AGAINST(? IN NATURAL LANGUAGE MODE) AS score'
       ],
       selectParams: ['$.a.b', 'mysql search']
-    } as any;
-    const built = dialect.buildSelect(MUser as any, opts);
+    };
+    const built = dialect.buildSelect(MUser, opts);
     expect(built).toMatchInlineSnapshot(`
       {
         "parameters": [

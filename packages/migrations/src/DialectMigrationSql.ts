@@ -1,18 +1,15 @@
-import type { SchemaDiff, TableDiff, MigrationSql } from './DiffTypes';
-import type { Dialect } from './Dialect';
+import { ColumnsSqlBuilder } from './builders/ColumnsSqlBuilder';
+import { ForeignKeysSqlBuilder } from './builders/ForeignKeysSqlBuilder';
+import { IndexesSqlBuilder } from './builders/IndexesSqlBuilder';
 // no local SQL utils needed here; builders render SQL
 import { TablesSqlBuilder } from './builders/TablesSqlBuilder';
-import { IndexesSqlBuilder } from './builders/IndexesSqlBuilder';
-import { ForeignKeysSqlBuilder } from './builders/ForeignKeysSqlBuilder';
-import { ColumnsSqlBuilder } from './builders/ColumnsSqlBuilder';
+import type { Dialect } from './Dialect';
+import type { MigrationSql, SchemaDiff, TableDiff } from './DiffTypes';
 
 // Re-export Dialect for backward compatibility
 export type { Dialect };
 
-export function generateMigrationFromDiff(
-  diff: SchemaDiff,
-  dialect: Dialect
-): MigrationSql {
+export function generateMigrationFromDiff(diff: SchemaDiff, dialect: Dialect): MigrationSql {
   return new MigrationSqlBuilder(dialect).build(diff);
 }
 

@@ -12,7 +12,7 @@ describe('MemoryProfiler', () => {
   describe('construction', () => {
     it('should create profiler with default options', () => {
       profiler = new MemoryProfiler();
-      
+
       expect(profiler).toBeInstanceOf(MemoryProfiler);
       expect(profiler.getSamples()).toEqual([]);
       expect(profiler.getAliveAllocations()).toBe(0);
@@ -25,7 +25,7 @@ describe('MemoryProfiler', () => {
         trackAllocations: true,
         maxSamples: 100
       });
-      
+
       expect(profiler).toBeDefined();
     });
   });
@@ -33,27 +33,27 @@ describe('MemoryProfiler', () => {
   describe('basic methods', () => {
     it('should provide getSamples method', () => {
       profiler = new MemoryProfiler();
-      
+
       expect(profiler.getSamples()).toEqual([]);
     });
 
     it('should provide getAliveAllocations method', () => {
       profiler = new MemoryProfiler({ trackAllocations: true });
-      
+
       expect(profiler.getAliveAllocations()).toBe(0);
     });
 
     it('should track allocations', () => {
       profiler = new MemoryProfiler({ trackAllocations: true });
-      
+
       const obj = profiler.trackAllocation({ id: 1 });
-      
+
       expect(obj).toEqual({ id: 1 });
     });
 
     it('should handle start and stop', () => {
       profiler = new MemoryProfiler({ sampleIntervalMs: 1000 });
-      
+
       expect(() => {
         profiler.start();
         profiler.stop();
@@ -63,9 +63,9 @@ describe('MemoryProfiler', () => {
     it('should handle onSample listener registration', () => {
       profiler = new MemoryProfiler();
       const listener = jest.fn();
-      
+
       const unsubscribe = profiler.onSample(listener);
-      
+
       expect(typeof unsubscribe).toBe('function');
       unsubscribe();
     });

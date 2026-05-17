@@ -36,7 +36,6 @@ export function writeFileIfMissing(filePath: string, contents: string): void {
 export function validateEnv(required: string[]): boolean {
   const missing = required.filter((k) => !process.env[k]);
   if (missing.length) {
-    // eslint-disable-next-line no-console
     console.error(`Missing required environment variables: ${missing.join(', ')}`);
     return false;
   }

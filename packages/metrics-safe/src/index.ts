@@ -1,2 +1,2 @@
-export * from './lib/MetricsSafe';
 export * from './lib/MemoryProfiler';
+export * from './lib/MetricsSafe';

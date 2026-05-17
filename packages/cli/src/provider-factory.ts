@@ -1,4 +1,4 @@
-import type { DatabaseProvider, CircuitBreakerOptions } from '@ts-linq/core';
+import type { CircuitBreakerOptions, DatabaseProvider } from '@ts-linq/core';
 import type {
   ConnectionHealthCheckOptions,
   ConnectionPoolOptions,
@@ -59,7 +59,9 @@ async function createPg(): Promise<DatabaseProvider> {
     ssl: sslConfig,
     applicationName: params.get('application_name') || undefined,
     schema: params.get('schema') || undefined,
-    connectionTimeoutMs: params.get('connect_timeout') ? parseInt(params.get('connect_timeout')!) * 1000 : undefined,
+    connectionTimeoutMs: params.get('connect_timeout')
+      ? parseInt(params.get('connect_timeout')!) * 1000
+      : undefined,
     poolOptions: pool,
     healthCheck: health
   }) as unknown as DatabaseProvider;
@@ -97,11 +99,14 @@ async function createMs(): Promise<DatabaseProvider> {
   if (!url) throw new Error('MSSQL_URL/DATABASE_URL is required for DB_PROVIDER=mssql');
   const { pool, health, circuit } = readPoolHealthCircuitFromEnv();
 
-  const parts = url.split(';').reduce((acc, part) => {
-    const [key, value] = part.split('=');
-    if (key && value) acc[key.trim().toLowerCase()] = value.trim();
-    return acc;
-  }, {} as Record<string, string>);
+  const parts = url.split(';').reduce(
+    (acc, part) => {
+      const [key, value] = part.split('=');
+      if (key && value) acc[key.trim().toLowerCase()] = value.trim();
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
   const { MssqlProvider } = await import('@ts-linq/provider-mssql');
   const provider = new MssqlProvider({
@@ -110,9 +115,13 @@ async function createMs(): Promise<DatabaseProvider> {
     user: parts['user id'] || parts['uid'],
     password: parts['password'] || parts['pwd'],
     encrypt: parts['encrypt'] === 'true' || parts['encrypt'] === 'True',
-    trustServerCertificate: parts['trustservercertificate'] === 'true' || parts['trustservercertificate'] === 'True',
-    integratedSecurity: parts['integrated security'] === 'true' || parts['integrated security'] === 'True',
-    connectionTimeout: parts['connection timeout'] ? parseInt(parts['connection timeout']) : undefined,
+    trustServerCertificate:
+      parts['trustservercertificate'] === 'true' || parts['trustservercertificate'] === 'True',
+    integratedSecurity:
+      parts['integrated security'] === 'true' || parts['integrated security'] === 'True',
+    connectionTimeout: parts['connection timeout']
+      ? parseInt(parts['connection timeout'])
+      : undefined,
     applicationName: parts['application name'],
     poolOptions: pool,
     healthCheck: health
@@ -120,8 +129,6 @@ async function createMs(): Promise<DatabaseProvider> {
   if (circuit) provider.configureCircuit(circuit);
   return provider;
 }
-
-
 
 function readPoolHealthCircuitFromEnv(): {
   pool?: ConnectionPoolOptions;
@@ -183,7 +190,7 @@ function readCircuitFromEnv(): CircuitBreakerOptions | undefined {
  * Consumers can pass the returned policy into DbContext PerformanceOptions.
  */
 export function readFallbackPolicyFromEnv(): FallbackPolicy | undefined {
-  const policy: FallbackPolicy = {} as FallbackPolicy;
+  const policy: FallbackPolicy = {};
   if (process.env.DB_FALLBACK_ALLOW_OPS)
     policy.allowOps = process.env.DB_FALLBACK_ALLOW_OPS.split(',').map((s) =>
       s.trim()
@@ -206,10 +213,13 @@ export function readFallbackPolicyFromEnv(): FallbackPolicy | undefined {
   if (!isEmpty(hedged)) policy.hedged = hedged;
   // Includes
   if (process.env.DB_FALLBACK_INCLUDES)
-    policy.allowIncludesOnFallback = process.env.DB_FALLBACK_INCLUDES as 'attempt' | 'skip' | 'error';
+    policy.allowIncludesOnFallback = process.env.DB_FALLBACK_INCLUDES as
+      | 'attempt'
+      | 'skip'
+      | 'error';
   return isEmpty(policy) ? undefined : policy;
 }
 
 function isEmpty(obj: object): boolean {
-  return Object.keys(obj as Record<string, unknown>).length === 0;
+  return Object.keys(obj).length === 0;
 }

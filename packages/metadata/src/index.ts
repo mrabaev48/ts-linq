@@ -1,13 +1,13 @@
+export * from './Column';
+export * from './Entity';
+export * from './EntityMetadata';
 export * from './MetadataRegistry';
 export * from './MetadataStorage';
 export * from './PendingMetadataCollector';
-export * from './EntityMetadata';
-export * from './Entity';
-export * from './Column';
 export * from './PrimaryKey';
+export { reflectGetOwnMetadata } from './reflectUtils';
 export * from './Relationships';
 export * from './ValidIf';
-export { reflectGetOwnMetadata } from './reflectUtils';
 
 import { MetadataRegistry } from './MetadataRegistry';
 

@@ -1,11 +1,12 @@
+import { MetadataStorage } from '@ts-linq/metadata';
+
+import type { DatabaseProvider } from '../src/DatabaseProvider';
+import { Column } from '../src/decorators/Column';
+import { Entity } from '../src/decorators/Entity';
+import { PrimaryKey } from '../src/decorators/PrimaryKey';
+import { ManyToOne, OneToMany } from '../src/decorators/Relationships';
 import { EntityLoader } from '../src/loading/EntityLoader';
 import { LoadingStrategy } from '../src/loading/LoadingStrategy';
-import type { DatabaseProvider } from '../src/DatabaseProvider';
-import { MetadataStorage } from '@ts-linq/metadata';
-import { Entity } from '../src/decorators/Entity';
-import { Column } from '../src/decorators/Column';
-import { PrimaryKey } from '../src/decorators/PrimaryKey';
-import { OneToMany, ManyToOne } from '../src/decorators/Relationships';
 
 function createTestEntities() {
   @Entity({ name: 'users' })
@@ -58,7 +59,7 @@ describe('EntityLoader', () => {
       findById: jest.fn(),
       findAll: jest.fn(),
       findWhereIn: jest.fn()
-    } as any;
+    };
 
     mockLogger = { warn: jest.fn() };
     loader = new EntityLoader(mockProvider as any, mockLogger);

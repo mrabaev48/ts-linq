@@ -34,19 +34,17 @@ d('[integration][mssql] isolation (READ COMMITTED vs SNAPSHOT)', () => {
       await p1.beginTransaction();
       const a1 = await p1.executeQuery<{ v: number }>(
         'SELECT [v] FROM [dbo].[iso_items] WITH (HOLDLOCK) WHERE [id]=@p1',
-        [1 as unknown as never]
+        [1]
       );
       expect(a1[0].v).toBe(0);
 
       await p2.beginTransaction();
-      await p2.executeNonQuery('UPDATE [dbo].[iso_items] SET [v]=1 WHERE [id]=@p1', [
-        1 as unknown as never
-      ]);
+      await p2.executeNonQuery('UPDATE [dbo].[iso_items] SET [v]=1 WHERE [id]=@p1', [1]);
       await p2.commitTransaction();
 
       const a2 = await p1.executeQuery<{ v: number }>(
         'SELECT [v] FROM [dbo].[iso_items] WITH (HOLDLOCK) WHERE [id]=@p1',
-        [1 as unknown as never]
+        [1]
       );
       expect(a2[0].v).toBe(0);
       await p1.commitTransaction();

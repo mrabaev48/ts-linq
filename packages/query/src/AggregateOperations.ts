@@ -2,8 +2,8 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { SqlParameter } from '@ts-linq/types';
 
-import { QueryBuilder } from './QueryBuilder';
-import { QueryModel } from './QueryModel';
+import type { QueryBuilder } from './QueryBuilder';
+import type { QueryModel } from './QueryModel';
 
 /**
  * Executes EF-style aggregate operations (average, sum, min, max, contains) against
@@ -66,11 +66,7 @@ export class AggregateOperations<T> {
    * @param fallbackFetch  Called when no PK metadata is available; typically `() => queryable.toArray()`.
    *                       The callback avoids a circular import between AggregateOperations and Queryable.
    */
-  async contains(
-    model: QueryModel,
-    item: T,
-    fallbackFetch: () => Promise<T[]>
-  ): Promise<boolean> {
+  async contains(model: QueryModel, item: T, fallbackFetch: () => Promise<T[]>): Promise<boolean> {
     const meta = MetadataStorage.getEntity(this.entityClass);
     if (meta && meta.primaryKeys && meta.primaryKeys.length > 0) {
       const pk = meta.primaryKeys[0];

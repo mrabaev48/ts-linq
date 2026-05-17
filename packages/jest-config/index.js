@@ -119,4 +119,9 @@ function createPackageJestConfig(overrides) {
   };
 }
 
-module.exports = { createJestConfig, createPackageJestConfig, tsLinqModuleNameMapper, tsLinqTsJestConfig };
+module.exports = {
+  createJestConfig,
+  createPackageJestConfig,
+  tsLinqModuleNameMapper,
+  tsLinqTsJestConfig
+};

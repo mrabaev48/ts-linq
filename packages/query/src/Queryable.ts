@@ -1,8 +1,8 @@
-import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
-import { SqlVisitor, type ColumnResolver } from '@ts-linq/sql-visitor';
 import type { ExpressionNode, PropertyNode } from '@ts-linq/ast';
-import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
+import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
+import { type ColumnResolver, SqlVisitor } from '@ts-linq/sql-visitor';
 import type {
   CountCache,
   EntityCacheLike,
@@ -15,6 +15,7 @@ import type {
   WhereClause
 } from '@ts-linq/types';
 import type { CteDefinition } from '@ts-linq/types';
+
 import { AggregateOperations } from './AggregateOperations';
 import { FallbackManager } from './FallbackManager';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
@@ -178,7 +179,8 @@ export class Queryable<T> {
     // Resolve column name from metadata (if available) or use property name
     const metadata = MetadataStorage.getEntity(this._entityClass);
     const dbColumn = metadata
-      ? metadata.columns.find((c) => c.propertyName === column || c.columnName === column)?.columnName || column
+      ? metadata.columns.find((c) => c.propertyName === column || c.columnName === column)
+          ?.columnName || column
       : column;
 
     const quotedCol = this._provider.getDialect().quoteIdentifier(dbColumn);
@@ -271,7 +273,11 @@ export class Queryable<T> {
     readonly parameters: readonly unknown[];
   }): Queryable<T> {
     const visitor = new SqlVisitor();
-    const { condition, parameters } = visitor.toSql(input.ast, input.parameters, this.buildColumnResolver());
+    const { condition, parameters } = visitor.toSql(
+      input.ast,
+      input.parameters,
+      this.buildColumnResolver()
+    );
     const whereClause: WhereClause = { condition, parameters };
     this._model.where = this._model.where || [];
     this._model.where.push(whereClause);
@@ -331,7 +337,7 @@ export class Queryable<T> {
   /** With CTE support: define a named subquery and return a Queryable bound to that CTE. */
   public withCte(name: string, subquery: Queryable<unknown>): Queryable<T> {
     const { query } = subquery._sqlBuilder.generateFromModel(
-      subquery._entityClass as unknown as new () => unknown,
+      subquery._entityClass,
       subquery._model
     );
     const cloned = this.clone();
@@ -358,7 +364,9 @@ export class Queryable<T> {
    * Projected SELECT with a pre-computed field list provided by the compile-time transformer.
    * Do not call this method directly — it is emitted by the transformer when rewriting select().
    */
-  public selectCompiled<TResult>(input: { readonly fields: readonly string[] }): Queryable<TResult> {
+  public selectCompiled<TResult>(input: {
+    readonly fields: readonly string[];
+  }): Queryable<TResult> {
     const next = new Queryable<TResult>(
       this._entityClass as unknown as new () => TResult,
       this._provider,
@@ -369,7 +377,7 @@ export class Queryable<T> {
     next._model = this._model.clone();
     next._model.select = [...input.fields];
     (next as unknown as { _fallbackManager: FallbackManager<TResult> })._fallbackManager =
-      (this._fallbackManager as unknown as FallbackManager<TResult>);
+      this._fallbackManager;
     return next;
   }
 
@@ -522,7 +530,11 @@ export class Queryable<T> {
       throw new Error('havingCompiled() requires a preceding groupBy()');
     }
     const visitor = new SqlVisitor();
-    const { condition, parameters } = visitor.toSql(input.ast, input.parameters, this.buildColumnResolver());
+    const { condition, parameters } = visitor.toSql(
+      input.ast,
+      input.parameters,
+      this.buildColumnResolver()
+    );
     this._model.groupBy.having = { condition, parameters };
     return this;
   }
@@ -532,7 +544,7 @@ export class Queryable<T> {
    * @example
    * const page1 = await context.books.orderBy('id').paginate(1, 20);
    */
-  public paginate(
+  public async paginate(
     page: number,
     size: number
   ): Promise<{ items: T[]; total: number; page: number; size: number }> {
@@ -543,7 +555,7 @@ export class Queryable<T> {
       this._includes,
       this._cte,
       () => this.prepareQueryModel(),
-      () => this.count()
+      async () => this.count()
     ).paginate(page, size);
   }
 
@@ -552,7 +564,7 @@ export class Queryable<T> {
    * @example
    * const page = await context.books.orderBy('id').keysetPaginate('id', lastId, 20);
    */
-  public keysetPaginate<TKey extends keyof T>(
+  public async keysetPaginate<TKey extends keyof T>(
     key: TKey,
     after: T[TKey] | null,
     size: number
@@ -564,7 +576,7 @@ export class Queryable<T> {
       this._includes,
       this._cte,
       () => this.prepareQueryModel(),
-      () => this.count()
+      async () => this.count()
     ).keysetPaginate(key, after, size);
   }
 
@@ -605,7 +617,11 @@ export class Queryable<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
+    const entities = await this._executor.executeAndMaterialize(
+      queryModel,
+      this._includes,
+      this._cte
+    );
     if (!entities.length) throw new Error('Sequence contains no elements');
     return entities[0];
   }
@@ -618,7 +634,11 @@ export class Queryable<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
+    const entities = await this._executor.executeAndMaterialize(
+      queryModel,
+      this._includes,
+      this._cte
+    );
     return entities[0] ?? null;
   }
 
@@ -721,7 +741,11 @@ export class Queryable<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
+    const entities = await this._executor.executeAndMaterialize(
+      queryModel,
+      this._includes,
+      this._cte
+    );
     return entities.length > 0;
   }
 
@@ -738,9 +762,10 @@ export class Queryable<T> {
 
     return (node: PropertyNode): string => {
       const lastSegment = node.name ?? node.path?.[node.path.length - 1];
-      const col = lastSegment !== undefined
-        ? metadata.columns.find(c => c.propertyName === lastSegment)
-        : undefined;
+      const col =
+        lastSegment !== undefined
+          ? metadata.columns.find((c) => c.propertyName === lastSegment)
+          : undefined;
       const resolvedName = col?.columnName ?? lastSegment;
 
       if (node.name !== undefined) {
@@ -796,7 +821,7 @@ export class Queryable<T> {
   public async contains(item: T): Promise<boolean> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
-    return this._aggregates.contains(queryModel, item, () => this.toArray());
+    return this._aggregates.contains(queryModel, item, async () => this.toArray());
   }
 
   /** Get elements that are in this sequence but not in the other (SQL EXCEPT). */
@@ -807,7 +832,7 @@ export class Queryable<T> {
       all: false,
       setOp: 'EXCEPT',
       other: other._model.clone(),
-      entity: other._entityClass as unknown as new () => unknown
+      entity: other._entityClass
     });
     return cloned;
   }
@@ -820,7 +845,7 @@ export class Queryable<T> {
       all: false,
       setOp: 'INTERSECT',
       other: other._model.clone(),
-      entity: other._entityClass as unknown as new () => unknown
+      entity: other._entityClass
     });
     return cloned;
   }
@@ -832,7 +857,7 @@ export class Queryable<T> {
     cloned._model.unions.push({
       all: true,
       other: other._model.clone(),
-      entity: other._entityClass as unknown as new () => unknown
+      entity: other._entityClass
     });
     return cloned;
   }
@@ -847,14 +872,15 @@ export class Queryable<T> {
     const leftMeta = MetadataStorage.getEntity(this._entityClass);
     const rightMeta = MetadataStorage.getEntity(otherCtor);
     if (!leftMeta || !rightMeta) throw new Error('ts-linq: entity metadata not found for join');
-    const leftCol = leftMeta.columns.find(c => c.propertyName === leftKey)?.columnName ?? leftKey;
-    const rightCol = rightMeta.columns.find(c => c.propertyName === rightKey)?.columnName ?? rightKey;
+    const leftCol = leftMeta.columns.find((c) => c.propertyName === leftKey)?.columnName ?? leftKey;
+    const rightCol =
+      rightMeta.columns.find((c) => c.propertyName === rightKey)?.columnName ?? rightKey;
     this._model.joins = this._model.joins ?? [];
     this._model.joins.push({
       type,
       table: rightMeta.tableName,
       on: `${leftMeta.tableName}.${leftCol} = ${rightMeta.tableName}.${rightCol}`,
-      alias,
+      alias
     });
   }
 }

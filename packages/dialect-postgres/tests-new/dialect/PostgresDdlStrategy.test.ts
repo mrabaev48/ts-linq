@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
+
 import { PostgresDdlStrategy } from '../../src/PostgresDdlStrategy';
-import type { EntityMetadata, ColumnMetadata } from '@ts-linq/types';
 
 describe('PostgresDdlStrategy', () => {
   let strategy: PostgresDdlStrategy;
@@ -246,7 +247,9 @@ describe('PostgresDdlStrategy', () => {
         unique: false
       });
 
-      expect(sql).toBe('CREATE INDEX IF NOT EXISTS "idx_orders_user_date" ON "orders" ("user_id", "created_at")');
+      expect(sql).toBe(
+        'CREATE INDEX IF NOT EXISTS "idx_orders_user_date" ON "orders" ("user_id", "created_at")'
+      );
     });
 
     it('should generate index with column orders', () => {
@@ -268,7 +271,9 @@ describe('PostgresDdlStrategy', () => {
         nulls: { name: 'LAST' }
       });
 
-      expect(sql).toBe('CREATE INDEX IF NOT EXISTS "idx_users_name_nulls" ON "users" ("name" NULLS LAST)');
+      expect(sql).toBe(
+        'CREATE INDEX IF NOT EXISTS "idx_users_name_nulls" ON "users" ("name" NULLS LAST)'
+      );
     });
 
     it('should generate index with WHERE clause (partial index)', () => {
@@ -279,7 +284,9 @@ describe('PostgresDdlStrategy', () => {
         where: 'is_active = true'
       });
 
-      expect(sql).toBe('CREATE INDEX IF NOT EXISTS "idx_active_users" ON "users" ("email") WHERE is_active = true');
+      expect(sql).toBe(
+        'CREATE INDEX IF NOT EXISTS "idx_active_users" ON "users" ("email") WHERE is_active = true'
+      );
     });
 
     it('should generate index with USING method', () => {
@@ -301,7 +308,9 @@ describe('PostgresDdlStrategy', () => {
         concurrently: true
       });
 
-      expect(sql).toBe('CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_users_email_concurrent" ON "users" ("email")');
+      expect(sql).toBe(
+        'CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_users_email_concurrent" ON "users" ("email")'
+      );
     });
 
     it('should generate index with expression', () => {
@@ -312,7 +321,9 @@ describe('PostgresDdlStrategy', () => {
         expressions: ['LOWER(email)']
       });
 
-      expect(sql).toBe('CREATE INDEX IF NOT EXISTS "idx_users_lower_email" ON "users" ((LOWER(email)))');
+      expect(sql).toBe(
+        'CREATE INDEX IF NOT EXISTS "idx_users_lower_email" ON "users" ((LOWER(email)))'
+      );
     });
 
     it('should generate index with WITH parameters', () => {
@@ -323,7 +334,9 @@ describe('PostgresDdlStrategy', () => {
         withParams: { fillfactor: 70 }
       });
 
-      expect(sql).toBe('CREATE INDEX IF NOT EXISTS "idx_users_name_fillfactor" ON "users" ("name") WITH (fillfactor=70)');
+      expect(sql).toBe(
+        'CREATE INDEX IF NOT EXISTS "idx_users_name_fillfactor" ON "users" ("name") WITH (fillfactor=70)'
+      );
     });
 
     it('should generate index with multiple features combined', () => {
@@ -334,7 +347,7 @@ describe('PostgresDdlStrategy', () => {
         using: 'btree',
         orders: { created_at: 'DESC' },
         nulls: { created_at: 'LAST' },
-        where: 'status = \'active\'',
+        where: "status = 'active'",
         withParams: { fillfactor: 80 }
       });
 

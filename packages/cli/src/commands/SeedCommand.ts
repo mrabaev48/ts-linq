@@ -1,10 +1,11 @@
-import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
-import type { DbCommand } from './Command';
-import type { Logger } from '../ports/Logger';
+import * as path from 'path';
+
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
-import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
+import type { FileSystem } from '../ports/FileSystem';
+import type { Logger } from '../ports/Logger';
+import type { DbCommand } from './Command';
 
 export class SeedCommand implements DbCommand {
   public readonly name = 'seed';
@@ -29,7 +30,6 @@ export class SeedCommand implements DbCommand {
       .map((stmt: string) => stmt.trim())
       .filter(Boolean);
     for (const statement of statements) {
-      // eslint-disable-next-line no-await-in-loop
       await provider.executeNonQuery(statement);
     }
     this.logger.info(`Applied ${statements.length} seed statements from ${sqlFile}`);

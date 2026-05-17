@@ -1,5 +1,5 @@
-import type { TableDiff } from '../DiffTypes';
 import type { Dialect } from '../Dialect';
+import type { TableDiff } from '../DiffTypes';
 import { handleColumnChanges, handleColumnRenames } from './MigrationHandlers';
 
 export class ColumnsSqlBuilder {

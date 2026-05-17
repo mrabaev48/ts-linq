@@ -1,4 +1,5 @@
-import type { RetryPolicy, SqlLogger, SqlParameter, CircuitState } from '@ts-linq/types';
+import type { CircuitState, RetryPolicy, SqlLogger, SqlParameter } from '@ts-linq/types';
+
 import type { CircuitBreakerOptions } from '../types';
 import { CircuitOpenError } from '../types';
 
@@ -44,19 +45,16 @@ export class ResilienceManager {
     this.transitionCircuit('closed', reason);
   }
 
-  public async execute<T>(
-    fn: () => Promise<T>,
-    context: ResilienceContext
-  ): Promise<T> {
+  public async execute<T>(fn: () => Promise<T>, context: ResilienceContext): Promise<T> {
     this.preCheckCircuit();
-    
+
     const maxAttempts = 3;
     const baseDelayMs = 50;
     let attempt = 0;
 
     // Do not retry within an explicit transaction; also avoid retrying in half-open
     const allowRetry = !context.inTransaction && this.circuitState === 'closed';
-    
+
     // Track half-open probe usage to enforce concurrency cap
     let decrementHalfOpenOnExit = false;
     if (this.circuitState === 'half-open') {
@@ -66,13 +64,13 @@ export class ResilienceManager {
     while (true) {
       try {
         const result = await fn();
-        
+
         // Success path: reset circuit if needed
         if (this.circuitState === 'half-open') {
           this.transitionCircuit('closed', 'probe succeeded');
         }
         this.circuitFailures = 0;
-        
+
         if (decrementHalfOpenOnExit) {
           this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
         }
@@ -80,11 +78,11 @@ export class ResilienceManager {
       } catch (error) {
         attempt++;
         const isTransient = this.isTransientError(error);
-        
+
         // Circuit breaker failure accounting
         const countOnlyTransient = this.circuitOptions?.countTransientOnly ?? true;
         const shouldCountFailure = !countOnlyTransient || isTransient;
-        
+
         if (shouldCountFailure) this.circuitFailures++;
 
         // If in half-open, immediate open on first failure
@@ -137,7 +135,7 @@ export class ResilienceManager {
   private preCheckCircuit(): void {
     const enabled = this.circuitOptions?.enabled ?? true;
     if (!enabled) return;
-    
+
     if (this.circuitState === 'open') {
       const now = Date.now();
       const openSince = this.circuitOpenedAt ?? now;
@@ -145,16 +143,16 @@ export class ResilienceManager {
       const cap = Math.max(baseOpen, this.circuitOptions?.maxOpenDurationMs ?? 300000);
       const factor = Math.min(6, Math.max(0, this.circuitOpenBackoffExp));
       const openDuration = Math.min(baseOpen * Math.pow(2, factor), cap);
-      
+
       if (now - openSince < openDuration) {
         throw new CircuitOpenError();
       }
-      
+
       // Cooldown elapsed -> move to half-open
       this.transitionCircuit('half-open', 'cooldown elapsed');
       this.halfOpenInFlight = 0;
     }
-    
+
     if (this.circuitState === 'half-open') {
       const maxProbes = Math.max(1, this.circuitOptions?.halfOpenMaxCalls ?? 1);
       if (this.halfOpenInFlight >= maxProbes) {

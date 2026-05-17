@@ -1,7 +1,7 @@
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, test } from '@jest/globals';
+import { Column, Entity, ManyToOne, OneToMany, PrimaryKey } from '@ts-linq/metadata';
+
 import { DbContext } from '../../src/DbContext';
-import { DbSet } from '../../src/DbSet';
-import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '@ts-linq/metadata';
 import { TestProvider } from '../stubs/TestProvider';
 
 @Entity()
@@ -49,7 +49,7 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
   beforeEach(async () => {
     provider = new TestProvider(':memory:');
     await provider.connect();
-    context = new UserDbContext({ provider: provider as any });
+    context = new UserDbContext({ provider: provider });
     await context.ensureCreated();
   });
 
@@ -205,7 +205,12 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
         .set(User)
         .query()
         .whereCompiled({
-          ast: { type: 'binary', left: { type: 'property', path: ['age'] }, operator: '>=', right: { type: 'literal', value: 30 } },
+          ast: {
+            type: 'binary',
+            left: { type: 'property', path: ['age'] },
+            operator: '>=',
+            right: { type: 'literal', value: 30 }
+          },
           parameters: []
         })
         .toArray();
@@ -237,7 +242,12 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
         .set(User)
         .query()
         .whereCompiled({
-          ast: { type: 'binary', left: { type: 'property', path: ['age'] }, operator: '>=', right: { type: 'literal', value: 30 } },
+          ast: {
+            type: 'binary',
+            left: { type: 'property', path: ['age'] },
+            operator: '>=',
+            right: { type: 'literal', value: 30 }
+          },
           parameters: []
         })
         .count();
@@ -250,7 +260,12 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
         .set(User)
         .query()
         .whereCompiled({
-          ast: { type: 'binary', left: { type: 'property', path: ['name'] }, operator: '===', right: { type: 'literal', value: 'Bob' } },
+          ast: {
+            type: 'binary',
+            left: { type: 'property', path: ['name'] },
+            operator: '===',
+            right: { type: 'literal', value: 'Bob' }
+          },
           parameters: []
         })
         .firstOrDefault();
@@ -265,7 +280,12 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
         .set(User)
         .query()
         .whereCompiled({
-          ast: { type: 'binary', left: { type: 'property', path: ['name'] }, operator: '===', right: { type: 'literal', value: 'NonExistent' } },
+          ast: {
+            type: 'binary',
+            left: { type: 'property', path: ['name'] },
+            operator: '===',
+            right: { type: 'literal', value: 'NonExistent' }
+          },
           parameters: []
         })
         .firstOrDefault();
@@ -369,7 +389,12 @@ describe('ORM Integration - Real User Scenarios (With Decorators)', () => {
         .set(Post)
         .query()
         .whereCompiled({
-          ast: { type: 'binary', left: { type: 'property', path: ['userId'] }, operator: '===', right: { type: 'literal', value: author.id } },
+          ast: {
+            type: 'binary',
+            left: { type: 'property', path: ['userId'] },
+            operator: '===',
+            right: { type: 'literal', value: author.id }
+          },
           parameters: []
         })
         .toArray();

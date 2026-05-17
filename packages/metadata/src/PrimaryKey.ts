@@ -1,5 +1,5 @@
-import { MetadataStorage } from './MetadataStorage';
 import type { ColumnOptions } from './Column';
+import { MetadataStorage } from './MetadataStorage';
 
 export interface PrimaryKeyOptions extends ColumnOptions {
   autoIncrement?: boolean;
@@ -14,7 +14,7 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
     const name = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     // Ensure entity metadata exists (property decorators run before class decorator)
     let meta = MetadataStorage.getEntity(ctor);
     if (!meta) {
@@ -22,7 +22,7 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
       MetadataStorage.addEntity(ctor, ctor.name);
       meta = MetadataStorage.getEntity(ctor);
     }
-    
+
     const columnMeta: {
       propertyName: string;
       columnName: string;
@@ -40,10 +40,10 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
       isGenerated: !!options?.autoIncrement,
       isVersion: !!options?.version
     };
-    
+
     MetadataStorage.addColumn(ctor, columnMeta);
     MetadataStorage.addPrimaryKey(ctor, name);
-    
+
     if (options.branded) {
       const col = meta?.columns.find((c) => c.propertyName === name) as
         | typeof columnMeta

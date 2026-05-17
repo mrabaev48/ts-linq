@@ -1,5 +1,6 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { SoftDeleteOptions, SoftDeleteContext } from './types';
+
+import type { SoftDeleteContext, SoftDeleteOptions } from './types';
 
 /**
  * Middleware that handles soft delete operations

@@ -39,7 +39,7 @@ export class FallbackManager<T> {
    */
   clone(): FallbackManager<T> {
     const copy = new FallbackManager<T>({ ...this.throttle }); // deep-copy counters
-    (copy.fallbacks as Array<QueryFallback<T>>).push(...this.fallbacks);
+    copy.fallbacks.push(...this.fallbacks);
     return copy;
   }
 }

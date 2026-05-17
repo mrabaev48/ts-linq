@@ -1,4 +1,9 @@
-import { safeCache, safeCacheSize, safeCacheEvicted, warnIfLoggerDebug } from '../src/lib/MetricsSafe';
+import {
+  safeCache,
+  safeCacheEvicted,
+  safeCacheSize,
+  warnIfLoggerDebug
+} from '../src/lib/MetricsSafe';
 
 describe('MetricsSafe', () => {
   const originalEnv = process.env;

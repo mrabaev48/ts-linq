@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
+
 import { AuditMiddleware } from '../src/AuditMiddleware';
-import { Entity, PrimaryKey, Column } from '@ts-linq/metadata';
 import type { AuditContext } from '../src/types';
 
 @Entity({ name: 'documents' })
@@ -175,8 +176,8 @@ describe('AuditMiddleware', () => {
     });
 
     it('should set updatedAt on update', async () => {
-      const entity: Partial<Document> = { 
-        id: 1, 
+      const entity: Partial<Document> = {
+        id: 1,
         title: 'Updated',
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-01')
@@ -190,7 +191,7 @@ describe('AuditMiddleware', () => {
       };
 
       const originalUpdatedAt = entity.updatedAt;
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       await middleware.applyAudit(context);
 
@@ -215,8 +216,8 @@ describe('AuditMiddleware', () => {
 
     it('should update updatedBy on modification', async () => {
       currentUser = 'user1';
-      const entity: Partial<Document> = { 
-        id: 1, 
+      const entity: Partial<Document> = {
+        id: 1,
         title: 'Document',
         createdBy: 'user1',
         updatedBy: 'user1'
@@ -245,8 +246,8 @@ describe('AuditMiddleware', () => {
 
     it('should not modify createdAt/createdBy on update', async () => {
       const originalCreatedAt = new Date('2024-01-01');
-      const entity: Partial<Document> = { 
-        id: 1, 
+      const entity: Partial<Document> = {
+        id: 1,
         title: 'Document',
         createdAt: originalCreatedAt,
         createdBy: 'original-user'
@@ -353,7 +354,7 @@ describe('AuditMiddleware', () => {
     it('should support async getCurrentUser function', async () => {
       const mw = new AuditMiddleware({
         getCurrentUser: async () => {
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
           return 'async-user';
         }
       });

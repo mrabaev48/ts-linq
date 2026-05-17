@@ -173,7 +173,6 @@ export class MemoryProfiler {
     // Dynamic import to avoid hard dependency
     let inspector: typeof import('node:inspector') | null = null;
     try {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
       inspector = await import('node:inspector');
     } catch {
       return null;
@@ -223,6 +222,6 @@ function safeMemoryUsage(): NodeJS.MemoryUsage & { arrayBuffers?: number } {
       heapUsed: 0,
       external: 0,
       arrayBuffers: 0
-    } as NodeJS.MemoryUsage & { arrayBuffers?: number };
+    };
   }
 }

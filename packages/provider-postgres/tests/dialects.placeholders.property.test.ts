@@ -1,11 +1,9 @@
-import fc from 'fast-check';
-import { QueryBuilder } from '@ts-linq/query';
+import { MssqlDialect } from '@ts-linq/dialect-mssql';
+import { MysqlDialect } from '@ts-linq/dialect-mysql';
+import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { QueryOptions } from '@ts-linq/types';
-import { PostgresDialect } from '@ts-linq/dialect-postgres';
-import { MysqlDialect } from '@ts-linq/dialect-mysql';
-import { MssqlDialect } from '@ts-linq/dialect-mssql';
-
+import fc from 'fast-check';
 
 class T {
   id!: number;
@@ -58,8 +56,8 @@ describe('Dialect placeholders (property-based)', () => {
           select: selectCount ? select : ['id'],
           selectParams,
           where
-        } as any;
-        const built = dialect.buildSelect(T as any, opts);
+        };
+        const built = dialect.buildSelect(T, opts);
         const total = selectCount + whereCount;
         for (let i = 1; i <= total; i++) {
           expect(built.query).toContain(`$${i}`);
@@ -80,10 +78,11 @@ describe('Dialect placeholders (property-based)', () => {
           condition: `a > ?`,
           parameters: [1]
         }));
-        const built = dialect.buildSelect(
-          T as any,
-          { select: selectCount ? select : ['id'], selectParams, where } as any
-        );
+        const built = dialect.buildSelect(T, {
+          select: selectCount ? select : ['id'],
+          selectParams,
+          where
+        });
         const total = selectCount + whereCount;
         const qCount = (built.query.match(/\?/g) || []).length;
         expect(qCount).toBe(total);
@@ -103,10 +102,11 @@ describe('Dialect placeholders (property-based)', () => {
           condition: `a = ?`,
           parameters: [i]
         }));
-        const built = dialect.buildSelect(
-          T as any,
-          { select: selectCount ? select : ['id'], selectParams, where } as any
-        );
+        const built = dialect.buildSelect(T, {
+          select: selectCount ? select : ['id'],
+          selectParams,
+          where
+        });
         const total = selectCount + whereCount;
         for (let i = 1; i <= total; i++) {
           expect(built.query).toContain(`@p${i}`);
@@ -116,6 +116,4 @@ describe('Dialect placeholders (property-based)', () => {
       { numRuns: 20 }
     );
   });
-
-
 });

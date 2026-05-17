@@ -8,6 +8,7 @@ import {
   OptimisticConcurrencyError,
   UniqueConstraintError
 } from '@ts-linq/types';
+
 import { buildPostgresConnectionString } from './buildConnectionString';
 
 // Lazy require to avoid hard dependency if not installed
@@ -15,7 +16,6 @@ let Pg: {
   Pool: new (cfg: { connectionString: string }) => PgPoolLike;
 };
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   Pg = require('pg');
 } catch (e) {
   try {
@@ -104,12 +104,12 @@ export class PostgresProvider extends DatabaseProvider {
       value instanceof Date ||
       value instanceof Uint8Array
     ) {
-      return value as SqlParameter;
+      return value;
     }
     try {
-      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+      return JSON.stringify(value ?? null);
     } catch {
-      return String(value) as unknown as SqlParameter;
+      return String(value);
     }
   }
 
@@ -132,7 +132,7 @@ export class PostgresProvider extends DatabaseProvider {
       this.pool = new Pool(pgConfig as { connectionString: string });
       this.ownsPool = true;
     }
-    
+
     this.isConnected = true;
     // Start health checks if enabled
     await (async () => {
@@ -151,7 +151,7 @@ export class PostgresProvider extends DatabaseProvider {
   public async disconnect(): Promise<void> {
     this.stopHealthChecks();
     if (this.pool && this.ownsPool) {
-       await this.pool.end();
+      await this.pool.end();
     }
     this.isConnected = false;
   }
@@ -287,12 +287,10 @@ export class PostgresProvider extends DatabaseProvider {
       { condition: `"${col}" = ?`, parameters: [this.coerceToSqlParameter(id)] }
     ];
 
-
-
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 });
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
-    
+
     const firstRow = rows[0];
     if (!firstRow) return null;
     return this.mapRowToEntity(firstRow, entityClass);
@@ -304,7 +302,6 @@ export class PostgresProvider extends DatabaseProvider {
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
     const where: import('@ts-linq/types').WhereClause[] = [];
-
 
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where });
@@ -322,14 +319,13 @@ export class PostgresProvider extends DatabaseProvider {
 
     const keys = Object.keys(conditions);
     const where: import('@ts-linq/types').WhereClause[] = keys.map((k) => {
-      const colName = meta.columns.find((c) => c.propertyName === k || c.columnName === k)?.columnName || k;
+      const colName =
+        meta.columns.find((c) => c.propertyName === k || c.columnName === k)?.columnName || k;
       return {
         condition: `"${colName}" = ?`,
         parameters: [this.coerceToSqlParameter(conditions[k])]
       };
     });
-
-
 
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where });
@@ -346,7 +342,7 @@ export class PostgresProvider extends DatabaseProvider {
     if (!values || values.length === 0) return [];
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    
+
     const colName =
       meta.columns.find((c) => c.propertyName === column || c.columnName === column)?.columnName ||
       column;
@@ -357,8 +353,6 @@ export class PostgresProvider extends DatabaseProvider {
         parameters: [values as unknown as SqlParameter]
       }
     ];
-
-
 
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where });
@@ -482,7 +476,7 @@ function convertValueFromPg(value: unknown, type: string): unknown {
       return Boolean(value);
     case 'INTEGER':
     case 'NUMBER':
-      return typeof value === 'number' ? value : Number(value as unknown as string);
+      return typeof value === 'number' ? value : Number(value);
     case 'TIMESTAMPTZ':
     case 'DATETIME':
     case 'DATE':

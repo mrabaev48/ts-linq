@@ -1,5 +1,6 @@
-import { DatabaseHarness, createDatabaseHarness, type DatabaseProvider } from '../src/harness/DatabaseHarness';
-import { MockDatabaseProvider, createMockProvider } from '../src/mocks/MockProvider';
+import { createDatabaseHarness, DatabaseHarness } from '../src/harness/DatabaseHarness';
+import type { MockDatabaseProvider } from '../src/mocks/MockProvider';
+import { createMockProvider } from '../src/mocks/MockProvider';
 
 class TestEntity {
   id!: number;
@@ -31,7 +32,7 @@ describe('DatabaseHarness', () => {
 
     it('should create using factory function', () => {
       const h = createDatabaseHarness();
-      
+
       expect(h).toBeInstanceOf(DatabaseHarness);
     });
   });
@@ -41,28 +42,28 @@ describe('DatabaseHarness', () => {
       const provider = await harness.setup({
         provider: mockProvider
       });
-      
+
       expect(provider).toBe(mockProvider);
     });
 
     it('should auto-connect by default', async () => {
       const connectSpy = jest.spyOn(mockProvider, 'connect');
-      
+
       await harness.setup({
         provider: mockProvider
       });
-      
+
       expect(connectSpy).toHaveBeenCalled();
     });
 
     it('should not auto-connect when disabled', async () => {
       const connectSpy = jest.spyOn(mockProvider, 'connect');
-      
+
       await harness.setup({
         provider: mockProvider,
         autoConnect: false
       });
-      
+
       expect(connectSpy).not.toHaveBeenCalled();
     });
   });
@@ -70,9 +71,9 @@ describe('DatabaseHarness', () => {
   describe('createSchema()', () => {
     it('should create tables for entities', async () => {
       const executeSpy = jest.spyOn(mockProvider, 'execute');
-      
+
       await harness.createSchema(mockProvider, [TestEntity]);
-      
+
       expect(executeSpy).toHaveBeenCalledWith(
         'CREATE TABLE IF EXISTS testentity (id INTEGER PRIMARY KEY)',
         []
@@ -81,9 +82,9 @@ describe('DatabaseHarness', () => {
 
     it('should create multiple tables', async () => {
       const executeSpy = jest.spyOn(mockProvider, 'execute');
-      
+
       await harness.createSchema(mockProvider, [TestEntity, AnotherEntity]);
-      
+
       expect(executeSpy).toHaveBeenCalledTimes(2);
       expect(executeSpy).toHaveBeenCalledWith(
         'CREATE TABLE IF EXISTS testentity (id INTEGER PRIMARY KEY)',
@@ -98,9 +99,9 @@ describe('DatabaseHarness', () => {
     it('should lowercase table names', async () => {
       class UpperCaseEntity {}
       const executeSpy = jest.spyOn(mockProvider, 'execute');
-      
+
       await harness.createSchema(mockProvider, [UpperCaseEntity]);
-      
+
       expect(executeSpy).toHaveBeenCalledWith(
         'CREATE TABLE IF EXISTS uppercaseentity (id INTEGER PRIMARY KEY)',
         []
@@ -111,20 +112,17 @@ describe('DatabaseHarness', () => {
   describe('dropSchema()', () => {
     it('should drop table for entity', async () => {
       const executeSpy = jest.spyOn(mockProvider, 'execute');
-      
+
       await harness.dropSchema(mockProvider, [TestEntity]);
-      
-      expect(executeSpy).toHaveBeenCalledWith(
-        'DROP TABLE IF EXISTS testentity',
-        []
-      );
+
+      expect(executeSpy).toHaveBeenCalledWith('DROP TABLE IF EXISTS testentity', []);
     });
 
     it('should drop multiple tables in reverse order', async () => {
       const executeSpy = jest.spyOn(mockProvider, 'execute');
-      
+
       await harness.dropSchema(mockProvider, [TestEntity, AnotherEntity]);
-      
+
       expect(executeSpy).toHaveBeenCalledTimes(2);
       const calls = executeSpy.mock.calls;
       expect(calls[0][0]).toBe('DROP TABLE IF EXISTS anotherentity');
@@ -139,40 +137,37 @@ describe('DatabaseHarness', () => {
         { id: 1, name: 'Alice' },
         { id: 2, name: 'Bob' }
       ];
-      
+
       await harness.seed(mockProvider, TestEntity, data);
-      
+
       expect(executeSpy).toHaveBeenCalledTimes(2);
-      expect(executeSpy).toHaveBeenCalledWith(
-        'INSERT INTO testentity (id, name) VALUES (?, ?)',
-        [1, 'Alice']
-      );
-      expect(executeSpy).toHaveBeenCalledWith(
-        'INSERT INTO testentity (id, name) VALUES (?, ?)',
-        [2, 'Bob']
-      );
+      expect(executeSpy).toHaveBeenCalledWith('INSERT INTO testentity (id, name) VALUES (?, ?)', [
+        1,
+        'Alice'
+      ]);
+      expect(executeSpy).toHaveBeenCalledWith('INSERT INTO testentity (id, name) VALUES (?, ?)', [
+        2,
+        'Bob'
+      ]);
     });
 
     it('should handle empty data array', async () => {
       const executeSpy = jest.spyOn(mockProvider, 'execute');
-      
+
       await harness.seed(mockProvider, TestEntity, []);
-      
+
       expect(executeSpy).not.toHaveBeenCalled();
     });
 
     it('should handle partial data', async () => {
       const executeSpy = jest.spyOn(mockProvider, 'execute');
-      const data = [
-        { name: 'Alice' }
-      ];
-      
+      const data = [{ name: 'Alice' }];
+
       await harness.seed(mockProvider, TestEntity, data);
-      
-      expect(executeSpy).toHaveBeenCalledWith(
-        'INSERT INTO testentity (name) VALUES (?)',
-        ['Alice']
-      );
+
+      expect(executeSpy).toHaveBeenCalledWith('INSERT INTO testentity (name) VALUES (?)', [
+        'Alice'
+      ]);
     });
   });
 
@@ -180,17 +175,17 @@ describe('DatabaseHarness', () => {
     it('should execute cleanup functions in reverse order', async () => {
       const cleanup1 = jest.fn();
       const cleanup2 = jest.fn();
-      
+
       await harness.setup({
         provider: mockProvider,
         autoConnect: false
       });
-      
+
       (harness as any).cleanup.push(cleanup1);
       (harness as any).cleanup.push(cleanup2);
-      
+
       await harness.teardown();
-      
+
       expect(cleanup2).toHaveBeenCalled();
       expect(cleanup1).toHaveBeenCalled();
       expect(cleanup2.mock.invocationCallOrder[0]).toBeLessThan(
@@ -200,13 +195,13 @@ describe('DatabaseHarness', () => {
 
     it('should disconnect provider when auto-connected', async () => {
       const disconnectSpy = jest.spyOn(mockProvider, 'disconnect');
-      
+
       await harness.setup({
         provider: mockProvider
       });
-      
+
       await harness.teardown();
-      
+
       expect(disconnectSpy).toHaveBeenCalled();
     });
 
@@ -214,9 +209,9 @@ describe('DatabaseHarness', () => {
       await harness.setup({
         provider: mockProvider
       });
-      
+
       await harness.teardown();
-      
+
       expect((harness as any).cleanup).toEqual([]);
     });
 
@@ -224,9 +219,9 @@ describe('DatabaseHarness', () => {
       await harness.setup({
         provider: mockProvider
       });
-      
+
       await harness.teardown();
-      
+
       expect((harness as any).provider).toBeUndefined();
     });
   });
@@ -236,17 +231,15 @@ describe('DatabaseHarness', () => {
       await harness.setup({
         provider: mockProvider
       });
-      
+
       await harness.createSchema(mockProvider, [TestEntity]);
-      
-      await harness.seed(mockProvider, TestEntity, [
-        { id: 1, name: 'Test' }
-      ]);
-      
+
+      await harness.seed(mockProvider, TestEntity, [{ id: 1, name: 'Test' }]);
+
       await harness.dropSchema(mockProvider, [TestEntity]);
-      
+
       await harness.teardown();
-      
+
       expect(mockProvider.isConnected()).toBe(false);
     });
   });

@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata } from '@ts-linq/types';
 
@@ -20,7 +21,7 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
     const propertyName = String(propertyKey);
-    
+
     const columnMeta: ColumnMetadata = {
       propertyName,
       columnName: options?.name || propertyName,
@@ -29,10 +30,10 @@ export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
       isGenerated: !!options?.autoIncrement,
       isVersion: !!options?.version
     };
-    
+
     // Add column metadata
     MetadataStorage.addColumn(ctor, columnMeta);
-    
+
     // Mark as primary key
     MetadataStorage.addPrimaryKey(ctor, propertyName);
   };

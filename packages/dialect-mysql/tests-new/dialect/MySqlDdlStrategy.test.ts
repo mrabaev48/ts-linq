@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
+
 import { MySqlDdlStrategy } from '../../src/MySqlDdlStrategy';
-import type { EntityMetadata, ColumnMetadata } from '@ts-linq/types';
 
 describe('MySqlDdlStrategy', () => {
   let strategy: MySqlDdlStrategy;
@@ -88,7 +89,7 @@ describe('MySqlDdlStrategy', () => {
             nullable: true,
             isComputed: true,
             computedExpression: 'price * quantity'
-          } as ColumnMetadata & { computedExpression?: string }
+          }
         ],
         relationships: [],
         indexes: [],
@@ -313,7 +314,9 @@ describe('MySqlDdlStrategy', () => {
         unique: false
       });
 
-      expect(sql).toBe('CREATE INDEX IF NOT EXISTS `idx_orders_user_date` ON `orders` (`user_id`, `created_at`)');
+      expect(sql).toBe(
+        'CREATE INDEX IF NOT EXISTS `idx_orders_user_date` ON `orders` (`user_id`, `created_at`)'
+      );
     });
 
     it('should generate index with column orders', () => {
@@ -392,9 +395,7 @@ describe('MySqlDdlStrategy', () => {
       });
 
       expect(sql).toBe('');
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('invalid index spec')
-      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('invalid index spec'));
     });
 
     it('should emit warning for invalid index spec (no columns and no expressions)', () => {
@@ -405,9 +406,7 @@ describe('MySqlDdlStrategy', () => {
       });
 
       expect(sql).toBe('');
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('invalid index spec')
-      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('invalid index spec'));
     });
   });
 });

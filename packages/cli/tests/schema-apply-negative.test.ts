@@ -1,6 +1,7 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { SchemaApplyCommand } from '../src/commands/SchemaApplyCommand';
+
 import { ConsoleLogger } from '../src/adapters/ConsoleLogger';
+import { SchemaApplyCommand } from '../src/commands/SchemaApplyCommand';
 
 class MemFs {
   private files = new Map<string, string>();
@@ -37,7 +38,7 @@ describe('schema:apply negative', () => {
     const file = '/tmp/not-exists.json';
     const fs = new MemFs();
     const logger = new ConsoleLogger();
-    const cmd = new SchemaApplyCommand(logger as any, fs as any);
+    const cmd = new SchemaApplyCommand(logger, fs);
     await cmd.runDb(new ProviderStub() as unknown as DatabaseProvider, ['schema:apply', file]);
     expect(process.exitCode).toBe(2);
   });

@@ -1,6 +1,7 @@
-import { describe, it, expect } from '@jest/globals';
-import { PostgresProvider } from '../src/PostgresProvider';
+import { describe, expect, it } from '@jest/globals';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
+
+import { PostgresProvider } from '../src/PostgresProvider';
 
 describe('PostgresProvider', () => {
   describe('constructor', () => {
@@ -44,7 +45,7 @@ describe('PostgresProvider', () => {
         host: 'localhost',
         database: 'testdb',
         user: 'postgres',
-        logger: mockLogger as unknown as typeof mockLogger
+        logger: mockLogger
       });
 
       expect(provider).toBeDefined();

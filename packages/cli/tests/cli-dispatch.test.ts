@@ -1,4 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
+
 import { CommandRegistry } from '../src/CommandRegistry';
 import type { Command, DbCommand } from '../src/commands/Command';
 

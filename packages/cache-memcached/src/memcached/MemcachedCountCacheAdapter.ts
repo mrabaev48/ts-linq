@@ -121,7 +121,6 @@ export class MemcachedCountCacheAdapter implements CountCache {
       try {
         await this.client.set(this.k(key), payload, options);
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('[MemcachedCountCacheAdapter] write-through failed', { key: this.k(key) });
       }
     })();
@@ -143,7 +142,6 @@ export class MemcachedCountCacheAdapter implements CountCache {
           try {
             await this.client.delete(this.k(k));
           } catch (e) {
-            // eslint-disable-next-line no-console
             console.warn('[MemcachedCountCacheAdapter] delete failed', { key: this.k(k) });
           }
         })();

@@ -1,77 +1,68 @@
-
-import { TestProvider } from '@ts-linq/testkits';
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
 import { DbContext } from '@ts-linq/orm';
-import { Entity, PrimaryKey, Column } from '@ts-linq/metadata';
+import { TestProvider } from '@ts-linq/testkits';
 
 @Entity({ name: 'keyset_items' })
 class KeysetItem {
-    @PrimaryKey({ autoIncrement: true })
-    id!: number;
+  @PrimaryKey({ autoIncrement: true })
+  id!: number;
 
-    @Column()
-    val!: number;
+  @Column()
+  val!: number;
 }
 
 class KeysetContext extends DbContext {
-    constructor(provider: TestProvider) {
-        super({ provider });
-    }
+  constructor(provider: TestProvider) {
+    super({ provider });
+  }
 }
 
 describe('Pagination Integration - Keyset', () => {
-    let provider: TestProvider;
-    let context: KeysetContext;
+  let provider: TestProvider;
+  let context: KeysetContext;
 
-    beforeEach(async () => {
-        provider = new TestProvider(':memory:');
-        context = new KeysetContext(provider);
-        await context.ensureCreated();
+  beforeEach(async () => {
+    provider = new TestProvider(':memory:');
+    context = new KeysetContext(provider);
+    await context.ensureCreated();
 
-        // Seed 20 items
-        const items = [];
-        for (let i = 1; i <= 20; i++) {
-            items.push({ val: i });
-        }
-        await provider.insertMany(items, KeysetItem);
-    });
+    // Seed 20 items
+    const items = [];
+    for (let i = 1; i <= 20; i++) {
+      items.push({ val: i });
+    }
+    await provider.insertMany(items, KeysetItem);
+  });
 
-    afterEach(async () => {
-        await context.dispose();
-    });
+  afterEach(async () => {
+    await context.dispose();
+  });
 
-    it('should fetch next page using last id', async () => {
-        // Page 1
-        const page1 = await context.set(KeysetItem)
-            .query()
-            .orderBy('id')
-            .take(5)
-            .toArray();
-        
-        expect(page1).toHaveLength(5);
-        const lastId = page1[page1.length - 1].id;
-        expect(lastId).toBe(5);
+  it('should fetch next page using last id', async () => {
+    // Page 1
+    const page1 = await context.set(KeysetItem).query().orderBy('id').take(5).toArray();
 
-        // Page 2 (Keyset via offset)
-        const page2 = await context.set(KeysetItem)
-            .query()
-            .orderBy('id')
-            .skip(lastId)
-            .take(5)
-            .toArray();
+    expect(page1).toHaveLength(5);
+    const lastId = page1[page1.length - 1].id;
+    expect(lastId).toBe(5);
 
-        expect(page2).toHaveLength(5);
-        expect(page2[0].id).toBe(6);
-    });
+    // Page 2 (Keyset via offset)
+    const page2 = await context
+      .set(KeysetItem)
+      .query()
+      .orderBy('id')
+      .skip(lastId)
+      .take(5)
+      .toArray();
 
-    it('should handle end of data', async () => {
-        const lastId = 20;
-        const page = await context.set(KeysetItem)
-            .query()
-            .orderBy('id')
-            .skip(lastId)
-            .take(5)
-            .toArray();
-        
-        expect(page).toHaveLength(0);
-    });
+    expect(page2).toHaveLength(5);
+    expect(page2[0].id).toBe(6);
+  });
+
+  it('should handle end of data', async () => {
+    const lastId = 20;
+    const page = await context.set(KeysetItem).query().orderBy('id').skip(lastId).take(5).toArray();
+
+    expect(page).toHaveLength(0);
+  });
 });

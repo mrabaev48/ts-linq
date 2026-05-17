@@ -1,23 +1,23 @@
 #!/usr/bin/env node
 /* Minimal CLI: prints diff SQL using current metadata. */
 //
-import { InitCommand } from './commands/InitCommand';
-import { GenerateEntityCommand } from './commands/GenerateEntityCommand';
-import { GenerateEntitiesCommand } from './commands/GenerateEntitiesCommand';
-import { GenerateMigrationCommand } from './commands/GenerateMigrationCommand';
-import { SchemaExportCommand } from './commands/SchemaExportCommand';
-import { SchemaDiffCommand } from './commands/SchemaDiffCommand';
-import { SchemaApplyCommand } from './commands/SchemaApplyCommand';
-import { SchemaValidateCommand } from './commands/SchemaValidateCommand';
-import { MigrationsStatusCommand } from './commands/MigrationsStatusCommand';
-import { MigrationsDryRunCommand } from './commands/MigrationsDryRunCommand';
-import { MigrationsRollbackCommand } from './commands/MigrationsRollbackCommand';
-import { MigrationsValidateCommand } from './commands/MigrationsValidateCommand';
-import { SeedCommand } from './commands/SeedCommand';
-import { MetricsServeCommand } from './commands/MetricsServeCommand';
 //
 import { CommandRegistry } from './CommandRegistry';
 import type { Command, DbCommand } from './commands/Command';
+import { GenerateEntitiesCommand } from './commands/GenerateEntitiesCommand';
+import { GenerateEntityCommand } from './commands/GenerateEntityCommand';
+import { GenerateMigrationCommand } from './commands/GenerateMigrationCommand';
+import { InitCommand } from './commands/InitCommand';
+import { MetricsServeCommand } from './commands/MetricsServeCommand';
+import { MigrationsDryRunCommand } from './commands/MigrationsDryRunCommand';
+import { MigrationsRollbackCommand } from './commands/MigrationsRollbackCommand';
+import { MigrationsStatusCommand } from './commands/MigrationsStatusCommand';
+import { MigrationsValidateCommand } from './commands/MigrationsValidateCommand';
+import { SchemaApplyCommand } from './commands/SchemaApplyCommand';
+import { SchemaDiffCommand } from './commands/SchemaDiffCommand';
+import { SchemaExportCommand } from './commands/SchemaExportCommand';
+import { SchemaValidateCommand } from './commands/SchemaValidateCommand';
+import { SeedCommand } from './commands/SeedCommand';
 import { createProviderFromEnv } from './provider-factory';
 
 // provider-factory and config helpers are in separate modules now

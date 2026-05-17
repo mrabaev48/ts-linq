@@ -12,5 +12,3 @@ describe('Cross-Provider Compatibility', () => {
     it.todo('should handle date/time functions consistently');
   });
 });
-
-

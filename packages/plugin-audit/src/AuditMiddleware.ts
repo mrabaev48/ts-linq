@@ -1,5 +1,6 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { AuditOptions, AuditContext } from './types';
+
+import type { AuditContext, AuditOptions } from './types';
 
 /**
  * Middleware that handles audit trail operations

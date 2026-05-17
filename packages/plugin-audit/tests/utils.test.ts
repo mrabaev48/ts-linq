@@ -1,10 +1,6 @@
-import { describe, it, expect } from '@jest/globals';
-import { 
-  withAudit, 
-  getAuditInfo, 
-  hasBeenModified,
-  timeSinceUpdate
-} from '../src/utils';
+import { describe, expect, it } from '@jest/globals';
+
+import { getAuditInfo, hasBeenModified, timeSinceUpdate, withAudit } from '../src/utils';
 
 describe('Audit Utils', () => {
   describe('withAudit()', () => {
@@ -141,10 +137,12 @@ describe('Audit Utils', () => {
         modified: new Date('2024-01-02')
       };
 
-      expect(hasBeenModified(entity, {
-        createdAtColumn: 'created',
-        updatedAtColumn: 'modified'
-      })).toBe(true);
+      expect(
+        hasBeenModified(entity, {
+          createdAtColumn: 'created',
+          updatedAtColumn: 'modified'
+        })
+      ).toBe(true);
     });
   });
 

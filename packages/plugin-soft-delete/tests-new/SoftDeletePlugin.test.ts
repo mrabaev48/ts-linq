@@ -1,10 +1,10 @@
 import { SoftDeleteMiddleware } from '../src/SoftDeleteMiddleware';
 import {
-  withSoftDelete,
-  restore,
+  isMarkedForHardDelete,
   isSoftDeleted,
   markForHardDelete,
-  isMarkedForHardDelete
+  restore,
+  withSoftDelete
 } from '../src/utils';
 
 jest.mock('@ts-linq/metadata', () => {
@@ -75,7 +75,7 @@ describe('plugin-soft-delete: SoftDeleteMiddleware', () => {
       entityClass: class Post {},
       operation: 'delete',
 
-      state: 'deleted',
+      state: 'deleted'
     });
     expect(handled).toBe(true);
     expect(e.isDeleted).toBe(true);
@@ -90,7 +90,7 @@ describe('plugin-soft-delete: SoftDeleteMiddleware', () => {
       entityClass: class Post {},
       operation: 'restore',
 
-      state: 'modified',
+      state: 'modified'
     });
     expect(handled).toBe(true);
     expect(e.isDeleted).toBe(false);
@@ -105,7 +105,7 @@ describe('plugin-soft-delete: SoftDeleteMiddleware', () => {
       entityClass: class A {},
       operation: 'delete',
 
-      state: 'deleted',
+      state: 'deleted'
     });
     expect(r1).toBe(false);
     MetadataStorage.__setColumns([]); // no meta
@@ -115,7 +115,7 @@ describe('plugin-soft-delete: SoftDeleteMiddleware', () => {
       entityClass: class B {},
       operation: 'delete',
 
-      state: 'deleted',
+      state: 'deleted'
     });
     expect(r2).toBe(false);
   });

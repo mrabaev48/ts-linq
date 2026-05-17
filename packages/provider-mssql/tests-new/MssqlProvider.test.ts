@@ -1,6 +1,7 @@
-import { describe, it, expect } from '@jest/globals';
-import { MssqlProvider } from '../src/MssqlProvider';
+import { describe, expect, it } from '@jest/globals';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
+
+import { MssqlProvider } from '../src/MssqlProvider';
 
 describe('MssqlProvider', () => {
   describe('constructor', () => {
@@ -46,7 +47,7 @@ describe('MssqlProvider', () => {
         database: 'testdb',
         user: 'sa',
         password: 'Password123',
-        logger: mockLogger as unknown as typeof mockLogger
+        logger: mockLogger
       });
 
       expect(provider).toBeDefined();

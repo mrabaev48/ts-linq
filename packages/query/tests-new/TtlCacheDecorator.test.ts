@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { TtlCacheDecorator } from '../src/TtlCacheDecorator';
-import { LruCache } from '../src/LruCache';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { SqlCacheEntry } from '@ts-linq/types';
+
+import { LruCache } from '../src/LruCache';
+import { TtlCacheDecorator } from '../src/TtlCacheDecorator';
 
 const entry = (query = 'SELECT 1'): SqlCacheEntry => ({ query, parameters: [] });
 
@@ -13,8 +14,12 @@ function makeDecorator(defaultTtl: number): { ttl: TtlCacheDecorator; inner: Lru
 
 describe('TtlCacheDecorator', () => {
   describe('get() — lazy expiry', () => {
-    beforeEach(() => { jest.useFakeTimers(); });
-    afterEach(() => { jest.useRealTimers(); });
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
 
     it('returns the entry when TTL has not elapsed', () => {
       const { ttl } = makeDecorator(5000);
@@ -43,8 +48,12 @@ describe('TtlCacheDecorator', () => {
   });
 
   describe('setWithTtl()', () => {
-    beforeEach(() => { jest.useFakeTimers(); });
-    afterEach(() => { jest.useRealTimers(); });
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
 
     it('stores entry with a custom TTL', () => {
       const { ttl } = makeDecorator(0);
@@ -76,8 +85,12 @@ describe('TtlCacheDecorator', () => {
   });
 
   describe('expireEntries()', () => {
-    beforeEach(() => { jest.useFakeTimers(); });
-    afterEach(() => { jest.useRealTimers(); });
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
 
     it('returns 0 when nothing has expired', () => {
       const { ttl } = makeDecorator(5000);
@@ -157,8 +170,12 @@ describe('TtlCacheDecorator', () => {
   });
 
   describe('periodic cleanup timer', () => {
-    beforeEach(() => { jest.useFakeTimers(); });
-    afterEach(() => { jest.useRealTimers(); });
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
 
     it('does not start a timer when defaultTtl is 0', () => {
       const setIntervalSpy = jest.spyOn(global, 'setInterval');

@@ -1,4 +1,11 @@
-import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '@ts-linq/types';
+import type {
+  ColumnMetadata,
+  EntityMetadata,
+  IndexMetadata,
+  RelationshipMetadata,
+  ValidationRule
+} from '@ts-linq/types';
+
 import { MetadataRegistry } from './MetadataRegistry';
 
 /**
