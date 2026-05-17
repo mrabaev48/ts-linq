@@ -1,6 +1,6 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, EntityMetadata, IndexMetadata } from '@ts-linq/types';
 
 import type { ColumnDef, IndexDef, SchemaSnapshot, TableSnapshot } from './DiffTypes';
 import {
@@ -38,7 +38,7 @@ export class SchemaSnapshotBuilder {
       const primaryKeys = primaryKeyProps.map(
         (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
       );
-      const indexes = (entityMeta.indexes || []).map((indexDef) => ({
+      const indexes = ((entityMeta.indexes || []) as IndexMetadata[]).map((indexDef) => ({
         name: indexDef.name,
         columns: indexDef.columns,
         unique: !!indexDef.unique,

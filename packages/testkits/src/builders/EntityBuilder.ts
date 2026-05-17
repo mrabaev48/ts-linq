@@ -16,14 +16,14 @@ export class EntityBuilder<T extends object> {
 
   build(): T {
     const instance = new this.entityClass();
-    return Object.assign(instance, this.defaults, this.overrides);
+    return Object.assign(instance, this.defaults, this.overrides) as T;
   }
 
   buildMany(count: number, factory?: (index: number) => Partial<T>): T[] {
     return Array.from({ length: count }, (_, i) => {
       const instance = new this.entityClass();
       const overrides = factory ? factory(i) : {};
-      return Object.assign(instance, this.defaults, overrides);
+      return Object.assign(instance, this.defaults, overrides) as T;
     });
   }
 

@@ -483,7 +483,7 @@ describe('MetadataStorage', () => {
       MetadataStorage.addPrimaryKey(User, 'id');
 
       const metadata = MetadataStorage.getEntity(User);
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+
       const idColumn = metadata?.columns.find((c) => c.propertyName === 'id') as
         | typeof columnMeta
         | undefined;
