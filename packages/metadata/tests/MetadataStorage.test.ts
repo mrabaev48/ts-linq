@@ -1,6 +1,12 @@
-import { MetadataStorage } from '../src/MetadataStorage';
+import type {
+  ColumnMetadata,
+  IndexMetadata,
+  RelationshipMetadata,
+  ValidationRule
+} from '@ts-linq/types';
+
 import { MetadataRegistry } from '../src/MetadataRegistry';
-import type { ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '@ts-linq/types';
+import { MetadataStorage } from '../src/MetadataStorage';
 
 describe('MetadataStorage', () => {
   beforeEach(() => {
@@ -11,7 +17,7 @@ describe('MetadataStorage', () => {
     it('should return same instance', () => {
       const instance1 = MetadataStorage.getInstance();
       const instance2 = MetadataStorage.getInstance();
-      
+
       expect(instance1).toBe(instance2);
     });
   });
@@ -19,9 +25,9 @@ describe('MetadataStorage', () => {
   describe('addEntity()', () => {
     it('should register entity with table name', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
-      
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata).toBeDefined();
       expect(metadata?.tableName).toBe('users');
@@ -30,9 +36,9 @@ describe('MetadataStorage', () => {
 
     it('should register entity without table name', () => {
       class Product {}
-      
+
       MetadataStorage.addEntity(Product);
-      
+
       const metadata = MetadataStorage.getEntity(Product);
       expect(metadata).toBeDefined();
       expect(metadata?.target).toBe(Product);
@@ -41,23 +47,23 @@ describe('MetadataStorage', () => {
     it('should handle multiple entities', () => {
       class User {}
       class Post {}
-      
+
       MetadataStorage.addEntity(User, 'users');
       MetadataStorage.addEntity(Post, 'posts');
-      
+
       const entities = MetadataStorage.getEntities();
       expect(entities).toHaveLength(2);
-      expect(entities.map(e => e.tableName)).toContain('users');
-      expect(entities.map(e => e.tableName)).toContain('posts');
+      expect(entities.map((e) => e.tableName)).toContain('users');
+      expect(entities.map((e) => e.tableName)).toContain('posts');
     });
   });
 
   describe('addColumn()', () => {
     it('should register column metadata', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
-      
+
       const columnMeta: ColumnMetadata = {
         propertyName: 'name',
         columnName: 'name',
@@ -66,9 +72,9 @@ describe('MetadataStorage', () => {
         isGenerated: false,
         isVersion: false
       };
-      
+
       MetadataStorage.addColumn(User, columnMeta);
-      
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata?.columns).toHaveLength(1);
       expect(metadata?.columns[0].propertyName).toBe('name');
@@ -77,9 +83,9 @@ describe('MetadataStorage', () => {
 
     it('should register multiple columns', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
-      
+
       MetadataStorage.addColumn(User, {
         propertyName: 'id',
         columnName: 'id',
@@ -88,7 +94,7 @@ describe('MetadataStorage', () => {
         isGenerated: true,
         isVersion: false
       });
-      
+
       MetadataStorage.addColumn(User, {
         propertyName: 'name',
         columnName: 'name',
@@ -97,7 +103,7 @@ describe('MetadataStorage', () => {
         isGenerated: false,
         isVersion: false
       });
-      
+
       MetadataStorage.addColumn(User, {
         propertyName: 'email',
         columnName: 'email',
@@ -106,19 +112,19 @@ describe('MetadataStorage', () => {
         isGenerated: false,
         isVersion: false
       });
-      
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata?.columns).toHaveLength(3);
-      expect(metadata?.columns.map(c => c.propertyName)).toContain('id');
-      expect(metadata?.columns.map(c => c.propertyName)).toContain('name');
-      expect(metadata?.columns.map(c => c.propertyName)).toContain('email');
+      expect(metadata?.columns.map((c) => c.propertyName)).toContain('id');
+      expect(metadata?.columns.map((c) => c.propertyName)).toContain('name');
+      expect(metadata?.columns.map((c) => c.propertyName)).toContain('email');
     });
 
     it('should support column options', () => {
       class Product {}
-      
+
       MetadataStorage.addEntity(Product, 'products');
-      
+
       MetadataStorage.addColumn(Product, {
         propertyName: 'price',
         columnName: 'price',
@@ -130,10 +136,10 @@ describe('MetadataStorage', () => {
         scale: 2,
         defaultValue: 0
       });
-      
+
       const metadata = MetadataStorage.getEntity(Product);
-      const priceColumn = metadata?.columns.find(c => c.propertyName === 'price');
-      
+      const priceColumn = metadata?.columns.find((c) => c.propertyName === 'price');
+
       expect(priceColumn?.precision).toBe(10);
       expect(priceColumn?.scale).toBe(2);
       expect(priceColumn?.defaultValue).toBe(0);
@@ -143,7 +149,7 @@ describe('MetadataStorage', () => {
   describe('addPrimaryKey()', () => {
     it('should mark column as primary key', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
       MetadataStorage.addColumn(User, {
         propertyName: 'id',
@@ -153,16 +159,16 @@ describe('MetadataStorage', () => {
         isGenerated: true,
         isVersion: false
       });
-      
+
       MetadataStorage.addPrimaryKey(User, 'id');
-      
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata?.primaryKeys).toEqual(['id']);
     });
 
     it('should support composite primary keys', () => {
       class OrderItem {}
-      
+
       MetadataStorage.addEntity(OrderItem, 'order_items');
       MetadataStorage.addColumn(OrderItem, {
         propertyName: 'orderId',
@@ -172,7 +178,7 @@ describe('MetadataStorage', () => {
         isGenerated: false,
         isVersion: false
       });
-      
+
       MetadataStorage.addColumn(OrderItem, {
         propertyName: 'productId',
         columnName: 'product_id',
@@ -181,10 +187,10 @@ describe('MetadataStorage', () => {
         isGenerated: false,
         isVersion: false
       });
-      
+
       MetadataStorage.addPrimaryKey(OrderItem, 'orderId');
       MetadataStorage.addPrimaryKey(OrderItem, 'productId');
-      
+
       const metadata = MetadataStorage.getEntity(OrderItem);
       expect(metadata?.primaryKeys).toHaveLength(2);
       expect(metadata?.primaryKeys).toContain('orderId');
@@ -196,19 +202,19 @@ describe('MetadataStorage', () => {
     it('should register relationship metadata', () => {
       class User {}
       class Post {}
-      
+
       MetadataStorage.addEntity(User, 'users');
       MetadataStorage.addEntity(Post, 'posts');
-      
+
       const relationshipMeta: RelationshipMetadata = {
         type: 'one-to-many',
         propertyName: 'posts',
         targetEntity: Post,
         inverseSide: 'author'
       };
-      
+
       MetadataStorage.addRelationship(User, relationshipMeta);
-      
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata?.relationships).toHaveLength(1);
       expect(metadata?.relationships[0].type).toBe('one-to-many');
@@ -219,32 +225,32 @@ describe('MetadataStorage', () => {
       class User {}
       class Post {}
       class Comment {}
-      
+
       MetadataStorage.addEntity(User, 'users');
-      
+
       MetadataStorage.addRelationship(User, {
         type: 'one-to-many',
         propertyName: 'posts',
         targetEntity: Post
       });
-      
+
       MetadataStorage.addRelationship(User, {
         type: 'one-to-many',
         propertyName: 'comments',
         targetEntity: Comment
       });
-      
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata?.relationships).toHaveLength(2);
-      expect(metadata?.relationships.map(r => r.propertyName)).toContain('posts');
-      expect(metadata?.relationships.map(r => r.propertyName)).toContain('comments');
+      expect(metadata?.relationships.map((r) => r.propertyName)).toContain('posts');
+      expect(metadata?.relationships.map((r) => r.propertyName)).toContain('comments');
     });
   });
 
   describe('addIndex()', () => {
     it('should register index metadata', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
       MetadataStorage.addColumn(User, {
         propertyName: 'email',
@@ -254,15 +260,15 @@ describe('MetadataStorage', () => {
         isGenerated: false,
         isVersion: false
       });
-      
+
       const indexMeta: IndexMetadata = {
         name: 'idx_email',
         columns: ['email'],
         unique: true
       };
-      
+
       MetadataStorage.addIndex(User, indexMeta);
-      
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata?.indexes).toHaveLength(1);
       expect(metadata?.indexes[0].name).toBe('idx_email');
@@ -271,7 +277,7 @@ describe('MetadataStorage', () => {
 
     it('should support composite indexes', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
       MetadataStorage.addColumn(User, {
         propertyName: 'name',
@@ -289,16 +295,16 @@ describe('MetadataStorage', () => {
         isGenerated: false,
         isVersion: false
       });
-      
+
       MetadataStorage.addIndex(User, {
         name: 'idx_name_email',
         columns: ['name', 'email'],
         unique: false
       });
-      
+
       const metadata = MetadataStorage.getEntity(User);
       const index = metadata?.indexes[0];
-      
+
       expect(index?.columns).toHaveLength(2);
       expect(index?.columns).toContain('name');
       expect(index?.columns).toContain('email');
@@ -308,17 +314,17 @@ describe('MetadataStorage', () => {
   describe('addValidationRule()', () => {
     it('should register validation rule', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
-      
+
       const validationRule: ValidationRule = {
         propertyName: 'email',
         predicate: (entity: any) => /@/.test(entity.email),
         message: 'Invalid email format'
       };
-      
+
       MetadataStorage.addValidationRule(User, validationRule);
-      
+
       const rules = MetadataStorage.getValidationRules(User);
       expect(rules).toHaveLength(1);
       expect(rules[0].propertyName).toBe('email');
@@ -327,21 +333,21 @@ describe('MetadataStorage', () => {
 
     it('should support multiple validation rules', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
-      
+
       MetadataStorage.addValidationRule(User, {
         propertyName: 'email',
         predicate: (entity: any) => /@/.test(entity.email),
         message: 'Invalid email'
       });
-      
+
       MetadataStorage.addValidationRule(User, {
         propertyName: 'age',
         predicate: (entity: any) => entity.age >= 18,
         message: 'Must be 18 or older'
       });
-      
+
       const rules = MetadataStorage.getValidationRules(User);
       expect(rules).toHaveLength(2);
     });
@@ -350,16 +356,16 @@ describe('MetadataStorage', () => {
   describe('getEntity()', () => {
     it('should return undefined for unregistered entity', () => {
       class UnregisteredEntity {}
-      
+
       const metadata = MetadataStorage.getEntity(UnregisteredEntity);
       expect(metadata).toBeUndefined();
     });
 
     it('should return metadata for registered entity', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
-      
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata).toBeDefined();
       expect(metadata?.target).toBe(User);
@@ -381,11 +387,11 @@ describe('MetadataStorage', () => {
       class User {}
       class Post {}
       class Comment {}
-      
+
       MetadataStorage.addEntity(User, 'users');
       MetadataStorage.addEntity(Post, 'posts');
       MetadataStorage.addEntity(Comment, 'comments');
-      
+
       const entities = MetadataStorage.getEntities();
       expect(entities).toHaveLength(3);
     });
@@ -394,7 +400,7 @@ describe('MetadataStorage', () => {
   describe('clear()', () => {
     it('should clear all metadata', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
       MetadataStorage.addColumn(User, {
         propertyName: 'name',
@@ -404,22 +410,22 @@ describe('MetadataStorage', () => {
         isGenerated: false,
         isVersion: false
       });
-      
+
       expect(MetadataStorage.getEntities()).toHaveLength(1);
-      
+
       MetadataStorage.getInstance().clear();
-      
+
       expect(MetadataStorage.getEntities()).toHaveLength(0);
     });
 
     it('should allow re-registration after clear', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
       expect(MetadataStorage.getEntities()).toHaveLength(1);
-      
+
       MetadataStorage.getInstance().clear();
-      
+
       MetadataStorage.addEntity(User, 'users');
       expect(MetadataStorage.getEntities()).toHaveLength(1);
     });
@@ -428,7 +434,7 @@ describe('MetadataStorage', () => {
   describe('metadata finalization', () => {
     it('should finalize metadata on first access', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
       MetadataStorage.addColumn(User, {
         propertyName: 'id',
@@ -438,7 +444,7 @@ describe('MetadataStorage', () => {
         isGenerated: false,
         isVersion: false
       });
-      
+
       const metadata = MetadataStorage.getEntity(User);
       expect(metadata?.columns).toBeDefined();
       expect(metadata?.columns).toHaveLength(1);
@@ -446,12 +452,12 @@ describe('MetadataStorage', () => {
 
     it('should return consistent metadata across multiple accesses', () => {
       class User {}
-      
+
       MetadataStorage.addEntity(User, 'users');
-      
+
       const metadata1 = MetadataStorage.getEntity(User);
       const metadata2 = MetadataStorage.getEntity(User);
-      
+
       expect(metadata1).toBe(metadata2);
     });
   });
@@ -477,7 +483,10 @@ describe('MetadataStorage', () => {
       MetadataStorage.addPrimaryKey(User, 'id');
 
       const metadata = MetadataStorage.getEntity(User);
-      const idColumn = metadata?.columns.find(c => c.propertyName === 'id') as typeof columnMeta | undefined;
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const idColumn = metadata?.columns.find((c) => c.propertyName === 'id') as
+        | typeof columnMeta
+        | undefined;
 
       expect(idColumn).toBeDefined();
       expect(idColumn?.isGenerated).toBe(true);

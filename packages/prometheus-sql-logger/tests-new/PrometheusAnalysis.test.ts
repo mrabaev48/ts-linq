@@ -1,6 +1,7 @@
-import { describe, it, expect } from '@jest/globals';
-import { PrometheusSqlLogger } from '../src/logger/PrometheusSqlLogger';
+import { describe, expect, it } from '@jest/globals';
 import type { QueryAnalysisInfo } from '@ts-linq/types';
+
+import { PrometheusSqlLogger } from '../src/logger/PrometheusSqlLogger';
 
 type LabelValues = Record<string, string>;
 

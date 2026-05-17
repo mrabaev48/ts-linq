@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { MetricsCacheDecorator } from '../src/MetricsCacheDecorator';
-import { LruCache } from '../src/LruCache';
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import type { SqlCacheEntry } from '@ts-linq/types';
+
+import { LruCache } from '../src/LruCache';
+import { MetricsCacheDecorator } from '../src/MetricsCacheDecorator';
 
 const entry = (query = 'SELECT 1'): SqlCacheEntry => ({ query, parameters: [] });
 
@@ -36,8 +37,8 @@ describe('MetricsCacheDecorator', () => {
     });
 
     it('computes hitRatio correctly', () => {
-      m.get('key');    // hit
-      m.get('key');    // hit
+      m.get('key'); // hit
+      m.get('key'); // hit
       m.get('missing'); // miss
       const { hitRatio } = m.getMetrics();
       expect(hitRatio).toBeCloseTo(2 / 3, 5);

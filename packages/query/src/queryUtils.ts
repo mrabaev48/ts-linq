@@ -1,5 +1,6 @@
 import type { Result } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
+
 import type { Queryable } from './Queryable';
 
 /**

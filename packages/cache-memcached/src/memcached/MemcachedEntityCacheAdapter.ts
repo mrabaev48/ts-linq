@@ -1,5 +1,5 @@
-
 import type { EntityCacheLike } from '@ts-linq/types';
+
 import type { MemjsClientLike } from './MemcachedSqlCacheAdapter';
 
 export interface MemcachedEntityCacheOptions {
@@ -92,7 +92,8 @@ export class MemcachedEntityCacheAdapter implements EntityCacheLike {
 
     // Serialize and write to Memcached
     const payload = this.serializer(entity);
-    const options = this.ttlSeconds && this.ttlSeconds > 0 ? { expires: this.ttlSeconds } : undefined;
+    const options =
+      this.ttlSeconds && this.ttlSeconds > 0 ? { expires: this.ttlSeconds } : undefined;
 
     void (async () => {
       try {
@@ -136,10 +137,10 @@ export class MemcachedEntityCacheAdapter implements EntityCacheLike {
       try {
         const result = await this.client.get(this.getNamespacedKey(key));
         if (result && result.value) {
-           const raw = result.value.toString('utf8');
-           const entity = this.deserializer(raw);
-           this.ensureCapacity();
-           this.shadow.set(key, { value: entity, ts: Date.now() });
+          const raw = result.value.toString('utf8');
+          const entity = this.deserializer(raw);
+          this.ensureCapacity();
+          this.shadow.set(key, { value: entity, ts: Date.now() });
         }
       } catch {
         // ignore

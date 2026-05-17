@@ -1,4 +1,4 @@
-import type { WhereClause, OrderByClause, GroupByClause, JoinClause } from '@ts-linq/types';
+import type { GroupByClause, JoinClause, OrderByClause, WhereClause } from '@ts-linq/types';
 
 /**
  * Immutable-ish carrier for a query intent. Used by Queryable to

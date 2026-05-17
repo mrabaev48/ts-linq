@@ -1,5 +1,6 @@
-import type { EntityMetadata, ColumnMetadata } from '@ts-linq/types';
 import { SqlHelper } from '@ts-linq/core';
+import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
+
 import { MySqlIndexBuilder } from './builders/MySqlIndexBuilder';
 
 type LoggerLike = { warn(message: string, error?: unknown): void };
@@ -15,12 +16,10 @@ export class MySqlDdlStrategy {
     }
     const cols: string[] = metadata.columns.map((c) => this.generateColumnDefinition(c));
     if (metadata.primaryKeys && metadata.primaryKeys.length) {
-      const pkCols = metadata.primaryKeys.map(
-        (pk) => {
-           const col = metadata.columns.find((c) => c.propertyName === pk);
-           return `\`${col?.columnName || pk}\``;
-        }
-      );
+      const pkCols = metadata.primaryKeys.map((pk) => {
+        const col = metadata.columns.find((c) => c.propertyName === pk);
+        return `\`${col?.columnName || pk}\``;
+      });
       cols.push(`PRIMARY KEY (${pkCols.join(', ')})`);
     }
     return `CREATE TABLE IF NOT EXISTS \`${metadata.tableName}\` (${cols.join(', ')})`;
@@ -43,7 +42,10 @@ export class MySqlDdlStrategy {
     return this.indexBuilder.buildCreateIndexSql(table, index);
   }
 
-  public generateAddColumnSql(tableName: string, column: Omit<ColumnMetadata, 'propertyName'>): string {
+  public generateAddColumnSql(
+    tableName: string,
+    column: Omit<ColumnMetadata, 'propertyName'>
+  ): string {
     const colDef = this.generateColumnDefinition(column);
     return `ALTER TABLE \`${tableName}\` ADD COLUMN ${colDef}`;
   }
@@ -52,7 +54,11 @@ export class MySqlDdlStrategy {
     return `ALTER TABLE \`${tableName}\` DROP COLUMN \`${columnName}\``;
   }
 
-  public generateAlterColumnTypeSql(tableName: string, columnName: string, newType: string): string {
+  public generateAlterColumnTypeSql(
+    tableName: string,
+    columnName: string,
+    newType: string
+  ): string {
     const colDef = `\`${columnName}\` ${this.mapTypeToMySql(newType)}`;
     return `ALTER TABLE \`${tableName}\` MODIFY COLUMN ${colDef}`;
   }
@@ -61,22 +67,25 @@ export class MySqlDdlStrategy {
     return `ALTER TABLE \`${tableName}\` RENAME TO \`${newTableName}\``;
   }
 
-  public generateForeignKeySql(tableName: string, fk: { 
-      name: string, 
-      columnName: string, 
-      relatedTableName: string, 
-      relatedColumnName: string,
-      onDelete?: string,
-      onUpdate?: string
-  }): string {
-      let sql = `ALTER TABLE \`${tableName}\` ADD CONSTRAINT \`${fk.name}\` FOREIGN KEY (\`${fk.columnName}\`) REFERENCES \`${fk.relatedTableName}\` (\`${fk.relatedColumnName}\`)`;
-      if (fk.onDelete && fk.onDelete !== 'NO ACTION') {
-          sql += ` ON DELETE ${fk.onDelete}`;
-      }
-      if (fk.onUpdate && fk.onUpdate !== 'NO ACTION') {
-          sql += ` ON UPDATE ${fk.onUpdate}`;
-      }
-      return sql;
+  public generateForeignKeySql(
+    tableName: string,
+    fk: {
+      name: string;
+      columnName: string;
+      relatedTableName: string;
+      relatedColumnName: string;
+      onDelete?: string;
+      onUpdate?: string;
+    }
+  ): string {
+    let sql = `ALTER TABLE \`${tableName}\` ADD CONSTRAINT \`${fk.name}\` FOREIGN KEY (\`${fk.columnName}\`) REFERENCES \`${fk.relatedTableName}\` (\`${fk.relatedColumnName}\`)`;
+    if (fk.onDelete && fk.onDelete !== 'NO ACTION') {
+      sql += ` ON DELETE ${fk.onDelete}`;
+    }
+    if (fk.onUpdate && fk.onUpdate !== 'NO ACTION') {
+      sql += ` ON UPDATE ${fk.onUpdate}`;
+    }
+    return sql;
   }
 
   public generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string {

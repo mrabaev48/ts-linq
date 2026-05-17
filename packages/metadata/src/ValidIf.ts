@@ -1,5 +1,4 @@
 import { MetadataStorage } from './MetadataStorage';
-import type { ValidationRule } from '@ts-linq/types';
 
 export function ValidIf(
   predicate: (entity: unknown) => boolean,
@@ -14,7 +13,7 @@ export function ValidIf(
     const name = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     MetadataStorage.addValidationRule(ctor, {
       propertyName: name,
       predicate,
@@ -44,7 +43,7 @@ export function RequiredIfOf<T>(
     const propName = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     const predicate = (entity: unknown): boolean => {
       const e = entity as Record<string, unknown>;
       if (!condition(e as unknown as T)) return true;
@@ -54,7 +53,7 @@ export function RequiredIfOf<T>(
       if (Array.isArray(v)) return v.length > 0;
       return true;
     };
-    
+
     MetadataStorage.addValidationRule(ctor, {
       propertyName: propName,
       predicate,
@@ -69,14 +68,14 @@ export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator
     const propName = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
       if (v === null || v === undefined) return true;
       if (typeof v === 'string') return v.length >= min;
       return true;
     };
-    
+
     MetadataStorage.addValidationRule(ctor, {
       propertyName: propName,
       predicate,
@@ -91,14 +90,14 @@ export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator
     const propName = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
       if (v === null || v === undefined) return true;
       if (typeof v === 'string') return v.length <= max;
       return true;
     };
-    
+
     MetadataStorage.addValidationRule(ctor, {
       propertyName: propName,
       predicate,
@@ -113,14 +112,14 @@ export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator
     const propName = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
       if (v === null || v === undefined) return true;
       if (typeof v === 'string') return regex.test(v);
       return true;
     };
-    
+
     MetadataStorage.addValidationRule(ctor, {
       propertyName: propName,
       predicate,
@@ -135,7 +134,7 @@ export function RangeOf<T>(min?: number, max?: number, message?: string): Proper
     const propName = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
       if (v === null || v === undefined) return true;
@@ -145,7 +144,7 @@ export function RangeOf<T>(min?: number, max?: number, message?: string): Proper
       }
       return true;
     };
-    
+
     MetadataStorage.addValidationRule(ctor, {
       propertyName: propName,
       predicate,

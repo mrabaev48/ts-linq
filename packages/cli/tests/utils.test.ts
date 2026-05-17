@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { getFlag, resolveDialect, ensureDir, writeFileIfMissing, validateEnv } from '../src/utils';
+
+import { ensureDir, getFlag, resolveDialect, validateEnv, writeFileIfMissing } from '../src/utils';
 
 describe('utils', () => {
   it('getFlag supports --flag, --flag=value, and returns true for bare flag', () => {

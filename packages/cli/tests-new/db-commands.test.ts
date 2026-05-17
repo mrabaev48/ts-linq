@@ -1,12 +1,13 @@
-import type { Logger } from '../src/ports/Logger';
-import type { FileSystem } from '../src/ports/FileSystem';
-import { SeedCommand } from '../src/commands/SeedCommand';
-import { SchemaExportCommand } from '../src/commands/SchemaExportCommand';
-import { SchemaValidateCommand } from '../src/commands/SchemaValidateCommand';
-import { SchemaDiffCommand } from '../src/commands/SchemaDiffCommand';
-import { SchemaApplyCommand } from '../src/commands/SchemaApplyCommand';
 import { DatabaseProvider } from '@ts-linq/core';
 import type { SqlDialect } from '@ts-linq/types';
+
+import { SchemaApplyCommand } from '../src/commands/SchemaApplyCommand';
+import { SchemaDiffCommand } from '../src/commands/SchemaDiffCommand';
+import { SchemaExportCommand } from '../src/commands/SchemaExportCommand';
+import { SchemaValidateCommand } from '../src/commands/SchemaValidateCommand';
+import { SeedCommand } from '../src/commands/SeedCommand';
+import type { FileSystem } from '../src/ports/FileSystem';
+import type { Logger } from '../src/ports/Logger';
 
 class InMemoryLogger implements Logger {
   public readonly infos: string[] = [];
@@ -112,19 +113,19 @@ class MinimalProvider extends DatabaseProvider {
     return null;
   }
   async findAll<T extends object>(_entityClass: new () => T): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   async findWhere<T extends object>(
     _entityClass: new () => T,
     _c: Record<string, unknown>
   ): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   async findWhereIn<T extends object>(_e: new () => T, _col: string, _v: unknown[]): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   protected async doExecuteQuery<T>(): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   protected async doExecuteNonQuery(sql: string): Promise<number> {
     this.executed.push(sql);

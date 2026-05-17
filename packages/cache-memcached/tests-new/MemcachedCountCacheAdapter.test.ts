@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+
 import {
   MemcachedCountCacheAdapter,
   type MemjsClientLike
@@ -24,7 +25,7 @@ function createMockClient(): MemjsClientLike & {
 }
 
 async function flushPromises() {
-  await new Promise(resolve => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
 }
 
 describe('MemcachedCountCacheAdapter', () => {
@@ -85,7 +86,7 @@ describe('MemcachedCountCacheAdapter', () => {
       cache.set('key1', 42);
       expect(cache.get('key1')).toBe(42);
 
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       expect(cache.get('key1')).toBeUndefined();
     });
@@ -192,7 +193,7 @@ describe('MemcachedCountCacheAdapter', () => {
       cache.set('user:2', 2);
       cache.set('post:1', 3);
 
-      const removed = cache.invalidateBy(k => k.startsWith('user:'));
+      const removed = cache.invalidateBy((k) => k.startsWith('user:'));
 
       expect(removed).toBe(2);
       expect(cache.get('user:1')).toBeUndefined();
@@ -207,7 +208,7 @@ describe('MemcachedCountCacheAdapter', () => {
       cache.set('key2', 2);
       client.calls.delete = [];
 
-      cache.invalidateBy(k => k === 'key1');
+      cache.invalidateBy((k) => k === 'key1');
       await flushPromises();
 
       expect(client.calls.delete).toContain('tslnq:cnt:key1');
@@ -218,7 +219,7 @@ describe('MemcachedCountCacheAdapter', () => {
       const cache = new MemcachedCountCacheAdapter(client);
 
       cache.set('key1', 1);
-      const removed = cache.invalidateBy(k => k === 'nonexistent');
+      const removed = cache.invalidateBy((k) => k === 'nonexistent');
 
       expect(removed).toBe(0);
     });
@@ -236,7 +237,7 @@ describe('MemcachedCountCacheAdapter', () => {
 
       cache.set('key1', 1);
 
-      expect(() => cache.invalidateBy(k => k === 'key1')).not.toThrow();
+      expect(() => cache.invalidateBy((k) => k === 'key1')).not.toThrow();
       expect(cache.get('key1')).toBeUndefined();
     });
   });
@@ -259,7 +260,7 @@ describe('MemcachedCountCacheAdapter', () => {
       const cache = new MemcachedCountCacheAdapter(client, { shadowTtlMs: 50 });
 
       cache.set('key1', 1);
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
       cache.get('key1');
 
       const metrics = cache.getMetrics();
@@ -284,7 +285,7 @@ describe('MemcachedCountCacheAdapter', () => {
 
       cache.set('key1', 1);
       cache.set('key2', 2);
-      cache.invalidateBy(k => k.startsWith('key'));
+      cache.invalidateBy((k) => k.startsWith('key'));
 
       const metrics = cache.getMetrics();
 

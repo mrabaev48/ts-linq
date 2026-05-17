@@ -1,10 +1,11 @@
-import { describe, it, expect } from '@jest/globals';
-import { 
-  withSoftDelete, 
-  restore, 
+import { describe, expect, it } from '@jest/globals';
+
+import {
+  isMarkedForHardDelete,
   isSoftDeleted,
   markForHardDelete,
-  isMarkedForHardDelete
+  restore,
+  withSoftDelete
 } from '../src/utils';
 
 describe('SoftDelete Utils', () => {
@@ -39,10 +40,10 @@ describe('SoftDelete Utils', () => {
 
   describe('restore()', () => {
     it('should restore entity with default column names', () => {
-      const entity = { 
-        id: 1, 
-        isDeleted: true, 
-        deletedAt: new Date() 
+      const entity = {
+        id: 1,
+        isDeleted: true,
+        deletedAt: new Date()
       };
 
       restore(entity);
@@ -52,10 +53,10 @@ describe('SoftDelete Utils', () => {
     });
 
     it('should restore entity with custom column names', () => {
-      const entity = { 
-        id: 1, 
-        deleted: true, 
-        deleted_at: new Date() 
+      const entity = {
+        id: 1,
+        deleted: true,
+        deleted_at: new Date()
       };
 
       restore(entity, {
@@ -69,9 +70,9 @@ describe('SoftDelete Utils', () => {
 
     it('should handle entities without timestamp column', () => {
       const entity = { id: 1, isDeleted: true };
-      
+
       restore(entity);
-      
+
       expect(entity.isDeleted).toBe(false);
     });
   });
@@ -106,9 +107,9 @@ describe('SoftDelete Utils', () => {
   describe('Hard Delete', () => {
     it('should mark entity for hard delete', () => {
       const entity = { id: 1, name: 'Test' };
-      
+
       markForHardDelete(entity);
-      
+
       expect(isMarkedForHardDelete(entity)).toBe(true);
     });
 

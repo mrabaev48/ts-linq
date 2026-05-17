@@ -1,9 +1,19 @@
-import type { SqlDialect, QueryOptions, SqlParameter, EntityMetadata, ColumnMetadata, SqlQueryResult, SqlWithParams, SqlWithReturning } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { MssqlWhereEmitter } from './emitters/MssqlWhereEmitter';
+import type {
+  ColumnMetadata,
+  EntityMetadata,
+  QueryOptions,
+  SqlDialect,
+  SqlParameter,
+  SqlQueryResult,
+  SqlWithParams,
+  SqlWithReturning
+} from '@ts-linq/types';
+
+import { MssqlGroupEmitter } from './emitters/MssqlGroupEmitter';
 import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
 import { MssqlOrderEmitter } from './emitters/MssqlOrderEmitter';
-import { MssqlGroupEmitter } from './emitters/MssqlGroupEmitter';
+import { MssqlWhereEmitter } from './emitters/MssqlWhereEmitter';
 
 /**
  * MSSQL dialect for SELECT generation.
@@ -26,10 +36,7 @@ export class MssqlDialect implements SqlDialect {
    * @param options Normalized query options (select/where/joins/order/limit/offset)
    * @returns SQL string and positional parameter array
    */
-  public buildSelect<T>(
-    entityClass: new () => T,
-    options: QueryOptions
-  ): SqlQueryResult {
+  public buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
@@ -84,10 +91,7 @@ export class MssqlDialect implements SqlDialect {
   /**
    * Build INSERT statement.
    */
-  public buildInsert(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): SqlWithReturning {
+  public buildInsert(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithReturning {
     const insertable = metadata.columns.filter(
       (col) => !col.isGenerated || entity[col.propertyName] !== undefined
     );
@@ -97,7 +101,7 @@ export class MssqlDialect implements SqlDialect {
       this.coerceParameter(entity[c.propertyName])
     );
     let sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) VALUES (${placeholders.join(', ')})`;
-    
+
     // Replace ? with @pN
     sql = this.numberPlaceholders(sql, parameters.length);
 
@@ -125,16 +129,16 @@ export class MssqlDialect implements SqlDialect {
       (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated
     );
     if (updatable.length === 0) throw new Error(`No updatable columns for ${metadata.tableName}`);
-    
+
     const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
     const setParams: SqlParameter[] = updatable.map((c) =>
       this.coerceParameter(entity[c.propertyName])
     );
-    
+
     if (versionCol) {
       setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
     }
-    
+
     const whereClauses: string[] = [];
     const whereParams: SqlParameter[] = [];
     for (const pk of primaryKeys) {
@@ -142,28 +146,25 @@ export class MssqlDialect implements SqlDialect {
       whereClauses.push(`${col.columnName} = ?`);
       whereParams.push(this.coerceParameter(entity[pk]));
     }
-    
+
     if (versionCol) {
       whereClauses.push(`${versionCol.columnName} = ?`);
       whereParams.push(this.coerceParameter(entity[versionCol.propertyName]));
     }
-    
+
     let sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
-    
+
     // Replace ? with @pN
     const allParams = [...setParams, ...whereParams];
     sql = this.numberPlaceholders(sql, allParams.length);
-    
+
     return { sql, parameters: allParams };
   }
 
   /**
    * Build DELETE statement.
    */
-  public buildDelete(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): SqlWithParams {
+  public buildDelete(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for entity ${metadata.tableName}`);
     }
@@ -175,10 +176,10 @@ export class MssqlDialect implements SqlDialect {
       parameters.push(this.coerceParameter(entity[pk]));
     }
     let sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClauses.join(' AND ')}`;
-    
+
     // Replace ? with @pN
     sql = this.numberPlaceholders(sql, parameters.length);
-    
+
     return { sql, parameters };
   }
 
@@ -191,12 +192,12 @@ export class MssqlDialect implements SqlDialect {
       value instanceof Date ||
       value instanceof Uint8Array
     ) {
-      return value as SqlParameter;
+      return value;
     }
     try {
-      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+      return JSON.stringify(value ?? null);
     } catch {
-      return String(value) as unknown as SqlParameter;
+      return String(value);
     }
   }
 }

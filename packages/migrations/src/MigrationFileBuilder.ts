@@ -1,6 +1,6 @@
-import type { SchemaDiff } from './DiffTypes';
 import type { Dialect } from './DialectMigrationSql';
 import { generateMigrationFromDiff } from './DialectMigrationSql';
+import type { SchemaDiff } from './DiffTypes';
 
 export interface MigrationFileOptions {
   className: string;

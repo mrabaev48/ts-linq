@@ -1,10 +1,11 @@
 import type { DatabaseProvider } from '@ts-linq/core';
+
+import type { IndexDef, SchemaSnapshot, TableSnapshot } from '../DiffTypes';
 import {
-  PostgresSchemaInspector,
+  MssqlSchemaInspector,
   MySqlSchemaInspector,
-  MssqlSchemaInspector
+  PostgresSchemaInspector
 } from '../SchemaInspector';
-import type { SchemaSnapshot, TableSnapshot, IndexDef } from '../DiffTypes';
 
 export class SchemaInspectionService {
   public async buildActualSnapshot(

@@ -25,7 +25,7 @@ d('[integration][postgres] INSERT/UPDATE RETURNING', () => {
       expect(ins[0].name).toBe('x');
       const up = await p.executeQuery<{ id: number; name: string }>(
         'UPDATE "ret_items" SET name=$1 WHERE id=$2 RETURNING id, name',
-        ['y', ins[0].id as unknown as never]
+        ['y', ins[0].id]
       );
       expect(up[0].name).toBe('y');
     } finally {

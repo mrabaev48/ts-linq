@@ -1,11 +1,10 @@
-import { createProviderFromEnv } from '../src/provider-factory';
-import { PostgresProvider } from '@ts-linq/provider-postgres';
 import { MySqlProvider } from '@ts-linq/provider-mysql';
+import { PostgresProvider } from '@ts-linq/provider-postgres';
 
+import { createProviderFromEnv } from '../src/provider-factory';
 
 jest.mock('@ts-linq/provider-postgres');
 jest.mock('@ts-linq/provider-mysql');
-
 
 describe('Provider Factory - Environment Variable Mapping', () => {
   const originalEnv = process.env;
@@ -157,8 +156,6 @@ describe('Provider Factory - Environment Variable Mapping', () => {
     });
   });
 
-
-
   describe('Circuit Breaker Configuration', () => {
     test('configures circuit breaker when env vars provided', async () => {
       const mockProvider = {
@@ -233,7 +230,5 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       );
       expect(provider).toBe(mockProvider);
     });
-
-
   });
 });

@@ -1,5 +1,5 @@
-import { generateMigrationFromDiff } from '@ts-linq/migrations';
 import type { SchemaDiff } from '@ts-linq/migrations';
+import { generateMigrationFromDiff } from '@ts-linq/migrations';
 
 function normalize(lines: string[]): string {
   return lines.join('\n');
@@ -39,7 +39,7 @@ describe('PostgreSQL advanced index DDL (SchemaDiff → SQL)', () => {
         }
       ]
     };
-    const sql = generateMigrationFromDiff(diff, 'postgresql' as any).up;
+    const sql = generateMigrationFromDiff(diff, 'postgresql').up;
     const text = normalize(sql);
     expect(text).toContain(
       'CREATE UNIQUE INDEX "idx_users_email_active" ON "users" ("email") WHERE active = true'

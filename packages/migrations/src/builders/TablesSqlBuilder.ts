@@ -1,5 +1,5 @@
-import type { TableDiff } from '../DiffTypes';
 import type { Dialect } from '../Dialect';
+import type { TableDiff } from '../DiffTypes';
 import { handleCreateTable, handleDropTable, handleTableRename } from './MigrationHandlers';
 
 export class TablesSqlBuilder {

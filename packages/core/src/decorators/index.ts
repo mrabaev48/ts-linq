@@ -1,23 +1,25 @@
 import 'reflect-metadata';
+
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { IndexMetadata } from '@ts-linq/types';
+
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 
 // Re-export all decorators
 export { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
-export {
-  ValidIf,
-  ValidIfOf,
-  RequiredIfOf,
-  MinLengthOf,
-  MaxLengthOf,
-  PatternOf,
-  RangeOf
-} from './ValidIf';
-export { Entity } from './Entity';
 export { Column } from './Column';
+export { Entity } from './Entity';
 export { PrimaryKey } from './PrimaryKey';
-export { ManyToOne, OneToMany, OneToOne, ManyToMany } from './Relationships';
+export { ManyToMany, ManyToOne, OneToMany, OneToOne } from './Relationships';
+export {
+  MaxLengthOf,
+  MinLengthOf,
+  PatternOf,
+  RangeOf,
+  RequiredIfOf,
+  ValidIf,
+  ValidIfOf
+} from './ValidIf';
 
 export interface IndexOptions {
   name: string;
@@ -67,9 +69,9 @@ export function Index(options: IndexInput): ClassDecorator {
   return function <TFunction extends Function>(target: TFunction): TFunction | void {
     const ctor = target as Function;
     const meta: IndexMetadata = normalizeIndexOptions(options);
-    
+
     MetadataStorage.addIndex(ctor, meta);
-    
+
     return target;
   };
 }

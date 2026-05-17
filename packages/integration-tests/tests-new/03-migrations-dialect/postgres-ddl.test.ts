@@ -1,5 +1,5 @@
-import { Entity, Column, PrimaryKey, MetadataStorage } from '@ts-linq/metadata';
 import { PostgresDdlStrategy } from '@ts-linq/dialect-postgres';
+import { Column, Entity, MetadataStorage, PrimaryKey } from '@ts-linq/metadata';
 
 describe('PostgreSQL Migrations + Dialect Integration', () => {
   const strategy = new PostgresDdlStrategy();
@@ -21,7 +21,7 @@ describe('PostgreSQL Migrations + Dialect Integration', () => {
 
       const metadata = MetadataStorage.getEntity(User);
       const sql = strategy.generateCreateTableSql(metadata!);
-      
+
       expect(sql).toContain('CREATE TABLE IF NOT EXISTS "users"');
       expect(sql).toContain('"id" INTEGER');
       expect(sql).toContain('"name" TEXT NOT NULL');
@@ -29,27 +29,27 @@ describe('PostgreSQL Migrations + Dialect Integration', () => {
     });
 
     it('should map types correctly (BOOLEAN, TIMESTAMPTZ)', () => {
-       @Entity({ name: 'events' })
-       class Event {
-         @PrimaryKey()
-         id!: number;
-         
-         @Column({ type: 'BOOLEAN' })
-         isActive!: boolean;
-         
-         @Column({ type: 'DATETIME' })
-         createdAt!: Date;
+      @Entity({ name: 'events' })
+      class Event {
+        @PrimaryKey()
+        id!: number;
 
-         @Column({ type: 'REAL' })
-         score!: number;
-       }
-       
-       const metadata = MetadataStorage.getEntity(Event);
-       const sql = strategy.generateCreateTableSql(metadata!);
-       
-       expect(sql).toContain('"isActive" BOOLEAN');
-       expect(sql).toContain('"createdAt" TIMESTAMPTZ');
-       expect(sql).toContain('"score" DOUBLE PRECISION');
+        @Column({ type: 'BOOLEAN' })
+        isActive!: boolean;
+
+        @Column({ type: 'DATETIME' })
+        createdAt!: Date;
+
+        @Column({ type: 'REAL' })
+        score!: number;
+      }
+
+      const metadata = MetadataStorage.getEntity(Event);
+      const sql = strategy.generateCreateTableSql(metadata!);
+
+      expect(sql).toContain('"isActive" BOOLEAN');
+      expect(sql).toContain('"createdAt" TIMESTAMPTZ');
+      expect(sql).toContain('"score" DOUBLE PRECISION');
     });
 
     it('should generate DEFAULT value', () => {
@@ -60,14 +60,14 @@ describe('PostgreSQL Migrations + Dialect Integration', () => {
 
         @Column({ type: 'INTEGER', defaultValue: 5 })
         retries!: number;
-        
+
         @Column({ type: 'TEXT', defaultValue: 'default' })
         mode!: string;
       }
-      
+
       const metadata = MetadataStorage.getEntity(Config);
       const sql = strategy.generateCreateTableSql(metadata!);
-      
+
       expect(sql).toContain('"retries" INTEGER DEFAULT 5');
       expect(sql).toContain('"mode" TEXT DEFAULT \'default\'');
     });
@@ -91,19 +91,19 @@ describe('PostgreSQL Migrations + Dialect Integration', () => {
 
   describe('INDEXES', () => {
     it('should generate CREATE INDEX', () => {
-       const sql = strategy.generateCreateIndexSql('users', {
-         name: 'idx_users_name',
-         columns: ['name'],
-         unique: false
-       });
-       expect(sql).toBe('CREATE INDEX IF NOT EXISTS "idx_users_name" ON "users" ("name")');
+      const sql = strategy.generateCreateIndexSql('users', {
+        name: 'idx_users_name',
+        columns: ['name'],
+        unique: false
+      });
+      expect(sql).toBe('CREATE INDEX IF NOT EXISTS "idx_users_name" ON "users" ("name")');
     });
 
     it('should generate CREATE UNIQUE INDEX', () => {
       const sql = strategy.generateCreateIndexSql('users', {
-         name: 'idx_users_email',
-         columns: ['email'],
-         unique: true
+        name: 'idx_users_email',
+        columns: ['email'],
+        unique: true
       });
       expect(sql).toBe('CREATE UNIQUE INDEX IF NOT EXISTS "idx_users_email" ON "users" ("email")');
     });
@@ -147,26 +147,28 @@ describe('PostgreSQL Migrations + Dialect Integration', () => {
 
   describe('FOREIGN KEYS', () => {
     it('should generate FOREIGN KEY constraint', () => {
-        const sql = strategy.generateForeignKeySql('posts', {
-            name: 'fk_posts_author',
-            columnName: 'authorId',
-            relatedTableName: 'users',
-            relatedColumnName: 'id'
-        });
-        expect(sql).toBe('ALTER TABLE "posts" ADD CONSTRAINT "fk_posts_author" FOREIGN KEY ("authorId") REFERENCES "users" ("id")');
+      const sql = strategy.generateForeignKeySql('posts', {
+        name: 'fk_posts_author',
+        columnName: 'authorId',
+        relatedTableName: 'users',
+        relatedColumnName: 'id'
+      });
+      expect(sql).toBe(
+        'ALTER TABLE "posts" ADD CONSTRAINT "fk_posts_author" FOREIGN KEY ("authorId") REFERENCES "users" ("id")'
+      );
     });
     it('should handle ON DELETE/UPDATE actions', () => {
-        const sql = strategy.generateForeignKeySql('comments', {
-            name: 'fk_comments_post',
-            columnName: 'postId',
-            relatedTableName: 'posts',
-            relatedColumnName: 'id',
-            onDelete: 'CASCADE',
-            onUpdate: 'SET NULL'
-        });
-        expect(sql).toBe('ALTER TABLE "comments" ADD CONSTRAINT "fk_comments_post" FOREIGN KEY ("postId") REFERENCES "posts" ("id") ON DELETE CASCADE ON UPDATE SET NULL');
+      const sql = strategy.generateForeignKeySql('comments', {
+        name: 'fk_comments_post',
+        columnName: 'postId',
+        relatedTableName: 'posts',
+        relatedColumnName: 'id',
+        onDelete: 'CASCADE',
+        onUpdate: 'SET NULL'
+      });
+      expect(sql).toBe(
+        'ALTER TABLE "comments" ADD CONSTRAINT "fk_comments_post" FOREIGN KEY ("postId") REFERENCES "posts" ("id") ON DELETE CASCADE ON UPDATE SET NULL'
+      );
     });
   });
 });
-
-

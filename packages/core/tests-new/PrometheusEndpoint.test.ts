@@ -1,6 +1,7 @@
-import * as http from 'http';
-import { describe, it, expect, afterEach } from '@jest/globals';
-import { startPrometheusServer, getPrometheusMetrics } from '../src/utils/PrometheusEndpoint';
+import { afterEach, describe, expect, it } from '@jest/globals';
+import type * as http from 'http';
+
+import { getPrometheusMetrics, startPrometheusServer } from '../src/utils/PrometheusEndpoint';
 
 class FakeRegister {
   public contentType = 'text/plain; version=0.0.4; charset=utf-8';
@@ -9,15 +10,13 @@ class FakeRegister {
   }
 }
 
-const fakeClient = { 
-  register: new FakeRegister() 
-} as { register: FakeRegister };
+const fakeClient = {
+  register: new FakeRegister()
+};
 
 describe('Prometheus Endpoint Helpers', () => {
   let closeServer: (() => Promise<void>) | undefined;
-  let lastHandler:
-    | ((req: http.IncomingMessage, res: http.ServerResponse) => void)
-    | undefined;
+  let lastHandler: ((req: http.IncomingMessage, res: http.ServerResponse) => void) | undefined;
 
   afterEach(async () => {
     if (closeServer) {
@@ -29,7 +28,7 @@ describe('Prometheus Endpoint Helpers', () => {
 
   it('should return body and contentType even without prom-client', async () => {
     const { contentType, body } = await getPrometheusMetrics(undefined);
-    
+
     expect(typeof contentType).toBe('string');
     expect(typeof body).toBe('string');
     expect(body).toContain('prom-client');
@@ -37,7 +36,7 @@ describe('Prometheus Endpoint Helpers', () => {
 
   it('should return metrics from prom-client register', async () => {
     const { contentType, body } = await getPrometheusMetrics(fakeClient);
-    
+
     expect(contentType).toBe('text/plain; version=0.0.4; charset=utf-8');
     expect(body).toContain('test_metric');
     expect(body).toContain('42');
@@ -53,7 +52,7 @@ describe('Prometheus Endpoint Helpers', () => {
           if (typeof last === 'function') (last as () => void)();
           return serverImpl as unknown as http.Server;
         },
-        address: () => ({ port: 12345 } as unknown as ReturnType<http.Server['address']>),
+        address: () => ({ port: 12345 }) as unknown as ReturnType<http.Server['address']>,
         close: (...args: unknown[]) => {
           const last = args.length > 0 ? args[args.length - 1] : undefined;
           if (typeof last === 'function') (last as () => void)();
@@ -70,7 +69,7 @@ describe('Prometheus Endpoint Helpers', () => {
       path: '/metrics',
       serverFactory: (handler) => {
         lastHandler = handler;
-        return fakeServer as unknown as http.Server;
+        return fakeServer;
       }
     });
 
@@ -119,7 +118,7 @@ describe('Prometheus Endpoint Helpers', () => {
           if (typeof last === 'function') (last as () => void)();
           return serverImpl as unknown as http.Server;
         },
-        address: () => ({ port: 12345 } as unknown as ReturnType<http.Server['address']>),
+        address: () => ({ port: 12345 }) as unknown as ReturnType<http.Server['address']>,
         close: (...args: unknown[]) => {
           const last = args.length > 0 ? args[args.length - 1] : undefined;
           if (typeof last === 'function') (last as () => void)();
@@ -136,7 +135,7 @@ describe('Prometheus Endpoint Helpers', () => {
       path: '/custom/metrics',
       serverFactory: (handler) => {
         lastHandler = handler;
-        return fakeServer as unknown as http.Server;
+        return fakeServer;
       }
     });
 
@@ -181,7 +180,7 @@ describe('Prometheus Endpoint Helpers', () => {
           if (typeof last === 'function') (last as () => void)();
           return serverImpl as unknown as http.Server;
         },
-        address: () => ({ port: 12345 } as unknown as ReturnType<http.Server['address']>),
+        address: () => ({ port: 12345 }) as unknown as ReturnType<http.Server['address']>,
         close: (...args: unknown[]) => {
           const last = args.length > 0 ? args[args.length - 1] : undefined;
           if (typeof last === 'function') (last as () => void)();
@@ -198,7 +197,7 @@ describe('Prometheus Endpoint Helpers', () => {
       path: '/metrics',
       serverFactory: (handler) => {
         lastHandler = handler;
-        return fakeServer as unknown as http.Server;
+        return fakeServer;
       }
     });
 
@@ -236,7 +235,7 @@ describe('Prometheus Endpoint Helpers', () => {
           if (typeof last === 'function') (last as () => void)();
           return serverImpl as unknown as http.Server;
         },
-        address: () => ({ port: 12345 } as unknown as ReturnType<http.Server['address']>),
+        address: () => ({ port: 12345 }) as unknown as ReturnType<http.Server['address']>,
         close: (...args: unknown[]) => {
           closeSpy();
           const last = args.length > 0 ? args[args.length - 1] : undefined;
@@ -254,7 +253,7 @@ describe('Prometheus Endpoint Helpers', () => {
       path: '/metrics',
       serverFactory: (handler) => {
         lastHandler = handler;
-        return fakeServer as unknown as http.Server;
+        return fakeServer;
       }
     });
 

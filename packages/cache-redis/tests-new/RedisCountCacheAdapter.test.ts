@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+
 import {
-  RedisCountCacheAdapter,
   type RedisClientLike,
-  type RedisSubscriberLike,
-  type RedisPublisherLike
+  RedisCountCacheAdapter,
+  type RedisPublisherLike,
+  type RedisSubscriberLike
 } from '../src/redis/RedisCountCacheAdapter';
 
 function createMockClient(): RedisClientLike & {
@@ -50,7 +51,7 @@ function createMockPubSub() {
 }
 
 async function flushPromises() {
-  await new Promise(resolve => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
 }
 
 describe('RedisCountCacheAdapter', () => {
@@ -111,7 +112,7 @@ describe('RedisCountCacheAdapter', () => {
       cache.set('key1', 42);
       expect(cache.get('key1')).toBe(42);
 
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       expect(cache.get('key1')).toBeUndefined();
     });
@@ -224,7 +225,7 @@ describe('RedisCountCacheAdapter', () => {
       cache.set('user:2', 2);
       cache.set('post:1', 3);
 
-      const removed = cache.invalidateBy(k => k.startsWith('user:'));
+      const removed = cache.invalidateBy((k) => k.startsWith('user:'));
 
       expect(removed).toBe(2);
       expect(cache.get('user:1')).toBeUndefined();
@@ -239,7 +240,7 @@ describe('RedisCountCacheAdapter', () => {
       cache.set('key2', 2);
       client.calls.del = [];
 
-      cache.invalidateBy(k => k === 'key1');
+      cache.invalidateBy((k) => k === 'key1');
       await flushPromises();
 
       expect(client.calls.del).toContain('tslnq:cnt:key1');
@@ -255,10 +256,10 @@ describe('RedisCountCacheAdapter', () => {
       });
 
       cache.set('key1', 1);
-      cache.invalidateBy(k => k === 'key1');
+      cache.invalidateBy((k) => k === 'key1');
 
       expect(published.length).toBeGreaterThan(0);
-      const deleteMsg = published.find(p => {
+      const deleteMsg = published.find((p) => {
         const msg = JSON.parse(p.message);
         return msg.t === 'del' && msg.k === 'key1';
       });
@@ -269,7 +270,7 @@ describe('RedisCountCacheAdapter', () => {
       const cache = new RedisCountCacheAdapter(client);
 
       cache.set('key1', 1);
-      const removed = cache.invalidateBy(k => k === 'nonexistent');
+      const removed = cache.invalidateBy((k) => k === 'nonexistent');
 
       expect(removed).toBe(0);
     });
@@ -342,7 +343,7 @@ describe('RedisCountCacheAdapter', () => {
       const cache = new RedisCountCacheAdapter(client, { shadowTtlMs: 50 });
 
       cache.set('key1', 1);
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
       cache.get('key1');
 
       const metrics = cache.getMetrics();
@@ -367,7 +368,7 @@ describe('RedisCountCacheAdapter', () => {
 
       cache.set('key1', 1);
       cache.set('key2', 2);
-      cache.invalidateBy(k => k.startsWith('key'));
+      cache.invalidateBy((k) => k.startsWith('key'));
 
       const metrics = cache.getMetrics();
 

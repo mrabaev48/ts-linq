@@ -1,5 +1,5 @@
-import type { TableDiff } from '../DiffTypes';
 import type { Dialect } from '../Dialect';
+import type { TableDiff } from '../DiffTypes';
 import { handleFkCreates, handleFkDrops } from './MigrationHandlers';
 
 export class ForeignKeysSqlBuilder {

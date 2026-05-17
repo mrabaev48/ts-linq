@@ -6,7 +6,7 @@ describe('CommandRegistry', () => {
     name,
     describe: `desc:${name}`,
     aliases,
-    // eslint-disable-next-line @typescript-eslint/require-await
+
     async run() {}
   });
 

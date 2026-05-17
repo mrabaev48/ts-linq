@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { MemoryFallback } from '../src/fallbacks/MemoryFallback';
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import type { FallbackRequest } from '@ts-linq/types';
+
+import { MemoryFallback } from '../src/fallbacks/MemoryFallback';
 
 class TestEntity {
   id!: number;
@@ -29,7 +30,7 @@ describe('MemoryFallback', () => {
     };
 
     const result = await fallback.fetch(request);
-    
+
     expect(result).toHaveLength(5);
     expect(result[0].name).toBe('Alice');
     expect(result[4].name).toBe('Eve');
@@ -43,7 +44,7 @@ describe('MemoryFallback', () => {
     };
 
     const result = await fallback.fetch(request);
-    
+
     expect(result).toHaveLength(3);
     expect(result[0].name).toBe('Charlie');
     expect(result[2].name).toBe('Eve');
@@ -57,7 +58,7 @@ describe('MemoryFallback', () => {
     };
 
     const result = await fallback.fetch(request);
-    
+
     expect(result).toHaveLength(2);
     expect(result[0].name).toBe('Alice');
     expect(result[1].name).toBe('Bob');
@@ -71,7 +72,7 @@ describe('MemoryFallback', () => {
     };
 
     const result = await fallback.fetch(request);
-    
+
     expect(result).toHaveLength(2);
     expect(result[0].name).toBe('Bob');
     expect(result[1].name).toBe('Charlie');
@@ -84,7 +85,7 @@ describe('MemoryFallback', () => {
     };
 
     const count = await fallback.fetchCount(request);
-    
+
     expect(count).toBe(5);
   });
 
@@ -96,7 +97,7 @@ describe('MemoryFallback', () => {
     };
 
     const count = await fallback.fetchCount(request);
-    
+
     // Count should match paginated result: skip 1, take 3 = 3 items
     expect(count).toBe(3);
   });
@@ -108,7 +109,7 @@ describe('MemoryFallback', () => {
     };
 
     const result = await fallback.execute(request);
-    
+
     // Should return array with single number
     expect(result).toHaveLength(1);
     expect(typeof result[0]).toBe('number');
@@ -117,7 +118,7 @@ describe('MemoryFallback', () => {
 
   it('should throw for unsupported operations in execute()', async () => {
     const request: FallbackRequest<TestEntity> = {
-      operation: 'insert' as any,
+      operation: 'insert',
       entityClass: TestEntity
     };
 
@@ -141,7 +142,7 @@ describe('MemoryFallback', () => {
     };
 
     const result = await fallback.execute(request);
-    
+
     expect(result).toHaveLength(3);
     expect(result[0].name).toBe('Alice');
   });
@@ -210,14 +211,14 @@ describe('MemoryFallback', () => {
     };
 
     const result = await asyncFallback.fetch(request);
-    
+
     expect(result).toHaveLength(5);
     expect(result[0].name).toBe('Alice');
   });
 
   it('should refresh cache after refreshIntervalMs', async () => {
     let callCount = 0;
-    let currentData = [...testData];
+    const currentData = [...testData];
 
     const supplier = () => {
       callCount++;

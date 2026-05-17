@@ -1,6 +1,7 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { SchemaApplyCommand } from '../src/commands/SchemaApplyCommand';
 import * as migrations from '@ts-linq/migrations';
+
+import { SchemaApplyCommand } from '../src/commands/SchemaApplyCommand';
 
 jest.mock('@ts-linq/migrations');
 
@@ -32,20 +33,22 @@ describe('Schema Apply - Destructive Change Protection', () => {
 
     mockFs = {
       exists: jest.fn(() => true),
-      readText: jest.fn(() => JSON.stringify({
-        tables: [
-          {
-            name: 'Users',
-            columns: [
-              { name: 'id', type: 'INTEGER', nullable: false },
-              { name: 'name', type: 'TEXT', nullable: false }
-            ],
-            primaryKeys: ['id'],
-            indexes: [],
-            foreignKeys: []
-          }
-        ]
-      })),
+      readText: jest.fn(() =>
+        JSON.stringify({
+          tables: [
+            {
+              name: 'Users',
+              columns: [
+                { name: 'id', type: 'INTEGER', nullable: false },
+                { name: 'name', type: 'TEXT', nullable: false }
+              ],
+              primaryKeys: ['id'],
+              indexes: [],
+              foreignKeys: []
+            }
+          ]
+        })
+      ),
       writeText: jest.fn(),
       ensureDir: jest.fn(),
       readDir: jest.fn(() => [])
@@ -94,18 +97,13 @@ describe('Schema Apply - Destructive Change Protection', () => {
       });
 
       const cmd = new SchemaApplyCommand(mockLogger, mockFs);
-      await cmd.runDb(mockProvider as DatabaseProvider, [
-        'schema:apply',
-        '/tmp/schema.json'
-      ]);
+      await cmd.runDb(mockProvider as DatabaseProvider, ['schema:apply', '/tmp/schema.json']);
 
       expect(process.exitCode).toBe(2);
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Destructive change detected')
       );
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('--force')
-      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('--force'));
       expect(mockProvider.executeNonQuery).not.toHaveBeenCalled();
       expect(executedQueries).toHaveLength(0);
     });
@@ -138,10 +136,7 @@ describe('Schema Apply - Destructive Change Protection', () => {
       });
 
       const cmd = new SchemaApplyCommand(mockLogger, mockFs);
-      await cmd.runDb(mockProvider as DatabaseProvider, [
-        'schema:apply',
-        '/tmp/schema.json'
-      ]);
+      await cmd.runDb(mockProvider as DatabaseProvider, ['schema:apply', '/tmp/schema.json']);
 
       expect(process.exitCode).toBe(2);
       expect(mockLogger.warn).toHaveBeenCalled();
@@ -178,10 +173,7 @@ describe('Schema Apply - Destructive Change Protection', () => {
       });
 
       const cmd = new SchemaApplyCommand(mockLogger, mockFs);
-      await cmd.runDb(mockProvider as DatabaseProvider, [
-        'schema:apply',
-        '/tmp/schema.json'
-      ]);
+      await cmd.runDb(mockProvider as DatabaseProvider, ['schema:apply', '/tmp/schema.json']);
 
       expect(process.exitCode).not.toBe(2);
       expect(executedQueries).toHaveLength(3);
@@ -195,10 +187,7 @@ describe('Schema Apply - Destructive Change Protection', () => {
   describe('Dry-run mode', () => {
     test('logs destructive SQL without executing when --dry-run provided', async () => {
       (migrations.generateMigrationFromDiff as jest.Mock).mockReturnValue({
-        up: [
-          'DROP TABLE OldUsers;',
-          'CREATE TABLE NewUsers (id INTEGER);'
-        ],
+        up: ['DROP TABLE OldUsers;', 'CREATE TABLE NewUsers (id INTEGER);'],
         down: []
       });
 
@@ -258,16 +247,13 @@ describe('Schema Apply - Destructive Change Protection', () => {
         up: [
           'ALTER TABLE Users ADD COLUMN email VARCHAR(255);',
           'CREATE INDEX idx_users_email ON Users(email);',
-          'UPDATE Users SET email = name || \'@example.com\';'
+          "UPDATE Users SET email = name || '@example.com';"
         ],
         down: []
       });
 
       const cmd = new SchemaApplyCommand(mockLogger, mockFs);
-      await cmd.runDb(mockProvider as DatabaseProvider, [
-        'schema:apply',
-        'prod-schema.json'
-      ]);
+      await cmd.runDb(mockProvider as DatabaseProvider, ['schema:apply', 'prod-schema.json']);
 
       expect(process.exitCode).not.toBe(2);
       expect(executedQueries).toHaveLength(3);
@@ -276,19 +262,12 @@ describe('Schema Apply - Destructive Change Protection', () => {
 
     test('production migration: prevents accidental table drop', async () => {
       (migrations.generateMigrationFromDiff as jest.Mock).mockReturnValue({
-        up: [
-          'DROP TABLE Users;',
-          '-- Migrate data',
-          'CREATE TABLE NewUsers (id INTEGER);'
-        ],
+        up: ['DROP TABLE Users;', '-- Migrate data', 'CREATE TABLE NewUsers (id INTEGER);'],
         down: []
       });
 
       const cmd = new SchemaApplyCommand(mockLogger, mockFs);
-      await cmd.runDb(mockProvider as DatabaseProvider, [
-        'schema:apply',
-        'prod-schema.json'
-      ]);
+      await cmd.runDb(mockProvider as DatabaseProvider, ['schema:apply', 'prod-schema.json']);
 
       expect(process.exitCode).toBe(2);
       expect(mockLogger.warn).toHaveBeenCalledWith(
@@ -299,10 +278,7 @@ describe('Schema Apply - Destructive Change Protection', () => {
 
     test('confirmed destructive migration with explicit --force', async () => {
       (migrations.generateMigrationFromDiff as jest.Mock).mockReturnValue({
-        up: [
-          'DROP TABLE deprecated_table;',
-          'DELETE FROM logs WHERE created_at < \'2023-01-01\';'
-        ],
+        up: ['DROP TABLE deprecated_table;', "DELETE FROM logs WHERE created_at < '2023-01-01';"],
         down: []
       });
 
@@ -316,7 +292,7 @@ describe('Schema Apply - Destructive Change Protection', () => {
       expect(process.exitCode).not.toBe(2);
       expect(executedQueries).toEqual([
         'DROP TABLE deprecated_table;',
-        'DELETE FROM logs WHERE created_at < \'2023-01-01\';'
+        "DELETE FROM logs WHERE created_at < '2023-01-01';"
       ]);
       expect(mockLogger.info).toHaveBeenCalledWith('Applied 2 step(s) from snapshot');
     });

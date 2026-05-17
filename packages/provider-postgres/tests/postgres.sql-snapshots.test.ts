@@ -1,7 +1,7 @@
+import { PostgresDialect } from '@ts-linq/dialect-postgres';
+import { MetadataStorage } from '@ts-linq/metadata';
 import { QueryBuilder } from '@ts-linq/query';
 import type { QueryOptions } from '@ts-linq/types';
-import { MetadataStorage } from '@ts-linq/metadata';
-import { PostgresDialect } from '@ts-linq/dialect-postgres';
 
 class PgUser {
   id!: number;
@@ -54,7 +54,7 @@ describe('PostgreSQL SQL snapshots (dialect-level, no DB required)', () => {
       orderBy: [{ column: 'score', direction: 'DESC' }],
       limit: 5
     } as any;
-    const built = dialect.buildSelect(PgUser as any, opts);
+    const built = dialect.buildSelect(PgUser, opts);
     expect(built).toMatchInlineSnapshot(`
       {
         "parameters": [
@@ -86,7 +86,7 @@ describe('PostgreSQL SQL snapshots (dialect-level, no DB required)', () => {
       limit: 10,
       offset: 5
     } as any;
-    const built = qb.generateSql(PgUser as any, opts);
+    const built = qb.generateSql(PgUser, opts);
     expect(built).toMatchInlineSnapshot(`
      {
        "parameters": [
@@ -105,8 +105,8 @@ describe('PostgreSQL SQL snapshots (dialect-level, no DB required)', () => {
       groupBy: { columns: ['name'], having: { condition: 'COUNT(*) > ?', parameters: [1] } },
       cte: { name: 'active_users', sql: 'SELECT * FROM "pg_users" WHERE age > 18' },
       from: 'active_users'
-    } as any;
-    const built = qb.generateSql(PgUser as any, opts);
+    };
+    const built = qb.generateSql(PgUser, opts);
     expect(built).toMatchInlineSnapshot(`
      {
        "parameters": [
@@ -123,8 +123,8 @@ describe('PostgreSQL SQL snapshots (dialect-level, no DB required)', () => {
       select: ['id', 'name'],
       where: [{ condition: 'age >= ?', parameters: [21] }],
       offset: 7
-    } as any;
-    const built = qb.generateSql(PgUser as any, opts);
+    };
+    const built = qb.generateSql(PgUser, opts);
     expect(built).toMatchInlineSnapshot(`
       {
         "parameters": [
@@ -145,8 +145,8 @@ describe('PostgreSQL SQL snapshots (dialect-level, no DB required)', () => {
           parameters: [100]
         }
       ]
-    } as any;
-    const built = qb.generateSql(PgUser as any, opts);
+    };
+    const built = qb.generateSql(PgUser, opts);
     expect(built).toMatchInlineSnapshot(`
       {
         "parameters": [
@@ -161,8 +161,8 @@ describe('PostgreSQL SQL snapshots (dialect-level, no DB required)', () => {
     const qb = new QueryBuilder(new PostgresDialect());
     const opts: QueryOptions = {
       select: ['row_number() OVER (PARTITION BY name ORDER BY age DESC) AS rn', 'id', 'name', 'age']
-    } as any;
-    const built = qb.generateSql(PgUser as any, opts);
+    };
+    const built = qb.generateSql(PgUser, opts);
     expect(built).toMatchInlineSnapshot(`
      {
        "parameters": [],

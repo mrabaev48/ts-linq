@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable max-lines-per-function */
 /* eslint-disable complexity */
-import { DatabaseProvider } from '../../src/DatabaseProvider';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { EntityMetadata, SqlDialect, QueryOptions, SqlParameter } from '@ts-linq/types';
+import type { EntityMetadata, QueryOptions, SqlDialect, SqlParameter } from '@ts-linq/types';
+
+import { DatabaseProvider } from '../../src/DatabaseProvider';
 
 class TestDialect implements SqlDialect {
   public quoteIdentifier(identifier: string): string {
@@ -15,7 +13,7 @@ class TestDialect implements SqlDialect {
     entityClass: new () => unknown,
     options: QueryOptions
   ): { query: string; parameters: SqlParameter[] } {
-    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
+    const meta = MetadataStorage.getEntity(entityClass)!;
     let query = `SELECT ${options.distinct ? 'DISTINCT ' : ''}${
       options.select?.length ? options.select.join(', ') : '*'
     } FROM ${meta.tableName}`;
@@ -299,11 +297,11 @@ export class ProviderStub extends DatabaseProvider {
         rows: combined.length,
         provider: this.providerLabel
       });
-      return combined as unknown as T[];
+      return combined;
     }
     // Very small SQL subset: SELECT * FROM <table> [WHERE <col> = ?] [ORDER BY <col> ASC|DESC] [LIMIT N [OFFSET M]]
     const mFrom = /FROM\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(sql);
-    if (!mFrom) return [] as unknown as T[];
+    if (!mFrom) return [];
     const tableName = mFrom[1];
     let rows = (this.data.get(tableName) || []).slice();
     if (this.softDelete?.enabled && this.softDelete.column) {
@@ -349,7 +347,7 @@ export class ProviderStub extends DatabaseProvider {
             rows = rows.filter((r) => set.has(r[col]));
           }
         } else {
-          const set = new Set(params as unknown as unknown[]);
+          const set = new Set(params);
           rows = rows.filter((r) => set.has(r[col]));
         }
       }

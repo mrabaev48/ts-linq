@@ -1,14 +1,15 @@
-import * as path from 'path';
 import type { DatabaseProvider } from '@ts-linq/core';
-import type { DbCommand } from './Command';
-import type { Logger } from '../ports/Logger';
+import * as path from 'path';
+
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
-import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
-import { ensureDir, resolveDialect } from '../utils';
-import { inspectTable } from '../schema-inspect';
 import { EntityTemplateBuilder } from '../generators/EntityTemplateBuilder';
+import type { FileSystem } from '../ports/FileSystem';
+import type { Logger } from '../ports/Logger';
+import { inspectTable } from '../schema-inspect';
 import { ArgReader } from '../services/ArgReader';
+import { ensureDir, resolveDialect } from '../utils';
+import type { DbCommand } from './Command';
 
 export class GenerateEntityCommand implements DbCommand {
   public readonly name = 'generate:entity';

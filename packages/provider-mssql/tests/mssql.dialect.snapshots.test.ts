@@ -1,6 +1,6 @@
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
-import { QueryBuilder } from '@ts-linq/query';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryBuilder } from '@ts-linq/query';
 import type { QueryOptions } from '@ts-linq/types';
 
 class MsUser {
@@ -34,8 +34,8 @@ describe('MSSQL dialect snapshots', () => {
       select: ['id', 'name'],
       offset: 10,
       limit: 5
-    } as any;
-    const built = qb.generateSql(MsUser as any, opts);
+    };
+    const built = qb.generateSql(MsUser, opts);
     expect(built).toMatchInlineSnapshot(`
       {
         "parameters": [],

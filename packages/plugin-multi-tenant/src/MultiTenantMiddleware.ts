@@ -1,4 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+
 import type { MultiTenantOptions, TenantContext } from './types';
 
 /**
@@ -68,10 +69,12 @@ export class MultiTenantMiddleware {
       return;
     }
 
-    const tenantId = context.tenantId ?? await this.getTenant();
+    const tenantId = context.tenantId ?? (await this.getTenant());
 
     if (this.options.strictMode && tenantId === undefined) {
-      throw new Error('No tenant context available. Set tenant using setTenant() or getCurrentTenant()');
+      throw new Error(
+        'No tenant context available. Set tenant using setTenant() or getCurrentTenant()'
+      );
     }
 
     if (context.operation === 'insert' || context.operation === 'update') {

@@ -1,4 +1,8 @@
-import { ExponentialBackoffRetryPolicy, FixedIntervalRetryPolicy, NoRetryPolicy } from '../src/utils/RetryPolicies';
+import {
+  ExponentialBackoffRetryPolicy,
+  FixedIntervalRetryPolicy,
+  NoRetryPolicy
+} from '../src/utils/RetryPolicies';
 
 describe('RetryPolicies', () => {
   describe('FixedIntervalRetryPolicy', () => {

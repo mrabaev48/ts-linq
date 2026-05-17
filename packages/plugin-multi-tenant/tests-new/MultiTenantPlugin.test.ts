@@ -1,10 +1,10 @@
 import { MultiTenantMiddleware } from '../src/MultiTenantMiddleware';
 import {
-  withTenant,
   createTenantScope,
   getTenantId,
   hasTenantColumn,
-  setTenantId
+  setTenantId,
+  withTenant
 } from '../src/utils';
 
 jest.mock('@ts-linq/metadata', () => {
@@ -80,7 +80,7 @@ describe('plugin-multi-tenant: MultiTenantMiddleware', () => {
       entityClass: class Org {},
       operation: 'insert',
 
-      state: 'added',
+      state: 'added'
     });
     expect(entity.tenantId).toBe('ACME');
   });
@@ -94,7 +94,7 @@ describe('plugin-multi-tenant: MultiTenantMiddleware', () => {
         entityClass: class Org {},
         operation: 'insert',
 
-        state: 'added',
+        state: 'added'
       })
     ).rejects.toThrow('No tenant context available');
   });
@@ -108,7 +108,7 @@ describe('plugin-multi-tenant: MultiTenantMiddleware', () => {
       entityClass: class Org {},
       operation: 'insert',
 
-      state: 'added',
+      state: 'added'
     });
     expect(Object.keys(entity).length).toBe(0);
   });

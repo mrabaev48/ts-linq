@@ -1,7 +1,6 @@
-module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  roots: ['<rootDir>/tests'],
+const { createPackageJestConfig } = require('@ts-linq/jest-config');
+
+module.exports = createPackageJestConfig({
   testMatch: ['**/*.e2e.test.ts'],
   moduleNameMapper: {
     '^@ts-linq/core$': '<rootDir>/../core/src',
@@ -13,4 +12,4 @@ module.exports = {
   testTimeout: 30000,
   detectOpenHandles: true,
   forceExit: true
-};
+});

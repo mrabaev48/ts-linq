@@ -146,7 +146,11 @@ export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator
         if (typeof v === 'string') return regex.test(v);
         return true;
       };
-      MetadataStorage.addValidationRule(ctor, { propertyName: propName, predicate, message: message || `Invalid format` });
+      MetadataStorage.addValidationRule(ctor, {
+        propertyName: propName,
+        predicate,
+        message: message || `Invalid format`
+      });
     });
   };
 }
@@ -170,7 +174,11 @@ export function RangeOf<T>(min?: number, max?: number, message?: string): Proper
         }
         return true;
       };
-      MetadataStorage.addValidationRule(ctor, { propertyName: propName, predicate, message: message || `Out of range` });
+      MetadataStorage.addValidationRule(ctor, {
+        propertyName: propName,
+        predicate,
+        message: message || `Out of range`
+      });
     });
   };
 }

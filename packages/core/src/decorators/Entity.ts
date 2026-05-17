@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+
 import { MetadataStorage } from '@ts-linq/metadata';
 
 /**
@@ -18,10 +19,10 @@ export interface EntityOptions {
 export function Entity(options: EntityOptions = {}): ClassDecorator {
   return function <TFunction extends Function>(target: TFunction): TFunction | void {
     const tableName = options?.name || target.name;
-    
+
     // Register entity with MetadataStorage
-    MetadataStorage.addEntity(target as Function, tableName);
-    
+    MetadataStorage.addEntity(target, tableName);
+
     return target;
   };
 }

@@ -17,7 +17,7 @@ describe('InternalLogger', () => {
   describe('logInternalError', () => {
     it('should log error with message', () => {
       const error = new Error('Test error');
-      
+
       logInternalError('TestOperation', error);
 
       expect(consoleErrorSpy).toHaveBeenCalled();
@@ -52,7 +52,7 @@ describe('InternalLogger', () => {
 
     it('should log error with stack trace', () => {
       const error = new Error('Test error');
-      
+
       logInternalError('TestOperation', error);
 
       expect(consoleErrorSpy).toHaveBeenCalled();

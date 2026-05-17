@@ -11,22 +11,20 @@
  */
 
 import * as ts from 'typescript';
-import { transformExpression, type TransformContext } from './expression';
-import { makeObject, makeArray, prop, str, num } from './utils';
+
+import { type TransformContext, transformExpression } from './expression';
+import { makeArray, makeObject, prop, str } from './utils';
 
 const BRAND = '__tsLinqWhereTransformerBrand';
 const TARGET_METHODS = new Set(['where', 'having', 'select']);
 
 // ─── Scope guard ──────────────────────────────────────────────────────────────
 
-function receiverIsQueryable(
-  checker: ts.TypeChecker,
-  receiver: ts.Expression
-): boolean {
+function receiverIsQueryable(checker: ts.TypeChecker, receiver: ts.Expression): boolean {
   try {
     const type = checker.getTypeAtLocation(receiver);
     const props = checker.getPropertiesOfType(type);
-    return props.some(p => p.getName() === BRAND);
+    return props.some((p) => p.getName() === BRAND);
   } catch {
     return false;
   }
@@ -56,12 +54,20 @@ function rewriteSelectCall(
   if (arg0 === undefined) return null;
 
   if (!ts.isArrowFunction(arg0)) {
-    emitError(ctx, arg0, `select() selector must be an arrow function, not ${ts.SyntaxKind[arg0.kind]}.`);
+    emitError(
+      ctx,
+      arg0,
+      `select() selector must be an arrow function, not ${ts.SyntaxKind[arg0.kind]}.`
+    );
     return call;
   }
 
   if (ts.isBlock(arg0.body)) {
-    emitError(ctx, arg0.body, `select() selector must be a concise arrow (expression body, not a block statement).`);
+    emitError(
+      ctx,
+      arg0.body,
+      `select() selector must be a concise arrow (expression body, not a block statement).`
+    );
     return call;
   }
 
@@ -75,8 +81,7 @@ function rewriteSelectCall(
   const body = arg0.body;
 
   // Unwrap parenthesized expression: e => ({ ... }) → ObjectLiteralExpression
-  const unwrapped =
-    ts.isParenthesizedExpression(body) ? body.expression : body;
+  const unwrapped = ts.isParenthesizedExpression(body) ? body.expression : body;
 
   const fields: ts.StringLiteral[] = [];
 
@@ -95,7 +100,7 @@ function rewriteSelectCall(
         ctx,
         element,
         `select() projection property must be a simple property access (e.g. { name: e.name }). ` +
-        `Computed values, spreads, and method calls are not supported.`
+          `Computed values, spreads, and method calls are not supported.`
       );
       return call;
     }
@@ -104,7 +109,11 @@ function rewriteSelectCall(
     if (ts.isIdentifier(unwrapped.expression) && unwrapped.expression.text === paramName) {
       fields.push(str(unwrapped.name.text));
     } else {
-      emitError(ctx, unwrapped, `select() selector must access a property of the entity parameter (e.g. e => e.name).`);
+      emitError(
+        ctx,
+        unwrapped,
+        `select() selector must access a property of the entity parameter (e.g. e => e.name).`
+      );
       return call;
     }
   } else {
@@ -116,9 +125,7 @@ function rewriteSelectCall(
     return call;
   }
 
-  const compiledArg = makeObject([
-    prop('fields', makeArray(fields)),
-  ]);
+  const compiledArg = makeObject([prop('fields', makeArray(fields))]);
 
   const callee = ts.factory.createPropertyAccessExpression(receiver, 'selectCompiled');
   return ts.factory.createCallExpression(callee, call.typeArguments, [compiledArg]);
@@ -147,12 +154,20 @@ function rewriteCall(
   if (arg0 === undefined) return null;
 
   if (!ts.isArrowFunction(arg0)) {
-    emitError(ctx, arg0, `${methodName}() predicate must be an arrow function, not ${ts.SyntaxKind[arg0.kind]}.`);
+    emitError(
+      ctx,
+      arg0,
+      `${methodName}() predicate must be an arrow function, not ${ts.SyntaxKind[arg0.kind]}.`
+    );
     return call; // leave unchanged, build continues
   }
 
   if (ts.isBlock(arg0.body)) {
-    emitError(ctx, arg0.body, `${methodName}() predicate must be a concise arrow (expression body, not a block statement).`);
+    emitError(
+      ctx,
+      arg0.body,
+      `${methodName}() predicate must be a concise arrow (expression body, not a block statement).`
+    );
     return call;
   }
 
@@ -169,16 +184,13 @@ function rewriteCall(
     ctx,
     methodName,
     paramName,
-    parameters,
+    parameters
   };
 
   const astNode = transformExpression(arg0.body, tctx);
 
   // Build { ast: <node>, parameters: [<captured>, ...] }
-  const compiledArg = makeObject([
-    prop('ast', astNode),
-    prop('parameters', makeArray(parameters)),
-  ]);
+  const compiledArg = makeObject([prop('ast', astNode), prop('parameters', makeArray(parameters))]);
 
   const compiledMethod = `${methodName}Compiled`;
   const callee = ts.factory.createPropertyAccessExpression(receiver, compiledMethod);
@@ -205,24 +217,20 @@ export default function tsLinqTransformer(
       return ts.visitEachChild(node, visit, ctx);
     };
 
-    return ts.visitEachChild(sourceFile, visit, ctx) as ts.SourceFile;
+    return ts.visitEachChild(sourceFile, visit, ctx);
   };
 }
 
 // ─── Diagnostic helper ────────────────────────────────────────────────────────
 
-function emitError(
-  ctx: ts.TransformationContext,
-  node: ts.Node,
-  message: string
-): void {
+function emitError(ctx: ts.TransformationContext, node: ts.Node, message: string): void {
   const diag: ts.Diagnostic = {
     category: ts.DiagnosticCategory.Error,
     code: 90_001,
     file: node.getSourceFile(),
     start: node.getStart(),
     length: node.getWidth(),
-    messageText: message,
+    messageText: message
   };
   const c = ctx as unknown as { addDiagnostic?: (d: ts.Diagnostic) => void };
   if (typeof c.addDiagnostic === 'function') {

@@ -1,9 +1,9 @@
-import { DbContext } from '@ts-linq/orm';
+import { RequiredIfOf, ValidIfOf } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { ValidationError } from '@ts-linq/types';
-import type { ColumnMetadata } from '@ts-linq/types';
+import { DbContext } from '@ts-linq/orm';
 import { PostgresProvider } from '@ts-linq/provider-postgres';
-import { ValidIfOf, RequiredIfOf } from '@ts-linq/core';
+import type { ColumnMetadata } from '@ts-linq/types';
+import { ValidationError } from '@ts-linq/types';
 
 class Article {
   id!: number;
@@ -20,7 +20,7 @@ class PgCtx extends DbContext {
         database: process.env.POSTGRES_DB || 'test',
         user: process.env.POSTGRES_USER || 'postgres',
         password: process.env.POSTGRES_PASSWORD
-      }) as any
+      })
     });
   }
 }

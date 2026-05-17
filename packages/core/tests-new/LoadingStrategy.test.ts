@@ -40,7 +40,7 @@ describe('LoadingStrategy', () => {
 
     it('should be assignable to variables', () => {
       let strategy: LoadingStrategy;
-      
+
       strategy = LoadingStrategy.Lazy;
       expect(strategy).toBe(LoadingStrategy.Lazy);
 

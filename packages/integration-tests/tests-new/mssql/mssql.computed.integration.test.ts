@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnMetadata } from '@ts-linq/types';
 import { MssqlProvider } from '@ts-linq/provider-mssql';
+import type { ColumnMetadata } from '@ts-linq/types';
 
 class User {
   id!: number;
@@ -26,7 +25,7 @@ describe('MSSQL computed column (integration)', () => {
         isComputed: true,
         computedExpression: 'a * 2'
         // computedStorage respected in DDL strategy
-      } as ColumnMetadata
+      }
     ];
     cols.forEach((c) => MetadataStorage.addColumn(User, c));
     MetadataStorage.addPrimaryKey(User, 'id');

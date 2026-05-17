@@ -1,7 +1,7 @@
-import { QueryBuilder } from '@ts-linq/query';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { Column, Entity, MetadataStorage, PrimaryKey } from '@ts-linq/metadata';
 import { PostgresProvider } from '@ts-linq/provider-postgres';
+import { QueryBuilder } from '@ts-linq/query';
 
 describe('PostgreSQL Provider + QueryBuilder Integration', () => {
   @Entity({ name: 'users' })
@@ -104,10 +104,7 @@ describe('PostgreSQL Provider + QueryBuilder Integration', () => {
         'DROP TABLE IF EXISTS "users"; CREATE TABLE "users" (id SERIAL PRIMARY KEY, age INT, name TEXT, metadata JSONB)'
       );
 
-      const created = await provider.insert<User>(
-        { age: 30, name: 'Alice' } as User,
-        User as unknown as Function
-      );
+      const created = await provider.insert<User>({ age: 30, name: 'Alice' } as User, User);
 
       expect(created.id).toBeGreaterThan(0);
       expect(created.name).toBe('Alice');

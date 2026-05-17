@@ -2,8 +2,8 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { CteDefinition, SqlParameter } from '@ts-linq/types';
 
-import { QueryExecutor } from './QueryExecutor';
-import { QueryModel } from './QueryModel';
+import type { QueryExecutor } from './QueryExecutor';
+import type { QueryModel } from './QueryModel';
 
 /**
  * Encapsulates offset-based and keyset pagination logic extracted from Queryable.

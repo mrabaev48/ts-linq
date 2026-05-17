@@ -7,7 +7,7 @@ describe('cli help via registry', () => {
       name,
       describe,
       aliases,
-      // eslint-disable-next-line @typescript-eslint/require-await
+
       async run() {}
     });
     const reg = new CommandRegistry([

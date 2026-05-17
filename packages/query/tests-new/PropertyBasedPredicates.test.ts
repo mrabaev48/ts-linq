@@ -1,7 +1,7 @@
-import { describe, it, expect } from '@jest/globals';
-import fc from 'fast-check';
-import { SqlVisitor } from '@ts-linq/sql-visitor';
+import { describe, expect, it } from '@jest/globals';
 import type { ExpressionNode } from '@ts-linq/ast';
+import { SqlVisitor } from '@ts-linq/sql-visitor';
+import fc from 'fast-check';
 
 type Row = { price: number; stock: number };
 

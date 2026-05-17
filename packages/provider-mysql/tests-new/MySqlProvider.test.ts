@@ -1,6 +1,7 @@
-import { describe, it, expect } from '@jest/globals';
-import { MySqlProvider } from '../src/MySqlProvider';
+import { describe, expect, it } from '@jest/globals';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
+
+import { MySqlProvider } from '../src/MySqlProvider';
 
 describe('MySqlProvider', () => {
   describe('constructor', () => {
@@ -43,7 +44,7 @@ describe('MySqlProvider', () => {
         host: 'localhost',
         database: 'testdb',
         user: 'root',
-        logger: mockLogger as unknown as typeof mockLogger
+        logger: mockLogger
       });
 
       expect(provider).toBeDefined();
@@ -270,7 +271,10 @@ describe('MySqlProvider', () => {
         host: 'localhost',
         database: 'testdb',
         user: 'root',
-        retryPolicy: { shouldRetry: (err, attempt) => attempt < 3, getDelayMs: (attempt) => attempt * 500 }
+        retryPolicy: {
+          shouldRetry: (err, attempt) => attempt < 3,
+          getDelayMs: (attempt) => attempt * 500
+        }
       });
 
       expect(provider).toBeDefined();

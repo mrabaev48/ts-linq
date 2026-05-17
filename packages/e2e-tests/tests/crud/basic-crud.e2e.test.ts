@@ -1,7 +1,8 @@
-import { setupTestDatabase, teardownTestDatabase } from '../../src/setup';
-import { Entity, Column, PrimaryKey } from '@ts-linq/core';
+import { Column, Entity, PrimaryKey } from '@ts-linq/core';
 import { DbContext } from '@ts-linq/orm';
 import { sampleUsers } from '@ts-linq/testkits';
+
+import { setupTestDatabase, teardownTestDatabase } from '../../src/setup';
 
 @Entity({ name: 'users' })
 class User {
@@ -24,7 +25,9 @@ class User {
 class TestDbContext extends DbContext {}
 
 const run = process.env.SKIP_DB_TESTS !== '1';
-(run ? describe.each(['postgresql', 'mysql', 'mssql']) : describe.skip.each(['postgresql', 'mysql', 'mssql']))(
+(run
+  ? describe.each(['postgresql', 'mysql', 'mssql'])
+  : describe.skip.each(['postgresql', 'mysql', 'mssql']))(
   'E2E CRUD Operations - %s',
   (providerName) => {
     let harness: any;
@@ -74,7 +77,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
-      
+
       // Insert test data (isolated for this test)
       for (const userData of sampleUsers) {
         const user = Object.assign(new User(), userData);
@@ -92,7 +95,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
-      
+
       // Create user first (isolated)
       const user = new User();
       user.name = 'Original Name';
@@ -108,7 +111,10 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       userSet.update(user);
       await context.saveChanges();
 
-      const updated = await userSet.query().where(u => u.id === user.id).firstOrDefault();
+      const updated = await userSet
+        .query()
+        .where((u) => u.id === user.id)
+        .firstOrDefault();
       expect(updated?.name).toBe('Updated Name');
       expect(updated?.age).toBe(35);
     });
@@ -119,7 +125,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
-      
+
       // Create user first (isolated)
       const user = new User();
       user.name = 'To Delete';
@@ -130,7 +136,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       await context.saveChanges();
 
       const initialCount = await userSet.query().count();
-      
+
       userSet.remove(user);
       await context.saveChanges();
 
@@ -144,9 +150,12 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
-      const activeUsers = await userSet.query().where(u => u.isActive === true).toArray();
-      
-      expect(activeUsers.every(u => u.isActive)).toBe(true);
+      const activeUsers = await userSet
+        .query()
+        .where((u) => u.isActive === true)
+        .toArray();
+
+      expect(activeUsers.every((u) => u.isActive)).toBe(true);
     });
 
     it('should sort users', async () => {
@@ -156,7 +165,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
       const userSet = context.set(User);
       const sortedUsers = await userSet.query().orderBy('name').toArray();
-      
+
       for (let i = 1; i < sortedUsers.length; i++) {
         expect(sortedUsers[i].name >= sortedUsers[i - 1].name).toBe(true);
       }

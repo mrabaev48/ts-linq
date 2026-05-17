@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+import type { SqlCacheEntry } from '@ts-linq/types';
+
 import {
   MemcachedSqlCacheAdapter,
   type MemjsClientLike
 } from '../src/memcached/MemcachedSqlCacheAdapter';
-import type { SqlCacheEntry } from '@ts-linq/types';
 
 function createMockClient(): MemjsClientLike & {
   calls: { get: string[]; set: any[]; delete: string[] };
@@ -25,7 +26,7 @@ function createMockClient(): MemjsClientLike & {
 }
 
 async function flushPromises() {
-  await new Promise(resolve => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
 }
 
 describe('MemcachedSqlCacheAdapter', () => {
@@ -114,7 +115,7 @@ describe('MemcachedSqlCacheAdapter', () => {
       cache.set('key1', entry);
       expect(cache.get('key1')).toBeDefined();
 
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       expect(cache.get('key1')).toBeUndefined();
     });
@@ -246,7 +247,7 @@ describe('MemcachedSqlCacheAdapter', () => {
       cache.set('user:2', entry);
       cache.set('post:1', entry);
 
-      const removed = cache.invalidateBy(k => k.startsWith('user:'));
+      const removed = cache.invalidateBy((k) => k.startsWith('user:'));
 
       expect(removed).toBe(2);
       expect(cache.get('user:1')).toBeUndefined();
@@ -262,7 +263,7 @@ describe('MemcachedSqlCacheAdapter', () => {
       cache.set('key2', entry);
       client.calls.delete = [];
 
-      cache.invalidateBy(k => k === 'key1');
+      cache.invalidateBy((k) => k === 'key1');
       await flushPromises();
 
       expect(client.calls.delete).toContain('tslnq:sql:key1');
@@ -274,7 +275,7 @@ describe('MemcachedSqlCacheAdapter', () => {
       const entry: SqlCacheEntry = { query: 'SELECT 1', parameters: [] };
 
       cache.set('key1', entry);
-      const removed = cache.invalidateBy(k => k === 'nonexistent');
+      const removed = cache.invalidateBy((k) => k === 'nonexistent');
 
       expect(removed).toBe(0);
     });
@@ -293,7 +294,7 @@ describe('MemcachedSqlCacheAdapter', () => {
 
       cache.set('key1', entry);
 
-      expect(() => cache.invalidateBy(k => k === 'key1')).not.toThrow();
+      expect(() => cache.invalidateBy((k) => k === 'key1')).not.toThrow();
       expect(cache.get('key1')).toBeUndefined();
     });
   });
@@ -318,7 +319,7 @@ describe('MemcachedSqlCacheAdapter', () => {
       const entry: SqlCacheEntry = { query: 'SELECT 1', parameters: [] };
 
       cache.set('key1', entry);
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
       cache.get('key1');
 
       const metrics = cache.getMetrics();
@@ -345,7 +346,7 @@ describe('MemcachedSqlCacheAdapter', () => {
 
       cache.set('key1', entry);
       cache.set('key2', entry);
-      cache.invalidateBy(k => k.startsWith('key'));
+      cache.invalidateBy((k) => k.startsWith('key'));
 
       const metrics = cache.getMetrics();
 
@@ -391,7 +392,9 @@ describe('MemcachedSqlCacheAdapter', () => {
 
     it('should clone parameters from Memcached read-through', async () => {
       const mockClient: MemjsClientLike = {
-        get: async () => ({ value: Buffer.from(JSON.stringify({ query: 'SELECT 1', parameters: [1, 'test'] })) }),
+        get: async () => ({
+          value: Buffer.from(JSON.stringify({ query: 'SELECT 1', parameters: [1, 'test'] }))
+        }),
         set: async () => {},
         delete: async () => {}
       };

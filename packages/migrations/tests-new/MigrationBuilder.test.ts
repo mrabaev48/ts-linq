@@ -1,24 +1,25 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { MigrationBuilder } from '../src/MigrationBuilder';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+
 import type { SchemaDiff, TableDiff } from '../src/DiffTypes';
+import { MigrationBuilder } from '../src/MigrationBuilder';
 
 // Helper functions for navigating SchemaDiff structure
 function getTableCreate(diff: SchemaDiff, tableName: string) {
-  return diff.tables.find(t => t.table === tableName && t.create)?.create;
+  return diff.tables.find((t) => t.table === tableName && t.create)?.create;
 }
 
 function getTableDrop(diff: SchemaDiff, tableName: string) {
-  return diff.tables.find(t => t.table === tableName && t.drop);
+  return diff.tables.find((t) => t.table === tableName && t.drop);
 }
 
 function getTableDiff(diff: SchemaDiff, tableName: string): TableDiff | undefined {
-  return diff.tables.find(t => t.table === tableName);
+  return diff.tables.find((t) => t.table === tableName);
 }
 
 function getColumnChanges(diff: SchemaDiff, tableName: string, kind?: 'add' | 'alter' | 'drop') {
   const table = getTableDiff(diff, tableName);
   const changes = table?.columnChanges || [];
-  return kind ? changes.filter(c => c.kind === kind) : changes;
+  return kind ? changes.filter((c) => c.kind === kind) : changes;
 }
 
 describe('MigrationBuilder', () => {
@@ -38,7 +39,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const table = getTableCreate(diff, 'users');
-      
+
       expect(table).toBeDefined();
       expect(table!.name).toBe('users');
       expect(table!.columns).toHaveLength(3);
@@ -54,7 +55,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const table = getTableCreate(diff, 'users');
-      
+
       expect(table!.primaryKeys).toContain('id');
     });
 
@@ -67,7 +68,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const table = getTableCreate(diff, 'user_roles');
-      
+
       expect(table!.primaryKeys).toEqual(['user_id', 'role_id']);
     });
 
@@ -80,7 +81,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const table = getTableCreate(diff, 'users');
-      
+
       expect(table!.indexes).toHaveLength(1);
       expect(table!.indexes[0].name).toBe('idx_email');
       expect(table!.indexes[0].columns).toEqual(['email']);
@@ -94,7 +95,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const table = getTableCreate(diff, 'users');
-      
+
       expect(table!.indexes[0].unique).toBe(true);
     });
 
@@ -111,7 +112,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const table = getTableCreate(diff, 'posts');
-      
+
       expect(table!.foreignKeys).toHaveLength(1);
       expect(table!.foreignKeys[0].refTable).toBe('users');
     });
@@ -123,17 +124,15 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const tableDiff = getTableDrop(diff, 'old_table');
-      
+
       expect(tableDiff).toBeDefined();
     });
 
     it('should drop multiple tables', () => {
-      builder
-        .dropTable('table1')
-        .dropTable('table2');
+      builder.dropTable('table1').dropTable('table2');
 
       const diff = builder.toDiff();
-      
+
       expect(getTableDrop(diff, 'table1')).toBeDefined();
       expect(getTableDrop(diff, 'table2')).toBeDefined();
     });
@@ -147,7 +146,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const addChanges = getColumnChanges(diff, 'users', 'add');
-      
+
       expect(addChanges).toHaveLength(1);
       expect(addChanges[0].column.name).toBe('age');
       expect(addChanges[0].column.type).toBe('INTEGER');
@@ -160,7 +159,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const addChanges = getColumnChanges(diff, 'users', 'add');
-      
+
       expect(addChanges[0].column.nullable).toBe(false);
     });
 
@@ -171,7 +170,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const alterChanges = getColumnChanges(diff, 'users', 'alter');
-      
+
       expect(alterChanges).toHaveLength(1);
       expect(alterChanges[0].column.name).toBe('age');
       expect(alterChanges[0].column.type).toBe('BIGINT');
@@ -184,7 +183,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const dropChanges = getColumnChanges(diff, 'users', 'drop');
-      
+
       expect(dropChanges).toHaveLength(1);
       expect(dropChanges[0].column.name).toBe('old_field');
     });
@@ -197,7 +196,7 @@ describe('MigrationBuilder', () => {
       });
 
       const diff = builder.toDiff();
-      
+
       expect(getColumnChanges(diff, 'users', 'add')).toHaveLength(1);
       expect(getColumnChanges(diff, 'users', 'alter')).toHaveLength(1);
       expect(getColumnChanges(diff, 'users', 'drop')).toHaveLength(1);
@@ -210,7 +209,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const tableDiff = getTableDiff(diff, 'old_name');
-      
+
       expect(tableDiff!.renameTo).toBe('new_name');
     });
   });
@@ -221,7 +220,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const tableDiff = getTableDiff(diff, 'users');
-      
+
       expect(tableDiff!.columnRenames).toHaveLength(1);
       expect(tableDiff!.columnRenames![0].from).toBe('old_name');
       expect(tableDiff!.columnRenames![0].to).toBe('new_name');
@@ -234,7 +233,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const tableDiff = getTableDiff(diff, 'users');
-      
+
       expect(tableDiff!.indexCreates).toHaveLength(1);
       expect(tableDiff!.indexCreates![0].name).toBe('idx_email');
       expect(tableDiff!.indexCreates![0].columns).toEqual(['email']);
@@ -245,7 +244,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const tableDiff = getTableDiff(diff, 'users');
-      
+
       expect(tableDiff!.indexCreates![0].unique).toBe(true);
     });
   });
@@ -256,7 +255,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const tableDiff = getTableDiff(diff, 'users');
-      
+
       expect(tableDiff!.indexDrops).toHaveLength(1);
       expect(tableDiff!.indexDrops![0]).toBe('idx_email');
     });
@@ -272,7 +271,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const tableDiff = getTableDiff(diff, 'posts');
-      
+
       expect(tableDiff!.fkCreates).toHaveLength(1);
       expect(tableDiff!.fkCreates![0].refTable).toBe('users');
     });
@@ -289,7 +288,7 @@ describe('MigrationBuilder', () => {
       const diff = builder.toDiff();
       const tableDiff = getTableDiff(diff, 'posts');
       const fk = tableDiff!.fkCreates![0];
-      
+
       expect(fk.onDelete).toBe('CASCADE');
       expect(fk.onUpdate).toBe('SET NULL');
     });
@@ -301,7 +300,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const tableDiff = getTableDiff(diff, 'posts');
-      
+
       expect(tableDiff!.fkDrops).toHaveLength(1);
       expect(tableDiff!.fkDrops![0]).toBe('fk_posts_user');
     });
@@ -327,7 +326,7 @@ describe('MigrationBuilder', () => {
         .dropTable('old_table');
 
       const diff = builder.toDiff();
-      
+
       expect(getTableCreate(diff, 'users')).toBeDefined();
       expect(getTableCreate(diff, 'posts')).toBeDefined();
       expect(getTableDrop(diff, 'old_table')).toBeDefined();
@@ -348,7 +347,7 @@ describe('MigrationBuilder', () => {
         .dropIndex('posts', 'idx_old');
 
       const diff = builder.toDiff();
-      
+
       expect(getTableCreate(diff, 'new_table')).toBeDefined();
       expect(getColumnChanges(diff, 'existing_table')).toHaveLength(2);
       expect(getTableDrop(diff, 'obsolete_table')).toBeDefined();
@@ -361,7 +360,7 @@ describe('MigrationBuilder', () => {
   describe('edge cases', () => {
     it('should handle empty builder', () => {
       const diff = builder.toDiff();
-      
+
       expect(diff.tables).toHaveLength(0);
     });
 
@@ -372,7 +371,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const table = getTableCreate(diff, 'users');
-      
+
       expect(table!.columns[0].defaultValue).toBeNull();
     });
 
@@ -383,7 +382,7 @@ describe('MigrationBuilder', () => {
 
       const diff = builder.toDiff();
       const table = getTableCreate(diff, 'counters');
-      
+
       expect(table!.columns[0].defaultValue).toBe(0);
     });
   });

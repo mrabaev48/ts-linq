@@ -1,11 +1,12 @@
-import type { Logger } from '../src/ports/Logger';
-import type { FileSystem } from '../src/ports/FileSystem';
-import { GenerateMigrationCommand } from '../src/commands/GenerateMigrationCommand';
-import { MigrationsStatusCommand } from '../src/commands/MigrationsStatusCommand';
-import { MigrationsRollbackCommand } from '../src/commands/MigrationsRollbackCommand';
-import { MigrationsDryRunCommand } from '../src/commands/MigrationsDryRunCommand';
 import { DatabaseProvider } from '@ts-linq/core';
 import type { SqlDialect } from '@ts-linq/types';
+
+import { GenerateMigrationCommand } from '../src/commands/GenerateMigrationCommand';
+import { MigrationsDryRunCommand } from '../src/commands/MigrationsDryRunCommand';
+import { MigrationsRollbackCommand } from '../src/commands/MigrationsRollbackCommand';
+import { MigrationsStatusCommand } from '../src/commands/MigrationsStatusCommand';
+import type { FileSystem } from '../src/ports/FileSystem';
+import type { Logger } from '../src/ports/Logger';
 
 type AppliedMigration = { version: string; name: string };
 
@@ -48,7 +49,7 @@ class InMemoryFs implements FileSystem {
     for (const key of this.files.keys()) {
       if (key.startsWith(prefix)) {
         const rest = key.slice(prefix.length);
-        const name = rest.split('/')[0]!;
+        const name = rest.split('/')[0];
         names.add(name);
       }
     }
@@ -77,11 +78,7 @@ describe('CLI - Migration Commands (tests-new)', () => {
     const builder = {
       build: (name: string, ts: string): string => `${ts}:${name}\n${templateText}`
     };
-    const cmd = new GenerateMigrationCommand(
-      logger,
-      fs,
-      builder as unknown as { build(name: string, ts: string): string }
-    );
+    const cmd = new GenerateMigrationCommand(logger, fs, builder);
 
     await cmd.run(['generate:migration', 'UserCreate']);
 
@@ -119,7 +116,7 @@ jest.mock('@ts-linq/migrations', () => {
 
   const SchemaSnapshotBuilder = class {
     public constructor(_provider?: unknown) {}
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     public buildActualFromProvider(_target: unknown): Promise<unknown> {
       return Promise.resolve({}); // dummy
     }
@@ -176,23 +173,23 @@ describe('CLI - Migration Status / Rollback / Dry-Run (tests-new)', () => {
       return null;
     }
     async findAll<T extends object>(_entityClass: new () => T): Promise<T[]> {
-      return [] as unknown as T[];
+      return [];
     }
     async findWhere<T extends object>(
       _entityClass: new () => T,
       _c: Record<string, unknown>
     ): Promise<T[]> {
-      return [] as unknown as T[];
+      return [];
     }
     async findWhereIn<T extends object>(
       _e: new () => T,
       _col: string,
       _v: unknown[]
     ): Promise<T[]> {
-      return [] as unknown as T[];
+      return [];
     }
     protected async doExecuteQuery<T>(): Promise<T[]> {
-      return [] as unknown as T[];
+      return [];
     }
     protected async doExecuteNonQuery(): Promise<number> {
       return 0;

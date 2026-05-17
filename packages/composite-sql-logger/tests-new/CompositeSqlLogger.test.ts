@@ -1,17 +1,18 @@
-import { CompositeSqlLogger } from '../src/logger/CompositeSqlLogger';
 import type {
-  SqlLogger,
-  QueryStartInfo,
-  QueryEndInfo,
-  RetryInfo,
   CacheInfo,
   CircuitEventInfo,
   ConnectionHealthInfo,
   FallbackInfo,
-  TransactionInfo,
   HedgedWinInfo,
-  QueryAnalysisInfo
+  QueryAnalysisInfo,
+  QueryEndInfo,
+  QueryStartInfo,
+  RetryInfo,
+  SqlLogger,
+  TransactionInfo
 } from '@ts-linq/types';
+
+import { CompositeSqlLogger } from '../src/logger/CompositeSqlLogger';
 
 function makeSpyLogger() {
   const calls: Record<string, unknown>[] = [];
@@ -39,7 +40,7 @@ describe('CompositeSqlLogger (tests-new)', () => {
     const a = makeSpyLogger();
     const b = makeSpyLogger();
     const c = undefined;
-    const comp = new CompositeSqlLogger(a.logger, c as unknown as SqlLogger, b.logger);
+    const comp = new CompositeSqlLogger(a.logger, c, b.logger);
     comp.info('hello', { x: 1 });
     expect(a.calls.length).toBe(1);
     expect(b.calls.length).toBe(1);
@@ -112,5 +113,3 @@ describe('CompositeSqlLogger (tests-new)', () => {
     expect(received.length).toBe(1);
   });
 });
-
-

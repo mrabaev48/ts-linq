@@ -1,10 +1,11 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import type { ChangeTracker } from './ChangeTracker';
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
 import type { GlobalFilter, PerformanceOptions } from '@ts-linq/types';
+
+import type { ChangeTracker } from './ChangeTracker';
 import type { DbSetContext } from './DbSetContext';
 
 /**
@@ -112,7 +113,7 @@ export class DbSet<T extends object> {
       this.add(entity);
       return entity;
     }
-    const existing = await this._provider.findById(id, this._entityClass as unknown as new () => T);
+    const existing = await this._provider.findById(id, this._entityClass);
     if (existing) {
       this.update(entity);
     } else {
@@ -140,7 +141,7 @@ export class DbSet<T extends object> {
       for (let i = 0; i < uniqueIds.length; i += chunkSize) {
         const chunk = uniqueIds.slice(i, i + chunkSize);
         const part = await this._provider.findWhereIn(
-          this._entityClass as unknown as new () => T,
+          this._entityClass,
           pkCol ? pkCol.propertyName : pk,
           chunk
         );

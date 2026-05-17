@@ -1,8 +1,9 @@
-import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { LiteralNode, MethodNode, ParameterRefNode } from '@ts-linq/ast';
-import { renderPropertyName, resolveParameterRef, type ColumnResolver } from './BinaryVisitor';
 import type { ConditionFragment } from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
+
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
+import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
 
 export class MethodVisitor {
   public visit(

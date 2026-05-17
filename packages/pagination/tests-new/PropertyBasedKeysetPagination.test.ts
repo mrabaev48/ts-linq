@@ -1,10 +1,10 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import fc from 'fast-check';
 
 /**
  * Property-based test: keyset pagination should return strictly increasing keys
  * and not skip/duplicate items between sequential calls.
- * 
+ *
  * This validates a pure model (no DB): ordered array + keyset simulation.
  * Ensures that keyset pagination maintains data integrity through monotonic ordering.
  */
@@ -18,7 +18,7 @@ describe('Property-Based Testing: Keyset Pagination Correctness', () => {
           // Sort and deduplicate data
           const sorted = [...data].sort((a, b) => a - b);
           const unique = Array.from(new Set(sorted));
-          
+
           let after: number | null = null;
           const seen: number[] = [];
 
@@ -27,19 +27,19 @@ describe('Property-Based Testing: Keyset Pagination Correctness', () => {
             const page = unique
               .filter((x) => (after === null ? true : x > after))
               .slice(0, pageSize);
-            
+
             if (page.length === 0) break;
-            
+
             // Property 1: Strictly increasing within page
             for (let j = 1; j < page.length; j++) {
               expect(page[j]).toBeGreaterThan(page[j - 1]);
             }
-            
+
             // Property 2: No overlaps between pages
             for (const v of page) {
               expect(seen.includes(v)).toBe(false);
             }
-            
+
             seen.push(...page);
             after = page[page.length - 1];
           }
@@ -48,7 +48,7 @@ describe('Property-Based Testing: Keyset Pagination Correctness', () => {
           for (let k = 0; k < seen.length; k++) {
             expect(seen[k]).toBe(unique[k]);
           }
-          
+
           return true;
         }
       ),
@@ -58,16 +58,13 @@ describe('Property-Based Testing: Keyset Pagination Correctness', () => {
 
   it('should handle empty arrays without errors', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 20 }),
-        (pageSize) => {
-          const data: number[] = [];
-          const page = data.slice(0, pageSize);
-          
-          expect(page).toEqual([]);
-          return true;
-        }
-      ),
+      fc.property(fc.integer({ min: 1, max: 20 }), (pageSize) => {
+        const data: number[] = [];
+        const page = data.slice(0, pageSize);
+
+        expect(page).toEqual([]);
+        return true;
+      }),
       { verbose: false }
     );
   });
@@ -80,17 +77,17 @@ describe('Property-Based Testing: Keyset Pagination Correctness', () => {
           const pageSize = data.length + 10; // Larger than data
           const sorted = [...data].sort((a, b) => a - b);
           const unique = Array.from(new Set(sorted));
-          
+
           const page = unique.slice(0, pageSize);
-          
+
           // Single page should contain all unique items
           expect(page.length).toBe(unique.length);
-          
+
           // Should be sorted
           for (let i = 1; i < page.length; i++) {
             expect(page[i]).toBeGreaterThan(page[i - 1]);
           }
-          
+
           return true;
         }
       ),
@@ -106,7 +103,7 @@ describe('Property-Based Testing: Keyset Pagination Correctness', () => {
         (data, pageSize) => {
           const sorted = [...data].sort((a, b) => a - b);
           const unique = Array.from(new Set(sorted));
-          
+
           const allPages: number[][] = [];
           let after: number | null = null;
 
@@ -115,19 +112,19 @@ describe('Property-Based Testing: Keyset Pagination Correctness', () => {
             const page = unique
               .filter((x) => (after === null ? true : x > after))
               .slice(0, pageSize);
-            
+
             if (page.length === 0) break;
-            
+
             allPages.push(page);
             after = page[page.length - 1];
           }
 
           // Flatten all pages
           const concatenated = allPages.flat();
-          
+
           // Should match unique array exactly
           expect(concatenated).toEqual(unique);
-          
+
           return true;
         }
       ),

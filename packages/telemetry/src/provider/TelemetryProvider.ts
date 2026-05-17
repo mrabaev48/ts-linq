@@ -1,17 +1,17 @@
 import type {
-  SqlLogger,
-  QueryStartInfo,
-  QueryEndInfo,
   CacheInfo,
-  RetryInfo,
-  TransactionInfo,
-  ConnectionHealthInfo,
+  CacheSizeInfo,
   CircuitEventInfo,
+  ConnectionHealthInfo,
+  CrossQueryParams,
   FallbackInfo,
   HedgedWinInfo,
   QueryAnalysisInfo,
-  CrossQueryParams,
-  CacheSizeInfo,
+  QueryEndInfo,
+  QueryStartInfo,
+  RetryInfo,
+  SqlLogger,
+  TransactionInfo
 } from '@ts-linq/types';
 
 export interface TracerLike {
@@ -75,8 +75,8 @@ export class TelemetryProvider implements SqlLogger {
       attributes: {
         'db.system': info.provider ?? 'sql',
         'db.statement': this.mask(info.sql),
-        'db.parameters.count': info.params.length,
-      },
+        'db.parameters.count': info.params.length
+      }
     });
     this.querySpans.set(info.traceId, span);
   }
@@ -104,8 +104,8 @@ export class TelemetryProvider implements SqlLogger {
       attributes: {
         'db.system': info.provider ?? 'sql',
         'db.cache.type': info.cache,
-        'db.cache.hit': info.hit,
-      },
+        'db.cache.hit': info.hit
+      }
     });
     if (!span) return;
     if (typeof info.ttl === 'boolean') span.setAttribute('db.cache.ttl', info.ttl);
@@ -118,8 +118,8 @@ export class TelemetryProvider implements SqlLogger {
       attributes: {
         'db.system': info.provider ?? 'sql',
         'db.statement': this.mask(info.sql),
-        'db.retry.attempt': info.attempt,
-      },
+        'db.retry.attempt': info.attempt
+      }
     });
     if (!span) return;
     span.end();
@@ -128,7 +128,7 @@ export class TelemetryProvider implements SqlLogger {
   transactionStart(info: TransactionInfo): void {
     if (!this.tracer) return;
     const span = this.tracer.startSpan('db.transaction', {
-      attributes: { 'db.system': info.provider ?? 'sql' },
+      attributes: { 'db.system': info.provider ?? 'sql' }
     });
     this.txSpans.set(info.traceId, span);
   }
@@ -148,11 +148,12 @@ export class TelemetryProvider implements SqlLogger {
     const span = this.tracer?.startSpan('db.connection.health', {
       attributes: {
         'db.system': info.provider ?? 'sql',
-        'db.connection.healthy': info.healthy,
-      },
+        'db.connection.healthy': info.healthy
+      }
     });
     if (!span) return;
-    if (typeof info.latencyMs === 'number') span.setAttribute('db.connection.latency_ms', info.latencyMs);
+    if (typeof info.latencyMs === 'number')
+      span.setAttribute('db.connection.latency_ms', info.latencyMs);
     if (info.status) span.setAttribute('db.connection.status', info.status);
     span.setStatus({ code: info.healthy ? STATUS_OK : STATUS_ERROR });
     span.end();
@@ -162,8 +163,8 @@ export class TelemetryProvider implements SqlLogger {
     const span = this.tracer?.startSpan('db.circuit', {
       attributes: {
         'db.system': info.provider ?? 'sql',
-        'db.circuit.state': info.state,
-      },
+        'db.circuit.state': info.state
+      }
     });
     if (!span) return;
     if (typeof info.failures === 'number') span.setAttribute('db.circuit.failures', info.failures);
@@ -179,11 +180,12 @@ export class TelemetryProvider implements SqlLogger {
       attributes: {
         'db.system': info.provider ?? 'sql',
         'db.fallback.name': info.fallback,
-        'db.fallback.attempted': info.attempted,
-      },
+        'db.fallback.attempted': info.attempted
+      }
     });
     if (!span) return;
-    if (typeof info.succeeded === 'boolean') span.setAttribute('db.fallback.succeeded', info.succeeded);
+    if (typeof info.succeeded === 'boolean')
+      span.setAttribute('db.fallback.succeeded', info.succeeded);
     if (info.source) span.setAttribute('db.fallback.source', info.source);
     if (typeof info.isStale === 'boolean') span.setAttribute('db.fallback.stale', info.isStale);
     if (info.error) {
@@ -200,8 +202,8 @@ export class TelemetryProvider implements SqlLogger {
       attributes: {
         'db.system': info.provider ?? 'sql',
         'db.hedged.operation': info.operation,
-        'db.hedged.winner': info.fallback,
-      },
+        'db.hedged.winner': info.fallback
+      }
     });
     if (!span) return;
     span.setStatus({ code: STATUS_OK });
@@ -215,8 +217,8 @@ export class TelemetryProvider implements SqlLogger {
         'db.statement': this.mask(info.sql),
         'db.analysis.duration_ms': info.durationMs,
         'db.analysis.slow': !!info.slow,
-        'db.analysis.has_explain_plan': info.explainPlan != null,
-      },
+        'db.analysis.has_explain_plan': info.explainPlan != null
+      }
     });
     if (!span) return;
     if (info.recommendations?.length) {
@@ -233,8 +235,8 @@ export class TelemetryProvider implements SqlLogger {
         'db.cross_query.entity': params.entity,
         'db.cross_query.column': params.column,
         'db.cross_query.chunks': params.chunks,
-        'db.cross_query.size': params.size,
-      },
+        'db.cross_query.size': params.size
+      }
     });
     if (!span) return;
     span.end();
@@ -245,8 +247,8 @@ export class TelemetryProvider implements SqlLogger {
       attributes: {
         'db.system': params.provider ?? 'sql',
         'db.cache.type': params.cache,
-        'db.cache.size': params.size,
-      },
+        'db.cache.size': params.size
+      }
     });
     if (!span) return;
     span.end();

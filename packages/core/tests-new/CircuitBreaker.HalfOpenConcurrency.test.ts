@@ -1,8 +1,9 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityMetadata, QueryOptions, SqlDialect, SqlParameter } from '@ts-linq/types';
+
 import { DatabaseProvider } from '../src/DatabaseProvider';
 import { CircuitOpenError } from '../src/types';
-import type { SqlParameter, SqlDialect, EntityMetadata, QueryOptions } from '@ts-linq/types';
-import { MetadataStorage } from '@ts-linq/metadata';
 
 class TestDialect implements SqlDialect {
   public quoteIdentifier(identifier: string): string {
@@ -13,8 +14,8 @@ class TestDialect implements SqlDialect {
     entityClass: new () => unknown,
     options: QueryOptions
   ): { query: string; parameters: SqlParameter[] } {
-    const meta = MetadataStorage.getEntity(entityClass as unknown as Function)!;
-    let query = `SELECT ${options.distinct ? 'DISTINCT ' : ''}* FROM ${meta.tableName}`;
+    const meta = MetadataStorage.getEntity(entityClass)!;
+    const query = `SELECT ${options.distinct ? 'DISTINCT ' : ''}* FROM ${meta.tableName}`;
     return { query, parameters: [] };
   }
 }

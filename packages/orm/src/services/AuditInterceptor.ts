@@ -1,4 +1,5 @@
 import type { AuditOptions } from '@ts-linq/types';
+
 import type { AuditColumnNames } from '../types';
 
 interface ColumnMeta {
@@ -17,11 +18,7 @@ export class AuditInterceptor {
     private readonly getMeta: GetMeta
   ) {}
 
-  apply(change: {
-    entity: Record<string, unknown>;
-    entityClass: Function;
-    state: string;
-  }): void {
+  apply(change: { entity: Record<string, unknown>; entityClass: Function; state: string }): void {
     if (!this.audit?.enabled) return;
     const meta = this.getMeta(change.entityClass);
     if (!meta) return;
@@ -57,7 +54,7 @@ export class AuditInterceptor {
   ): void {
     if (this.hasProperty(meta, names.createdAt)) entity[names.createdAt] = now;
     if (this.hasProperty(meta, names.createdBy) && currentUser !== undefined)
-      entity[names.createdBy] = currentUser as string;
+      entity[names.createdBy] = currentUser;
   }
 
   private applyUpdated(
@@ -69,7 +66,7 @@ export class AuditInterceptor {
   ): void {
     if (this.hasProperty(meta, names.updatedAt)) entity[names.updatedAt] = now;
     if (this.hasProperty(meta, names.updatedBy) && currentUser !== undefined)
-      entity[names.updatedBy] = currentUser as string;
+      entity[names.updatedBy] = currentUser;
   }
 
   private hasProperty(meta: EntityMeta, propertyName: string): boolean {

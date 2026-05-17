@@ -1,12 +1,13 @@
-import { MetadataStorage } from './MetadataStorage';
 import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
+
+import { MetadataStorage } from './MetadataStorage';
 
 /**
  * Options for configuring a column mapping on an entity property.
  */
 export interface ColumnOptions {
   name?: string;
-  type?: ColumnType | string;
+  type?: ColumnType;
   nullable?: boolean;
   defaultValue?: unknown;
   length?: number;
@@ -26,12 +27,12 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
     const name = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     // Ensure entity metadata exists (property decorators run before class decorator)
     if (!MetadataStorage.getEntity(ctor)) {
       MetadataStorage.addEntity(ctor, ctor.name);
     }
-    
+
     const columnMetadata: ColumnMetadata = {
       propertyName: name,
       columnName: options?.name || name,
@@ -44,7 +45,7 @@ export function Column(options: ColumnOptions = {}): PropertyDecorator {
       isGenerated: options?.generated || false,
       isVersion: options?.version || false
     };
-    
+
     MetadataStorage.addColumn(ctor, columnMetadata);
   };
 }

@@ -1,28 +1,28 @@
 // Re-export legacy API from split handlers for backwards compatibility
-import type { TableDiff, ColumnDef } from '../DiffTypes';
 import type { Dialect } from '../Dialect';
-import { q, norm } from './SqlUtils';
+import type { ColumnDef, TableDiff } from '../DiffTypes';
 import {
-  renderColumn,
   buildAddColumnSql,
-  buildDropColumnSql,
+  buildAlterNullSql,
   buildAlterTypeSql,
-  buildAlterNullSql
+  buildDropColumnSql,
+  renderColumn
 } from './handlers/ColumnHandlers';
 import { buildAddFkSql } from './handlers/ForeignKeyHandlers';
+import { norm, q } from './SqlUtils';
 export {
-  renderColumn,
   buildAddColumnSql,
-  buildDropColumnSql,
+  buildAlterNullSql,
   buildAlterTypeSql,
-  buildAlterNullSql
+  buildDropColumnSql,
+  renderColumn
 } from './handlers/ColumnHandlers';
-export { buildInlineFkSql, buildAddFkSql, buildDropFkSql } from './handlers/ForeignKeyHandlers';
+export { buildAddFkSql, buildDropFkSql, buildInlineFkSql } from './handlers/ForeignKeyHandlers';
 export {
-  handleTableRename,
+  buildCreateTableSql,
   handleCreateTable,
   handleDropTable,
-  buildCreateTableSql
+  handleTableRename
 } from './handlers/TableHandlers';
 
 export function handleIndexCreates(td: TableDiff, dialect: Dialect, up: string[]): void {

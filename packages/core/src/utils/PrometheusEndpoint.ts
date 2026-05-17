@@ -1,4 +1,5 @@
 import * as http from 'http';
+
 import { logInternalError } from './InternalLogger';
 
 interface PromClientRegisterLike {
@@ -12,7 +13,6 @@ interface PromClientWithRegisterLike {
 
 function safeRequirePromClient(): PromClientWithRegisterLike | undefined {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const pc = require('prom-client');
     if (pc && pc.register && typeof pc.register.metrics === 'function')
       return pc as PromClientWithRegisterLike;
@@ -40,7 +40,9 @@ export async function startPrometheusServer(options?: {
   host?: string;
   path?: string;
   client?: PromClientWithRegisterLike;
-  serverFactory?: (handler: (req: http.IncomingMessage, res: http.ServerResponse) => void) => http.Server;
+  serverFactory?: (
+    handler: (req: http.IncomingMessage, res: http.ServerResponse) => void
+  ) => http.Server;
 }): Promise<{ server: http.Server; port: number; close: () => Promise<void> }> {
   const port = options?.port ?? 0;
   const host = options?.host ?? '127.0.0.1';

@@ -1,8 +1,9 @@
+import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
+import { MySqlDdlStrategy, MysqlDialect } from '@ts-linq/dialect-mysql';
+import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityMetadata, MySqlConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
 import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
-import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/metadata';
-import { MysqlDialect, MySqlDdlStrategy } from '@ts-linq/dialect-mysql';
+
 import { buildMysqlConnectionString } from './buildConnectionString';
 
 /**
@@ -49,7 +50,6 @@ function mapMySqlError(err: unknown): Error {
 
 function safeRequireMysql2(): { createPool: (connectionString: string) => MySqlPoolLike } {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('mysql2/promise');
   } catch (e) {
     throw new Error(
@@ -96,9 +96,9 @@ export class MySqlProvider extends DatabaseProvider {
       if (typeof opts.connectionTimeoutMs === 'number')
         mysqlConfig.connectTimeout = opts.connectionTimeoutMs;
       // Note: mysql2 uses waitForConnections/queueLimit; idle timeout is managed by server or 'idleTimeout' in some forks
-      this.pool = (mysql as unknown as { createPool: (config: unknown) => MySqlPoolLike }).createPool(
-        mysqlConfig
-      );
+      this.pool = (
+        mysql as unknown as { createPool: (config: unknown) => MySqlPoolLike }
+      ).createPool(mysqlConfig);
       this.ownsPool = true;
     }
 
@@ -229,8 +229,6 @@ export class MySqlProvider extends DatabaseProvider {
       }
     ];
 
-
-
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 });
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
@@ -242,7 +240,6 @@ export class MySqlProvider extends DatabaseProvider {
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
     const where: import('@ts-linq/types').WhereClause[] = [];
-
 
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where });
@@ -256,11 +253,11 @@ export class MySqlProvider extends DatabaseProvider {
   ): Promise<T[]> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-    
+
     // Note: SqlHelper.buildWhereClause produces a string like "col1 = ? AND col2 = ?"
     // We wrap it in a single WhereClause
     const { whereClause, params } = SqlHelper.buildWhereClause(conditions);
-    
+
     const where: import('@ts-linq/types').WhereClause[] = [];
     if (whereClause) {
       where.push({
@@ -268,8 +265,6 @@ export class MySqlProvider extends DatabaseProvider {
         parameters: params
       });
     }
-
-
 
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where });
@@ -285,7 +280,7 @@ export class MySqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     if (!values?.length) return [];
-    
+
     const columnMeta = metadata.columns.find(
       (c) => c.propertyName === column || c.columnName === column
     );
@@ -299,8 +294,6 @@ export class MySqlProvider extends DatabaseProvider {
         parameters: coerced
       }
     ];
-
-
 
     const dialect = this.getDialect();
     const { query, parameters } = dialect.buildSelect(entityClass, { where });
@@ -396,12 +389,12 @@ export class MySqlProvider extends DatabaseProvider {
       value instanceof Date ||
       value instanceof Uint8Array
     ) {
-      return value as SqlParameter;
+      return value;
     }
     try {
-      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+      return JSON.stringify(value ?? null);
     } catch {
-      return String(value) as unknown as SqlParameter;
+      return String(value);
     }
   }
 

@@ -1,5 +1,6 @@
-import { MetadataStorage } from './MetadataStorage';
 import type { RelationshipMetadata } from '@ts-linq/types';
+
+import { MetadataStorage } from './MetadataStorage';
 
 /**
  * Options for configuring relationships between entities.
@@ -32,12 +33,12 @@ export function OneToMany(
     const name = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     // Resolve targetEntity thunk
     // Start of fix: defer resolution to avoid circular dependency TDZ issues
     const resolved = targetEntity; // Store function itself
     // End of fix
-    
+
     const relationship: RelationshipMetadata = {
       propertyName: name,
       type: 'one-to-many',
@@ -47,7 +48,7 @@ export function OneToMany(
       cascade: options?.cascade || false,
       through: options?.through
     };
-    
+
     MetadataStorage.addRelationship(ctor, relationship);
   };
 }
@@ -63,14 +64,14 @@ export function ManyToOne(
     const name = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     let resolved;
     try {
-        resolved = targetEntity();
+      resolved = targetEntity();
     } catch (e) {
-        resolved = targetEntity;
+      resolved = targetEntity;
     }
-    
+
     const relationship: RelationshipMetadata = {
       propertyName: name,
       type: 'many-to-one',
@@ -80,7 +81,7 @@ export function ManyToOne(
       cascade: options?.cascade || false,
       through: options?.through
     };
-    
+
     MetadataStorage.addRelationship(ctor, relationship);
   };
 }
@@ -96,9 +97,9 @@ export function OneToOne(
     const name = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     const resolved = targetEntity();
-    
+
     const relationship: RelationshipMetadata = {
       propertyName: name,
       type: 'one-to-one',
@@ -108,7 +109,7 @@ export function OneToOne(
       cascade: options?.cascade || false,
       through: options?.through
     };
-    
+
     MetadataStorage.addRelationship(ctor, relationship);
   };
 }
@@ -124,9 +125,9 @@ export function ManyToMany(
     const name = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     const resolved = targetEntity();
-    
+
     const relationship: RelationshipMetadata = {
       propertyName: name,
       type: 'many-to-many',
@@ -136,7 +137,7 @@ export function ManyToMany(
       cascade: options?.cascade || false,
       through: options?.through
     };
-    
+
     MetadataStorage.addRelationship(ctor, relationship);
   };
 }
