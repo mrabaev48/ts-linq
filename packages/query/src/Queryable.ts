@@ -206,6 +206,12 @@ export class Queryable<T> {
     );
   }
 
+  private prepareQueryModel(): QueryModel {
+    const model = this._model.clone();
+    this.applyGlobalFiltersToModel(model);
+    return model;
+  }
+
   /**
    * Add a type-safe INNER JOIN on a single equality key pair.
    *
@@ -534,10 +540,9 @@ export class Queryable<T> {
       this._entityClass,
       this._provider,
       this._executor,
-      this._model,
       this._includes,
       this._cte,
-      (m) => this.applyGlobalFiltersToModel(m),
+      () => this.prepareQueryModel(),
       () => this.count()
     ).paginate(page, size);
   }
@@ -556,10 +561,9 @@ export class Queryable<T> {
       this._entityClass,
       this._provider,
       this._executor,
-      this._model,
       this._includes,
       this._cte,
-      (m) => this.applyGlobalFiltersToModel(m),
+      () => this.prepareQueryModel(),
       () => this.count()
     ).keysetPaginate(key, after, size);
   }
@@ -589,8 +593,7 @@ export class Queryable<T> {
    */
   public async toArray(): Promise<T[]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const queryModel = this._model.clone();
-    this.applyGlobalFiltersToModel(queryModel);
+    const queryModel = this.prepareQueryModel();
     return this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
   }
 
@@ -600,9 +603,8 @@ export class Queryable<T> {
    */
   public async first(): Promise<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const queryModel = this._model.clone();
+    const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    this.applyGlobalFiltersToModel(queryModel);
     const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
     if (!entities.length) throw new Error('Sequence contains no elements');
     return entities[0];
@@ -614,9 +616,8 @@ export class Queryable<T> {
    */
   public async firstOrDefault(): Promise<T | null> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const queryModel = this._model.clone();
+    const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    this.applyGlobalFiltersToModel(queryModel);
     const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
     return entities[0] ?? null;
   }
@@ -669,8 +670,7 @@ export class Queryable<T> {
         });
         return hit;
       }
-      const queryModel = this._model.clone();
-      this.applyGlobalFiltersToModel(queryModel);
+      const queryModel = this.prepareQueryModel();
       const pending = this._executor.executeCount(metadata.tableName, queryModel);
       this._inflightCounts.set(key, pending);
       let value: number;
@@ -697,8 +697,7 @@ export class Queryable<T> {
       });
       return value;
     }
-    const queryModel = this._model.clone();
-    this.applyGlobalFiltersToModel(queryModel);
+    const queryModel = this.prepareQueryModel();
     return this._executor.executeCount(metadata.tableName, queryModel);
   }
 
@@ -720,9 +719,8 @@ export class Queryable<T> {
    */
   public async any(): Promise<boolean> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const queryModel = this._model.clone();
+    const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    this.applyGlobalFiltersToModel(queryModel);
     const entities = await this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
     return entities.length > 0;
   }
@@ -766,8 +764,7 @@ export class Queryable<T> {
   public async average<K extends keyof T>(key: K): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
-    const queryModel = this._model.clone();
-    this.applyGlobalFiltersToModel(queryModel);
+    const queryModel = this.prepareQueryModel();
     return this._aggregates.average(queryModel, colName);
   }
 
@@ -775,8 +772,7 @@ export class Queryable<T> {
   public async sum<K extends keyof T>(key: K): Promise<number> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
-    const queryModel = this._model.clone();
-    this.applyGlobalFiltersToModel(queryModel);
+    const queryModel = this.prepareQueryModel();
     return this._aggregates.sum(queryModel, colName);
   }
 
@@ -784,8 +780,7 @@ export class Queryable<T> {
   public async min<K extends keyof T>(key: K): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
-    const queryModel = this._model.clone();
-    this.applyGlobalFiltersToModel(queryModel);
+    const queryModel = this.prepareQueryModel();
     return this._aggregates.min<K>(queryModel, colName);
   }
 
@@ -793,16 +788,14 @@ export class Queryable<T> {
   public async max<K extends keyof T>(key: K): Promise<T[K]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const colName = this.resolveColumnName(key as string);
-    const queryModel = this._model.clone();
-    this.applyGlobalFiltersToModel(queryModel);
+    const queryModel = this.prepareQueryModel();
     return this._aggregates.max<K>(queryModel, colName);
   }
 
   /** Check if the sequence contains a specific element */
   public async contains(item: T): Promise<boolean> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const queryModel = this._model.clone();
-    this.applyGlobalFiltersToModel(queryModel);
+    const queryModel = this.prepareQueryModel();
     return this._aggregates.contains(queryModel, item, () => this.toArray());
   }
 

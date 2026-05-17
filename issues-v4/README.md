@@ -38,7 +38,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-017 | ~~Medium~~ | ~~SOLID, Clean Code~~ | ~~DbSet secondary god class (35 methods, 604 LOC)~~ ✅ **FIXED** | [ISSUE-017-dbset-secondary-god-class.md](ISSUE-017-dbset-secondary-god-class.md) |
 | ISSUE-018 | ~~Medium~~ | ~~Maintainability, Testability~~ | ~~saveChanges() opens a transaction without checking for an active one~~ ✅ **FIXED** | [ISSUE-018-savechanges-reentrant-transaction.md](ISSUE-018-savechanges-reentrant-transaction.md) |
 | ISSUE-019 | Low | Maintainability, Documentation Drift | @ts-linq/integration-nestjs is an unimplemented placeholder | [ISSUE-019-integration-nestjs-placeholder.md](ISSUE-019-integration-nestjs-placeholder.md) |
-| ISSUE-020 | Low | Clean Code, Maintainability | Global filters repeated at 12 terminal operation call sites | [ISSUE-020-global-filter-repeated-at-every-terminal-op.md](ISSUE-020-global-filter-repeated-at-every-terminal-op.md) |
+| ISSUE-020 | ~~Low~~ | ~~Clean Code, Maintainability~~ | ~~Global filters repeated at 12 terminal operation call sites~~ ✅ **FIXED** | [ISSUE-020-global-filter-repeated-at-every-terminal-op.md](ISSUE-020-global-filter-repeated-at-every-terminal-op.md) |
 | ISSUE-021 | Critical | Dependency Boundary, Clean Architecture | Circular dependencies in @ts-linq/migrations | [ISSUE-021-migrations-circular-dependency.md](ISSUE-021-migrations-circular-dependency.md) |
 | ISSUE-022 | Medium | Maintainability, Clean Code | Orphan dead source files in @ts-linq/core and plugins | [ISSUE-022-orphan-dead-source-files.md](ISSUE-022-orphan-dead-source-files.md) |
 | ISSUE-023 | High | Build/Tooling, Maintainability | dependency-cruiser rules produce 790 false-positive violations | [ISSUE-023-depcruiser-rules-misconfigured.md](ISSUE-023-depcruiser-rules-misconfigured.md) |
@@ -110,7 +110,7 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 17. ~~**ISSUE-015** — Consolidate path aliases into `tsconfig.base.json`~~ ✅ Done
 
 ### Phase 5 — Low Priority (Ongoing)
-18. **ISSUE-020** — Extract `prepareQueryModel()` in `Queryable`
+18. ~~**ISSUE-020** — Extract `prepareQueryModel()` in `Queryable`~~ ✅ Done
 19. **ISSUE-019** — Implement or remove `@ts-linq/integration-nestjs`
 
 ---
