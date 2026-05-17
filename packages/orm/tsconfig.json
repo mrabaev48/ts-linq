@@ -3,10 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"],
-      "@ts-linq/metrics-safe": ["../metrics-safe/dist"],
-      "@ts-linq/metadata": ["../metadata/dist"],
-      "@ts-linq/query": ["../query/dist"]
+      "@src/*": ["src/*"]
     },
     "composite": true,
     "declaration": true,
