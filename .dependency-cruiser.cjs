@@ -29,7 +29,9 @@ module.exports = {
           'jest\\.config\\.',
           'jest\\.sequencer\\.',
           'setup-containers\\.ts$',
-          '(^|/)setup\\.ts$'
+          '(^|/)setup\\.ts$',
+          '(^|/)fixture',
+          '(^|/)e2e-tests/'
         ]
       },
       to: {}
@@ -102,33 +104,24 @@ module.exports = {
       name: 'no-private-package-internals',
       severity: 'warn',
       comment:
-        'Avoid importing another package internal files directly. Import from its public entrypoint.',
+        'Avoid importing another package\'s internal files directly. Import from its public entrypoint.',
       from: {
-        path: '^packages/[^/]+/src'
+        path: '^packages/([^/]+)/src'
       },
       to: {
-        path: '^packages/[^/]+/src/(?!index\\.ts$)'
+        path: '^packages/[^/]+/src/(?!index\\.ts$)',
+        pathNot: '^packages/$1/'
       }
-    },
-
-    {
-      name: 'no-any-in-internal-api-files',
-      severity: 'info',
-      comment: 'This is a weak signal only. Use TypeScript/ESLint for strict any enforcement.',
-      from: {
-        path: '^packages/.*/src'
-      },
-      to: {}
     }
   ],
 
   options: {
     doNotFollow: {
-      path: 'node_modules|dist|build|coverage|\\.turbo|\\.next|\\.cache|reports|issues-v3'
+      path: 'node_modules|dist|build|coverage|\\.turbo|\\.next|\\.cache|reports|issues-v3|issues-v4'
     },
 
     exclude: {
-      path: 'node_modules|dist|build|coverage|\\.turbo|\\.next|\\.cache|reports|issues-v3'
+      path: 'node_modules|dist|build|coverage|\\.turbo|\\.next|\\.cache|reports|issues-v3|issues-v4'
     },
 
     tsConfig: {
