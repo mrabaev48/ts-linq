@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+
 import type { FileSystem } from '../ports/FileSystem';
 
 export class NodeFs implements FileSystem {

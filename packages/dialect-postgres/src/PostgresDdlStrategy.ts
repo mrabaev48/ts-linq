@@ -1,7 +1,6 @@
-import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
 import { SqlHelper } from '@ts-linq/core';
+import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
 type LoggerLike = { warn(message: string, error?: unknown): void };
-import type { PgIndexSpec } from './builders/PgIndexBuilder';
 import { PgIndexBuilder } from './builders/PgIndexBuilder';
 
 export class PostgresDdlStrategy {
@@ -74,10 +73,13 @@ export class PostgresDdlStrategy {
       withParams?: Record<string, string | number | boolean>;
     }
   ): string {
-    return this.indexBuilder.buildCreateIndexSql(table, index as PgIndexSpec);
+    return this.indexBuilder.buildCreateIndexSql(table, index);
   }
 
-  public generateAddColumnSql(tableName: string, column: Omit<ColumnMetadata, 'propertyName'>): string {
+  public generateAddColumnSql(
+    tableName: string,
+    column: Omit<ColumnMetadata, 'propertyName'>
+  ): string {
     const mappedType = this.mapTypeToPg(column.type);
     const notNullSql = column.nullable ? '' : ' NOT NULL';
     let defaultSql = '';

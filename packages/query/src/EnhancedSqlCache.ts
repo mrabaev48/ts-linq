@@ -1,7 +1,8 @@
 import type { SqlCache, SqlCacheEntry } from '@ts-linq/types';
+
 import { LruCache } from './LruCache';
+import { type EnhancedCacheMetrics, MetricsCacheDecorator } from './MetricsCacheDecorator';
 import { TtlCacheDecorator } from './TtlCacheDecorator';
-import { MetricsCacheDecorator, type EnhancedCacheMetrics } from './MetricsCacheDecorator';
 
 /**
  * @deprecated Internal detail — kept for backward compatibility.
@@ -149,8 +150,7 @@ export class EnhancedSqlCache implements SqlCache {
     const lruSize = this._lru.size();
     if (lruSize > 0) {
       const top = this._lru.getTopAccessed(lruSize);
-      m.averageAccessCount =
-        top.reduce((sum, e) => sum + e.accessCount, 0) / lruSize;
+      m.averageAccessCount = top.reduce((sum, e) => sum + e.accessCount, 0) / lruSize;
     }
 
     // Rough memory estimate: 2 bytes/char for query + 20 bytes/param + 64 bytes overhead
@@ -188,8 +188,7 @@ export class EnhancedSqlCache implements SqlCache {
   } {
     const metrics = this.getMetrics();
     return {
-      shouldIncreaseSize:
-        metrics.hitRatio < 0.7 && metrics.evictions > metrics.currentSize * 0.1,
+      shouldIncreaseSize: metrics.hitRatio < 0.7 && metrics.evictions > metrics.currentSize * 0.1,
       shouldDecreaseTtl: metrics.expirations > metrics.totalRequests * 0.2,
       shouldIncreaseTtl:
         metrics.hitRatio > 0.95 && metrics.expirations < metrics.totalRequests * 0.05,

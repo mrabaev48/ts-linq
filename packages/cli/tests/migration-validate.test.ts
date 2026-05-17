@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+
 import { MigrationsValidateCommand } from '../src/commands/MigrationsValidateCommand';
 
 class SilentLogger {
@@ -34,7 +35,7 @@ describe('migration:validate', () => {
       path.join(migrationsDir, '20250101000000_Init.js'),
       "class Init { get name(){return 'Init'} get version(){return '20250101000000'} getVersion(){return this.version} getName(){return this.name} async up(){} async down(){} }\nmodule.exports = { Init };\n"
     );
-    const cmd = new MigrationsValidateCommand(new SilentLogger() as any);
+    const cmd = new MigrationsValidateCommand(new SilentLogger());
     await cmd.run(['migration:validate']);
     expect(process.exitCode ?? 0).toBe(0);
     // reset exitCode for isolation
@@ -43,7 +44,7 @@ describe('migration:validate', () => {
 
   test('fails on invalid filename and missing methods', async () => {
     fs.writeFileSync(path.join(migrationsDir, 'badname.js'), 'module.exports = {};\n');
-    const cmd = new MigrationsValidateCommand(new SilentLogger() as any);
+    const cmd = new MigrationsValidateCommand(new SilentLogger());
     await cmd.run(['migration:validate']);
     expect((process.exitCode as number) > 0).toBe(true);
     process.exitCode = 0;
@@ -58,7 +59,7 @@ describe('migration:validate', () => {
       path.join(migrationsDir, '20250101000000_B.js'),
       "class B { get name(){return 'B'} get version(){return '20250101000000'} getVersion(){return this.version} getName(){return this.name} async up(){} async down(){} }\nmodule.exports = { B };\n"
     );
-    const cmd = new MigrationsValidateCommand(new SilentLogger() as any);
+    const cmd = new MigrationsValidateCommand(new SilentLogger());
     await cmd.run(['migration:validate']);
     expect((process.exitCode as number) > 0).toBe(true);
     process.exitCode = 0;

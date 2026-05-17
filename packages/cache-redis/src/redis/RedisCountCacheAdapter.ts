@@ -136,7 +136,6 @@ export class RedisCountCacheAdapter implements CountCache {
           await this.client.set(this.k(key), payload);
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('[RedisCountCacheAdapter] write-through failed', { key: this.k(key) });
       }
     })();
@@ -159,7 +158,6 @@ export class RedisCountCacheAdapter implements CountCache {
           try {
             await this.client.del(this.k(k));
           } catch (e) {
-            // eslint-disable-next-line no-console
             console.warn('[RedisCountCacheAdapter] delete failed', { key: this.k(k) });
           }
         })();

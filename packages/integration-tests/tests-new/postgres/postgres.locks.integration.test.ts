@@ -39,9 +39,7 @@ d('[integration][postgres] locks and concurrency', () => {
         'SELECT id FROM "items_lock" ORDER BY id LIMIT 1'
       );
       const lockedId = rows[0].id;
-      await p1.executeNonQuery(`SELECT 1 FROM "items_lock" WHERE id = $1 FOR UPDATE`, [
-        lockedId as unknown as never
-      ]);
+      await p1.executeNonQuery(`SELECT 1 FROM "items_lock" WHERE id = $1 FOR UPDATE`, [lockedId]);
 
       // NOWAIT should fail
       await expect(
@@ -98,19 +96,19 @@ d('[integration][postgres] locks and concurrency', () => {
       await p2.beginTransaction();
 
       await p1.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-1' WHERE id = $1", [
-        a.id as unknown as never
+        a.id
       ]);
       await p2.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-2' WHERE id = $1", [
-        b.id as unknown as never
+        b.id
       ]);
 
       const t1 = () =>
         p1.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-1' WHERE id = $1", [
-          b.id as unknown as never
+          b.id
         ]);
       const t2 = () =>
         p2.executeNonQuery('UPDATE "dead_items" SET name = name || ' + "'-2' WHERE id = $1", [
-          a.id as unknown as never
+          a.id
         ]);
 
       // Run concurrently to reliably create a deadlock; Postgres will abort one side.

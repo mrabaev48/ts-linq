@@ -1,4 +1,3 @@
-
 import { TestProvider } from '@ts-linq/testkits';
 
 // Mock artifacts
@@ -20,9 +19,9 @@ const mockOtel = {
 // Virtual mock for optional peer dependency
 jest.mock('@opentelemetry/api', () => mockOtel, { virtual: true });
 
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
 import { OpenTelemetrySqlLogger } from '@ts-linq/open-telemetry-sql-logger';
 import { DbContext } from '@ts-linq/orm';
-import { Entity, PrimaryKey, Column } from '@ts-linq/metadata';
 
 @Entity({ name: 'otel_data' })
 class Data {
@@ -61,33 +60,36 @@ describe('Telemetry Integration - OpenTelemetry + Provider', () => {
 
     // Assert
     expect(mockOtel.trace.getTracer).toHaveBeenCalledWith('test-service');
-    expect(mockTracer.startSpan).toHaveBeenCalledWith('db.query', expect.objectContaining({
+    expect(mockTracer.startSpan).toHaveBeenCalledWith(
+      'db.query',
+      expect.objectContaining({
         attributes: expect.objectContaining({
-            'db.system': 'test',
-            'db.statement': expect.stringContaining('INSERT')
+          'db.system': 'test',
+          'db.statement': expect.stringContaining('INSERT')
         })
-    }));
+      })
+    );
   });
 
   it('should end the span and record duration', async () => {
-      await context.set(Data).query().toArray();
-      
-      expect(mockSpan.setAttribute).toHaveBeenCalledWith('db.duration_ms', expect.any(Number));
-      expect(mockSpan.end).toHaveBeenCalled();
+    await context.set(Data).query().toArray();
+
+    expect(mockSpan.setAttribute).toHaveBeenCalledWith('db.duration_ms', expect.any(Number));
+    expect(mockSpan.end).toHaveBeenCalled();
   });
 
   it('should record exceptions on error', async () => {
     const originalDoExecuteQuery = (provider as any).doExecuteQuery.bind(provider);
     (provider as any).doExecuteQuery = async () => {
-        throw new Error('no such table: bad_table');
+      throw new Error('no such table: bad_table');
     };
 
     try {
-        await provider.executeQuery('SELECT * FROM bad_table');
+      await provider.executeQuery('SELECT * FROM bad_table');
     } catch {
-        // ignore
+      // ignore
     } finally {
-        (provider as any).doExecuteQuery = originalDoExecuteQuery;
+      (provider as any).doExecuteQuery = originalDoExecuteQuery;
     }
 
     expect(mockSpan.recordException).toHaveBeenCalled();

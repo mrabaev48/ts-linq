@@ -1,6 +1,6 @@
 import type { ExpressionNode, LogicalNode } from '@ts-linq/ast';
-import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { ConditionFragment } from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
 
 export class LogicalVisitor {
   public visit(
@@ -21,7 +21,7 @@ export class LogicalVisitor {
     const joiner = node.operator === '&&' ? ' AND ' : ' OR ';
     return {
       condition: `(${left.condition}${joiner}${right.condition})`,
-      parameters: [...left.parameters, ...right.parameters],
+      parameters: [...left.parameters, ...right.parameters]
     };
   }
 }

@@ -1,4 +1,4 @@
-import { EntityBuilder, builder } from '../src/builders/EntityBuilder';
+import { builder, EntityBuilder } from '../src/builders/EntityBuilder';
 
 class TestEntity {
   id!: number;
@@ -22,7 +22,7 @@ describe('EntityBuilder', () => {
 
     it('should create builder using factory function', () => {
       const factoryBuilder = builder(TestEntity);
-      
+
       expect(factoryBuilder).toBeInstanceOf(EntityBuilder);
     });
   });
@@ -41,9 +41,7 @@ describe('EntityBuilder', () => {
     });
 
     it('should merge multiple default calls', () => {
-      entityBuilder
-        .withDefaults({ name: 'Name' })
-        .withDefaults({ age: 25 });
+      entityBuilder.withDefaults({ name: 'Name' }).withDefaults({ age: 25 });
 
       const entity = entityBuilder.build();
 
@@ -53,16 +51,14 @@ describe('EntityBuilder', () => {
 
     it('should support method chaining', () => {
       const result = entityBuilder.withDefaults({ name: 'Test' });
-      
+
       expect(result).toBe(entityBuilder);
     });
   });
 
   describe('with()', () => {
     it('should set override values', () => {
-      entityBuilder
-        .withDefaults({ name: 'Default', age: 20 })
-        .with({ name: 'Override' });
+      entityBuilder.withDefaults({ name: 'Default', age: 20 }).with({ name: 'Override' });
 
       const entity = entityBuilder.build();
 
@@ -71,9 +67,7 @@ describe('EntityBuilder', () => {
     });
 
     it('should merge multiple override calls', () => {
-      entityBuilder
-        .with({ name: 'Alice' })
-        .with({ age: 30 });
+      entityBuilder.with({ name: 'Alice' }).with({ age: 30 });
 
       const entity = entityBuilder.build();
 
@@ -93,7 +87,7 @@ describe('EntityBuilder', () => {
 
     it('should support method chaining', () => {
       const result = entityBuilder.with({ name: 'Test' });
-      
+
       expect(result).toBe(entityBuilder);
     });
   });
@@ -101,7 +95,7 @@ describe('EntityBuilder', () => {
   describe('build()', () => {
     it('should create entity instance', () => {
       const entity = entityBuilder.build();
-      
+
       expect(entity).toBeInstanceOf(TestEntity);
     });
 
@@ -124,9 +118,7 @@ describe('EntityBuilder', () => {
     });
 
     it('should apply overrides', () => {
-      entityBuilder
-        .withDefaults({ name: 'Default' })
-        .with({ name: 'Override', age: 30 });
+      entityBuilder.withDefaults({ name: 'Default' }).with({ name: 'Override', age: 30 });
 
       const entity = entityBuilder.build();
 
@@ -148,18 +140,18 @@ describe('EntityBuilder', () => {
   describe('buildMany()', () => {
     it('should create multiple instances', () => {
       const entities = entityBuilder.buildMany(3);
-      
+
       expect(entities).toHaveLength(3);
-      entities.forEach(entity => {
+      entities.forEach((entity) => {
         expect(entity).toBeInstanceOf(TestEntity);
       });
     });
 
     it('should apply defaults to all instances', () => {
       entityBuilder.withDefaults({ name: 'Test', age: 25 });
-      
+
       const entities = entityBuilder.buildMany(2);
-      
+
       expect(entities[0].name).toBe('Test');
       expect(entities[0].age).toBe(25);
       expect(entities[1].name).toBe('Test');
@@ -182,7 +174,7 @@ describe('EntityBuilder', () => {
 
     it('should merge defaults with factory values', () => {
       entityBuilder.withDefaults({ age: 25, active: true });
-      
+
       const entities = entityBuilder.buildMany(2, (i) => ({
         id: i + 1,
         name: `User ${i + 1}`
@@ -196,16 +188,14 @@ describe('EntityBuilder', () => {
 
     it('should handle zero count', () => {
       const entities = entityBuilder.buildMany(0);
-      
+
       expect(entities).toHaveLength(0);
     });
   });
 
   describe('reset()', () => {
     it('should clear overrides but keep defaults', () => {
-      entityBuilder
-        .withDefaults({ name: 'Default', age: 20 })
-        .with({ name: 'Override' });
+      entityBuilder.withDefaults({ name: 'Default', age: 20 }).with({ name: 'Override' });
 
       entityBuilder.reset();
 
@@ -229,7 +219,7 @@ describe('EntityBuilder', () => {
 
     it('should support method chaining', () => {
       const result = entityBuilder.reset();
-      
+
       expect(result).toBe(entityBuilder);
     });
   });
@@ -256,11 +246,10 @@ describe('EntityBuilder', () => {
     });
 
     it('should handle reusable builder', () => {
-      const baseBuilder = builder(TestEntity)
-        .withDefaults({
-          active: true,
-          age: 25
-        });
+      const baseBuilder = builder(TestEntity).withDefaults({
+        active: true,
+        age: 25
+      });
 
       const user1 = baseBuilder.with({ id: 1, name: 'Alice' }).build();
       const user2 = baseBuilder.reset().with({ id: 2, name: 'Bob' }).build();

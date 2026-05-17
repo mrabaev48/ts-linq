@@ -1,17 +1,16 @@
-import { MetadataStorage } from './MetadataStorage';
 import type { ColumnMetadata } from '@ts-linq/types';
 
+import { MetadataStorage } from './MetadataStorage';
+
 export function DatabaseFunction(
-  expression:
-    | string
-    | { postgresql?: string; mysql?: string; mssql?: string; default?: string },
+  expression: string | { postgresql?: string; mysql?: string; mssql?: string; default?: string },
   nameOverride?: string
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     const expr = typeof expression === 'string' ? expression : (expression.default ?? '');
     const columnMetadata: ColumnMetadata = {
       propertyName: name,
@@ -30,7 +29,7 @@ export function DatabaseFunction(
               mssql: expression.mssql
             }
     };
-    
+
     MetadataStorage.addColumn(ctor, columnMetadata);
   };
 }

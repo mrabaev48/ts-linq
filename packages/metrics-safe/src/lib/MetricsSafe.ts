@@ -21,7 +21,6 @@ function tryInvoke(
   } catch (e) {
     if (debugEnabled()) {
       try {
-        // eslint-disable-next-line no-console
         console.warn('[ts-linq metrics]', method, e);
       } catch {
         /* ignore */
@@ -61,7 +60,6 @@ export function warnIfLoggerDebug(method: string, error: unknown): void {
     const env = (process as unknown as { env?: Record<string, string | undefined> }).env;
     const debug = env?.TSL_LOGGER_DEBUG;
     if (debug === '1' || debug === 'true' || debug === 'on') {
-      // eslint-disable-next-line no-console
       console.warn('[ts-linq logger]', method, error);
     }
   } catch {

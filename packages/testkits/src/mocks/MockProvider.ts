@@ -34,7 +34,7 @@ export class MockDatabaseProvider implements DatabaseProvider {
   ): Promise<T[]> {
     // Try exact match first
     let result = this.mockResults.get(sql);
-    
+
     // If no exact match, try regex patterns
     if (!result) {
       for (const [key, value] of this.mockResults.entries()) {
@@ -47,7 +47,7 @@ export class MockDatabaseProvider implements DatabaseProvider {
         }
       }
     }
-    
+
     const finalResult = result ?? [];
     this.executions.push({ sql, params, result: finalResult });
     return finalResult as unknown as T[];
@@ -116,7 +116,9 @@ export class MockDatabaseProvider implements DatabaseProvider {
       throw new Error('No SQL executed');
     }
     if (JSON.stringify(last.params) !== JSON.stringify(expectedParams)) {
-      throw new Error(`Expected params: ${JSON.stringify(expectedParams)}\nGot: ${JSON.stringify(last.params)}`);
+      throw new Error(
+        `Expected params: ${JSON.stringify(expectedParams)}\nGot: ${JSON.stringify(last.params)}`
+      );
     }
   }
 }

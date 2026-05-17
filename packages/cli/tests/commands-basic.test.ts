@@ -1,10 +1,11 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { SchemaExportCommand } from '../src/commands/SchemaExportCommand';
-import { SchemaDiffCommand } from '../src/commands/SchemaDiffCommand';
-import { SchemaValidateCommand } from '../src/commands/SchemaValidateCommand';
-import { SchemaApplyCommand } from '../src/commands/SchemaApplyCommand';
-import { SeedCommand } from '../src/commands/SeedCommand';
+
 import { ConsoleLogger } from '../src/adapters/ConsoleLogger';
+import { SchemaApplyCommand } from '../src/commands/SchemaApplyCommand';
+import { SchemaDiffCommand } from '../src/commands/SchemaDiffCommand';
+import { SchemaExportCommand } from '../src/commands/SchemaExportCommand';
+import { SchemaValidateCommand } from '../src/commands/SchemaValidateCommand';
+import { SeedCommand } from '../src/commands/SeedCommand';
 
 class FakeProvider implements Partial<DatabaseProvider> {
   public providerLabel = 'postgresql' as const;
@@ -43,7 +44,7 @@ describe('CLI commands basic', () => {
 
   it('schema:export writes snapshot', async () => {
     const fs = new MemFs();
-    const cmd = new SchemaExportCommand(logger as any, fs as any);
+    const cmd = new SchemaExportCommand(logger, fs);
     await cmd.run(['schema:export', out]);
     expect(fs.exists(out)).toBe(true);
     expect(fs.readText(out)).toContain('tables');
@@ -51,7 +52,7 @@ describe('CLI commands basic', () => {
 
   it('schema:diff prints SQL or warns when file missing', async () => {
     const fs = new MemFs();
-    const cmd = new SchemaDiffCommand(logger as any, fs as any);
+    const cmd = new SchemaDiffCommand(logger, fs);
     await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, ['schema:diff', out]);
     fs.writeText(out, JSON.stringify({ tables: [] }));
     await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, ['schema:diff', out]);
@@ -59,7 +60,7 @@ describe('CLI commands basic', () => {
 
   it('schema:validate detects drift or ok', async () => {
     const fs = new MemFs();
-    const cmd = new SchemaValidateCommand(logger as any, fs as any);
+    const cmd = new SchemaValidateCommand(logger, fs);
     fs.writeText(out, JSON.stringify({ tables: [] }));
     await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, ['schema:validate', out]);
   });
@@ -67,7 +68,7 @@ describe('CLI commands basic', () => {
   it('schema:apply honors dry-run', async () => {
     const fs = new MemFs();
     fs.writeText(out, JSON.stringify({ tables: [] }));
-    const cmd = new SchemaApplyCommand(logger as any, fs as any);
+    const cmd = new SchemaApplyCommand(logger, fs);
     await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, [
       'schema:apply',
       out,
@@ -78,7 +79,7 @@ describe('CLI commands basic', () => {
   it('seed applies statements', async () => {
     const fs = new MemFs();
     fs.writeText('/tmp/seed.sql', 'CREATE TABLE t1(id int);\nINSERT INTO t1 VALUES(1);');
-    const cmd = new SeedCommand(logger as any, fs as any);
+    const cmd = new SeedCommand(logger, fs);
     await cmd.runDb(new FakeProvider() as unknown as DatabaseProvider, ['seed', '/tmp/seed.sql']);
   });
 });

@@ -1,4 +1,5 @@
 import type { QueryFallback } from '@ts-linq/types';
+
 import { FallbackManager } from '../src/FallbackManager';
 
 interface TestEntity {
@@ -29,8 +30,8 @@ describe('FallbackManager', () => {
     mgr.add(makeFallback('cache'));
     mgr.add(makeFallback('replica'));
     expect(mgr.fallbacks).toHaveLength(2);
-    expect(mgr.fallbacks[0]!.label).toBe('cache');
-    expect(mgr.fallbacks[1]!.label).toBe('replica');
+    expect(mgr.fallbacks[0].label).toBe('cache');
+    expect(mgr.fallbacks[1].label).toBe('replica');
   });
 
   it('clone() copies fallbacks and deep-copies throttle state', () => {
@@ -43,7 +44,7 @@ describe('FallbackManager', () => {
     // Fallbacks are copied (same entries, different array)
     expect(copy.fallbacks).toHaveLength(1);
     expect(copy.fallbacks).not.toBe(mgr.fallbacks);
-    expect(copy.fallbacks[0]!.label).toBe('cache');
+    expect(copy.fallbacks[0].label).toBe('cache');
 
     // Throttle is a different object but carries the same snapshot values
     expect(copy.throttle).not.toBe(mgr.throttle);

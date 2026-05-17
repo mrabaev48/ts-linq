@@ -55,13 +55,13 @@ class TestProvider extends DatabaseProvider {
     return null;
   }
   public async findAll<T extends object>(): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   public async findWhere<T extends object>(): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   public async findWhereIn<T extends object>(): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   protected async doExecuteQuery<T>(sql: string): Promise<T[]> {
     if (/COUNT\(\*\)\s+as\s+count/i.test(sql)) {
@@ -69,8 +69,8 @@ class TestProvider extends DatabaseProvider {
     }
     const m = /\/\*LIMIT=(\d+),OFFSET=(\d+)\*\//.exec(sql);
     if (m) {
-      const limit = parseInt(m[1]!, 10);
-      const offset = parseInt(m[2]!, 10);
+      const limit = parseInt(m[1], 10);
+      const offset = parseInt(m[2], 10);
       return this.rows.slice(offset, offset + limit) as unknown as T[];
     }
     return this.rows as unknown as T[];
@@ -143,9 +143,7 @@ describe('TypedQueryable (tests-new)', () => {
 
   test('paginate() returns expected shape', async () => {
     const provider = new TestProvider();
-    provider.setRows(
-      Array.from({ length: 3 }, (_, i) => ({ id: i + 1, name: `U${i + 1}` }))
-    );
+    provider.setRows(Array.from({ length: 3 }, (_, i) => ({ id: i + 1, name: `U${i + 1}` })));
     provider.setCount(3);
     const typed = TypedQueryable.from(new Queryable(User, provider).orderBy('id'));
     const page = await typed.paginate(1, 2);
@@ -155,5 +153,3 @@ describe('TypedQueryable (tests-new)', () => {
     expect(page.size).toBe(2);
   });
 });
-
-

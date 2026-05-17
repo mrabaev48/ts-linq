@@ -1,6 +1,6 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnMetadata } from '@ts-linq/types';
 import { PostgresProvider } from '@ts-linq/provider-postgres';
+import type { ColumnMetadata } from '@ts-linq/types';
 
 class User {
   id!: number;
@@ -24,7 +24,7 @@ describe('Postgres computed column (integration)', () => {
         nullable: true,
         isComputed: true,
         computedExpression: 'a * 2'
-      } as ColumnMetadata
+      }
     ];
     cols.forEach((c) => MetadataStorage.addColumn(User, c));
     MetadataStorage.addPrimaryKey(User, 'id');

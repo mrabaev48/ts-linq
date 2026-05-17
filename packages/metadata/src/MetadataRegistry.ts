@@ -1,5 +1,12 @@
-import type { EntityMetadata, ColumnMetadata, RelationshipMetadata, IndexMetadata, ValidationRule } from '@ts-linq/types';
+import type {
+  ColumnMetadata,
+  EntityMetadata,
+  IndexMetadata,
+  RelationshipMetadata,
+  ValidationRule
+} from '@ts-linq/types';
 import { ValidationError } from '@ts-linq/types';
+
 import { EntityMetadataBuilder } from './EntityMetadata';
 import { PendingMetadataCollector } from './PendingMetadataCollector';
 import { reflectGetOwnMetadata } from './reflectUtils';
@@ -53,8 +60,12 @@ export class MetadataRegistry {
     const pendingIndexes = PendingMetadataCollector.getIndexes(target);
     const pendingRelationships = PendingMetadataCollector.getRelationships(target);
 
-    if (pendingColumns.size > 0 || pendingPrimaryKeys.size > 0 ||
-        pendingIndexes.length > 0 || pendingRelationships.size > 0) {
+    if (
+      pendingColumns.size > 0 ||
+      pendingPrimaryKeys.size > 0 ||
+      pendingIndexes.length > 0 ||
+      pendingRelationships.size > 0
+    ) {
       for (const [, columnMeta] of pendingColumns.entries()) {
         this.addColumnMetadata(target, columnMeta);
       }
@@ -97,10 +108,14 @@ export class MetadataRegistry {
         );
       }
       if (column.isGenerated) {
-        throw new ValidationError(`Computed column ${column.columnName} cannot be marked as isGenerated`);
+        throw new ValidationError(
+          `Computed column ${column.columnName} cannot be marked as isGenerated`
+        );
       }
       if (column.isVersion) {
-        throw new ValidationError(`Computed column ${column.columnName} cannot be a version column`);
+        throw new ValidationError(
+          `Computed column ${column.columnName} cannot be a version column`
+        );
       }
       (column as { isReadOnly?: boolean }).isReadOnly = true;
     }
@@ -146,7 +161,9 @@ export class MetadataRegistry {
           `Duplicate index name '${index.name}' on entity '${finalized.tableName}'`
         );
       }
-      const existingCols = new Set(finalized.columns.map((c) => [c.columnName, c.propertyName]).flat());
+      const existingCols = new Set(
+        finalized.columns.map((c) => [c.columnName, c.propertyName]).flat()
+      );
       const missing = index.columns.filter((c) => !existingCols.has(c));
       if (missing.length > 0) {
         throw new ValidationError(
@@ -163,7 +180,9 @@ export class MetadataRegistry {
         `Duplicate index name '${index.name}' on entity '${snapshot.tableName}'`
       );
     }
-    const existingCols = new Set((snapshot.columns || []).map((c) => [c.columnName, c.propertyName]).flat());
+    const existingCols = new Set(
+      (snapshot.columns || []).map((c) => [c.columnName, c.propertyName]).flat()
+    );
     const missing = index.columns.filter((c) => !existingCols.has(c));
     if (missing.length > 0) {
       throw new ValidationError(
@@ -190,7 +209,7 @@ export class MetadataRegistry {
     try {
       const maybe = reflectGetOwnMetadata('orm:original', target);
       const original = typeof maybe === 'function' ? maybe : target;
-      const key = this.normalizeTarget(original as Function);
+      const key = this.normalizeTarget(original);
       if (this.builders.has(key)) {
         this.collectPendingMetadata(key);
         this.finalizeEntity(key);

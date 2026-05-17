@@ -1,7 +1,8 @@
-import type { SqlParameter } from '@ts-linq/types';
-import { AstSqlGenerationError } from '@ts-linq/ast';
-import type { BinaryNode, ExpressionNode, LiteralNode, ParameterRefNode, PropertyNode } from '@ts-linq/ast';
+import type { BinaryNode, ExpressionNode, ParameterRefNode, PropertyNode } from '@ts-linq/ast';
 import type { ConditionFragment, SqlFragment } from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
+import type { SqlParameter } from '@ts-linq/types';
+
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
 
 /**
@@ -23,7 +24,7 @@ export class BinaryVisitor {
     const rightSql = this.renderOperand(node.right, inputParameters, recurse, resolver, state);
     return {
       condition: `(${leftSql.fragment} ${sqlOp} ${rightSql.fragment})`,
-      parameters: [...leftSql.params, ...rightSql.params],
+      parameters: [...leftSql.params, ...rightSql.params]
     };
   }
 
@@ -54,7 +55,10 @@ export class BinaryVisitor {
       return { fragment: state.next(), params: [node.value] };
     }
     if (node.type === 'parameterRef') {
-      return { fragment: state.next(), params: [resolveParameterRef(node, inputParameters) as SqlParameter] };
+      return {
+        fragment: state.next(),
+        params: [resolveParameterRef(node, inputParameters) as SqlParameter]
+      };
     }
     const inner = recurse(node);
     return { fragment: inner.condition, params: inner.parameters };

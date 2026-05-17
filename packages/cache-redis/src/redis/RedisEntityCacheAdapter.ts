@@ -1,5 +1,10 @@
 import type { EntityCacheLike } from '@ts-linq/types';
-import type { RedisClientLike, RedisPublisherLike, RedisSubscriberLike } from './RedisSqlCacheAdapter';
+
+import type {
+  RedisClientLike,
+  RedisPublisherLike,
+  RedisSubscriberLike
+} from './RedisSqlCacheAdapter';
 
 export interface RedisEntityCacheOptions {
   /** Optional TTL in seconds for Redis entries. If undefined, no TTL is set. */
@@ -38,7 +43,7 @@ export class RedisEntityCacheAdapter implements EntityCacheLike {
   private readonly publisher?: RedisPublisherLike;
   private readonly serializer: (entity: unknown) => string;
   private readonly deserializer: (data: string) => unknown;
-  
+
   // Shadow cache stores the actual entity instances
   private readonly shadow = new Map<string, { value: unknown; ts: number }>();
   private _metrics = { requests: 0, hits: 0, misses: 0, evictions: 0, invalidations: 0 };
@@ -90,20 +95,20 @@ export class RedisEntityCacheAdapter implements EntityCacheLike {
   public get<T>(entityClass: Function, id: unknown): T | undefined {
     if (id === undefined || id === null) return undefined;
     const key = this.buildKey(entityClass, id);
-    
+
     // Check shadow first (sync)
     const entry = this.shadow.get(key);
     if (!entry) {
-      // If not in shadow, we can't return it synchronously. 
+      // If not in shadow, we can't return it synchronously.
       // The contract of EntityCacheLike is strictly synchronous.
       // We must rely on 'warmUp' or background loading if we want to support
       // reading from Redis. Since we can't change the interface signature to async,
       // this adapter acts as a write-through, read-from-shadow cache.
       // It DOES NOT support transparent lazy loading from Redis on get().
       // Application code should ensure data is loaded or stick to "best effort" L2 caching behaviour.
-      // However, we can try to async fetch it to populate shadow for NEXT time, 
+      // However, we can try to async fetch it to populate shadow for NEXT time,
       // but that won't help the current call.
-      
+
       this.triggerAsyncFetch(key);
       return undefined;
     }
@@ -123,7 +128,7 @@ export class RedisEntityCacheAdapter implements EntityCacheLike {
   public set<T>(entityClass: Function, id: unknown, entity: T): void {
     if (id === undefined || id === null) return;
     const key = this.buildKey(entityClass, id);
-    
+
     this.ensureCapacity();
     this.shadow.set(key, { value: entity, ts: Date.now() });
 
@@ -147,7 +152,7 @@ export class RedisEntityCacheAdapter implements EntityCacheLike {
   public remove(entityClass: Function, id: unknown): void {
     if (id === undefined || id === null) return;
     const key = this.buildKey(entityClass, id);
-    
+
     this.shadow.delete(key);
 
     void (async () => {
@@ -199,7 +204,7 @@ export class RedisEntityCacheAdapter implements EntityCacheLike {
       this._metrics.evictions++;
     }
   }
-  
+
   private computeHash(key: string): string {
     // Lightweight non-crypto hash (djb2)
     let hash = 5381;

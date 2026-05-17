@@ -1,6 +1,7 @@
 import { safeCacheEvicted } from '@ts-linq/metrics-safe';
-import { logInternalError } from './InternalLogger';
 import type { EntityCacheLike } from '@ts-linq/types';
+
+import { logInternalError } from './InternalLogger';
 
 /**
  * Simple in-memory FIFO cache for entities keyed by `<EntityName>|<id>`.
@@ -48,7 +49,7 @@ export class EntityCache implements EntityCacheLike {
       }
     }
     const key = this.buildKey(entityClass, id);
-    this._store.set(key, entity as unknown as object);
+    this._store.set(key, entity);
   }
 
   /** Remove a cached entity by class and id. */

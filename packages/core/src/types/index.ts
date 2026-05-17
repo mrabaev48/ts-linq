@@ -2,7 +2,7 @@
 // Domain contracts (EntityState, TrackedEntity) and logger event types live in @ts-linq/types.
 // Consumers should import those directly from @ts-linq/types.
 
-import type { SqlCache, CountCache as CountCacheType, CircuitState } from '@ts-linq/types';
+import type { CircuitState } from '@ts-linq/types';
 
 /**
  * Structural contract for a database provider.

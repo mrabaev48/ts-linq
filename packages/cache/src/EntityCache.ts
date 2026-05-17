@@ -53,7 +53,7 @@ export class EntityCache implements EntityCacheLike {
       }
     }
     const key = this.buildKey(entityClass, id);
-    this._store.set(key, entity as unknown as object);
+    this._store.set(key, entity);
   }
 
   /** Remove a cached entity by class and id. */

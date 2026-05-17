@@ -33,15 +33,13 @@ d('[integration][mysql] locks (SKIP LOCKED analog via NOWAIT not available)', ()
         'SELECT id FROM `items_lock` ORDER BY id LIMIT 1'
       );
       const lockedId = rows[0].id;
-      await p1.executeNonQuery('SELECT id FROM `items_lock` WHERE id = ? FOR UPDATE', [
-        lockedId as unknown as never
-      ]);
+      await p1.executeNonQuery('SELECT id FROM `items_lock` WHERE id = ? FOR UPDATE', [lockedId]);
 
       // MySQL has no NOWAIT; immediate second FOR UPDATE on the same row waits — we assert client would timeout if configured.
       // Thus a soft check: the second query should not return the locked row when SKIP LOCKED is unavailable.
       const other = await p2.executeQuery<{ id: number }>(
         'SELECT id FROM `items_lock` WHERE id <> ? FOR UPDATE',
-        [lockedId as unknown as never]
+        [lockedId]
       );
       expect(other.some((r) => r.id === lockedId)).toBe(false);
 

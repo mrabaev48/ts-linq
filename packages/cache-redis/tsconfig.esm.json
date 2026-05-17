@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.esm.json",
+  "extends": "@ts-linq/typescript-config/esm.json",
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist/esm",

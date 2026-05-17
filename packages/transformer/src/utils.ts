@@ -18,10 +18,7 @@ export function num(value: string | number): ts.NumericLiteral {
 // ─── Object / array builders ──────────────────────────────────────────────────
 
 export function prop(key: string, value: ts.Expression): ts.PropertyAssignment {
-  return ts.factory.createPropertyAssignment(
-    ts.factory.createIdentifier(key),
-    value
-  );
+  return ts.factory.createPropertyAssignment(ts.factory.createIdentifier(key), value);
 }
 
 export function makeObject(
@@ -49,7 +46,7 @@ export function emitDiagnostic(
     file: node.getSourceFile(),
     start: node.getStart(),
     length: node.getWidth(),
-    messageText: message,
+    messageText: message
   };
   const c = ctx as unknown as { addDiagnostic?: (d: ts.Diagnostic) => void };
   if (typeof c.addDiagnostic === 'function') {
@@ -64,19 +61,19 @@ export function emitDiagnostic(
 
 export function syntaxKindName(kind: ts.SyntaxKind): string {
   const FRIENDLY: Partial<Record<ts.SyntaxKind, string>> = {
-    [ts.SyntaxKind.ConditionalExpression]:   'ternary operator (?:)',
-    [ts.SyntaxKind.QuestionQuestionToken]:   'nullish coalescing (??)',
-    [ts.SyntaxKind.QuestionDotToken]:        'optional chaining (?.)',
-    [ts.SyntaxKind.CallExpression]:          'unsupported function call',
-    [ts.SyntaxKind.ArrowFunction]:           'nested arrow function',
-    [ts.SyntaxKind.TypeOfExpression]:        'typeof expression',
-    [ts.SyntaxKind.VoidExpression]:          'void expression',
-    [ts.SyntaxKind.AwaitExpression]:         'await expression',
-    [ts.SyntaxKind.SpreadElement]:           'spread operator (...)',
+    [ts.SyntaxKind.ConditionalExpression]: 'ternary operator (?:)',
+    [ts.SyntaxKind.QuestionQuestionToken]: 'nullish coalescing (??)',
+    [ts.SyntaxKind.QuestionDotToken]: 'optional chaining (?.)',
+    [ts.SyntaxKind.CallExpression]: 'unsupported function call',
+    [ts.SyntaxKind.ArrowFunction]: 'nested arrow function',
+    [ts.SyntaxKind.TypeOfExpression]: 'typeof expression',
+    [ts.SyntaxKind.VoidExpression]: 'void expression',
+    [ts.SyntaxKind.AwaitExpression]: 'await expression',
+    [ts.SyntaxKind.SpreadElement]: 'spread operator (...)',
     [ts.SyntaxKind.ElementAccessExpression]: 'computed property access (u[key])',
-    [ts.SyntaxKind.NewExpression]:           'new expression',
-    [ts.SyntaxKind.TemplateExpression]:      'template literal with substitutions',
-    [ts.SyntaxKind.Identifier]:              'bare identifier (use u.propertyName)',
+    [ts.SyntaxKind.NewExpression]: 'new expression',
+    [ts.SyntaxKind.TemplateExpression]: 'template literal with substitutions',
+    [ts.SyntaxKind.Identifier]: 'bare identifier (use u.propertyName)'
   };
   return (
     FRIENDLY[kind] ??
@@ -106,25 +103,24 @@ export function makeUnsupported(
   const kind = node.kind;
   const name = syntaxKindName(kind);
   const message =
-    `where() predicate contains unsupported expression: ${name}. ` +
-    SUPPORTED_SUMMARY;
+    `where() predicate contains unsupported expression: ${name}. ` + SUPPORTED_SUMMARY;
 
   if (ctx !== undefined) {
     emitDiagnostic(ctx, node, message, ts.DiagnosticCategory.Error);
   }
 
   return makeObject([
-    prop('type',        str('unsupported')),
-    prop('syntaxKind',  num(kind)),
-    prop('description', str(message)),
+    prop('type', str('unsupported')),
+    prop('syntaxKind', num(kind)),
+    prop('description', str(message))
   ]);
 }
 
 // ─── Property path unwinding ──────────────────────────────────────────────────
 
 export interface PropertyChain {
-  root:        string;
-  segments:    string[];
+  root: string;
+  segments: string[];
   hasOptional: boolean;
 }
 
@@ -132,8 +128,8 @@ export const MAX_CHAIN_DEPTH = 20;
 
 function isOptionalAccess(node: ts.PropertyAccessExpression): boolean {
   return (
-    (node as ts.PropertyAccessExpression & { questionDotToken?: unknown })
-      .questionDotToken !== undefined
+    (node as ts.PropertyAccessExpression & { questionDotToken?: unknown }).questionDotToken !==
+    undefined
   );
 }
 
@@ -141,9 +137,7 @@ function isOptionalAccess(node: ts.PropertyAccessExpression): boolean {
  * Unwind a PropertyAccessExpression chain into root identifier + segments.
  * Returns null when the leftmost node is not a plain Identifier or depth exceeds MAX_CHAIN_DEPTH.
  */
-export function collectPropertyChain(
-  node: ts.PropertyAccessExpression
-): PropertyChain | null {
+export function collectPropertyChain(node: ts.PropertyAccessExpression): PropertyChain | null {
   const segments: string[] = [];
   let current: ts.Expression = node;
   let depth = 0;

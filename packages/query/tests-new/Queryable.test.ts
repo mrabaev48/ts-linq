@@ -61,13 +61,13 @@ class TestProvider extends DatabaseProvider {
     return null;
   }
   public async findAll<T extends object>(): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   public async findWhere<T extends object>(): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   public async findWhereIn<T extends object>(): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   protected async doExecuteQuery<T>(sql: string): Promise<T[]> {
     if (/COUNT\(\*\)\s+as\s+count/i.test(sql)) {
@@ -75,8 +75,8 @@ class TestProvider extends DatabaseProvider {
     }
     const m = /\/\*LIMIT=(\d+),OFFSET=(\d+)\*\//.exec(sql);
     if (m) {
-      const limit = parseInt(m[1]!, 10);
-      const offset = parseInt(m[2]!, 10);
+      const limit = parseInt(m[1], 10);
+      const offset = parseInt(m[2], 10);
       return this.rows.slice(offset, offset + limit) as unknown as T[];
     }
     return this.rows as unknown as T[];
@@ -156,7 +156,11 @@ describe('Queryable (tests-new)', () => {
       provider,
       undefined,
       undefined,
-      { enableCountCache: true, countCacheTtlMs: 10_000, countCache: new InMemoryCountCache(10_000) },
+      {
+        enableCountCache: true,
+        countCacheTtlMs: 10_000,
+        countCache: new InMemoryCountCache(10_000)
+      },
       undefined
     ).whereCompiled({
       ast: {
@@ -248,31 +252,43 @@ describe('Queryable (tests-new)', () => {
       const provider = new TestProvider();
       const q = new Queryable(User, provider);
       q.innerJoinOn(Post, 'id', 'userId');
-      const model = (q as unknown as { _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> } })._model;
+      const model = (
+        q as unknown as {
+          _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> };
+        }
+      )._model;
       expect(model.joins).toHaveLength(1);
-      expect(model.joins[0]!.type).toBe('INNER');
-      expect(model.joins[0]!.table).toBe('posts');
-      expect(model.joins[0]!.on).toBe('users.id = posts.user_id');
-      expect(model.joins[0]!.alias).toBeUndefined();
+      expect(model.joins[0].type).toBe('INNER');
+      expect(model.joins[0].table).toBe('posts');
+      expect(model.joins[0].on).toBe('users.id = posts.user_id');
+      expect(model.joins[0].alias).toBeUndefined();
     });
 
     it('leftJoinOn() adds LEFT JOIN with correct ON clause using column name mapping', () => {
       const provider = new TestProvider();
       const q = new Queryable(User, provider);
       q.leftJoinOn(Post, 'id', 'userId');
-      const model = (q as unknown as { _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> } })._model;
+      const model = (
+        q as unknown as {
+          _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> };
+        }
+      )._model;
       expect(model.joins).toHaveLength(1);
-      expect(model.joins[0]!.type).toBe('LEFT');
-      expect(model.joins[0]!.table).toBe('posts');
-      expect(model.joins[0]!.on).toBe('users.id = posts.user_id');
+      expect(model.joins[0].type).toBe('LEFT');
+      expect(model.joins[0].table).toBe('posts');
+      expect(model.joins[0].on).toBe('users.id = posts.user_id');
     });
 
     it('innerJoinOn() respects optional alias', () => {
       const provider = new TestProvider();
       const q = new Queryable(User, provider);
       q.innerJoinOn(Post, 'id', 'userId', 'p');
-      const model = (q as unknown as { _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> } })._model;
-      expect(model.joins[0]!.alias).toBe('p');
+      const model = (
+        q as unknown as {
+          _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> };
+        }
+      )._model;
+      expect(model.joins[0].alias).toBe('p');
     });
 
     it('innerJoinOn() falls back to property name when column metadata is missing', () => {
@@ -282,14 +298,18 @@ describe('Queryable (tests-new)', () => {
       MetadataStorage.addColumn(User, { propertyName: 'name', columnName: 'name', type: 'TEXT' });
       // Register Post without column metadata to test fallback
       MetadataStorage.addEntity(Post, 'posts');
-      MetadataStorage.addColumn(Post, { propertyName: 'userId', columnName: 'userId', type: 'INTEGER' });
+      MetadataStorage.addColumn(Post, {
+        propertyName: 'userId',
+        columnName: 'userId',
+        type: 'INTEGER'
+      });
       MetadataStorage.addColumn(Post, { propertyName: 'id', columnName: 'id', type: 'INTEGER' });
 
       const provider = new TestProvider();
       const q = new Queryable(User, provider);
       q.innerJoinOn(Post, 'id', 'userId');
       const model = (q as unknown as { _model: { joins: Array<{ on: string }> } })._model;
-      expect(model.joins[0]!.on).toBe('users.id = posts.userId');
+      expect(model.joins[0].on).toBe('users.id = posts.userId');
     });
 
     it('multiple joinOn() calls accumulate joins', () => {
@@ -310,5 +330,3 @@ describe('Queryable (tests-new)', () => {
     });
   });
 });
-
-

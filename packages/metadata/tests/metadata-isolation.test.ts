@@ -1,7 +1,8 @@
-import { MetadataStorage } from '../src/MetadataStorage';
-import { MetadataRegistry } from '../src/MetadataRegistry';
-import { createMetadataRegistry } from '../src/index';
 import type { ColumnMetadata } from '@ts-linq/types';
+
+import { createMetadataRegistry } from '../src/index';
+import { MetadataRegistry } from '../src/MetadataRegistry';
+import { MetadataStorage } from '../src/MetadataStorage';
 
 // Helper: add a minimal entity with one column to the given registry
 function seedEntity(registry: MetadataRegistry, target: Function, tableName: string): void {

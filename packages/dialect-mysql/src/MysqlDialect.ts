@@ -1,9 +1,19 @@
-import type { SqlDialect, QueryOptions, SqlParameter, EntityMetadata, ColumnMetadata, SqlQueryResult, SqlWithParams, SqlWithReturning } from '@ts-linq/types';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
+import type {
+  ColumnMetadata,
+  EntityMetadata,
+  QueryOptions,
+  SqlDialect,
+  SqlParameter,
+  SqlQueryResult,
+  SqlWithParams,
+  SqlWithReturning
+} from '@ts-linq/types';
+
+import { MySqlGroupEmitter } from './emitters/MySqlGroupEmitter';
 import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
 import { MySqlOrderEmitter } from './emitters/MySqlOrderEmitter';
-import { MySqlGroupEmitter } from './emitters/MySqlGroupEmitter';
+import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
 
 /**
  * MySQL dialect for SELECT generation.
@@ -24,10 +34,7 @@ export class MysqlDialect implements SqlDialect {
    * @param entityClass Entity constructor to resolve table name
    * @param options Normalized query options (select/where/order/joins/group/limit/offset)
    */
-  public buildSelect<T>(
-    entityClass: new () => T,
-    options: QueryOptions
-  ): SqlQueryResult {
+  public buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const parameters: SqlParameter[] = [];
@@ -69,10 +76,7 @@ export class MysqlDialect implements SqlDialect {
     }
     return '';
   }
-  public buildInsert(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): SqlWithReturning {
+  public buildInsert(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithReturning {
     const insertable = metadata.columns.filter(
       (c) => (!c.isGenerated || entity[c.propertyName] !== undefined) && !c.isComputed
     );
@@ -119,10 +123,7 @@ export class MysqlDialect implements SqlDialect {
     return { sql, parameters: [...setParams, ...whereParams] };
   }
 
-  public buildDelete(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): SqlWithParams {
+  public buildDelete(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for entity ${metadata.tableName}`);
     }
@@ -146,12 +147,12 @@ export class MysqlDialect implements SqlDialect {
       value instanceof Date ||
       value instanceof Uint8Array
     ) {
-      return value as SqlParameter;
+      return value;
     }
     try {
-      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+      return JSON.stringify(value ?? null);
     } catch {
-      return String(value) as unknown as SqlParameter;
+      return String(value);
     }
   }
 }

@@ -21,7 +21,7 @@ describe('LoadingStrategy Enum', () => {
 
   it('should allow string comparison', () => {
     const strategy: LoadingStrategy = LoadingStrategy.Lazy;
-    
+
     expect(strategy === 'lazy').toBe(true);
     expect(strategy === LoadingStrategy.Lazy).toBe(true);
   });

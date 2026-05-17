@@ -16,14 +16,14 @@ export class EntityBuilder<T extends object> {
 
   build(): T {
     const instance = new this.entityClass();
-    return Object.assign(instance, this.defaults, this.overrides) as T;
+    return Object.assign(instance, this.defaults, this.overrides);
   }
 
   buildMany(count: number, factory?: (index: number) => Partial<T>): T[] {
     return Array.from({ length: count }, (_, i) => {
       const instance = new this.entityClass();
       const overrides = factory ? factory(i) : {};
-      return Object.assign(instance, this.defaults, overrides) as T;
+      return Object.assign(instance, this.defaults, overrides);
     });
   }
 
@@ -62,23 +62,26 @@ export class TestComment {
   createdAt!: Date;
 }
 
-export const userBuilder = () => builder(TestUser).withDefaults({
-  name: 'Test User',
-  email: 'test@example.com',
-  age: 25,
-  isActive: true,
-  createdAt: new Date()
-});
+export const userBuilder = () =>
+  builder(TestUser).withDefaults({
+    name: 'Test User',
+    email: 'test@example.com',
+    age: 25,
+    isActive: true,
+    createdAt: new Date()
+  });
 
-export const postBuilder = () => builder(TestPost).withDefaults({
-  title: 'Test Post',
-  content: 'Test content',
-  authorId: 1
-});
+export const postBuilder = () =>
+  builder(TestPost).withDefaults({
+    title: 'Test Post',
+    content: 'Test content',
+    authorId: 1
+  });
 
-export const commentBuilder = () => builder(TestComment).withDefaults({
-  text: 'Test comment',
-  postId: 1,
-  userId: 1,
-  createdAt: new Date()
-});
+export const commentBuilder = () =>
+  builder(TestComment).withDefaults({
+    text: 'Test comment',
+    postId: 1,
+    userId: 1,
+    createdAt: new Date()
+  });

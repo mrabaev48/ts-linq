@@ -1,10 +1,11 @@
-import type { Logger } from '../src/ports/Logger';
-import type { FileSystem } from '../src/ports/FileSystem';
-import { GenerateEntityCommand } from '../src/commands/GenerateEntityCommand';
-import { GenerateEntitiesCommand } from '../src/commands/GenerateEntitiesCommand';
 import { DatabaseProvider } from '@ts-linq/core';
 import type { SqlDialect } from '@ts-linq/types';
+
+import { GenerateEntitiesCommand } from '../src/commands/GenerateEntitiesCommand';
+import { GenerateEntityCommand } from '../src/commands/GenerateEntityCommand';
 import { EntityTemplateBuilder } from '../src/generators/EntityTemplateBuilder';
+import type { FileSystem } from '../src/ports/FileSystem';
+import type { Logger } from '../src/ports/Logger';
 
 class InMemoryLogger implements Logger {
   public readonly infos: string[] = [];
@@ -90,19 +91,19 @@ class MinimalProvider extends DatabaseProvider {
     return null;
   }
   async findAll<T extends object>(_entityClass: new () => T): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   async findWhere<T extends object>(
     _entityClass: new () => T,
     _c: Record<string, unknown>
   ): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   async findWhereIn<T extends object>(_e: new () => T, _col: string, _v: unknown[]): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   protected async doExecuteQuery<T>(): Promise<T[]> {
-    return [] as unknown as T[];
+    return [];
   }
   protected async doExecuteNonQuery(): Promise<number> {
     return 0;
@@ -261,23 +262,23 @@ describe('CLI - Code Generation (tests-new)', () => {
       return null;
     }
     async findAll<T extends object>(_entityClass: new () => T): Promise<T[]> {
-      return [] as unknown as T[];
+      return [];
     }
     async findWhere<T extends object>(
       _entityClass: new () => T,
       _c: Record<string, unknown>
     ): Promise<T[]> {
-      return [] as unknown as T[];
+      return [];
     }
     async findWhereIn<T extends object>(
       _e: new () => T,
       _col: string,
       _v: unknown[]
     ): Promise<T[]> {
-      return [] as unknown as T[];
+      return [];
     }
     protected async doExecuteQuery<T>(): Promise<T[]> {
-      return [] as unknown as T[];
+      return [];
     }
     protected async doExecuteNonQuery(): Promise<number> {
       return 0;
@@ -295,7 +296,7 @@ describe('CLI - Code Generation (tests-new)', () => {
       buildDefault(entityName: string, tableName: string): string {
         return `// ${entityName} from ${tableName}`;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
       buildFromColumns(_entityName: string, _tableName: string, _cols: unknown): string {
         return `// columns`;
       }
@@ -309,7 +310,7 @@ describe('CLI - Code Generation (tests-new)', () => {
     const file = info!.replace('Created entity UserAccount at ', '');
     expect(file).toMatch(/src\/entities\/UserAccount\.ts$/);
     // ensure content was written
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
     expect((fs as unknown as { readText(p: string): string }).readText(file)).toContain(
       'UserAccount'
     );
@@ -319,11 +320,10 @@ describe('CLI - Code Generation (tests-new)', () => {
     const logger = new InMemoryLogger();
     const fs = new InMemoryFs();
     class FakeEntityTemplateBuilder2 extends EntityTemplateBuilder {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       buildDefault(_entityName: string, _tableName: string): string {
         return '// default';
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
       buildFromColumns(_entityName: string, _tableName: string, _cols: unknown): string {
         return `// from columns`;
       }
@@ -350,11 +350,10 @@ describe('CLI - Code Generation (tests-new)', () => {
     const logger = new InMemoryLogger();
     const fs = new InMemoryFs();
     class FakeEntityTemplateBuilder3 extends EntityTemplateBuilder {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       buildDefault(_entityName: string, _tableName: string): string {
         return '// default';
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
       buildFromColumns(_entityName: string, _tableName: string, _cols: unknown): string {
         return `// entity`;
       }
@@ -372,7 +371,6 @@ describe('CLI - Code Generation (tests-new)', () => {
     const logger = new InMemoryLogger();
     const fs = new InMemoryFs();
     class FakeEntityTemplateBuilder4 extends EntityTemplateBuilder {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       buildDefault(_entityName: string, _tableName: string): string {
         return '// default';
       }

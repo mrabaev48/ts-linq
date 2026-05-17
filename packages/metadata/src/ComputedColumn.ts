@@ -1,5 +1,6 @@
-import { MetadataStorage } from './MetadataStorage';
 import type { ColumnMetadata } from '@ts-linq/types';
+
+import { MetadataStorage } from './MetadataStorage';
 
 export interface ComputedColumnOptions {
   /** SQL expression for the computed column (provider-agnostic as possible). */
@@ -15,7 +16,7 @@ export function ComputedColumn(options: ComputedColumnOptions): PropertyDecorato
     const name = propertyKey.toString();
     const ctor =
       typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
-    
+
     const columnMetadata: ColumnMetadata = {
       propertyName: name,
       columnName: options?.name || name,
@@ -26,7 +27,7 @@ export function ComputedColumn(options: ComputedColumnOptions): PropertyDecorato
       isComputed: true,
       computedExpression: options.expression
     };
-    
+
     MetadataStorage.addColumn(ctor, columnMetadata);
   };
 }

@@ -2,10 +2,10 @@ import type { MySqlConfig } from '@ts-linq/types';
 
 /**
  * Builds MySQL connection string from configuration object.
- * 
+ *
  * @param config - MySQL configuration
  * @returns Connection string in mysql:// URI format
- * 
+ *
  * @example
  * buildMysqlConnectionString({
  *   host: 'localhost',
@@ -17,10 +17,10 @@ import type { MySqlConfig } from '@ts-linq/types';
  */
 export function buildMysqlConnectionString(config: MySqlConfig): string {
   const { host, port = 3306, database, user, password } = config;
-  
+
   // Build base URI
   let uri = 'mysql://';
-  
+
   // Add credentials
   if (user) {
     uri += encodeURIComponent(user);
@@ -29,7 +29,7 @@ export function buildMysqlConnectionString(config: MySqlConfig): string {
     }
     uri += '@';
   }
-  
+
   // Add host and port (or socket path)
   if (config.socketPath) {
     // For Unix socket connections, encode the path as a query parameter
@@ -45,29 +45,29 @@ export function buildMysqlConnectionString(config: MySqlConfig): string {
       uri += `:${port}`;
     }
   }
-  
+
   // Add database
   uri += `/${database}`;
-  
+
   // Add query parameters
   const params = new URLSearchParams();
-  
+
   if (config.socketPath) {
     params.append('socketPath', config.socketPath);
   }
-  
+
   if (config.charset) {
     params.append('charset', config.charset);
   }
-  
+
   if (config.timezone) {
     params.append('timezone', config.timezone);
   }
-  
+
   const queryString = params.toString();
   if (queryString) {
     uri += '?' + queryString;
   }
-  
+
   return uri;
 }

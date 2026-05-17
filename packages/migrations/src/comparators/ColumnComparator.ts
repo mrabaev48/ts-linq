@@ -1,4 +1,4 @@
-import type { ColumnDef, ColumnChange, TableSnapshot } from '../DiffTypes';
+import type { ColumnChange, ColumnDef, TableSnapshot } from '../DiffTypes';
 
 export function normalizeType(typeName: string): string {
   return String(typeName || '')

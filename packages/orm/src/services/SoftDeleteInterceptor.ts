@@ -11,10 +11,7 @@ interface EntityMeta {
 
 type GetMeta = (entityClass: Function) => EntityMeta | undefined;
 type ExecuteUpdate = (entity: Record<string, unknown>, entityClass: Function) => Promise<void>;
-type OnCacheUpdate = (change: {
-  entity: Record<string, unknown>;
-  entityClass: Function;
-}) => void;
+type OnCacheUpdate = (change: { entity: Record<string, unknown>; entityClass: Function }) => void;
 
 export class SoftDeleteInterceptor {
   constructor(
@@ -35,12 +32,10 @@ export class SoftDeleteInterceptor {
     const flag = this.softDelete.column ?? 'isDeleted';
     const deletedAt = this.softDelete.deletedAtColumn ?? 'deletedAt';
 
-    const hasFlag = meta.columns.some(
-      (c) => c.propertyName === flag || c.columnName === flag
-    );
+    const hasFlag = meta.columns.some((c) => c.propertyName === flag || c.columnName === flag);
     if (!hasFlag) return false;
 
-    change.entity[flag] = true as unknown as boolean;
+    change.entity[flag] = true;
 
     const hasDeletedAt = meta.columns.some(
       (c) => c.propertyName === deletedAt || c.columnName === deletedAt

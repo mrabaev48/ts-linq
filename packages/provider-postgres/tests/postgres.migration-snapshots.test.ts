@@ -26,7 +26,7 @@ describe('PostgreSQL DDL snapshots (MigrationBuilder → SQL)', () => {
         onDelete: 'CASCADE'
       });
     });
-    const sql = mb.toSql('postgresql' as any);
+    const sql = mb.toSql('postgresql');
     expect(normalize(sql.up)).toMatchInlineSnapshot(`
      "CREATE TABLE IF NOT EXISTS "users" ("id" INTEGER NOT NULL, "email" TEXT NOT NULL, "created_at" TIMESTAMP NOT NULL, PRIMARY KEY ("id"))
      CREATE UNIQUE INDEX "idx_users_email" ON "users" ("email")
@@ -43,7 +43,7 @@ describe('PostgreSQL DDL snapshots (MigrationBuilder → SQL)', () => {
     });
     mb.createIndex('users', 'idx_users_created_at', ['created_at']);
     mb.dropIndex('users', 'idx_users_email');
-    const sql = mb.toSql('postgresql' as any);
+    const sql = mb.toSql('postgresql');
     expect(normalize(sql.up)).toMatchInlineSnapshot(`
      "CREATE INDEX "idx_users_created_at" ON "users" ("created_at")
      DROP INDEX IF EXISTS "idx_users_email"
@@ -64,7 +64,7 @@ describe('PostgreSQL DDL snapshots (MigrationBuilder → SQL)', () => {
 
     // Force advanced properties through internal shapes by altering builder diff directly would be invasive.
     // Instead, verify a high-level baseline for CREATE/DROP/RENAME which already covers Postgres dialect branches.
-    const sql = mb.toSql('postgresql' as any);
+    const sql = mb.toSql('postgresql');
     const text = normalize(sql.up);
     expect(text).toContain('CREATE UNIQUE INDEX "idx_users_email_active" ON "users" ("email")');
     expect(text).toContain('CREATE INDEX "idx_users_expr" ON "users" ("created_at")');

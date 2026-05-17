@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { LruCache } from '../src/LruCache';
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import type { SqlCacheEntry } from '@ts-linq/types';
+
+import { LruCache } from '../src/LruCache';
 
 const entry = (query = 'SELECT 1'): SqlCacheEntry => ({ query, parameters: [] });
 const longKey = (prefix: string) => prefix + 'x'.repeat(201 - prefix.length);
@@ -202,7 +203,8 @@ describe('LruCache', () => {
       cache.set('c', entry('c'));
 
       // access 'c' 3 times, 'a' 2 times, 'b' 1 time (initial set counts as 1)
-      cache.get('c'); cache.get('c');
+      cache.get('c');
+      cache.get('c');
       cache.get('a');
 
       const top = cache.getTopAccessed(3);

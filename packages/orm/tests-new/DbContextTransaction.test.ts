@@ -1,7 +1,9 @@
 import 'reflect-metadata';
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
+
 import { DbContext } from '../src/DbContext';
-import { Entity, Column, PrimaryKey } from '@ts-linq/metadata';
 import { TestProvider } from '../tests/stubs/TestProvider';
 
 @Entity()
@@ -22,7 +24,7 @@ describe('DbContext — transaction depth tracking (ISSUE-018)', () => {
   beforeEach(async () => {
     provider = new TestProvider(':memory:');
     await provider.connect();
-    ctx = new TxContext({ provider: provider as any });
+    ctx = new TxContext({ provider: provider });
     await ctx.ensureCreated();
   });
 

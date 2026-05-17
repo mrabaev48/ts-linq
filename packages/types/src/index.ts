@@ -205,23 +205,14 @@ export interface SqlWithReturning extends SqlWithParams {
 
 // SQL Dialect interface
 export interface SqlDialect {
-  buildSelect<T>(
-    entityClass: new () => T,
-    options: QueryOptions
-  ): SqlQueryResult;
-  buildInsert?(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): SqlWithReturning;
+  buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult;
+  buildInsert?(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithReturning;
   buildUpdate?(
     entity: Record<string, unknown>,
     metadata: EntityMetadata,
     versionCol?: ColumnMetadata
   ): SqlWithParams;
-  buildDelete?(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): SqlWithParams;
+  buildDelete?(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithParams;
   quoteIdentifier(identifier: string): string;
 }
 
@@ -253,9 +244,7 @@ export interface OrmMiddleware {
   // SQL execution hooks
   beforeExecute?(info: BeforeExecuteInfo): Promise<void> | void;
   afterExecute?(info: AfterExecuteInfo): Promise<void> | void;
-  entityMaterialized?<T extends object>(
-    entity: T | { entity: T; metadata?: EntityMetadata }
-  ): void;
+  entityMaterialized?<T extends object>(entity: T | { entity: T; metadata?: EntityMetadata }): void;
   analysis?(info: QueryAnalysisInfo): void;
 
   // Entity lifecycle hooks
@@ -629,9 +618,9 @@ export interface AuditOptions {
 // Export error classes
 export {
   DatabaseError,
+  ForeignKeyConstraintError,
   OptimisticConcurrencyError,
   UniqueConstraintError,
-  ForeignKeyConstraintError,
   ValidationError
 } from './errors';
 

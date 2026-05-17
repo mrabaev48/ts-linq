@@ -1,4 +1,5 @@
-import * as ts from 'typescript';
+import type * as ts from 'typescript';
+
 import tsLinqTransformer from './index';
 
 /** Wrapper around the default transformer that allows injecting a diagnostic collector. */

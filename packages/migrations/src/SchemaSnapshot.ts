@@ -1,11 +1,12 @@
-import type { SchemaSnapshot, TableSnapshot, ColumnDef, IndexDef } from './DiffTypes';
-import { MetadataStorage } from '@ts-linq/metadata';
 import type { DatabaseProvider } from '@ts-linq/core';
-import type { ColumnMetadata, EntityMetadata, IndexMetadata } from '@ts-linq/types';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
+
+import type { ColumnDef, IndexDef, SchemaSnapshot, TableSnapshot } from './DiffTypes';
 import {
-  PostgresSchemaInspector,
+  MssqlSchemaInspector,
   MySqlSchemaInspector,
-  MssqlSchemaInspector
+  PostgresSchemaInspector
 } from './SchemaInspector';
 
 /**
@@ -35,10 +36,9 @@ export class SchemaSnapshotBuilder {
           .computedStorage
       }));
       const primaryKeys = primaryKeyProps.map(
-        (pk) =>
-          entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
+        (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
       );
-      const indexes = ((entityMeta.indexes || []) as IndexMetadata[]).map((indexDef) => ({
+      const indexes = (entityMeta.indexes || []).map((indexDef) => ({
         name: indexDef.name,
         columns: indexDef.columns,
         unique: !!indexDef.unique,
@@ -61,7 +61,7 @@ export class SchemaSnapshotBuilder {
         primaryKeys,
         indexes,
         foreignKeys: []
-      } as TableSnapshot;
+      };
     });
     return { tables };
   }

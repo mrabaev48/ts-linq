@@ -23,9 +23,9 @@ export class DatabaseHarness {
 
     if (options.autoConnect !== false) {
       await this.provider.connect();
-      this.cleanup.push(() => this.provider!.disconnect());
+      this.cleanup.push(async () => this.provider!.disconnect());
     }
-    
+
     return this.provider;
   }
 
@@ -45,14 +45,14 @@ export class DatabaseHarness {
 
   async seed<T>(provider: DatabaseProvider, entity: Function, data: Partial<T>[]): Promise<void> {
     const tableName = this.getTableName(entity);
-    
+
     for (const item of data) {
-      const keys = Object.keys(item as object);
+      const keys = Object.keys(item);
       const values = Object.values(item as object);
       const placeholders = values.map((_, i) => `?`).join(', ');
-      
+
       const sql = `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
-      await provider.execute(sql, values as unknown as SqlParameter[]);
+      await provider.execute(sql, values);
     }
   }
 

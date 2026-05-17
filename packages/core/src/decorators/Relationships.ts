@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { RelationshipMetadata } from '@ts-linq/types';
 
@@ -28,7 +29,7 @@ function defineRelationship(
   const ctor =
     typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
   const propertyName = String(propertyKey);
-  
+
   const relationship: RelationshipMetadata = {
     propertyName,
     type: kind,
@@ -38,7 +39,7 @@ function defineRelationship(
     cascade: options?.cascade || false,
     through: options?.through
   };
-  
+
   MetadataStorage.addRelationship(ctor, relationship);
 }
 

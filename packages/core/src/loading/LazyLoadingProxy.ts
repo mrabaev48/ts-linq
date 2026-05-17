@@ -1,6 +1,7 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { DatabaseProvider } from '../DatabaseProvider';
 import type { RelationshipMetadata } from '@ts-linq/types';
+
+import type { DatabaseProvider } from '../DatabaseProvider';
 
 /**
  * Symbol to store original entity data without triggering lazy loading
@@ -83,7 +84,7 @@ export class LazyLoadingProxy {
       warn: (message: string, error?: unknown) => {
         // Backward compatible fallback to console.warn for existing tests
         // and environments where DI logger is not provided.
-        // eslint-disable-next-line no-console
+
         console.warn(message, error);
       }
     };
@@ -189,7 +190,7 @@ export class LazyLoadingProxy {
     const propName = String(prop);
     const relationship = metadata!.relationships.find((r) => r.propertyName === propName);
     if (relationship) this.markLoaded(state, propName);
-    return Reflect.set(target, prop, value, receiver as object);
+    return Reflect.set(target, prop, value, receiver);
   }
 
   private static proxyHas(target: object, prop: PropertyKey): boolean {
@@ -460,7 +461,8 @@ export class LazyLoadingProxy {
 
     const targetPkColumn =
       meta.columns.find((c) => c.propertyName === meta.primaryKeys?.[0])?.columnName ||
-      meta.primaryKeys?.[0] || 'id';
+      meta.primaryKeys?.[0] ||
+      'id';
     const related = await provider.findWhereIn(targetCtor, targetPkColumn, uniqueFkValues);
     const relatedProxies = this.createMany(related, targetCtor, provider);
 
@@ -514,8 +516,7 @@ export class LazyLoadingProxy {
 
     for (const entity of entities) {
       const parentId = (entity as Record<string, unknown>)[parentPkProperty];
-      (entity as Record<string, unknown>)[relationship.propertyName] =
-        (grouped.get(parentId) as unknown) || [];
+      (entity as Record<string, unknown>)[relationship.propertyName] = grouped.get(parentId) || [];
       const state = this.getLoadingState(entity);
       if (state) this.markLoaded(state, relationship.propertyName);
     }
@@ -698,7 +699,7 @@ export class LazyLoadingProxy {
       const idList = (bySource.get(sid) as unknown[]) || [];
       (entity as Record<string, unknown>)[propName] = idList
         .map((id) => relById.get(id))
-        .filter(Boolean) as unknown;
+        .filter(Boolean);
       const state = this.getLoadingState(entity);
       if (state) this.markLoaded(state, propName);
     }

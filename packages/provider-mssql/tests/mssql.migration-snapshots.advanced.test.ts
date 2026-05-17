@@ -1,5 +1,5 @@
-import { generateMigrationFromDiff } from '@ts-linq/migrations';
 import type { SchemaDiff } from '@ts-linq/migrations';
+import { generateMigrationFromDiff } from '@ts-linq/migrations';
 
 function normalize(lines: string[]): string {
   return lines.join('\n');
@@ -23,7 +23,7 @@ describe('MSSQL advanced index DDL (SchemaDiff → SQL)', () => {
         }
       ]
     };
-    const sql = generateMigrationFromDiff(diff, 'mssql' as any).up;
+    const sql = generateMigrationFromDiff(diff, 'mssql').up;
     const text = normalize(sql);
     expect(text).toContain(
       'CREATE INDEX [idx_orders_user] ON [orders] ([userId]) INCLUDE ([createdAt]) WHERE deleted = 0'

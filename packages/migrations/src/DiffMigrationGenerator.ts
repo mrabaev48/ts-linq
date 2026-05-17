@@ -1,8 +1,8 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/metadata';
-import { SchemaSnapshotBuilder } from './SchemaSnapshot';
-import type { SchemaSnapshot, ColumnDef } from './DiffTypes';
+
 import type { Dialect } from './Dialect';
+import type { SchemaSnapshot } from './DiffTypes';
+import { SchemaSnapshotBuilder } from './SchemaSnapshot';
 import { SchemaInspectionService } from './services/SchemaInspectionService';
 import { StepPlanner } from './services/StepPlanner';
 

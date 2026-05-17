@@ -1,7 +1,7 @@
-import fc from 'fast-check';
+import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { QueryOptions } from '@ts-linq/types';
-import { PostgresDialect } from '@ts-linq/dialect-postgres';
+import fc from 'fast-check';
 
 class S {
   id!: number;
@@ -44,8 +44,8 @@ describe('[pg] CTE/property-based', () => {
           cte: { name: 't', sql: 'SELECT * FROM "src" WHERE v > 0' },
           from: 't',
           where
-        } as any;
-        const built = dialect.buildSelect(S as any, opts);
+        };
+        const built = dialect.buildSelect(S, opts);
         expect(built.query.startsWith('WITH t AS (')).toBe(true);
         const total = sp + wp;
         if (total > 0) {

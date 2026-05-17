@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  RedisSqlCacheAdapter,
-  type RedisClientLike,
-  type RedisSubscriberLike,
-  type RedisPublisherLike
-} from '../src/redis/RedisSqlCacheAdapter';
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import type { SqlCacheEntry } from '@ts-linq/types';
+
+import {
+  type RedisClientLike,
+  type RedisPublisherLike,
+  RedisSqlCacheAdapter,
+  type RedisSubscriberLike
+} from '../src/redis/RedisSqlCacheAdapter';
 
 function createMockClient(): RedisClientLike & {
   calls: { get: string[]; set: any[]; del: string[] };
@@ -51,7 +52,7 @@ function createMockPubSub() {
 }
 
 async function flushPromises() {
-  await new Promise(resolve => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
 }
 
 describe('RedisSqlCacheAdapter', () => {
@@ -140,7 +141,7 @@ describe('RedisSqlCacheAdapter', () => {
       cache.set('key1', entry);
       expect(cache.get('key1')).toBeDefined();
 
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       expect(cache.get('key1')).toBeUndefined();
     });
@@ -288,7 +289,7 @@ describe('RedisSqlCacheAdapter', () => {
       cache.set('user:2', entry);
       cache.set('post:1', entry);
 
-      const removed = cache.invalidateBy(k => k.startsWith('user:'));
+      const removed = cache.invalidateBy((k) => k.startsWith('user:'));
 
       expect(removed).toBe(2);
       expect(cache.get('user:1')).toBeUndefined();
@@ -304,7 +305,7 @@ describe('RedisSqlCacheAdapter', () => {
       cache.set('key2', entry);
       client.calls.del = [];
 
-      cache.invalidateBy(k => k === 'key1');
+      cache.invalidateBy((k) => k === 'key1');
       await flushPromises();
 
       expect(client.calls.del).toContain('tslnq:sql:key1');
@@ -321,10 +322,10 @@ describe('RedisSqlCacheAdapter', () => {
       const entry: SqlCacheEntry = { query: 'SELECT 1', parameters: [] };
 
       cache.set('key1', entry);
-      cache.invalidateBy(k => k === 'key1');
+      cache.invalidateBy((k) => k === 'key1');
 
       expect(published.length).toBeGreaterThan(0);
-      const deleteMsg = published.find(p => {
+      const deleteMsg = published.find((p) => {
         const msg = JSON.parse(p.message);
         return msg.t === 'del' && msg.k === 'key1';
       });
@@ -336,7 +337,7 @@ describe('RedisSqlCacheAdapter', () => {
       const entry: SqlCacheEntry = { query: 'SELECT 1', parameters: [] };
 
       cache.set('key1', entry);
-      const removed = cache.invalidateBy(k => k === 'nonexistent');
+      const removed = cache.invalidateBy((k) => k === 'nonexistent');
 
       expect(removed).toBe(0);
     });
@@ -354,7 +355,7 @@ describe('RedisSqlCacheAdapter', () => {
 
       cache.set('key1', entry);
 
-      expect(() => cache.invalidateBy(k => k === 'key1')).not.toThrow();
+      expect(() => cache.invalidateBy((k) => k === 'key1')).not.toThrow();
       expect(cache.get('key1')).toBeUndefined();
     });
   });

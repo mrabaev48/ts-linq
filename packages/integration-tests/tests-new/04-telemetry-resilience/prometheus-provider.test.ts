@@ -1,8 +1,7 @@
-
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
 import { DbContext } from '@ts-linq/orm';
-import { Entity, PrimaryKey, Column } from '@ts-linq/metadata';
-import { TestProvider } from '@ts-linq/testkits';
 import { PrometheusSqlLogger } from '@ts-linq/prometheus-sql-logger';
+import { TestProvider } from '@ts-linq/testkits';
 
 // --- MOCK PROMETHEUS CLIENT ---
 class MockCounter {
@@ -23,7 +22,9 @@ class MockCounter {
 class MockHistogram {
   values = new Map<string, number[]>();
   labelsStr: string = '{}';
-  constructor(public config: { name: string; help: string; labelNames: string[]; buckets: number[] }) {}
+  constructor(
+    public config: { name: string; help: string; labelNames: string[]; buckets: number[] }
+  ) {}
   labels(labels: Record<string, string>) {
     this.labelsStr = JSON.stringify(labels);
     return {
@@ -44,11 +45,11 @@ class MockGauge {
     // ...
   }
   dec(labels?: Record<string, string>, v: number = 1) {
-      // ...
+    // ...
   }
   set(labels: Record<string, string>, v: number) {
-     const k = JSON.stringify(labels);
-     this.values.set(k, v);
+    const k = JSON.stringify(labels);
+    this.values.set(k, v);
   }
 }
 
@@ -72,9 +73,9 @@ class User {
 }
 
 class TestDbContext extends DbContext {
-    constructor(provider: TestProvider) {
-        super({ provider });
-    }
+  constructor(provider: TestProvider) {
+    super({ provider });
+  }
 }
 
 describe.skip('Telemetry Integration - Prometheus + Provider', () => {
@@ -84,9 +85,9 @@ describe.skip('Telemetry Integration - Prometheus + Provider', () => {
 
   beforeEach(async () => {
     // 1. Setup Logger with Mock Client
-    logger = new PrometheusSqlLogger('test', { 
-        client: mockClient as any,
-        prefix: 'tslinq_' 
+    logger = new PrometheusSqlLogger('test', {
+      client: mockClient as any,
+      prefix: 'tslinq_'
     });
 
     // 2. Setup Provider
@@ -106,7 +107,7 @@ describe.skip('Telemetry Integration - Prometheus + Provider', () => {
     // Arrange
     const users = context.set(User);
     users.add({ name: 'Alice' } as User);
-    
+
     // Act
     await context.saveChanges(); // INSERT
 
@@ -114,74 +115,74 @@ describe.skip('Telemetry Integration - Prometheus + Provider', () => {
     // Check if query_total incremented
     const queryTotal = (logger as any).queryTotal as MockCounter;
     expect(queryTotal).toBeDefined();
-    
+
     // Expect at least one INSERT
     let found = false;
     for (const [labelsStr, val] of queryTotal.values.entries()) {
-        const labels = JSON.parse(labelsStr);
-        if (labels.operation === 'INSERT' && labels.entity === 'PROM_USERS') {
-            expect(val).toBeGreaterThanOrEqual(1);
-            found = true;
-        }
+      const labels = JSON.parse(labelsStr);
+      if (labels.operation === 'INSERT' && labels.entity === 'PROM_USERS') {
+        expect(val).toBeGreaterThanOrEqual(1);
+        found = true;
+      }
     }
     expect(found).toBe(true);
   });
 
   it('should track query duration histogram', async () => {
-     // Arrange
-     const users = context.set(User);
-     users.add({ name: 'Bob' } as User);
-     await context.saveChanges();
+    // Arrange
+    const users = context.set(User);
+    users.add({ name: 'Bob' } as User);
+    await context.saveChanges();
 
-     // Act
-     await users.query().toArray(); // SELECT
+    // Act
+    await users.query().toArray(); // SELECT
 
-     // Assert
-     const duration = (logger as any).queryDuration as MockHistogram;
-     expect(duration).toBeDefined();
+    // Assert
+    const duration = (logger as any).queryDuration as MockHistogram;
+    expect(duration).toBeDefined();
 
-     // Expect SELECT duration observed
-     let found = false;
-     for (const [labelsStr, vals] of duration.values.entries()) {
-        const labels = JSON.parse(labelsStr);
-        if (labels.operation === 'SELECT') {
-            expect(vals.length).toBeGreaterThan(0);
-            expect(vals[0]).toBeGreaterThanOrEqual(0);
-            found = true;
-        }
-     }
-     expect(found).toBe(true);
+    // Expect SELECT duration observed
+    let found = false;
+    for (const [labelsStr, vals] of duration.values.entries()) {
+      const labels = JSON.parse(labelsStr);
+      if (labels.operation === 'SELECT') {
+        expect(vals.length).toBeGreaterThan(0);
+        expect(vals[0]).toBeGreaterThanOrEqual(0);
+        found = true;
+      }
+    }
+    expect(found).toBe(true);
   });
 
   it('should track error counter by type', async () => {
-      // Act: execute bad SQL to cause error
-      try {
-        await provider.executeNonQuery('SELECT * FROM non_existent_table');
-      } catch (e) {
-          // ignore
-      }
+    // Act: execute bad SQL to cause error
+    try {
+      await provider.executeNonQuery('SELECT * FROM non_existent_table');
+    } catch (e) {
+      // ignore
+    }
 
-      // Assert
-      const errorTotal = (logger as any).errorTotal as MockCounter;
-      expect(errorTotal).toBeDefined();
-      
-      let found = false;
-      for (const [labelsStr, val] of errorTotal.values.entries()) {
-         const labels = JSON.parse(labelsStr);
-         // Expect some error
-         if (labels.error_type) {
-             expect(val).toBeGreaterThan(0);
-             found = true;
-         }
+    // Assert
+    const errorTotal = (logger as any).errorTotal as MockCounter;
+    expect(errorTotal).toBeDefined();
+
+    let found = false;
+    for (const [labelsStr, val] of errorTotal.values.entries()) {
+      const labels = JSON.parse(labelsStr);
+      // Expect some error
+      if (labels.error_type) {
+        expect(val).toBeGreaterThan(0);
+        found = true;
       }
-      expect(found).toBe(true);
+    }
+    expect(found).toBe(true);
   });
 
-//   it('should track connection health', async () => {
-//       // Health checks run via timer, difficult to test deterministically in integration 
-//       // without exposing internals or waiting.
-//       // We can manually trigger it if we had access, but for now we skip or verify initialization.
-//       const healthGauge = (logger as any).connectionHealthGauge as MockGauge;
-//       expect(healthGauge).toBeDefined();
-//   });
+  //   it('should track connection health', async () => {
+  //       // Health checks run via timer, difficult to test deterministically in integration
+  //       // without exposing internals or waiting.
+  //       // We can manually trigger it if we had access, but for now we skip or verify initialization.
+  //       const healthGauge = (logger as any).connectionHealthGauge as MockGauge;
+  //       expect(healthGauge).toBeDefined();
+  //   });
 });

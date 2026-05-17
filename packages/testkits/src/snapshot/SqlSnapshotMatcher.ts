@@ -9,9 +9,7 @@ export class SqlSnapshotMatcher {
     let normalized = sql;
 
     if (options.normalizeWhitespace !== false) {
-      normalized = normalized
-        .replace(/\s+/g, ' ')
-        .trim();
+      normalized = normalized.replace(/\s+/g, ' ').trim();
     }
 
     if (options.sortParameters) {

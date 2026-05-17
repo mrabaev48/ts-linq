@@ -1,5 +1,7 @@
 import 'reflect-metadata';
-import { describe, it, expect } from '@jest/globals';
+
+import { describe, expect, it } from '@jest/globals';
+
 import { AuditInterceptor } from '../src/services/AuditInterceptor';
 
 // ── Mock helpers ─────────────────────────────────────────────────────────────
@@ -8,10 +10,7 @@ function makeMeta(columns: string[]) {
   return { columns: columns.map((propertyName) => ({ propertyName })) };
 }
 
-function makeChange(
-  entity: Record<string, unknown>,
-  state: 'added' | 'modified' | 'deleted'
-) {
+function makeChange(entity: Record<string, unknown>, state: 'added' | 'modified' | 'deleted') {
   return { entity, entityClass: class Entity {}, state };
 }
 
@@ -27,10 +26,7 @@ describe('AuditInterceptor', () => {
     });
 
     it('does nothing when audit.enabled is false', () => {
-      const interceptor = new AuditInterceptor(
-        { enabled: false },
-        () => makeMeta(['createdAt'])
-      );
+      const interceptor = new AuditInterceptor({ enabled: false }, () => makeMeta(['createdAt']));
       const entity: Record<string, unknown> = {};
       interceptor.apply({ entity, entityClass: class {}, state: 'added' });
       expect(entity).toEqual({});
@@ -47,9 +43,8 @@ describe('AuditInterceptor', () => {
   describe('apply() — insert (state: added)', () => {
     it('sets createdAt and updatedAt on insert', () => {
       const fixedNow = new Date('2024-01-15T10:00:00Z');
-      const interceptor = new AuditInterceptor(
-        { enabled: true, clock: () => fixedNow },
-        () => makeMeta(['createdAt', 'updatedAt'])
+      const interceptor = new AuditInterceptor({ enabled: true, clock: () => fixedNow }, () =>
+        makeMeta(['createdAt', 'updatedAt'])
       );
       const entity: Record<string, unknown> = {};
       interceptor.apply({ entity, entityClass: class {}, state: 'added' });
@@ -69,9 +64,8 @@ describe('AuditInterceptor', () => {
     });
 
     it('does not set createdBy/updatedBy when getCurrentUser is not defined', () => {
-      const interceptor = new AuditInterceptor(
-        { enabled: true },
-        () => makeMeta(['createdAt', 'updatedAt', 'createdBy', 'updatedBy'])
+      const interceptor = new AuditInterceptor({ enabled: true }, () =>
+        makeMeta(['createdAt', 'updatedAt', 'createdBy', 'updatedBy'])
       );
       const entity: Record<string, unknown> = {};
       interceptor.apply({ entity, entityClass: class {}, state: 'added' });
@@ -94,9 +88,8 @@ describe('AuditInterceptor', () => {
   describe('apply() — update (state: modified)', () => {
     it('sets only updatedAt on update (not createdAt)', () => {
       const fixedNow = new Date('2024-06-01T12:00:00Z');
-      const interceptor = new AuditInterceptor(
-        { enabled: true, clock: () => fixedNow },
-        () => makeMeta(['createdAt', 'updatedAt'])
+      const interceptor = new AuditInterceptor({ enabled: true, clock: () => fixedNow }, () =>
+        makeMeta(['createdAt', 'updatedAt'])
       );
       const entity: Record<string, unknown> = { createdAt: new Date('2024-01-01') };
       const originalCreatedAt = entity['createdAt'];
@@ -106,9 +99,8 @@ describe('AuditInterceptor', () => {
     });
 
     it('sets updatedBy on update when getCurrentUser is defined', () => {
-      const interceptor = new AuditInterceptor(
-        { enabled: true, getCurrentUser: () => 'bob' },
-        () => makeMeta(['updatedBy'])
+      const interceptor = new AuditInterceptor({ enabled: true, getCurrentUser: () => 'bob' }, () =>
+        makeMeta(['updatedBy'])
       );
       const entity: Record<string, unknown> = {};
       interceptor.apply({ entity, entityClass: class {}, state: 'modified' });

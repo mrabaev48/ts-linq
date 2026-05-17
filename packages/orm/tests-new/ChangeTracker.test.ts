@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { ChangeTracker } from '../src/ChangeTracker';
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import { EntityState } from '@ts-linq/core';
-import { Entity, PrimaryKey, Column } from '@ts-linq/metadata';
+import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
+
+import { ChangeTracker } from '../src/ChangeTracker';
 
 @Entity({ name: 'users' })
 class User {

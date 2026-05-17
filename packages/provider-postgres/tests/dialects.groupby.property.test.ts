@@ -1,11 +1,10 @@
-import fc from 'fast-check';
-import { QueryBuilder } from '@ts-linq/query';
-import { MetadataStorage } from '@ts-linq/metadata';
-import type { QueryOptions } from '@ts-linq/types';
-import { PostgresDialect } from '@ts-linq/dialect-postgres';
-import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
-
+import { MysqlDialect } from '@ts-linq/dialect-mysql';
+import { PostgresDialect } from '@ts-linq/dialect-postgres';
+import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryBuilder } from '@ts-linq/query';
+import type { QueryOptions } from '@ts-linq/types';
+import fc from 'fast-check';
 
 class U {
   id!: number;
@@ -53,8 +52,7 @@ describe('JOIN / GROUP BY / HAVING / ORDER (property-based)', () => {
       qb: () => new QueryBuilder(new MysqlDialect()),
       qid: (s: string) => `\`${s}\``
     },
-    { name: 'mssql', qb: () => new QueryBuilder(new MssqlDialect()), qid: (s: string) => `[${s}]` },
-
+    { name: 'mssql', qb: () => new QueryBuilder(new MssqlDialect()), qid: (s: string) => `[${s}]` }
   ] as const;
 
   test.each(dialects)('%s: renders JOIN/GROUP BY/HAVING/ORDER consistently', ({ qb, qid }) => {
@@ -83,7 +81,7 @@ describe('JOIN / GROUP BY / HAVING / ORDER (property-based)', () => {
           groupBy,
           orderBy
         } as any;
-        const built = builder.generateSql(U as any, opts);
+        const built = builder.generateSql(U, opts);
         expect(built.query).toContain('SELECT');
         expect(built.query).toContain('FROM');
         if (withJoin) expect(built.query).toContain('JOIN');

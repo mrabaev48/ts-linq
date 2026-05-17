@@ -1,3 +1,4 @@
+import { MetadataStorage } from '@ts-linq/metadata';
 import type {
   ColumnMetadata,
   EntityMetadata,
@@ -11,11 +12,11 @@ import type {
   SqlWithReturning,
   WhereClause
 } from '@ts-linq/types';
-import { MetadataStorage } from '@ts-linq/metadata';
-import { PgWhereEmitter } from './emitters/PgWhereEmitter';
+
+import { PgGroupEmitter } from './emitters/PgGroupEmitter';
 import { PgJoinEmitter } from './emitters/PgJoinEmitter';
 import { PgOrderEmitter } from './emitters/PgOrderEmitter';
-import { PgGroupEmitter } from './emitters/PgGroupEmitter';
+import { PgWhereEmitter } from './emitters/PgWhereEmitter';
 
 /**
  * PostgreSQL implementation of SqlDialect.
@@ -37,10 +38,7 @@ export class PostgresDialect implements SqlDialect {
    * @param entityClass Entity constructor to resolve table name
    * @param options Normalized query options (select/where/order/group/joins/limit/offset)
    */
-  public buildSelect<T>(
-    entityClass: new () => T,
-    options: QueryOptions
-  ): SqlQueryResult {
+  public buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const parameters: SqlParameter[] = [];
@@ -139,10 +137,7 @@ export class PostgresDialect implements SqlDialect {
     }
     return '';
   }
-  public buildInsert(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): SqlWithReturning {
+  public buildInsert(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithReturning {
     const primaryKeys = new Set<string>(metadata.primaryKeys ?? []);
     const hasValue = (propertyName: string): boolean => {
       const v = entity[propertyName];
@@ -206,10 +201,7 @@ export class PostgresDialect implements SqlDialect {
     return { sql, parameters };
   }
 
-  public buildDelete(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata
-  ): SqlWithParams {
+  public buildDelete(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for ${metadata.tableName}`);
     }
@@ -233,12 +225,12 @@ export class PostgresDialect implements SqlDialect {
       value instanceof Date ||
       value instanceof Uint8Array
     ) {
-      return value as SqlParameter;
+      return value;
     }
     try {
-      return JSON.stringify(value ?? null) as unknown as SqlParameter;
+      return JSON.stringify(value ?? null);
     } catch {
-      return String(value) as unknown as SqlParameter;
+      return String(value);
     }
   }
 }

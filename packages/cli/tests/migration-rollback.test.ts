@@ -1,8 +1,10 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { MigrationsRollbackCommand } from '../src/commands/MigrationsRollbackCommand';
+
 import { MigrationRunner } from '@ts-linq/migrations';
+
+import { MigrationsRollbackCommand } from '../src/commands/MigrationsRollbackCommand';
 
 class FakeProvider {
   public providerLabel = 'postgresql';
@@ -64,14 +66,14 @@ describe('migration:rollback', () => {
       )
       .mockImplementation(async () => {});
     const cmd = new MigrationsRollbackCommand(
-      { info() {}, warn() {}, error() {} } as any,
+      { info() {}, warn() {}, error() {} },
       {
         exists: (p: string) => fs.existsSync(p),
         readText: (p: string) => fs.readFileSync(p, 'utf8'),
         writeText: (p: string, d: string) => fs.writeFileSync(p, d),
         ensureDir: (p: string) => fs.mkdirSync(p, { recursive: true }),
         readDir: (p: string) => fs.readdirSync(p)
-      } as any
+      }
     );
 
     await cmd.runDb(provider as any, ['migration:rollback', '--steps=1']);

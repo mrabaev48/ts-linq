@@ -1,5 +1,5 @@
-import type { EntityMetadata, ColumnMetadata } from '@ts-linq/types';
 import { SqlHelper } from '@ts-linq/core';
+import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
 
 type LoggerLike = { warn(message: string, error?: unknown): void };
 import { MssqlIndexBuilder } from './builders/MssqlIndexBuilder';
@@ -17,12 +17,10 @@ export class MssqlDdlStrategy {
       this.generateColumnDefinition(column)
     );
     if (metadata.primaryKeys && metadata.primaryKeys.length > 0) {
-      const pkCols = metadata.primaryKeys.map(
-        (pk) => {
-          const col = metadata.columns.find((column) => column.propertyName === pk);
-          return `[${col ? col.columnName : pk}]`;
-        }
-      );
+      const pkCols = metadata.primaryKeys.map((pk) => {
+        const col = metadata.columns.find((column) => column.propertyName === pk);
+        return `[${col ? col.columnName : pk}]`;
+      });
       columns.push(`PRIMARY KEY (${pkCols.join(', ')})`);
     }
     return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${metadata.tableName}') BEGIN CREATE TABLE [${metadata.tableName}] (${columns.join(', ')}) END`;
@@ -67,7 +65,10 @@ export class MssqlDdlStrategy {
     return this.indexBuilder.buildCreateIndexSql(tableName, index);
   }
 
-  public generateAddColumnSql(tableName: string, column: Omit<ColumnMetadata, 'propertyName'>): string {
+  public generateAddColumnSql(
+    tableName: string,
+    column: Omit<ColumnMetadata, 'propertyName'>
+  ): string {
     const colDef = this.generateColumnDefinition(column);
     return `ALTER TABLE [${tableName}] ADD ${colDef}`;
   }
@@ -76,7 +77,11 @@ export class MssqlDdlStrategy {
     return `ALTER TABLE [${tableName}] DROP COLUMN [${columnName}]`;
   }
 
-  public generateAlterColumnTypeSql(tableName: string, columnName: string, newType: string): string {
+  public generateAlterColumnTypeSql(
+    tableName: string,
+    columnName: string,
+    newType: string
+  ): string {
     const colDef = `[${columnName}] ${this.mapTypeToMssql(newType)}`;
     return `ALTER TABLE [${tableName}] ALTER COLUMN ${colDef}`;
   }
@@ -85,22 +90,25 @@ export class MssqlDdlStrategy {
     return `EXEC sp_rename '${tableName}', '${newTableName}'`;
   }
 
-  public generateForeignKeySql(tableName: string, fk: { 
-      name: string, 
-      columnName: string, 
-      relatedTableName: string, 
-      relatedColumnName: string,
-      onDelete?: string,
-      onUpdate?: string
-  }): string {
-      let sql = `ALTER TABLE [${tableName}] ADD CONSTRAINT [${fk.name}] FOREIGN KEY ([${fk.columnName}]) REFERENCES [${fk.relatedTableName}] ([${fk.relatedColumnName}])`;
-      if (fk.onDelete && fk.onDelete !== 'NO ACTION') {
-          sql += ` ON DELETE ${fk.onDelete}`;
-      }
-      if (fk.onUpdate && fk.onUpdate !== 'NO ACTION') {
-          sql += ` ON UPDATE ${fk.onUpdate}`;
-      }
-      return sql;
+  public generateForeignKeySql(
+    tableName: string,
+    fk: {
+      name: string;
+      columnName: string;
+      relatedTableName: string;
+      relatedColumnName: string;
+      onDelete?: string;
+      onUpdate?: string;
+    }
+  ): string {
+    let sql = `ALTER TABLE [${tableName}] ADD CONSTRAINT [${fk.name}] FOREIGN KEY ([${fk.columnName}]) REFERENCES [${fk.relatedTableName}] ([${fk.relatedColumnName}])`;
+    if (fk.onDelete && fk.onDelete !== 'NO ACTION') {
+      sql += ` ON DELETE ${fk.onDelete}`;
+    }
+    if (fk.onUpdate && fk.onUpdate !== 'NO ACTION') {
+      sql += ` ON UPDATE ${fk.onUpdate}`;
+    }
+    return sql;
   }
 
   public mapTypeToMssql(type: string): string {

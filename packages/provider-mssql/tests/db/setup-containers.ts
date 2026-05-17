@@ -55,4 +55,3 @@ export async function stopDbContainers(): Promise<void> {
   mysql = null;
   mssql = null;
 }
-

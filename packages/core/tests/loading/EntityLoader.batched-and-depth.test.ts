@@ -1,9 +1,11 @@
 import 'reflect-metadata';
-import { EntityLoader } from '../../src/loading/EntityLoader';
-import { ProviderStub } from '../_stubs/ProviderStub';
-import { LoadingStrategy } from '../../src/loading/LoadingStrategy';
-import { Entity, Column, PrimaryKey, OneToMany, ManyToOne } from '../../src';
+
 import { MetadataStorage } from '@ts-linq/metadata';
+
+import { Column, Entity, ManyToOne, OneToMany, PrimaryKey } from '../../src';
+import { EntityLoader } from '../../src/loading/EntityLoader';
+import { LoadingStrategy } from '../../src/loading/LoadingStrategy';
+import { ProviderStub } from '../_stubs/ProviderStub';
 
 function createEntities() {
   @Entity()

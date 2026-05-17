@@ -1,10 +1,11 @@
 import * as path from 'path';
-import type { Command } from './Command';
-import type { Logger } from '../ports/Logger';
+
 import { ConsoleLogger } from '../adapters/ConsoleLogger';
-import type { FileSystem } from '../ports/FileSystem';
 import { NodeFs } from '../adapters/NodeFs';
 import { tryLoadConfig } from '../config';
+import type { FileSystem } from '../ports/FileSystem';
+import type { Logger } from '../ports/Logger';
+import type { Command } from './Command';
 
 export class MigrationsValidateCommand implements Command {
   public readonly name = 'migration:validate';
@@ -17,7 +18,7 @@ export class MigrationsValidateCommand implements Command {
     private readonly fsAdapter: FileSystem = new NodeFs()
   ) {}
 
-  public run(_argv: string[]): Promise<void> {
+  public async run(_argv: string[]): Promise<void> {
     const migrationsDir = this.resolveMigrationsDir();
     if (!this.fsAdapter.exists(migrationsDir)) {
       this.logger.warn?.(`Migrations directory not found: ${migrationsDir}`);
@@ -86,7 +87,6 @@ export class MigrationsValidateCommand implements Command {
   private ensureTsSupport(parsed: Array<{ file: string }>): void {
     if (!parsed.some((p) => p.file.endsWith('.ts'))) return;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       require('ts-node/register/transpile-only');
     } catch {
       // ignore
@@ -105,7 +105,6 @@ export class MigrationsValidateCommand implements Command {
     };
     for (const p of parsed) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const mod = require(p.abs) as Record<string, unknown>;
         const keys = Object.keys(mod || {});
         if (keys.length === 0) {

@@ -1,7 +1,9 @@
 import 'reflect-metadata';
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import type { CountCache, EntityCacheLike } from '@ts-linq/types';
+
 import { CacheCoordinator } from '../src/services/CacheCoordinator';
-import type { EntityCacheLike, CountCache } from '@ts-linq/types';
 
 // ── Mock helpers ─────────────────────────────────────────────────────────────
 
