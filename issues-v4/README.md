@@ -32,7 +32,7 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-011 | ~~High~~ | ~~Testability, Clean Architecture~~ | ~~MetadataStorage singleton causes test pollution~~ ✅ **FIXED** | [ISSUE-011-metadata-storage-singleton.md](ISSUE-011-metadata-storage-singleton.md) |
 | ISSUE-012 | ~~High~~ | ~~Build/Tooling, Testability~~ | ~~Jest and TypeScript resolve packages from different paths~~ ✅ **FIXED** | [ISSUE-012-jest-tsconfig-path-divergence.md](ISSUE-012-jest-tsconfig-path-divergence.md) |
 | ISSUE-013 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~@ts-linq/telemetry is a dead stub (no src/)~~ ✅ **FIXED** | [ISSUE-013-telemetry-dead-stub.md](ISSUE-013-telemetry-dead-stub.md) |
-| ISSUE-014 | Medium | SOLID, Maintainability | EnhancedSqlCache is an over-wide class (457 LOC, 19 methods) | [ISSUE-014-enhanced-sql-cache-overwide.md](ISSUE-014-enhanced-sql-cache-overwide.md) |
+| ISSUE-014 | ~~Medium~~ | ~~SOLID, Maintainability~~ | ~~EnhancedSqlCache is an over-wide class (457 LOC, 19 methods)~~ ✅ **FIXED** | [ISSUE-014-enhanced-sql-cache-overwide.md](ISSUE-014-enhanced-sql-cache-overwide.md) |
 | ISSUE-015 | Medium | Build/Tooling, Maintainability | Per-package tsconfig path aliases duplicated 21+ times | [ISSUE-015-tsconfig-path-alias-duplication.md](ISSUE-015-tsconfig-path-alias-duplication.md) |
 | ISSUE-016 | ~~Medium~~ | ~~Dependency Boundary, Build/Tooling~~ | ~~Phantom dependencies via TypeScript path aliases~~ ✅ **FIXED** | [ISSUE-016-phantom-deps-tsconfig-paths.md](ISSUE-016-phantom-deps-tsconfig-paths.md) |
 | ISSUE-017 | ~~Medium~~ | ~~SOLID, Clean Code~~ | ~~DbSet secondary god class (35 methods, 604 LOC)~~ ✅ **FIXED** | [ISSUE-017-dbset-secondary-god-class.md](ISSUE-017-dbset-secondary-god-class.md) |
