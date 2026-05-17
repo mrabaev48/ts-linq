@@ -10,6 +10,7 @@
     "@ts-linq/core": "workspace:*"
   },
   "devDependencies": {
+    "@ts-linq/typescript-config": "workspace:*",
     "typescript": "^5.4.5"
   },
   "scripts": {

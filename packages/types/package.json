@@ -18,6 +18,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "devDependencies": {
+    "@ts-linq/typescript-config": "workspace:*",
     "typescript": "^5.4.5"
   }
 }

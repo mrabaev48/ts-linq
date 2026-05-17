@@ -36,6 +36,15 @@ importers:
       '@rollup/plugin-node-resolve':
         specifier: ^13.3.0
         version: 13.3.0(rollup@2.79.2)
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:packages/eslint-config
+      '@ts-linq/jest-config':
+        specifier: workspace:*
+        version: link:packages/jest-config
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:packages/typescript-config
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
@@ -115,6 +124,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -134,6 +146,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
@@ -150,6 +165,9 @@ importers:
         specifier: '>=1.3.0'
         version: 1.3.2
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -172,6 +190,9 @@ importers:
         specifier: '>=4.0.0'
         version: 5.9.0
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -191,6 +212,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -217,6 +241,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -230,6 +257,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
@@ -249,6 +279,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -268,6 +301,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -287,6 +323,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -306,6 +345,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -331,6 +373,12 @@ importers:
         specifier: workspace:*
         version: link:../testkits
     devDependencies:
+      '@ts-linq/jest-config':
+        specifier: workspace:*
+        version: link:../jest-config
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/jest':
         specifier: ^29.5.0
         version: 29.5.14
@@ -347,8 +395,13 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
+  packages/eslint-config: {}
+
   packages/examples:
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -358,6 +411,9 @@ importers:
 
   packages/integration-nestjs:
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -385,6 +441,9 @@ importers:
       '@ts-linq/dialect-postgres':
         specifier: workspace:*
         version: link:../dialect-postgres
+      '@ts-linq/jest-config':
+        specifier: workspace:*
+        version: link:../jest-config
       '@ts-linq/metadata':
         specifier: workspace:*
         version: link:../metadata
@@ -418,6 +477,9 @@ importers:
       '@ts-linq/types':
         specifier: workspace:*
         version: link:../types
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -425,18 +487,26 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
+  packages/jest-config: {}
+
   packages/metadata:
     dependencies:
       '@ts-linq/types':
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
 
   packages/metrics-safe:
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -456,6 +526,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
@@ -469,6 +542,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -494,12 +570,18 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
 
   packages/pagination:
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
@@ -516,6 +598,12 @@ importers:
       '@jest/globals':
         specifier: ^29.5.0
         version: 29.7.0
+      '@ts-linq/jest-config':
+        specifier: workspace:*
+        version: link:../jest-config
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/jest':
         specifier: ^29.5.0
         version: 29.5.14
@@ -544,6 +632,12 @@ importers:
       '@jest/globals':
         specifier: ^29.5.0
         version: 29.7.0
+      '@ts-linq/jest-config':
+        specifier: workspace:*
+        version: link:../jest-config
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/jest':
         specifier: ^29.5.0
         version: 29.5.14
@@ -572,6 +666,12 @@ importers:
       '@jest/globals':
         specifier: ^29.5.0
         version: 29.7.0
+      '@ts-linq/jest-config':
+        specifier: workspace:*
+        version: link:../jest-config
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/jest':
         specifier: ^29.5.0
         version: 29.5.14
@@ -597,6 +697,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -640,6 +743,9 @@ importers:
       '@ts-linq/query':
         specifier: workspace:*
         version: link:../query
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -674,6 +780,9 @@ importers:
       '@ts-linq/query':
         specifier: workspace:*
         version: link:../query
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -708,6 +817,9 @@ importers:
       '@ts-linq/query':
         specifier: workspace:*
         version: link:../query
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -736,6 +848,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -752,6 +867,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -765,6 +883,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -793,6 +914,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -809,6 +933,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -818,9 +945,14 @@ importers:
 
   packages/types:
     devDependencies:
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
+
+  packages/typescript-config: {}
 
 packages:
 

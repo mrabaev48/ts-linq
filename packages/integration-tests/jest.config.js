@@ -1,4 +1,10 @@
-const base = require('../../jest.config');
+const { createJestConfig } = require('@ts-linq/jest-config');
+
+const base = createJestConfig({
+  roots: ['<rootDir>/packages'],
+  testMatch: ['**/*.test.ts', '**/*.spec.ts'],
+  setupFiles: ['<rootDir>/jest.setup.js']
+});
 
 module.exports = {
   ...base,
@@ -8,6 +14,3 @@ module.exports = {
   testPathIgnorePatterns: ['/node_modules/', '/tests-old/'],
   testSequencer: '<rootDir>/packages/integration-tests/jest.sequencer.js'
 };
-
-
-

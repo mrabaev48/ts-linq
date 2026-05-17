@@ -117,6 +117,29 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 
 ---
 
+## Additional Improvements
+
+| ID | Severity | Category | Title | Status |
+|----|----------|----------|-------|--------|
+| TASK-001 | Medium | Build/Tooling, Maintainability | Extract shared `typescript-config`, `eslint-config`, `jest-config` packages | ✅ **DONE** |
+
+### TASK-001 — Shared Config Packages ✅ DONE
+
+Three dedicated configuration packages extracted from root-level config files:
+
+- **`@ts-linq/typescript-config`** (`packages/typescript-config/`) — pure JSON tsconfig presets:
+  - `base.json` — common compiler options (target ES2020, strict, esModuleInterop, etc.)
+  - `node.json` — extends base + `experimentalDecorators` / `emitDecoratorMetadata`
+  - `esm.json` — extends node + `module: "esnext"`
+- **`@ts-linq/eslint-config`** (`packages/eslint-config/`) — CJS shareable ESLint 8.x config exporting all shared rules, plugins, and overrides. Root `.eslintrc.json` now extends `@ts-linq/eslint-config` and adds only environment-specific settings (`root`, `env`, `parserOptions.project`, `ignorePatterns`).
+- **`@ts-linq/jest-config`** (`packages/jest-config/`) — exports `createJestConfig(overrides)` for root-level use and `createPackageJestConfig(overrides)` for per-package use. Root `jest.config.js` and all 5 per-package jest configs now delegate to these factories.
+
+All 35 package `tsconfig.json` / `tsconfig.esm.json` files updated to extend `@ts-linq/typescript-config/node.json` (or `esm.json`) instead of `../../tsconfig.base.json` / `../../tsconfig.json`. Root `tsconfig.base.json` and `tsconfig.json` updated to extend `@ts-linq/typescript-config/node.json`, retaining only workspace-specific path aliases and project references.
+
+**Verification**: `pnpm typecheck` (31/31 ✅), `pnpm lint` (0 errors ✅), `pnpm test` (1760 passed ✅), `pnpm build` (32/32 ✅).
+
+---
+
 ## Notes
 
 - **Dialect layer is clean**: `@ts-linq/dialect-postgres/mysql/mssql`, all provider packages, and all plugin packages (`plugin-audit`, `plugin-soft-delete`, `plugin-multi-tenant`) have correct dependency directions and no SRP violations. No findings were generated for these packages.
