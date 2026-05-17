@@ -17,10 +17,9 @@ export class PaginationBuilder<T> {
     private readonly entityClass: new () => T,
     private readonly provider: DatabaseProvider,
     private readonly executor: QueryExecutor<T>,
-    private readonly baseModel: QueryModel,
     private readonly includes: string[],
     private readonly cte: CteDefinition | undefined,
-    private readonly applyGlobalFilters: (model: QueryModel) => void,
+    private readonly modelFactory: () => QueryModel,
     /** Callback into Queryable.count() so cache/fallback logic is reused. */
     private readonly countFn: () => Promise<number>
   ) {}
@@ -30,8 +29,7 @@ export class PaginationBuilder<T> {
     size: number
   ): Promise<{ items: T[]; total: number; page: number; size: number }> {
     if (page < 1 || size < 1) throw new Error('paginate requires page >= 1 and size >= 1');
-    const queryModel = this.baseModel.clone();
-    this.applyGlobalFilters(queryModel);
+    const queryModel = this.modelFactory();
     queryModel.limit = size;
     queryModel.offset = (page - 1) * size;
     const items = await this.executor.executeAndMaterialize(queryModel, this.includes, this.cte);
@@ -50,7 +48,7 @@ export class PaginationBuilder<T> {
     const colName = meta?.columns.find((c) => c.propertyName === propName)?.columnName ?? propName;
     const quotedCol = this.provider.getDialect().quoteIdentifier(colName);
 
-    const queryModel = this.baseModel.clone();
+    const queryModel = this.modelFactory();
     queryModel.orderBy = queryModel.orderBy ?? [];
     const hasOrderByKey = queryModel.orderBy.some(
       (o) => o.column === colName || o.column === propName
@@ -66,7 +64,6 @@ export class PaginationBuilder<T> {
       });
     }
 
-    this.applyGlobalFilters(queryModel);
     const items = await this.executor.executeAndMaterialize(queryModel, this.includes, this.cte);
     const last =
       items.length > 0 ? (items[items.length - 1] as unknown as Record<string, unknown>) : null;
