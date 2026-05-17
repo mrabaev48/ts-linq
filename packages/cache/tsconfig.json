@@ -3,8 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"],
-      "@ts-linq/metrics-safe": ["../metrics-safe/dist"]
+      "@src/*": ["src/*"]
     },
     "composite": true,
     "declaration": true,

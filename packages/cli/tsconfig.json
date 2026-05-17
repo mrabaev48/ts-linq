@@ -6,13 +6,7 @@
     "declarationMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": ".",
-    "paths": {
-
-      "@ts-linq/provider-postgres": ["../provider-postgres/dist"],
-      "@ts-linq/provider-mysql": ["../provider-mysql/dist"],
-      "@ts-linq/provider-mssql": ["../provider-mssql/dist"]
-    }
+    "baseUrl": "."
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests"],
