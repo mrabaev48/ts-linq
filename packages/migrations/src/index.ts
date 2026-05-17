@@ -5,6 +5,7 @@
 export * from './Migration';
 export * from './MigrationRunner';
 export * from './DiffTypes';
+export * from './SchemaComparator';
 export * from './DialectMigrationSql';
 export * from './MigrationBuilder';
 export * from './DiffBasedMigration';
