@@ -1,5 +1,5 @@
 import type { SchemaSnapshot } from '../DiffTypes';
-import { compareSchemas } from '../DiffTypes';
+import { compareSchemas } from '../SchemaComparator';
 import type { Dialect } from '../Dialect';
 import { generateMigrationFromDiff } from '../DialectMigrationSql';
 
