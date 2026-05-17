@@ -14,8 +14,9 @@
     "@ts-linq/metadata": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.4.5",
-    "@types/node": "^24.3.0"
+    "@ts-linq/typescript-config": "workspace:*",
+    "@types/node": "^24.3.0",
+    "typescript": "^5.4.5"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && npm run gen:esm-entry && npm run copy:types",
