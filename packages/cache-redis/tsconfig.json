@@ -2,10 +2,6 @@
   "extends": "../../tsconfig.cjs.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": {
-      "@ts-linq/types": ["../types/dist"],
-      "@ts-linq/core": ["../core/dist"]
-    },
     "rootDir": "./src",
     "outDir": "./dist",
     "composite": true,
