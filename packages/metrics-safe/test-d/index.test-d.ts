@@ -55,12 +55,13 @@ expectType<UserId>({} as UserPk);
 // @ts-expect-error - OrderId is not assignable to UserPk
 const wrongPk: UserPk = {} as OrderId;
 
-// DbSet.query() returns a Queryable for the entity type
+// DbSet exposes query methods directly — no .query() needed
 declare const users: DbSet<User>;
-expectType<Queryable<User>>(users.query());
+expectType<Queryable<User>>(users.orderBy('name'));
+expectType<Queryable<User>>(users.whereIn('name', ['Alice']));
 
-// All querying now goes through query() — type-safety is enforced by Queryable.whereIn
-const usersQuery = users.query();
+// Chaining starts from DbSet directly (EF Core style)
+const usersQuery = users.orderBy('name');
 expectType<Queryable<User>>(usersQuery);
 
 // TypedQueryable: orderBy/thenBy only accept entity keys
@@ -86,6 +87,7 @@ tqRel.include('orders');
 // invalid: 'name' is a primitive, not a relationship
 // @ts-expect-error
 tqRel.include('name');
+
 
 // TypedQueryable: select() throws at runtime (transformer required), type still inferred
 type U_Select = { id: number; name: string; age: number };

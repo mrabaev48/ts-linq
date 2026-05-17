@@ -55,7 +55,7 @@ describe('Advanced Features - Middleware Pipeline', () => {
     beforeCalled = 0;
     afterCalled = 0;
 
-    await context.set(MwItem).query().count();
+    await context.set(MwItem).count();
 
     expect(beforeCalled).toBeGreaterThan(0);
     expect(afterCalled).toBeGreaterThan(0);
@@ -75,6 +75,6 @@ describe('Advanced Features - Middleware Pipeline', () => {
     });
     const blockingContext = new MwContext(blockingProvider);
 
-    await expect(blockingContext.set(MwItem).query().count()).rejects.toThrow('Blocked by MW');
+    await expect(blockingContext.set(MwItem).count()).rejects.toThrow('Blocked by MW');
   });
 });

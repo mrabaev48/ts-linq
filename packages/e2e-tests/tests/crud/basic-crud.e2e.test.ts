@@ -66,7 +66,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       userSet.add(newUser);
       await context.saveChanges();
 
-      const users = await userSet.query().toArray();
+      const users = await userSet.toArray();
       expect(users).toHaveLength(1);
       expect(users[0].name).toBe('Alice');
     });
@@ -85,7 +85,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
       await context.saveChanges();
 
-      const users = await userSet.query().toArray();
+      const users = await userSet.toArray();
       expect(users.length).toBe(sampleUsers.length);
     });
 
@@ -111,10 +111,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       userSet.update(user);
       await context.saveChanges();
 
-      const updated = await userSet
-        .query()
-        .where((u) => u.id === user.id)
-        .firstOrDefault();
+      const updated = await userSet.where((u) => u.id === user.id).firstOrDefault();
       expect(updated?.name).toBe('Updated Name');
       expect(updated?.age).toBe(35);
     });
@@ -135,12 +132,12 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       userSet.add(user);
       await context.saveChanges();
 
-      const initialCount = await userSet.query().count();
+      const initialCount = await userSet.count();
 
       userSet.remove(user);
       await context.saveChanges();
 
-      const finalCount = await userSet.query().count();
+      const finalCount = await userSet.count();
       expect(finalCount).toBe(initialCount - 1);
     });
 
@@ -150,10 +147,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
-      const activeUsers = await userSet
-        .query()
-        .where((u) => u.isActive === true)
-        .toArray();
+      const activeUsers = await userSet.where((u) => u.isActive === true).toArray();
 
       expect(activeUsers.every((u) => u.isActive)).toBe(true);
     });
@@ -164,7 +158,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
-      const sortedUsers = await userSet.query().orderBy('name').toArray();
+      const sortedUsers = await userSet.orderBy('name').toArray();
 
       for (let i = 1; i < sortedUsers.length; i++) {
         expect(sortedUsers[i].name >= sortedUsers[i - 1].name).toBe(true);
@@ -177,10 +171,10 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
-      const page1 = await userSet.query().skip(0).take(2).toArray();
-      const page2 = await userSet.query().skip(2).take(2).toArray();
+      const page1 = await userSet.skip(0).take(2).toArray();
+      const page2 = await userSet.skip(2).take(2).toArray();
 
-      expect(page1).toHaveLength(Math.min(2, await userSet.query().count()));
+      expect(page1).toHaveLength(Math.min(2, await userSet.count()));
       expect(page1[0].id).not.toBe(page2[0]?.id);
     });
   }

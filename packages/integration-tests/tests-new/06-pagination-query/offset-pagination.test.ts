@@ -39,7 +39,7 @@ describe('Pagination Integration - Offset', () => {
   });
 
   it('should skip and take', async () => {
-    const page = await context.set(PageItem).query().orderBy('value').skip(5).take(5).toArray();
+    const page = await context.set(PageItem).orderBy('value').skip(5).take(5).toArray();
 
     expect(page).toHaveLength(5);
     expect(page[0].value).toBe(6);
@@ -47,7 +47,7 @@ describe('Pagination Integration - Offset', () => {
   });
 
   it('should paginate to end', async () => {
-    const page = await context.set(PageItem).query().orderBy('value').skip(15).take(10).toArray();
+    const page = await context.set(PageItem).orderBy('value').skip(15).take(10).toArray();
 
     expect(page).toHaveLength(5); // Only 5 left (16..20)
     expect(page[0].value).toBe(16);

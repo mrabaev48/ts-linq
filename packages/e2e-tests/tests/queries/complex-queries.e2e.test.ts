@@ -120,7 +120,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const postSet = context.set(Post);
-      const postsWithAuthors = await postSet.query().include('author').toArray();
+      const postsWithAuthors = await postSet.include('author').toArray();
 
       expect(postsWithAuthors[0].author).toBeDefined();
       expect(postsWithAuthors[0].author?.name).toBe('John Doe');
@@ -132,7 +132,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const postSet = context.set(Post);
-      const postsWithAll = await postSet.query().include('author').include('comments').toArray();
+      const postsWithAll = await postSet.include('author').include('comments').toArray();
 
       expect(postsWithAll[0].author).toBeDefined();
       expect(postsWithAll[0].comments).toBeDefined();
@@ -145,8 +145,8 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const postSet = context.set(Post);
-      const count = await postSet.query().count();
-      const firstPost = await postSet.query().orderBy('id').first();
+      const count = await postSet.count();
+      const firstPost = await postSet.orderBy('id').first();
 
       expect(count).toBeGreaterThan(0);
       expect(firstPost).toBeDefined();
@@ -158,7 +158,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const postSet = context.set(Post);
-      const grouped = await postSet.query().groupBy('authorId').toArray();
+      const grouped = await postSet.groupBy('authorId').toArray();
 
       expect(grouped.length).toBeGreaterThan(0);
     });
@@ -170,7 +170,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
       const postSet = context.set(Post);
       const filtered = await postSet
-        .query()
+
         .where((p) => p.title.includes('First'))
         .where((p) => p.authorId > 0)
         .toArray();
