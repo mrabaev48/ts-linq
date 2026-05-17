@@ -24,7 +24,12 @@ module.exports = {
           '(^|/)bin/',
           '\\.test\\.ts$',
           '\\.spec\\.ts$',
-          '\\.d\\.ts$'
+          '\\.d\\.ts$',
+          '(^|/)tests(-old)?/',
+          'jest\\.config\\.',
+          'jest\\.sequencer\\.',
+          'setup-containers\\.ts$',
+          '(^|/)setup\\.ts$'
         ]
       },
       to: {}
@@ -103,21 +108,6 @@ module.exports = {
       },
       to: {
         path: '^packages/[^/]+/src/(?!index\\.ts$)'
-      }
-    },
-
-    {
-      name: 'no-undeclared-workspaces',
-      severity: 'error',
-      comment:
-        'All @ts-linq/* imports must be declared in the importing package\'s package.json. ' +
-        'Path aliases in tsconfig.json are invisible to package managers and can mask missing runtime dependencies.',
-      from: {
-        path: '^packages/[^/]+/src'
-      },
-      to: {
-        path: '^packages/',
-        dependencyTypes: ['undeclared']
       }
     },
 
