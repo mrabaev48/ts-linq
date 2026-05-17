@@ -111,10 +111,9 @@ describe('PaginationBuilder', () => {
         Item,
         provider,
         executor,
-        new QueryModel(),
         [],
         undefined,
-        () => {},
+        () => new QueryModel(),
         async () => { countCalled = true; return 5; }
       );
 
@@ -132,7 +131,7 @@ describe('PaginationBuilder', () => {
       const provider = new StubProvider();
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, new QueryModel(), [], undefined, () => {}, async () => 0
+        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 0
       );
 
       await expect(pb.paginate(0, 10)).rejects.toThrow('paginate requires page >= 1 and size >= 1');
@@ -144,7 +143,7 @@ describe('PaginationBuilder', () => {
       provider.setRows([{ id: 10, name: 'X' }, { id: 11, name: 'Y' }]);
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, new QueryModel(), [], undefined, () => {}, async () => 2
+        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 2
       );
 
       const result = await pb.paginate(1, 2);
@@ -157,7 +156,7 @@ describe('PaginationBuilder', () => {
       const provider = new StubProvider();
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, new QueryModel(), [], undefined, () => {}, async () => 0
+        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 0
       );
       await expect(pb.keysetPaginate('id', null, 0)).rejects.toThrow('keysetPaginate requires size >= 1');
     });
@@ -167,7 +166,7 @@ describe('PaginationBuilder', () => {
       provider.setRows([{ id: 1, name: 'A' }, { id: 2, name: 'B' }]);
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, new QueryModel(), [], undefined, () => {}, async () => 0
+        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 0
       );
 
       const result = await pb.keysetPaginate('id', null, 2);
@@ -181,7 +180,7 @@ describe('PaginationBuilder', () => {
       provider.setRows([]);
       const { executor } = buildDeps(provider);
       const pb = new PaginationBuilder<Item>(
-        Item, provider, executor, new QueryModel(), [], undefined, () => {}, async () => 0
+        Item, provider, executor, [], undefined, () => new QueryModel(), async () => 0
       );
 
       const result = await pb.keysetPaginate('id', null, 10);
