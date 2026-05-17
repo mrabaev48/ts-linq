@@ -41,19 +41,19 @@ Full architectural audit of the `ts-linq` TypeScript ORM monorepo. The audit cov
 | ISSUE-020 | ~~Low~~ | ~~Clean Code, Maintainability~~ | ~~Global filters repeated at 12 terminal operation call sites~~ ✅ **FIXED** | [ISSUE-020-global-filter-repeated-at-every-terminal-op.md](ISSUE-020-global-filter-repeated-at-every-terminal-op.md) |
 | ISSUE-021 | ~~Critical~~ | ~~Dependency Boundary, Clean Architecture~~ | ~~Circular dependencies in @ts-linq/migrations~~ ✅ **FIXED** | [ISSUE-021-migrations-circular-dependency.md](ISSUE-021-migrations-circular-dependency.md) |
 | ISSUE-022 | ~~Medium~~ | ~~Maintainability, Clean Code~~ | ~~Orphan dead source files in @ts-linq/core and plugins~~ ✅ **FIXED** | [ISSUE-022-orphan-dead-source-files.md](ISSUE-022-orphan-dead-source-files.md) |
-| ISSUE-023 | High | Build/Tooling, Maintainability | dependency-cruiser rules produce 790 false-positive violations | [ISSUE-023-depcruiser-rules-misconfigured.md](ISSUE-023-depcruiser-rules-misconfigured.md) |
+| ISSUE-023 | ~~High~~ | ~~Build/Tooling, Maintainability~~ | ~~dependency-cruiser rules produce 790 false-positive violations~~ ✅ **FIXED** | [ISSUE-023-depcruiser-rules-misconfigured.md](ISSUE-023-depcruiser-rules-misconfigured.md) |
 
 ---
 
 ## Severity Summary
 
-| Severity | Count |
-|----------|-------|
-| Critical | 6 |
-| High | 8 |
-| Medium | 6 |
-| Low | 2 |
-| **Total** | **23** |
+| Severity | Count | Fixed |
+|----------|-------|-------|
+| Critical | 6 | 6 ✅ |
+| High | 8 | 8 ✅ |
+| Medium | 6 | 6 ✅ |
+| Low | 2 | 1 ✅ |
+| **Total** | **23** | **21 ✅** |
 
 ---
 
@@ -112,7 +112,8 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 ### Phase 5 — Low Priority (Ongoing)
 18. ~~**ISSUE-020** — Extract `prepareQueryModel()` in `Queryable`~~ ✅ Done
 19. ~~**ISSUE-021** — Break circular dependencies in `@ts-linq/migrations`~~ ✅ Done
-20. **ISSUE-019** — Implement or remove `@ts-linq/integration-nestjs`
+20. ~~**ISSUE-023** — Fix dependency-cruiser false-positive rules~~ ✅ Done
+21. **ISSUE-019** — Implement or remove `@ts-linq/integration-nestjs`
 
 ---
 
@@ -121,4 +122,5 @@ Cycle broken by introducing `IDatabaseProvider` interface in `core/src/types/ind
 - **Dialect layer is clean**: `@ts-linq/dialect-postgres/mysql/mssql`, all provider packages, and all plugin packages (`plugin-audit`, `plugin-soft-delete`, `plugin-multi-tenant`) have correct dependency directions and no SRP violations. No findings were generated for these packages.
 - **ts-prune returned empty output**: All exports in `packages/*/src/index.ts` are in `ts-prune-ignore.txt`. Placeholder exports in `sql-visitor`, `integration-nestjs`, and `telemetry` are covered by the ignore list and would not surface via dead-code analysis alone.
 - ~~**ISSUE-010 throttle sharing**~~: ✅ Fixed — `FallbackManager.clone()` now deep-copies `ThrottleState` (`{ ...this.throttle }`). Each clone has independent rate-limit counters. Fallback objects (e.g., `MemoryFallback`) are still shared by reference as they represent shared cache layers.
+- ~~**ISSUE-023 depcruiser noise**~~: ✅ Fixed — `no-private-package-internals` now uses a `$1` back-reference (`pathNot: '^packages/$1/'`) to exclude same-package imports; `no-any-in-internal-api-files` removed (depcruiser cannot inspect TypeScript types; ESLint `no-explicit-any: error` handles this); `no-orphans` gains `fixture`/`e2e-tests` exclusions; exclude paths updated to skip `issues-v4`. `pnpm arch:deps` now reports **0 violations** (470 modules, 692 dependencies cruised).
 - **No findings for**: `@ts-linq/transformer` (clean, compile-time-only), `@ts-linq/pagination`, `@ts-linq/concurrency`, `@ts-linq/cache`, `@ts-linq/cache-redis`, `@ts-linq/cache-memcached`, `@ts-linq/migrations` — all follow correct dependency direction and have appropriate scopes.
