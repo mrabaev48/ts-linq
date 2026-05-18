@@ -1,5 +1,7 @@
 export * from './CountCache';
 export * from './EnhancedSqlCache';
+export type { IncludeResolutionErrorCode, IncludeResolutionErrorDetails } from './errors';
+export { IncludeResolutionError } from './errors';
 export * from './FallbackManager';
 export * from './fallbacks';
 export * from './IncludePlanner';
