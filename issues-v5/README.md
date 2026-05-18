@@ -40,7 +40,7 @@ silent failure modes, and type-system erosion.
 | ISSUE-008 | Medium | SOLID, Maintainability | `LazyLoadingProxy` and `BatchOperations` are new god modules in `@ts-linq/core` | [ISSUE-008-core-runtime-bloat-lazy-loading-proxy.md](ISSUE-008-core-runtime-bloat-lazy-loading-proxy.md) |
 | ISSUE-009 | Low | Clean Code, Maintainability | `Queryable` is still 942 LOC after audit v4's decomposition | [ISSUE-009-queryable-still-942-loc.md](ISSUE-009-queryable-still-942-loc.md) |
 | ISSUE-010 | Low | Documentation Drift, Maintainability | `@ts-linq/integration-nestjs` is still an unimplemented placeholder (carry-over from v4 ISSUE-019) | [ISSUE-010-integration-nestjs-still-placeholder.md](ISSUE-010-integration-nestjs-still-placeholder.md) |
-| ISSUE-011 | Low | Clean Code, Testability | `DbContext` constructor silently swallows configuration errors | [ISSUE-011-soft-delete-silent-catch.md](ISSUE-011-soft-delete-silent-catch.md) |
+| ISSUE-011 ✅ | Low | Clean Code, Testability | `DbContext` constructor silently swallows configuration errors | [ISSUE-011-soft-delete-silent-catch.md](ISSUE-011-soft-delete-silent-catch.md) |
 
 ---
 
