@@ -36,7 +36,7 @@ export class Queryable<T> {
 
   private _entityClass: new () => T;
   private _provider: DatabaseProvider;
-  private _model: QueryModel = new QueryModel();
+  protected _model: QueryModel = new QueryModel();
   private _entityLoader?: EntityLoader;
   private _entityCache?: EntityCacheLike;
   private _performance?: PerformanceOptions;
@@ -419,12 +419,14 @@ export class Queryable<T> {
    *   Nested-path lambdas (`entity => entity.profile.city`) are **not** supported and will throw at runtime —
    *   pass a string key instead.
    */
-  public orderBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => T[keyof T])): Queryable<T> {
+  public orderBy<K extends keyof T>(
+    keyOrSelector: K | ((entity: T) => T[keyof T])
+  ): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'ASC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
-    return this;
+    return OrderedQueryable._fromQueryable(this);
   }
 
   /**
@@ -442,54 +444,12 @@ export class Queryable<T> {
    */
   public orderByDescending<K extends keyof T>(
     keyOrSelector: K | ((entity: T) => T[keyof T])
-  ): Queryable<T> {
+  ): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'DESC' };
     this._model.orderBy = this._model.orderBy || [];
     this._model.orderBy.push(orderByClause);
-    return this;
-  }
-
-  /**
-   * Adds secondary ASC ordering. Must be used after orderBy() or orderByDescending().
-   *
-   * @example
-   * const sorted = await context.users.orderBy(u => u.lastName).thenBy(u => u.firstName).toArray();
-   */
-  /**
-   * Adds a secondary ascending sort. Must follow `orderBy` or `orderByDescending`.
-   *
-   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
-   *   Nested-path lambdas are **not** supported — pass a string key instead.
-   */
-  public thenBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => T[keyof T])): Queryable<T> {
-    const column = this.resolveColumnName(extractKey(keyOrSelector));
-    const orderByClause: OrderByClause = { column, direction: 'ASC' };
-    this._model.orderBy = this._model.orderBy || [];
-    this._model.orderBy.push(orderByClause);
-    return this;
-  }
-
-  /**
-   * Adds secondary DESC ordering. Must be used after orderBy() or orderByDescending().
-   *
-   * @example
-   * const sorted = await context.users.orderBy(u => u.lastName).thenByDescending(u => u.age).toArray();
-   */
-  /**
-   * Adds a secondary descending sort. Must follow `orderBy` or `orderByDescending`.
-   *
-   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
-   *   Nested-path lambdas are **not** supported — pass a string key instead.
-   */
-  public thenByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
-  ): Queryable<T> {
-    const column = this.resolveColumnName(extractKey(keyOrSelector));
-    const orderByClause: OrderByClause = { column, direction: 'DESC' };
-    this._model.orderBy = this._model.orderBy || [];
-    this._model.orderBy.push(orderByClause);
-    return this;
+    return OrderedQueryable._fromQueryable(this);
   }
 
   /** Limits the number of returned rows.
@@ -820,7 +780,7 @@ export class Queryable<T> {
   }
 
   /** Resolve a TypeScript property name to its database column name via entity metadata. */
-  private resolveColumnName(propName: string): string {
+  protected resolveColumnName(propName: string): string {
     const meta = MetadataStorage.getEntity(this._entityClass);
     return meta?.columns.find((c) => c.propertyName === propName)?.columnName ?? propName;
   }
@@ -1017,4 +977,56 @@ function extractKey<T>(keyOrSelector: keyof T | ((entity: T) => T[keyof T])): st
     );
   }
   return accessed[0];
+}
+
+/**
+ * Returned by `Queryable.orderBy` / `orderByDescending`. Exposes `thenBy` and
+ * `thenByDescending` as the only compile-time-safe way to add secondary sort keys,
+ * mirroring LINQ-to-Objects `IOrderedEnumerable<T>`.
+ *
+ * Instances are created exclusively via `OrderedQueryable._fromQueryable(source)` —
+ * never by calling `new OrderedQueryable(...)` directly.
+ */
+export class OrderedQueryable<T> extends Queryable<T> {
+  /**
+   * Factory that wraps an existing `Queryable<T>` in an `OrderedQueryable<T>` without
+   * re-running the heavyweight constructor. Uses `Object.create` + `Object.assign` to
+   * copy all own enumerable properties (the private `_model`, `_executor`, etc.) onto a
+   * new object whose prototype chain includes `OrderedQueryable.prototype`.
+   */
+  static _fromQueryable<T>(source: Queryable<T>): OrderedQueryable<T> {
+    const ordered = Object.create(OrderedQueryable.prototype) as OrderedQueryable<T>;
+    Object.assign(ordered, source);
+    return ordered;
+  }
+
+  /**
+   * Adds a secondary ascending sort. Only available after `orderBy` or `orderByDescending`.
+   *
+   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
+   */
+  public thenBy<K extends keyof T>(
+    keyOrSelector: K | ((entity: T) => T[keyof T])
+  ): OrderedQueryable<T> {
+    const column = this.resolveColumnName(extractKey(keyOrSelector));
+    const orderByClause: OrderByClause = { column, direction: 'ASC' };
+    this._model.orderBy = this._model.orderBy || [];
+    this._model.orderBy.push(orderByClause);
+    return this;
+  }
+
+  /**
+   * Adds a secondary descending sort. Only available after `orderBy` or `orderByDescending`.
+   *
+   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
+   */
+  public thenByDescending<K extends keyof T>(
+    keyOrSelector: K | ((entity: T) => T[keyof T])
+  ): OrderedQueryable<T> {
+    const column = this.resolveColumnName(extractKey(keyOrSelector));
+    const orderByClause: OrderByClause = { column, direction: 'DESC' };
+    this._model.orderBy = this._model.orderBy || [];
+    this._model.orderBy.push(orderByClause);
+    return this;
+  }
 }

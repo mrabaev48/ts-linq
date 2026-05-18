@@ -1,6 +1,6 @@
 import { expectType } from 'tsd';
 import { type EntityId, brandId, unbrandId, type PrimaryKeyOf, DbSet } from '..';
-import type { Queryable } from '..';
+import type { OrderedQueryable, Queryable } from '..';
 import { TypedQueryable } from '..';
 
 // Define branded id aliases
@@ -57,21 +57,26 @@ const wrongPk: UserPk = {} as OrderId;
 
 // DbSet exposes query methods directly — no .query() needed
 declare const users: DbSet<User>;
-expectType<Queryable<User>>(users.orderBy('name'));
+expectType<OrderedQueryable<User>>(users.orderBy('name'));
 expectType<Queryable<User>>(users.whereIn('name', ['Alice']));
 
 // Chaining starts from DbSet directly (EF Core style)
 const usersQuery = users.orderBy('name');
-expectType<Queryable<User>>(usersQuery);
+expectType<OrderedQueryable<User>>(usersQuery);
 
 // TypedQueryable: orderBy/thenBy only accept entity keys
 type U_Order = { id: number; name: string; age: number; createdAt: Date };
 declare const qOrder: Queryable<U_Order>;
 const tqOrder = new TypedQueryable(qOrder);
-// valid
+// valid — orderBy returns TypedOrderedQueryable
 tqOrder.orderBy('name');
 tqOrder.orderBy('age', 'DESC');
+// valid — thenBy only available after orderBy
+tqOrder.orderBy('name').thenBy('createdAt');
+tqOrder.orderBy('age', 'DESC').thenByDescending('id');
+// @ts-expect-error — thenBy directly on TypedQueryable (no prior orderBy) is a type error
 tqOrder.thenBy('createdAt');
+// @ts-expect-error — thenByDescending directly on TypedQueryable (no prior orderBy) is a type error
 tqOrder.thenByDescending('id');
 // invalid: non-existent key
 // @ts-expect-error
