@@ -1,6 +1,7 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { OrderedQueryable } from '@ts-linq/query';
 import { Queryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
 import type {
@@ -153,28 +154,18 @@ export class DbSet<T extends object> {
 
   // ─── Ordering ─────────────────────────────────────────────────────────────
 
-  /** Sorts ascending by property key or lambda selector. */
-  public orderBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => T[keyof T])): Queryable<T> {
+  /** Sorts ascending by property key or lambda selector. Returns `OrderedQueryable` to enable `thenBy` chaining. */
+  public orderBy<K extends keyof T>(
+    keyOrSelector: K | ((entity: T) => T[keyof T])
+  ): OrderedQueryable<T> {
     return this.newQueryable().orderBy(keyOrSelector);
   }
 
-  /** Sorts descending by property key or lambda selector. */
+  /** Sorts descending by property key or lambda selector. Returns `OrderedQueryable` to enable `thenBy` chaining. */
   public orderByDescending<K extends keyof T>(
     keyOrSelector: K | ((entity: T) => T[keyof T])
-  ): Queryable<T> {
+  ): OrderedQueryable<T> {
     return this.newQueryable().orderByDescending(keyOrSelector);
-  }
-
-  /** Secondary ascending sort. Accepts property key or lambda selector. */
-  public thenBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => T[keyof T])): Queryable<T> {
-    return this.newQueryable().thenBy(keyOrSelector);
-  }
-
-  /** Secondary descending sort. Accepts property key or lambda selector. */
-  public thenByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
-  ): Queryable<T> {
-    return this.newQueryable().thenByDescending(keyOrSelector);
   }
 
   // ─── Pagination ───────────────────────────────────────────────────────────
