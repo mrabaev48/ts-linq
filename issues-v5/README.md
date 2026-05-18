@@ -31,7 +31,7 @@ silent failure modes, and type-system erosion.
 | ID | Severity | Category | Title | File |
 |----|----------|----------|-------|------|
 | ISSUE-001 | High | Type System, Clean Architecture | DbContext constructor returns a Proxy and bypasses the type system | [ISSUE-001-dbcontext-proxy-constructor-return.md](ISSUE-001-dbcontext-proxy-constructor-return.md) |
-| ISSUE-002 | High | Type System, Public API, Testability | `extractKey()` silently drops all but the first property access in selector lambdas | [ISSUE-002-extract-key-first-property-only.md](ISSUE-002-extract-key-first-property-only.md) |
+| ISSUE-002 ✅ | High | Type System, Public API, Testability | `extractKey()` silently drops all but the first property access in selector lambdas | [ISSUE-002-extract-key-first-property-only.md](ISSUE-002-extract-key-first-property-only.md) |
 | ISSUE-003 | High | SOLID, Clean Code | `DbSet` regressed to a god class after PR #66 (53 public methods, 515 LOC) | [ISSUE-003-dbset-god-class-regression.md](ISSUE-003-dbset-god-class-regression.md) |
 | ISSUE-004 ✅ | Medium | Public API, Testability | `IncludePlanner.loadLevel()` silently skips unknown navigation properties | [ISSUE-004-include-planner-silent-skip.md](ISSUE-004-include-planner-silent-skip.md) |
 | ISSUE-005 ✅ | Medium | Type System | `resolveTargetCtor()` accepts any function as a constructor | [ISSUE-005-resolve-target-ctor-unsafe-cast.md](ISSUE-005-resolve-target-ctor-unsafe-cast.md) |
@@ -49,10 +49,10 @@ silent failure modes, and type-system erosion.
 | Severity | Count | Resolved |
 |----------|-------|----------|
 | Critical | 0 | — |
-| High | 3 | 0 |
+| High | 3 | 1 (ISSUE-002) |
 | Medium | 5 | 2 (ISSUE-004, ISSUE-005) |
 | Low | 3 | 1 (ISSUE-011) |
-| **Total** | **11** | **3** |
+| **Total** | **11** | **4** |
 
 ---
 
