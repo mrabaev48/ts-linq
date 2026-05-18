@@ -33,8 +33,8 @@ silent failure modes, and type-system erosion.
 | ISSUE-001 | High | Type System, Clean Architecture | DbContext constructor returns a Proxy and bypasses the type system | [ISSUE-001-dbcontext-proxy-constructor-return.md](ISSUE-001-dbcontext-proxy-constructor-return.md) |
 | ISSUE-002 | High | Type System, Public API, Testability | `extractKey()` silently drops all but the first property access in selector lambdas | [ISSUE-002-extract-key-first-property-only.md](ISSUE-002-extract-key-first-property-only.md) |
 | ISSUE-003 | High | SOLID, Clean Code | `DbSet` regressed to a god class after PR #66 (53 public methods, 515 LOC) | [ISSUE-003-dbset-god-class-regression.md](ISSUE-003-dbset-god-class-regression.md) |
-| ISSUE-004 | Medium | Public API, Testability | `IncludePlanner.loadLevel()` silently skips unknown navigation properties | [ISSUE-004-include-planner-silent-skip.md](ISSUE-004-include-planner-silent-skip.md) |
-| ISSUE-005 | Medium | Type System | `resolveTargetCtor()` accepts any function as a constructor | [ISSUE-005-resolve-target-ctor-unsafe-cast.md](ISSUE-005-resolve-target-ctor-unsafe-cast.md) |
+| ISSUE-004 ✅ | Medium | Public API, Testability | `IncludePlanner.loadLevel()` silently skips unknown navigation properties | [ISSUE-004-include-planner-silent-skip.md](ISSUE-004-include-planner-silent-skip.md) |
+| ISSUE-005 ✅ | Medium | Type System | `resolveTargetCtor()` accepts any function as a constructor | [ISSUE-005-resolve-target-ctor-unsafe-cast.md](ISSUE-005-resolve-target-ctor-unsafe-cast.md) |
 | ISSUE-006 | Medium | Public API, Clean Architecture | Internal services exported from `@ts-linq/orm` and `@ts-linq/query` public APIs | [ISSUE-006-orm-internals-public-export.md](ISSUE-006-orm-internals-public-export.md) |
 | ISSUE-007 | Medium | Type System, Public API | Lambda-selector signatures erase `keyof T` and produce false inference | [ISSUE-007-lambda-selector-type-erasure.md](ISSUE-007-lambda-selector-type-erasure.md) |
 | ISSUE-008 | Medium | SOLID, Maintainability | `LazyLoadingProxy` and `BatchOperations` are new god modules in `@ts-linq/core` | [ISSUE-008-core-runtime-bloat-lazy-loading-proxy.md](ISSUE-008-core-runtime-bloat-lazy-loading-proxy.md) |
@@ -46,13 +46,13 @@ silent failure modes, and type-system erosion.
 
 ## Severity Summary
 
-| Severity | Count |
-|----------|-------|
-| Critical | 0 |
-| High | 3 |
-| Medium | 5 |
-| Low | 3 |
-| **Total** | **11** |
+| Severity | Count | Resolved |
+|----------|-------|----------|
+| Critical | 0 | — |
+| High | 3 | 0 |
+| Medium | 5 | 2 (ISSUE-004, ISSUE-005) |
+| Low | 3 | 1 (ISSUE-011) |
+| **Total** | **11** | **3** |
 
 ---
 

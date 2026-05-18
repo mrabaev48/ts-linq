@@ -1,6 +1,14 @@
 import type { EntityLoader } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/metadata';
+import { MetadataStorage, resolveEntityRef } from '@ts-linq/metadata';
 import { LoadingStrategy } from '@ts-linq/types';
+
+/** Thrown when an include path cannot be resolved against the registered entity metadata. */
+export class IncludeResolutionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IncludeResolutionError';
+  }
+}
 
 export class IncludePlanner<T> {
   constructor(
@@ -43,15 +51,25 @@ export class IncludePlanner<T> {
     );
 
     // Recursively load nested includes for each navigation property
-    const metadata = MetadataStorage.getEntity(entityClass as new () => unknown);
+    const metadata = MetadataStorage.getEntity(entityClass);
+    if (!metadata) {
+      throw new IncludeResolutionError(
+        `Entity "${entityClass.name}" is not registered in MetadataStorage`
+      );
+    }
+
     for (const [propName, nestedPaths] of byFirst) {
       if (nestedPaths.length === 0) continue;
 
-      const rel = metadata?.relationships.find((r) => r.propertyName === propName);
-      if (!rel) continue;
+      const rel = metadata.relationships.find((r) => r.propertyName === propName);
+      if (!rel) {
+        throw new IncludeResolutionError(
+          `Entity "${entityClass.name}" has no relationship named "${propName}"`
+        );
+      }
 
-      const targetCtor = resolveTargetCtor(rel.targetEntity);
-      if (!targetCtor) continue;
+      const targetCtor = resolveEntityRef(rel.targetEntity);
+      if (!targetCtor) continue; // TDZ null — circular import at decoration time, skip
 
       const navEntities: unknown[] = [];
       for (const entity of entities) {
@@ -65,22 +83,4 @@ export class IncludePlanner<T> {
       }
     }
   }
-}
-
-function resolveTargetCtor(
-  target: string | Function | (() => Function)
-): (new () => unknown) | null {
-  if (typeof target === 'string') return null;
-  if (typeof target === 'function') {
-    if ('prototype' in target && (target as { prototype?: unknown }).prototype) {
-      return target as new () => unknown;
-    }
-    try {
-      const resolved = (target as () => Function)();
-      return resolved as new () => unknown;
-    } catch {
-      return null;
-    }
-  }
-  return null;
 }
