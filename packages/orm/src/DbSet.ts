@@ -154,25 +154,25 @@ export class DbSet<T extends object> {
   // ─── Ordering ─────────────────────────────────────────────────────────────
 
   /** Sorts ascending by property key or lambda selector. */
-  public orderBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => unknown)): Queryable<T> {
+  public orderBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => T[keyof T])): Queryable<T> {
     return this.newQueryable().orderBy(keyOrSelector);
   }
 
   /** Sorts descending by property key or lambda selector. */
   public orderByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => unknown)
+    keyOrSelector: K | ((entity: T) => T[keyof T])
   ): Queryable<T> {
     return this.newQueryable().orderByDescending(keyOrSelector);
   }
 
   /** Secondary ascending sort. Accepts property key or lambda selector. */
-  public thenBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => unknown)): Queryable<T> {
+  public thenBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => T[keyof T])): Queryable<T> {
     return this.newQueryable().thenBy(keyOrSelector);
   }
 
   /** Secondary descending sort. Accepts property key or lambda selector. */
   public thenByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => unknown)
+    keyOrSelector: K | ((entity: T) => T[keyof T])
   ): Queryable<T> {
     return this.newQueryable().thenByDescending(keyOrSelector);
   }
@@ -223,7 +223,7 @@ export class DbSet<T extends object> {
    * const posts = await ctx.blogs.include(b => b.posts).thenInclude(p => p.comments).toArray();
    */
   public include<K extends keyof T & string>(
-    keyOrSelector: K | ((entity: T) => unknown)
+    keyOrSelector: K | ((entity: T) => T[keyof T])
   ): Queryable<T> {
     return this.newQueryable().include(keyOrSelector);
   }
@@ -260,8 +260,8 @@ export class DbSet<T extends object> {
   /** Adds a type-safe INNER JOIN on an equality key pair. Accepts string keys or lambda selectors. */
   public innerJoinOn<TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => unknown),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => unknown),
+    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
+    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
     return this.newQueryable().innerJoinOn(otherCtor, leftKey, rightKey, alias);
@@ -270,8 +270,8 @@ export class DbSet<T extends object> {
   /** Adds a type-safe LEFT JOIN on an equality key pair. Accepts string keys or lambda selectors. */
   public leftJoinOn<TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => unknown),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => unknown),
+    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
+    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
     return this.newQueryable().leftJoinOn(otherCtor, leftKey, rightKey, alias);

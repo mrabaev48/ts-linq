@@ -226,10 +226,18 @@ export class Queryable<T> {
    * context.books.innerJoinOn(Author, b => b.authorId, a => a.id)
    * context.books.innerJoinOn(Author, 'authorId', 'id')
    */
+  /**
+   * Adds an INNER JOIN on matching column keys.
+   *
+   * @param leftKey - A property key **or** a single-property lambda on `T`.
+   *   Nested-path lambdas are **not** supported — pass a string key instead.
+   * @param rightKey - A property key **or** a single-property lambda on `TOther`.
+   *   Nested-path lambdas are **not** supported — pass a string key instead.
+   */
   public innerJoinOn<TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => unknown),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => unknown),
+    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
+    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
     this._addJoinOn('INNER', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
@@ -244,10 +252,18 @@ export class Queryable<T> {
    * context.books.leftJoinOn(Author, b => b.authorId, a => a.id)
    * context.books.leftJoinOn(Author, 'authorId', 'id')
    */
+  /**
+   * Adds a LEFT JOIN on matching column keys.
+   *
+   * @param leftKey - A property key **or** a single-property lambda on `T`.
+   *   Nested-path lambdas are **not** supported — pass a string key instead.
+   * @param rightKey - A property key **or** a single-property lambda on `TOther`.
+   *   Nested-path lambdas are **not** supported — pass a string key instead.
+   */
   public leftJoinOn<TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => unknown),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => unknown),
+    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
+    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
     this._addJoinOn('LEFT', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
@@ -396,7 +412,14 @@ export class Queryable<T> {
    * const ordered = await context.books.orderBy(b => b.title).toArray();
    * const ordered = await context.books.orderBy('title').toArray();
    */
-  public orderBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => unknown)): Queryable<T> {
+  /**
+   * Sorts results in ascending order by the specified property.
+   *
+   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
+   *   Nested-path lambdas (`entity => entity.profile.city`) are **not** supported and will throw at runtime —
+   *   pass a string key instead.
+   */
+  public orderBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => T[keyof T])): Queryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'ASC' };
     this._model.orderBy = this._model.orderBy || [];
@@ -410,8 +433,15 @@ export class Queryable<T> {
    * @example
    * const latest = await context.books.orderByDescending(b => b.id).take(5).toArray();
    */
+  /**
+   * Sorts results in descending order by the specified property.
+   *
+   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
+   *   Nested-path lambdas (`entity => entity.profile.city`) are **not** supported and will throw at runtime —
+   *   pass a string key instead.
+   */
   public orderByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => unknown)
+    keyOrSelector: K | ((entity: T) => T[keyof T])
   ): Queryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'DESC' };
@@ -426,7 +456,13 @@ export class Queryable<T> {
    * @example
    * const sorted = await context.users.orderBy(u => u.lastName).thenBy(u => u.firstName).toArray();
    */
-  public thenBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => unknown)): Queryable<T> {
+  /**
+   * Adds a secondary ascending sort. Must follow `orderBy` or `orderByDescending`.
+   *
+   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
+   *   Nested-path lambdas are **not** supported — pass a string key instead.
+   */
+  public thenBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => T[keyof T])): Queryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'ASC' };
     this._model.orderBy = this._model.orderBy || [];
@@ -440,8 +476,14 @@ export class Queryable<T> {
    * @example
    * const sorted = await context.users.orderBy(u => u.lastName).thenByDescending(u => u.age).toArray();
    */
+  /**
+   * Adds a secondary descending sort. Must follow `orderBy` or `orderByDescending`.
+   *
+   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
+   *   Nested-path lambdas are **not** supported — pass a string key instead.
+   */
   public thenByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => unknown)
+    keyOrSelector: K | ((entity: T) => T[keyof T])
   ): Queryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const orderByClause: OrderByClause = { column, direction: 'DESC' };
@@ -597,8 +639,15 @@ export class Queryable<T> {
    * const authors = await context.authors.include(a => a.books).toArray();
    * const authors = await context.authors.include('books').toArray();
    */
+  /**
+   * Eagerly loads a direct navigation property (relation).
+   *
+   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.posts`).
+   *   Nested-path lambdas are **not** supported — pass a dot-separated string (e.g. `'profile.address'`) instead.
+   * @throws {Error} If the key does not correspond to a declared relationship.
+   */
   public include<K extends keyof T & string>(
-    keyOrSelector: K | ((entity: T) => unknown)
+    keyOrSelector: K | ((entity: T) => T[keyof T])
   ): Queryable<T> {
     const key = extractKey(keyOrSelector) as K;
     const metadata = MetadataStorage.getEntity(this._entityClass);
@@ -623,11 +672,19 @@ export class Queryable<T> {
    *   .thenInclude(p => p.comments)
    *   .toArray();
    */
+  /**
+   * Eagerly loads a nested navigation property after `include()`.
+   *
+   * @param selector - A single-property lambda (`nav => nav.address`).
+   *   Nested-path lambdas are **not** supported — call `thenInclude` multiple times or
+   *   use `include('relation.nested')` string form instead.
+   * @throws {Error} If called without a prior `include()`.
+   */
   public thenInclude(selector: (nav: never) => unknown): Queryable<T> {
     if (!this._lastIncludePath) {
       throw new Error('thenInclude() must be called after include()');
     }
-    const nestedKey = extractKey(selector);
+    const nestedKey = extractKey(selector as (entity: never) => never[keyof never]);
     const path = `${this._lastIncludePath}.${nestedKey}`;
     this._lastIncludePath = path;
     if (!this._includes.includes(path)) this._includes.push(path);
@@ -924,7 +981,21 @@ export class Queryable<T> {
  * Extracts a property key string from either a string key or a lambda selector.
  * Uses a Proxy to intercept the first property access in the lambda.
  */
-function extractKey<T>(keyOrSelector: keyof T | ((entity: T) => unknown)): string {
+/**
+ * Extracts a property key string from either a literal key or a single-property lambda selector.
+ *
+ * **Supported forms:**
+ * - String / symbol key: `'name'`, `'userId'`
+ * - Single-property lambda: `entity => entity.name`
+ *
+ * **Not supported (throws at runtime):**
+ * - Nested-path lambdas: `entity => entity.profile.city` — use the string `'profile.city'` instead.
+ * - Branching lambdas: `entity => entity.a ? entity.b : entity.c`
+ * - Non-property lambdas: `entity => 42`
+ *
+ * @throws {Error} When the lambda accesses zero properties or more than one property.
+ */
+function extractKey<T>(keyOrSelector: keyof T | ((entity: T) => T[keyof T])): string {
   if (typeof keyOrSelector !== 'function') return String(keyOrSelector);
   const accessed: string[] = [];
   const proxy = new Proxy(
@@ -938,5 +1009,12 @@ function extractKey<T>(keyOrSelector: keyof T | ((entity: T) => unknown)): strin
   ) as T;
   keyOrSelector(proxy);
   if (!accessed.length) throw new Error('Could not extract property name from selector lambda');
+  if (accessed.length > 1) {
+    throw new Error(
+      `Selector lambda accessed ${accessed.length} properties (${accessed.join(' → ')}). ` +
+        `Only single-property selectors are supported (e.g. \`entity => entity.name\`). ` +
+        `For nested paths use a string key (e.g. '${accessed.join('.')}').`
+    );
+  }
   return accessed[0];
 }
