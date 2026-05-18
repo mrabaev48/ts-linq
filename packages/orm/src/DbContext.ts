@@ -78,22 +78,14 @@ export abstract class DbContext {
     this._provider = options.provider as DatabaseProvider;
     this._softDelete = options.softDelete;
     // Propagate soft-delete settings into provider for GlobalFilterApplier and ProviderStub
-    try {
-      this._provider.configureSoftDelete(options.softDelete);
-    } catch {
-      /* ignore */
-    }
+    this._provider.configureSoftDelete(options.softDelete);
     this._globalFilters = options.globalFilters;
     this._diagnostics = options.diagnostics;
     // Start external memory profiler if provided
-    try {
-      const mp = this._diagnostics?.memoryProfiler;
-      if (mp) {
-        this._memoryProfiler = mp;
-        mp.start?.();
-      }
-    } catch (e) {
-      // logInternalError('DbContext.constructor.memoryProfiler.start', e);
+    const mp = this._diagnostics?.memoryProfiler;
+    if (mp) {
+      this._memoryProfiler = mp;
+      mp.start?.();
     }
     this._validationService = new ChangeValidationService(
       options.validation?.translate,
@@ -164,13 +156,9 @@ export abstract class DbContext {
     );
 
     // Propagate query performance analysis options into provider if available
-    try {
-      const analysis = options.performance?.analysis;
-      if (analysis) {
-        this._provider.configureQueryAnalysis(analysis);
-      }
-    } catch {
-      /* ignore */
+    const analysis = options.performance?.analysis;
+    if (analysis) {
+      this._provider.configureQueryAnalysis(analysis);
     }
     // Apply configurable IN() chunk size into loader
     this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize);
