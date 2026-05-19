@@ -262,6 +262,80 @@ export class MetadataRegistry {
     this.addValidationRuleMetadata(target, rule);
   }
 
+  // ─── Fluent-override API (writes with merge/replace semantics) ─────────────
+
+  /** Merge/override a column by propertyName — fluent overrides decorator. */
+  public mergeFluentColumn(target: Function, column: ColumnMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      const idx = finalized.columns.findIndex((c) => c.propertyName === column.propertyName);
+      if (idx >= 0) {
+        finalized.columns[idx] = { ...finalized.columns[idx], ...column };
+      } else {
+        finalized.columns = [...finalized.columns, column];
+      }
+      return;
+    }
+    this.getOrCreateBuilder(target).mergeColumn(column);
+  }
+
+  /** Replace all primary keys — fluent override semantics (hasKey replaces, not appends). */
+  public setFluentPrimaryKeys(target: Function, keys: string[]): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.primaryKeys = [...keys];
+      return;
+    }
+    this.getOrCreateBuilder(target).setPrimaryKeys(keys);
+  }
+
+  /** Merge/override a relationship by propertyName — fluent overrides decorator. */
+  public mergeFluentRelationship(target: Function, relationship: RelationshipMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      const idx = finalized.relationships.findIndex(
+        (r) => r.propertyName === relationship.propertyName
+      );
+      if (idx >= 0) {
+        finalized.relationships[idx] = relationship;
+      } else {
+        finalized.relationships = [...finalized.relationships, relationship];
+      }
+      return;
+    }
+    this.getOrCreateBuilder(target).mergeRelationship(relationship);
+  }
+
+  /** Merge/override an index by name — fluent overrides decorator. */
+  public mergeFluentIndex(target: Function, index: IndexMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      const idx = finalized.indexes.findIndex((i) => i.name === index.name);
+      if (idx >= 0) {
+        finalized.indexes[idx] = index;
+      } else {
+        finalized.indexes = [...finalized.indexes, index];
+      }
+      return;
+    }
+    this.getOrCreateBuilder(target).mergeIndex(index);
+  }
+
+  /** Set entity schema (table schema/namespace) — fluent override. */
+  public mergeFluentSchema(target: Function, schema: string): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.schema = schema;
+      return;
+    }
+    this.getOrCreateBuilder(target).setSchema(schema);
+  }
+
   /** Clear all stored metadata and pending builders. */
   public clear(): void {
     this.entities.clear();

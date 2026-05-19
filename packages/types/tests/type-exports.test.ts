@@ -33,6 +33,7 @@ describe('Type Exports', () => {
     const exportedKeys = Object.keys(types);
     const expectedExports = [
       'DatabaseError',
+      'DeleteBehavior',
       'OptimisticConcurrencyError',
       'UniqueConstraintError',
       'ForeignKeyConstraintError',

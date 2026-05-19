@@ -85,6 +85,56 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  /** Replace primary keys (fluent override semantics). */
+  public setPrimaryKeys(keys: string[]): this {
+    this.metadata.primaryKeys = [...keys];
+    return this;
+  }
+
+  /** Merge/override a column by propertyName (fluent override semantics). */
+  public mergeColumn(column: ColumnMetadata): this {
+    this.metadata.columns = this.metadata.columns || [];
+    const idx = this.metadata.columns.findIndex((c) => c.propertyName === column.propertyName);
+    if (idx >= 0) {
+      this.metadata.columns[idx] = { ...this.metadata.columns[idx], ...column };
+    } else {
+      this.metadata.columns.push(column);
+    }
+    return this;
+  }
+
+  /** Merge/override a relationship by propertyName (fluent override semantics). */
+  public mergeRelationship(relationship: RelationshipMetadata): this {
+    this.metadata.relationships = this.metadata.relationships || [];
+    const idx = this.metadata.relationships.findIndex(
+      (r) => r.propertyName === relationship.propertyName
+    );
+    if (idx >= 0) {
+      this.metadata.relationships[idx] = relationship;
+    } else {
+      this.metadata.relationships.push(relationship);
+    }
+    return this;
+  }
+
+  /** Merge/override an index by name (fluent override semantics). */
+  public mergeIndex(index: IndexMetadata): this {
+    this.metadata.indexes = this.metadata.indexes || [];
+    const idx = this.metadata.indexes.findIndex((i) => i.name === index.name);
+    if (idx >= 0) {
+      this.metadata.indexes[idx] = index;
+    } else {
+      this.metadata.indexes.push(index);
+    }
+    return this;
+  }
+
+  /** Set schema for the entity. */
+  public setSchema(schema: string): this {
+    this.metadata.schema = schema;
+    return this;
+  }
+
   /**
    * Finalize and return the constructed `EntityMetadata` object.
    */
@@ -100,7 +150,8 @@ export class EntityMetadataBuilder {
       primaryKeys: this.metadata.primaryKeys || [],
       relationships: this.metadata.relationships || [],
       indexes: this.metadata.indexes || [],
-      validations: this.metadata.validations || []
+      validations: this.metadata.validations || [],
+      ...(this.metadata.schema !== undefined ? { schema: this.metadata.schema } : {})
     };
   }
 }

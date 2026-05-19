@@ -18,6 +18,7 @@ import { InsertCommand } from './commands/InsertCommand';
 import { UpdateCommand } from './commands/UpdateCommand';
 import { DbSet } from './DbSet';
 import type { DbSetContext } from './DbSetContext';
+import { ModelBuilder } from './ModelBuilder';
 import { AuditInterceptor } from './services/AuditInterceptor';
 import { CacheCoordinator } from './services/CacheCoordinator';
 import { ChangeValidationService } from './services/ChangeValidationService';
@@ -172,7 +173,34 @@ export abstract class DbContext {
       this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
     }
 
+    // Run fluent model configuration before DbSets are created so that any
+    // entity registered only via the Fluent API is visible to initializeDbSets().
+    const modelBuilder = new ModelBuilder(this._registry);
+    this.onModelCreating(modelBuilder);
+    modelBuilder._finalize();
+
     this.initializeDbSets();
+  }
+
+  /**
+   * Override to configure the model using the Fluent API.
+   * Mirrors EF Core: DbContext.OnModelCreating(ModelBuilder modelBuilder).
+   *
+   * Called once in the constructor after the registry is initialized but before
+   * DbSets are created. Decorator metadata is already present; fluent
+   * configuration applied here overrides it on conflict.
+   *
+   * @example
+   * protected onModelCreating(mb: ModelBuilder): void {
+   *   mb.entity(User, b => {
+   *     b.toTable('users');
+   *     b.property(u => u.email).hasMaxLength(256).isRequired();
+   *   });
+   * }
+   */
+
+  protected onModelCreating(_modelBuilder: ModelBuilder): void {
+    // Default: no-op. Subclasses override to apply fluent configuration.
   }
 
   /**

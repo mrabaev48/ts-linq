@@ -530,14 +530,26 @@ export interface ColumnMetadata {
   isVersion?: boolean;
 }
 
+export enum DeleteBehavior {
+  Cascade = 'Cascade',
+  Restrict = 'Restrict',
+  SetNull = 'SetNull',
+  ClientSetNull = 'ClientSetNull',
+  NoAction = 'NoAction',
+  ClientCascade = 'ClientCascade',
+  ClientNoAction = 'ClientNoAction'
+}
+
 export interface RelationshipMetadata {
   propertyName: string;
   type: 'one-to-many' | 'many-to-one' | 'one-to-one' | 'many-to-many';
-  targetEntity: string | Function | (() => Function);
+  targetEntity: string | Function | (() => Function) | undefined;
   foreignKey?: string;
   inverseSide?: string;
   cascade?: boolean;
   through?: string | object;
+  onDelete?: DeleteBehavior;
+  nullable?: boolean;
 }
 
 export interface IndexMetadata {

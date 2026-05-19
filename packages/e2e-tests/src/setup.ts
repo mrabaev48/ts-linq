@@ -33,11 +33,13 @@ function parseMysqlUrl(url: string) {
 function parseMssqlUrl(url: string) {
   try {
     const u = new URL(url);
+    // URL.password does not auto-decode percent-encoded chars for non-special schemes
+    // (e.g. "mssql://"), so decode manually.
     return {
       server: u.hostname,
       port: u.port ? parseInt(u.port) : 1433,
-      user: u.username,
-      password: u.password,
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
       database: u.pathname.replace(/^\//, '')
     };
   } catch {
