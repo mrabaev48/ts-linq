@@ -17,9 +17,11 @@ import type {
 import type { CteDefinition } from '@ts-linq/types';
 
 import { AggregateOperations } from './AggregateOperations';
+import { IncludeResolutionError } from './errors';
 import { FallbackManager } from './FallbackManager';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import { IncludePlanner } from './IncludePlanner';
+import { resolveTargetCtor } from './includeUtils';
 import { PaginationBuilder } from './PaginationBuilder';
 import { QueryBuilder } from './QueryBuilder';
 import { QueryExecutor } from './QueryExecutor';
@@ -598,6 +600,8 @@ export class Queryable<T> {
    * @example
    * const authors = await context.authors.include(a => a.books).toArray();
    * const authors = await context.authors.include('books').toArray();
+   *
+   * @throws {IncludeResolutionError} if `key` is not a declared relationship on the entity.
    */
   /**
    * Eagerly loads a direct navigation property (relation).
@@ -613,8 +617,15 @@ export class Queryable<T> {
     const metadata = MetadataStorage.getEntity(this._entityClass);
     const valid = metadata?.relationships.some((r) => r.propertyName === key);
     if (!valid) {
-      throw new Error(
-        `Invalid include '${key}' for ${this._entityClass.name}. Define relationship '${key}' via decorators or fix the name.`
+      throw new IncludeResolutionError(
+        'UNKNOWN_PROPERTY',
+        `Property '${key}' does not exist on entity '${this._entityClass.name}'. ` +
+          `Define relationship '${key}' via decorators or fix the name.`,
+        {
+          entityName: this._entityClass.name,
+          propertyPath: key,
+          propertyName: key
+        }
       );
     }
     this._lastIncludePath = key;
@@ -631,6 +642,9 @@ export class Queryable<T> {
    *   .include(b => b.posts)
    *   .thenInclude(p => p.comments)
    *   .toArray();
+   *
+   * @throws {IncludeResolutionError} if the nested key is not a declared relationship on the
+   *   target entity of the preceding include chain.
    */
   /**
    * Eagerly loads a nested navigation property after `include()`.
@@ -645,6 +659,38 @@ export class Queryable<T> {
       throw new Error('thenInclude() must be called after include()');
     }
     const nestedKey = extractKey(selector as (entity: never) => never[keyof never]);
+
+    // Walk the metadata chain from the root entity class to validate nestedKey
+    // against the leaf entity in the current include chain.
+    let currentClass: Function = this._entityClass;
+    for (const segment of this._lastIncludePath.split('.')) {
+      const meta = MetadataStorage.getEntity(currentClass);
+      if (!meta) break;
+      const rel = meta.relationships.find((r) => r.propertyName === segment);
+      if (!rel) break;
+      const ctor = resolveTargetCtor(rel.targetEntity);
+      if (!ctor) break;
+      currentClass = ctor;
+    }
+
+    const leafMeta = MetadataStorage.getEntity(currentClass);
+    if (leafMeta) {
+      const valid = leafMeta.relationships.some((r) => r.propertyName === nestedKey);
+      if (!valid) {
+        const fullPath = `${this._lastIncludePath}.${nestedKey}`;
+        throw new IncludeResolutionError(
+          'UNKNOWN_PROPERTY',
+          `Property '${nestedKey}' does not exist on entity '${currentClass.name}'. ` +
+            `Check the include path '${fullPath}' for typos or missing relationship decorators.`,
+          {
+            entityName: currentClass.name,
+            propertyPath: fullPath,
+            propertyName: nestedKey
+          }
+        );
+      }
+    }
+
     const path = `${this._lastIncludePath}.${nestedKey}`;
     this._lastIncludePath = path;
     if (!this._includes.includes(path)) this._includes.push(path);
