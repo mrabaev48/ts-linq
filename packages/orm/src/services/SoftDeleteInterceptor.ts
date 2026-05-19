@@ -13,6 +13,7 @@ type GetMeta = (entityClass: Function) => EntityMeta | undefined;
 type ExecuteUpdate = (entity: Record<string, unknown>, entityClass: Function) => Promise<void>;
 type OnCacheUpdate = (change: { entity: Record<string, unknown>; entityClass: Function }) => void;
 
+/** @internal */
 export class SoftDeleteInterceptor {
   constructor(
     private readonly softDelete: SoftDeleteOptions | undefined,

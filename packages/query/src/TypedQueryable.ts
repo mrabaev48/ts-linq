@@ -1,6 +1,6 @@
 import type { ExpressionNode } from '@ts-linq/ast';
 
-import type { Queryable } from './Queryable';
+import type { OrderedQueryable, Queryable } from './Queryable';
 
 /**
  * Type-safe selector function that only allows selecting valid entity properties.
@@ -38,7 +38,7 @@ export class TypedQueryable<TEntity> {
   /** Used by the compile-time transformer to identify TypedQueryable instances. Do not use at runtime. */
   declare readonly __tsLinqWhereTransformerBrand: true;
 
-  private readonly _queryable: Queryable<TEntity>;
+  protected readonly _queryable: Queryable<TEntity>;
 
   constructor(queryable: Queryable<TEntity>) {
     this._queryable = queryable;
@@ -113,10 +113,10 @@ export class TypedQueryable<TEntity> {
   orderBy<K extends keyof TEntity>(
     key: K,
     direction: 'ASC' | 'DESC' = 'ASC'
-  ): TypedQueryable<TEntity> {
+  ): TypedOrderedQueryable<TEntity> {
     const resultQueryable =
       direction === 'DESC' ? this._queryable.orderByDescending(key) : this._queryable.orderBy(key);
-    return new TypedQueryable(resultQueryable);
+    return new TypedOrderedQueryable(resultQueryable);
   }
 
   /**
@@ -158,24 +158,6 @@ export class TypedQueryable<TEntity> {
    */
   distinct(): TypedQueryable<TEntity> {
     const resultQueryable = this._queryable.distinct();
-    return new TypedQueryable(resultQueryable);
-  }
-
-  /**
-   * Type-safe secondary ordering in ascending order.
-   * Must be used after orderBy() or orderByDescending().
-   */
-  thenBy<K extends keyof TEntity>(key: K): TypedQueryable<TEntity> {
-    const resultQueryable = this._queryable.thenBy(key);
-    return new TypedQueryable(resultQueryable);
-  }
-
-  /**
-   * Type-safe secondary ordering in descending order.
-   * Must be used after orderBy() or orderByDescending().
-   */
-  thenByDescending<K extends keyof TEntity>(key: K): TypedQueryable<TEntity> {
-    const resultQueryable = this._queryable.thenByDescending(key);
     return new TypedQueryable(resultQueryable);
   }
 
@@ -390,6 +372,34 @@ export class TypedQueryable<TEntity> {
    */
   get raw(): Queryable<TEntity> {
     return this._queryable;
+  }
+}
+
+/**
+ * Returned by `TypedQueryable.orderBy` / `orderByDescending`.
+ * Exposes `thenBy` and `thenByDescending` as the only compile-time-safe way to add
+ * secondary sort keys, mirroring LINQ-to-Objects `IOrderedEnumerable<T>`.
+ */
+export class TypedOrderedQueryable<TEntity> extends TypedQueryable<TEntity> {
+  private readonly _orderedQueryable: OrderedQueryable<TEntity>;
+
+  constructor(queryable: OrderedQueryable<TEntity>) {
+    super(queryable);
+    this._orderedQueryable = queryable;
+  }
+
+  /**
+   * Adds a secondary ascending sort. Only available after `orderBy` or `orderByDescending`.
+   */
+  thenBy<K extends keyof TEntity>(key: K): TypedOrderedQueryable<TEntity> {
+    return new TypedOrderedQueryable(this._orderedQueryable.thenBy(key));
+  }
+
+  /**
+   * Adds a secondary descending sort. Only available after `orderBy` or `orderByDescending`.
+   */
+  thenByDescending<K extends keyof TEntity>(key: K): TypedOrderedQueryable<TEntity> {
+    return new TypedOrderedQueryable(this._orderedQueryable.thenByDescending(key));
   }
 }
 

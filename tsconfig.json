@@ -10,6 +10,7 @@
       "@ts-linq/core":                      ["packages/core/dist"],
       "@ts-linq/ast":                       ["packages/ast/dist/esm"],
       "@ts-linq/query":                     ["packages/query/dist"],
+      "@ts-linq/query/internal":            ["packages/query/dist/internal"],
       "@ts-linq/orm":                       ["packages/orm/dist"],
       "@ts-linq/metrics-safe":              ["packages/metrics-safe/dist"],
       "@ts-linq/concurrency":               ["packages/concurrency/dist"],

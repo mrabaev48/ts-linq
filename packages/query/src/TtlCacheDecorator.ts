@@ -3,6 +3,7 @@ import type { SqlCache, SqlCacheEntry } from '@ts-linq/types';
 /**
  * Decorator that adds TTL expiry to any SqlCache implementation.
  * Owns the periodic cleanup timer — callers must call dispose() to stop it.
+ * @internal
  */
 export class TtlCacheDecorator implements SqlCache {
   private ttlMap = new Map<string, number>(); // originalKey → expiresAt (absolute ms)
