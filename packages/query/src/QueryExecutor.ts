@@ -320,21 +320,17 @@ export class QueryExecutor<T> {
 
   private buildCountSqlAndParams(
     queryModel: QueryModel,
-    table: string
+    _table: string
   ): { sql: string; params: SqlParameter[] } {
-    let sql = `SELECT COUNT(*) as count FROM ${table}`;
-    const params: SqlParameter[] = [];
-    if (queryModel.where && queryModel.where.length > 0) {
-      let first = true;
-      sql += ' WHERE ';
-      for (const wc of queryModel.where) {
-        if (!first) sql += ' AND ';
-        first = false;
-        sql += wc.condition;
-        for (let i = 0; i < wc.parameters.length; i++) params.push(wc.parameters[i]);
-      }
-    }
-    return { sql, params };
+    // Route through the dialect via sqlBuilder so placeholders ($N, @pN, ?) are emitted correctly.
+    const countModel = queryModel.clone();
+    (countModel as unknown as { select?: string[] }).select = ['COUNT(*) as count'];
+    countModel.orderBy = undefined;
+    countModel.limit = undefined;
+    countModel.offset = undefined;
+    (countModel as unknown as { distinct?: boolean }).distinct = false;
+    const built = this.sqlBuilder.generateFromModel(this.entityClass, countModel);
+    return { sql: built.query, params: built.parameters as SqlParameter[] };
   }
 
   private async tryFallbackCountSequential(queryModel: QueryModel): Promise<number | null> {
