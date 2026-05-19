@@ -57,7 +57,7 @@ export async function setupTestDatabase(provider: 'postgresql' | 'mysql' | 'mssq
   const connectionStrings = {
     postgresql: process.env.POSTGRES_URL || 'postgres://test:test@localhost:5432/testdb',
     mysql: process.env.MYSQL_URL || 'mysql://test:test@localhost:3306/testdb',
-    mssql: process.env.MSSQL_URL || 'mssql://sa:YourStrong@Passw0rd@localhost:1433/testdb'
+    mssql: process.env.MSSQL_URL || 'mssql://sa:YourStrong%40Passw0rd@localhost:1433/testdb'
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

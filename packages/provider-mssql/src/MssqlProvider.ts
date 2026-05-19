@@ -3,7 +3,7 @@ import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityMetadata, MssqlConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
-import { OptimisticConcurrencyError } from '@ts-linq/types';
+import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
 
 import { buildMssqlConnectionString } from './buildConnectionString';
 
@@ -174,16 +174,15 @@ export class MssqlProvider extends DatabaseProvider {
       metadata
     );
 
-    // For MSSQL, to retrieve identity we need a separate SELECT SCOPE_IDENTITY() or OUTPUT clause.
-    const affected = await this.executeNonQuery(sql, parameters);
-    if (affected > 0 && returningPk) {
-      const rows = await this.executeQuery<{ id: number }>(
-        'SELECT CAST(SCOPE_IDENTITY() AS INT) AS id'
-      );
+    // Use OUTPUT INSERTED to atomically retrieve the generated identity within the same statement.
+    if (returningPk) {
+      const rows = await this.executeQuery<{ id: number }>(sql, parameters);
       const id = rows && rows[0]?.id;
       if (id !== undefined) {
         (entity as Record<string, unknown>)[returningPk] = id;
       }
+    } else {
+      await this.executeNonQuery(sql, parameters);
     }
     return entity;
   }
@@ -550,8 +549,7 @@ function mapMssqlError(err: unknown): Error {
   const number = anyErr?.number;
   const message = anyErr?.message || String(err);
   if (number === 2627 || number === 2601) {
-    return new (require('../types').UniqueConstraintError)(message, String(number));
+    return new UniqueConstraintError(message);
   }
-  const DatabaseError = require('../types').DatabaseError;
-  return new DatabaseError(message, String(number));
+  return new DatabaseError(message);
 }

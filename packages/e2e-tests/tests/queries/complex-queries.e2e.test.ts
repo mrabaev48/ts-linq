@@ -54,7 +54,9 @@ class Comment {
 class TestDbContext extends DbContext {}
 
 const run = process.env.SKIP_DB_TESTS !== '1';
-(run ? describe.each(['postgresql']) : describe.skip.each(['postgresql']))(
+(run
+  ? describe.each(['postgresql', 'mysql', 'mssql'])
+  : describe.skip.each(['postgresql', 'mysql', 'mssql']))(
   'E2E Complex Queries - %s',
   (providerName) => {
     let harness: any;
