@@ -173,30 +173,6 @@ export abstract class DbContext {
     }
 
     this.initializeDbSets();
-
-    // Enable "new DbSet(Entity)" property initializer syntax.
-    // Subclass property initializers run after super() returns — this Proxy
-    // intercepts those assignments and injects the database context automatically.
-    const dbSetCtx = this.buildDbSetContext();
-    const dbSetsMap = this._dbSets;
-
-    return new Proxy(this, {
-      set(target: DbContext, prop: string | symbol, value: unknown): boolean {
-        if (typeof prop === 'string' && value instanceof DbSet) {
-          value._injectContext(dbSetCtx);
-          dbSetsMap.set(value.entityClass, value as DbSet<object>);
-          // Override any existing getter (created by initializeDbSets) with a plain value
-          Object.defineProperty(target, prop, {
-            value,
-            writable: true,
-            enumerable: true,
-            configurable: true
-          });
-          return true;
-        }
-        return Reflect.set(target, prop, value);
-      }
-    }) as unknown as this;
   }
 
   /**
@@ -224,6 +200,36 @@ export abstract class DbContext {
       );
     }
     return this._decoratedDbSets.get(entityClass) as unknown as DbSet<T>;
+  }
+
+  /**
+   * Create and register a typed DbSet for the given entity class.
+   *
+   * Use this inside subclass property initialisers in place of the old
+   * `new DbSet(Entity)` syntax:
+   *
+   * @example
+   * class AppCtx extends DbContext {
+   *   users = this.defineSet(User);
+   *   posts = this.defineSet(Post);
+   * }
+   *
+   * Because derived-class field initialisers run *after* `super()` returns,
+   * `this` is already fully initialised when `defineSet` is called — no Proxy
+   * interception is required.
+   *
+   * @param entityClass  Entity constructor (required — generics are erased at runtime).
+   * @returns A fully configured and context-injected `DbSet<T>`.
+   */
+  protected defineSet<T extends object>(entityClass: new () => T): DbSet<T> {
+    const original = getOriginal(entityClass);
+    if (this._dbSets.has(original)) {
+      return this._dbSets.get(original) as unknown as DbSet<T>;
+    }
+    // Entity not yet in the registry (dynamic registration after construction).
+    const dbSet = new DbSet<T>(entityClass, this.buildDbSetContext());
+    this._dbSets.set(original as unknown as Function, dbSet as unknown as DbSet<object>);
+    return dbSet;
   }
 
   /**
@@ -588,11 +594,14 @@ export abstract class DbContext {
       );
       this._dbSets.set(original, dbSet);
 
-      // Create property on context instance for easy access
+      // Create a writable, configurable data property for easy access.
+      // Writable so that subclass field initialisers (e.g. `users = this.defineSet(User)`)
+      // can overwrite it without throwing "property has only a getter".
       const base = original.name.toLowerCase();
       const propertyName = base.endsWith('y') ? base.slice(0, -1) + 'ies' : base + 's';
       Object.defineProperty(this, propertyName, {
-        get: () => dbSet,
+        value: dbSet,
+        writable: true,
         enumerable: true,
         configurable: true
       });
