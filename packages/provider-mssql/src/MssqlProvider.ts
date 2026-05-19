@@ -256,7 +256,12 @@ export class MssqlProvider extends DatabaseProvider {
     const updatable = metadata.columns.filter(
       (c) => !pk.includes(c.propertyName) && !c.isGenerated && !c.isComputed
     );
-    const sourceCols = metadata.columns.filter((c) => !c.isGenerated);
+    // Source must include PK columns (even IDENTITY) so the ON clause can reference them.
+    // But INSERT target must exclude IDENTITY columns — MSSQL auto-generates them for new rows.
+    const sourceCols = metadata.columns.filter(
+      (c) => !c.isGenerated || pk.includes(c.propertyName)
+    );
+    const insertableCols = sourceCols.filter((c) => !c.isGenerated);
 
     const sourceSelect = sourceCols.map((c) => `? AS ${c.columnName}`).join(', ');
     const onClause = pk
@@ -266,8 +271,8 @@ export class MssqlProvider extends DatabaseProvider {
       })
       .join(' AND ');
     const setClause = updatable.map((c) => `t.${c.columnName} = s.${c.columnName}`).join(', ');
-    const insertCols = sourceCols.map((c) => c.columnName).join(', ');
-    const insertVals = sourceCols.map((c) => `s.${c.columnName}`).join(', ');
+    const insertCols = insertableCols.map((c) => c.columnName).join(', ');
+    const insertVals = insertableCols.map((c) => `s.${c.columnName}`).join(', ');
     const params: SqlParameter[] = sourceCols.map((c) =>
       this.coerceToSqlParameter((entity as Record<string, unknown>)[c.propertyName])
     );
@@ -465,10 +470,16 @@ export class MssqlProvider extends DatabaseProvider {
   /** Roll back the current transaction. */
   public async rollbackTransaction(): Promise<void> {
     if (!this.inTransaction || !this.tx) throw new Error('No transaction in progress');
-    await this.tx.rollback();
+    const tx = this.tx;
     this.tx = null;
     this.inTransaction = false;
     this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
+    // MSSQL auto-aborts transactions on error; ignore rollback-of-aborted-tx errors.
+    try {
+      await tx.rollback();
+    } catch {
+      /* already aborted */
+    }
   }
 
   /** Provide SQL dialect for this provider. */
@@ -496,6 +507,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   private coerceToSqlParameter(value: unknown): SqlParameter {
+    if (value === undefined) return null;
     if (
       value === null ||
       typeof value === 'string' ||
