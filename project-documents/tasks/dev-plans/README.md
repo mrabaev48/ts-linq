@@ -197,3 +197,81 @@ These are EF Core features we explicitly do **not** plan to chase right now. If 
 - EF Core's `DbConnection`/`DbCommand` ADO.NET surface — `ts-linq` keeps its own provider abstraction.
 - `Microsoft.Extensions.DependencyInjection` integration — DI in TypeScript-land is consumer choice (Nest, Tsyringe, plain factories); we provide tree-shakable factories instead.
 - Visual Studio Package Manager Console parity (`Add-Migration` PowerShell). The pnpm/npx CLI is the only entry point.
+
+---
+
+## 7. Implementation order
+
+Tasks within the same step have no mutual dependency and **can be worked in parallel**.  
+Complete all tasks of a step before starting the next — or at least before starting any task
+whose `depends_on` points into the current step.
+
+### Step 1 — No prerequisites (start here)
+
+> **Priority tip:** begin P0-01 first. 14 tasks across all tiers are directly or transitively blocked on it.
+
+| Task | Title |
+|------|-------|
+| P0-01 | Fluent API — ModelBuilder |
+| P0-02 | AsNoTracking / AsTracking |
+| P0-03 | FromSql / FromSqlInterpolated |
+| P0-12 | Interceptors |
+| P1-18 | AsSplitQuery / AsSingleQuery |
+| P1-19 | Filtered Include |
+| P1-20 | Compiled queries |
+| P1-23 | Savepoints + retry strategy |
+| P1-27 | Async streaming |
+| P2-34 | Spatial types |
+| P2-35 | HierarchyId |
+| P2-36 | Temporal queries |
+| P2-40 | DbContext pooling / factory |
+| P2-41 | Query tags / TagWithCallSite |
+| P2-42 | Migration bundles / idempotent |
+| P2-45 | Logging / diagnostics |
+| P2-46 | Batching / MaxBatchSize |
+
+### Step 2 — Unlocked after Step 1
+
+| Task | Title | Unblocked by |
+|------|-------|--------------|
+| P0-04 | ExecuteUpdate / ExecuteDelete | P0-03 |
+| P0-05 | Value converters | P0-01 |
+| P0-06 | Owned entity types | P0-01 |
+| P0-07 | Inheritance — TPH/TPT/TPC | P0-01 |
+| P0-08 | Many-to-many skip navigations | P0-01 |
+| P0-09 | Cascade delete behaviors | P0-01 |
+| P0-10 | Concurrency tokens / RowVersion | P0-01 |
+| P0-11 | Global query filters | P0-01 |
+| P0-13 | HasData seeding | P0-01 |
+| P0-14 | Computed / default / check | P0-01 |
+| P1-16 | Shadow properties | P0-01 |
+| P1-22 | EF.Functions / DbFunctions | P0-01 |
+| P1-25 | Table / entity splitting | P0-01 |
+| P1-26 | Views / keyless entities | P0-01 |
+| P1-28 | TrackGraph / DetectChanges | P0-02 |
+| P1-30 | Value generators / Sentinel | P0-01 |
+| P1-31 | Alternate keys / advanced indexes | P0-01 |
+| P1-32 | Backing fields / PropertyAccessMode | P0-01 |
+| P2-33 | Stored procedure mapping | P0-01 |
+| P2-43 | DB-first scaffolding | P0-01 |
+| P2-44 | Compiled models / AOT prep | P1-20 |
+
+### Step 3 — Unlocked after Step 2
+
+| Task | Title | Unblocked by |
+|------|-------|--------------|
+| P0-15 | JSON columns | P0-06 |
+| P1-17 | Complex types | P0-06 |
+| P1-21 | Sequences / HiLo | P1-30 |
+| P1-29 | LocalView / Find / FindAsync | P1-28 |
+| P2-37 | Cosmos DB provider | P0-03 + P0-04 |
+| P2-38 | SQLite provider | P0-03 + P0-04 |
+| P2-39 | InMemory provider | P0-03 + P0-04 |
+| P2-47 | Read replica / multi-tenancy | P0-11 |
+
+### Step 4 — Unlocked after Step 3
+
+| Task | Title | Unblocked by |
+|------|-------|--------------|
+| P1-24 | Primitive collections | P0-05 + P0-15 |
+| P2-48 | Vector search | P2-37 |
