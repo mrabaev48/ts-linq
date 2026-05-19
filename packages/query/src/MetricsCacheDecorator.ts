@@ -19,6 +19,7 @@ export interface EnhancedCacheMetrics {
 /**
  * Decorator that adds hit/miss/eviction/expiration metrics to any SqlCache.
  * Single responsibility: observability only — no storage, no TTL, no eviction policy.
+ * @internal
  */
 export class MetricsCacheDecorator implements SqlCache {
   private totalRequests = 0;

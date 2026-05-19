@@ -83,6 +83,7 @@ function initZeroMetrics(): SqlCacheMetrics {
  *
  * @remarks
  * Call `dispose()` when done to stop the background cleanup timer and free resources.
+ * @internal
  */
 export class EnhancedSqlCache implements SqlCache {
   private readonly _lru: LruCache;
