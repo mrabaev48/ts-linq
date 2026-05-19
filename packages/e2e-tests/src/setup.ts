@@ -30,15 +30,34 @@ function parseMysqlUrl(url: string) {
   }
 }
 
+function parseMssqlUrl(url: string) {
+  try {
+    const u = new URL(url);
+    return {
+      server: u.hostname,
+      port: u.port ? parseInt(u.port) : 1433,
+      user: u.username,
+      password: u.password,
+      database: u.pathname.replace(/^\//, '')
+    };
+  } catch {
+    return {
+      server: 'localhost',
+      port: 1433,
+      user: 'sa',
+      password: 'YourStrong@Passw0rd',
+      database: 'testdb'
+    };
+  }
+}
+
 export async function setupTestDatabase(provider: 'postgresql' | 'mysql' | 'mssql') {
   const harness = new DatabaseHarness();
 
   const connectionStrings = {
     postgresql: process.env.POSTGRES_URL || 'postgres://test:test@localhost:5432/testdb',
     mysql: process.env.MYSQL_URL || 'mysql://test:test@localhost:3306/testdb',
-    mssql:
-      process.env.MSSQL_URL ||
-      'Server=localhost,1433;Database=testdb;User Id=sa;Password=YourStrong@Passw0rd;'
+    mssql: process.env.MSSQL_URL || 'mssql://sa:YourStrong@Passw0rd@localhost:1433/testdb'
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,11 +82,13 @@ export async function setupTestDatabase(provider: 'postgresql' | 'mysql' | 'mssq
     }
     case 'mssql': {
       const { MssqlProvider } = await import('@ts-linq/provider-mssql');
+      const cfg = parseMssqlUrl(connectionStrings.mssql);
       dbProvider = new MssqlProvider({
-        server: 'localhost',
-        database: 'testdb',
-        user: 'sa',
-        password: 'YourStrong@Passw0rd'
+        server: cfg.server,
+        port: cfg.port,
+        user: cfg.user,
+        password: cfg.password,
+        database: cfg.database
       });
       break;
     }
