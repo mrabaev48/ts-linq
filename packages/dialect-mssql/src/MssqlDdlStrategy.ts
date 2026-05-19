@@ -42,6 +42,9 @@ export class MssqlDdlStrategy {
     if (column.length) {
       definition += `(${column.length})`;
     }
+    if (column.isGenerated) {
+      definition += ' IDENTITY(1,1)';
+    }
     if (!column.nullable) definition += ' NOT NULL';
     if ((column as { defaultExpression?: string }).defaultExpression) {
       definition += ` DEFAULT ${(column as { defaultExpression?: string }).defaultExpression}`;

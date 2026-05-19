@@ -100,16 +100,23 @@ export class MssqlDialect implements SqlDialect {
     const parameters: SqlParameter[] = insertable.map((c) =>
       this.coerceParameter(entity[c.propertyName])
     );
-    let sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) VALUES (${placeholders.join(', ')})`;
+
+    const firstPk = metadata.primaryKeys?.[0];
+    const pkColMeta = firstPk
+      ? metadata.columns.find((c) => c.propertyName === firstPk)
+      : undefined;
+    const returningPk = pkColMeta?.isGenerated ? firstPk : undefined;
+
+    let sql: string;
+    if (returningPk && pkColMeta) {
+      sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) OUTPUT INSERTED.[${pkColMeta.columnName}] AS id VALUES (${placeholders.join(', ')})`;
+    } else {
+      sql = `INSERT INTO ${metadata.tableName} (${columnNames.join(', ')}) VALUES (${placeholders.join(', ')})`;
+    }
 
     // Replace ? with @pN
     sql = this.numberPlaceholders(sql, parameters.length);
 
-    const firstPk = metadata.primaryKeys?.[0];
-    const returningPk =
-      firstPk && metadata.columns.find((c) => c.propertyName === firstPk)?.isGenerated
-        ? firstPk
-        : undefined;
     return { sql, parameters, returningPk };
   }
 
