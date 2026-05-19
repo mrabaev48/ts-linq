@@ -5,6 +5,18 @@
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./internal": {
+      "require": "./dist/internal/index.js",
+      "import": "./dist/esm/internal/index.js",
+      "types": "./dist/internal/index.d.ts"
+    }
+  },
   "dependencies": {
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metrics-safe": "workspace:*",

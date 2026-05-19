@@ -11,6 +11,7 @@ import type { QueryModel } from './QueryModel';
  * Queryable.paginate() / keysetPaginate() are thin delegates that construct a
  * PaginationBuilder with the current query state and call through.  This class
  * is independently testable with a minimal provider mock.
+ * @internal
  */
 export class PaginationBuilder<T> {
   constructor(

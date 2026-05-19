@@ -17,6 +17,7 @@ interface RegistryLike {
   getEntities(): ReadonlyArray<{ target?: Function }>;
 }
 
+/** @internal */
 export class CacheCoordinator {
   constructor(
     private readonly entityCache: EntityCacheLike | undefined,
