@@ -445,46 +445,9 @@ export class DbSet<T extends object> {
     return entity;
   }
 
-  /** Upsert many entities via per-entity PK existence check. */
+  /** Upsert many entities directly via provider (no saveChanges() needed). */
   public async upsertMany(entities: T[]): Promise<T[]> {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0)
-      throw new Error(`No primary key defined for ${this._entityClass.name}`);
-    const pk = metadata.primaryKeys[0];
-    const pairs: Array<{ entity: T; id: unknown }> = entities.map((e) => ({
-      entity: e,
-      id: (e as unknown as Record<string, unknown>)[pk]
-    }));
-    const ids = pairs.filter((p) => p.id !== undefined && p.id !== null).map((p) => p.id);
-    if (ids.length > 0) {
-      const pkCol = metadata.columns.find((c) => c.propertyName === pk);
-      const chunkSize = this._performance?.inClauseChunkSize ?? DbSet.DEFAULT_IN_CHUNK_SIZE;
-      const uniqueIds = Array.from(new Set(ids));
-      const existingRows: T[] = [];
-      for (let i = 0; i < uniqueIds.length; i += chunkSize) {
-        const chunk = uniqueIds.slice(i, i + chunkSize);
-        const part = await this._provider.findWhereIn(
-          this._entityClass,
-          pkCol ? pkCol.propertyName : pk,
-          chunk
-        );
-        existingRows.push(...part);
-      }
-      const existingIdSet = new Set(
-        existingRows.map((r) => (r as unknown as Record<string, unknown>)[pk])
-      );
-      for (const { entity, id } of pairs) {
-        if (id === undefined || id === null) {
-          this.add(entity);
-          continue;
-        }
-        if (existingIdSet.has(id)) this.update(entity);
-        else this.add(entity);
-      }
-    } else {
-      this.addRange(entities);
-    }
-    return entities;
+    return this._provider.upsertMany<T>(entities, this._entityClass);
   }
 
   private invalidateCountCache(): void {

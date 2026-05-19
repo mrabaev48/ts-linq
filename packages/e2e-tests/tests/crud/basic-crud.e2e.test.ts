@@ -15,10 +15,10 @@ class User {
   @Column()
   email!: string;
 
-  @Column()
+  @Column({ type: 'number' })
   age!: number;
 
-  @Column()
+  @Column({ type: 'boolean', name: 'is_active' })
   isActive!: boolean;
 }
 
@@ -140,7 +140,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       await context.saveChanges();
 
       const finalCount = await userSet.count();
-      expect(finalCount).toBe(initialCount - 1);
+      expect(Number(finalCount)).toBe(Number(initialCount) - 1);
     });
 
     it('should filter users with where clause', async () => {

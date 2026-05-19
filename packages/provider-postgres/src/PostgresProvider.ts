@@ -230,7 +230,12 @@ export class PostgresProvider extends DatabaseProvider {
       return this.insert(entity, entityClass);
     }
     const primaryKeys = meta.primaryKeys;
-    const insertCols = meta.columns.filter((c) => !c.isGenerated && !c.isComputed);
+    // Include generated PK columns when the entity already has a value (upsert with known PK).
+    const insertCols = meta.columns.filter(
+      (c) =>
+        !c.isComputed &&
+        (!c.isGenerated || (entity as Record<string, unknown>)[c.propertyName] !== undefined)
+    );
     const names = insertCols.map((c) => `"${c.columnName}"`);
     const placeholders = insertCols.map((_, i) => `$${i + 1}`);
     const values: SqlParameter[] = insertCols.map((c) =>

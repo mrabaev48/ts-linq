@@ -51,7 +51,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
     const result = await context.set(PagedItem).orderBy('id').paginate(1, 3);
 
     expect(result.items).toHaveLength(3);
-    expect(result.total).toBe(10);
+    expect(Number(result.total)).toBe(10);
     expect(result.page).toBe(1);
     expect(result.size).toBe(3);
   });
@@ -74,7 +74,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
     const lastPage = await context.set(PagedItem).orderBy('id').paginate(4, 3);
 
     expect(lastPage.items).toHaveLength(1);
-    expect(lastPage.total).toBe(10);
+    expect(Number(lastPage.total)).toBe(10);
   });
 
   it('should return empty items for a page beyond total', async () => {
@@ -83,6 +83,6 @@ const run = process.env.SKIP_DB_TESTS !== '1';
     const beyond = await context.set(PagedItem).orderBy('id').paginate(99, 3);
 
     expect(beyond.items).toHaveLength(0);
-    expect(beyond.total).toBe(10);
+    expect(Number(beyond.total)).toBe(10);
   });
 });
