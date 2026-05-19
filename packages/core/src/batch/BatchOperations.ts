@@ -1,77 +1,55 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { EntityMetadata, SqlParameter } from '@ts-linq/types';
+import type { EntityMetadata } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
+import { BatchDeleteOperation } from './BatchDeleteOperation';
 import { BatchExecutor } from './BatchExecutor';
+import { BatchInsertOperation } from './BatchInsertOperation';
 import { BatchPlan } from './BatchPlan';
+import { BatchUpdateOperation } from './BatchUpdateOperation';
+import { BatchUpsertOperation } from './BatchUpsertOperation';
 
-/**
- * Configuration options for batch operations
- */
 export interface BatchOptions {
-  /** Maximum number of entities to process in a single batch (default: 1000) */
   batchSize?: number;
-  /** Whether to use transactions for each batch (default: true) */
   useTransactions?: boolean;
-  /** Whether to continue processing if some entities fail (default: false) */
   continueOnError?: boolean;
-  /** Progress callback for long-running operations */
   onProgress?: (processed: number, total: number) => void;
-  /** Custom timeout per batch in milliseconds */
   timeoutMs?: number;
-  /** Whether to return detailed results with errors (default: false) */
   returnDetailedResults?: boolean;
 }
 
-/**
- * Detailed result for batch operations when returnDetailedResults is enabled
- */
 export interface BatchResult<T> {
-  /** Successfully processed entities */
   successful: T[];
-  /** Failed entities with their errors */
   failed: Array<{ entity: T; error: Error }>;
-  /** Total number of entities processed */
   totalProcessed: number;
-  /** Total time taken in milliseconds */
   durationMs: number;
-  /** Number of batches executed */
   batchCount: number;
 }
 
-/**
- * Simple batch result for basic operations
- */
 export interface SimpleBatchResult<T> {
-  /** All processed entities (successful ones) */
   entities: T[];
-  /** Number of entities that failed */
   failedCount: number;
-  /** Total processing time */
   durationMs: number;
 }
 
-/**
- * Enhanced batch operations with optimizations for large datasets.
- * Provides bulk insert/update/delete operations that are much more efficient
- * than iterating through entities one by one.
- */
 export class BatchOperations {
-  private provider: DatabaseProvider;
-  private defaultBatchSize = 1000;
   private readonly plan: BatchPlan;
   private readonly executor: BatchExecutor;
+  private readonly insert: BatchInsertOperation;
+  private readonly update: BatchUpdateOperation;
+  private readonly delete: BatchDeleteOperation;
+  private readonly upsert: BatchUpsertOperation;
+  private defaultBatchSize = 1000;
 
-  constructor(provider: DatabaseProvider) {
-    this.provider = provider;
+  constructor(private readonly provider: DatabaseProvider) {
     this.plan = new BatchPlan();
     this.executor = new BatchExecutor(provider);
+    this.insert = new BatchInsertOperation(provider);
+    this.update = new BatchUpdateOperation(provider);
+    this.delete = new BatchDeleteOperation(provider);
+    this.upsert = new BatchUpsertOperation(provider);
   }
 
-  /**
-   * Bulk insert entities using optimized SQL bulk insert statements.
-   * Much more efficient than insertMany for large datasets.
-   */
   async bulkInsert<T extends object>(
     entities: T[],
     entityClass: new () => T,
@@ -79,77 +57,13 @@ export class BatchOperations {
   ): Promise<
     BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>
   > {
-    const startTime = Date.now();
-    const metadata = this.getEntityMetadata(entityClass);
-    const {
-      batchSize = this.defaultBatchSize,
-      useTransactions = true,
-      continueOnError = false,
-      onProgress,
-      returnDetailedResults = false
-    } = options;
-
-    if (entities.length === 0) {
-      return this.createEmptyResult<T>(
-        returnDetailedResults,
-        startTime
-      ) as unknown as BatchOptions['returnDetailedResults'] extends true
-        ? BatchResult<T>
-        : SimpleBatchResult<T>;
-    }
-
-    const successful: T[] = [];
-    const failed: Array<{ entity: T; error: Error }> = [];
-    const chunks = this.plan.planChunks(entities, batchSize);
-    let processed = 0;
-
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-
-      try {
-        await this.executor.inTxn(useTransactions, async () => {
-          const insertedChunk = await this.executeBulkInsert(chunk, metadata);
-          successful.push(...insertedChunk);
-        });
-        processed += chunk.length;
-        onProgress?.(processed, entities.length);
-      } catch (error) {
-        if (continueOnError) {
-          for (const entity of chunk) {
-            failed.push({ entity, error: error as Error });
-          }
-          processed += chunk.length;
-          onProgress?.(processed, entities.length);
-        } else {
-          throw error;
-        }
-      }
-    }
-
-    const durationMs = Date.now() - startTime;
-
-    if (returnDetailedResults) {
-      return {
-        successful,
-        failed,
-        totalProcessed: processed,
-        durationMs,
-        batchCount: chunks.length
-      } as unknown as BatchOptions['returnDetailedResults'] extends true
-        ? BatchResult<T>
-        : SimpleBatchResult<T>;
-    } else {
-      return {
-        entities: successful,
-        failedCount: failed.length,
-        durationMs
-      };
-    }
+    return this.runBatch(entities, entityClass, options, async (chunk, meta) =>
+      this.insert.execute(chunk, meta)
+    ) as Promise<
+      BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>
+    >;
   }
 
-  /**
-   * Bulk update entities using optimized batch update strategies.
-   */
   async bulkUpdate<T extends object>(
     entities: T[],
     entityClass: new () => T,
@@ -157,75 +71,13 @@ export class BatchOperations {
   ): Promise<
     BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>
   > {
-    const startTime = Date.now();
-    const metadata = this.getEntityMetadata(entityClass);
-    const {
-      batchSize = this.defaultBatchSize,
-      useTransactions = true,
-      continueOnError = false,
-      onProgress,
-      returnDetailedResults = false
-    } = options;
-
-    if (entities.length === 0) {
-      return this.createEmptyResult<T>(
-        returnDetailedResults,
-        startTime
-      ) as unknown as BatchOptions['returnDetailedResults'] extends true
-        ? BatchResult<T>
-        : SimpleBatchResult<T>;
-    }
-
-    const successful: T[] = [];
-    const failed: Array<{ entity: T; error: Error }> = [];
-    const chunks = this.plan.planChunks(entities, batchSize);
-    let processed = 0;
-
-    for (const chunk of chunks) {
-      try {
-        await this.executor.inTxn(useTransactions, async () => {
-          const updatedChunk = await this.executeBulkUpdate(chunk, metadata);
-          successful.push(...updatedChunk);
-        });
-        processed += chunk.length;
-        onProgress?.(processed, entities.length);
-      } catch (error) {
-        if (continueOnError) {
-          for (const entity of chunk) {
-            failed.push({ entity, error: error as Error });
-          }
-          processed += chunk.length;
-          onProgress?.(processed, entities.length);
-        } else {
-          throw error;
-        }
-      }
-    }
-
-    const durationMs = Date.now() - startTime;
-
-    if (returnDetailedResults) {
-      return {
-        successful,
-        failed,
-        totalProcessed: processed,
-        durationMs,
-        batchCount: chunks.length
-      } as unknown as BatchOptions['returnDetailedResults'] extends true
-        ? BatchResult<T>
-        : SimpleBatchResult<T>;
-    } else {
-      return {
-        entities: successful,
-        failedCount: failed.length,
-        durationMs
-      };
-    }
+    return this.runBatch(entities, entityClass, options, async (chunk, meta) =>
+      this.update.execute(chunk, meta)
+    ) as Promise<
+      BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>
+    >;
   }
 
-  /**
-   * Bulk delete entities using optimized bulk delete operations.
-   */
   async bulkDelete<T extends object>(
     entities: T[],
     entityClass: new () => T,
@@ -239,10 +91,7 @@ export class BatchOperations {
       continueOnError = false,
       onProgress
     } = options;
-
-    if (entities.length === 0) {
-      return { deletedCount: 0, failedCount: 0, durationMs: 0 };
-    }
+    if (entities.length === 0) return { deletedCount: 0, failedCount: 0, durationMs: 0 };
 
     let deletedCount = 0;
     let failedCount = 0;
@@ -252,8 +101,7 @@ export class BatchOperations {
     for (const chunk of chunks) {
       try {
         await this.executor.inTxn(useTransactions, async () => {
-          const deleted = await this.executeBulkDelete(chunk, metadata);
-          deletedCount += deleted;
+          deletedCount += await this.delete.execute(chunk, metadata);
         });
         processed += chunk.length;
         onProgress?.(processed, entities.length);
@@ -262,22 +110,13 @@ export class BatchOperations {
           failedCount += chunk.length;
           processed += chunk.length;
           onProgress?.(processed, entities.length);
-        } else {
-          throw error;
-        }
+        } else throw error;
       }
     }
 
-    return {
-      deletedCount,
-      failedCount,
-      durationMs: Date.now() - startTime
-    };
+    return { deletedCount, failedCount, durationMs: Date.now() - startTime };
   }
 
-  /**
-   * Bulk upsert (insert or update) entities with optimized conflict resolution.
-   */
   async bulkUpsert<T extends object>(
     entities: T[],
     entityClass: new () => T,
@@ -285,6 +124,28 @@ export class BatchOperations {
   ): Promise<
     BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>
   > {
+    return this.runBatch(entities, entityClass, options, async (chunk, meta) =>
+      this.upsert.execute(chunk, meta)
+    ) as Promise<
+      BatchOptions['returnDetailedResults'] extends true ? BatchResult<T> : SimpleBatchResult<T>
+    >;
+  }
+
+  setDefaultBatchSize(size: number): void {
+    if (size <= 0) throw new Error('Batch size must be greater than 0');
+    this.defaultBatchSize = size;
+  }
+
+  getDefaultBatchSize(): number {
+    return this.defaultBatchSize;
+  }
+
+  private async runBatch<T extends object>(
+    entities: T[],
+    entityClass: new () => T,
+    options: BatchOptions,
+    executeFn: (chunk: T[], metadata: EntityMetadata) => Promise<T[]>
+  ): Promise<BatchResult<T> | SimpleBatchResult<T>> {
     const startTime = Date.now();
     const metadata = this.getEntityMetadata(entityClass);
     const {
@@ -295,14 +156,7 @@ export class BatchOperations {
       returnDetailedResults = false
     } = options;
 
-    if (entities.length === 0) {
-      return this.createEmptyResult<T>(
-        returnDetailedResults,
-        startTime
-      ) as unknown as BatchOptions['returnDetailedResults'] extends true
-        ? BatchResult<T>
-        : SimpleBatchResult<T>;
-    }
+    if (entities.length === 0) return this.emptyResult<T>(returnDetailedResults, startTime);
 
     const successful: T[] = [];
     const failed: Array<{ entity: T; error: Error }> = [];
@@ -312,26 +166,20 @@ export class BatchOperations {
     for (const chunk of chunks) {
       try {
         await this.executor.inTxn(useTransactions, async () => {
-          const upsertedChunk = await this.executeBulkUpsert(chunk, metadata);
-          successful.push(...upsertedChunk);
+          successful.push(...(await executeFn(chunk, metadata)));
         });
         processed += chunk.length;
         onProgress?.(processed, entities.length);
       } catch (error) {
         if (continueOnError) {
-          for (const entity of chunk) {
-            failed.push({ entity, error: error as Error });
-          }
+          for (const entity of chunk) failed.push({ entity, error: error as Error });
           processed += chunk.length;
           onProgress?.(processed, entities.length);
-        } else {
-          throw error;
-        }
+        } else throw error;
       }
     }
 
     const durationMs = Date.now() - startTime;
-
     if (returnDetailedResults) {
       return {
         successful,
@@ -339,242 +187,25 @@ export class BatchOperations {
         totalProcessed: processed,
         durationMs,
         batchCount: chunks.length
-      } as unknown as BatchOptions['returnDetailedResults'] extends true
-        ? BatchResult<T>
-        : SimpleBatchResult<T>;
-    } else {
-      return {
-        entities: successful,
-        failedCount: failed.length,
-        durationMs
       };
     }
+    return { entities: successful, failedCount: failed.length, durationMs };
   }
 
-  /**
-   * Execute optimized bulk insert using VALUES clause or provider-specific bulk insert.
-   */
-  private async executeBulkInsert<T extends object>(
-    entities: T[],
-    metadata: EntityMetadata
-  ): Promise<T[]> {
-    // Try to use provider-specific bulk insert if available
-    if (this.provider.insertMany && entities.length > 1 && metadata.target) {
-      // Use database-specific bulk operations if supported
-      return await this.provider.insertMany(entities, metadata.target);
-    }
-
-    // Build bulk INSERT with VALUES clause
-    const columns = metadata.columns.filter(
-      (col) =>
-        !col.isGenerated &&
-        entities.some(
-          (entity) => (entity as Record<string, unknown>)[col.propertyName] !== undefined
-        )
-    );
-
-    if (columns.length === 0) {
-      throw new Error('No insertable columns found');
-    }
-
-    const columnNames = columns.map((col) => col.columnName || col.propertyName);
-    const placeholders: string[] = [];
-    const allParams: SqlParameter[] = [];
-
-    for (let i = 0; i < entities.length; i++) {
-      const entity = entities[i];
-      const entityPlaceholders: string[] = [];
-
-      for (const column of columns) {
-        const value = (entity as Record<string, unknown>)[column.propertyName] as SqlParameter;
-        entityPlaceholders.push('?');
-        allParams.push(value);
-      }
-
-      placeholders.push(`(${entityPlaceholders.join(', ')})`);
-    }
-
-    const sql = `
-      INSERT INTO ${metadata.tableName} (${columnNames.join(', ')})
-      VALUES ${placeholders.join(', ')}
-    `;
-
-    await this.provider.executeNonQuery(sql, allParams);
-    return entities;
-  }
-
-  /**
-   * Execute optimized bulk update using CASE statements or batch operations.
-   */
-  private async executeBulkUpdate<T extends object>(
-    entities: T[],
-    metadata: EntityMetadata
-  ): Promise<T[]> {
-    // Try provider-specific bulk update
-    if (this.provider.updateMany && entities.length > 1 && metadata.target) {
-      return await this.provider.updateMany(entities, metadata.target);
-    }
-
-    if (!metadata.primaryKeys) {
-      throw new Error(`No primary keys defined for entity ${metadata.target?.name ?? 'Unknown'}`);
-    }
-
-    // Build batch update statements
-    const primaryKeyColumn = metadata.columns.find((col) =>
-      metadata.primaryKeys!.includes(col.propertyName)
-    );
-
-    if (!primaryKeyColumn) {
-      throw new Error(`No primary key found for entity ${metadata.target?.name ?? 'Unknown'}`);
-    }
-
-    const updateColumns = metadata.columns.filter(
-      (col) => !metadata.primaryKeys!.includes(col.propertyName) && !col.isGenerated
-    );
-
-    if (updateColumns.length === 0) {
-      return entities; // Nothing to update
-    }
-
-    if (!metadata.target) {
-      throw new Error('No target entity defined in metadata');
-    }
-
-    // Use individual updates within the transaction for better compatibility
-    for (const entity of entities) {
-      await this.provider.update(entity, metadata.target);
-    }
-
-    return entities;
-  }
-
-  /**
-   * Execute optimized bulk delete using IN clause.
-   */
-  private async executeBulkDelete<T extends object>(
-    entities: T[],
-    metadata: EntityMetadata
-  ): Promise<number> {
-    if (!metadata.primaryKeys) {
-      throw new Error(`No primary keys defined for entity ${metadata.target?.name ?? 'Unknown'}`);
-    }
-
-    const primaryKeyColumn = metadata.columns.find((col) =>
-      metadata.primaryKeys!.includes(col.propertyName)
-    );
-
-    if (!primaryKeyColumn) {
-      throw new Error(`No primary key found for entity ${metadata.target?.name ?? 'Unknown'}`);
-    }
-
-    const primaryKeyValues = entities
-      .map(
-        (entity) =>
-          (entity as Record<string, unknown>)[primaryKeyColumn.propertyName] as SqlParameter
-      )
-      .filter((value) => value !== undefined && value !== null);
-
-    if (primaryKeyValues.length === 0) {
-      return 0;
-    }
-
-    const placeholders = primaryKeyValues.map(() => '?').join(', ');
-    const sql = `
-      DELETE FROM ${metadata.tableName}
-      WHERE ${primaryKeyColumn.columnName || primaryKeyColumn.propertyName} IN (${placeholders})
-    `;
-
-    return await this.provider.executeNonQuery(sql, primaryKeyValues);
-  }
-
-  /**
-   * Execute bulk upsert using INSERT ... ON CONFLICT or provider-specific methods.
-   */
-  private async executeBulkUpsert<T extends object>(
-    entities: T[],
-    metadata: EntityMetadata
-  ): Promise<T[]> {
-    if (!metadata.target) {
-      throw new Error('No target entity defined in metadata');
-    }
-
-    // Use provider's upsertMany if available
-    if (this.provider.upsertMany && entities.length > 1) {
-      return await this.provider.upsertMany(entities, metadata.target);
-    }
-
-    // Fallback to individual upserts
-    const results: T[] = [];
-    for (const entity of entities) {
-      const result = await this.provider.upsert(entity, metadata.target);
-      results.push(result);
-    }
-
-    return results;
-  }
-
-  /**
-   * Split array into chunks of specified size for batch processing.
-   */
-  private chunkArray<T>(array: T[], chunkSize: number): T[][] {
-    const chunks: T[][] = [];
-    for (let i = 0; i < array.length; i += chunkSize) {
-      chunks.push(array.slice(i, i + chunkSize));
-    }
-    return chunks;
-  }
-
-  /**
-   * Get entity metadata with validation.
-   */
   private getEntityMetadata(entityClass: Function): EntityMetadata {
     const metadata = MetadataStorage.getEntity(entityClass);
-    if (!metadata) {
-      throw new Error(`No metadata found for entity ${entityClass.name}`);
-    }
+    if (!metadata) throw new Error(`No metadata found for entity ${entityClass.name}`);
     return metadata;
   }
 
-  /**
-   * Create empty result based on return type.
-   */
-  private createEmptyResult<T>(
+  private emptyResult<T>(
     returnDetailedResults: boolean,
     startTime: number
   ): BatchResult<T> | SimpleBatchResult<T> {
     const durationMs = Date.now() - startTime;
-
     if (returnDetailedResults) {
-      return {
-        successful: [],
-        failed: [],
-        totalProcessed: 0,
-        durationMs,
-        batchCount: 0
-      };
-    } else {
-      return {
-        entities: [],
-        failedCount: 0,
-        durationMs
-      };
+      return { successful: [], failed: [], totalProcessed: 0, durationMs, batchCount: 0 };
     }
-  }
-
-  /**
-   * Set default batch size for operations.
-   */
-  setDefaultBatchSize(size: number): void {
-    if (size <= 0) {
-      throw new Error('Batch size must be greater than 0');
-    }
-    this.defaultBatchSize = size;
-  }
-
-  /**
-   * Get current default batch size.
-   */
-  getDefaultBatchSize(): number {
-    return this.defaultBatchSize;
+    return { entities: [], failedCount: 0, durationMs };
   }
 }
