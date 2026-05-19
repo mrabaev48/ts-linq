@@ -2,7 +2,7 @@ import { Column, Entity, PrimaryKey } from '@ts-linq/core';
 import { DbContext } from '@ts-linq/orm';
 import { sampleUsers } from '@ts-linq/testkits';
 
-import { setupTestDatabase, teardownTestDatabase } from '../../src/setup';
+import { dropTables, setupTestDatabase, teardownTestDatabase } from '../../src/setup';
 
 @Entity({ name: 'users' })
 class User {
@@ -15,10 +15,10 @@ class User {
   @Column()
   email!: string;
 
-  @Column()
+  @Column({ type: 'number' })
   age!: number;
 
-  @Column()
+  @Column({ type: 'boolean', name: 'is_active' })
   isActive!: boolean;
 }
 
@@ -31,6 +31,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
   'E2E CRUD Operations - %s',
   (providerName) => {
     let harness: any;
+
     let provider: any;
     let context: TestDbContext;
 
@@ -47,7 +48,8 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       if (process.env.SKIP_DB_TESTS === '1') {
         return;
       }
-      await (context as any)?.dropDatabase?.();
+      await dropTables(provider, ['users']);
+      await context.dispose();
       await teardownTestDatabase(harness);
     });
 
@@ -78,8 +80,11 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
       const userSet = context.set(User);
 
-      // Insert test data (isolated for this test)
-      for (const userData of sampleUsers) {
+      // Strip id (autoIncrement — let DB assign) and createdAt (not a mapped column)
+      for (const s of sampleUsers) {
+        const userData: any = { ...s };
+        delete userData.id;
+        delete userData.createdAt;
         const user = Object.assign(new User(), userData);
         userSet.add(user);
       }
@@ -96,7 +101,6 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
       const userSet = context.set(User);
 
-      // Create user first (isolated)
       const user = new User();
       user.name = 'Original Name';
       user.email = 'original@example.com';
@@ -105,7 +109,6 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       userSet.add(user);
       await context.saveChanges();
 
-      // Update
       user.name = 'Updated Name';
       user.age = 35;
       userSet.update(user);
@@ -123,7 +126,6 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
       const userSet = context.set(User);
 
-      // Create user first (isolated)
       const user = new User();
       user.name = 'To Delete';
       user.email = 'delete@example.com';
@@ -138,7 +140,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       await context.saveChanges();
 
       const finalCount = await userSet.count();
-      expect(finalCount).toBe(initialCount - 1);
+      expect(Number(finalCount)).toBe(Number(initialCount) - 1);
     });
 
     it('should filter users with where clause', async () => {
@@ -147,8 +149,27 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
+
+      const active = new User();
+      active.name = 'Active User';
+      active.email = 'active@example.com';
+      active.age = 30;
+      active.isActive = true;
+      userSet.add(active);
+
+      const inactive = new User();
+      inactive.name = 'Inactive User';
+      inactive.email = 'inactive@example.com';
+      inactive.age = 25;
+      inactive.isActive = false;
+      userSet.add(inactive);
+
+      await context.saveChanges();
+
       const activeUsers = await userSet.where((u) => u.isActive === true).toArray();
 
+      expect(activeUsers.length).toBe(1);
+      expect(activeUsers[0].name).toBe('Active User');
       expect(activeUsers.every((u) => u.isActive)).toBe(true);
     });
 
@@ -158,11 +179,23 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
+
+      for (const name of ['Charlie', 'Alice', 'Bob']) {
+        const u = new User();
+        u.name = name;
+        u.email = `${name.toLowerCase()}@example.com`;
+        u.age = 30;
+        u.isActive = true;
+        userSet.add(u);
+      }
+      await context.saveChanges();
+
       const sortedUsers = await userSet.orderBy('name').toArray();
 
       for (let i = 1; i < sortedUsers.length; i++) {
         expect(sortedUsers[i].name >= sortedUsers[i - 1].name).toBe(true);
       }
+      expect(sortedUsers[0].name).toBe('Alice');
     });
 
     it('should paginate users', async () => {
@@ -171,11 +204,23 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       }
 
       const userSet = context.set(User);
-      const page1 = await userSet.skip(0).take(2).toArray();
-      const page2 = await userSet.skip(2).take(2).toArray();
 
-      expect(page1).toHaveLength(Math.min(2, await userSet.count()));
-      expect(page1[0].id).not.toBe(page2[0]?.id);
+      for (let i = 1; i <= 5; i++) {
+        const u = new User();
+        u.name = `User${i}`;
+        u.email = `user${i}@example.com`;
+        u.age = 20 + i;
+        u.isActive = true;
+        userSet.add(u);
+      }
+      await context.saveChanges();
+
+      const page1 = await userSet.orderBy('id').skip(0).take(2).toArray();
+      const page2 = await userSet.orderBy('id').skip(2).take(2).toArray();
+
+      expect(page1).toHaveLength(2);
+      expect(page2).toHaveLength(2);
+      expect(page1[0].id).not.toBe(page2[0].id);
     });
   }
 );
