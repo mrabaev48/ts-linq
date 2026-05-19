@@ -447,7 +447,9 @@ export class DbSet<T extends object> {
 
   /** Upsert many entities directly via provider (no saveChanges() needed). */
   public async upsertMany(entities: T[]): Promise<T[]> {
-    return this._provider.upsertMany<T>(entities, this._entityClass);
+    const result = await this._provider.upsertMany<T>(entities, this._entityClass);
+    this.invalidateCountCache();
+    return result;
   }
 
   private invalidateCountCache(): void {
