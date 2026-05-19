@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+RUN npm install -g pnpm@10.18.3
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY packages/ ./packages/
+
+RUN pnpm install --frozen-lockfile
+
+RUN pnpm build
+
+ENV SKIP_DB_TESTS=0
+
+CMD ["pnpm", "test:e2e"]
