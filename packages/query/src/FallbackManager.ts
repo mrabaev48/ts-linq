@@ -11,6 +11,7 @@ export interface ThrottleState {
  *
  * Extracted from Queryable to give fallback state a single home that is independently
  * testable and explicitly passed to QueryExecutor.
+ * @internal
  */
 export class FallbackManager<T> {
   readonly fallbacks: Array<QueryFallback<T>> = [];

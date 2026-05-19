@@ -2,7 +2,7 @@ import '@ts-linq/query'; // Import index to ensure extensions are loaded if they
 
 import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
 import { DbContext } from '@ts-linq/orm';
-import { MemoryFallback } from '@ts-linq/query';
+import { MemoryFallback } from '@ts-linq/query/internal';
 import { TestProvider } from '@ts-linq/testkits';
 import { DatabaseError } from '@ts-linq/types';
 

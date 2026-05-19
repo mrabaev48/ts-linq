@@ -2,6 +2,7 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityCacheLike, PerformanceOptions } from '@ts-linq/types';
 
+/** @internal */
 export class RowMaterializer<T> {
   constructor(
     private readonly entityClass: new () => T,

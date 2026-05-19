@@ -14,6 +14,7 @@ const tsLinqTsJestConfig = {
       '@ts-linq/core': ['packages/core/dist'],
       '@ts-linq/orm': ['packages/orm/dist'],
       '@ts-linq/query': ['packages/query/dist'],
+      '@ts-linq/query/internal': ['packages/query/dist/internal'],
       '@ts-linq/ast': ['packages/ast/dist'],
       '@ts-linq/cache': ['packages/cache/dist'],
       '@ts-linq/cache-memcached': ['packages/cache-memcached/dist'],
@@ -48,6 +49,7 @@ const tsLinqModuleNameMapper = {
   '^@ts-linq/metadata$': '<rootDir>/packages/metadata/dist',
   '^@ts-linq/core$': '<rootDir>/packages/core/dist',
   '^@ts-linq/orm$': '<rootDir>/packages/orm/dist',
+  '^@ts-linq/query/internal$': '<rootDir>/packages/query/dist/internal',
   '^@ts-linq/query$': '<rootDir>/packages/query/dist',
   '^@ts-linq/cache$': '<rootDir>/packages/cache/dist',
   '^@ts-linq/cache-memcached$': '<rootDir>/packages/cache-memcached/dist',
@@ -111,6 +113,7 @@ function createPackageJestConfig(overrides) {
     roots: ['<rootDir>/tests'],
     testMatch: ['**/*.test.ts'],
     moduleNameMapper: {
+      '^@ts-linq/query/internal$': '<rootDir>/../query/src/internal',
       '^@ts-linq/(.*)$': '<rootDir>/../$1/src'
     },
     collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/index.ts'],

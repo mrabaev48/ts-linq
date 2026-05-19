@@ -7,6 +7,7 @@ export * from './PendingMetadataCollector';
 export * from './PrimaryKey';
 export { reflectGetOwnMetadata } from './reflectUtils';
 export * from './Relationships';
+export * from './resolveEntityRef';
 export * from './ValidIf';
 
 import { MetadataRegistry } from './MetadataRegistry';

@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
 import { DbContext } from '@ts-linq/orm';
-import type { CountCache, CountCacheEntry } from '@ts-linq/query';
+import type { CountCache, CountCacheEntry } from '@ts-linq/query/internal';
 import { TestProvider as MockProvider } from '@ts-linq/testkits';
 
 const run = !!process.env.RUN_DB_TESTS;

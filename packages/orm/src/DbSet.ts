@@ -1,6 +1,7 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { OrderedQueryable } from '@ts-linq/query';
 import { Queryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
 import type {
@@ -45,8 +46,8 @@ export class DbSet<T extends object> {
    *
    * @example
    * class AppDbContext extends DbContext {
-   *   users = new DbSet(User);
-   *   blogs = new DbSet(Blog);
+   *   users = this.defineSet(User);
+   *   blogs = this.defineSet(Blog);
    * }
    *
    * @param entityClass  Entity constructor (required — generics are erased at runtime).
@@ -85,7 +86,7 @@ export class DbSet<T extends object> {
     if (!this._provider) {
       throw new Error(
         `DbSet<${this._entityClass.name}> has no database context. ` +
-          `Declare it inside a DbContext subclass: \`${this._entityClass.name.toLowerCase()}s = new DbSet(${this._entityClass.name})\``
+          `Declare it inside a DbContext subclass: \`${this._entityClass.name.toLowerCase()}s = this.defineSet(${this._entityClass.name})\``
       );
     }
     return new Queryable<T>(
@@ -153,28 +154,18 @@ export class DbSet<T extends object> {
 
   // ─── Ordering ─────────────────────────────────────────────────────────────
 
-  /** Sorts ascending by property key or lambda selector. */
-  public orderBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => unknown)): Queryable<T> {
+  /** Sorts ascending by property key or lambda selector. Returns `OrderedQueryable` to enable `thenBy` chaining. */
+  public orderBy<K extends keyof T>(
+    keyOrSelector: K | ((entity: T) => T[keyof T])
+  ): OrderedQueryable<T> {
     return this.newQueryable().orderBy(keyOrSelector);
   }
 
-  /** Sorts descending by property key or lambda selector. */
+  /** Sorts descending by property key or lambda selector. Returns `OrderedQueryable` to enable `thenBy` chaining. */
   public orderByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => unknown)
-  ): Queryable<T> {
+    keyOrSelector: K | ((entity: T) => T[keyof T])
+  ): OrderedQueryable<T> {
     return this.newQueryable().orderByDescending(keyOrSelector);
-  }
-
-  /** Secondary ascending sort. Accepts property key or lambda selector. */
-  public thenBy<K extends keyof T>(keyOrSelector: K | ((entity: T) => unknown)): Queryable<T> {
-    return this.newQueryable().thenBy(keyOrSelector);
-  }
-
-  /** Secondary descending sort. Accepts property key or lambda selector. */
-  public thenByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => unknown)
-  ): Queryable<T> {
-    return this.newQueryable().thenByDescending(keyOrSelector);
   }
 
   // ─── Pagination ───────────────────────────────────────────────────────────
@@ -223,7 +214,7 @@ export class DbSet<T extends object> {
    * const posts = await ctx.blogs.include(b => b.posts).thenInclude(p => p.comments).toArray();
    */
   public include<K extends keyof T & string>(
-    keyOrSelector: K | ((entity: T) => unknown)
+    keyOrSelector: K | ((entity: T) => T[keyof T])
   ): Queryable<T> {
     return this.newQueryable().include(keyOrSelector);
   }
@@ -260,8 +251,8 @@ export class DbSet<T extends object> {
   /** Adds a type-safe INNER JOIN on an equality key pair. Accepts string keys or lambda selectors. */
   public innerJoinOn<TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => unknown),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => unknown),
+    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
+    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
     return this.newQueryable().innerJoinOn(otherCtor, leftKey, rightKey, alias);
@@ -270,8 +261,8 @@ export class DbSet<T extends object> {
   /** Adds a type-safe LEFT JOIN on an equality key pair. Accepts string keys or lambda selectors. */
   public leftJoinOn<TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => unknown),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => unknown),
+    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
+    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
     return this.newQueryable().leftJoinOn(otherCtor, leftKey, rightKey, alias);

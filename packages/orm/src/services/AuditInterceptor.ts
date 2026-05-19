@@ -12,6 +12,7 @@ interface EntityMeta {
 
 type GetMeta = (entityClass: Function) => EntityMeta | undefined;
 
+/** @internal */
 export class AuditInterceptor {
   constructor(
     private readonly audit: AuditOptions | undefined,
