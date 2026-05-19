@@ -6,6 +6,7 @@ export interface MemoryFallbackOptions<T> {
   refreshIntervalMs?: number;
 }
 
+/** @internal */
 export class MemoryFallback<T> implements QueryFallback<T> {
   public readonly label: string;
   private readonly dataSupplier: () => ReadonlyArray<T> | Promise<ReadonlyArray<T>>;

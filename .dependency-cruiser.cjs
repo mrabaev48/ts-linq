@@ -112,6 +112,19 @@ module.exports = {
         path: '^packages/[^/]+/src/(?!index\\.ts$)',
         pathNot: '^packages/$1/'
       }
+    },
+    {
+      name: 'no-query-internal-from-non-collaborators',
+      severity: 'error',
+      comment:
+        'Only packages/orm and packages/integration-tests may import @ts-linq/query/internal. All others must use the public @ts-linq/query entrypoint.',
+      from: {
+        path: '^packages/([^/]+)/src',
+        pathNot: '^packages/(orm|integration-tests)/'
+      },
+      to: {
+        path: '^packages/query/src/internal'
+      }
     }
   ],
 
