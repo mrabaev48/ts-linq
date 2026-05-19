@@ -145,8 +145,33 @@ export class MySqlProvider extends DatabaseProvider {
     const dialect = this.getDialect();
     if (!dialect.buildInsert) throw new Error('Dialect does not support buildInsert');
     const { sql, parameters } = dialect.buildInsert(entity as Record<string, unknown>, metadata);
-    await this.executeNonQuery(sql, parameters);
+    const insertId = await this.executeInsert(sql, parameters);
+    const genPkProp = this.findGeneratedPkProperty(metadata);
+    if (genPkProp && insertId) {
+      (entity as Record<string, unknown>)[genPkProp] = insertId;
+    }
     return entity;
+  }
+
+  private async executeInsert(
+    sql: string,
+    params: readonly SqlParameter[]
+  ): Promise<number | undefined> {
+    try {
+      if (!this.isConnected) await this.connect();
+      const pool = this.pool as MySqlPoolLike;
+      const [result] = await pool.execute(sql, params);
+      return (result as { insertId?: number } | undefined)?.insertId ?? undefined;
+    } catch (e: unknown) {
+      throw mapMySqlError(e);
+    }
+  }
+
+  private findGeneratedPkProperty(metadata: EntityMetadata): string | undefined {
+    if (!metadata.primaryKeys?.length) return undefined;
+    const pk = metadata.primaryKeys[0];
+    const col = metadata.columns.find((c) => c.propertyName === pk);
+    return col?.isGenerated ? pk : undefined;
   }
 
   public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
