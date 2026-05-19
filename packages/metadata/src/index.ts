@@ -9,6 +9,7 @@ export { reflectGetOwnMetadata } from './reflectUtils';
 export * from './Relationships';
 export * from './resolveEntityRef';
 export * from './ValidIf';
+export { DeleteBehavior } from '@ts-linq/types';
 
 import { MetadataRegistry } from './MetadataRegistry';
 
