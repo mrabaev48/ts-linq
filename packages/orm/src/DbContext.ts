@@ -332,30 +332,41 @@ export abstract class DbContext {
    * Increments the internal transaction depth counter so that subsequent
    * `saveChanges()` calls participate in this transaction instead of opening
    * their own.
+   *
+   * Nested calls (depth > 0) are silently absorbed — only the outermost call
+   * opens a real provider transaction. This mirrors EF Core's TransactionScope
+   * semantics and allows service-layer code to be transaction-agnostic.
    */
   public async beginTransaction(): Promise<void> {
-    await this._provider.beginTransaction();
+    if (this._transactionDepth === 0) {
+      await this._provider.beginTransaction();
+    }
     this._transactionDepth++;
   }
 
   /**
    * Commit the current transaction.
-   * Decrements the transaction depth counter.
+   * Decrements the transaction depth counter. The real provider commit is
+   * issued only when the outermost transaction (depth 1 → 0) is committed.
    */
   public async commitTransaction(): Promise<void> {
-    await this._provider.commitTransaction();
-    this._transactionDepth = Math.max(0, this._transactionDepth - 1);
-    try {
-      this._cacheCoordinator.invalidateOnCommit();
-      if (this._entityCache) {
-        safeCacheSize(this._provider.loggerRef, {
-          cache: 'entityL2',
-          size: this._entityCache.size?.() ?? -1,
-          provider: this._provider.providerLabel
-        });
+    if (this._transactionDepth <= 1) {
+      await this._provider.commitTransaction();
+      this._transactionDepth = 0;
+      try {
+        this._cacheCoordinator.invalidateOnCommit();
+        if (this._entityCache) {
+          safeCacheSize(this._provider.loggerRef, {
+            cache: 'entityL2',
+            size: this._entityCache.size?.() ?? -1,
+            provider: this._provider.providerLabel
+          });
+        }
+      } catch (e) {
+        // logInternalError('DbContext.commitTransaction.invalidateCaches', e);
       }
-    } catch (e) {
-      // logInternalError('DbContext.commitTransaction.invalidateCaches', e);
+    } else {
+      this._transactionDepth--;
     }
   }
 
