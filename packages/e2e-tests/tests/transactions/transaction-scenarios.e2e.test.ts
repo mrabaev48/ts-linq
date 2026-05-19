@@ -11,7 +11,7 @@ class Account {
   @Column()
   name!: string;
 
-  @Column()
+  @Column({ type: 'number' })
   balance!: number;
 }
 
@@ -62,7 +62,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
       const accounts = await accountSet.toArray();
       expect(accounts).toHaveLength(1);
-      expect(accounts[0].balance).toBe(1000);
+      expect(Number(accounts[0].balance)).toBe(1000);
     });
 
     it('should rollback transaction on error', async () => {
@@ -152,8 +152,8 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       const alice = accounts.find((a) => a.name === 'Alice');
       const bob = accounts.find((a) => a.name === 'Bob');
 
-      expect(alice?.balance).toBe(900);
-      expect(bob?.balance).toBe(600);
+      expect(Number(alice?.balance)).toBe(900);
+      expect(Number(bob?.balance)).toBe(600);
     });
   }
 );

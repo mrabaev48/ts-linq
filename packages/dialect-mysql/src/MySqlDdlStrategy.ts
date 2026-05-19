@@ -103,6 +103,7 @@ export class MySqlDdlStrategy {
     let def = `\`${column.columnName}\` ${this.mapTypeToMySql(column.type)}`;
     if (column.length) def += `(${column.length})`;
     if (!column.nullable) def += ' NOT NULL';
+    if (column.isGenerated) def += ' AUTO_INCREMENT';
     if ((column as { defaultExpression?: string }).defaultExpression) {
       def += ` DEFAULT ${(column as { defaultExpression?: string }).defaultExpression}`;
     } else if (column.defaultValue !== undefined) {

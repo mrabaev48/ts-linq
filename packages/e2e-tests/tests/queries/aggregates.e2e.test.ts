@@ -11,7 +11,7 @@ class AggItem {
   @Column()
   name!: string;
 
-  @Column()
+  @Column({ type: 'number' })
   value!: number;
 }
 
@@ -53,7 +53,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
   it('should return correct count()', async () => {
     if (process.env.SKIP_DB_TESTS === '1') return;
     const count = await context.set(AggItem).count();
-    expect(count).toBe(5);
+    expect(Number(count)).toBe(5);
   });
 
   it('should return true for any() when rows exist', async () => {
@@ -74,24 +74,24 @@ const run = process.env.SKIP_DB_TESTS !== '1';
   it('should return correct sum()', async () => {
     if (process.env.SKIP_DB_TESTS === '1') return;
     const total = await context.set(AggItem).sum('value');
-    expect(total).toBe(150);
+    expect(Number(total)).toBe(150);
   });
 
   it('should return correct min()', async () => {
     if (process.env.SKIP_DB_TESTS === '1') return;
     const minVal = await context.set(AggItem).min('value');
-    expect(minVal).toBe(10);
+    expect(Number(minVal)).toBe(10);
   });
 
   it('should return correct max()', async () => {
     if (process.env.SKIP_DB_TESTS === '1') return;
     const maxVal = await context.set(AggItem).max('value');
-    expect(maxVal).toBe(50);
+    expect(Number(maxVal)).toBe(50);
   });
 
   it('should return correct average()', async () => {
     if (process.env.SKIP_DB_TESTS === '1') return;
     const avg = await context.set(AggItem).average('value');
-    expect(avg).toBe(30);
+    expect(Number(avg)).toBe(30);
   });
 });

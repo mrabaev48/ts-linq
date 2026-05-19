@@ -11,7 +11,7 @@ module.exports = createPackageJestConfig({
       {
         tsconfig: '<rootDir>/tsconfig.json',
         astTransformers: {
-          before: [{ path: '<rootDir>/../transformer/dist/index.js' }]
+          before: [{ path: '<rootDir>/src/jest-transformer.js' }]
         }
       }
     ]

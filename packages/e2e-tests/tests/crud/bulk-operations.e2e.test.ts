@@ -11,7 +11,7 @@ class BulkItem {
   @Column()
   name!: string;
 
-  @Column()
+  @Column({ type: 'number' })
   quantity!: number;
 }
 
