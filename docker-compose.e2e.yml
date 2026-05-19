@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: testdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: test
+      MYSQL_PASSWORD: test
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: YourStrong@Passw0rd
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' -C"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  e2e-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      mssql:
+        condition: service_healthy
+    environment:
+      SKIP_DB_TESTS: "0"
+      POSTGRES_URL: postgres://test:test@postgres:5432/testdb
+      MYSQL_URL: mysql://test:test@mysql:3306/testdb
+      MSSQL_URL: "Server=mssql,1433;Database=testdb;User Id=sa;Password=YourStrong@Passw0rd;"
