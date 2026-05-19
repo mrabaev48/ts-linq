@@ -73,11 +73,23 @@ export async function setupTestDatabase(provider: 'postgresql' | 'mysql' | 'mssq
     }
   }
 
-  await harness.setup({ provider: dbProvider, autoConnect: true });
+  // autoConnect: false — context.ensureCreated() handles the single connect() call
+  await harness.setup({ provider: dbProvider, autoConnect: false });
 
   return { harness, provider: dbProvider };
 }
 
 export async function teardownTestDatabase(harness: DatabaseHarness) {
   await harness.teardown();
+}
+
+/**
+ * Drop tables in reverse dependency order to avoid FK constraint violations.
+ * Pass tables in definition order (parent first); they are dropped child-first.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function dropTables(provider: any, tableNames: string[]): Promise<void> {
+  for (const table of [...tableNames].reverse()) {
+    await provider.executeNonQuery(`DROP TABLE IF EXISTS ${table}`, []);
+  }
 }

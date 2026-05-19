@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryKey } from '@ts-linq/core';
 import { DbContext } from '@ts-linq/orm';
 
-import { setupTestDatabase, teardownTestDatabase } from '../../src/setup';
+import { dropTables, setupTestDatabase, teardownTestDatabase } from '../../src/setup';
 
 @Entity({ name: 'accounts' })
 class Account {
@@ -38,7 +38,8 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       if (process.env.SKIP_DB_TESTS === '1') {
         return;
       }
-      await (context as any)?.dropDatabase?.();
+      await dropTables(provider, ['accounts']);
+      await context.dispose();
       await teardownTestDatabase(harness);
     });
 
