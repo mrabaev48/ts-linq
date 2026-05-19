@@ -9,6 +9,7 @@ type ChangeForValidation = {
   originalValues?: object;
 };
 
+/** @internal */
 export class ChangeValidationService {
   private readonly translate?: (key: string, params?: Record<string, unknown>) => string;
   private readonly audit?: AuditOptions;

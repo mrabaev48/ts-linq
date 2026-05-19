@@ -7,7 +7,7 @@ import { LazyLoadingProxy } from '@ts-linq/core';
 import { EntityCache } from '@ts-linq/core';
 import { type MetadataRegistry, MetadataStorage, reflectGetOwnMetadata } from '@ts-linq/metadata';
 import { safeCacheSize } from '@ts-linq/metrics-safe';
-import { EnhancedSqlCache, InMemoryCountCache } from '@ts-linq/query';
+import { EnhancedSqlCache, InMemoryCountCache } from '@ts-linq/query/internal';
 import type { GlobalFilter, PerformanceOptions, Result, SoftDeleteOptions } from '@ts-linq/types';
 import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';

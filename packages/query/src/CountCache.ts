@@ -7,7 +7,10 @@ export interface CountCacheEntry {
   ts: number;
 }
 
-/** In-memory CountCache with TTL and max size (FIFO eviction). */
+/**
+ * In-memory CountCache with TTL and max size (FIFO eviction).
+ * @internal
+ */
 export class InMemoryCountCache implements CountCache {
   private store = new Map<string, CountCacheEntry>();
   constructor(

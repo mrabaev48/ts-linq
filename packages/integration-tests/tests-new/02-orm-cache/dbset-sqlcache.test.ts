@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
 import { DbContext } from '@ts-linq/orm';
-import { EnhancedSqlCache } from '@ts-linq/query';
+import { EnhancedSqlCache } from '@ts-linq/query/internal';
 import { TestProvider as MockProvider } from '@ts-linq/testkits';
 
 @Entity()
