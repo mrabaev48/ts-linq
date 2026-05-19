@@ -46,8 +46,8 @@ export class DbSet<T extends object> {
    *
    * @example
    * class AppDbContext extends DbContext {
-   *   users = new DbSet(User);
-   *   blogs = new DbSet(Blog);
+   *   users = this.defineSet(User);
+   *   blogs = this.defineSet(Blog);
    * }
    *
    * @param entityClass  Entity constructor (required — generics are erased at runtime).
@@ -86,7 +86,7 @@ export class DbSet<T extends object> {
     if (!this._provider) {
       throw new Error(
         `DbSet<${this._entityClass.name}> has no database context. ` +
-          `Declare it inside a DbContext subclass: \`${this._entityClass.name.toLowerCase()}s = new DbSet(${this._entityClass.name})\``
+          `Declare it inside a DbContext subclass: \`${this._entityClass.name.toLowerCase()}s = this.defineSet(${this._entityClass.name})\``
       );
     }
     return new Queryable<T>(
