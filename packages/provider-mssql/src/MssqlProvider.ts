@@ -93,20 +93,37 @@ export class MssqlProvider extends DatabaseProvider {
       this.ownsPool = false;
     } else {
       const mssql = safeRequireMssql();
-      // Map generic pool options into mssql.ConnectionPool config if available
       const opts = this.poolOptions || {};
-      const config: Record<string, unknown> = { connectionString: this.connectionString };
-      if (typeof opts.max === 'number') config.pool = { ...(config.pool as object), max: opts.max };
-      if (typeof opts.min === 'number') config.pool = { ...(config.pool as object), min: opts.min };
-      if (typeof opts.idleTimeoutMs === 'number')
-        config.pool = { ...(config.pool as object), idleTimeoutMillis: opts.idleTimeoutMs };
+      // Build a proper mssql config object — ConnectionPool does not accept a
+      // `connectionString` key; it expects { server, user, password, options: { port, ... } }
+      const mssqlConfig: Record<string, unknown> = {
+        server: this.config.server,
+        user: this.config.user,
+        password: this.config.password,
+        database: this.config.database,
+        options: {
+          port: this.config.port ?? 1433,
+          encrypt: this.config.encrypt ?? false,
+          trustServerCertificate: this.config.trustServerCertificate ?? true,
+          ...(this.config.instanceName ? { instanceName: this.config.instanceName } : {}),
+          ...(this.config.domain ? { domain: this.config.domain } : {}),
+          ...(this.config.applicationName ? { appName: this.config.applicationName } : {}),
+          ...(this.config.options ?? {})
+        }
+      };
+      if (typeof opts.connectionTimeoutMs === 'number') {
+        mssqlConfig.connectionTimeout = opts.connectionTimeoutMs;
+      }
+      const pool: Record<string, unknown> = {};
+      if (typeof opts.max === 'number') pool.max = opts.max;
+      if (typeof opts.min === 'number') pool.min = opts.min;
+      if (typeof opts.idleTimeoutMs === 'number') pool.idleTimeoutMillis = opts.idleTimeoutMs;
       if (typeof opts.acquireTimeoutMs === 'number')
-        config.pool = { ...(config.pool as object), acquireTimeoutMillis: opts.acquireTimeoutMs };
-      if (typeof opts.connectionTimeoutMs === 'number')
-        config.connectionTimeout = opts.connectionTimeoutMs;
+        pool.acquireTimeoutMillis = opts.acquireTimeoutMs;
+      if (Object.keys(pool).length > 0) mssqlConfig.pool = pool;
       this.pool = new (
         mssql as unknown as { ConnectionPool: new (cfg: unknown) => MssqlConnectionPoolLike }
-      ).ConnectionPool(config);
+      ).ConnectionPool(mssqlConfig);
       await this.pool.connect();
       this.ownsPool = true;
     }
