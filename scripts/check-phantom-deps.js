@@ -46,7 +46,13 @@ for (const pkg of packages) {
   ]);
 
   for (const alias of aliases) {
-    const pkgName = alias.replace(/\/\*$/, '');
+    // Strip trailing glob: @ts-linq/query/* -> @ts-linq/query
+    // Normalize sub-paths of scoped packages: @ts-linq/query/internal -> @ts-linq/query
+    let pkgName = alias.replace(/\/\*$/, '');
+    const parts = pkgName.split('/');
+    if (parts[0].startsWith('@') && parts.length > 2) {
+      pkgName = parts[0] + '/' + parts[1];
+    }
     if (!declared.has(pkgName)) {
       console.error(
         `[phantom-dep] packages/${pkg}: tsconfig path alias "${alias}" is not declared in package.json`

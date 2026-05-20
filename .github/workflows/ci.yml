@@ -1,36 +1,63 @@
 name: CI
+
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-test:
+  quality:
+    name: Type-check · Lint · Unit · Integration · Build · Arch
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [18.x, 20.x]
+
     steps:
       - uses: actions/checkout@v4
+
+      # pnpm version is taken from the "packageManager" field in package.json
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
-          cache: npm
-      - run: npm ci
-      - name: Config validation
-        run: node packages/cli/dist/cli.js config:check || true
+          node-version: 20
+          cache: pnpm
+
+      - name: Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build first so that every package's dist/ and .d.ts files exist
+      # before typecheck and tests try to resolve cross-package imports.
+      - name: Build
+        run: pnpm build
+
+      - name: Type-check
+        run: pnpm typecheck
+
       - name: Lint
-        run: npm run lint
-      - name: Phantom dependency check
-        run: node scripts/check-phantom-deps.js
+        run: pnpm lint
+
       - name: Unit tests
-        run: npm run test --workspaces --if-present
-      - name: Integration DB tests (containers)
-        env:
-          RUN_DB_TESTS: '1'
-          PERF_GUARD_MS: '250'
-        run: npm run test:db:all
-      - name: Size budgets
-        run: npm run size:bundle
-      - name: Enforce bundle size thresholds
-        run: node size-tests/check-thresholds.mjs
+        run: pnpm test:unit
+
+      - name: Integration tests
+        run: pnpm test:integration
+
+      - name: Architecture — dependency rules
+        run: pnpm arch:deps
+
+      - name: Architecture — circular dependencies
+        run: pnpm arch:cycles
+
+      - name: Architecture — phantom dependencies
+        run: pnpm arch:phantom

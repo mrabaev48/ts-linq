@@ -1,3 +1,8 @@
+import type {
+  InterceptionResult,
+  ISaveChangesInterceptor,
+  SaveChangesEventData
+} from '@ts-linq/core';
 import type { AuditOptions } from '@ts-linq/types';
 
 import type { AuditColumnNames } from '../types';
@@ -13,7 +18,7 @@ interface EntityMeta {
 type GetMeta = (entityClass: Function) => EntityMeta | undefined;
 
 /** @internal */
-export class AuditInterceptor {
+export class AuditInterceptor implements ISaveChangesInterceptor {
   constructor(
     private readonly audit: AuditOptions | undefined,
     private readonly getMeta: GetMeta
@@ -72,5 +77,27 @@ export class AuditInterceptor {
 
   private hasProperty(meta: EntityMeta, propertyName: string): boolean {
     return meta.columns.some((c) => c.propertyName === propertyName);
+  }
+
+  // ── ISaveChangesInterceptor ──────────────────────────────────────────────
+
+  /**
+   * Applies audit timestamps/user fields to all pending entries before DML.
+   * Iterates the SaveChangesEventData entries and delegates to the existing
+   * per-entity `apply()` logic.
+   */
+  savingChanges(
+    ev: SaveChangesEventData,
+    result: InterceptionResult<number>
+  ): InterceptionResult<number> {
+    if (!this.audit?.enabled) return result;
+    for (const entry of ev.entries ?? []) {
+      this.apply({
+        entity: entry.entity as Record<string, unknown>,
+        entityClass: entry.entityClass,
+        state: entry.state
+      });
+    }
+    return result;
   }
 }
