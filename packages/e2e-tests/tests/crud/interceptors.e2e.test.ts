@@ -52,8 +52,8 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
     afterEach(async () => {
       if (process.env.SKIP_DB_TESTS === '1') return;
-      await ctx?.dispose?.();
       await dropTables(provider, ['ic_e2e_items']);
+      await ctx?.dispose?.();
       await teardownTestDatabase(harness);
     });
 
