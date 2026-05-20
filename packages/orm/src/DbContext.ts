@@ -18,6 +18,7 @@ import { InsertCommand } from './commands/InsertCommand';
 import { UpdateCommand } from './commands/UpdateCommand';
 import { DbSet } from './DbSet';
 import type { DbSetContext } from './DbSetContext';
+import { ModelBuilder } from './ModelBuilder';
 import { AuditInterceptor } from './services/AuditInterceptor';
 import { CacheCoordinator } from './services/CacheCoordinator';
 import { ChangeValidationService } from './services/ChangeValidationService';
@@ -172,7 +173,22 @@ export abstract class DbContext {
       this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
     }
 
+    const modelBuilder = new ModelBuilder(this._registry);
+    this.onModelCreating(modelBuilder);
+    modelBuilder._finalize();
+
     this.initializeDbSets();
+  }
+
+  /**
+   * Override in subclasses to apply fluent model configuration.
+   * Mirrors EF Core's DbContext.OnModelCreating(ModelBuilder).
+   *
+   * Called once in the constructor after decorator metadata is settled.
+   * Fluent configuration applied here overrides decorator-defined metadata.
+   */
+  protected onModelCreating(_modelBuilder: ModelBuilder): void {
+    // Default: no-op.
   }
 
   /**

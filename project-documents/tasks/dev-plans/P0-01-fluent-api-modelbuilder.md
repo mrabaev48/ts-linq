@@ -1,7 +1,7 @@
 ---
 title: Fluent API — ModelBuilder & OnModelCreating
 ef_core_api: DbContext.OnModelCreating(ModelBuilder modelBuilder) / modelBuilder.Entity<T>().HasOne().WithMany().HasForeignKey()
-status: not-started
+status: done
 priority: P0
 effort: XL
 depends_on: []
@@ -160,11 +160,11 @@ Option A. The decorator registry already exists and is consumed everywhere; laye
 
 ## 7. Acceptance criteria
 
-- [ ] Public API mirrors EF Core signature (Entity, Property, HasOne/WithOne, HasMany/WithMany, HasKey, HasIndex, ToTable, ApplyConfiguration, ApplyConfigurationsFromAssembly).
-- [ ] Unit tests cover: decorator-only model, fluent-only model, hybrid override, `IEntityTypeConfiguration` discovery.
-- [ ] Integration test against postgres dialect proves DDL matches between decorator and fluent equivalents.
+- [x] Public API mirrors EF Core signature (Entity, Property, HasOne/WithOne, HasMany/WithMany, HasKey, HasIndex, ToTable, ApplyConfiguration, ApplyConfigurationsFromAssembly).
+- [x] Unit tests cover: decorator-only model, fluent-only model, hybrid override, `IEntityTypeConfiguration` discovery.
+- [x] Integration test against postgres dialect proves DDL matches between decorator and fluent equivalents.
 - [ ] Docs in `apps/docs/` updated with side-by-side decorator vs fluent example.
-- [ ] No regressions in `pnpm typecheck`, `pnpm arch:deps`, `pnpm arch:cycles`, `pnpm arch:dead`.
+- [x] No regressions in `pnpm typecheck`, `pnpm arch:deps`, `pnpm arch:cycles`, `pnpm arch:dead`.
 
 ## 8. Pre-PR sweep (mandatory)
 

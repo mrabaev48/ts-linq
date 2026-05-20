@@ -40,7 +40,8 @@ describe('Type Exports', () => {
       'ok',
       'err',
       'LoadingStrategy',
-      'EntityState'
+      'EntityState',
+      'DeleteBehavior'
     ];
 
     expect(exportedKeys.sort()).toEqual(expectedExports.sort());
