@@ -1,7 +1,7 @@
 ---
 title: AsNoTracking, AsTracking, identity resolution and QueryTrackingBehavior
 ef_core_api: IQueryable<T>.AsNoTracking() / AsTracking() / AsNoTrackingWithIdentityResolution() and ChangeTracker.QueryTrackingBehavior
-status: not-started
+status: done
 priority: P0
 effort: M
 depends_on: []
