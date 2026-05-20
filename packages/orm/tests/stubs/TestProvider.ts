@@ -50,13 +50,16 @@ export class TestProvider extends DatabaseProvider {
   private readonly seq: Map<string, number> = new Map();
   private readonly dialect = new TestDialect();
 
-  public async connect(): Promise<void> {
+  public override async connect(): Promise<void> {
     this.isConnected = true;
   }
 
-  public async disconnect(): Promise<void> {
+  public override async disconnect(): Promise<void> {
     this.isConnected = false;
   }
+
+  protected override async doConnect(): Promise<void> {}
+  protected override async doDisconnect(): Promise<void> {}
 
   public async createTable(entityMetadata: EntityMetadata): Promise<void> {
     await this.beforeExecute(`CREATE TABLE ${entityMetadata.tableName}`, []);
@@ -342,15 +345,18 @@ export class TestProvider extends DatabaseProvider {
     return table.length;
   }
 
-  public async beginTransaction(): Promise<void> {
+  public override async beginTransaction(): Promise<void> {
     this.inTransaction = true;
   }
-  public async commitTransaction(): Promise<void> {
+  public override async commitTransaction(): Promise<void> {
     this.inTransaction = false;
   }
-  public async rollbackTransaction(): Promise<void> {
+  public override async rollbackTransaction(): Promise<void> {
     this.inTransaction = false;
   }
+  protected override async doBeginTransaction(): Promise<void> {}
+  protected override async doCommitTransaction(): Promise<void> {}
+  protected override async doRollbackTransaction(): Promise<void> {}
 
   private async ensureTable(meta: EntityMetadata): Promise<void> {
     if (!this.data.has(meta.tableName)) {

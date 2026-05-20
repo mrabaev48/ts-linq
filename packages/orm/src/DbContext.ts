@@ -1,7 +1,8 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { LoadingOptions } from '@ts-linq/core';
 import type { DbContextOptions, DiagnosticsOptions, MemoryProfilerLike } from '@ts-linq/core';
-import { EntityLoader } from '@ts-linq/core';
+import type { SaveChangesEventData } from '@ts-linq/core';
+import { EntityLoader, InterceptionResult } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
 import { LazyLoadingProxy } from '@ts-linq/core';
 import { EntityCache } from '@ts-linq/core';
@@ -19,6 +20,7 @@ import { UpdateCommand } from './commands/UpdateCommand';
 import { DatabaseFacade } from './DatabaseFacade';
 import { DbSet } from './DbSet';
 import type { DbSetContext } from './DbSetContext';
+import { InterceptorRegistry } from './interceptors/InterceptorRegistry';
 import { ModelBuilder } from './ModelBuilder';
 import { AuditInterceptor } from './services/AuditInterceptor';
 import { CacheCoordinator } from './services/CacheCoordinator';
@@ -68,6 +70,7 @@ export abstract class DbContext {
   private _cacheCoordinator!: CacheCoordinator;
   private _auditInterceptor!: AuditInterceptor;
   private _softDeleteInterceptor!: SoftDeleteInterceptor;
+  private _interceptorRegistry!: InterceptorRegistry;
   private _transactionDepth = 0;
   private _database!: DatabaseFacade;
 
@@ -157,6 +160,24 @@ export abstract class DbContext {
       },
       (c) => this._cacheCoordinator.updateEntry(c)
     );
+
+    // Build InterceptorRegistry from built-in + user-supplied interceptors.
+    // Built-in interceptors are added only when their respective feature is enabled.
+    const builtIn: object[] = [];
+    if (options.audit?.enabled) builtIn.push(this._auditInterceptor);
+    if (options.softDelete?.enabled) builtIn.push(this._softDeleteInterceptor);
+    this._interceptorRegistry = new InterceptorRegistry([
+      ...builtIn,
+      ...(options.interceptors ?? [])
+    ]);
+
+    // Configure provider with partitioned interceptors.
+    this._provider.configureInterceptors({
+      command: this._interceptorRegistry.forEachCommand(),
+      connection: this._interceptorRegistry.forEachConnection(),
+      transaction: this._interceptorRegistry.forEachTransaction(),
+      materialization: this._interceptorRegistry.forEachMaterialization()
+    });
 
     // Propagate query performance analysis options into provider if available
     const analysis = options.performance?.analysis;
@@ -314,6 +335,23 @@ export abstract class DbContext {
       state: c.state
     }));
 
+    // Build event data for the ISaveChangesInterceptor pipeline.
+    const entries = changes.map((c) => ({
+      entity: c.entity,
+      entityClass: c.entityClass,
+      state: c.state
+    }));
+    const eventData: SaveChangesEventData = { entityCount: entries.length, entries };
+
+    // savingChanges — interceptors may short-circuit the entire operation
+    const saveChangesInterceptors = this._interceptorRegistry.forEachSaveChanges();
+    let suppressResult = InterceptionResult.NoResult<number>();
+    for (const ic of saveChangesInterceptors) {
+      const r = await ic.savingChanges?.(eventData, suppressResult);
+      if (r) suppressResult = r;
+      if (suppressResult.isSuppressed) return suppressResult.result ?? 0;
+    }
+
     const ownTransaction = !this.isInTransaction;
     if (ownTransaction) {
       await this._provider.beginTransaction();
@@ -322,7 +360,6 @@ export abstract class DbContext {
       let affectedRows = 0;
       for (const change of changes) {
         const normalized = this.normalizeChange(change);
-        this._auditInterceptor.apply(normalized);
         affectedRows += await this.processChange(normalized);
       }
       if (ownTransaction) {
@@ -330,10 +367,21 @@ export abstract class DbContext {
       }
       this._cacheCoordinator.invalidateAfterMutation(normalizedForInvalidation);
       this._changeTracker.acceptAllChanges();
-      return affectedRows;
+
+      // savedChanges — interceptors may adjust the final row count
+      let result = affectedRows;
+      for (const ic of saveChangesInterceptors) {
+        const r = await ic.savedChanges?.(eventData, result);
+        if (r !== undefined) result = r;
+      }
+      return result;
     } catch (error) {
       if (ownTransaction) {
         await this._provider.rollbackTransaction();
+      }
+      // saveChangesFailed — notify interceptors of the failure
+      for (const ic of saveChangesInterceptors) {
+        await ic.saveChangesFailed?.(eventData, error as Error);
       }
       throw error;
     }

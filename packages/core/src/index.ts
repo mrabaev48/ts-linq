@@ -80,3 +80,21 @@ export * from './utils/RetryPolicies';
 export * from './utils/SqlHelper';
 // export * from './utils/InternalLogger'; // Removed
 export * from './utils/PrometheusEndpoint';
+
+// Interceptors
+export type { IDbCommandInterceptor } from './interceptors/IDbCommandInterceptor';
+export type { IDbConnectionInterceptor } from './interceptors/IDbConnectionInterceptor';
+export type { IDbTransactionInterceptor } from './interceptors/IDbTransactionInterceptor';
+export type { IMaterializationInterceptor } from './interceptors/IMaterializationInterceptor';
+export { InterceptionResult } from './interceptors/InterceptionResult';
+export type { ISaveChangesInterceptor } from './interceptors/ISaveChangesInterceptor';
+export type {
+  CommandEventData,
+  ConnectionEventData,
+  DbCommand,
+  DbReader,
+  MaterializationInterceptionData,
+  SaveChangesEntry,
+  SaveChangesEventData,
+  TransactionEventData
+} from './interceptors/types';

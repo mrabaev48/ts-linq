@@ -108,9 +108,14 @@ class MinimalProvider extends DatabaseProvider {
   protected async doExecuteNonQuery(): Promise<number> {
     return 0;
   }
-  async beginTransaction() {}
-  async commitTransaction() {}
-  async rollbackTransaction() {}
+  public override async beginTransaction(): Promise<void> {}
+  public override async commitTransaction(): Promise<void> {}
+  public override async rollbackTransaction(): Promise<void> {}
+  protected override async doConnect(): Promise<void> {}
+  protected override async doDisconnect(): Promise<void> {}
+  protected override async doBeginTransaction(): Promise<void> {}
+  protected override async doCommitTransaction(): Promise<void> {}
+  protected override async doRollbackTransaction(): Promise<void> {}
 }
 
 describe('CLI - Codegen: GenerateEntityCommand', () => {
@@ -283,9 +288,14 @@ describe('CLI - Code Generation (tests-new)', () => {
     protected async doExecuteNonQuery(): Promise<number> {
       return 0;
     }
-    async beginTransaction() {}
-    async commitTransaction() {}
-    async rollbackTransaction() {}
+    public override async beginTransaction(): Promise<void> {}
+    public override async commitTransaction(): Promise<void> {}
+    public override async rollbackTransaction(): Promise<void> {}
+    protected override async doConnect(): Promise<void> {}
+    protected override async doDisconnect(): Promise<void> {}
+    protected override async doBeginTransaction(): Promise<void> {}
+    protected override async doCommitTransaction(): Promise<void> {}
+    protected override async doRollbackTransaction(): Promise<void> {}
   }
   const provider: DatabaseProvider = new MinimalProvider();
 

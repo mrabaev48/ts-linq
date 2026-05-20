@@ -93,7 +93,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   /** Open a connection pool to MSSQL server. */
-  public async connect(): Promise<void> {
+  protected async doConnect(): Promise<void> {
     if (this.isConnected) return;
 
     if (this.config.pool) {
@@ -153,7 +153,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   /** Close transaction (if any) and dispose the pool. */
-  public async disconnect(): Promise<void> {
+  protected async doDisconnect(): Promise<void> {
     this.stopHealthChecks();
     if (this.tx) {
       try {
@@ -456,7 +456,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   /** Begin a database transaction. */
-  public async beginTransaction(): Promise<void> {
+  protected async doBeginTransaction(): Promise<void> {
     if (!this.isConnected) await this.connect();
     if (this.inTransaction) throw new Error('Transaction already in progress');
     const mssql = safeRequireMssql();
@@ -467,7 +467,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   /** Commit the current transaction. */
-  public async commitTransaction(): Promise<void> {
+  protected async doCommitTransaction(): Promise<void> {
     if (!this.inTransaction || !this.tx) throw new Error('No transaction in progress');
     await this.tx.commit();
     this.tx = null;
@@ -476,7 +476,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   /** Roll back the current transaction. */
-  public async rollbackTransaction(): Promise<void> {
+  protected async doRollbackTransaction(): Promise<void> {
     if (!this.inTransaction || !this.tx) throw new Error('No transaction in progress');
     const tx = this.tx;
     this.tx = null;

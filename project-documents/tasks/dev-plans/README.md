@@ -35,7 +35,7 @@ Blocks EF parity baseline. Required before any non-trivial EF Core → ts-linq m
 | P0-09 | [Cascade delete behaviors](./P0-09-cascade-delete-behaviors.md)             | `OnDelete(DeleteBehavior.{Cascade,Restrict,SetNull,ClientSetNull,NoAction,ClientCascade,ClientNoAction})`         | - [ ]  | M      | P0-01      |
 | P0-10 | [Concurrency tokens / RowVersion](./P0-10-concurrency-tokens-rowversion.md) | `IsConcurrencyToken`, `IsRowVersion`, `[Timestamp]`, `DbUpdateConcurrencyException`                               | - [ ]  | M      | P0-01      |
 | P0-11 | [Global query filters](./P0-11-global-query-filters.md)                     | `HasQueryFilter` (+ EF9 multiple named filters), `IgnoreQueryFilters`                                             | - [ ]  | M      | P0-01      |
-| P0-12 | [Interceptors](./P0-12-interceptors.md)                                     | `IDbCommandInterceptor`, `IDbConnectionInterceptor`, `ISaveChangesInterceptor`, `IMaterializationInterceptor`     | - [ ]  | L      | —          |
+| P0-12 | [Interceptors](./P0-12-interceptors.md)                                     | `IDbCommandInterceptor`, `IDbConnectionInterceptor`, `ISaveChangesInterceptor`, `IMaterializationInterceptor`     | - [x]  | L      | —          |
 | P0-13 | [HasData seeding](./P0-13-has-data-seeding.md)                              | `modelBuilder.Entity<T>().HasData(...)`                                                                           | - [ ]  | M      | P0-01      |
 | P0-14 | [Computed / default / check](./P0-14-computed-default-check.md)             | `HasDefaultValue(Sql)`, `HasComputedColumnSql`, `HasCheckConstraint`, `HasComment`                                | - [ ]  | M      | P0-01      |
 | P0-15 | [JSON columns](./P0-15-json-columns.md)                                     | `OwnsOne(..., b => b.ToJson())`, LINQ over JSON paths                                                             | - [ ]  | L      | P0-06      |
@@ -215,7 +215,7 @@ whose `depends_on` points into the current step.
 | P0-01 | Fluent API — ModelBuilder      | ✅ done   |
 | P0-02 | AsNoTracking / AsTracking      | ✅ done   |
 | P0-03 | FromSql / FromSqlInterpolated  | ✅ done   |
-| P0-12 | Interceptors                   | —         |
+| P0-12 | Interceptors                   | ✅ done   |
 | P1-18 | AsSplitQuery / AsSingleQuery   | —         |
 | P1-19 | Filtered Include               | —         |
 | P1-20 | Compiled queries               | —         |
