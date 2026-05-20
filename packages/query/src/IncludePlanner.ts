@@ -1,6 +1,6 @@
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { LoadingStrategy } from '@ts-linq/types';
+import { LoadingStrategy, QuerySplittingBehavior } from '@ts-linq/types';
 
 import { IncludeResolutionError } from './errors';
 import { resolveTargetCtor } from './includeUtils';
@@ -14,6 +14,14 @@ export class IncludePlanner<T> {
   /**
    * Populates eager-loaded relationships on the given entities.
    *
+   * @param entities           Root entities to populate.
+   * @param includes           Dot-separated include paths (e.g. `['posts', 'posts.comments']`).
+   * @param limit              When 1, skip loading (single-entity optimisation).
+   * @param splittingBehavior  Controls whether relationships are loaded via separate batched
+   *                           IN-queries (`SplitQuery`, default) or inlined (`SingleQuery`).
+   *                           Both modes currently use the same batched IN-query approach;
+   *                           the distinction is preserved for future JOIN-based optimisation.
+   *
    * @throws {IncludeResolutionError} with code `ENTITY_NOT_REGISTERED` if an entity class
    *   in the include chain has no `@Entity` metadata and nested paths need to be resolved.
    * @throws {IncludeResolutionError} with code `UNKNOWN_PROPERTY` if an include path segment
@@ -21,8 +29,16 @@ export class IncludePlanner<T> {
    * @throws {IncludeResolutionError} with code `UNRESOLVABLE_TARGET` if the relationship's
    *   `targetEntity` cannot be resolved to a constructor.
    */
-  public async populateIncludes(entities: T[], includes: string[], limit?: number): Promise<void> {
+  public async populateIncludes(
+    entities: T[],
+    includes: string[],
+    limit?: number,
+    splittingBehavior: QuerySplittingBehavior = QuerySplittingBehavior.SplitQuery
+  ): Promise<void> {
     if (!this.entityLoader || includes.length === 0 || limit === 1) return;
+    // Both SplitQuery and SingleQuery use the same batched IN-query strategy.
+    // The splittingBehavior is accepted here for future extensibility (JOIN-based loading).
+    void splittingBehavior;
     await this.loadLevel(entities, this.entityClass as new () => unknown, includes, '');
   }
 
