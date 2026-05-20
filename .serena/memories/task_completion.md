@@ -1,19 +1,22 @@
-# Task Completion Checklist
+# Completed Tasks
 
-After completing any coding task in ts-linq:
+## P0-01 — Fluent API ModelBuilder ✅
+PR merged. OnModelCreating, ModelBuilder, EntityTypeBuilder<T>, IEntityTypeConfiguration<T>.
 
-1. **Type check**: `pnpm typecheck`
-2. **Lint**: `pnpm lint`
-3. **Format**: `pnpm format`
-4. **Unit tests**: `pnpm test:unit`
-5. **Architecture check** (for structural changes): `pnpm arch:audit`
+## P0-02 — AsNoTracking / AsTracking ✅
+PR merged (feat/p0-02-as-no-tracking). QueryTrackingBehavior enum, AsNoTracking/AsTracking/AsNoTrackingWithIdentityResolution on DbSet and Queryable, ChangeTracker.queryTrackingBehavior.
 
-For audit/analysis tasks:
-- Write findings to `project-documents/issues/issues-vN/<finding-name>.md` (N = current audit version)
-- NOTE: CLAUDE.md says `issues-v4/` at repo root, but actual location is `project-documents/issues/issues-vN/`
-- Include evidence: source references, tool output, package boundaries
-- Do NOT refactor production code during audit unless explicitly requested
+## P0-03 — FromSqlInterpolated / FromSqlRaw / DatabaseFacade ✅
+PR #87 merged (feat/p0-03-from-sql-interpolated).
+- sql tagged template, SqlInterpolated class
+- DbSet.fromSqlInterpolated / fromSqlRaw → Queryable with rawSqlSource
+- ctx.database: DatabaseFacade (executeSqlInterpolated/Raw, sqlQuery/Raw)
+- Derived-table wrapping: FROM (<sql>) AS t0
+- rawSqlSource in QueryOptions/QueryModel/QueryBuilder/all 3 dialects
+- formatSqlWithParams on DatabaseProvider
+- 27 unit tests
 
-## EF Core Parity Tasks
-- Dev plan files: `project-documents/tasks/dev-plans/P0-01-*.md` through `P2-48-*.md`
-- 48 total tasks across 3 priority tiers (P0 = foundation, P1 = core features, P2 = advanced)
+## Next P0 tasks
+- P0-04: ExecuteUpdate / ExecuteDelete (depends on P0-03 — now unblocked)
+- P0-05: Value converters (depends on P0-01)
+- P0-12: Interceptors

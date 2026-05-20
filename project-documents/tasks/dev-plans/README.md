@@ -26,7 +26,7 @@ Blocks EF parity baseline. Required before any non-trivial EF Core → ts-linq m
 |-------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|:------:|:------:|------------|
 | P0-01 | [Fluent API — ModelBuilder](./P0-01-fluent-api-modelbuilder.md)             | `OnModelCreating`, `ModelBuilder`, `EntityTypeBuilder<T>`, `IEntityTypeConfiguration<T>`                          | - [x]  | XL     | —          |
 | P0-02 | [AsNoTracking / AsTracking](./P0-02-as-no-tracking.md)                      | `AsNoTracking`, `AsTracking`, `AsNoTrackingWithIdentityResolution`, `QueryTrackingBehavior`                       | - [x]  | M      | —          |
-| P0-03 | [FromSql / FromSqlInterpolated](./P0-03-from-sql-interpolated.md)           | `FromSql`, `FromSqlRaw`, `FromSqlInterpolated`, `SqlQuery`, `Database.ExecuteSqlInterpolated`                     | - [ ]  | M      | —          |
+| P0-03 | [FromSql / FromSqlInterpolated](./P0-03-from-sql-interpolated.md)           | `FromSql`, `FromSqlRaw`, `FromSqlInterpolated`, `SqlQuery`, `Database.ExecuteSqlInterpolated`                     | - [x]  | M      | —          |
 | P0-04 | [ExecuteUpdate / ExecuteDelete](./P0-04-execute-update-delete.md)           | `ExecuteUpdate(SetProperty...)`, `ExecuteDelete` + async                                                          | - [ ]  | L      | P0-03      |
 | P0-05 | [Value converters](./P0-05-value-converters.md)                             | `HasConversion`, `ValueConverter<T,U>`, `ValueComparer`, bulk `Properties<T>().HaveConversion`                    | - [ ]  | M      | P0-01      |
 | P0-06 | [Owned entity types](./P0-06-owned-entity-types.md)                         | `OwnsOne`, `OwnsMany`, table splitting, `ToJson()`                                                                | - [ ]  | L      | P0-01      |
@@ -214,7 +214,7 @@ whose `depends_on` points into the current step.
 |-------|--------------------------------|-----------|
 | P0-01 | Fluent API — ModelBuilder      | ✅ done   |
 | P0-02 | AsNoTracking / AsTracking      | ✅ done   |
-| P0-03 | FromSql / FromSqlInterpolated  | —         |
+| P0-03 | FromSql / FromSqlInterpolated  | ✅ done   |
 | P0-12 | Interceptors                   | —         |
 | P1-18 | AsSplitQuery / AsSingleQuery   | —         |
 | P1-19 | Filtered Include               | —         |

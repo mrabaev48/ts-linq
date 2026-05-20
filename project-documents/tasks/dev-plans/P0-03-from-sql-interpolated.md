@@ -1,7 +1,7 @@
 ---
 title: FromSql, FromSqlRaw, FromSqlInterpolated and Database.SqlQuery
 ef_core_api: DbSet<T>.FromSqlInterpolated($"SELECT * FROM users WHERE id = {id}") / DbSet<T>.FromSqlRaw / Database.SqlQuery<T> / Database.ExecuteSqlInterpolated
-status: not-started
+status: done
 priority: P0
 effort: L
 depends_on: []

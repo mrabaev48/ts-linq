@@ -16,6 +16,7 @@ import { ChangeTracker } from './ChangeTracker';
 import { DeleteCommand } from './commands/DeleteCommand';
 import { InsertCommand } from './commands/InsertCommand';
 import { UpdateCommand } from './commands/UpdateCommand';
+import { DatabaseFacade } from './DatabaseFacade';
 import { DbSet } from './DbSet';
 import type { DbSetContext } from './DbSetContext';
 import { ModelBuilder } from './ModelBuilder';
@@ -68,6 +69,7 @@ export abstract class DbContext {
   private _auditInterceptor!: AuditInterceptor;
   private _softDeleteInterceptor!: SoftDeleteInterceptor;
   private _transactionDepth = 0;
+  private _database!: DatabaseFacade;
 
   /**
    * Create a new database context instance.
@@ -178,6 +180,7 @@ export abstract class DbContext {
     modelBuilder._finalize();
 
     this.initializeDbSets();
+    this._database = new DatabaseFacade(this.buildDbSetContext());
   }
 
   /**
@@ -189,6 +192,14 @@ export abstract class DbContext {
    */
   protected onModelCreating(_modelBuilder: ModelBuilder): void {
     // Default: no-op.
+  }
+
+  /**
+   * Provides access to database-level raw SQL operations (non-entity-bound queries,
+   * non-query commands). Mirrors EF Core's `context.Database` property.
+   */
+  get database(): DatabaseFacade {
+    return this._database;
   }
 
   /**
