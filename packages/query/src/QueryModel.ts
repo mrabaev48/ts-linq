@@ -2,6 +2,7 @@ import type {
   GroupByClause,
   JoinClause,
   OrderByClause,
+  QuerySplittingBehavior,
   SqlParameter,
   WhereClause
 } from '@ts-linq/types';
@@ -28,6 +29,8 @@ export class QueryModel {
   }>;
   from?: string;
   rawSqlSource?: { sql: string; params: readonly SqlParameter[] };
+  /** Per-query override of the global query splitting behavior. */
+  splittingBehavior?: QuerySplittingBehavior;
 
   /**
    * Create a deep copy of the query model to preserve immutability
@@ -59,6 +62,7 @@ export class QueryModel {
     clonedModel.rawSqlSource = this.rawSqlSource
       ? { sql: this.rawSqlSource.sql, params: [...this.rawSqlSource.params] }
       : undefined;
+    clonedModel.splittingBehavior = this.splittingBehavior;
     clonedModel.unions = this.unions
       ? this.unions.map((unionItem) => ({
           all: unionItem.all,

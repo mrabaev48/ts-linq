@@ -5,8 +5,10 @@ import type {
   FallbackRequest,
   PerformanceOptions,
   QueryFallback,
+  QuerySplittingBehavior,
   SqlParameter
 } from '@ts-linq/types';
+import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
 
 import type { FallbackManager } from './FallbackManager';
 import type { IncludePlanner } from './IncludePlanner';
@@ -36,14 +38,16 @@ export class QueryExecutor<T> {
 
   /**
    * Execute query, materialise rows into entities, and populate includes.
-   * @param model   Pre-cloned and filter-applied QueryModel.
-   * @param includes Relationship names to eagerly load (Queryable._includes at call time).
-   * @param cte     Optional CTE definition to attach to the model.
+   * @param model              Pre-cloned and filter-applied QueryModel.
+   * @param includes           Relationship names to eagerly load (Queryable._includes at call time).
+   * @param cte                Optional CTE definition to attach to the model.
+   * @param splittingBehavior  Query splitting strategy; defaults to SplitQuery.
    */
   async executeAndMaterialize(
     model: QueryModel,
     includes: string[],
-    cte: CteDefinition | undefined
+    cte: CteDefinition | undefined,
+    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery
   ): Promise<T[]> {
     if (cte) {
       (model as unknown as { cte?: CteDefinition }).cte = cte;
@@ -62,13 +66,14 @@ export class QueryExecutor<T> {
         this.getHedgedFallbacks()
       );
       if (winner.source === 'primary') {
-        return this.handlePrimaryRows(model, winner.rows, includes);
+        return this.handlePrimaryRows(model, winner.rows, includes, splittingBehavior);
       } else {
         return this.handleFallbackEntities(
           (winner.rows as unknown as T[]).slice(),
           winner.label || 'unknown',
           model,
-          includes
+          includes,
+          splittingBehavior
         );
       }
     }
@@ -77,13 +82,18 @@ export class QueryExecutor<T> {
         sql.query,
         sql.parameters
       );
-      return this.handlePrimaryRows(model, rows, includes);
+      return this.handlePrimaryRows(model, rows, includes, splittingBehavior);
     } catch (error) {
       if (!this.isOpAllowedForFallback('select')) throw error;
       if (!this.isDegradableError(error) || this.fallbackManager.fallbacks.length === 0)
         throw error;
       if (!this.tryEnterFallbackThrottle()) throw error;
-      const entities = await this.tryFallbackSelectSequential(sql, model, includes);
+      const entities = await this.tryFallbackSelectSequential(
+        sql,
+        model,
+        includes,
+        splittingBehavior
+      );
       if (entities) return entities;
       throw error;
     }
@@ -121,10 +131,11 @@ export class QueryExecutor<T> {
   private async handlePrimaryRows(
     model: QueryModel,
     rows: ReadonlyArray<Record<string, unknown>>,
-    includes: string[]
+    includes: string[],
+    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery
   ): Promise<T[]> {
     const entities = rows.map((row) => this.materializer.mapRowToEntity(row));
-    await this.includePlanner.populateIncludes(entities, includes, model.limit);
+    await this.includePlanner.populateIncludes(entities, includes, model.limit, splittingBehavior);
     return entities;
   }
 
@@ -132,11 +143,17 @@ export class QueryExecutor<T> {
     entities: T[],
     label: string,
     model: QueryModel,
-    includes: string[]
+    includes: string[],
+    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery
   ): Promise<T[]> {
     if (this.performance?.fallbackPolicy?.allowIncludesOnFallback === 'attempt') {
       try {
-        await this.includePlanner.populateIncludes(entities, includes, model.limit);
+        await this.includePlanner.populateIncludes(
+          entities,
+          includes,
+          model.limit,
+          splittingBehavior
+        );
       } catch {}
     }
     this.provider.loggerRef?.fallback?.({
@@ -154,7 +171,8 @@ export class QueryExecutor<T> {
   private async tryFallbackSelectSequential(
     sql: { query: string; parameters: readonly SqlParameter[] },
     model: QueryModel,
-    includes: string[]
+    includes: string[],
+    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery
   ): Promise<T[] | null> {
     const req: FallbackRequest<T> = {
       operation: 'count',
@@ -172,7 +190,13 @@ export class QueryExecutor<T> {
         });
         const data = await fb.fetch(req);
         if (data && data.length >= 0) {
-          return this.handleFallbackEntities(data.slice(), fb.label, model, includes);
+          return this.handleFallbackEntities(
+            data.slice(),
+            fb.label,
+            model,
+            includes,
+            splittingBehavior
+          );
         }
       } catch (fbErr) {
         this.provider.loggerRef?.fallback?.({

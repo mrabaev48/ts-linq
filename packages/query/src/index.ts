@@ -2,6 +2,7 @@ export type { IncludeResolutionErrorCode, IncludeResolutionErrorDetails } from '
 export { IncludeResolutionError } from './errors';
 export type { LruCacheOptions } from './LruCache';
 export { LruCache } from './LruCache';
+export { QuerySplittingBehavior } from './options/QuerySplittingBehavior';
 export * from './Queryable';
 export * from './QueryBuilder';
 export * from './QueryModel';

@@ -1,4 +1,5 @@
 import type { DbContextOptions } from '@ts-linq/core';
+import { QuerySplittingBehavior } from '@ts-linq/types';
 
 /**
  * Fluent builder for constructing DbContextOptions.
@@ -10,8 +11,11 @@ import type { DbContextOptions } from '@ts-linq/core';
  *     .build();
  *   const ctx = new AppDbContext(options);
  */
+export { QuerySplittingBehavior };
+
 export class DbContextOptionsBuilder {
   private readonly _interceptors: object[] = [];
+  private _splittingBehavior?: QuerySplittingBehavior;
 
   constructor(private readonly _base: DbContextOptions) {}
 
@@ -28,6 +32,22 @@ export class DbContextOptionsBuilder {
   }
 
   /**
+   * Set the global query-splitting strategy for all DbSet queries in this context.
+   * Mirrors EF Core's `UseQuerySplittingBehavior(QuerySplittingBehavior)`.
+   *
+   * Can be overridden per-query with `.asSplitQuery()` / `.asSingleQuery()`.
+   *
+   * @example
+   * const opts = new DbContextOptionsBuilder({ provider })
+   *   .useQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+   *   .build();
+   */
+  useQuerySplittingBehavior(behavior: QuerySplittingBehavior): this {
+    this._splittingBehavior = behavior;
+    return this;
+  }
+
+  /**
    * Produce a DbContextOptions with all accumulated interceptors merged in.
    * Interceptors already present in the base options appear first, preserving
    * any prior registration order.
@@ -35,7 +55,10 @@ export class DbContextOptionsBuilder {
   build(): DbContextOptions {
     return {
       ...this._base,
-      interceptors: [...(this._base.interceptors ?? []), ...this._interceptors]
+      interceptors: [...(this._base.interceptors ?? []), ...this._interceptors],
+      ...(this._splittingBehavior !== undefined
+        ? { querySplittingBehavior: this._splittingBehavior }
+        : {})
     };
   }
 }
