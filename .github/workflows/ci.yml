@@ -36,6 +36,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Build first so that every package's dist/ and .d.ts files exist
+      # before typecheck and tests try to resolve cross-package imports.
+      - name: Build
+        run: pnpm build
+
       - name: Type-check
         run: pnpm typecheck
 
@@ -47,9 +52,6 @@ jobs:
 
       - name: Integration tests
         run: pnpm test:integration
-
-      - name: Build
-        run: pnpm build
 
       - name: Architecture — dependency rules
         run: pnpm arch:deps
