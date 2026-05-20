@@ -25,7 +25,7 @@ Blocks EF parity baseline. Required before any non-trivial EF Core → ts-linq m
 | #     | Title                                                                       | EF Core API                                                                                                       | Status | Effort | Depends on |
 |-------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|:------:|:------:|------------|
 | P0-01 | [Fluent API — ModelBuilder](./P0-01-fluent-api-modelbuilder.md)             | `OnModelCreating`, `ModelBuilder`, `EntityTypeBuilder<T>`, `IEntityTypeConfiguration<T>`                          | - [x]  | XL     | —          |
-| P0-02 | [AsNoTracking / AsTracking](./P0-02-as-no-tracking.md)                      | `AsNoTracking`, `AsTracking`, `AsNoTrackingWithIdentityResolution`, `QueryTrackingBehavior`                       | - [ ]  | M      | —          |
+| P0-02 | [AsNoTracking / AsTracking](./P0-02-as-no-tracking.md)                      | `AsNoTracking`, `AsTracking`, `AsNoTrackingWithIdentityResolution`, `QueryTrackingBehavior`                       | - [x]  | M      | —          |
 | P0-03 | [FromSql / FromSqlInterpolated](./P0-03-from-sql-interpolated.md)           | `FromSql`, `FromSqlRaw`, `FromSqlInterpolated`, `SqlQuery`, `Database.ExecuteSqlInterpolated`                     | - [ ]  | M      | —          |
 | P0-04 | [ExecuteUpdate / ExecuteDelete](./P0-04-execute-update-delete.md)           | `ExecuteUpdate(SetProperty...)`, `ExecuteDelete` + async                                                          | - [ ]  | L      | P0-03      |
 | P0-05 | [Value converters](./P0-05-value-converters.md)                             | `HasConversion`, `ValueConverter<T,U>`, `ValueComparer`, bulk `Properties<T>().HaveConversion`                    | - [ ]  | M      | P0-01      |
@@ -182,7 +182,7 @@ flowchart LR
 
 ## 5. Progress
 
-`1 / 48 tasks done.`
+`2 / 48 tasks done.`
 
 Update this number when a task moves to `status: done`.
 
@@ -213,7 +213,7 @@ whose `depends_on` points into the current step.
 | Task  | Title                          | Status    |
 |-------|--------------------------------|-----------|
 | P0-01 | Fluent API — ModelBuilder      | ✅ done   |
-| P0-02 | AsNoTracking / AsTracking      | —         |
+| P0-02 | AsNoTracking / AsTracking      | ✅ done   |
 | P0-03 | FromSql / FromSqlInterpolated  | —         |
 | P0-12 | Interceptors                   | —         |
 | P1-18 | AsSplitQuery / AsSingleQuery   | —         |

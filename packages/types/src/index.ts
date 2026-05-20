@@ -645,6 +645,11 @@ export interface SoftDeleteOptionsExtended extends SoftDeleteOptions {
   // Backward compatible alias; all fields live in SoftDeleteOptions.
 }
 
+/** Minimal interface for attaching entities to a change tracker. Used by Queryable to avoid circular deps. */
+export interface EntityAttacher {
+  attach(entity: object, entityClass: Function): void;
+}
+
 /** Entity state for change tracking */
 export enum EntityState {
   Unchanged = 'unchanged',

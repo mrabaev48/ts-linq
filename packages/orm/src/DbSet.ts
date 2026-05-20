@@ -96,8 +96,27 @@ export class DbSet<T extends object> {
       this._entityCache,
       this._performance,
       this._globalFilters,
-      this._softDeleteOptions
+      this._softDeleteOptions,
+      this._changeTracker,
+      this._changeTracker?.queryTrackingBehavior
     );
+  }
+
+  // ─── Tracking API ─────────────────────────────────────────────────────────
+
+  /** Return a Queryable for this set with change-tracker attachment disabled. */
+  public asNoTracking(): Queryable<T> {
+    return this.newQueryable().asNoTracking();
+  }
+
+  /** Return a Queryable for this set with change-tracker attachment enabled (the default). */
+  public asTracking(): Queryable<T> {
+    return this.newQueryable().asTracking();
+  }
+
+  /** Return a Queryable that deduplicates entities by PK without attaching to the change tracker. */
+  public asNoTrackingWithIdentityResolution(): Queryable<T> {
+    return this.newQueryable().asNoTrackingWithIdentityResolution();
   }
 
   // ─── Filter methods ───────────────────────────────────────────────────────
