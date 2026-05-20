@@ -159,9 +159,13 @@ export class MySqlProvider extends DatabaseProvider {
   ): Promise<number | undefined> {
     try {
       if (!this.isConnected) await this.connect();
+      await this.beforeExecute(sql, params);
       const pool = this.pool as MySqlPoolLike;
       const [result] = await pool.execute(sql, params);
-      return (result as { insertId?: number } | undefined)?.insertId ?? undefined;
+      const insertResult = result as { insertId?: number; affectedRows?: number } | undefined;
+      const affectedRows = insertResult?.affectedRows ?? 1;
+      await this.afterExecute(sql, params, affectedRows);
+      return insertResult?.insertId ?? undefined;
     } catch (e: unknown) {
       throw mapMySqlError(e);
     }
