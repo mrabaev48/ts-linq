@@ -16,11 +16,12 @@ class TestDialect implements SqlDialect {
     options: unknown
   ): { query: string; parameters: readonly SqlParameter[] } {
     const meta = MetadataStorage.getEntity(entityClass) || { tableName: entityClass.name };
-    const opts = options as { limit?: number; offset?: number } | undefined;
+    const opts = options as { limit?: number; offset?: number; select?: string[] } | undefined;
     const limit = typeof opts?.limit === 'number' ? opts.limit : undefined;
     const offset = typeof opts?.offset === 'number' ? opts.offset : 0;
     const marker = limit !== undefined ? ` /*LIMIT=${limit},OFFSET=${offset}*/` : '';
-    return { query: `SELECT * FROM ${meta.tableName}${marker}`, parameters: [] };
+    const selectClause = opts?.select?.join(', ') ?? '*';
+    return { query: `SELECT ${selectClause} FROM ${meta.tableName}${marker}`, parameters: [] };
   }
   public quoteIdentifier(identifier: string): string {
     return `"${identifier.replace(/"/g, '""')}"`;

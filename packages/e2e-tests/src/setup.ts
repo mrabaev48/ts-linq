@@ -6,8 +6,8 @@ function parsePostgresUrl(url: string) {
     return {
       host: u.hostname,
       port: u.port ? parseInt(u.port) : 5432,
-      user: u.username,
-      password: u.password,
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
       database: u.pathname.replace(/^\//, '')
     };
   } catch {
@@ -21,8 +21,8 @@ function parseMysqlUrl(url: string) {
     return {
       host: u.hostname,
       port: u.port ? parseInt(u.port) : 3306,
-      user: u.username,
-      password: u.password,
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
       database: u.pathname.replace(/^\//, '')
     };
   } catch {
@@ -36,8 +36,8 @@ function parseMssqlUrl(url: string) {
     return {
       server: u.hostname,
       port: u.port ? parseInt(u.port) : 1433,
-      user: u.username,
-      password: u.password,
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
       database: u.pathname.replace(/^\//, '')
     };
   } catch {

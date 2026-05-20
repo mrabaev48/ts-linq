@@ -32,6 +32,7 @@ export class RelationshipLoader {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) return null;
     if (typeof relationship.targetEntity === 'string') return null;
+    if (relationship.targetEntity == null) return null;
 
     const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => object;
 
@@ -72,6 +73,7 @@ export class RelationshipLoader {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) return;
     if (typeof relationship.targetEntity === 'string') return;
+    if (relationship.targetEntity == null) return;
 
     const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => object;
 

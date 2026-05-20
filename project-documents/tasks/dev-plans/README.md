@@ -24,7 +24,7 @@ Blocks EF parity baseline. Required before any non-trivial EF Core → ts-linq m
 
 | #     | Title                                                                       | EF Core API                                                                                                       | Status | Effort | Depends on |
 |-------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|:------:|:------:|------------|
-| P0-01 | [Fluent API — ModelBuilder](./P0-01-fluent-api-modelbuilder.md)             | `OnModelCreating`, `ModelBuilder`, `EntityTypeBuilder<T>`, `IEntityTypeConfiguration<T>`                          | - [ ]  | XL     | —          |
+| P0-01 | [Fluent API — ModelBuilder](./P0-01-fluent-api-modelbuilder.md)             | `OnModelCreating`, `ModelBuilder`, `EntityTypeBuilder<T>`, `IEntityTypeConfiguration<T>`                          | - [x]  | XL     | —          |
 | P0-02 | [AsNoTracking / AsTracking](./P0-02-as-no-tracking.md)                      | `AsNoTracking`, `AsTracking`, `AsNoTrackingWithIdentityResolution`, `QueryTrackingBehavior`                       | - [ ]  | M      | —          |
 | P0-03 | [FromSql / FromSqlInterpolated](./P0-03-from-sql-interpolated.md)           | `FromSql`, `FromSqlRaw`, `FromSqlInterpolated`, `SqlQuery`, `Database.ExecuteSqlInterpolated`                     | - [ ]  | M      | —          |
 | P0-04 | [ExecuteUpdate / ExecuteDelete](./P0-04-execute-update-delete.md)           | `ExecuteUpdate(SetProperty...)`, `ExecuteDelete` + async                                                          | - [ ]  | L      | P0-03      |
@@ -182,7 +182,7 @@ flowchart LR
 
 ## 5. Progress
 
-`0 / 48 tasks done.`
+`1 / 48 tasks done.`
 
 Update this number when a task moves to `status: done`.
 
@@ -210,25 +210,25 @@ whose `depends_on` points into the current step.
 
 > **Priority tip:** begin P0-01 first. 14 tasks across all tiers are directly or transitively blocked on it.
 
-| Task | Title |
-|------|-------|
-| P0-01 | Fluent API — ModelBuilder |
-| P0-02 | AsNoTracking / AsTracking |
-| P0-03 | FromSql / FromSqlInterpolated |
-| P0-12 | Interceptors |
-| P1-18 | AsSplitQuery / AsSingleQuery |
-| P1-19 | Filtered Include |
-| P1-20 | Compiled queries |
-| P1-23 | Savepoints + retry strategy |
-| P1-27 | Async streaming |
-| P2-34 | Spatial types |
-| P2-35 | HierarchyId |
-| P2-36 | Temporal queries |
-| P2-40 | DbContext pooling / factory |
-| P2-41 | Query tags / TagWithCallSite |
-| P2-42 | Migration bundles / idempotent |
-| P2-45 | Logging / diagnostics |
-| P2-46 | Batching / MaxBatchSize |
+| Task  | Title                          | Status    |
+|-------|--------------------------------|-----------|
+| P0-01 | Fluent API — ModelBuilder      | ✅ done   |
+| P0-02 | AsNoTracking / AsTracking      | —         |
+| P0-03 | FromSql / FromSqlInterpolated  | —         |
+| P0-12 | Interceptors                   | —         |
+| P1-18 | AsSplitQuery / AsSingleQuery   | —         |
+| P1-19 | Filtered Include               | —         |
+| P1-20 | Compiled queries               | —         |
+| P1-23 | Savepoints + retry strategy    | —         |
+| P1-27 | Async streaming                | —         |
+| P2-34 | Spatial types                  | —         |
+| P2-35 | HierarchyId                    | —         |
+| P2-36 | Temporal queries               | —         |
+| P2-40 | DbContext pooling / factory    | —         |
+| P2-41 | Query tags / TagWithCallSite   | —         |
+| P2-42 | Migration bundles / idempotent | —         |
+| P2-45 | Logging / diagnostics          | —         |
+| P2-46 | Batching / MaxBatchSize        | —         |
 
 ### Step 2 — Unlocked after Step 1
 
