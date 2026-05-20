@@ -28,6 +28,7 @@ module.exports = {
           '(^|/)tests(-old)?/',
           'jest\\.config\\.',
           'jest\\.sequencer\\.',
+          'jest-transformer\\.js$',
           'setup-containers\\.ts$',
           '(^|/)setup\\.ts$',
           '(^|/)fixture',

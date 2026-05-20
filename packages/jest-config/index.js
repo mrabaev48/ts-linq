@@ -3,6 +3,9 @@
 // createPackageJestConfig() for per-package usage.
 
 const tsLinqTsJestConfig = {
+  astTransformers: {
+    before: [{ path: require.resolve('./jest-transformer.js') }]
+  },
   tsconfig: {
     experimentalDecorators: true,
     emitDecoratorMetadata: true,

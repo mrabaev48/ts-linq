@@ -57,6 +57,9 @@ export * from './decorators/ValidIf';
 // Query building - moved to @ts-linq/query package
 // Import from: @ts-linq/query
 
+// Query tracking
+export * from './QueryTrackingBehavior';
+
 // Base provider abstractions
 export * from './DatabaseProvider';
 export * from './DdlBuilder';
