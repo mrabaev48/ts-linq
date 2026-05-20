@@ -95,6 +95,14 @@ export class PostgresProvider extends DatabaseProvider {
     this.providerName = 'postgresql';
   }
 
+  public override formatSqlWithParams(
+    rawSql: string,
+    params: readonly SqlParameter[]
+  ): { sql: string; params: readonly SqlParameter[] } {
+    let index = 0;
+    return { sql: rawSql.replace(/\?/g, () => `$${++index}`), params };
+  }
+
   private coerceToSqlParameter(value: unknown): SqlParameter {
     if (
       value === null ||

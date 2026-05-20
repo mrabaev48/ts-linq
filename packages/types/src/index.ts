@@ -39,6 +39,7 @@ export interface QueryOptions {
   distinct?: boolean;
   from?: string;
   cte?: { name: string; sql: string };
+  rawSqlSource?: { readonly sql: string; readonly params: readonly SqlParameter[] };
 }
 
 // Entity metadata types

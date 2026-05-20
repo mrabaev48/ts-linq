@@ -195,6 +195,19 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   /** Provider-specific implementation of query execution. */
   protected abstract doExecuteQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]>;
 
+  /**
+   * Convert a SQL string that uses '?' positional placeholders into the dialect-specific
+   * placeholder format ($1/$2 for Postgres, @p1/@p2 for MSSQL, unchanged for MySQL).
+   * Default implementation returns the SQL as-is (suitable for MySQL '?' style).
+   * Concrete providers override this to apply their placeholder conversion.
+   */
+  public formatSqlWithParams(
+    rawSql: string,
+    params: readonly SqlParameter[]
+  ): { sql: string; params: readonly SqlParameter[] } {
+    return { sql: rawSql, params };
+  }
+
   /** Execute a non-query SQL statement and return affected row count. */
   public async executeNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
     return await this.executeWithRetry<number>(

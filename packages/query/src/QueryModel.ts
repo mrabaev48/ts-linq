@@ -1,4 +1,10 @@
-import type { GroupByClause, JoinClause, OrderByClause, WhereClause } from '@ts-linq/types';
+import type {
+  GroupByClause,
+  JoinClause,
+  OrderByClause,
+  SqlParameter,
+  WhereClause
+} from '@ts-linq/types';
 
 /**
  * Immutable-ish carrier for a query intent. Used by Queryable to
@@ -21,6 +27,7 @@ export class QueryModel {
     entity: new () => unknown;
   }>;
   from?: string;
+  rawSqlSource?: { sql: string; params: readonly SqlParameter[] };
 
   /**
    * Create a deep copy of the query model to preserve immutability
@@ -49,6 +56,9 @@ export class QueryModel {
     clonedModel.offset = this.offset;
     clonedModel.distinct = this.distinct;
     clonedModel.from = this.from;
+    clonedModel.rawSqlSource = this.rawSqlSource
+      ? { sql: this.rawSqlSource.sql, params: [...this.rawSqlSource.params] }
+      : undefined;
     clonedModel.unions = this.unions
       ? this.unions.map((unionItem) => ({
           all: unionItem.all,

@@ -84,7 +84,8 @@ export class QueryBuilder {
       joins: model.joins,
       limit: model.limit,
       offset: model.offset,
-      distinct: model.distinct
+      distinct: model.distinct,
+      rawSqlSource: model.rawSqlSource
     };
     const base = this.generateSql(entityClass, opts);
     // Handle UNION / UNION ALL / EXCEPT / INTERSECT chains
