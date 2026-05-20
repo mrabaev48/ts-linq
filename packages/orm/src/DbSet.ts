@@ -8,7 +8,8 @@ import type {
   FallbackPolicy,
   GlobalFilter,
   PerformanceOptions,
-  QueryFallback
+  QueryFallback,
+  QuerySplittingBehavior
 } from '@ts-linq/types';
 
 import type { ChangeTracker } from './ChangeTracker';
@@ -38,6 +39,7 @@ export class DbSet<T extends object> {
   private _performance: PerformanceOptions | undefined;
   private _globalFilters: GlobalFilter[] | undefined;
   private _softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions;
+  private _querySplittingBehavior?: QuerySplittingBehavior;
   private static readonly DEFAULT_IN_CHUNK_SIZE = 1000;
 
   /**
@@ -75,6 +77,7 @@ export class DbSet<T extends object> {
     this._performance = context.performance;
     this._globalFilters = context.globalFilters;
     this._softDeleteOptions = context.softDeleteOptions;
+    this._querySplittingBehavior = context.querySplittingBehavior;
   }
 
   /** The entity constructor this set operates on. */
@@ -100,7 +103,8 @@ export class DbSet<T extends object> {
       this._globalFilters,
       this._softDeleteOptions,
       this._changeTracker,
-      this._changeTracker?.queryTrackingBehavior
+      this._changeTracker?.queryTrackingBehavior,
+      this._querySplittingBehavior
     );
   }
 

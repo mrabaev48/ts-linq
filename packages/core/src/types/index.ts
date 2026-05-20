@@ -82,6 +82,12 @@ export interface DbContextOptions {
   diagnostics?: DiagnosticsOptions;
   /** EF-style interceptors registered via DbContextOptionsBuilder.addInterceptors(). */
   interceptors?: object[];
+  /**
+   * Global query-splitting strategy applied to all DbSet queries in this context.
+   * Can be overridden per-query with `.asSplitQuery()` / `.asSingleQuery()`.
+   * Defaults to `QuerySplittingBehavior.SplitQuery` when not set.
+   */
+  querySplittingBehavior?: import('@ts-linq/types').QuerySplittingBehavior;
 }
 
 /** Circuit Breaker options */

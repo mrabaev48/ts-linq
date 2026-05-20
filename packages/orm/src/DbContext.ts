@@ -67,6 +67,7 @@ export abstract class DbContext {
   private _deleteCmd!: DeleteCommand;
   /** SQL cache created and owned by this context (undefined when user supplied their own). */
   private _ownedSqlCache?: EnhancedSqlCache;
+  private _querySplittingBehavior?: import('@ts-linq/types').QuerySplittingBehavior;
   private _cacheCoordinator!: CacheCoordinator;
   private _auditInterceptor!: AuditInterceptor;
   private _softDeleteInterceptor!: SoftDeleteInterceptor;
@@ -101,6 +102,7 @@ export abstract class DbContext {
     this._registry = options.registry ?? MetadataStorage.getInstance();
     this._changeTracker = new ChangeTracker(this._registry);
     this._entityLoader = new EntityLoader(this._provider);
+    this._querySplittingBehavior = options.querySplittingBehavior;
     this._insertCmd = new InsertCommand(this._provider, (c) =>
       this._cacheCoordinator.updateEntry(c)
     );
@@ -664,7 +666,8 @@ export abstract class DbContext {
       entityCache: this._entityCache,
       performance: this._performanceOptions,
       globalFilters: this._globalFilters,
-      softDeleteOptions: this._softDelete
+      softDeleteOptions: this._softDelete,
+      querySplittingBehavior: this._querySplittingBehavior
     };
   }
 
