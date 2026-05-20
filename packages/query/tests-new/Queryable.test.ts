@@ -204,20 +204,20 @@ describe('Queryable (tests-new)', () => {
     expect(firstOrDefault).toBeNull();
   });
 
-  test('where() throws a helpful error when transformer is missing', () => {
+  test('where() compiles lambda to SQL predicate via transformer', () => {
     const provider = new TestProvider();
     const q = new Queryable(User, provider);
-    expect(() => q.where((u) => u.id > 0)).toThrow(
-      "ts-linq(where): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
-    );
+    // The compile-time transformer rewrites where(lambda) → whereCompiled(ast).
+    // After transformation, the call should succeed and return a Queryable.
+    expect(() => q.where((u) => u.id > 0)).not.toThrow();
   });
 
-  test('select() throws a helpful error when transformer is missing', () => {
+  test('select() compiles lambda to SQL projection via transformer', () => {
     const provider = new TestProvider();
     const q = new Queryable(User, provider);
-    expect(() => q.select((u) => u.name)).toThrow(
-      "ts-linq(select): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
-    );
+    // The compile-time transformer rewrites select(lambda) → selectCompiled(ast).
+    // After transformation, the call should succeed and return a Queryable.
+    expect(() => q.select((u) => u.name)).not.toThrow();
   });
 
   // innerJoin() and leftJoin() (deprecated predicate overloads) were removed in ISSUE-003.
