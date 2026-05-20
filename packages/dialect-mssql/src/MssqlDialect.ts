@@ -37,16 +37,21 @@ export class MssqlDialect implements SqlDialect {
    * @returns SQL string and positional parameter array
    */
   public buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult {
-    const metadata = MetadataStorage.getEntity(entityClass);
-    if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-
     const parameters: SqlParameter[] = [];
     this.collectSelectParams(parameters, options);
     const selectList = options.select && options.select.length ? options.select.join(', ') : '*';
     const hasLimit = options.limit !== undefined && options.limit !== null;
     const hasOffset = options.offset !== undefined && options.offset !== null;
     const selectHead = this.buildSelectHead(options, hasLimit, hasOffset);
-    let query = `${selectHead}${selectList} FROM [${options.from ?? metadata.tableName}]`;
+    let query: string;
+    if (options.rawSqlSource) {
+      parameters.push(...options.rawSqlSource.params);
+      query = `${selectHead}${selectList} FROM (${options.rawSqlSource.sql}) AS t0`;
+    } else {
+      const metadata = MetadataStorage.getEntity(entityClass);
+      if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+      query = `${selectHead}${selectList} FROM [${options.from ?? metadata.tableName}]`;
+    }
     query += this.joinEmitter.emit(options);
     query += this.whereEmitter.emit(parameters, options);
     query += this.groupEmitter.emit(parameters, options);

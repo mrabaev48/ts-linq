@@ -39,14 +39,21 @@ export class PostgresDialect implements SqlDialect {
    * @param options Normalized query options (select/where/order/group/joins/limit/offset)
    */
   public buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult {
-    const metadata = MetadataStorage.getEntity(entityClass);
-    if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const parameters: SqlParameter[] = [];
     let query = this.buildSelectHead(options);
     query = this.applyCte(query, options);
-    query += this.buildFromClause(options.from ?? metadata.tableName);
-    query += this.joinEmitter.emit(options);
+    // SELECT-clause params must precede FROM params so numberPlaceholders assigns
+    // correct $N indices (SELECT ? appears before FROM ... ? in the SQL string).
     this.collectSelectParams(parameters, options);
+    if (options.rawSqlSource) {
+      parameters.push(...options.rawSqlSource.params);
+      query += ` FROM (${options.rawSqlSource.sql}) AS t0`;
+    } else {
+      const metadata = MetadataStorage.getEntity(entityClass);
+      if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+      query += this.buildFromClause(options.from ?? metadata.tableName);
+    }
+    query += this.joinEmitter.emit(options);
     query += this.whereEmitter.emit(parameters, options);
     query += this.groupEmitter.emit(parameters, options);
     query += this.orderEmitter.emit(options);

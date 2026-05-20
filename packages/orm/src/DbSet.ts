@@ -13,6 +13,8 @@ import type {
 
 import type { ChangeTracker } from './ChangeTracker';
 import type { DbSetContext } from './DbSetContext';
+import type { SqlInterpolated } from './sql/sqlTag';
+import { interpolatedToRaw, toSqlParam } from './sql/sqlTag';
 
 /**
  * Represents a typed set of entities providing CRUD operations and direct LINQ-style querying.
@@ -117,6 +119,38 @@ export class DbSet<T extends object> {
   /** Return a Queryable that deduplicates entities by PK without attaching to the change tracker. */
   public asNoTrackingWithIdentityResolution(): Queryable<T> {
     return this.newQueryable().asNoTrackingWithIdentityResolution();
+  }
+
+  // ─── Raw SQL entry points ──────────────────────────────────────────────────
+
+  /**
+   * Seeds a Queryable from a safe parameterised SQL fragment (EF Core FromSqlInterpolated parity).
+   * The raw SQL is wrapped as a derived table so LINQ composition keeps working:
+   *   FROM (<sql>) AS t0
+   *
+   * @example
+   * const users = await ctx.users
+   *   .fromSqlInterpolated(sql`SELECT * FROM users WHERE tenant_id = ${tenantId}`)
+   *   .where(u => u.isActive)
+   *   .toArray();
+   */
+  public fromSqlInterpolated(query: SqlInterpolated): Queryable<T> {
+    const { sql: rawSql, params } = interpolatedToRaw(query);
+    return this.newQueryable()._withRawSqlSource({ sql: rawSql, params });
+  }
+
+  /**
+   * Seeds a Queryable from a raw SQL string with explicit positional parameters.
+   * Use '?' as the placeholder regardless of the underlying database.
+   *
+   * @example
+   * const users = await ctx.users
+   *   .fromSqlRaw('SELECT * FROM users WHERE id = ?', userId)
+   *   .toArray();
+   */
+  public fromSqlRaw(rawSql: string, ...values: unknown[]): Queryable<T> {
+    const params = values.map(toSqlParam);
+    return this.newQueryable()._withRawSqlSource({ sql: rawSql, params });
   }
 
   // ─── Filter methods ───────────────────────────────────────────────────────

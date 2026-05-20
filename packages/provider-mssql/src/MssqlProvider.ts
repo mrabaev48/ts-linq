@@ -84,6 +84,14 @@ export class MssqlProvider extends DatabaseProvider {
     this.providerName = 'mssql';
   }
 
+  public override formatSqlWithParams(
+    rawSql: string,
+    params: readonly SqlParameter[]
+  ): { sql: string; params: readonly SqlParameter[] } {
+    let index = 0;
+    return { sql: rawSql.replace(/\?/g, () => `@p${++index}`), params };
+  }
+
   /** Open a connection pool to MSSQL server. */
   public async connect(): Promise<void> {
     if (this.isConnected) return;

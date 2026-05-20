@@ -207,6 +207,18 @@ export class Queryable<T> {
     return cloned;
   }
 
+  /**
+   * Seed this query with a raw SQL source that will be wrapped as a derived table:
+   *   FROM (<sql>) AS t0
+   * Called by DbSet.fromSqlInterpolated / fromSqlRaw.
+   * @internal
+   */
+  public _withRawSqlSource(raw: { sql: string; params: readonly SqlParameter[] }): Queryable<T> {
+    const cloned = this.clone();
+    cloned._model.rawSqlSource = raw;
+    return cloned;
+  }
+
   /** Apply tracking / identity-resolution logic to a freshly materialized entity list. */
   private _applyTracking(entities: T[]): T[] {
     if (this._trackingMode === QueryTrackingBehavior.TrackAll && this._entityAttacher) {
