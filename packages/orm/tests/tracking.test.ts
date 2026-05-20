@@ -80,8 +80,8 @@ describe('Queryable tracking modes', () => {
     await ctx.ensureCreated();
 
     // Seed two rows via context
-    await ctx.users.add(Object.assign(new TrackUser(), { name: 'Alice' }));
-    await ctx.users.add(Object.assign(new TrackUser(), { name: 'Bob' }));
+    ctx.users.add(Object.assign(new TrackUser(), { name: 'Alice' }));
+    ctx.users.add(Object.assign(new TrackUser(), { name: 'Bob' }));
     await ctx.saveChanges();
     // Clear tracker state so we can observe what the query attaches
     ctx.tracker.clear();
@@ -107,8 +107,11 @@ describe('Queryable tracking modes', () => {
     expect(ctx.tracker.getChanges().length).toBe(0);
   });
 
-  it('asNoTracking() chained with take() returns correct results without tracking', async () => {
-    const users = await ctx.users.asNoTracking().take(1).toArray();
+  it('asNoTracking() chained with where() returns correct results without tracking', async () => {
+    const users = await ctx.users
+      .asNoTracking()
+      .where((u) => u.name === 'Alice')
+      .toArray();
     expect(users.length).toBe(1);
     expect(ctx.tracker.getChanges().length).toBe(0);
   });
@@ -172,7 +175,7 @@ describe('first() / firstOrDefault() with tracking', () => {
     await provider.connect();
     ctx = new TrackUserContext({ provider });
     await ctx.ensureCreated();
-    await ctx.users.add(Object.assign(new TrackUser(), { name: 'Alice' }));
+    ctx.users.add(Object.assign(new TrackUser(), { name: 'Alice' }));
     await ctx.saveChanges();
     ctx.tracker.clear();
   });
