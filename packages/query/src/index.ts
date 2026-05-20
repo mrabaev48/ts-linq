@@ -1,5 +1,7 @@
 export type { IncludeResolutionErrorCode, IncludeResolutionErrorDetails } from './errors';
 export { IncludeResolutionError } from './errors';
+export type { NavigationProxy } from './include/IncludeSubquery';
+export { IncludeSubquery } from './include/IncludeSubquery';
 export type { LruCacheOptions } from './LruCache';
 export { LruCache } from './LruCache';
 export * from './Queryable';
