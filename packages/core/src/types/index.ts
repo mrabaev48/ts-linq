@@ -80,6 +80,8 @@ export interface DbContextOptions {
     translate?: (key: string, params?: Record<string, unknown>) => string;
   };
   diagnostics?: DiagnosticsOptions;
+  /** EF-style interceptors registered via DbContextOptionsBuilder.addInterceptors(). */
+  interceptors?: object[];
 }
 
 /** Circuit Breaker options */

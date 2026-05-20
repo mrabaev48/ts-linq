@@ -122,7 +122,7 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Open a connection pool to PostgreSQL using the connection string, or use injected pool. */
-  public async connect(): Promise<void> {
+  protected async doConnect(): Promise<void> {
     if (this.config.pool) {
       this.pool = this.config.pool as PgPoolLike;
       this.ownsPool = false;
@@ -156,7 +156,7 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Gracefully dispose of the connection pool. */
-  public async disconnect(): Promise<void> {
+  protected async doDisconnect(): Promise<void> {
     this.stopHealthChecks();
     if (this.pool && this.ownsPool) {
       await this.pool.end();
@@ -420,7 +420,7 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Begin a transaction (sets a trace id for logging). */
-  public async beginTransaction(): Promise<void> {
+  protected async doBeginTransaction(): Promise<void> {
     if (this.inTransaction) throw new Error('Transaction already in progress');
     if (!this.pool) throw new Error('Provider is not connected');
     const client = await this.pool.connect();
@@ -442,7 +442,7 @@ export class PostgresProvider extends DatabaseProvider {
     }
   }
   /** Commit the current transaction. */
-  public async commitTransaction(): Promise<void> {
+  protected async doCommitTransaction(): Promise<void> {
     if (!this.inTransaction) throw new Error('No transaction in progress');
     const client = this.transactionClient;
     if (!client) throw new Error('Invariant violation: transaction client is missing');
@@ -455,7 +455,7 @@ export class PostgresProvider extends DatabaseProvider {
     client.release();
   }
   /** Roll back the current transaction. */
-  public async rollbackTransaction(): Promise<void> {
+  protected async doRollbackTransaction(): Promise<void> {
     if (!this.inTransaction) throw new Error('No transaction in progress');
     const client = this.transactionClient;
     if (!client) throw new Error('Invariant violation: transaction client is missing');

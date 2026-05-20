@@ -18,7 +18,14 @@
     "@ts-linq/testkits": "workspace:*",
     "@ts-linq/provider-postgres": "workspace:*",
     "@ts-linq/provider-mysql": "workspace:*",
-    "@ts-linq/provider-mssql": "workspace:*"
+    "@ts-linq/provider-mssql": "workspace:*",
+    "@ts-linq/query": "workspace:*",
+    "@ts-linq/metadata": "workspace:*",
+    "@ts-linq/types": "workspace:*",
+    "@ts-linq/metrics-safe": "workspace:*",
+    "@ts-linq/dialect-postgres": "workspace:*",
+    "@ts-linq/dialect-mysql": "workspace:*",
+    "@ts-linq/dialect-mssql": "workspace:*"
   },
   "devDependencies": {
     "@ts-linq/jest-config": "workspace:*",

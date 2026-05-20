@@ -13,6 +13,17 @@ import type {
 } from '@ts-linq/types';
 
 import { HealthMonitor } from './Health/HealthMonitor';
+import type { IDbCommandInterceptor } from './interceptors/IDbCommandInterceptor';
+import type { IDbConnectionInterceptor } from './interceptors/IDbConnectionInterceptor';
+import type { IDbTransactionInterceptor } from './interceptors/IDbTransactionInterceptor';
+import type { IMaterializationInterceptor } from './interceptors/IMaterializationInterceptor';
+import type {
+  CommandEventData,
+  ConnectionEventData,
+  DbCommand,
+  DbReader,
+  TransactionEventData
+} from './interceptors/types';
 import { ResilienceManager } from './Resilience/ResilienceManager';
 import type {
   CircuitBreakerOptions,
@@ -56,6 +67,15 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   private analysisEventsWindowStartMs?: number;
   private analysisEventsInWindow: number = 0;
 
+  /** EF-style command interceptors. */
+  protected _commandInterceptors: IDbCommandInterceptor[] = [];
+  /** EF-style connection interceptors. */
+  protected _connectionInterceptors: IDbConnectionInterceptor[] = [];
+  /** EF-style transaction interceptors. */
+  protected _transactionInterceptors: IDbTransactionInterceptor[] = [];
+  /** EF-style materialization interceptors. */
+  protected _materializationInterceptors: IMaterializationInterceptor[] = [];
+
   /**
    * Create a provider with a given connection string.
    * @param connectionString Provider-specific connection string.
@@ -96,9 +116,24 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   }
 
   /** Connect to the database. */
-  public abstract connect(): Promise<void>;
+  public async connect(): Promise<void> {
+    await this.notifyConnectionOpening();
+    await this.doConnect();
+    await this.notifyConnectionOpened();
+  }
+
+  /** Provider-specific connection logic. */
+  protected abstract doConnect(): Promise<void>;
+
   /** Disconnect from the database and release resources. */
-  public abstract disconnect(): Promise<void>;
+  public async disconnect(): Promise<void> {
+    await this.notifyConnectionClosing();
+    await this.doDisconnect();
+    await this.notifyConnectionClosed();
+  }
+
+  /** Provider-specific disconnection logic. */
+  protected abstract doDisconnect(): Promise<void>;
   /** Create a table for the provided entity metadata if it does not exist. */
   public abstract createTable(entityMetadata: EntityMetadata): Promise<void>;
   /** Return SQL dialect used by this provider (Strategy per provider). */
@@ -287,6 +322,22 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     this.analysis = { ...this.analysis, ...options };
   }
 
+  /**
+   * Register EF-style interceptors partitioned by interface type.
+   * Called by DbContext after InterceptorRegistry is constructed.
+   */
+  public configureInterceptors(opts: {
+    command: IDbCommandInterceptor[];
+    connection: IDbConnectionInterceptor[];
+    transaction: IDbTransactionInterceptor[];
+    materialization: IMaterializationInterceptor[];
+  }): void {
+    this._commandInterceptors = opts.command;
+    this._connectionInterceptors = opts.connection;
+    this._transactionInterceptors = opts.transaction;
+    this._materializationInterceptors = opts.materialization;
+  }
+
   /** Provider hook: obtain an EXPLAIN plan for a given SQL if supported. */
   protected async getExplainPlan(
     _sql: string,
@@ -468,60 +519,134 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   ): Promise<number>;
 
   // Template Method hooks
-  /** Called before each execute; override for logging/instrumentation. */
+  /** Called before each execute; invokes middlewares and command interceptors. */
   protected async beforeExecute(sql: string, params: readonly SqlParameter[]): Promise<void> {
-    if (!this.middlewares || this.middlewares.length === 0) return;
-    const info = { sql, params, traceId: this.currentTraceId };
-    for (const mw of this.middlewares) {
-      await mw.beforeExecute?.(info);
+    if (this.middlewares && this.middlewares.length > 0) {
+      const info = { sql, params, traceId: this.currentTraceId };
+      for (const mw of this.middlewares) {
+        await mw.beforeExecute?.(info);
+      }
+    }
+    if (this._commandInterceptors.length > 0) {
+      const isReader = /^\s*SELECT\b/i.test(sql);
+      const cmd: DbCommand = { sql, params, traceId: this.currentTraceId };
+      const ev: CommandEventData = { commandText: sql, isReader };
+      for (const ic of this._commandInterceptors) {
+        if (isReader) {
+          await ic.readerExecuting?.(cmd, ev);
+        } else {
+          await ic.nonQueryExecuting?.(cmd, ev);
+        }
+      }
     }
   }
-  /** Called after each execute; override for logging/instrumentation. */
+
+  /** Called after each execute; invokes middlewares and command interceptors. */
   protected async afterExecute(
     sql: string,
     params: readonly SqlParameter[],
     result: unknown
   ): Promise<void> {
-    if (!this.middlewares || this.middlewares.length === 0) return;
-    const rows = Array.isArray(result)
-      ? (result as unknown[]).length
-      : typeof result === 'number'
-        ? result
-        : undefined;
     const durationMs = this.lastExecuteStartedAt ? Date.now() - this.lastExecuteStartedAt : 0;
-    const info = { sql, params, durationMs, traceId: this.currentTraceId, rows } as const;
-    for (const mw of this.middlewares) {
-      try {
-        await mw.afterExecute?.(info);
-      } catch (e) {
-        logInternalError('DatabaseProvider.afterExecute.middleware', e);
+    if (this.middlewares && this.middlewares.length > 0) {
+      const rows = Array.isArray(result)
+        ? (result as unknown[]).length
+        : typeof result === 'number'
+          ? result
+          : undefined;
+      const info = { sql, params, durationMs, traceId: this.currentTraceId, rows } as const;
+      for (const mw of this.middlewares) {
+        try {
+          await mw.afterExecute?.(info);
+        } catch (e) {
+          logInternalError('DatabaseProvider.afterExecute.middleware', e);
+        }
+      }
+    }
+    if (this._commandInterceptors.length > 0) {
+      const isReader = /^\s*SELECT\b/i.test(sql);
+      const cmd: DbCommand = { sql, params, traceId: this.currentTraceId };
+      const ev: CommandEventData = { commandText: sql, durationMs, isReader };
+      for (const ic of this._commandInterceptors) {
+        try {
+          if (isReader) {
+            const dbReader: DbReader = { rows: Array.isArray(result) ? (result as unknown[]) : [] };
+            await ic.readerExecuted?.(cmd, ev, dbReader);
+          } else {
+            const affected = typeof result === 'number' ? result : 0;
+            await ic.nonQueryExecuted?.(cmd, ev, affected);
+          }
+        } catch (e) {
+          logInternalError('DatabaseProvider.afterExecute.commandInterceptor', e);
+        }
       }
     }
   }
 
-  /** Notify middleware that an entity instance has been materialized. */
+  /**
+   * Notify middleware and materialization interceptors that an entity was materialized.
+   * Returns the (potentially modified) entity instance.
+   */
   protected async notifyEntityMaterialized<T extends object>(
     entity: T,
     metadata?: EntityMetadata
-  ): Promise<void> {
-    if (!this.middlewares || this.middlewares.length === 0) return;
-    const info: { entity: object; metadata?: EntityMetadata } = { entity, metadata };
-    for (const mw of this.middlewares) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/await-thenable
-        await mw.entityMaterialized?.(info);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyEntityMaterialized.middleware', e);
+  ): Promise<T> {
+    if (this.middlewares && this.middlewares.length > 0) {
+      const info: { entity: object; metadata?: EntityMetadata } = { entity, metadata };
+      for (const mw of this.middlewares) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/await-thenable
+          await mw.entityMaterialized?.(info);
+        } catch (e) {
+          logInternalError('DatabaseProvider.notifyEntityMaterialized.middleware', e);
+        }
       }
     }
+    if (this._materializationInterceptors.length > 0) {
+      const ev = { entityType: entity.constructor };
+      let instance: object = entity;
+      for (const ic of this._materializationInterceptors) {
+        try {
+          const updated = await ic.initialized?.(ev, instance);
+          if (updated !== undefined) instance = updated;
+        } catch (e) {
+          logInternalError('DatabaseProvider.notifyEntityMaterialized.interceptor', e);
+        }
+      }
+      return instance as T;
+    }
+    return entity;
   }
 
   /** Begin a transaction. */
-  public abstract beginTransaction(): Promise<void>;
+  public async beginTransaction(): Promise<void> {
+    await this.notifyTransactionStarting();
+    await this.doBeginTransaction();
+    await this.notifyTransactionStarted();
+  }
+
+  /** Provider-specific begin-transaction logic. */
+  protected abstract doBeginTransaction(): Promise<void>;
+
   /** Commit the current transaction. */
-  public abstract commitTransaction(): Promise<void>;
+  public async commitTransaction(): Promise<void> {
+    await this.notifyTransactionCommitting();
+    await this.doCommitTransaction();
+    await this.notifyTransactionCommitted();
+  }
+
+  /** Provider-specific commit logic. */
+  protected abstract doCommitTransaction(): Promise<void>;
+
   /** Roll back the current transaction. */
-  public abstract rollbackTransaction(): Promise<void>;
+  public async rollbackTransaction(): Promise<void> {
+    await this.notifyTransactionRollingBack();
+    await this.doRollbackTransaction();
+    await this.notifyTransactionRolledBack();
+  }
+
+  /** Provider-specific rollback logic. */
+  protected abstract doRollbackTransaction(): Promise<void>;
 
   /**
    * Whether the provider is currently connected.
@@ -535,5 +660,129 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
    */
   public get inTransactionState(): boolean {
     return this.inTransaction;
+  }
+
+  // ── Connection notification helpers ─────────────────────────────────────
+
+  private async notifyConnectionOpening(): Promise<void> {
+    if (this._connectionInterceptors.length === 0) return;
+    const ev: ConnectionEventData = {};
+    for (const ic of this._connectionInterceptors) {
+      try {
+        await ic.connectionOpening?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyConnectionOpening', e);
+      }
+    }
+  }
+
+  private async notifyConnectionOpened(): Promise<void> {
+    if (this._connectionInterceptors.length === 0) return;
+    const ev: ConnectionEventData = {};
+    for (const ic of this._connectionInterceptors) {
+      try {
+        await ic.connectionOpened?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyConnectionOpened', e);
+      }
+    }
+  }
+
+  private async notifyConnectionClosing(): Promise<void> {
+    if (this._connectionInterceptors.length === 0) return;
+    const ev: ConnectionEventData = {};
+    for (const ic of this._connectionInterceptors) {
+      try {
+        await ic.connectionClosing?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyConnectionClosing', e);
+      }
+    }
+  }
+
+  private async notifyConnectionClosed(): Promise<void> {
+    if (this._connectionInterceptors.length === 0) return;
+    const ev: ConnectionEventData = {};
+    for (const ic of this._connectionInterceptors) {
+      try {
+        await ic.connectionClosed?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyConnectionClosed', e);
+      }
+    }
+  }
+
+  // ── Transaction notification helpers ────────────────────────────────────
+
+  private async notifyTransactionStarting(): Promise<void> {
+    if (this._transactionInterceptors.length === 0) return;
+    const ev: TransactionEventData = { traceId: this.currentTraceId };
+    for (const ic of this._transactionInterceptors) {
+      try {
+        await ic.transactionStarting?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyTransactionStarting', e);
+      }
+    }
+  }
+
+  private async notifyTransactionStarted(): Promise<void> {
+    if (this._transactionInterceptors.length === 0) return;
+    const ev: TransactionEventData = { traceId: this.currentTraceId };
+    for (const ic of this._transactionInterceptors) {
+      try {
+        await ic.transactionStarted?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyTransactionStarted', e);
+      }
+    }
+  }
+
+  private async notifyTransactionCommitting(): Promise<void> {
+    if (this._transactionInterceptors.length === 0) return;
+    const ev: TransactionEventData = { traceId: this.currentTraceId };
+    for (const ic of this._transactionInterceptors) {
+      try {
+        await ic.transactionCommitting?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyTransactionCommitting', e);
+      }
+    }
+  }
+
+  private async notifyTransactionCommitted(): Promise<void> {
+    if (this._transactionInterceptors.length === 0) return;
+    const ev: TransactionEventData = { traceId: this.currentTraceId };
+    for (const ic of this._transactionInterceptors) {
+      try {
+        await ic.transactionCommitted?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyTransactionCommitted', e);
+      }
+    }
+  }
+
+  private async notifyTransactionRollingBack(): Promise<void> {
+    if (this._transactionInterceptors.length === 0) return;
+    const ev: TransactionEventData = { traceId: this.currentTraceId };
+    for (const ic of this._transactionInterceptors) {
+      try {
+        await ic.transactionRollingBack?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyTransactionRollingBack', e);
+      }
+    }
+  }
+
+  private async notifyTransactionRolledBack(): Promise<void> {
+    if (this._transactionInterceptors.length === 0) return;
+    const ev: TransactionEventData = { traceId: this.currentTraceId };
+    for (const ic of this._transactionInterceptors) {
+      try {
+        await ic.transactionRolledBack?.(ev);
+      } catch (e) {
+        logInternalError('DatabaseProvider.notifyTransactionRolledBack', e);
+      }
+    }
   }
 }

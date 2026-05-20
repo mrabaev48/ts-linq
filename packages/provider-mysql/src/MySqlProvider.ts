@@ -79,7 +79,7 @@ export class MySqlProvider extends DatabaseProvider {
     this.providerName = 'mysql';
   }
 
-  public async connect(): Promise<void> {
+  protected async doConnect(): Promise<void> {
     if (this.isConnected) return;
 
     if (this.config.pool) {
@@ -117,7 +117,7 @@ export class MySqlProvider extends DatabaseProvider {
     });
   }
 
-  public async disconnect(): Promise<void> {
+  protected async doDisconnect(): Promise<void> {
     this.stopHealthChecks();
     if (this.pool && this.ownsPool) {
       await this.pool.end();
@@ -159,9 +159,13 @@ export class MySqlProvider extends DatabaseProvider {
   ): Promise<number | undefined> {
     try {
       if (!this.isConnected) await this.connect();
+      await this.beforeExecute(sql, params);
       const pool = this.pool as MySqlPoolLike;
       const [result] = await pool.execute(sql, params);
-      return (result as { insertId?: number } | undefined)?.insertId ?? undefined;
+      const insertResult = result as { insertId?: number; affectedRows?: number } | undefined;
+      const affectedRows = insertResult?.affectedRows ?? 1;
+      await this.afterExecute(sql, params, affectedRows);
+      return insertResult?.insertId ?? undefined;
     } catch (e: unknown) {
       throw mapMySqlError(e);
     }
@@ -377,21 +381,21 @@ export class MySqlProvider extends DatabaseProvider {
     }
   }
 
-  public async beginTransaction(): Promise<void> {
+  protected async doBeginTransaction(): Promise<void> {
     if (!this.isConnected) await this.connect();
     const pool = this.pool as MySqlPoolLike;
     await pool.query('START TRANSACTION');
     this.inTransaction = true;
     this.logger?.transactionStart?.({ traceId: this.currentTraceId, provider: this.providerName });
   }
-  public async commitTransaction(): Promise<void> {
+  protected async doCommitTransaction(): Promise<void> {
     if (!this.inTransaction) throw new Error('No transaction in progress');
     const pool = this.pool as MySqlPoolLike;
     await pool.query('COMMIT');
     this.inTransaction = false;
     this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
   }
-  public async rollbackTransaction(): Promise<void> {
+  protected async doRollbackTransaction(): Promise<void> {
     if (!this.inTransaction) throw new Error('No transaction in progress');
     const pool = this.pool as MySqlPoolLike;
     await pool.query('ROLLBACK');

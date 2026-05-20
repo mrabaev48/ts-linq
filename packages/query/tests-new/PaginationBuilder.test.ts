@@ -44,8 +44,8 @@ class StubProvider extends DatabaseProvider {
   setCount(n: number): void {
     this.countValue = n;
   }
-  public async connect(): Promise<void> {}
-  public async disconnect(): Promise<void> {}
+  public override async connect(): Promise<void> {}
+  public override async disconnect(): Promise<void> {}
   public async createTable(): Promise<void> {}
   public getDialect(): SqlDialect {
     return this.dialect;
@@ -81,9 +81,14 @@ class StubProvider extends DatabaseProvider {
   protected async doExecuteNonQuery(): Promise<number> {
     return 1;
   }
-  public async beginTransaction(): Promise<void> {}
-  public async commitTransaction(): Promise<void> {}
-  public async rollbackTransaction(): Promise<void> {}
+  public override async beginTransaction(): Promise<void> {}
+  public override async commitTransaction(): Promise<void> {}
+  public override async rollbackTransaction(): Promise<void> {}
+  protected override async doConnect(): Promise<void> {}
+  protected override async doDisconnect(): Promise<void> {}
+  protected override async doBeginTransaction(): Promise<void> {}
+  protected override async doCommitTransaction(): Promise<void> {}
+  protected override async doRollbackTransaction(): Promise<void> {}
   constructor() {
     super('memory://', undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     (this as unknown as { providerName: string }).providerName = 'stub';

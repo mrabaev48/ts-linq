@@ -58,12 +58,16 @@ export class ProviderStub extends DatabaseProvider {
   private readonly dialect = new TestDialect();
   private txBackup?: { data: Map<string, any[]>; seq: Map<string, number> };
 
-  public async connect(): Promise<void> {
+  // Override template methods directly (interceptors not needed in stubs)
+  public override async connect(): Promise<void> {
     this.isConnected = true;
   }
-  public async disconnect(): Promise<void> {
+  public override async disconnect(): Promise<void> {
     this.isConnected = false;
   }
+  // Required abstract implementations (never called — template methods are overridden above)
+  protected override async doConnect(): Promise<void> {}
+  protected override async doDisconnect(): Promise<void> {}
   public async createTable(entityMetadata: EntityMetadata): Promise<void> {
     await this.beforeExecute(`CREATE TABLE ${entityMetadata.tableName}`, []);
     if (!this.data.has(entityMetadata.tableName)) {
@@ -416,7 +420,8 @@ export class ProviderStub extends DatabaseProvider {
     return 0;
   }
 
-  public async beginTransaction(): Promise<void> {
+  // Override template methods directly so test snapshots work without interceptor overhead
+  public override async beginTransaction(): Promise<void> {
     // snapshot
     this.currentTraceId = Math.random().toString(36).slice(2);
     const dataCopy = new Map<string, any[]>();
@@ -429,11 +434,11 @@ export class ProviderStub extends DatabaseProvider {
     for (const [k, v] of this.seq.entries()) seqCopy.set(k, v);
     this.txBackup = { data: dataCopy, seq: seqCopy };
   }
-  public async commitTransaction(): Promise<void> {
+  public override async commitTransaction(): Promise<void> {
     this.txBackup = undefined;
     this.currentTraceId = undefined;
   }
-  public async rollbackTransaction(): Promise<void> {
+  public override async rollbackTransaction(): Promise<void> {
     if (this.txBackup) {
       this.data.clear();
       for (const [k, v] of this.txBackup.data.entries())
@@ -447,6 +452,10 @@ export class ProviderStub extends DatabaseProvider {
     }
     this.currentTraceId = undefined;
   }
+  // Required abstract implementations (never called — template methods are overridden above)
+  protected override async doBeginTransaction(): Promise<void> {}
+  protected override async doCommitTransaction(): Promise<void> {}
+  protected override async doRollbackTransaction(): Promise<void> {}
 
   private async ensureTable(meta: EntityMetadata): Promise<void> {
     if (!this.data.has(meta.tableName)) await this.createTable(meta);
