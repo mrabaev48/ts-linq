@@ -26,11 +26,11 @@ class TestProvider extends DatabaseProvider {
     this.providerName = 'test';
   }
 
-  public async connect(): Promise<void> {
+  public override async connect(): Promise<void> {
     this.isConnected = true;
   }
 
-  public async disconnect(): Promise<void> {
+  public override async disconnect(): Promise<void> {
     this.isConnected = false;
   }
 
@@ -80,9 +80,14 @@ class TestProvider extends DatabaseProvider {
     return 0;
   }
 
-  public async beginTransaction(): Promise<void> {}
-  public async commitTransaction(): Promise<void> {}
-  public async rollbackTransaction(): Promise<void> {}
+  public override async beginTransaction(): Promise<void> {}
+  public override async commitTransaction(): Promise<void> {}
+  public override async rollbackTransaction(): Promise<void> {}
+  protected override async doConnect(): Promise<void> {}
+  protected override async doDisconnect(): Promise<void> {}
+  protected override async doBeginTransaction(): Promise<void> {}
+  protected override async doCommitTransaction(): Promise<void> {}
+  protected override async doRollbackTransaction(): Promise<void> {}
 }
 
 class FlakyProvider extends TestProvider {

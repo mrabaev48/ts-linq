@@ -1,3 +1,8 @@
+import type {
+  InterceptionResult,
+  ISaveChangesInterceptor,
+  SaveChangesEventData
+} from '@ts-linq/core';
 import type { SoftDeleteOptions } from '@ts-linq/types';
 
 interface ColumnMeta {
@@ -14,7 +19,7 @@ type ExecuteUpdate = (entity: Record<string, unknown>, entityClass: Function) =>
 type OnCacheUpdate = (change: { entity: Record<string, unknown>; entityClass: Function }) => void;
 
 /** @internal */
-export class SoftDeleteInterceptor {
+export class SoftDeleteInterceptor implements ISaveChangesInterceptor {
   constructor(
     private readonly softDelete: SoftDeleteOptions | undefined,
     private readonly getMeta: GetMeta,
@@ -46,5 +51,16 @@ export class SoftDeleteInterceptor {
     await this.executeUpdate(change.entity, change.entityClass);
     this.onCacheUpdate(change);
     return true;
+  }
+
+  // ── ISaveChangesInterceptor ──────────────────────────────────────────────
+  // Soft-delete executes per-entity inside DeleteCommand via the apply() callback.
+  // The ISaveChangesInterceptor surface is a pass-through for external composability.
+
+  savingChanges(
+    _ev: SaveChangesEventData,
+    result: InterceptionResult<number>
+  ): InterceptionResult<number> {
+    return result;
   }
 }

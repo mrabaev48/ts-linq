@@ -131,9 +131,14 @@ class MinimalProvider extends DatabaseProvider {
     this.executed.push(sql);
     return 1;
   }
-  async beginTransaction() {}
-  async commitTransaction() {}
-  async rollbackTransaction() {}
+  public override async beginTransaction(): Promise<void> {}
+  public override async commitTransaction(): Promise<void> {}
+  public override async rollbackTransaction(): Promise<void> {}
+  protected override async doConnect(): Promise<void> {}
+  protected override async doDisconnect(): Promise<void> {}
+  protected override async doBeginTransaction(): Promise<void> {}
+  protected override async doCommitTransaction(): Promise<void> {}
+  protected override async doRollbackTransaction(): Promise<void> {}
 }
 
 describe('CLI - DB commands: SeedCommand', () => {
