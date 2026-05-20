@@ -2,6 +2,7 @@ const base = require('./jest.config.js');
 
 module.exports = {
   ...base,
+  forceExit: true,
   testPathIgnorePatterns: [
     ...((base && base.testPathIgnorePatterns) || []),
     '/packages/integration-tests/',

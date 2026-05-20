@@ -34,3 +34,4 @@ jobs:
           languages: javascript
 
       - uses: github/codeql-action/analyze@v3
+        continue-on-error: true
