@@ -1,10 +1,12 @@
 import type { ExpressionNode, PropertyNode } from '@ts-linq/ast';
 import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
+import { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
 import { type ColumnResolver, SqlVisitor } from '@ts-linq/sql-visitor';
 import type {
   CountCache,
+  EntityAttacher,
   EntityCacheLike,
   FallbackPolicy,
   GlobalFilter,
@@ -70,6 +72,11 @@ export class Queryable<T> {
   /** Stateless aggregate operations. Shared by reference across all clones. */
   private _aggregates!: AggregateOperations<T>;
 
+  /** Per-query tracking mode. Defaults to TrackAll (mirrors EF Core semantics). */
+  private _trackingMode: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
+  /** Optional entity attacher (e.g. ChangeTracker) consulted by terminal operators in TrackAll mode. */
+  private _entityAttacher?: EntityAttacher;
+
   /**
    * Create a new Queryable bound to an entity type and provider.
    * @param entityClass Entity constructor.
@@ -83,7 +90,9 @@ export class Queryable<T> {
     entityCache?: EntityCacheLike,
     performance?: PerformanceOptions,
     globalFilters?: GlobalFilter[],
-    softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions
+    softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions,
+    entityAttacher?: EntityAttacher,
+    trackingMode?: QueryTrackingBehavior
   ) {
     this._entityClass = entityClass;
     this._provider = provider;
@@ -92,6 +101,8 @@ export class Queryable<T> {
     this._performance = performance;
     this._globalFilters = globalFilters;
     this._softDeleteOptions = softDeleteOptions;
+    if (entityAttacher !== undefined) this._entityAttacher = entityAttacher;
+    if (trackingMode !== undefined) this._trackingMode = trackingMode;
     this._externalCountCache = performance?.countCache;
     this._sqlBuilder = new QueryBuilder(
       provider.getDialect(),
@@ -164,7 +175,72 @@ export class Queryable<T> {
     );
     // AggregateOperations is stateless — share the same instance
     clonedQueryable._aggregates = this._aggregates;
+    // Carry tracking mode and attacher
+    clonedQueryable._trackingMode = this._trackingMode;
+    clonedQueryable._entityAttacher = this._entityAttacher;
     return clonedQueryable;
+  }
+
+  // ─── Tracking API ────────────────────────────────────────────────────────
+
+  /** Return a clone of this query that disables change-tracker attachment for its results. */
+  public asNoTracking(): Queryable<T> {
+    const cloned = this.clone();
+    cloned._trackingMode = QueryTrackingBehavior.NoTracking;
+    return cloned;
+  }
+
+  /** Return a clone of this query that enables change-tracker attachment (the default). */
+  public asTracking(): Queryable<T> {
+    const cloned = this.clone();
+    cloned._trackingMode = QueryTrackingBehavior.TrackAll;
+    return cloned;
+  }
+
+  /**
+   * Return a clone of this query that deduplicates result entities by primary key without
+   * attaching them to the change tracker. Useful for read-only queries with JOINs.
+   */
+  public asNoTrackingWithIdentityResolution(): Queryable<T> {
+    const cloned = this.clone();
+    cloned._trackingMode = QueryTrackingBehavior.NoTrackingWithIdentityResolution;
+    return cloned;
+  }
+
+  /** Apply tracking / identity-resolution logic to a freshly materialized entity list. */
+  private _applyTracking(entities: T[]): T[] {
+    if (this._trackingMode === QueryTrackingBehavior.TrackAll && this._entityAttacher) {
+      for (const entity of entities) {
+        this._entityAttacher.attach(entity as object, this._entityClass);
+      }
+      return entities;
+    }
+    if (this._trackingMode === QueryTrackingBehavior.NoTrackingWithIdentityResolution) {
+      return this._deduplicateByPk(entities);
+    }
+    return entities;
+  }
+
+  /** Deduplicate entities with the same PK, returning the first-seen instance for duplicates. */
+  private _deduplicateByPk(entities: T[]): T[] {
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    const pkProp = metadata?.primaryKeys?.[0];
+    if (!pkProp) return entities;
+    const seen = new Map<unknown, T>();
+    const result: T[] = [];
+    for (const entity of entities) {
+      const pk = (entity as Record<string, unknown>)[pkProp];
+      if (pk !== undefined) {
+        const existing = seen.get(pk);
+        if (existing) {
+          result.push(existing);
+          continue;
+        }
+        seen.set(pk, entity);
+      }
+      result.push(entity);
+    }
+    return result;
   }
 
   /**
@@ -704,7 +780,12 @@ export class Queryable<T> {
   public async toArray(): Promise<T[]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
-    return this._executor.executeAndMaterialize(queryModel, this._includes, this._cte);
+    const entities = await this._executor.executeAndMaterialize(
+      queryModel,
+      this._includes,
+      this._cte
+    );
+    return this._applyTracking(entities);
   }
 
   /** Returns the first entity or throws if none.
@@ -720,8 +801,9 @@ export class Queryable<T> {
       this._includes,
       this._cte
     );
-    if (!entities.length) throw new Error('Sequence contains no elements');
-    return entities[0];
+    const tracked = this._applyTracking(entities);
+    if (!tracked.length) throw new Error('Sequence contains no elements');
+    return tracked[0];
   }
 
   /** Returns the first entity or null.
@@ -737,7 +819,8 @@ export class Queryable<T> {
       this._includes,
       this._cte
     );
-    return entities[0] ?? null;
+    const tracked = this._applyTracking(entities);
+    return tracked[0] ?? null;
   }
 
   /** Ensures exactly one result; throws if 0 or more than 1.

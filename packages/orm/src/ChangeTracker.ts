@@ -1,6 +1,7 @@
 import type { TrackedEntity } from '@ts-linq/core';
-import { EntityState } from '@ts-linq/core';
+import { EntityState, QueryTrackingBehavior } from '@ts-linq/core';
 import { type MetadataRegistry, MetadataStorage } from '@ts-linq/metadata';
+import type { EntityAttacher } from '@ts-linq/types';
 
 /**
  * Tracks entities and their states (Added, Modified, Deleted, Unchanged)
@@ -17,11 +18,14 @@ import { type MetadataRegistry, MetadataStorage } from '@ts-linq/metadata';
  *    DbContext.saveChanges() so property mutations are picked up without an
  *    explicit `update()` call.
  */
-export class ChangeTracker {
+export class ChangeTracker implements EntityAttacher {
   private _trackedEntities: Map<object, TrackedEntity> = new Map();
   /** Identity map: entityClass → (pkValue → TrackedEntity) */
   private _trackedByPk: Map<Function, Map<unknown, TrackedEntity>> = new Map();
   private readonly _registry: MetadataRegistry;
+
+  /** Default tracking behavior applied to all queries originating from this context. */
+  public queryTrackingBehavior: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
 
   constructor(registry?: MetadataRegistry) {
     this._registry = registry ?? MetadataStorage.getInstance();
