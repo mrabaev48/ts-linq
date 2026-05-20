@@ -7,3 +7,4 @@ export * from './QueryBuilder';
 export * from './QueryModel';
 export { InMemorySqlCache } from './SqlCache';
 export * from './TypedQueryable';
+export { QuerySplittingBehavior } from '@ts-linq/types';

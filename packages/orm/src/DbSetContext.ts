@@ -3,6 +3,7 @@ import type {
   EntityCacheLike,
   GlobalFilter,
   PerformanceOptions,
+  QuerySplittingBehavior,
   SoftDeleteOptions
 } from '@ts-linq/types';
 
@@ -16,4 +17,6 @@ export interface DbSetContext {
   performance?: PerformanceOptions;
   globalFilters?: GlobalFilter[];
   softDeleteOptions?: SoftDeleteOptions;
+  /** Global query-splitting default propagated from DbContextOptions. */
+  querySplittingBehavior?: QuerySplittingBehavior;
 }

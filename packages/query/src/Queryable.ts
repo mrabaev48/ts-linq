@@ -6,6 +6,7 @@ import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
 import { type ColumnResolver, SqlVisitor } from '@ts-linq/sql-visitor';
 import type {
   CountCache,
+  CteDefinition,
   EntityAttacher,
   EntityCacheLike,
   FallbackPolicy,
@@ -13,10 +14,11 @@ import type {
   OrderByClause,
   PerformanceOptions,
   QueryFallback,
+  QuerySplittingBehavior,
   SqlParameter,
   WhereClause
 } from '@ts-linq/types';
-import type { CteDefinition } from '@ts-linq/types';
+import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
 
 import { AggregateOperations } from './AggregateOperations';
 import { IncludeResolutionError } from './errors';
@@ -76,6 +78,13 @@ export class Queryable<T> {
   private _trackingMode: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
   /** Optional entity attacher (e.g. ChangeTracker) consulted by terminal operators in TrackAll mode. */
   private _entityAttacher?: EntityAttacher;
+  /**
+   * Effective query splitting behavior. Falls back to the context-level global default
+   * (`_globalSplittingBehavior`) when not overridden by `asSplitQuery()` / `asSingleQuery()`.
+   */
+  private _splittingBehavior?: QuerySplittingBehavior;
+  /** Context-level global default, propagated from DbContextOptions. */
+  private _globalSplittingBehavior?: QuerySplittingBehavior;
 
   /**
    * Create a new Queryable bound to an entity type and provider.
@@ -92,7 +101,8 @@ export class Queryable<T> {
     globalFilters?: GlobalFilter[],
     softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions,
     entityAttacher?: EntityAttacher,
-    trackingMode?: QueryTrackingBehavior
+    trackingMode?: QueryTrackingBehavior,
+    globalSplittingBehavior?: QuerySplittingBehavior
   ) {
     this._entityClass = entityClass;
     this._provider = provider;
@@ -103,6 +113,8 @@ export class Queryable<T> {
     this._softDeleteOptions = softDeleteOptions;
     if (entityAttacher !== undefined) this._entityAttacher = entityAttacher;
     if (trackingMode !== undefined) this._trackingMode = trackingMode;
+    if (globalSplittingBehavior !== undefined)
+      this._globalSplittingBehavior = globalSplittingBehavior;
     this._externalCountCache = performance?.countCache;
     this._sqlBuilder = new QueryBuilder(
       provider.getDialect(),
@@ -153,7 +165,10 @@ export class Queryable<T> {
       this._entityCache,
       this._performance,
       this._globalFilters,
-      this._softDeleteOptions
+      this._softDeleteOptions,
+      undefined,
+      undefined,
+      this._globalSplittingBehavior
     );
     clonedQueryable._model = this._model.clone();
     // preserve where signature for accurate count cache keys
@@ -178,6 +193,8 @@ export class Queryable<T> {
     // Carry tracking mode and attacher
     clonedQueryable._trackingMode = this._trackingMode;
     clonedQueryable._entityAttacher = this._entityAttacher;
+    // Carry per-query splitting behavior override
+    clonedQueryable._splittingBehavior = this._splittingBehavior;
     return clonedQueryable;
   }
 
@@ -205,6 +222,57 @@ export class Queryable<T> {
     const cloned = this.clone();
     cloned._trackingMode = QueryTrackingBehavior.NoTrackingWithIdentityResolution;
     return cloned;
+  }
+
+  // ─── Query splitting API (EF Core parity) ────────────────────────────────
+
+  /**
+   * Override the query-splitting strategy for this query chain to `SplitQuery`.
+   *
+   * Each collection `include()` path is loaded via a separate batched IN-query,
+   * preventing cartesian-product row explosion at the cost of additional round trips.
+   *
+   * > **Warning (mirrors EF Core):** Split queries are not guaranteed to be
+   * > transactionally consistent unless the caller wraps the operation in an
+   * > explicit transaction.
+   *
+   * @example
+   * const blogs = await context.blogs
+   *   .include(b => b.posts)
+   *   .thenInclude(p => p.tags)
+   *   .asSplitQuery()
+   *   .toListAsync();
+   */
+  public asSplitQuery(): Queryable<T> {
+    const cloned = this.clone();
+    cloned._splittingBehavior = QSB.SplitQuery;
+    cloned._model.splittingBehavior = QSB.SplitQuery;
+    return cloned;
+  }
+
+  /**
+   * Override the query-splitting strategy for this query chain to `SingleQuery`.
+   *
+   * All includes are loaded in a single SQL statement alongside the root query.
+   * For queries with multiple collection Includes this may produce cartesian-product
+   * row explosion (N × M rows). Use only when the result set is known to be small.
+   *
+   * @example
+   * const blogs = await context.blogs
+   *   .include(b => b.posts)
+   *   .asSingleQuery()
+   *   .toListAsync();
+   */
+  public asSingleQuery(): Queryable<T> {
+    const cloned = this.clone();
+    cloned._splittingBehavior = QSB.SingleQuery;
+    cloned._model.splittingBehavior = QSB.SingleQuery;
+    return cloned;
+  }
+
+  /** Returns the resolved splitting behavior, preferring per-query override over the global default. */
+  protected get effectiveSplittingBehavior(): QuerySplittingBehavior {
+    return this._splittingBehavior ?? this._globalSplittingBehavior ?? QSB.SplitQuery;
   }
 
   /**
@@ -785,6 +853,16 @@ export class Queryable<T> {
     return this;
   }
 
+  /**
+   * Executes the query and returns materialized entities.
+   * Alias for `toArray()` — matches EF Core's `ToListAsync()` naming convention.
+   * @example
+   * const items = await context.blogs.include(b => b.posts).asSplitQuery().toListAsync();
+   */
+  public async toListAsync(): Promise<T[]> {
+    return this.toArray();
+  }
+
   /** Executes the query and returns materialized entities.
    * @example
    * const items = await context.products.where(p => p.stock > 0).toArray();
@@ -795,7 +873,8 @@ export class Queryable<T> {
     const entities = await this._executor.executeAndMaterialize(
       queryModel,
       this._includes,
-      this._cte
+      this._cte,
+      this.effectiveSplittingBehavior
     );
     return this._applyTracking(entities);
   }
@@ -811,7 +890,8 @@ export class Queryable<T> {
     const entities = await this._executor.executeAndMaterialize(
       queryModel,
       this._includes,
-      this._cte
+      this._cte,
+      this.effectiveSplittingBehavior
     );
     const tracked = this._applyTracking(entities);
     if (!tracked.length) throw new Error('Sequence contains no elements');
@@ -829,7 +909,8 @@ export class Queryable<T> {
     const entities = await this._executor.executeAndMaterialize(
       queryModel,
       this._includes,
-      this._cte
+      this._cte,
+      this.effectiveSplittingBehavior
     );
     const tracked = this._applyTracking(entities);
     return tracked[0] ?? null;
@@ -937,7 +1018,8 @@ export class Queryable<T> {
     const entities = await this._executor.executeAndMaterialize(
       queryModel,
       this._includes,
-      this._cte
+      this._cte,
+      this.effectiveSplittingBehavior
     );
     return entities.length > 0;
   }
