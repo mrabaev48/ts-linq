@@ -75,6 +75,8 @@ export interface QueryStartInfo {
   params: readonly SqlParameter[];
   traceId?: string;
   provider?: string;
+  /** True when the query was executed via a CapturedQueryPlan (compiled query). */
+  compiledPlan?: boolean;
 }
 
 export interface QueryEndInfo {
@@ -465,6 +467,25 @@ export interface SqlCache {
   invalidateBy?(matcher: (key: string) => boolean): number;
   /** Optional metrics exposure for monitoring. */
   getMetrics?(): SqlCacheMetrics;
+}
+
+/**
+ * Extended SQL cache interface used by CapturedQueryPlan.
+ * Caches SQL templates keyed by query structure (without parameter values),
+ * allowing the same SQL to be reused with different bound parameters.
+ */
+export interface TemplateSqlCache extends SqlCache {
+  /** Get cached SQL template by structure-only key. Returns undefined on miss. */
+  getTemplate(key: string): { query: string } | undefined;
+  /** Number of plan cache hits (SQL template reuses). */
+  readonly cacheHits: number;
+  /** Number of plan cache misses (SQL generations). */
+  readonly cacheMisses: number;
+}
+
+/** Type guard for TemplateSqlCache. */
+export function isTemplateSqlCache(cache: SqlCache): cache is TemplateSqlCache {
+  return typeof (cache as TemplateSqlCache).getTemplate === 'function';
 }
 
 // Performance options

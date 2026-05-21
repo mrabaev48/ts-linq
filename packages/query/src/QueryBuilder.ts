@@ -1,6 +1,7 @@
 import { safeCacheSize } from '@ts-linq/metrics-safe';
 import type { QueryOptions, SqlDialect, SqlLogger, SqlParameter } from '@ts-linq/types';
 import type { SqlCache, SqlCacheEntry } from '@ts-linq/types';
+import { isTemplateSqlCache } from '@ts-linq/types';
 
 import { EnhancedSqlCache } from './EnhancedSqlCache';
 import type { QueryModel } from './QueryModel';
@@ -45,6 +46,18 @@ export class QueryBuilder {
       this._providerName,
       this._namespace
     );
+
+    // Plan-level cache check (structure-only key). On hit, rebind current parameters
+    // so stale values from the first compilation are never returned.
+    if (isTemplateSqlCache(this._cache)) {
+      const planKey = QueryBuilder.buildPlanKey(key);
+      const template = this._cache.getTemplate(planKey);
+      if (template) {
+        this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
+        return { query: template.query, parameters: QueryBuilder.extractCurrentParams(options) };
+      }
+    }
+
     const hit = this.getFromCache(key);
     if (hit) {
       this._logger?.cache?.({ cache: 'sqlGen', hit: true, provider: this._providerName });
@@ -68,6 +81,13 @@ export class QueryBuilder {
     }
     const built = this._dialect.buildSelect(entityClass, normalized);
     this.remember(key, built);
+
+    // Populate plan cache template (SQL only, no parameter values)
+    if (isTemplateSqlCache(this._cache)) {
+      const planKey = QueryBuilder.buildPlanKey(key);
+      this._cache.set(planKey, { query: built.query, parameters: [] });
+    }
+
     this._logger?.cache?.({ cache: 'sqlGen', hit: false, provider: this._providerName });
     return built;
   }
@@ -213,6 +233,43 @@ export class QueryBuilder {
 
   private static serializeJoins(options: QueryOptions): string {
     return (options.joins ?? []).map((j) => `${j.type}:${j.table}:${j.on};`).join('');
+  }
+
+  /**
+   * Build a structure-only plan key by stripping parameter values from a full cache key.
+   * Used by the plan-level (TemplateSqlCache) code path.
+   */
+  private static buildPlanKey(fullKey: string): string {
+    return fullKey
+      .replace(/\?\(([^)]*)\)/g, '?()') // strip ?(val) after ? placeholders
+      .replace(/\)\(([^()]*)\)/g, ')()'); // strip )(val) groups (whereIn / IN-clause params)
+  }
+
+  /**
+   * Re-extract all current SQL parameters from QueryOptions.
+   * Called when a plan-cache hit is found so the cached SQL template is reused
+   * but fresh parameter values are bound for this invocation.
+   */
+  private static extractCurrentParams(options: QueryOptions): SqlParameter[] {
+    const params: SqlParameter[] = [];
+    const wheres = Array.isArray(options.where)
+      ? options.where
+      : options.where
+        ? [options.where]
+        : [];
+    for (const w of wheres) {
+      if (w.parameters) params.push(...w.parameters);
+    }
+    if (options.groupBy && !Array.isArray(options.groupBy) && options.groupBy.having?.parameters) {
+      params.push(...options.groupBy.having.parameters);
+    }
+    if (options.rawSqlSource) {
+      params.push(...options.rawSqlSource.params);
+    }
+    if (options.selectParams) {
+      params.push(...(options.selectParams as SqlParameter[]));
+    }
+    return params;
   }
 
   /** Store an item in the cache. */

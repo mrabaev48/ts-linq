@@ -1,7 +1,7 @@
 ---
 title: Compiled Queries (EF.CompileQuery / EF.CompileAsyncQuery)
 ef_core_api: EF.CompileQuery / EF.CompileAsyncQuery
-status: not-started
+status: done
 priority: P1
 effort: M
 depends_on: []
