@@ -4,7 +4,7 @@ import { geometryToEwkbHex } from '@ts-linq/provider-postgres';
 
 import { dropTables, setupTestDatabase, teardownTestDatabase } from '../../src/setup';
 
-// ─── Entity ───────────────────────────────────────────────────────────────────
+// ─── Entity (minimal — geometry column added via raw DDL after ensureCreated) ──
 
 @Entity({ name: 'spatial_cities' })
 class City {
@@ -17,35 +17,58 @@ class City {
 
 class TestDbContext extends DbContext {}
 
-// ─── Suite ────────────────────────────────────────────────────────────────────
+// ─── Pure type-level tests (no DB) ────────────────────────────────────────────
+
+describe('Spatial primitives (no DB)', () => {
+  test('createPoint returns a typed Point with correct SRID', () => {
+    const pt = createPoint(1.0, 2.0);
+    expect(isPoint(pt)).toBe(true);
+    expect(pt.x).toBeCloseTo(1.0, 6);
+    expect(pt.y).toBeCloseTo(2.0, 6);
+    expect(pt.srid).toBe(4326);
+  });
+
+  test('createPoint with custom SRID', () => {
+    const pt = createPoint(100.0, 0.0, 32632);
+    expect(pt.srid).toBe(32632);
+  });
+});
+
+// ─── DB-backed tests (PostgreSQL / PostGIS) ───────────────────────────────────
 
 const run = process.env.SKIP_DB_TESTS !== '1';
 
-// Spatial e2e currently targets PostgreSQL only (PostGIS required).
-// MySQL / MSSQL spatial integration is covered in packages/integration-tests.
 (run ? describe : describe.skip)('E2E Spatial (PostgreSQL / PostGIS)', () => {
   let harness: any;
   let provider: any;
   let context: TestDbContext;
+  let postGisAvailable = false;
 
   beforeAll(async () => {
     ({ harness, provider } = await setupTestDatabase('postgresql'));
     context = new TestDbContext({ provider });
 
-    // PostGIS extension + table with geometry column (created via raw SQL)
+    // ensureCreated() connects the provider pool and creates the base table
+    await context.ensureCreated();
+
+    // Enable PostGIS if available; drop+recreate table with geometry column
     try {
       await provider.executeNonQuery('CREATE EXTENSION IF NOT EXISTS postgis');
+      postGisAvailable = true;
     } catch {
-      // PostGIS may not be available in all CI environments — skip gracefully
+      postGisAvailable = false;
     }
-    await provider.executeNonQuery('DROP TABLE IF EXISTS "spatial_cities"');
-    await provider.executeNonQuery(`
-      CREATE TABLE "spatial_cities" (
-        id       SERIAL PRIMARY KEY,
-        name     TEXT NOT NULL,
-        location GEOMETRY(Point, 4326)
-      )
-    `);
+
+    if (postGisAvailable) {
+      await provider.executeNonQuery('DROP TABLE IF EXISTS "spatial_cities"');
+      await provider.executeNonQuery(`
+        CREATE TABLE "spatial_cities" (
+          id       SERIAL PRIMARY KEY,
+          name     TEXT NOT NULL,
+          location GEOMETRY(Point, 4326)
+        )
+      `);
+    }
   });
 
   afterAll(async () => {
@@ -55,6 +78,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
   });
 
   test('insert Point via WKB hex and retrieve via raw SQL', async () => {
+    if (!postGisAvailable) return;
     const berlin = createPoint(13.404954, 52.520008);
     const hex = geometryToEwkbHex(berlin);
     await provider.executeNonQuery(
@@ -69,6 +93,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
   });
 
   test('ST_Distance returns a positive value between two points', async () => {
+    if (!postGisAvailable) return;
     const paris = createPoint(2.349014, 48.864716);
     const parisHex = geometryToEwkbHex(paris);
     await provider.executeNonQuery(
@@ -86,14 +111,6 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       [`\\x${berlinHex}`, 'Paris']
     )) as Array<{ dist: string }>;
     const dist = parseFloat(rows[0]?.dist ?? '0');
-    expect(dist).toBeGreaterThan(100_000); // > 100 km (Berlin–Paris ≈ 878 km)
-  });
-
-  test('isPoint type guard works on createPoint result', () => {
-    const pt = createPoint(1.0, 2.0);
-    expect(isPoint(pt)).toBe(true);
-    expect(pt.x).toBeCloseTo(1.0, 6);
-    expect(pt.y).toBeCloseTo(2.0, 6);
-    expect(pt.srid).toBe(4326);
+    expect(dist).toBeGreaterThan(100_000); // Berlin–Paris ≈ 878 km
   });
 });
