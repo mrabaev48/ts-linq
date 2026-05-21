@@ -389,6 +389,12 @@ export class MssqlProvider extends DatabaseProvider {
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
 
+  protected override buildChunkSql(baseSql: string, chunkLimit: number, offset: number): string {
+    const hasOrderBy = /\bORDER\s+BY\b/i.test(baseSql);
+    const orderBy = hasOrderBy ? '' : ' ORDER BY (SELECT NULL)';
+    return `${baseSql}${orderBy} OFFSET ${offset} ROWS FETCH NEXT ${chunkLimit} ROWS ONLY`;
+  }
+
   /** Execute a SQL query and return the recordset rows. */
   protected async doExecuteQuery<T>(
     _sql: string,

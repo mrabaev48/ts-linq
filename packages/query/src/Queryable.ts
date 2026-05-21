@@ -926,6 +926,149 @@ export class Queryable<T> {
     return this.toArray();
   }
 
+  /**
+   * Returns an AsyncIterable<T> that streams entities from the database using
+   * chunked OFFSET pagination (1000 rows per chunk by default). Memory is bounded
+   * to one chunk at a time — suitable for large result sets (ETL, exports).
+   *
+   * Mirrors EF Core's `AsAsyncEnumerable()` extension method.
+   *
+   * **Limitations**:
+   * - `include()`/`thenInclude()` are not populated during streaming.
+   *   Use `toListAsync()` when eager loading is required.
+   * - `NoTrackingWithIdentityResolution` falls back to no-tracking (no in-memory deduplication
+   *   across chunks) to preserve memory bounds.
+   *
+   * @param signal Optional AbortSignal to cancel streaming between chunks.
+   *
+   * @example
+   * for await (const post of context.posts.asAsyncEnumerable()) {
+   *   await exportRow(post);
+   * }
+   */
+  public asAsyncEnumerable(signal?: AbortSignal): AsyncIterable<T> {
+    const queryModel = this.prepareQueryModel();
+    const startOffset = queryModel.offset ?? 0;
+    const maxRows = queryModel.limit;
+    queryModel.offset = undefined;
+    queryModel.limit = undefined;
+
+    const { query: baseSql, parameters } = this._sqlBuilder.generateFromModel(
+      this._entityClass,
+      queryModel
+    );
+
+    const provider = this._provider;
+    const materializer = this._materializer;
+    const trackingMode = this._trackingMode;
+    const entityAttacher = this._entityAttacher;
+    const entityClass = this._entityClass;
+
+    return {
+      [Symbol.asyncIterator]: async function* (): AsyncIterator<T> {
+        for await (const row of provider.streamRows(
+          baseSql,
+          parameters,
+          startOffset,
+          maxRows,
+          signal
+        )) {
+          const entity = materializer.mapRowToEntity(row);
+          if (trackingMode === QueryTrackingBehavior.TrackAll && entityAttacher) {
+            entityAttacher.attach(entity as object, entityClass);
+          }
+          yield entity;
+        }
+      }
+    };
+  }
+
+  /**
+   * Executes an async action for each entity in the query result, streaming
+   * from the database without buffering the full result set in memory.
+   *
+   * Mirrors EF Core's `ForEachAsync()` extension method.
+   *
+   * @param action Synchronous or async callback invoked for each entity.
+   * @param signal Optional AbortSignal to cancel streaming between chunks.
+   *
+   * @example
+   * await context.posts
+   *   .where(p => p.isPublished)
+   *   .forEachAsync(p => exportToCsv(p));
+   */
+  public async forEachAsync(
+    action: (entity: T) => void | Promise<void>,
+    signal?: AbortSignal
+  ): Promise<void> {
+    for await (const entity of this.asAsyncEnumerable(signal)) {
+      await action(entity);
+    }
+  }
+
+  /**
+   * Materializes the query result into a `Map` keyed by `keySelector`.
+   * Throws if two entities produce the same key (mirrors EF Core behavior).
+   *
+   * Mirrors EF Core's `ToDictionaryAsync(keySelector)` overload.
+   *
+   * @param keySelector Lambda that extracts the map key from each entity.
+   * @param signal      Optional AbortSignal to cancel streaming.
+   *
+   * @example
+   * const byId = await context.posts.toDictionaryAsync(p => p.id);
+   */
+  public async toDictionaryAsync<K>(
+    keySelector: (entity: T) => K,
+    signal?: AbortSignal
+  ): Promise<Map<K, T>>;
+
+  /**
+   * Materializes the query result into a `Map` keyed by `keySelector` with
+   * values projected by `elementSelector`.
+   * Throws if two entities produce the same key.
+   *
+   * Mirrors EF Core's `ToDictionaryAsync(keySelector, elementSelector)` overload.
+   *
+   * @param keySelector     Lambda that extracts the map key from each entity.
+   * @param elementSelector Lambda that projects the map value from each entity.
+   * @param signal          Optional AbortSignal to cancel streaming.
+   *
+   * @example
+   * const titleById = await context.posts.toDictionaryAsync(p => p.id, p => p.title);
+   */
+  public async toDictionaryAsync<K, V>(
+    keySelector: (entity: T) => K,
+    elementSelector: (entity: T) => V,
+    signal?: AbortSignal
+  ): Promise<Map<K, V>>;
+
+  public async toDictionaryAsync<K, V = T>(
+    keySelector: (entity: T) => K,
+    elementSelectorOrSignal?: ((entity: T) => V) | AbortSignal,
+    signal?: AbortSignal
+  ): Promise<Map<K, V>> {
+    let elementSelector: ((entity: T) => V) | undefined;
+    let resolvedSignal: AbortSignal | undefined;
+
+    if (typeof elementSelectorOrSignal === 'function') {
+      elementSelector = elementSelectorOrSignal;
+      resolvedSignal = signal;
+    } else {
+      resolvedSignal = elementSelectorOrSignal ?? signal;
+    }
+
+    const map = new Map<K, V>();
+    for await (const entity of this.asAsyncEnumerable(resolvedSignal)) {
+      const key = keySelector(entity);
+      if (map.has(key)) {
+        throw new Error(`An item with the same key has already been added. Key: ${String(key)}`);
+      }
+      map.set(key, elementSelector ? elementSelector(entity) : (entity as unknown as V));
+    }
+    return map;
+  }
+
   /** Executes the query and returns materialized entities.
    * @example
    * const items = await context.products.where(p => p.stock > 0).toArray();
