@@ -6,6 +6,7 @@ import type { EntityMetadata, MssqlConfig, SqlDialect, SqlParameter } from '@ts-
 import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
 
 import { buildMssqlConnectionString } from './buildConnectionString';
+import { encodeHierarchyId, isHierarchyId } from './hierarchy-codec';
 import { encodeWkt, isGeometryObject } from './spatial-codec';
 import { isMssqlTransientErrorNumber } from './transientErrorCodes';
 
@@ -545,6 +546,9 @@ export class MssqlProvider extends DatabaseProvider {
 
   private coerceToSqlParameter(value: unknown): SqlParameter {
     if (value === undefined) return null;
+    if (isHierarchyId(value)) {
+      return encodeHierarchyId(value);
+    }
     if (isGeometryObject(value)) {
       return encodeWkt(value);
     }
