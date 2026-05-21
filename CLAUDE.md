@@ -333,3 +333,73 @@ The Serena memory should reflect the latest repository architecture and implemen
 * Keep APIs cohesive.
 * Minimize technical debt introduction.
 * Do not perform unrelated cleanup during feature implementation.
+
+---
+
+## 14. Versioning and Changesets Rules
+
+This project uses [Changesets](https://github.com/changesets/changesets) for versioning and
+changelog generation. Package versions are never bumped manually in `package.json` or via git
+tags. All bumps are driven by changeset files.
+
+### When to Create a Changeset
+
+Create a changeset for any PR that:
+
+* adds, removes, or changes a **public API** (exported types, function signatures, identifiers);
+* changes **runtime behavior** that consumers of any package would observe;
+* fixes a **bug** in a versioned package;
+* introduces a **breaking change** (always `major` + explicit migration docs);
+* makes a **performance or behavioral improvement** worth communicating to users.
+
+Do **not** create a changeset for:
+
+* changes only in `@ts-linq/e2e-tests`, `@ts-linq/integration-tests`, `@ts-linq/examples`;
+* `@ts-linq/eslint-config`, `@ts-linq/jest-config`, `@ts-linq/typescript-config`;
+* documentation-only edits with no API change;
+* CI/CD workflow changes.
+
+### Change Type Selection
+
+| Type | When |
+|------|------|
+| `patch` | Bug fix, internal refactor with no API surface change |
+| `minor` | New exported API that is backward compatible |
+| `major` | Breaking change — removal, rename, or incompatible signature change |
+
+When in doubt, choose `patch`.
+
+### How to Create a Changeset
+
+```bash
+pnpm changeset
+```
+
+The interactive wizard asks which packages are affected, the bump type, and a summary line.
+It generates `.changeset/<random-name>.md`. Commit this file as part of your PR branch.
+
+### Mandatory Rule
+
+Any PR that modifies source in a versioned package MUST include a changeset file.
+
+This is enforced by the `Changeset present` CI check. The PR cannot merge until it passes.
+
+The "Version Packages" PR created by the Changesets Action is automatically exempted.
+
+### Packages Excluded from Changesets
+
+Never create changesets targeting:
+`@ts-linq/e2e-tests`, `@ts-linq/integration-tests`, `@ts-linq/examples`,
+`@ts-linq/eslint-config`, `@ts-linq/jest-config`, `@ts-linq/typescript-config`
+
+### Release Flow
+
+1. PR with source changes + `.changeset/*.md` merges to `main`
+2. Release workflow creates "Version Packages" PR (bumps versions, writes CHANGELOG.md)
+3. Maintainer reviews and merges the "Version Packages" PR
+4. Release workflow publishes `@ts-linq/cache-redis`, `@ts-linq/cache-memcached`, `@ts-linq/cli`
+
+### References
+
+* Config: `.changeset/config.json`
+* Changesets docs: https://github.com/changesets/changesets

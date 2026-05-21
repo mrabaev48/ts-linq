@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.4/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "mrabaev48/ts-linq" }
+  ],
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "restricted",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@ts-linq/e2e-tests",
+    "@ts-linq/integration-tests",
+    "@ts-linq/examples",
+    "@ts-linq/eslint-config",
+    "@ts-linq/jest-config",
+    "@ts-linq/typescript-config"
+  ]
+}

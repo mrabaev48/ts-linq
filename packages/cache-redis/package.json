@@ -33,6 +33,9 @@
   ],
   "author": "",
   "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@ts-linq/core": "workspace:*",
     "@ts-linq/types": "workspace:*"
