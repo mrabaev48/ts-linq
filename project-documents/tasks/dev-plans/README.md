@@ -72,7 +72,7 @@ Provider-specific, ecosystem, or operational features.
 |-------|----------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|:------:|:------:|------------------|
 | P2-33 | [Stored procedure mapping](./P2-33-stored-procedure-mapping.md)                  | `InsertUsingStoredProcedure`, `UpdateUsingStoredProcedure`, `DeleteUsingStoredProcedure` (EF7+)             | - [ ]  | L      | P0-01            |
 | P2-34 | [Spatial types](./P2-34-spatial-types.md)                                        | NetTopologySuite equivalent — PostGIS / MSSQL spatial / MySQL spatial                                       | ✅     | XL     | —                |
-| P2-35 | [HierarchyId](./P2-35-hierarchy-id.md)                                           | SQL Server `HierarchyId` (EF8); Postgres `ltree` fallback                                                   | - [ ]  | L      | —                |
+| P2-35 | [HierarchyId](./P2-35-hierarchy-id.md)                                           | SQL Server `HierarchyId` (EF8); Postgres `ltree` fallback                                                   | ✅     | L      | —                |
 | P2-36 | [Temporal queries](./P2-36-temporal-queries.md)                                  | `TemporalAsOf`, `TemporalAll`, `TemporalBetween`, `TemporalFromTo`, `TemporalContainedIn`                   | - [ ]  | L      | —                |
 | P2-37 | [Cosmos DB provider](./P2-37-cosmos-provider.md)                                 | Cosmos provider rework — hierarchical PK, full-text + vector search (EF9)                                   | - [ ]  | XL     | P0-03, P0-04     |
 | P2-38 | [SQLite provider](./P2-38-sqlite-provider.md)                                    | First-class SQLite + `:memory:` for integration tests                                                       | - [ ]  | L      | P0-03, P0-04     |
@@ -86,6 +86,15 @@ Provider-specific, ecosystem, or operational features.
 | P2-46 | [Batching / MaxBatchSize](./P2-46-batching-max-batch-size.md)                    | `MaxBatchSize`, multi-row INSERT/UPDATE/DELETE batching at SaveChanges                                      | - [ ]  | M      | —                |
 | P2-47 | [Read replica / multi-tenancy](./P2-47-read-replica-multi-tenancy.md)            | Read replica routing + per-tenant connection strings (extend existing multi-tenant plugin)                  | - [ ]  | L      | P0-11            |
 | P2-48 | [Vector search](./P2-48-vector-search.md)                                        | Cosmos vector + hybrid search (EF9 preview); pgvector for Postgres                                          | - [ ]  | L      | P2-37            |
+
+### RF — Infrastructure / Engineering (1 task)
+
+Internal engineering quality tasks. Not EF Core feature-parity items. Must complete before
+any task that extends the affected package, to prevent compounding technical debt.
+
+| #     | Title                                                                                     | Scope                                                    | Status | Effort | Depends on |
+|-------|-------------------------------------------------------------------------------------------|----------------------------------------------------------|:------:|:------:|------------|
+| RF-01 | [Transformer Refactor — Clean Architecture](./RF-01-transformer-refactor.md)              | `@ts-linq/transformer` internal structure & test coverage | - [ ]  | L      | —          |
 
 ---
 
@@ -182,7 +191,7 @@ flowchart LR
 
 ## 5. Progress
 
-`9 / 48 tasks done.`
+`9 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure)
 
 Update this number when a task moves to `status: done`.
 
@@ -208,7 +217,8 @@ whose `depends_on` points into the current step.
 
 ### Step 1 — No prerequisites (start here)
 
-> **Priority tip:** begin P0-01 first. 14 tasks across all tiers are directly or transitively blocked on it.
+> **Priority tip:** begin P0-01 first. 14 tasks across all tiers are directly or transitively blocked on it.  
+> Begin RF-01 before P2-35 / P2-36 / P1-22 — those tasks add new expression kinds to the transformer and the refactored structure makes those additions safe.
 
 | Task  | Title                          | Status    |
 |-------|--------------------------------|-----------|
@@ -222,7 +232,8 @@ whose `depends_on` points into the current step.
 | P1-23 | Savepoints + retry strategy    | ✅ done   |
 | P1-27 | Async streaming                | ✅ done   |
 | P2-34 | Spatial types                  | ✅ done   |
-| P2-35 | HierarchyId                    | —         |
+| **RF-01** | **Transformer Refactor — Clean Architecture** | **—** |
+| P2-35 | HierarchyId                    | ✅ done   |
 | P2-36 | Temporal queries               | —         |
 | P2-40 | DbContext pooling / factory    | —         |
 | P2-41 | Query tags / TagWithCallSite   | —         |
