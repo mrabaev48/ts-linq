@@ -71,13 +71,15 @@ export class TelemetryProvider implements SqlLogger {
 
   queryStart(info: QueryStartInfo): void {
     if (!this.tracer) return;
-    const span = this.tracer.startSpan('db.query', {
-      attributes: {
-        'db.system': info.provider ?? 'sql',
-        'db.statement': this.mask(info.sql),
-        'db.parameters.count': info.params.length
-      }
-    });
+    const attrs: Record<string, unknown> = {
+      'db.system': info.provider ?? 'sql',
+      'db.statement': this.mask(info.sql),
+      'db.parameters.count': info.params.length
+    };
+    if (info.compiledPlan === true) {
+      attrs['db.query.compiled'] = true;
+    }
+    const span = this.tracer.startSpan('db.query', { attributes: attrs });
     this.querySpans.set(info.traceId, span);
   }
 

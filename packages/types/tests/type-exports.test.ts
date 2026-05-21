@@ -42,7 +42,8 @@ describe('Type Exports', () => {
       'LoadingStrategy',
       'EntityState',
       'DeleteBehavior',
-      'QuerySplittingBehavior'
+      'QuerySplittingBehavior',
+      'isTemplateSqlCache'
     ];
 
     expect(exportedKeys.sort()).toEqual(expectedExports.sort());

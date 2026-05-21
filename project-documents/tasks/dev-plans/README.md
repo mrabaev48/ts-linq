@@ -50,7 +50,7 @@ Lands after P0. Necessary for power users but not blocking baseline migration.
 | P1-17 | [Complex types](./P1-17-complex-types.md)                                     | `ComplexProperty` (EF8) value-object semantics without identity                                        | - [ ]  | M      | P0-06        |
 | P1-18 | [AsSplitQuery / AsSingleQuery](./P1-18-as-split-query.md)                     | `AsSplitQuery`, `AsSingleQuery`, `UseQuerySplittingBehavior`                                           | - [x]  | M      | —            |
 | P1-19 | [Filtered Include](./P1-19-filtered-include.md)                               | `Include(b => b.Posts.Where(...).OrderBy(...).Take(n))`                                                | - [x]  | M      | —            |
-| P1-20 | [Compiled queries](./P1-20-compiled-queries.md)                               | `EF.CompileQuery`, `EF.CompileAsyncQuery`                                                              | - [ ]  | M      | —            |
+| P1-20 | [Compiled queries](./P1-20-compiled-queries.md)                               | `EF.CompileQuery`, `EF.CompileAsyncQuery`                                                              | - [x]  | M      | —            |
 | P1-21 | [Sequences / HiLo](./P1-21-sequences-hi-lo.md)                                | `HasSequence`, `UseHiLo`, `UseSequence`                                                                | - [ ]  | M      | P1-30        |
 | P1-22 | [EF.Functions / DbFunctions](./P1-22-ef-functions.md)                         | `EF.Functions.Like/ILike/Random/DateDiff*/Greatest/Least/StDev/Variance`, `HasDbFunction`              | - [ ]  | L      | P0-01        |
 | P1-23 | [Savepoints + retry strategy](./P1-23-transaction-savepoints-retry.md)        | `CreateSavepoint`, `RollbackToSavepoint`, `EnableRetryOnFailure`, `ExecutionStrategy`                  | - [ ]  | M      | —            |
@@ -182,7 +182,7 @@ flowchart LR
 
 ## 5. Progress
 
-`2 / 48 tasks done.`
+`7 / 48 tasks done.`
 
 Update this number when a task moves to `status: done`.
 
@@ -218,7 +218,7 @@ whose `depends_on` points into the current step.
 | P0-12 | Interceptors                   | ✅ done   |
 | P1-18 | AsSplitQuery / AsSingleQuery   | ✅ done   |
 | P1-19 | Filtered Include               | ✅ done   |
-| P1-20 | Compiled queries               | —         |
+| P1-20 | Compiled queries               | ✅ done   |
 | P1-23 | Savepoints + retry strategy    | —         |
 | P1-27 | Async streaming                | —         |
 | P2-34 | Spatial types                  | —         |
