@@ -1,5 +1,13 @@
 # @ts-linq/cache
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies [[`6e83ca9`](https://github.com/mrabaev48/ts-linq/commit/6e83ca9ce576f309f0959b10cd0b43566012f4fb), [`1c2b714`](https://github.com/mrabaev48/ts-linq/commit/1c2b714b8b72a0a15fc94c11c1be40dc12597a9a)]:
+  - @ts-linq/core@1.2.0
+  - @ts-linq/types@2.1.0
+
 ## 2.0.0
 
 ### Patch Changes

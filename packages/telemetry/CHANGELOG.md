@@ -1,5 +1,12 @@
 # @ts-linq/telemetry
 
+## 2.0.1
+
+### Patch Changes
+
+- Updated dependencies [[`1c2b714`](https://github.com/mrabaev48/ts-linq/commit/1c2b714b8b72a0a15fc94c11c1be40dc12597a9a)]:
+  - @ts-linq/types@2.1.0
+
 ## 2.0.0
 
 ### Patch Changes
