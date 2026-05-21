@@ -161,6 +161,7 @@ class TestDbContext extends DbContext {
     await users.where((user: User) => user.age >= 25).count();
     expect(countCache.getSize()).toBeGreaterThan(0);
 
+    provider.nextResult = [{ id: 1, name: 'Alice', age: 25 }];
     const toDelete = await users.where((user: User) => user.name === 'Alice').first();
     users.remove(toDelete);
     await context.saveChanges();

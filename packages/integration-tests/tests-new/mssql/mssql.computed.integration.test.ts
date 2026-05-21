@@ -39,7 +39,7 @@ describe('MSSQL computed column (integration)', () => {
     });
     await provider.connect();
     await provider.executeNonQuery(
-      'IF OBJECT_ID(N"users_cc", N"U") IS NOT NULL DROP TABLE users_cc'
+      "IF OBJECT_ID(N'users_cc', N'U') IS NOT NULL DROP TABLE users_cc"
     );
     const meta = MetadataStorage.getEntity(User)!;
     await provider.createTable(meta);

@@ -3,7 +3,12 @@ import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityMetadata, MssqlConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
-import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
+import {
+  DatabaseError,
+  ForeignKeyConstraintError,
+  OptimisticConcurrencyError,
+  UniqueConstraintError
+} from '@ts-linq/types';
 
 import { buildMssqlConnectionString } from './buildConnectionString';
 import { encodeHierarchyId, isHierarchyId } from './hierarchy-codec';
@@ -623,6 +628,9 @@ function mapMssqlError(err: unknown): Error {
   const message = anyErr?.message || String(err);
   if (number === 2627 || number === 2601) {
     return new UniqueConstraintError(message);
+  }
+  if (number === 547) {
+    return new ForeignKeyConstraintError(message);
   }
   return new DatabaseError(message);
 }
