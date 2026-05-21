@@ -1,7 +1,7 @@
 ---
 title: HierarchyId Support (SQL Server) with ltree Fallback (Postgres)
 ef_core_api: Entity<T>.Property(e => e.Path).HasColumnType("hierarchyid")
-status: not-started
+status: done
 priority: P2
 effort: L
 depends_on: []
@@ -104,11 +104,11 @@ Option A — match EF's single-type model, document gaps explicitly.
 
 ## 7. Acceptance criteria
 
-- [ ] Public API mirrors EF Core `HierarchyId` surface
-- [ ] Unit tests cover `getLevel`, `getAncestor`, `isDescendantOf`, `getDescendant` round-trip
-- [ ] Integration test on MSSQL native + Postgres ltree
-- [ ] Docs in `apps/docs/` cover gap list (MSSQL-only ops)
-- [ ] No regressions in `pnpm typecheck`, `pnpm arch:deps`, `pnpm arch:cycles`, `pnpm arch:dead`
+- [x] Public API mirrors EF Core `HierarchyId` surface
+- [x] Unit tests cover `getLevel`, `getAncestor`, `isDescendantOf`, `getDescendant` round-trip
+- [x] Integration test on MSSQL native + Postgres ltree
+- [x] Docs in `apps/docs/` cover gap list (MSSQL-only ops)
+- [x] No regressions in `pnpm typecheck`, `pnpm arch:deps`, `pnpm arch:cycles`, `pnpm arch:dead`
 
 ## 8. Pre-PR sweep (mandatory)
 
