@@ -1,7 +1,7 @@
 import { HierarchyId } from '@ts-linq/core';
 import { decodeLtree, encodeLtree } from '@ts-linq/provider-postgres';
 
-import { setupTestDatabase, teardownTestDatabase } from '../../src/setup';
+import { dropTables, setupTestDatabase, teardownTestDatabase } from '../../src/setup';
 
 // ─── Pure unit tests (no DB required) ────────────────────────────────────────
 
@@ -59,7 +59,8 @@ describe('HierarchyId (no DB)', () => {
 const run = process.env.SKIP_DB_TESTS !== '1';
 
 (run ? describe : describe.skip)('E2E HierarchyId (PostgreSQL / ltree)', () => {
-  let harness: ReturnType<typeof setupTestDatabase> extends Promise<infer T> ? T : never;
+  let harness: any;
+
   let provider: any;
   let ltreeAvailable = false;
 
@@ -87,9 +88,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
 
   afterAll(async () => {
     if (ltreeAvailable) {
-      try {
-        await provider.executeNonQuery('DROP TABLE IF EXISTS e2e_hierarchy_nodes');
-      } catch {}
+      await dropTables(provider, ['e2e_hierarchy_nodes']);
     }
     await teardownTestDatabase(harness);
   });
@@ -105,10 +104,10 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       `INSERT INTO e2e_hierarchy_nodes(label, path) VALUES($1, $2::ltree)`,
       ['node', encodeLtree(h)]
     );
-    const rows = await provider.executeQuery<{ label: string; path: string }>(
+    const rows = (await provider.executeQuery(
       `SELECT label, path::text AS path FROM e2e_hierarchy_nodes WHERE label = $1`,
       ['node']
-    );
+    )) as Array<{ label: string; path: string }>;
     expect(rows[0]?.path).toBe('1.2');
     const decoded = decodeLtree(rows[0]!.path);
     expect(decoded.toString()).toBe('/1/2/');
@@ -121,11 +120,12 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       ['root_child', '1', 'deep_child', '1.2.3']
     );
     const ancestor = HierarchyId.parse('/1/');
-    const rows = await provider.executeQuery<{ label: string }>(
+    const rows = (await provider.executeQuery(
       `SELECT label FROM e2e_hierarchy_nodes WHERE path <@ $1::ltree ORDER BY path`,
       [encodeLtree(ancestor)]
-    );
-    expect(rows.map((r: { label: string }) => r.label)).toContain('root_child');
-    expect(rows.map((r: { label: string }) => r.label)).toContain('deep_child');
+    )) as Array<{ label: string }>;
+    const labels = rows.map((r) => r.label);
+    expect(labels).toContain('root_child');
+    expect(labels).toContain('deep_child');
   });
 });
