@@ -1,9 +1,11 @@
+import { ExecutionStrategy } from '@ts-linq/concurrency';
 import type { DatabaseProvider } from '@ts-linq/core';
 import { Queryable } from '@ts-linq/query';
 
 import type { DbSetContext } from './DbSetContext';
 import type { SqlInterpolated } from './sql/sqlTag';
 import { interpolatedToRaw, toSqlParam } from './sql/sqlTag';
+import { DbContextTransaction } from './transactions/DbContextTransaction';
 
 /**
  * Provides access to database-level raw SQL operations that are not entity-bound.
@@ -104,5 +106,57 @@ export class DatabaseFacade {
       this._provider,
       this._context.entityLoader
     )._withRawSqlSource({ sql: rawSql, params });
+  }
+
+  /**
+   * Begin an explicit database transaction and return a `DbContextTransaction` object.
+   * Mirrors EF Core's `context.Database.BeginTransactionAsync()`.
+   *
+   * The returned object exposes savepoint management and supports `await using`
+   * for automatic rollback on scope exit.
+   *
+   * @example
+   * await using const tx = await ctx.database.beginTransactionAsync();
+   * try {
+   *   await ctx.saveChanges();
+   *   await tx.createSavepointAsync('before_risky');
+   *   try { await doRisky(); }
+   *   catch { await tx.rollbackToSavepointAsync('before_risky'); }
+   *   await tx.releaseSavepointAsync('before_risky');
+   *   await tx.commitAsync();
+   * } catch { await tx.rollbackAsync(); }
+   */
+  async beginTransactionAsync(): Promise<DbContextTransaction> {
+    if (!this._context.beginTransaction) {
+      throw new Error('Transaction callbacks are not available on this context');
+    }
+    await this._context.beginTransaction();
+    return new DbContextTransaction(
+      this._provider,
+      async () => this._context.commitTransaction!(),
+      async () => this._context.rollbackTransaction!()
+    );
+  }
+
+  /**
+   * Create an `ExecutionStrategy` configured with the retry options set via
+   * `DbContextOptionsBuilder.enableRetryOnFailure()`.
+   * Mirrors EF Core's `context.Database.CreateExecutionStrategy()`.
+   *
+   * If no retry options have been configured, defaults to 3 retries with a
+   * maximum delay of 30 000 ms.
+   *
+   * @example
+   * const strategy = ctx.database.createExecutionStrategy();
+   * await strategy.executeAsync(async () => {
+   *   await ctx.saveChanges(); // retried on transient failures
+   * });
+   */
+  createExecutionStrategy(): ExecutionStrategy {
+    const opts = this._context.executionStrategyOptions ?? {
+      maxRetryCount: 3,
+      maxRetryDelay: 30_000
+    };
+    return new ExecutionStrategy(opts, (e: unknown) => this._provider.checkTransientError(e));
   }
 }

@@ -263,6 +263,16 @@ export interface RetryPolicy {
   getDelayMs?(attempt: number): number;
 }
 
+/** Options for ExecutionStrategy / EnableRetryOnFailure. Mirrors EF Core's overload. */
+export interface ExecutionStrategyOptions {
+  /** Maximum number of retry attempts before giving up. */
+  maxRetryCount: number;
+  /** Maximum delay between retries in milliseconds. */
+  maxRetryDelay: number;
+  /** Additional provider-specific error codes to treat as transient. Pass null to use defaults only. */
+  errorCodesToAdd?: string[] | null;
+}
+
 // Connection options
 export interface ConnectionPoolOptions {
   min?: number;

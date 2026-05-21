@@ -5,6 +5,7 @@ import type { EntityMetadata, MySqlConfig, SqlDialect, SqlParameter } from '@ts-
 import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
 
 import { buildMysqlConnectionString } from './buildConnectionString';
+import { isMysqlTransientErrorCode } from './transientErrorCodes';
 
 /**
  * MySQL provider based on `mysql2/promise`.
@@ -401,6 +402,32 @@ export class MySqlProvider extends DatabaseProvider {
     await pool.query('ROLLBACK');
     this.inTransaction = false;
     this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
+  }
+
+  // mysql2 pool.execute() uses prepared statements which do not support SAVEPOINT syntax;
+  // transaction-control statements must go through pool.query() instead.
+  public override async createSavepoint(name: string): Promise<void> {
+    if (!this.isConnected) await this.connect();
+    const pool = this.pool as MySqlPoolLike;
+    await pool.query(`SAVEPOINT ${name}`);
+  }
+
+  public override async rollbackToSavepoint(name: string): Promise<void> {
+    if (!this.isConnected) await this.connect();
+    const pool = this.pool as MySqlPoolLike;
+    await pool.query(`ROLLBACK TO SAVEPOINT ${name}`);
+  }
+
+  public override async releaseSavepoint(name: string): Promise<void> {
+    if (!this.isConnected) await this.connect();
+    const pool = this.pool as MySqlPoolLike;
+    await pool.query(`RELEASE SAVEPOINT ${name}`);
+  }
+
+  /** Enhanced transient error detection using MySQL-specific error codes. */
+  protected override isTransientError(error: unknown): boolean {
+    if (isMysqlTransientErrorCode((error as { errno?: number })?.errno)) return true;
+    return super.isTransientError(error);
   }
 
   /** Provide SQL dialect for this provider. */

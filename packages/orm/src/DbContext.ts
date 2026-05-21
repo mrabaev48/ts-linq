@@ -74,6 +74,7 @@ export abstract class DbContext {
   private _interceptorRegistry!: InterceptorRegistry;
   private _transactionDepth = 0;
   private _database!: DatabaseFacade;
+  private _executionStrategyOptions?: import('@ts-linq/types').ExecutionStrategyOptions;
 
   /**
    * Create a new database context instance.
@@ -83,6 +84,7 @@ export abstract class DbContext {
   constructor(options: DbContextOptions) {
     // Initialize database provider from options
     this._provider = options.provider as DatabaseProvider;
+    this._executionStrategyOptions = options.executionStrategy;
     this._softDelete = options.softDelete;
     // Propagate soft-delete settings into provider for GlobalFilterApplier and ProviderStub
     this._provider.configureSoftDelete(options.softDelete);
@@ -667,7 +669,11 @@ export abstract class DbContext {
       performance: this._performanceOptions,
       globalFilters: this._globalFilters,
       softDeleteOptions: this._softDelete,
-      querySplittingBehavior: this._querySplittingBehavior
+      querySplittingBehavior: this._querySplittingBehavior,
+      beginTransaction: async () => this.beginTransaction(),
+      commitTransaction: async () => this.commitTransaction(),
+      rollbackTransaction: async () => this.rollbackTransaction(),
+      executionStrategyOptions: this._executionStrategyOptions
     };
   }
 
