@@ -57,7 +57,7 @@ Lands after P0. Necessary for power users but not blocking baseline migration.
 | P1-24 | [Primitive collections](./P1-24-primitive-collections.md)                     | `Property(e => e.Tags)` with `string[]`/`int[]`, `Contains` translation (EF8)                          | - [ ]  | M      | P0-05, P0-15 |
 | P1-25 | [Table / entity splitting](./P1-25-table-entity-splitting.md)                 | `SplitToTable`, multiple entities into one table, one entity across multiple tables                    | - [ ]  | M      | P0-01        |
 | P1-26 | [Views / keyless entities](./P1-26-views-keyless-entities.md)                 | `ToView("v_name")`, `HasNoKey()`                                                                       | - [ ]  | S      | P0-01        |
-| P1-27 | [Async streaming](./P1-27-async-streaming-enumerable.md)                      | `AsAsyncEnumerable`, `ForEachAsync`, `ToDictionaryAsync`                                               | - [ ]  | S      | —            |
+| P1-27 | [Async streaming](./P1-27-async-streaming-enumerable.md)                      | `AsAsyncEnumerable`, `ForEachAsync`, `ToDictionaryAsync`                                               | - [x]  | S      | —            |
 | P1-28 | [TrackGraph / DetectChanges](./P1-28-track-graph-detect-changes.md)           | `ChangeTracker.TrackGraph`, `DetectChanges`, `AutoDetectChangesEnabled`                                | - [ ]  | M      | P0-02        |
 | P1-29 | [LocalView / Find / FindAsync](./P1-29-local-view-find.md)                    | `DbSet.Local`, `LocalView<T>`, `FindEntry`, `GetEntries` (EF8), `Find`/`FindAsync`                     | - [ ]  | M      | P1-28        |
 | P1-30 | [Value generators / Sentinel](./P1-30-value-generators-sentinel.md)           | `ValueGeneratedOnAdd/OnUpdate/Never`, custom `ValueGenerator`, `HasSentinel` (EF8)                     | - [ ]  | M      | P0-01        |
@@ -220,7 +220,7 @@ whose `depends_on` points into the current step.
 | P1-19 | Filtered Include               | ✅ done   |
 | P1-20 | Compiled queries               | ✅ done   |
 | P1-23 | Savepoints + retry strategy    | ✅ done   |
-| P1-27 | Async streaming                | —         |
+| P1-27 | Async streaming                | ✅ done   |
 | P2-34 | Spatial types                  | —         |
 | P2-35 | HierarchyId                    | —         |
 | P2-36 | Temporal queries               | —         |

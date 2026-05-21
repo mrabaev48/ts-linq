@@ -1,3 +1,4 @@
+export { STREAMING_CHUNK_SIZE } from './async/AsyncQueryable';
 export { CapturedQueryPlan } from './compiled/CapturedQueryPlan';
 export type { CompiledQueryFn } from './EF';
 export { EF } from './EF';
