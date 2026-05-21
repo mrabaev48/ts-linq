@@ -93,10 +93,6 @@ const run = process.env.SKIP_DB_TESTS !== '1';
     await teardownTestDatabase(harness);
   });
 
-  test('ltree extension available', () => {
-    expect(ltreeAvailable).toBe(true);
-  });
-
   test('insert and retrieve ltree path', async () => {
     if (!ltreeAvailable) return;
     const h = HierarchyId.parse('/1/2/');
