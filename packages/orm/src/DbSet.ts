@@ -358,6 +358,55 @@ export class DbSet<T extends object> {
     return this.newQueryable().toArray();
   }
 
+  /**
+   * Returns an AsyncIterable<T> that streams entities using chunked pagination.
+   * Memory-bounded — suitable for large result sets (ETL, exports).
+   * Mirrors EF Core's AsAsyncEnumerable().
+   */
+  public asAsyncEnumerable(signal?: AbortSignal): AsyncIterable<T> {
+    return this.newQueryable().asAsyncEnumerable(signal);
+  }
+
+  /**
+   * Executes an async action for each entity, streaming without buffering all results.
+   * Mirrors EF Core's ForEachAsync().
+   */
+  public async forEachAsync(
+    action: (entity: T) => void | Promise<void>,
+    signal?: AbortSignal
+  ): Promise<void> {
+    return this.newQueryable().forEachAsync(action, signal);
+  }
+
+  /**
+   * Materializes the query into a Map keyed by keySelector.
+   * Throws on duplicate keys. Mirrors EF Core's ToDictionaryAsync().
+   */
+  public async toDictionaryAsync<K>(
+    keySelector: (entity: T) => K,
+    signal?: AbortSignal
+  ): Promise<Map<K, T>>;
+
+  public async toDictionaryAsync<K, V>(
+    keySelector: (entity: T) => K,
+    elementSelector: (entity: T) => V,
+    signal?: AbortSignal
+  ): Promise<Map<K, V>>;
+
+  public async toDictionaryAsync<K, V = T>(
+    keySelector: (entity: T) => K,
+    elementSelectorOrSignal?: ((entity: T) => V) | AbortSignal,
+    signal?: AbortSignal
+  ): Promise<Map<K, V>> {
+    if (typeof elementSelectorOrSignal === 'function') {
+      return this.newQueryable().toDictionaryAsync(keySelector, elementSelectorOrSignal, signal);
+    }
+    const resolvedSignal = elementSelectorOrSignal ?? signal;
+    return this.newQueryable().toDictionaryAsync(keySelector, resolvedSignal) as unknown as Promise<
+      Map<K, V>
+    >;
+  }
+
   /** Returns the first entity, throws if none. */
   public async first(): Promise<T> {
     return this.newQueryable().first();
