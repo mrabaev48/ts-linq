@@ -649,6 +649,40 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   protected abstract doRollbackTransaction(): Promise<void>;
 
   /**
+   * Create a named savepoint within the current transaction.
+   * Default implementation uses ANSI SQL syntax (`SAVEPOINT name`).
+   * Providers that use different syntax (e.g. MSSQL) must override.
+   */
+  public async createSavepoint(name: string): Promise<void> {
+    await this.executeNonQuery(`SAVEPOINT ${name}`);
+  }
+
+  /**
+   * Roll back to a named savepoint, undoing work done after it was created.
+   * Default implementation uses ANSI SQL syntax (`ROLLBACK TO SAVEPOINT name`).
+   */
+  public async rollbackToSavepoint(name: string): Promise<void> {
+    await this.executeNonQuery(`ROLLBACK TO SAVEPOINT ${name}`);
+  }
+
+  /**
+   * Release (destroy) a named savepoint.
+   * Default implementation uses ANSI SQL syntax (`RELEASE SAVEPOINT name`).
+   * Providers that do not support RELEASE (e.g. MSSQL) must override as a no-op.
+   */
+  public async releaseSavepoint(name: string): Promise<void> {
+    await this.executeNonQuery(`RELEASE SAVEPOINT ${name}`);
+  }
+
+  /**
+   * Public facade over the protected `isTransientError` classifier.
+   * Used by ExecutionStrategy to check whether an error is worth retrying.
+   */
+  public checkTransientError(error: unknown): boolean {
+    return this.isTransientError(error);
+  }
+
+  /**
    * Whether the provider is currently connected.
    */
   public get connected(): boolean {

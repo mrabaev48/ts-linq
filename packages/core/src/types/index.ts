@@ -88,6 +88,8 @@ export interface DbContextOptions {
    * Defaults to `QuerySplittingBehavior.SplitQuery` when not set.
    */
   querySplittingBehavior?: import('@ts-linq/types').QuerySplittingBehavior;
+  /** Execution strategy options for EnableRetryOnFailure. When set, createExecutionStrategy() uses these. */
+  executionStrategy?: import('@ts-linq/types').ExecutionStrategyOptions;
 }
 
 /** Circuit Breaker options */

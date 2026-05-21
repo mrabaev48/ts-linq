@@ -5,6 +5,7 @@ import type { EntityMetadata, MySqlConfig, SqlDialect, SqlParameter } from '@ts-
 import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
 
 import { buildMysqlConnectionString } from './buildConnectionString';
+import { isMysqlTransientErrorCode } from './transientErrorCodes';
 
 /**
  * MySQL provider based on `mysql2/promise`.
@@ -401,6 +402,12 @@ export class MySqlProvider extends DatabaseProvider {
     await pool.query('ROLLBACK');
     this.inTransaction = false;
     this.logger?.transactionEnd?.({ traceId: this.currentTraceId, provider: this.providerName });
+  }
+
+  /** Enhanced transient error detection using MySQL-specific error codes. */
+  protected override isTransientError(error: unknown): boolean {
+    if (isMysqlTransientErrorCode((error as { errno?: number })?.errno)) return true;
+    return super.isTransientError(error);
   }
 
   /** Provide SQL dialect for this provider. */
