@@ -72,7 +72,7 @@ Provider-specific, ecosystem, or operational features.
 |-------|----------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|:------:|:------:|------------------|
 | P2-33 | [Stored procedure mapping](./P2-33-stored-procedure-mapping.md)                  | `InsertUsingStoredProcedure`, `UpdateUsingStoredProcedure`, `DeleteUsingStoredProcedure` (EF7+)             | - [ ]  | L      | P0-01            |
 | P2-34 | [Spatial types](./P2-34-spatial-types.md)                                        | NetTopologySuite equivalent — PostGIS / MSSQL spatial / MySQL spatial                                       | ✅     | XL     | —                |
-| P2-35 | [HierarchyId](./P2-35-hierarchy-id.md)                                           | SQL Server `HierarchyId` (EF8); Postgres `ltree` fallback                                                   | - [ ]  | L      | —                |
+| P2-35 | [HierarchyId](./P2-35-hierarchy-id.md)                                           | SQL Server `HierarchyId` (EF8); Postgres `ltree` fallback                                                   | ✅     | L      | —                |
 | P2-36 | [Temporal queries](./P2-36-temporal-queries.md)                                  | `TemporalAsOf`, `TemporalAll`, `TemporalBetween`, `TemporalFromTo`, `TemporalContainedIn`                   | - [ ]  | L      | —                |
 | P2-37 | [Cosmos DB provider](./P2-37-cosmos-provider.md)                                 | Cosmos provider rework — hierarchical PK, full-text + vector search (EF9)                                   | - [ ]  | XL     | P0-03, P0-04     |
 | P2-38 | [SQLite provider](./P2-38-sqlite-provider.md)                                    | First-class SQLite + `:memory:` for integration tests                                                       | - [ ]  | L      | P0-03, P0-04     |
@@ -233,7 +233,7 @@ whose `depends_on` points into the current step.
 | P1-27 | Async streaming                | ✅ done   |
 | P2-34 | Spatial types                  | ✅ done   |
 | **RF-01** | **Transformer Refactor — Clean Architecture** | **—** |
-| P2-35 | HierarchyId                    | —         |
+| P2-35 | HierarchyId                    | ✅ done   |
 | P2-36 | Temporal queries               | —         |
 | P2-40 | DbContext pooling / factory    | —         |
 | P2-41 | Query tags / TagWithCallSite   | —         |
