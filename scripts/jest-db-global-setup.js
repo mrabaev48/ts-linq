@@ -97,6 +97,27 @@ async function waitForHealthy(timeoutMs = 120_000) {
 }
 
 module.exports = async function globalSetup() {
+  // CI job already wired up DB services via GitHub Actions `services:` block
+  // (e2e.yml sets POSTGRES_URL / MYSQL_URL / MSSQL_URL in the step env).
+  // In that case just enable DB tests and exit — no Docker needed.
+  if (process.env.POSTGRES_URL) {
+    Object.assign(process.env, {
+      ...DB_ENV,
+      // Keep URLs provided by the CI environment
+      POSTGRES_URL: process.env.POSTGRES_URL,
+      MYSQL_URL: process.env.MYSQL_URL || DB_ENV.MYSQL_URL,
+      MSSQL_URL: process.env.MSSQL_URL || DB_ENV.MSSQL_URL,
+    });
+    return;
+  }
+
+  // CI environment without DB services (ci.yml general quality job):
+  // keep the original skip behaviour — do not attempt to start Docker.
+  if (process.env.CI) {
+    return;
+  }
+
+  // Local development: start Docker Compose automatically.
   if (!isDockerAvailable()) {
     console.warn('\n⚠  Docker not available — DB tests will run against a missing DB and fail.\n');
     return;
