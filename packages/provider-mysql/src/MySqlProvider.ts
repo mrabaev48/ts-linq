@@ -2,7 +2,12 @@ import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { MySqlDdlStrategy, MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityMetadata, MySqlConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
-import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
+import {
+  DatabaseError,
+  ForeignKeyConstraintError,
+  OptimisticConcurrencyError,
+  UniqueConstraintError
+} from '@ts-linq/types';
 
 import { buildMysqlConnectionString } from './buildConnectionString';
 import { encodeWkb, isGeometryObject } from './spatial-codec';
@@ -47,6 +52,8 @@ function mapMySqlError(err: unknown): Error {
   const code = anyErr?.code;
   const message = anyErr?.message || String(err);
   if (code === 'ER_DUP_ENTRY') return new UniqueConstraintError(message, code);
+  if (code === 'ER_NO_REFERENCED_ROW_2' || code === 'ER_ROW_IS_REFERENCED_2')
+    return new ForeignKeyConstraintError(message, code);
   return new DatabaseError(message ?? 'Unknown error');
 }
 

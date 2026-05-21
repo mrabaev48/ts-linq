@@ -97,10 +97,10 @@ msD('[integration][mssql] error mapping', () => {
     await p.connect();
     try {
       await p.executeNonQuery(
-        'IF OBJECT_ID(N"dbo.child", N"U") IS NOT NULL DROP TABLE [dbo].[child]'
+        "IF OBJECT_ID(N'dbo.child', N'U') IS NOT NULL DROP TABLE [dbo].[child]"
       );
       await p.executeNonQuery(
-        'IF OBJECT_ID(N"dbo.parent", N"U") IS NOT NULL DROP TABLE [dbo].[parent]'
+        "IF OBJECT_ID(N'dbo.parent', N'U') IS NOT NULL DROP TABLE [dbo].[parent]"
       );
       await p.executeNonQuery(
         'CREATE TABLE [dbo].[parent]([id] INT IDENTITY(1,1) PRIMARY KEY, [u] NVARCHAR(255) NOT NULL UNIQUE)'
@@ -118,12 +118,12 @@ msD('[integration][mssql] error mapping', () => {
     } finally {
       try {
         await p.executeNonQuery(
-          'IF OBJECT_ID(N"dbo.child", N"U") IS NOT NULL DROP TABLE [dbo].[child]'
+          "IF OBJECT_ID(N'dbo.child', N'U') IS NOT NULL DROP TABLE [dbo].[child]"
         );
       } catch {}
       try {
         await p.executeNonQuery(
-          'IF OBJECT_ID(N"dbo.parent", N"U") IS NOT NULL DROP TABLE [dbo].[parent]'
+          "IF OBJECT_ID(N'dbo.parent', N'U') IS NOT NULL DROP TABLE [dbo].[parent]"
         );
       } catch {}
     }

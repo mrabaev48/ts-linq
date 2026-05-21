@@ -1,7 +1,7 @@
 ---
 title: Transformer Package Refactor — Clean Architecture & Production Readiness
 ef_core_api: n/a (internal infrastructure)
-status: not-started
+status: done
 priority: RF
 effort: L
 depends_on: []

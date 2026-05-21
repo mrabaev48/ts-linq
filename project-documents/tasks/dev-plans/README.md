@@ -94,7 +94,7 @@ any task that extends the affected package, to prevent compounding technical deb
 
 | #     | Title                                                                                     | Scope                                                    | Status | Effort | Depends on |
 |-------|-------------------------------------------------------------------------------------------|----------------------------------------------------------|:------:|:------:|------------|
-| RF-01 | [Transformer Refactor — Clean Architecture](./RF-01-transformer-refactor.md)              | `@ts-linq/transformer` internal structure & test coverage | - [ ]  | L      | —          |
+| RF-01 | [Transformer Refactor — Clean Architecture](./RF-01-transformer-refactor.md)              | `@ts-linq/transformer` internal structure & test coverage | - [x]  | L      | —          |
 
 ---
 
@@ -191,7 +191,7 @@ flowchart LR
 
 ## 5. Progress
 
-`9 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure)
+`10 / 49 tasks done.`  (48 EF Core feature-parity + 2 RF infrastructure done)
 
 Update this number when a task moves to `status: done`.
 
@@ -232,7 +232,7 @@ whose `depends_on` points into the current step.
 | P1-23 | Savepoints + retry strategy    | ✅ done   |
 | P1-27 | Async streaming                | ✅ done   |
 | P2-34 | Spatial types                  | ✅ done   |
-| **RF-01** | **Transformer Refactor — Clean Architecture** | **—** |
+| RF-01 | Transformer Refactor — Clean Architecture     | ✅ done   |
 | P2-35 | HierarchyId                    | ✅ done   |
 | P2-36 | Temporal queries               | —         |
 | P2-40 | DbContext pooling / factory    | —         |
