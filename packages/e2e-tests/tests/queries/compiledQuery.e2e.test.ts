@@ -82,7 +82,7 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       await getAllUsers(localCtx);
       await getAllUsers(localCtx);
       expect(getAllUsers.plan.invocationCount).toBe(2);
-      await localCtx.dispose();
+      // No dispose — provider is shared; pool is closed only in afterAll
     });
 
     it('isWarm becomes true after first plan cache hit', async () => {
@@ -98,7 +98,6 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       await getAllUsers(localCtx); // miss — template stored
       await getAllUsers(localCtx); // hit
       expect(getAllUsers.plan.isWarm).toBe(true);
-      await localCtx.dispose();
     });
 
     it('cacheHits increments after plan template is reused', async () => {
@@ -114,7 +113,6 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       const hitsBefore = getAllUsers.plan.cacheHits;
       await getAllUsers(localCtx); // hit
       expect(getAllUsers.plan.cacheHits).toBeGreaterThan(hitsBefore);
-      await localCtx.dispose();
     });
 
     it('compileAsyncQuery works identically to compileQuery', async () => {
@@ -130,7 +128,6 @@ const run = process.env.SKIP_DB_TESTS !== '1';
       await getAllAsync(localCtx);
       expect(getAllAsync.plan.invocationCount).toBe(2);
       expect(getAllAsync.plan.isWarm).toBe(true);
-      await localCtx.dispose();
     });
   }
 );
