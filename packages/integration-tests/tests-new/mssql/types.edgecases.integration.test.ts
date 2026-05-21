@@ -15,7 +15,7 @@ d('[integration][types][mssql] DECIMAL/date', () => {
     await p.connect();
     try {
       await p.executeNonQuery(
-        'IF OBJECT_ID(N"dbo.edge_types", N"U") IS NOT NULL DROP TABLE [dbo].[edge_types]'
+        "IF OBJECT_ID(N'dbo.edge_types', N'U') IS NOT NULL DROP TABLE [dbo].[edge_types]"
       );
       await p.executeNonQuery(
         'CREATE TABLE [dbo].[edge_types]([id] INT PRIMARY KEY, [amount] DECIMAL(10,2) NOT NULL, [created_at] DATETIME2 NOT NULL)'
@@ -31,7 +31,7 @@ d('[integration][types][mssql] DECIMAL/date', () => {
     } finally {
       try {
         await p.executeNonQuery(
-          'IF OBJECT_ID(N"dbo.edge_types", N"U") IS NOT NULL DROP TABLE [dbo].[edge_types]'
+          "IF OBJECT_ID(N'dbo.edge_types', N'U') IS NOT NULL DROP TABLE [dbo].[edge_types]"
         );
       } catch {}
     }

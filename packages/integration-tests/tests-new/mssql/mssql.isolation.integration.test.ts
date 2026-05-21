@@ -23,7 +23,7 @@ d('[integration][mssql] isolation (READ COMMITTED vs SNAPSHOT)', () => {
     await p2.connect();
     try {
       await p1.executeNonQuery(
-        'IF OBJECT_ID(N\"dbo.iso_items\", N\"U\") IS NOT NULL DROP TABLE [dbo].[iso_items]'
+        "IF OBJECT_ID(N'dbo.iso_items', N'U') IS NOT NULL DROP TABLE [dbo].[iso_items]"
       );
       await p1.executeNonQuery(
         'CREATE TABLE [dbo].[iso_items]([id] INT PRIMARY KEY, [v] INT NOT NULL)'
@@ -51,7 +51,7 @@ d('[integration][mssql] isolation (READ COMMITTED vs SNAPSHOT)', () => {
     } finally {
       try {
         await p1.executeNonQuery(
-          'IF OBJECT_ID(N\"dbo.iso_items\", N\"U\") IS NOT NULL DROP TABLE [dbo].[iso_items]'
+          "IF OBJECT_ID(N'dbo.iso_items', N'U') IS NOT NULL DROP TABLE [dbo].[iso_items]"
         );
       } catch {}
     }

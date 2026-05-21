@@ -22,7 +22,7 @@ d('[integration][mssql] migration round-trip (diff → apply → no diff)', () =
     await p.connect();
     try {
       await p.executeNonQuery(
-        'IF OBJECT_ID(N"dbo.rt_users", N"U") IS NOT NULL DROP TABLE [dbo].[rt_users]'
+        "IF OBJECT_ID(N'dbo.rt_users', N'U') IS NOT NULL DROP TABLE [dbo].[rt_users]"
       );
 
       MetadataStorage.getInstance().clear();
@@ -52,7 +52,7 @@ d('[integration][mssql] migration round-trip (diff → apply → no diff)', () =
     } finally {
       try {
         await p.executeNonQuery(
-          'IF OBJECT_ID(N"dbo.rt_users", N"U") IS NOT NULL DROP TABLE [dbo].[rt_users]'
+          "IF OBJECT_ID(N'dbo.rt_users', N'U') IS NOT NULL DROP TABLE [dbo].[rt_users]"
         );
       } catch {}
     }
