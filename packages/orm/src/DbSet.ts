@@ -1,7 +1,8 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { OrderedQueryable } from '@ts-linq/query';
+import type { NavigationProxy, OrderedQueryable } from '@ts-linq/query';
+import type { IncludeSubquery } from '@ts-linq/query';
 import { Queryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
 import type {
@@ -264,16 +265,19 @@ export class DbSet<T extends object> {
   // ─── Eager loading ────────────────────────────────────────────────────────
 
   /**
-   * Eager-loads a related entity by navigation property name or lambda selector.
-   * Chain .thenInclude() on the result to load nested relationships.
+   * Eager-loads a related entity by navigation property name, lambda selector,
+   * or filtered lambda (where/orderBy/take inside include).
    * @example
-   * const posts = await ctx.posts.include(p => p.author).toArray();
-   * const posts = await ctx.blogs.include(b => b.posts).thenInclude(p => p.comments).toArray();
+   * ctx.blogs.include('posts')
+   * ctx.blogs.include(b => b.posts)
+   * ctx.blogs.include(b => b.posts.where(p => p.isPublished).take(10))
    */
-  public include<K extends keyof T & string>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
-  ): Queryable<T> {
-    return this.newQueryable().include(keyOrSelector);
+  public include<K extends keyof T & string>(key: K): Queryable<T>;
+  public include<K extends keyof T>(selector: (entity: T) => T[K]): Queryable<T>;
+  public include<U>(selector: (entity: NavigationProxy<T>) => IncludeSubquery<U>): Queryable<T>;
+  public include(keyOrSelector: unknown): Queryable<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.newQueryable().include(keyOrSelector as any);
   }
 
   // ─── Set operations ───────────────────────────────────────────────────────

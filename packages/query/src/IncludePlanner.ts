@@ -1,5 +1,6 @@
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { FilteredIncludeSpec } from '@ts-linq/types';
 import { LoadingStrategy, QuerySplittingBehavior } from '@ts-linq/types';
 
 import { IncludeResolutionError } from './errors';
@@ -21,6 +22,10 @@ export class IncludePlanner<T> {
    *                           IN-queries (`SplitQuery`, default) or inlined (`SingleQuery`).
    *                           Both modes currently use the same batched IN-query approach;
    *                           the distinction is preserved for future JOIN-based optimisation.
+   * @param filteredIncludes   Optional map of propertyName → FilteredIncludeSpec for filtered
+   *                           includes. These are processed first; their top-level keys are
+   *                           skipped in the regular batch-loading pass to avoid overwriting
+   *                           the already-filtered nav props.
    *
    * @throws {IncludeResolutionError} with code `ENTITY_NOT_REGISTERED` if an entity class
    *   in the include chain has no `@Entity` metadata and nested paths need to be resolved.
@@ -33,20 +38,47 @@ export class IncludePlanner<T> {
     entities: T[],
     includes: string[],
     limit?: number,
-    splittingBehavior: QuerySplittingBehavior = QuerySplittingBehavior.SplitQuery
+    splittingBehavior: QuerySplittingBehavior = QuerySplittingBehavior.SplitQuery,
+    filteredIncludes?: Map<string, FilteredIncludeSpec>
   ): Promise<void> {
-    if (!this.entityLoader || includes.length === 0 || limit === 1) return;
+    if (!this.entityLoader) return;
+    if (limit === 1) return;
+    const hasRegular = includes.length > 0;
+    const hasFiltered = (filteredIncludes?.size ?? 0) > 0;
+    if (!hasRegular && !hasFiltered) return;
+
     // Both SplitQuery and SingleQuery use the same batched IN-query strategy.
     // The splittingBehavior is accepted here for future extensibility (JOIN-based loading).
     void splittingBehavior;
-    await this.loadLevel(entities, this.entityClass as new () => unknown, includes, '');
+
+    // Process filtered includes first — they populate nav props with the filtered subset.
+    if (hasFiltered) {
+      await this.entityLoader.populateFilteredRelationshipsMany(
+        entities,
+        this.entityClass,
+        filteredIncludes!
+      );
+    }
+
+    // Process regular includes, skipping top-level keys already handled by filtered loading.
+    if (hasRegular) {
+      const alreadyLoaded = filteredIncludes?.size ? new Set(filteredIncludes.keys()) : undefined;
+      await this.loadLevel(
+        entities,
+        this.entityClass as new () => unknown,
+        includes,
+        '',
+        alreadyLoaded
+      );
+    }
   }
 
   private async loadLevel(
     entities: unknown[],
     entityClass: new () => unknown,
     includes: string[],
-    pathPrefix: string
+    pathPrefix: string,
+    skipTopLevelKeys?: Set<string>
   ): Promise<void> {
     if (entities.length === 0 || includes.length === 0) return;
 
@@ -62,15 +94,22 @@ export class IncludePlanner<T> {
 
     const topLevelKeys = [...byFirst.keys()];
 
-    await this.entityLoader!.populateRelationshipsMany(
-      entities as T[],
-      entityClass as new () => T,
-      {
-        strategy: LoadingStrategy.Eager,
-        includes: topLevelKeys,
-        depth: 1
-      }
-    );
+    // Only batch-load keys that were NOT already populated by filtered loading
+    const keysToLoad = skipTopLevelKeys
+      ? topLevelKeys.filter((k) => !skipTopLevelKeys.has(k))
+      : topLevelKeys;
+
+    if (keysToLoad.length > 0) {
+      await this.entityLoader!.populateRelationshipsMany(
+        entities as T[],
+        entityClass as new () => T,
+        {
+          strategy: LoadingStrategy.Eager,
+          includes: keysToLoad,
+          depth: 1
+        }
+      );
+    }
 
     // Lazily resolve metadata — only needed when recursing into nested paths
     const metadata = MetadataStorage.getEntity(entityClass as new () => unknown);
