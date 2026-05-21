@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from '@jest/globals';
 import * as ts from 'typescript';
 
+import { TS_LINQ_DIAGNOSTIC_CODE } from '../src/diagnostics/DiagnosticSink';
 import { createWhereTransformer } from '../src/WhereTransformer';
 
 function writeFile(filePath: string, content: string): void {
@@ -30,6 +31,8 @@ function createTempProject(): {
       '  public whereCompiled(input: { ast: unknown; parameters: readonly unknown[] }): Queryable<T> { void input; return this; }',
       '  public having(predicate: (entity: T) => boolean): Queryable<T> { void predicate; return this; }',
       '  public havingCompiled(input: { ast: unknown; parameters: readonly unknown[] }): Queryable<T> { void input; return this; }',
+      '  public select<R>(selector: (entity: T) => R): Queryable<R> { void selector; return this as unknown as Queryable<R>; }',
+      '  public selectCompiled<R>(input: { fields: readonly string[] }): Queryable<R> { void input; return this as unknown as Queryable<R>; }',
       '}',
       'export class TypedQueryable<T> {',
       '  declare readonly __tsLinqWhereTransformerBrand: true;',
@@ -90,6 +93,8 @@ function compileAndTransform(sourceText: string): {
   return { outputText, diagnostics: diags };
 }
 
+// ─── Original tests (preserved) ──────────────────────────────────────────────
+
 describe('WhereTransformer', () => {
   it('rewrites Queryable.where(...) to whereCompiled(...) with captured parameters', () => {
     const { outputText, diagnostics } = compileAndTransform(
@@ -140,7 +145,168 @@ describe('WhereTransformer', () => {
     );
 
     expect(diagnostics.length).toBeGreaterThan(0);
-    const msg = ts.flattenDiagnosticMessageText(diagnostics[0].messageText, '\n');
+    const msg = ts.flattenDiagnosticMessageText(diagnostics[0]!.messageText, '\n');
     expect(msg).toContain('is not supported');
+  });
+});
+
+// ─── Extended integration tests ───────────────────────────────────────────────
+
+describe('WhereTransformer — having() rewrite', () => {
+  it('rewrites having(...) to havingCompiled(...)', () => {
+    const { outputText, diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type Order = { total: number };',
+        '',
+        'const minTotal = 100;',
+        'const q = new Queryable<Order>();',
+        'q.having(o => o.total >= minTotal);'
+      ].join('\n')
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    expect(outputText).toContain('havingCompiled');
+    expect(outputText).toContain('parameters: [minTotal]');
+  });
+});
+
+describe('WhereTransformer — select() rewrite', () => {
+  it('object literal form → selectCompiled with fields array', () => {
+    const { outputText, diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type User = { id: number; name: string };',
+        '',
+        'const q = new Queryable<User>();',
+        'q.select(e => ({ id: e.id, name: e.name }));'
+      ].join('\n')
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    expect(outputText).toContain('selectCompiled');
+    expect(outputText).toContain('"id"');
+    expect(outputText).toContain('"name"');
+    expect(outputText).toContain('fields');
+  });
+
+  it('single property form → selectCompiled with one field', () => {
+    const { outputText, diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type User = { id: number };',
+        '',
+        'const q = new Queryable<User>();',
+        'q.select(e => e.id);'
+      ].join('\n')
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    expect(outputText).toContain('selectCompiled');
+    expect(outputText).toContain('"id"');
+  });
+
+  it('block body → emits diagnostic', () => {
+    const { diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type User = { id: number };',
+        '',
+        'const q = new Queryable<User>();',
+        'q.select(e => { return e.id; });'
+      ].join('\n')
+    );
+
+    expect(diagnostics.length).toBeGreaterThan(0);
+    const msg = ts.flattenDiagnosticMessageText(diagnostics[0]!.messageText, '\n');
+    expect(msg).toContain('block statement');
+  });
+});
+
+describe('WhereTransformer — chained calls', () => {
+  it('.where(...).where(...) — both rewrites fire', () => {
+    const { outputText, diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type User = { id: number; active: boolean };',
+        '',
+        'const q = new Queryable<User>();',
+        'q.where(u => u.id > 0).where(u => u.active === true);'
+      ].join('\n')
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    // Both where() calls should be rewritten
+    const matches = outputText.match(/whereCompiled/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('WhereTransformer — deeply nested property access', () => {
+  it('u.a.b.c.d.e → PropertyNode with multi-segment path', () => {
+    const { outputText, diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type User = { a: { b: { c: { d: { e: number } } } } };',
+        '',
+        'const q = new Queryable<User>();',
+        'q.where(u => u.a.b.c.d.e === 1);'
+      ].join('\n')
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    expect(outputText).toContain('whereCompiled');
+    expect(outputText).toContain('"a"');
+    expect(outputText).toContain('"e"');
+  });
+});
+
+describe('WhereTransformer — multiple external variable capture', () => {
+  it('two external vars → ParameterRefNode with indices 0 and 1', () => {
+    const { outputText, diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type User = { age: number; score: number };',
+        '',
+        'const minAge = 18;',
+        'const minScore = 50;',
+        'const q = new Queryable<User>();',
+        'q.where(u => u.age >= minAge && u.score >= minScore);'
+      ].join('\n')
+    );
+
+    expect(diagnostics).toHaveLength(0);
+    expect(outputText).toContain('parameters: [minAge, minScore]');
+    // Should have parameterRef with index 0 and index 1
+    expect(outputText).toMatch(/index:\s*0/);
+    expect(outputText).toMatch(/index:\s*1/);
+  });
+});
+
+describe('WhereTransformer — diagnostic code', () => {
+  it('always emits diagnostics with code 90001', () => {
+    const { diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type User = { id: number };',
+        '',
+        'const q = new Queryable<User>();',
+        'q.where(u => u.id ? true : false);'
+      ].join('\n')
+    );
+
+    expect(diagnostics.length).toBeGreaterThan(0);
+    for (const d of diagnostics) {
+      expect(d.code).toBe(TS_LINQ_DIAGNOSTIC_CODE);
+    }
   });
 });
