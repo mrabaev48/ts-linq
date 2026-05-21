@@ -1,5 +1,13 @@
 # @ts-linq/plugin-soft-delete
 
+## 2.0.2
+
+### Patch Changes
+
+- Updated dependencies [[`11583da`](https://github.com/mrabaev48/ts-linq/commit/11583daee8abd16f5e0a21bd72eecd396d94789c)]:
+  - @ts-linq/types@2.2.0
+  - @ts-linq/metadata@2.0.2
+
 ## 2.0.1
 
 ### Patch Changes

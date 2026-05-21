@@ -1,5 +1,30 @@
 # @ts-linq/provider-mssql
 
+## 2.2.0
+
+### Minor Changes
+
+- [#98](https://github.com/mrabaev48/ts-linq/pull/98) [`11583da`](https://github.com/mrabaev48/ts-linq/commit/11583daee8abd16f5e0a21bd72eecd396d94789c) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P2-35): add HierarchyId support — SQL Server hierarchyid with PostgreSQL ltree fallback
+
+  Mirrors EF Core 8's `HierarchyId` API:
+  - `HierarchyId` class in `@ts-linq/core` with `getLevel`, `getAncestor`, `isDescendantOf`, `getDescendant`, `toString`, `toLtreeString`
+  - `HierarchyIdTranslator` interface in `@ts-linq/types`
+  - `HierarchyMethod` union type (`isDescendantOf | getLevel | getAncestor`) in `@ts-linq/ast`
+  - `HierarchyMethodVisitor` in `@ts-linq/sql-visitor` — dispatches to dialect-specific SQL
+  - `mssqlHierarchyFunctions` in `@ts-linq/dialect-mssql` — uses `hierarchyid::Parse(?)`, `.GetLevel()`, `.GetAncestor(?)`
+  - `postgresLtreeFunctions` in `@ts-linq/dialect-postgres` — uses `<@`, `nlevel()`, `subpath()`
+  - MSSQL codec (`encodeHierarchyId` / `decodeHierarchyId`) in `@ts-linq/provider-mssql`
+  - Postgres ltree codec (`encodeLtree` / `decodeLtree`) in `@ts-linq/provider-postgres`
+  - Both providers detect `HierarchyId` in `coerceToSqlParameter` before geometry/JSON fallback
+
+### Patch Changes
+
+- Updated dependencies [[`11583da`](https://github.com/mrabaev48/ts-linq/commit/11583daee8abd16f5e0a21bd72eecd396d94789c)]:
+  - @ts-linq/core@1.3.0
+  - @ts-linq/dialect-mssql@2.2.0
+  - @ts-linq/types@2.2.0
+  - @ts-linq/metadata@2.0.2
+
 ## 2.1.0
 
 ### Minor Changes
