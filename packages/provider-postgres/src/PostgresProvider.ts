@@ -10,6 +10,7 @@ import {
 } from '@ts-linq/types';
 
 import { buildPostgresConnectionString } from './buildConnectionString';
+import { isPgTransientErrorCode } from './transientErrorCodes';
 
 // Lazy require to avoid hard dependency if not installed
 let Pg: {
@@ -466,6 +467,12 @@ export class PostgresProvider extends DatabaseProvider {
     this.currentTraceId = undefined;
     this.logger?.transactionEnd?.({ traceId: tid, provider: this.providerName });
     client.release();
+  }
+
+  /** Enhanced transient error detection using PostgreSQL-specific error codes. */
+  protected override isTransientError(error: unknown): boolean {
+    if (isPgTransientErrorCode((error as { code?: string })?.code)) return true;
+    return super.isTransientError(error);
   }
 }
 

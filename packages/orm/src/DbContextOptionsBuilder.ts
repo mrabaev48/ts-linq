@@ -1,4 +1,5 @@
 import type { DbContextOptions } from '@ts-linq/core';
+import type { ExecutionStrategyOptions } from '@ts-linq/types';
 import { QuerySplittingBehavior } from '@ts-linq/types';
 
 /**
@@ -16,6 +17,7 @@ export { QuerySplittingBehavior };
 export class DbContextOptionsBuilder {
   private readonly _interceptors: object[] = [];
   private _splittingBehavior?: QuerySplittingBehavior;
+  private _executionStrategyOptions?: ExecutionStrategyOptions;
 
   constructor(private readonly _base: DbContextOptions) {}
 
@@ -48,6 +50,22 @@ export class DbContextOptionsBuilder {
   }
 
   /**
+   * Configure automatic retry on transient failures for this context.
+   * Mirrors EF Core's provider-level `EnableRetryOnFailure` extension.
+   *
+   * The configured strategy is used by `context.database.createExecutionStrategy()`.
+   *
+   * @example
+   * const opts = new DbContextOptionsBuilder({ provider })
+   *   .enableRetryOnFailure({ maxRetryCount: 5, maxRetryDelay: 30_000 })
+   *   .build();
+   */
+  enableRetryOnFailure(options: ExecutionStrategyOptions): this {
+    this._executionStrategyOptions = options;
+    return this;
+  }
+
+  /**
    * Produce a DbContextOptions with all accumulated interceptors merged in.
    * Interceptors already present in the base options appear first, preserving
    * any prior registration order.
@@ -58,6 +76,9 @@ export class DbContextOptionsBuilder {
       interceptors: [...(this._base.interceptors ?? []), ...this._interceptors],
       ...(this._splittingBehavior !== undefined
         ? { querySplittingBehavior: this._splittingBehavior }
+        : {}),
+      ...(this._executionStrategyOptions !== undefined
+        ? { executionStrategy: this._executionStrategyOptions }
         : {})
     };
   }

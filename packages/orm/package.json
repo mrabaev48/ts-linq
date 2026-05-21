@@ -13,6 +13,7 @@
     }
   },
   "dependencies": {
+    "@ts-linq/concurrency": "workspace:*",
     "@ts-linq/core": "workspace:*",
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metadata": "workspace:*",

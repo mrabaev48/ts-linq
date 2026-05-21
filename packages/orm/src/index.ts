@@ -8,3 +8,4 @@ export * from './IdentityMap';
 export * from './interceptors/InterceptorRegistry';
 export * from './ModelBuilder';
 export { sql, SqlInterpolated } from './sql/sqlTag';
+export * from './transactions/DbContextTransaction';
