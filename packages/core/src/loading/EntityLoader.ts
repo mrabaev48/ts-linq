@@ -1,4 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { FilteredIncludeSpec } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { ctorName } from '../utils/ctorName';
@@ -194,6 +195,82 @@ export class EntityLoader {
     options: LoadingOptions
   ): Promise<void> {
     await this.loadRelationshipsBatched(entities, entityClass, options);
+  }
+
+  /**
+   * Loads one-to-many relationships for the given entities, then applies the
+   * in-memory filter/sort/pagination captured in each `FilteredIncludeSpec`.
+   * Only one-to-many relationships are supported; specs for other relationship
+   * types are silently skipped.
+   *
+   * @param entities    Root entities whose nav properties should be populated.
+   * @param entityClass Constructor of the root entity type.
+   * @param specs       Map of propertyName → FilteredIncludeSpec.
+   */
+  public async populateFilteredRelationshipsMany<T>(
+    entities: T[],
+    entityClass: new () => T,
+    specs: Map<string, FilteredIncludeSpec>
+  ): Promise<void> {
+    if (entities.length === 0 || specs.size === 0) return;
+    this.ensureStage3Init(entityClass);
+    const metadata = MetadataStorage.getEntity(entityClass);
+    if (!metadata) return;
+
+    const parentPkProperty = metadata.primaryKeys?.[0];
+    if (!parentPkProperty) return;
+
+    for (const [propName, spec] of specs) {
+      const rel = metadata.relationships.find((r) => r.propertyName === propName);
+      if (!rel || rel.type !== 'one-to-many') continue;
+
+      const targetCtor = this.resolveTargetEntity(rel.targetEntity as Function | (() => Function));
+
+      const parentIds = entities
+        .map((e) => (e as Record<string, unknown>)[parentPkProperty])
+        .filter((v) => v !== undefined && v !== null);
+      const uniqueParentIds = Array.from(new Set(parentIds));
+      if (uniqueParentIds.length === 0) continue;
+
+      const foreignKeyName =
+        (rel as { foreignKey?: string }).foreignKey || this.defaultForeignKeyFor(entityClass);
+
+      let related: unknown[] = [];
+      if (uniqueParentIds.length <= this._inChunkSize) {
+        related = await this._provider.findWhereIn(
+          targetCtor as new () => object,
+          foreignKeyName,
+          uniqueParentIds
+        );
+      } else {
+        for (let i = 0; i < uniqueParentIds.length; i += this._inChunkSize) {
+          const chunk = uniqueParentIds.slice(i, i + this._inChunkSize);
+          const part = await this._provider.findWhereIn(
+            targetCtor as new () => object,
+            foreignKeyName,
+            chunk
+          );
+          related.push(...part);
+        }
+      }
+
+      // Group all related rows by FK value
+      const grouped = new Map<unknown, unknown[]>();
+      for (const relatedEntity of related) {
+        const key = (relatedEntity as Record<string, unknown>)[foreignKeyName];
+        const arr = grouped.get(key) ?? [];
+        arr.push(relatedEntity);
+        grouped.set(key, arr);
+      }
+
+      // Apply the captured filter/sort/take per parent and assign
+      for (const entityItem of entities) {
+        const parentId = (entityItem as Record<string, unknown>)[parentPkProperty];
+        const allRelated = grouped.get(parentId) ?? [];
+        const filtered = spec.applyFilter(allRelated);
+        (entityItem as Record<string, unknown>)[propName] = filtered;
+      }
+    }
   }
 
   /**

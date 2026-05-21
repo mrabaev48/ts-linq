@@ -652,6 +652,21 @@ export interface EntityAttacher {
 }
 
 /**
+ * Specification for a filtered include — captures the in-memory filter/sort/limit
+ * that is applied to related entities after they are fetched from the database.
+ * Lives in @ts-linq/types so both @ts-linq/core (EntityLoader) and @ts-linq/query
+ * (IncludeSubquery, IncludePlanner) can reference it without creating a circular dep.
+ */
+export interface FilteredIncludeSpec {
+  readonly propertyName: string;
+  /**
+   * Apply filter/sort/pagination to the full set of related entities for a single parent.
+   * Called once per parent with all matching rows; returns the subset to assign.
+   */
+  applyFilter(items: unknown[]): unknown[];
+}
+
+/**
  * Controls whether queries with collection Includes are executed as a single
  * SQL statement with JOINs (SingleQuery) or as a series of separate statements
  * (SplitQuery). Mirrors EF Core's QuerySplittingBehavior.

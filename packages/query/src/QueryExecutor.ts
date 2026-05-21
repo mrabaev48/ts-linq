@@ -3,6 +3,7 @@ import type {
   CteDefinition,
   FallbackOperation,
   FallbackRequest,
+  FilteredIncludeSpec,
   PerformanceOptions,
   QueryFallback,
   QuerySplittingBehavior,
@@ -42,12 +43,14 @@ export class QueryExecutor<T> {
    * @param includes           Relationship names to eagerly load (Queryable._includes at call time).
    * @param cte                Optional CTE definition to attach to the model.
    * @param splittingBehavior  Query splitting strategy; defaults to SplitQuery.
+   * @param filteredIncludes   Optional map of propertyName → FilteredIncludeSpec for filtered includes.
    */
   async executeAndMaterialize(
     model: QueryModel,
     includes: string[],
     cte: CteDefinition | undefined,
-    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery
+    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery,
+    filteredIncludes?: Map<string, FilteredIncludeSpec>
   ): Promise<T[]> {
     if (cte) {
       (model as unknown as { cte?: CteDefinition }).cte = cte;
@@ -66,14 +69,21 @@ export class QueryExecutor<T> {
         this.getHedgedFallbacks()
       );
       if (winner.source === 'primary') {
-        return this.handlePrimaryRows(model, winner.rows, includes, splittingBehavior);
+        return this.handlePrimaryRows(
+          model,
+          winner.rows,
+          includes,
+          splittingBehavior,
+          filteredIncludes
+        );
       } else {
         return this.handleFallbackEntities(
           (winner.rows as unknown as T[]).slice(),
           winner.label || 'unknown',
           model,
           includes,
-          splittingBehavior
+          splittingBehavior,
+          filteredIncludes
         );
       }
     }
@@ -82,7 +92,7 @@ export class QueryExecutor<T> {
         sql.query,
         sql.parameters
       );
-      return this.handlePrimaryRows(model, rows, includes, splittingBehavior);
+      return this.handlePrimaryRows(model, rows, includes, splittingBehavior, filteredIncludes);
     } catch (error) {
       if (!this.isOpAllowedForFallback('select')) throw error;
       if (!this.isDegradableError(error) || this.fallbackManager.fallbacks.length === 0)
@@ -92,7 +102,8 @@ export class QueryExecutor<T> {
         sql,
         model,
         includes,
-        splittingBehavior
+        splittingBehavior,
+        filteredIncludes
       );
       if (entities) return entities;
       throw error;
@@ -132,10 +143,17 @@ export class QueryExecutor<T> {
     model: QueryModel,
     rows: ReadonlyArray<Record<string, unknown>>,
     includes: string[],
-    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery
+    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery,
+    filteredIncludes?: Map<string, FilteredIncludeSpec>
   ): Promise<T[]> {
     const entities = rows.map((row) => this.materializer.mapRowToEntity(row));
-    await this.includePlanner.populateIncludes(entities, includes, model.limit, splittingBehavior);
+    await this.includePlanner.populateIncludes(
+      entities,
+      includes,
+      model.limit,
+      splittingBehavior,
+      filteredIncludes
+    );
     return entities;
   }
 
@@ -144,7 +162,8 @@ export class QueryExecutor<T> {
     label: string,
     model: QueryModel,
     includes: string[],
-    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery
+    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery,
+    filteredIncludes?: Map<string, FilteredIncludeSpec>
   ): Promise<T[]> {
     if (this.performance?.fallbackPolicy?.allowIncludesOnFallback === 'attempt') {
       try {
@@ -152,7 +171,8 @@ export class QueryExecutor<T> {
           entities,
           includes,
           model.limit,
-          splittingBehavior
+          splittingBehavior,
+          filteredIncludes
         );
       } catch {}
     }
@@ -172,7 +192,8 @@ export class QueryExecutor<T> {
     sql: { query: string; parameters: readonly SqlParameter[] },
     model: QueryModel,
     includes: string[],
-    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery
+    splittingBehavior: QuerySplittingBehavior = QSB.SplitQuery,
+    filteredIncludes?: Map<string, FilteredIncludeSpec>
   ): Promise<T[] | null> {
     const req: FallbackRequest<T> = {
       operation: 'count',
@@ -195,7 +216,8 @@ export class QueryExecutor<T> {
             fb.label,
             model,
             includes,
-            splittingBehavior
+            splittingBehavior,
+            filteredIncludes
           );
         }
       } catch (fbErr) {

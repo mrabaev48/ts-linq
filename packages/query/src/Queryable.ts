@@ -24,6 +24,8 @@ import { AggregateOperations } from './AggregateOperations';
 import { IncludeResolutionError } from './errors';
 import { FallbackManager } from './FallbackManager';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
+import type { NavigationProxy } from './include/IncludeSubquery';
+import { IncludeSubquery } from './include/IncludeSubquery';
 import { IncludePlanner } from './IncludePlanner';
 import { resolveTargetCtor } from './includeUtils';
 import { PaginationBuilder } from './PaginationBuilder';
@@ -47,6 +49,8 @@ export class Queryable<T> {
   private _entityCache?: EntityCacheLike;
   private _performance?: PerformanceOptions;
   private _includes: string[] = [];
+  /** Filtered includes: property name → IncludeSubquery with filter/sort/pagination specs. */
+  private _filteredIncludes: Map<string, IncludeSubquery<unknown>> = new Map();
   private _sqlBuilder: QueryBuilder;
   // Single-flight deduplication for concurrent count() calls (per-chain instance)
   private _inflightCounts: Map<string, Promise<number>> = new Map();
@@ -175,6 +179,7 @@ export class Queryable<T> {
     clonedQueryable._whereSignature = this._whereSignature;
     // preserve includes and client-side predicates
     clonedQueryable._includes = [...this._includes];
+    clonedQueryable._filteredIncludes = new Map(this._filteredIncludes);
     clonedQueryable._lastIncludePath = this._lastIncludePath;
     // Clone copies fallbacks (shared cache layers) and deep-copies throttle (independent per clone)
     clonedQueryable._fallbackManager = this._fallbackManager.clone();
@@ -750,26 +755,87 @@ export class Queryable<T> {
   }
 
   /**
-   * Eager-loads a relationship by property name or lambda selector.
-   * Chain .thenInclude() to load nested relationships.
-   *
-   * @example
-   * const authors = await context.authors.include(a => a.books).toArray();
-   * const authors = await context.authors.include('books').toArray();
-   *
-   * @throws {IncludeResolutionError} if `key` is not a declared relationship on the entity.
-   */
-  /**
    * Eagerly loads a direct navigation property (relation).
+   * Accepts a plain property key, a simple lambda selector, or a filtered include
+   * lambda that chains where / orderBy / skip / take on the navigation property.
    *
-   * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.posts`).
-   *   Nested-path lambdas are **not** supported — pass a dot-separated string (e.g. `'profile.address'`) instead.
-   * @throws {Error} If the key does not correspond to a declared relationship.
+   * **Simple include:**
+   * ```ts
+   * ctx.blogs.include('posts')
+   * ctx.blogs.include(b => b.posts)
+   * ```
+   *
+   * **Filtered include (EF Core parity):**
+   * ```ts
+   * ctx.blogs.include(b => b.posts
+   *   .where(p => p.isPublished)
+   *   .orderByDescending(p => p.publishedAt)
+   *   .take(10))
+   * ```
+   *
+   * Forbidden operators inside the filtered lambda: `select`, `groupBy`, `join` — these
+   * throw at runtime with a descriptive message.
+   *
+   * @param keyOrSelector - A property key string, a simple single-property lambda, **or** a
+   *   filtered-include lambda returning an `IncludeSubquery`.
+   * @throws {IncludeResolutionError} if the property is not a declared relationship.
    */
-  public include<K extends keyof T & string>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
-  ): Queryable<T> {
-    const key = extractKey(keyOrSelector) as K;
+  public include<K extends keyof T & string>(key: K): Queryable<T>;
+  public include<K extends keyof T>(selector: (entity: T) => T[K]): Queryable<T>;
+  public include<U>(selector: (entity: NavigationProxy<T>) => IncludeSubquery<U>): Queryable<T>;
+  public include(keyOrSelector: unknown): Queryable<T> {
+    // ── String key ──────────────────────────────────────────────────────────
+    if (typeof keyOrSelector !== 'function') {
+      return this._addSimpleInclude(String(keyOrSelector));
+    }
+
+    // ── Lambda: try filtered-include proxy first ─────────────────────────────
+    // The proxy returns an IncludeSubquery for any property access.
+    // For a filtered lambda (b => b.posts.where(...).take(10)), the returned
+    // value will be an IncludeSubquery with filter specs captured.
+    // For a plain lambda (b => b.posts), the returned value will also be an
+    // IncludeSubquery but with isFiltered === false → treated as simple include.
+    let proxyResult: unknown;
+    const makeIncludeProxy = (): T =>
+      new Proxy({} as object, {
+        get(_target, prop) {
+          return new IncludeSubquery<unknown>(String(prop));
+        }
+      }) as unknown as T;
+    try {
+      proxyResult = (keyOrSelector as (entity: T) => unknown)(makeIncludeProxy());
+    } catch {
+      // Proxy call threw (e.g. forbidden operator) — re-run to surface the error
+      (keyOrSelector as (entity: T) => unknown)(makeIncludeProxy());
+      return this; // unreachable but satisfies TS
+    }
+
+    if (proxyResult instanceof IncludeSubquery) {
+      const subquery = proxyResult as IncludeSubquery<unknown>;
+      const key = subquery.propertyName;
+      this._validateIncludeProperty(key);
+      this._lastIncludePath = key;
+      if (subquery.isFiltered) {
+        this._filteredIncludes.set(key, subquery);
+      } else {
+        if (!this._includes.includes(key)) this._includes.push(key);
+      }
+      return this;
+    }
+
+    // ── Fallback: plain key-extractor lambda (single property access) ────────
+    const key = extractKey(keyOrSelector as (entity: T) => T[keyof T]);
+    return this._addSimpleInclude(key);
+  }
+
+  private _addSimpleInclude(key: string): Queryable<T> {
+    this._validateIncludeProperty(key);
+    this._lastIncludePath = key;
+    if (!this._includes.includes(key)) this._includes.push(key);
+    return this;
+  }
+
+  private _validateIncludeProperty(key: string): void {
     const metadata = MetadataStorage.getEntity(this._entityClass);
     const valid = metadata?.relationships.some((r) => r.propertyName === key);
     if (!valid) {
@@ -784,9 +850,6 @@ export class Queryable<T> {
         }
       );
     }
-    this._lastIncludePath = key;
-    if (!this._includes.includes(key)) this._includes.push(key);
-    return this;
   }
 
   /**
@@ -870,11 +933,13 @@ export class Queryable<T> {
   public async toArray(): Promise<T[]> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
+    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
     const entities = await this._executor.executeAndMaterialize(
       queryModel,
       this._includes,
       this._cte,
-      this.effectiveSplittingBehavior
+      this.effectiveSplittingBehavior,
+      filteredIncludes
     );
     return this._applyTracking(entities);
   }
@@ -887,11 +952,13 @@ export class Queryable<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
+    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
     const entities = await this._executor.executeAndMaterialize(
       queryModel,
       this._includes,
       this._cte,
-      this.effectiveSplittingBehavior
+      this.effectiveSplittingBehavior,
+      filteredIncludes
     );
     const tracked = this._applyTracking(entities);
     if (!tracked.length) throw new Error('Sequence contains no elements');
@@ -906,11 +973,13 @@ export class Queryable<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
+    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
     const entities = await this._executor.executeAndMaterialize(
       queryModel,
       this._includes,
       this._cte,
-      this.effectiveSplittingBehavior
+      this.effectiveSplittingBehavior,
+      filteredIncludes
     );
     const tracked = this._applyTracking(entities);
     return tracked[0] ?? null;
@@ -1015,11 +1084,13 @@ export class Queryable<T> {
     if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
+    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
     const entities = await this._executor.executeAndMaterialize(
       queryModel,
       this._includes,
       this._cte,
-      this.effectiveSplittingBehavior
+      this.effectiveSplittingBehavior,
+      filteredIncludes
     );
     return entities.length > 0;
   }
