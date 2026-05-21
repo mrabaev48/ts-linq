@@ -5,6 +5,7 @@ import type { EntityMetadata, MySqlConfig, SqlDialect, SqlParameter } from '@ts-
 import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
 
 import { buildMysqlConnectionString } from './buildConnectionString';
+import { encodeWkb, isGeometryObject } from './spatial-codec';
 import { isMysqlTransientErrorCode } from './transientErrorCodes';
 
 /**
@@ -437,6 +438,9 @@ export class MySqlProvider extends DatabaseProvider {
 
   /** Coerce arbitrary JS value into a valid SqlParameter for MySQL. */
   private coerceToSqlParameter(value: unknown): SqlParameter {
+    if (isGeometryObject(value)) {
+      return encodeWkb(value);
+    }
     if (
       value === null ||
       typeof value === 'string' ||

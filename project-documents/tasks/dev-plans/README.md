@@ -71,7 +71,7 @@ Provider-specific, ecosystem, or operational features.
 | #     | Title                                                                            | EF Core API                                                                                                 | Status | Effort | Depends on       |
 |-------|----------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|:------:|:------:|------------------|
 | P2-33 | [Stored procedure mapping](./P2-33-stored-procedure-mapping.md)                  | `InsertUsingStoredProcedure`, `UpdateUsingStoredProcedure`, `DeleteUsingStoredProcedure` (EF7+)             | - [ ]  | L      | P0-01            |
-| P2-34 | [Spatial types](./P2-34-spatial-types.md)                                        | NetTopologySuite equivalent — PostGIS / MSSQL spatial / MySQL spatial                                       | - [ ]  | XL     | —                |
+| P2-34 | [Spatial types](./P2-34-spatial-types.md)                                        | NetTopologySuite equivalent — PostGIS / MSSQL spatial / MySQL spatial                                       | ✅     | XL     | —                |
 | P2-35 | [HierarchyId](./P2-35-hierarchy-id.md)                                           | SQL Server `HierarchyId` (EF8); Postgres `ltree` fallback                                                   | - [ ]  | L      | —                |
 | P2-36 | [Temporal queries](./P2-36-temporal-queries.md)                                  | `TemporalAsOf`, `TemporalAll`, `TemporalBetween`, `TemporalFromTo`, `TemporalContainedIn`                   | - [ ]  | L      | —                |
 | P2-37 | [Cosmos DB provider](./P2-37-cosmos-provider.md)                                 | Cosmos provider rework — hierarchical PK, full-text + vector search (EF9)                                   | - [ ]  | XL     | P0-03, P0-04     |
@@ -182,7 +182,7 @@ flowchart LR
 
 ## 5. Progress
 
-`8 / 48 tasks done.`
+`9 / 48 tasks done.`
 
 Update this number when a task moves to `status: done`.
 
@@ -221,7 +221,7 @@ whose `depends_on` points into the current step.
 | P1-20 | Compiled queries               | ✅ done   |
 | P1-23 | Savepoints + retry strategy    | ✅ done   |
 | P1-27 | Async streaming                | ✅ done   |
-| P2-34 | Spatial types                  | —         |
+| P2-34 | Spatial types                  | ✅ done   |
 | P2-35 | HierarchyId                    | —         |
 | P2-36 | Temporal queries               | —         |
 | P2-40 | DbContext pooling / factory    | —         |

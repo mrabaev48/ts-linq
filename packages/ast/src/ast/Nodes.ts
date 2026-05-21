@@ -78,10 +78,25 @@ export interface InNode {
 /**
  * String method call: `u.name.includes(arg)`, `u.name.startsWith(arg)`, `u.name.endsWith(arg)`.
  * Rendered as `col LIKE ?` with the appropriate wildcard pattern.
+ *
+ * Spatial methods (`distance`, `intersects`, `within`, `buffer`, `area`, `length`, `contains`)
+ * are also part of this node type. Translation is dialect-specific via `SpatialTranslator`
+ * registered on `SqlVisitor`.
  */
+export type SpatialMethod =
+  | 'distance'
+  | 'intersects'
+  | 'within'
+  | 'buffer'
+  | 'area'
+  | 'length'
+  | 'contains';
+
+export type StringMethod = 'includes' | 'startsWith' | 'endsWith';
+
 export interface MethodNode {
   type: 'method';
-  method: 'includes' | 'startsWith' | 'endsWith';
+  method: StringMethod | SpatialMethod;
   object: PropertyNode;
   args: (LiteralNode | ParameterRefNode)[];
 }

@@ -10,6 +10,7 @@ import {
 } from '@ts-linq/types';
 
 import { buildPostgresConnectionString } from './buildConnectionString';
+import { geometryToEwkbHex, isGeometryObject } from './spatial-codec';
 import { isPgTransientErrorCode } from './transientErrorCodes';
 
 // Lazy require to avoid hard dependency if not installed
@@ -105,6 +106,9 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   private coerceToSqlParameter(value: unknown): SqlParameter {
+    if (isGeometryObject(value)) {
+      return `\\x${geometryToEwkbHex(value)}`;
+    }
     if (
       value === null ||
       typeof value === 'string' ||

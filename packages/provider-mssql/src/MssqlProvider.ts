@@ -6,6 +6,7 @@ import type { EntityMetadata, MssqlConfig, SqlDialect, SqlParameter } from '@ts-
 import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
 
 import { buildMssqlConnectionString } from './buildConnectionString';
+import { encodeWkt, isGeometryObject } from './spatial-codec';
 import { isMssqlTransientErrorNumber } from './transientErrorCodes';
 
 interface MssqlRequestLike {
@@ -544,6 +545,9 @@ export class MssqlProvider extends DatabaseProvider {
 
   private coerceToSqlParameter(value: unknown): SqlParameter {
     if (value === undefined) return null;
+    if (isGeometryObject(value)) {
+      return encodeWkt(value);
+    }
     if (
       value === null ||
       typeof value === 'string' ||
