@@ -1,7 +1,7 @@
 ---
 title: Spatial Types (NetTopologySuite Equivalent)
 ef_core_api: optionsBuilder.UseNetTopologySuite() / Entity<T>.Property(e => e.Location).HasColumnType("geography")
-status: not-started
+status: done
 priority: P2
 effort: XL
 depends_on: []

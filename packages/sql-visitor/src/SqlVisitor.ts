@@ -1,6 +1,7 @@
 import type { ExpressionNode } from '@ts-linq/ast';
 import type { ConditionFragment } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
+import type { SpatialTranslator } from '@ts-linq/types';
 
 import { ParameterState, ParameterStyle } from './ParameterStyle';
 import { BinaryVisitor, type ColumnResolver } from './visitors/BinaryVisitor';
@@ -8,7 +9,12 @@ import { InVisitor } from './visitors/InVisitor';
 import { LogicalVisitor } from './visitors/LogicalVisitor';
 import { MethodVisitor } from './visitors/MethodVisitor';
 import { NullVisitor } from './visitors/NullVisitor';
+import { SpatialMethodVisitor } from './visitors/SpatialMethodVisitor';
 import { UnaryVisitor } from './visitors/UnaryVisitor';
+
+export interface SqlVisitorOptions {
+  spatialTranslator?: SpatialTranslator;
+}
 
 /**
  * Converts a compiled ExpressionNode tree into a SQL WHERE fragment with parameters.
@@ -21,6 +27,9 @@ import { UnaryVisitor } from './visitors/UnaryVisitor';
  *   - `ParameterStyle.Question`   (default) — MySQL/SQLite style: ?
  *   - `ParameterStyle.Positional`            — PostgreSQL style: $1, $2, ...
  *   - `ParameterStyle.Named`                 — MSSQL style: @p1, @p2, ...
+ *
+ * Pass `options.spatialTranslator` to enable spatial method translation
+ * (distance, intersects, within, buffer, area, length, contains).
  */
 export class SqlVisitor {
   private readonly binary = new BinaryVisitor();
@@ -28,9 +37,17 @@ export class SqlVisitor {
   private readonly unary = new UnaryVisitor();
   private readonly nullV = new NullVisitor();
   private readonly inV = new InVisitor();
-  private readonly method = new MethodVisitor();
+  private readonly method: MethodVisitor;
 
-  constructor(private readonly parameterStyle: ParameterStyle = ParameterStyle.Question) {}
+  constructor(
+    private readonly parameterStyle: ParameterStyle = ParameterStyle.Question,
+    options?: SqlVisitorOptions
+  ) {
+    const spatialVisitor = options?.spatialTranslator
+      ? new SpatialMethodVisitor(options.spatialTranslator)
+      : undefined;
+    this.method = new MethodVisitor(spatialVisitor);
+  }
 
   public toSql(
     node: ExpressionNode,
