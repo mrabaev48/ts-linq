@@ -4,10 +4,14 @@ import { AstSqlGenerationError } from '@ts-linq/ast';
 
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
 import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
+import { type HierarchyMethodVisitor, isHierarchyMethod } from './HierarchyMethodVisitor';
 import { isSpatialMethod, type SpatialMethodVisitor } from './SpatialMethodVisitor';
 
 export class MethodVisitor {
-  constructor(private readonly spatialVisitor?: SpatialMethodVisitor) {}
+  constructor(
+    private readonly spatialVisitor?: SpatialMethodVisitor,
+    private readonly hierarchyVisitor?: HierarchyMethodVisitor
+  ) {}
 
   public visit(
     node: MethodNode,
@@ -24,6 +28,17 @@ export class MethodVisitor {
         );
       }
       return this.spatialVisitor.visit(node, inputParameters, resolver, state);
+    }
+
+    if (isHierarchyMethod(node.method)) {
+      if (!this.hierarchyVisitor) {
+        throw new AstSqlGenerationError(
+          'UNSUPPORTED_METHOD',
+          `HierarchyId method "${node.method}" requires a HierarchyIdTranslator. Pass one via SqlVisitor options.`,
+          { nodeType: 'method', method: node.method }
+        );
+      }
+      return this.hierarchyVisitor.visit(node, inputParameters, resolver, state);
     }
 
     const col = renderPropertyName(node.object, resolver);

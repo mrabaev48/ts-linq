@@ -92,11 +92,13 @@ export type SpatialMethod =
   | 'length'
   | 'contains';
 
+export type HierarchyMethod = 'isDescendantOf' | 'getLevel' | 'getAncestor';
+
 export type StringMethod = 'includes' | 'startsWith' | 'endsWith';
 
 export interface MethodNode {
   type: 'method';
-  method: StringMethod | SpatialMethod;
+  method: StringMethod | SpatialMethod | HierarchyMethod;
   object: PropertyNode;
   args: (LiteralNode | ParameterRefNode)[];
 }

@@ -87,6 +87,15 @@ Provider-specific, ecosystem, or operational features.
 | P2-47 | [Read replica / multi-tenancy](./P2-47-read-replica-multi-tenancy.md)            | Read replica routing + per-tenant connection strings (extend existing multi-tenant plugin)                  | - [ ]  | L      | P0-11            |
 | P2-48 | [Vector search](./P2-48-vector-search.md)                                        | Cosmos vector + hybrid search (EF9 preview); pgvector for Postgres                                          | - [ ]  | L      | P2-37            |
 
+### RF — Infrastructure / Engineering (1 task)
+
+Internal engineering quality tasks. Not EF Core feature-parity items. Must complete before
+any task that extends the affected package, to prevent compounding technical debt.
+
+| #     | Title                                                                                     | Scope                                                    | Status | Effort | Depends on |
+|-------|-------------------------------------------------------------------------------------------|----------------------------------------------------------|:------:|:------:|------------|
+| RF-01 | [Transformer Refactor — Clean Architecture](./RF-01-transformer-refactor.md)              | `@ts-linq/transformer` internal structure & test coverage | - [ ]  | L      | —          |
+
 ---
 
 ## 3. Dependency graph (high-level)
@@ -182,7 +191,7 @@ flowchart LR
 
 ## 5. Progress
 
-`9 / 48 tasks done.`
+`9 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure)
 
 Update this number when a task moves to `status: done`.
 
@@ -208,7 +217,8 @@ whose `depends_on` points into the current step.
 
 ### Step 1 — No prerequisites (start here)
 
-> **Priority tip:** begin P0-01 first. 14 tasks across all tiers are directly or transitively blocked on it.
+> **Priority tip:** begin P0-01 first. 14 tasks across all tiers are directly or transitively blocked on it.  
+> Begin RF-01 before P2-35 / P2-36 / P1-22 — those tasks add new expression kinds to the transformer and the refactored structure makes those additions safe.
 
 | Task  | Title                          | Status    |
 |-------|--------------------------------|-----------|
@@ -222,6 +232,7 @@ whose `depends_on` points into the current step.
 | P1-23 | Savepoints + retry strategy    | ✅ done   |
 | P1-27 | Async streaming                | ✅ done   |
 | P2-34 | Spatial types                  | ✅ done   |
+| **RF-01** | **Transformer Refactor — Clean Architecture** | **—** |
 | P2-35 | HierarchyId                    | —         |
 | P2-36 | Temporal queries               | —         |
 | P2-40 | DbContext pooling / factory    | —         |

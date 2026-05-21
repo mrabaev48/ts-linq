@@ -739,6 +739,17 @@ export interface TrackedEntity {
 }
 
 /**
+ * HierarchyId translator interface for dialect-specific SQL function mapping.
+ * Implementations live in each @ts-linq/dialect-* package.
+ * Used by HierarchyMethodVisitor in @ts-linq/sql-visitor.
+ */
+export interface HierarchyIdTranslator {
+  isDescendantOf(col: string, param: string): string;
+  getLevel(col: string): string;
+  getAncestor(col: string, param: string): string;
+}
+
+/**
  * Spatial translator interface for dialect-specific SQL spatial function mapping.
  * Implementations live in each @ts-linq/dialect-* package.
  * Used by SpatialMethodVisitor in @ts-linq/sql-visitor.

@@ -1,10 +1,11 @@
 import type { ExpressionNode } from '@ts-linq/ast';
 import type { ConditionFragment } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
-import type { SpatialTranslator } from '@ts-linq/types';
+import type { HierarchyIdTranslator, SpatialTranslator } from '@ts-linq/types';
 
 import { ParameterState, ParameterStyle } from './ParameterStyle';
 import { BinaryVisitor, type ColumnResolver } from './visitors/BinaryVisitor';
+import { HierarchyMethodVisitor } from './visitors/HierarchyMethodVisitor';
 import { InVisitor } from './visitors/InVisitor';
 import { LogicalVisitor } from './visitors/LogicalVisitor';
 import { MethodVisitor } from './visitors/MethodVisitor';
@@ -14,6 +15,7 @@ import { UnaryVisitor } from './visitors/UnaryVisitor';
 
 export interface SqlVisitorOptions {
   spatialTranslator?: SpatialTranslator;
+  hierarchyTranslator?: HierarchyIdTranslator;
 }
 
 /**
@@ -46,7 +48,10 @@ export class SqlVisitor {
     const spatialVisitor = options?.spatialTranslator
       ? new SpatialMethodVisitor(options.spatialTranslator)
       : undefined;
-    this.method = new MethodVisitor(spatialVisitor);
+    const hierarchyVisitor = options?.hierarchyTranslator
+      ? new HierarchyMethodVisitor(options.hierarchyTranslator)
+      : undefined;
+    this.method = new MethodVisitor(spatialVisitor, hierarchyVisitor);
   }
 
   public toSql(
