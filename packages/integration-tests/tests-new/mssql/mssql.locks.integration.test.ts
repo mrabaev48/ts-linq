@@ -23,7 +23,7 @@ d('[integration][mssql] locks (UPDLOCK/HOLDLOCK)', () => {
     await p2.connect();
     try {
       await p1.executeNonQuery(
-        'IF OBJECT_ID(N"dbo.items_lock", N"U") IS NOT NULL DROP TABLE [dbo].[items_lock]'
+        "IF OBJECT_ID(N'dbo.items_lock', N'U') IS NOT NULL DROP TABLE [dbo].[items_lock]"
       );
       await p1.executeNonQuery(
         'CREATE TABLE [dbo].[items_lock]([id] INT IDENTITY(1,1) PRIMARY KEY, [name] NVARCHAR(255) NOT NULL)'
@@ -47,7 +47,7 @@ d('[integration][mssql] locks (UPDLOCK/HOLDLOCK)', () => {
     } finally {
       try {
         await p1.executeNonQuery(
-          'IF OBJECT_ID(N"dbo.items_lock", N"U") IS NOT NULL DROP TABLE [dbo].[items_lock]'
+          "IF OBJECT_ID(N'dbo.items_lock', N'U') IS NOT NULL DROP TABLE [dbo].[items_lock]"
         );
       } catch {}
     }

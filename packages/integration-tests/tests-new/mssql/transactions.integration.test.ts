@@ -15,7 +15,7 @@ d('[integration][mssql] transactions', () => {
     await p.connect();
     try {
       await p.executeNonQuery(
-        'IF OBJECT_ID(N"dbo.tx_items", N"U") IS NULL CREATE TABLE [dbo].[tx_items]([id] INT IDENTITY(1,1) PRIMARY KEY, [name] NVARCHAR(255) NOT NULL)'
+        "IF OBJECT_ID(N'dbo.tx_items', N'U') IS NULL CREATE TABLE [dbo].[tx_items]([id] INT IDENTITY(1,1) PRIMARY KEY, [name] NVARCHAR(255) NOT NULL)"
       );
 
       await p.beginTransaction();
@@ -36,7 +36,7 @@ d('[integration][mssql] transactions', () => {
     } finally {
       try {
         await p.executeNonQuery(
-          'IF OBJECT_ID(N"dbo.tx_items", N"U") IS NOT NULL DROP TABLE [dbo].[tx_items]'
+          "IF OBJECT_ID(N'dbo.tx_items', N'U') IS NOT NULL DROP TABLE [dbo].[tx_items]"
         );
       } catch {}
     }
