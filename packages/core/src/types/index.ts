@@ -97,6 +97,8 @@ export interface DbContextOptions {
   querySplittingBehavior?: import('@ts-linq/types').QuerySplittingBehavior;
   /** Execution strategy options for EnableRetryOnFailure. When set, createExecutionStrategy() uses these. */
   executionStrategy?: import('@ts-linq/types').ExecutionStrategyOptions;
+  /** When true, spatial WKB encoding/decoding is enabled in providers that support it. */
+  spatialEnabled?: boolean;
 }
 
 /** Circuit Breaker options */

@@ -18,6 +18,7 @@ export class DbContextOptionsBuilder {
   private readonly _interceptors: object[] = [];
   private _splittingBehavior?: QuerySplittingBehavior;
   private _executionStrategyOptions?: ExecutionStrategyOptions;
+  private _spatialEnabled = false;
 
   constructor(private readonly _base: DbContextOptions) {}
 
@@ -66,6 +67,24 @@ export class DbContextOptionsBuilder {
   }
 
   /**
+   * Enable spatial type support (WKB encoding/decoding) for this context.
+   * Mirrors EF Core's `UseNetTopologySuite()` provider extension.
+   *
+   * When enabled, providers will automatically encode `Geometry` objects as
+   * WKB/EWKB when writing, and decode WKB hex strings from the database into
+   * typed `Geometry` objects when reading.
+   *
+   * @example
+   * const opts = new DbContextOptionsBuilder({ provider })
+   *   .useSpatial()
+   *   .build();
+   */
+  useSpatial(): this {
+    this._spatialEnabled = true;
+    return this;
+  }
+
+  /**
    * Produce a DbContextOptions with all accumulated interceptors merged in.
    * Interceptors already present in the base options appear first, preserving
    * any prior registration order.
@@ -79,7 +98,8 @@ export class DbContextOptionsBuilder {
         : {}),
       ...(this._executionStrategyOptions !== undefined
         ? { executionStrategy: this._executionStrategyOptions }
-        : {})
+        : {}),
+      ...(this._spatialEnabled ? { spatialEnabled: true } : {})
     };
   }
 }

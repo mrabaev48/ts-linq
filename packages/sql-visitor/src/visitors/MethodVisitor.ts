@@ -4,14 +4,28 @@ import { AstSqlGenerationError } from '@ts-linq/ast';
 
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
 import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
+import { isSpatialMethod, type SpatialMethodVisitor } from './SpatialMethodVisitor';
 
 export class MethodVisitor {
+  constructor(private readonly spatialVisitor?: SpatialMethodVisitor) {}
+
   public visit(
     node: MethodNode,
     inputParameters: readonly unknown[],
     resolver?: ColumnResolver,
     state: ParameterState = new ParameterState(ParameterStyle.Question)
   ): ConditionFragment {
+    if (isSpatialMethod(node.method)) {
+      if (!this.spatialVisitor) {
+        throw new AstSqlGenerationError(
+          'UNSUPPORTED_METHOD',
+          `Spatial method "${node.method}" requires a SpatialTranslator. Pass one via SqlVisitor options.`,
+          { nodeType: 'method', method: node.method }
+        );
+      }
+      return this.spatialVisitor.visit(node, inputParameters, resolver, state);
+    }
+
     const col = renderPropertyName(node.object, resolver);
     const arg0 = node.args[0];
 
