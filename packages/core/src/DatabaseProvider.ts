@@ -243,6 +243,50 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     return { sql: rawSql, params };
   }
 
+  /**
+   * Build dialect-specific paginated SQL for a single streaming chunk.
+   * MySQL/Postgres: appends `LIMIT n OFFSET m`. Override in providers with different syntax.
+   */
+  protected buildChunkSql(baseSql: string, chunkLimit: number, offset: number): string {
+    return `${baseSql} LIMIT ${chunkLimit} OFFSET ${offset}`;
+  }
+
+  /**
+   * Stream rows from a SQL query as an AsyncIterable using chunked OFFSET pagination.
+   * Memory is bounded to one chunk (1000 rows) at a time.
+   * Override per provider for native cursor support.
+   *
+   * Note: calls doExecuteQuery directly — bypasses retry/circuit-breaker because
+   * retry on a partially-yielded stream would produce duplicate rows.
+   */
+  public async *streamRows(
+    baseSql: string,
+    params: readonly SqlParameter[],
+    startOffset: number = 0,
+    maxRows?: number,
+    signal?: AbortSignal
+  ): AsyncIterable<Record<string, unknown>> {
+    const CHUNK_SIZE = 1000;
+    let offset = startOffset;
+    let remaining: number = maxRows ?? Infinity;
+
+    while (remaining > 0) {
+      if (signal?.aborted) throw new Error('Operation aborted');
+      const chunkLimit = Math.min(CHUNK_SIZE, remaining === Infinity ? CHUNK_SIZE : remaining);
+      const chunkSql = this.buildChunkSql(baseSql, chunkLimit, offset);
+      if (!this.isConnected) await this.connect();
+      const rows = await this.doExecuteQuery<Record<string, unknown>>(chunkSql, params);
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        if (signal?.aborted) throw new Error('Operation aborted');
+        yield row;
+      }
+      offset += rows.length;
+      if (remaining !== Infinity) remaining -= rows.length;
+      if (rows.length < chunkLimit) break;
+    }
+  }
+
   /** Execute a non-query SQL statement and return affected row count. */
   public async executeNonQuery(sql: string, params: readonly SqlParameter[] = []): Promise<number> {
     return await this.executeWithRetry<number>(

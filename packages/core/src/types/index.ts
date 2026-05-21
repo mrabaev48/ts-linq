@@ -41,6 +41,13 @@ export interface IDatabaseProvider {
     sql: string,
     params?: readonly import('@ts-linq/types').SqlParameter[]
   ): Promise<number>;
+  streamRows(
+    baseSql: string,
+    params: readonly import('@ts-linq/types').SqlParameter[],
+    startOffset: number,
+    maxRows: number | undefined,
+    signal?: AbortSignal
+  ): AsyncIterable<Record<string, unknown>>;
   configureQueryAnalysis(options?: QueryPerformanceAnalysisOptions): void;
   readonly circuitStateLabel: CircuitState;
   configureCircuit(options: CircuitBreakerOptions): void;
