@@ -53,7 +53,7 @@ Lands after P0. Necessary for power users but not blocking baseline migration.
 | P1-20 | [Compiled queries](./P1-20-compiled-queries.md)                               | `EF.CompileQuery`, `EF.CompileAsyncQuery`                                                              | - [x]  | M      | —            |
 | P1-21 | [Sequences / HiLo](./P1-21-sequences-hi-lo.md)                                | `HasSequence`, `UseHiLo`, `UseSequence`                                                                | - [ ]  | M      | P1-30        |
 | P1-22 | [EF.Functions / DbFunctions](./P1-22-ef-functions.md)                         | `EF.Functions.Like/ILike/Random/DateDiff*/Greatest/Least/StDev/Variance`, `HasDbFunction`              | - [ ]  | L      | P0-01        |
-| P1-23 | [Savepoints + retry strategy](./P1-23-transaction-savepoints-retry.md)        | `CreateSavepoint`, `RollbackToSavepoint`, `EnableRetryOnFailure`, `ExecutionStrategy`                  | - [ ]  | M      | —            |
+| P1-23 | [Savepoints + retry strategy](./P1-23-transaction-savepoints-retry.md)        | `CreateSavepoint`, `RollbackToSavepoint`, `EnableRetryOnFailure`, `ExecutionStrategy`                  | - [x]  | M      | —            |
 | P1-24 | [Primitive collections](./P1-24-primitive-collections.md)                     | `Property(e => e.Tags)` with `string[]`/`int[]`, `Contains` translation (EF8)                          | - [ ]  | M      | P0-05, P0-15 |
 | P1-25 | [Table / entity splitting](./P1-25-table-entity-splitting.md)                 | `SplitToTable`, multiple entities into one table, one entity across multiple tables                    | - [ ]  | M      | P0-01        |
 | P1-26 | [Views / keyless entities](./P1-26-views-keyless-entities.md)                 | `ToView("v_name")`, `HasNoKey()`                                                                       | - [ ]  | S      | P0-01        |
@@ -182,7 +182,7 @@ flowchart LR
 
 ## 5. Progress
 
-`7 / 48 tasks done.`
+`8 / 48 tasks done.`
 
 Update this number when a task moves to `status: done`.
 
@@ -219,7 +219,7 @@ whose `depends_on` points into the current step.
 | P1-18 | AsSplitQuery / AsSingleQuery   | ✅ done   |
 | P1-19 | Filtered Include               | ✅ done   |
 | P1-20 | Compiled queries               | ✅ done   |
-| P1-23 | Savepoints + retry strategy    | —         |
+| P1-23 | Savepoints + retry strategy    | ✅ done   |
 | P1-27 | Async streaming                | —         |
 | P2-34 | Spatial types                  | —         |
 | P2-35 | HierarchyId                    | —         |

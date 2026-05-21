@@ -20,6 +20,7 @@
     { "path": "../types" },
     { "path": "../metadata" },
     { "path": "../query" },
-    { "path": "../metrics-safe" }
+    { "path": "../metrics-safe" },
+    { "path": "../concurrency" }
   ]
 }

@@ -6,6 +6,7 @@ import type { EntityMetadata, MssqlConfig, SqlDialect, SqlParameter } from '@ts-
 import { DatabaseError, OptimisticConcurrencyError, UniqueConstraintError } from '@ts-linq/types';
 
 import { buildMssqlConnectionString } from './buildConnectionString';
+import { isMssqlTransientErrorNumber } from './transientErrorCodes';
 
 interface MssqlRequestLike {
   input(name: string, value: SqlParameter): MssqlRequestLike;
@@ -488,6 +489,27 @@ export class MssqlProvider extends DatabaseProvider {
     } catch {
       /* already aborted */
     }
+  }
+
+  /**
+   * MSSQL savepoint support uses `SAVE TRANSACTION / ROLLBACK TRANSACTION` syntax.
+   * MSSQL does not support `RELEASE SAVEPOINT`.
+   */
+  public override async createSavepoint(name: string): Promise<void> {
+    await this.executeNonQuery(`SAVE TRANSACTION ${name}`);
+  }
+
+  public override async rollbackToSavepoint(name: string): Promise<void> {
+    await this.executeNonQuery(`ROLLBACK TRANSACTION ${name}`);
+  }
+
+  // MSSQL has no RELEASE concept — this is intentionally a no-op
+  public override async releaseSavepoint(_name: string): Promise<void> {}
+
+  /** Enhanced transient error detection using SQL Server-specific error numbers. */
+  protected override isTransientError(error: unknown): boolean {
+    if (isMssqlTransientErrorNumber((error as { number?: number })?.number)) return true;
+    return super.isTransientError(error);
   }
 
   /** Provide SQL dialect for this provider. */

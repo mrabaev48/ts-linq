@@ -1,7 +1,7 @@
 ---
 title: Transaction Savepoints and Retry-on-Failure (ExecutionStrategy)
 ef_core_api: IDbContextTransaction.CreateSavepoint / RollbackToSavepoint / ReleaseSavepoint / DbContextOptionsBuilder.EnableRetryOnFailure
-status: not-started
+status: done
 priority: P1
 effort: L
 depends_on: []
