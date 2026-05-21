@@ -84,6 +84,9 @@ export * from './utils/PrometheusEndpoint';
 // Spatial types
 export * from './spatial';
 
+// HierarchyId type
+export * from './hierarchy';
+
 // Interceptors
 export type { IDbCommandInterceptor } from './interceptors/IDbCommandInterceptor';
 export type { IDbConnectionInterceptor } from './interceptors/IDbConnectionInterceptor';

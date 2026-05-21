@@ -10,6 +10,7 @@ import {
 } from '@ts-linq/types';
 
 import { buildPostgresConnectionString } from './buildConnectionString';
+import { encodeLtree, isHierarchyId } from './ltree-codec';
 import { geometryToEwkbHex, isGeometryObject } from './spatial-codec';
 import { isPgTransientErrorCode } from './transientErrorCodes';
 
@@ -106,6 +107,9 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   private coerceToSqlParameter(value: unknown): SqlParameter {
+    if (isHierarchyId(value)) {
+      return encodeLtree(value);
+    }
     if (isGeometryObject(value)) {
       return `\\x${geometryToEwkbHex(value)}`;
     }
