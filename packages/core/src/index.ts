@@ -81,6 +81,9 @@ export * from './utils/SqlHelper';
 // export * from './utils/InternalLogger'; // Removed
 export * from './utils/PrometheusEndpoint';
 
+// Spatial types
+export * from './spatial';
+
 // Interceptors
 export type { IDbCommandInterceptor } from './interceptors/IDbCommandInterceptor';
 export type { IDbConnectionInterceptor } from './interceptors/IDbConnectionInterceptor';
