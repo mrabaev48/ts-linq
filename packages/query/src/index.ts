@@ -1,3 +1,6 @@
+export { CapturedQueryPlan } from './compiled/CapturedQueryPlan';
+export type { CompiledQueryFn } from './EF';
+export { EF } from './EF';
 export type { IncludeResolutionErrorCode, IncludeResolutionErrorDetails } from './errors';
 export { IncludeResolutionError } from './errors';
 export type { NavigationProxy } from './include/IncludeSubquery';

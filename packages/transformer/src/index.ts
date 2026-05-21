@@ -1,3 +1,7 @@
+// Reserved for future compile-time optimisation (P2-44 — Compiled models / AOT prep).
+// The runtime path (CapturedQueryPlan + EF) handles all current test environments.
+export type { EFCompileQueryVisitorVersion } from './visitors/EFCompileQueryVisitor';
+
 /**
  * ts-patch entrypoint for the ts-linq compile-time transformer.
  *
