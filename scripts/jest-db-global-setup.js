@@ -17,9 +17,9 @@ const path = require('path');
 const COMPOSE_FILE = path.resolve(__dirname, '../docker-compose.test.yml');
 
 const DB_ENV = {
-  POSTGRES_URL: 'postgresql://test:test@localhost:5432/testdb',
+  POSTGRES_URL: 'postgresql://test:test@localhost:6543/testdb',
   POSTGRES_HOST: 'localhost',
-  POSTGRES_PORT: '5432',
+  POSTGRES_PORT: '6543',
   POSTGRES_DB: 'testdb',
   POSTGRES_USER: 'test',
   POSTGRES_PASSWORD: 'test',
