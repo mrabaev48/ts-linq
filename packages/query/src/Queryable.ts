@@ -16,6 +16,7 @@ import type {
   QueryFallback,
   QuerySplittingBehavior,
   SqlParameter,
+  TemporalClause,
   WhereClause
 } from '@ts-linq/types';
 import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
@@ -278,6 +279,79 @@ export class Queryable<T> {
   /** Returns the resolved splitting behavior, preferring per-query override over the global default. */
   protected get effectiveSplittingBehavior(): QuerySplittingBehavior {
     return this._splittingBehavior ?? this._globalSplittingBehavior ?? QSB.SplitQuery;
+  }
+
+  // ─── Temporal API (SQL Server system-versioned tables / EF Core parity) ──
+
+  /**
+   * Query the state of the entity at a specific point in time.
+   * Emits `FOR SYSTEM_TIME AS OF @p` on MSSQL. Throws on other dialects.
+   *
+   * @example
+   * const snapshot = await ctx.employees
+   *   .temporalAsOf(new Date('2023-01-01'))
+   *   .where(e => e.department === 'Sales')
+   *   .toArray();
+   */
+  public temporalAsOf(pointInTime: Date): Queryable<T> {
+    const cloned = this.clone();
+    cloned._model.temporal = { mode: 'AsOf', from: pointInTime } satisfies TemporalClause;
+    return cloned;
+  }
+
+  /**
+   * Query all historical and current rows.
+   * Emits `FOR SYSTEM_TIME ALL` on MSSQL. Throws on other dialects.
+   *
+   * @example
+   * const history = await ctx.employees
+   *   .temporalAll()
+   *   .orderBy('PeriodStart')
+   *   .toArray();
+   */
+  public temporalAll(): Queryable<T> {
+    const cloned = this.clone();
+    cloned._model.temporal = { mode: 'All' } satisfies TemporalClause;
+    return cloned;
+  }
+
+  /**
+   * Query rows active at any point within a half-open interval [from, to).
+   * Emits `FOR SYSTEM_TIME BETWEEN @from AND @to` on MSSQL. Throws on other dialects.
+   *
+   * @example
+   * const rows = await ctx.employees.temporalBetween(from, to).toArray();
+   */
+  public temporalBetween(from: Date, to: Date): Queryable<T> {
+    const cloned = this.clone();
+    cloned._model.temporal = { mode: 'Between', from, to } satisfies TemporalClause;
+    return cloned;
+  }
+
+  /**
+   * Query rows active at any point within the open interval (from, to).
+   * Emits `FOR SYSTEM_TIME FROM @from TO @to` on MSSQL. Throws on other dialects.
+   *
+   * @example
+   * const rows = await ctx.employees.temporalFromTo(from, to).toArray();
+   */
+  public temporalFromTo(from: Date, to: Date): Queryable<T> {
+    const cloned = this.clone();
+    cloned._model.temporal = { mode: 'FromTo', from, to } satisfies TemporalClause;
+    return cloned;
+  }
+
+  /**
+   * Query rows whose entire active period falls within [from, to].
+   * Emits `FOR SYSTEM_TIME CONTAINED IN (@from, @to)` on MSSQL. Throws on other dialects.
+   *
+   * @example
+   * const rows = await ctx.employees.temporalContainedIn(from, to).toArray();
+   */
+  public temporalContainedIn(from: Date, to: Date): Queryable<T> {
+    const cloned = this.clone();
+    cloned._model.temporal = { mode: 'ContainedIn', from, to } satisfies TemporalClause;
+    return cloned;
   }
 
   /**

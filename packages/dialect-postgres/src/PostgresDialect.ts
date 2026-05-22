@@ -12,6 +12,7 @@ import type {
   SqlWithReturning,
   WhereClause
 } from '@ts-linq/types';
+import { TemporalNotSupportedError } from '@ts-linq/types';
 
 import { PgGroupEmitter } from './emitters/PgGroupEmitter';
 import { PgJoinEmitter } from './emitters/PgJoinEmitter';
@@ -39,6 +40,12 @@ export class PostgresDialect implements SqlDialect {
    * @param options Normalized query options (select/where/order/group/joins/limit/offset)
    */
   public buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult {
+    if (options.temporal) {
+      throw new TemporalNotSupportedError(
+        'Temporal queries (FOR SYSTEM_TIME) are not supported by the PostgreSQL dialect. ' +
+          'Use the @ts-linq/plugin-audit package for row-history tracking on PostgreSQL.'
+      );
+    }
     const parameters: SqlParameter[] = [];
     let query = this.buildSelectHead(options);
     query = this.applyCte(query, options);
