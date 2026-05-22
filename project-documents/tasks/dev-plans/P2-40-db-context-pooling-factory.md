@@ -1,7 +1,7 @@
 ---
 title: DbContext Pooling and IDbContextFactory
 ef_core_api: services.AddDbContextPool<T>(...) / services.AddDbContextFactory<T>(...) / IDbContextFactory<T>.CreateDbContext()
-status: not-started
+status: done
 priority: P2
 effort: L
 depends_on: []

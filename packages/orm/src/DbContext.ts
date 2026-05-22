@@ -75,6 +75,8 @@ export abstract class DbContext {
   private _transactionDepth = 0;
   private _database!: DatabaseFacade;
   private _executionStrategyOptions?: import('@ts-linq/types').ExecutionStrategyOptions;
+  /** @internal Callback set by a pooled factory; overrides dispose to return context to pool. */
+  private _returnToPool?: () => Promise<void>;
 
   /**
    * Create a new database context instance.
@@ -534,6 +536,54 @@ export abstract class DbContext {
   }
 
   /**
+   * Reset all mutable per-request state so this instance can be safely
+   * re-used by a subsequent unit-of-work.
+   *
+   * Called automatically by `DbContextPool` before returning an idle
+   * context to the pool. **Do not call this from application code** unless
+   * you are building your own pooling layer.
+   *
+   * Clears:
+   * - `ChangeTracker` — all tracked entities and their snapshots.
+   * - L2 entity / SQL / count caches — via `CacheCoordinator.clearAll()`.
+   * - Transaction depth counter — resets nested-transaction bookkeeping.
+   */
+  public reset(): void {
+    this._changeTracker.clear();
+    this._cacheCoordinator.clearAll();
+    this._transactionDepth = 0;
+  }
+
+  /**
+   * Support `await using ctx = ...` syntax (TC39 Explicit Resource Management).
+   *
+   * When this context was leased from a `DbContextPool`, the pool return hook
+   * is invoked instead of a full disconnect, recycling the instance.
+   * For non-pooled contexts this is equivalent to calling `dispose()`.
+   */
+  public async [Symbol.asyncDispose](): Promise<void> {
+    if (this._returnToPool) {
+      await this._returnToPool();
+    } else {
+      await this.dispose();
+    }
+  }
+
+  /**
+   * Register a callback that replaces `dispose()` when `Symbol.asyncDispose`
+   * is triggered.
+   *
+   * **For internal use by `PooledDbContextFactory` only.**
+   * Calling this from application code produces undefined behaviour.
+   *
+   * @internal
+   * @param fn - Async callback that returns the context to the pool.
+   */
+  _setPoolReturnHook(fn: () => Promise<void>): void {
+    this._returnToPool = fn;
+  }
+
+  /**
    * Get the underlying database provider
    *
    * @returns The active `DatabaseProvider` implementation.
@@ -543,11 +593,14 @@ export abstract class DbContext {
   }
 
   /**
-   * Get the change tracker
+   * Get the change tracker.
    *
-   * @returns The `ChangeTracker` handling entity states.
+   * Mirrors EF Core's `DbContext.ChangeTracker` public property.
+   * Use to inspect tracked entities, call `detectChanges()`, or `clear()`.
+   *
+   * @returns The `ChangeTracker` handling entity states for this context.
    */
-  protected get changeTracker(): ChangeTracker {
+  public get changeTracker(): ChangeTracker {
     return this._changeTracker;
   }
 
