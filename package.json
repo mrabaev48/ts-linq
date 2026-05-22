@@ -91,6 +91,7 @@
     "test:e2e": "pnpm -F @ts-linq/e2e-tests test",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:all": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
     "lint": "eslint --fix",
     "example:simple": "ts-node examples/simple-app.ts",
     "example:advanced": "ts-node examples/advanced-queries.ts",
