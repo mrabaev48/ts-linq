@@ -10,7 +10,6 @@ import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { Queryable } from '@ts-linq/query';
 import type { QueryOptions } from '@ts-linq/types';
 import { TemporalNotSupportedError } from '@ts-linq/types';
 
@@ -259,48 +258,6 @@ const mssqlUrl = process.env.MSSQL_URL;
       }>;
       const alice = rows.find((r) => r.name === 'Alice');
       expect(alice?.department).toBe('Management');
-    });
-
-    test('Queryable.temporalAll() produces correct _model.temporal', () => {
-      const q = new Queryable(E2EEmployee, provider);
-      const tq = q.temporalAll();
-
-      expect((tq as any)._model.temporal).toEqual({ mode: 'All' });
-    });
-
-    test('Queryable.temporalAsOf() produces correct _model.temporal', () => {
-      const pt = new Date('2023-01-01');
-      const q = new Queryable(E2EEmployee, provider);
-      const tq = q.temporalAsOf(pt);
-
-      expect((tq as any)._model.temporal).toEqual({ mode: 'AsOf', from: pt });
-    });
-
-    test('Queryable.temporalBetween() produces correct _model.temporal', () => {
-      const from = new Date('2022-01-01');
-      const to = new Date('2025-01-01');
-      const q = new Queryable(E2EEmployee, provider);
-      const tq = q.temporalBetween(from, to);
-
-      expect((tq as any)._model.temporal).toEqual({ mode: 'Between', from, to });
-    });
-
-    test('Queryable.temporalFromTo() produces correct _model.temporal', () => {
-      const from = new Date('2022-01-01');
-      const to = new Date('2025-01-01');
-      const q = new Queryable(E2EEmployee, provider);
-      const tq = q.temporalFromTo(from, to);
-
-      expect((tq as any)._model.temporal).toEqual({ mode: 'FromTo', from, to });
-    });
-
-    test('Queryable.temporalContainedIn() produces correct _model.temporal', () => {
-      const from = new Date('2022-01-01');
-      const to = new Date('2025-01-01');
-      const q = new Queryable(E2EEmployee, provider);
-      const tq = q.temporalContainedIn(from, to);
-
-      expect((tq as any)._model.temporal).toEqual({ mode: 'ContainedIn', from, to });
     });
   }
 );

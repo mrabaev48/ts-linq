@@ -33,20 +33,24 @@ function parseMysqlUrl(url: string) {
 function parseMssqlUrl(url: string) {
   try {
     const u = new URL(url);
+    const user = decodeURIComponent(u.username) || process.env.MSSQL_USER || 'sa';
+    const password =
+      decodeURIComponent(u.password) || process.env.MSSQL_PASSWORD || 'YourStrong@Passw0rd';
+    const database = u.pathname.replace(/^\//, '') || process.env.MSSQL_DB || 'master';
     return {
-      server: u.hostname,
-      port: u.port ? parseInt(u.port) : 1433,
-      user: decodeURIComponent(u.username),
-      password: decodeURIComponent(u.password),
-      database: u.pathname.replace(/^\//, '')
+      server: u.hostname || process.env.MSSQL_SERVER || 'localhost',
+      port: u.port ? parseInt(u.port) : parseInt(process.env.MSSQL_PORT ?? '1433'),
+      user,
+      password,
+      database
     };
   } catch {
     return {
-      server: 'localhost',
-      port: 1433,
-      user: 'sa',
-      password: 'YourStrong@Passw0rd',
-      database: 'testdb'
+      server: process.env.MSSQL_SERVER || 'localhost',
+      port: parseInt(process.env.MSSQL_PORT ?? '1433'),
+      user: process.env.MSSQL_USER || 'sa',
+      password: process.env.MSSQL_PASSWORD || 'YourStrong@Passw0rd',
+      database: process.env.MSSQL_DB || 'master'
     };
   }
 }
@@ -88,7 +92,8 @@ export async function setupTestDatabase(provider: 'postgresql' | 'mysql' | 'mssq
         port: cfg.port,
         user: cfg.user,
         password: cfg.password,
-        database: cfg.database
+        database: cfg.database,
+        trustServerCertificate: true
       });
       break;
     }

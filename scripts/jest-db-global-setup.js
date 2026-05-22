@@ -31,7 +31,7 @@ const DB_ENV = {
   MYSQL_PASSWORD: 'test',
   MYSQL_SPATIAL: '1',
   MYSQL_JSON: '1',
-  MSSQL_URL: 'mssql://localhost',
+  MSSQL_URL: 'mssql://sa:YourStrong%40Passw0rd@localhost:1433/master',
   MSSQL_SERVER: 'localhost',
   MSSQL_PORT: '1433',
   MSSQL_USER: 'sa',
