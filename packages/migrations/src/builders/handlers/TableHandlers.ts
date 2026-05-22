@@ -58,5 +58,10 @@ export function buildCreateTableSql(td: TableDiff, dialect: Dialect): string {
   if (create.foreignKeys && create.foreignKeys.length > 0) {
     for (const fk of create.foreignKeys) cols.push(buildInlineFkSql(dialect, fk));
   }
-  return `CREATE TABLE IF NOT EXISTS ${q(dialect, create.name)} (${cols.join(', ')})`;
+  const body = `(${cols.join(', ')})`;
+  if (dialect === 'mssql') {
+    const tbl = q(dialect, create.name);
+    return `IF OBJECT_ID(N'${create.name}', N'U') IS NULL BEGIN CREATE TABLE ${tbl} ${body} END`;
+  }
+  return `CREATE TABLE IF NOT EXISTS ${q(dialect, create.name)} ${body}`;
 }

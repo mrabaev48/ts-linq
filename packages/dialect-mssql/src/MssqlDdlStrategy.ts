@@ -38,10 +38,16 @@ export class MssqlDdlStrategy {
       const persisted = storage === 'PERSISTED' ? ' PERSISTED' : '';
       return `[${column.columnName}] AS (${column.computedExpression})${persisted}`;
     }
-    let definition = `[${column.columnName}] ${this.mapTypeToMssql(column.type)}`;
+    let sqlType = this.mapTypeToMssql(column.type);
     if (column.length) {
-      definition += `(${column.length})`;
+      // Replace (MAX) with the explicit length, or append if no length token present.
+      if (sqlType.endsWith('(MAX)')) {
+        sqlType = sqlType.slice(0, -5) + `(${column.length})`;
+      } else if (!sqlType.includes('(')) {
+        sqlType += `(${column.length})`;
+      }
     }
+    let definition = `[${column.columnName}] ${sqlType}`;
     if (column.isGenerated) {
       definition += ' IDENTITY(1,1)';
     }

@@ -71,7 +71,8 @@ export class MySqlSchemaInspector {
       COLLATION?: 'A' | 'D' | null;
       EXPRESSION?: string | null;
     }>(
-      'SELECT INDEX_NAME, NON_UNIQUE, COLUMN_NAME, SEQ_IN_INDEX, COLLATION, EXPRESSION FROM information_schema.statistics WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY INDEX_NAME, SEQ_IN_INDEX',
+      // Exclude PRIMARY — it is tracked via primaryKeys, not as an explicit index.
+      "SELECT INDEX_NAME, NON_UNIQUE, COLUMN_NAME, SEQ_IN_INDEX, COLLATION, EXPRESSION FROM information_schema.statistics WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME <> 'PRIMARY' ORDER BY INDEX_NAME, SEQ_IN_INDEX",
       [table]
     );
     const byName = new Map<
