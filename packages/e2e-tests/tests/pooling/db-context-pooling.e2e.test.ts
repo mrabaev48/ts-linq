@@ -64,10 +64,13 @@ const shouldRun = process.env.SKIP_DB_TESTS !== '1';
         // Intentionally NOT disposing here — shared provider is owned by afterEach cleanup.
       });
 
-      it('each context has its own isolated ChangeTracker', () => {
+      it('each context has its own isolated ChangeTracker', async () => {
         const factory = addDbContextFactory(E2EPoolContext, { provider });
 
         const ctx1 = factory.createDbContext();
+        // ensureCreated connects the provider (autoConnect: false in setupTestDatabase)
+        // so that afterEach dropTables can execute successfully.
+        await ctx1.ensureCreated();
         const ctx2 = factory.createDbContext();
 
         ctx1.products.add(Object.assign(new E2EPoolProduct(), { name: 'ctx1-product' }));
@@ -77,10 +80,12 @@ const shouldRun = process.env.SKIP_DB_TESTS !== '1';
         // Not disposing — shared provider must stay connected for afterEach cleanup.
       });
 
-      it('factory produces distinct context instances', () => {
+      it('factory produces distinct context instances', async () => {
         const factory = addDbContextFactory(E2EPoolContext, { provider });
 
         const ctx1 = factory.createDbContext();
+        // Connect the provider so afterEach dropTables does not fail.
+        await ctx1.ensureCreated();
         const ctx2 = factory.createDbContext();
 
         expect(ctx1).not.toBe(ctx2);
