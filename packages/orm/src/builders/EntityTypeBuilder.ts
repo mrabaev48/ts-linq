@@ -22,6 +22,8 @@ export class EntityTypeBuilder<T> {
   private readonly _columns: Map<string, ColumnMetadata> = new Map();
   private readonly _relationships: RelationshipMetadata[] = [];
   private readonly _indexes: IndexMetadata[] = [];
+  private _isTemporal?: boolean;
+  private _historyTableName?: string;
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -71,6 +73,30 @@ export class EntityTypeBuilder<T> {
     return new IndexBuilder<T>(this._ctor, keys as string[], this._indexes);
   }
 
+  /**
+   * Declares that this entity maps to a SQL Server system-versioned (temporal) table.
+   * Allows querying historical data via `temporalAsOf`, `temporalAll`, etc.
+   *
+   * @example
+   * mb.entity(Employee).isTemporal();
+   */
+  isTemporal(): this {
+    this._isTemporal = true;
+    return this;
+  }
+
+  /**
+   * Specifies a custom name for the associated history table.
+   * Defaults to `tableName + 'History'` when not set.
+   *
+   * @example
+   * mb.entity(Employee).isTemporal().withHistoryTable('EmployeeHistoryArchive');
+   */
+  withHistoryTable(name: string): this {
+    this._historyTableName = name;
+    return this;
+  }
+
   /** @internal */
   _applyToRegistry(registry: MetadataRegistry): void {
     registry.addEntity(this._ctor, this._tableName);
@@ -93,6 +119,10 @@ export class EntityTypeBuilder<T> {
 
     for (const idx of this._indexes) {
       registry.mergeFluentIndex(this._ctor, idx);
+    }
+
+    if (this._isTemporal !== undefined) {
+      registry.mergeFluentTemporal(this._ctor, this._isTemporal, this._historyTableName);
     }
   }
 }

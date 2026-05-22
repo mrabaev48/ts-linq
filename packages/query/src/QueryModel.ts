@@ -4,6 +4,7 @@ import type {
   OrderByClause,
   QuerySplittingBehavior,
   SqlParameter,
+  TemporalClause,
   WhereClause
 } from '@ts-linq/types';
 
@@ -31,6 +32,8 @@ export class QueryModel {
   rawSqlSource?: { sql: string; params: readonly SqlParameter[] };
   /** Per-query override of the global query splitting behavior. */
   splittingBehavior?: QuerySplittingBehavior;
+  /** Temporal query constraint for SQL Server system-versioned tables (FOR SYSTEM_TIME). */
+  temporal?: TemporalClause;
 
   /**
    * Create a deep copy of the query model to preserve immutability
@@ -63,6 +66,7 @@ export class QueryModel {
       ? { sql: this.rawSqlSource.sql, params: [...this.rawSqlSource.params] }
       : undefined;
     clonedModel.splittingBehavior = this.splittingBehavior;
+    clonedModel.temporal = this.temporal;
     clonedModel.unions = this.unions
       ? this.unions.map((unionItem) => ({
           all: unionItem.all,

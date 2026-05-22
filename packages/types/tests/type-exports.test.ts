@@ -7,6 +7,7 @@ describe('Type Exports', () => {
     expect(types.UniqueConstraintError).toBeDefined();
     expect(types.ForeignKeyConstraintError).toBeDefined();
     expect(types.ValidationError).toBeDefined();
+    expect(types.TemporalNotSupportedError).toBeDefined();
   });
 
   it('should export Result helper functions', () => {
@@ -37,6 +38,7 @@ describe('Type Exports', () => {
       'UniqueConstraintError',
       'ForeignKeyConstraintError',
       'ValidationError',
+      'TemporalNotSupportedError',
       'ok',
       'err',
       'LoadingStrategy',

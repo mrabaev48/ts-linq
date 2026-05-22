@@ -336,6 +336,24 @@ export class MetadataRegistry {
     this.getOrCreateBuilder(target).setSchema(schema);
   }
 
+  /** Mark the entity as a SQL Server system-versioned (temporal) table (fluent override). */
+  public mergeFluentTemporal(
+    target: Function,
+    isTemporal: boolean,
+    historyTableName?: string
+  ): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.isTemporal = isTemporal;
+      if (historyTableName !== undefined) finalized.historyTableName = historyTableName;
+      return;
+    }
+    const builder = this.getOrCreateBuilder(target);
+    builder.setTemporal(isTemporal);
+    if (historyTableName !== undefined) builder.setHistoryTableName(historyTableName);
+  }
+
   /** Clear all stored metadata and pending builders. */
   public clear(): void {
     this.entities.clear();

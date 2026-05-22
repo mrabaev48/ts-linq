@@ -45,3 +45,16 @@ export class ValidationError extends Error {
     this.name = 'ValidationError';
   }
 }
+
+/**
+ * Thrown when a temporal query operator is used with a dialect that does not
+ * support SQL Server `FOR SYSTEM_TIME` syntax (e.g. PostgreSQL, MySQL).
+ *
+ * Mirrors EF Core's restriction of temporal queries to SQL Server only.
+ */
+export class TemporalNotSupportedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TemporalNotSupportedError';
+  }
+}
