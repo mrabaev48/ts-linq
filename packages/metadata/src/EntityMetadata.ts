@@ -135,6 +135,18 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  /** Mark this entity as mapped to a SQL Server system-versioned (temporal) table. */
+  public setTemporal(isTemporalTable: boolean): this {
+    this.metadata.isTemporal = isTemporalTable;
+    return this;
+  }
+
+  /** Set the name of the associated history table (default: `tableName + 'History'`). */
+  public setHistoryTableName(name: string): this {
+    this.metadata.historyTableName = name;
+    return this;
+  }
+
   /**
    * Finalize and return the constructed `EntityMetadata` object.
    */
@@ -151,7 +163,11 @@ export class EntityMetadataBuilder {
       relationships: this.metadata.relationships || [],
       indexes: this.metadata.indexes || [],
       validations: this.metadata.validations || [],
-      ...(this.metadata.schema !== undefined ? { schema: this.metadata.schema } : {})
+      ...(this.metadata.schema !== undefined ? { schema: this.metadata.schema } : {}),
+      ...(this.metadata.isTemporal !== undefined ? { isTemporal: this.metadata.isTemporal } : {}),
+      ...(this.metadata.historyTableName !== undefined
+        ? { historyTableName: this.metadata.historyTableName }
+        : {})
     };
   }
 }

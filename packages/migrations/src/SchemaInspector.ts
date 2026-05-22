@@ -71,7 +71,8 @@ export class MySqlSchemaInspector {
       COLLATION?: 'A' | 'D' | null;
       EXPRESSION?: string | null;
     }>(
-      'SELECT INDEX_NAME, NON_UNIQUE, COLUMN_NAME, SEQ_IN_INDEX, COLLATION, EXPRESSION FROM information_schema.statistics WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY INDEX_NAME, SEQ_IN_INDEX',
+      // Exclude PRIMARY — it is tracked via primaryKeys, not as an explicit index.
+      "SELECT INDEX_NAME, NON_UNIQUE, COLUMN_NAME, SEQ_IN_INDEX, COLLATION, EXPRESSION FROM information_schema.statistics WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME <> 'PRIMARY' ORDER BY INDEX_NAME, SEQ_IN_INDEX",
       [table]
     );
     const byName = new Map<
@@ -112,7 +113,8 @@ export class MssqlSchemaInspector {
       is_unique: 0 | 1;
       filter_definition: string | null;
     }>(
-      'SELECT i.name, i.is_unique, i.filter_definition FROM sys.indexes i WHERE i.object_id = OBJECT_ID(@p1) AND i.is_hypothetical = 0 AND i.name IS NOT NULL',
+      // Exclude clustered primary-key indexes — they are tracked via primaryKeys, not as explicit indexes.
+      'SELECT i.name, i.is_unique, i.filter_definition FROM sys.indexes i WHERE i.object_id = OBJECT_ID(@p1) AND i.is_hypothetical = 0 AND i.name IS NOT NULL AND i.is_primary_key = 0',
       [table]
     );
     const colRows = await this.provider.executeQuery<{

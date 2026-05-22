@@ -1,7 +1,7 @@
 ---
 title: Temporal Queries on System-Versioned Tables
 ef_core_api: DbSet<T>.TemporalAsOf(date) / TemporalAll() / TemporalBetween(from, to) / TemporalFromTo(from, to) / TemporalContainedIn(from, to)
-status: not-started
+status: done
 priority: P2
 effort: L
 depends_on: []

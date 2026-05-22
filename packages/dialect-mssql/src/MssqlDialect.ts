@@ -10,6 +10,7 @@ import type {
   SqlWithReturning
 } from '@ts-linq/types';
 
+import { buildTemporalClause } from './emit-temporal';
 import { MssqlGroupEmitter } from './emitters/MssqlGroupEmitter';
 import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
 import { MssqlOrderEmitter } from './emitters/MssqlOrderEmitter';
@@ -51,6 +52,9 @@ export class MssqlDialect implements SqlDialect {
       const metadata = MetadataStorage.getEntity(entityClass);
       if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
       query = `${selectHead}${selectList} FROM [${options.from ?? metadata.tableName}]`;
+      if (options.temporal) {
+        query += buildTemporalClause(options.temporal, parameters);
+      }
     }
     query += this.joinEmitter.emit(options);
     query += this.whereEmitter.emit(parameters, options);
