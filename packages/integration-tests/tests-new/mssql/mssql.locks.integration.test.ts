@@ -38,11 +38,26 @@ d('[integration][mssql] locks (UPDLOCK/HOLDLOCK)', () => {
         'SELECT [id] FROM [dbo].[items_lock] WITH (UPDLOCK, HOLDLOCK) WHERE [id]=@p1',
         [lockedId]
       );
-      await expect(
-        p2.executeNonQuery('UPDATE [dbo].[items_lock] SET [name]=[name] WHERE [id]=@p1', [
-          lockedId as unknown as never
-        ])
-      ).rejects.toBeInstanceOf(DatabaseError);
+      // Pin p2 to a single physical connection via a transaction so that SET LOCK_TIMEOUT
+      // applies to the same connection that runs the UPDATE.
+      // NOWAIT in the UPDATE hint makes SQL Server fail immediately if the row is locked
+      // rather than waiting for the default 0 (indefinite) timeout.
+      await p2.beginTransaction();
+      let p2Error: Error | undefined;
+      try {
+        await p2.executeNonQuery('SET LOCK_TIMEOUT 100');
+        await p2.executeNonQuery(
+          'UPDATE t SET t.[name]=t.[name] FROM [dbo].[items_lock] AS t WITH (ROWLOCK, UPDLOCK, NOWAIT) WHERE t.[id]=@p1',
+          [lockedId as unknown as never]
+        );
+      } catch (err) {
+        p2Error = err as Error;
+      } finally {
+        try {
+          await p2.rollbackTransaction();
+        } catch {}
+      }
+      expect(p2Error).toBeInstanceOf(DatabaseError);
       await p1.rollbackTransaction();
     } finally {
       try {

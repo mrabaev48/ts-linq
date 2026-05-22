@@ -31,7 +31,7 @@ const DB_ENV = {
   MYSQL_PASSWORD: 'test',
   MYSQL_SPATIAL: '1',
   MYSQL_JSON: '1',
-  MSSQL_URL: 'mssql://localhost',
+  MSSQL_URL: 'mssql://sa:YourStrong%40Passw0rd@localhost:1433/master',
   MSSQL_SERVER: 'localhost',
   MSSQL_PORT: '1433',
   MSSQL_USER: 'sa',
@@ -119,7 +119,8 @@ module.exports = async function globalSetup() {
 
   // Local development: start Docker Compose automatically.
   if (!isDockerAvailable()) {
-    console.warn('\n⚠  Docker not available — DB tests will run against a missing DB and fail.\n');
+    console.warn('\n⚠  Docker not available — skipping DB tests (SKIP_DB_TESTS=1).\n');
+    process.env.SKIP_DB_TESTS = '1';
     return;
   }
 

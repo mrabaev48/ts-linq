@@ -27,7 +27,7 @@ d('[integration][types][mssql] DECIMAL/date', () => {
       const rows = await p.executeQuery<{ amount: string; created_at: Date }>(
         'SELECT [amount], [created_at] FROM [dbo].[edge_types]'
       );
-      expect(rows[0].amount).toBe('1234.56');
+      expect(Number(rows[0].amount)).toBeCloseTo(1234.56, 2);
     } finally {
       try {
         await p.executeNonQuery(

@@ -30,7 +30,9 @@ d('[integration][mssql] isolation (READ COMMITTED vs SNAPSHOT)', () => {
       );
       await p1.executeNonQuery('INSERT INTO [dbo].[iso_items]([id],[v]) VALUES(1,0)');
 
-      // SNAPSHOT isolation requires DB option; fallback to REPEATABLE READ semantics via HOLDLOCK for test
+      // SNAPSHOT isolation requires DB option; fallback to REPEATABLE READ semantics via HOLDLOCK for test.
+      // p2's UPDATE will block until p1 releases the HOLDLOCK by committing, so we must NOT await it
+      // while p1 still holds the lock — that would create a deadlock.
       await p1.beginTransaction();
       const a1 = await p1.executeQuery<{ v: number }>(
         'SELECT [v] FROM [dbo].[iso_items] WITH (HOLDLOCK) WHERE [id]=@p1',
@@ -38,16 +40,23 @@ d('[integration][mssql] isolation (READ COMMITTED vs SNAPSHOT)', () => {
       );
       expect(a1[0].v).toBe(0);
 
-      await p2.beginTransaction();
-      await p2.executeNonQuery('UPDATE [dbo].[iso_items] SET [v]=1 WHERE [id]=@p1', [1]);
-      await p2.commitTransaction();
+      // Kick off p2's update without awaiting — it blocks on p1's HOLDLOCK.
+      const p2Done = (async () => {
+        await p2.beginTransaction();
+        await p2.executeNonQuery('UPDATE [dbo].[iso_items] SET [v]=1 WHERE [id]=@p1', [1]);
+        await p2.commitTransaction();
+      })();
 
+      // p1 still sees 0 even though p2 is waiting (HOLDLOCK prevents dirty reads).
       const a2 = await p1.executeQuery<{ v: number }>(
         'SELECT [v] FROM [dbo].[iso_items] WITH (HOLDLOCK) WHERE [id]=@p1',
         [1]
       );
       expect(a2[0].v).toBe(0);
+
+      // p1 commits → releases HOLDLOCK → p2's UPDATE can now proceed.
       await p1.commitTransaction();
+      await p2Done;
     } finally {
       try {
         await p1.executeNonQuery(

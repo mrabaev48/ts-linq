@@ -9,6 +9,7 @@ import type {
   SqlWithParams,
   SqlWithReturning
 } from '@ts-linq/types';
+import { TemporalNotSupportedError } from '@ts-linq/types';
 
 import { MySqlGroupEmitter } from './emitters/MySqlGroupEmitter';
 import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
@@ -35,6 +36,12 @@ export class MysqlDialect implements SqlDialect {
    * @param options Normalized query options (select/where/order/joins/group/limit/offset)
    */
   public buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult {
+    if (options.temporal) {
+      throw new TemporalNotSupportedError(
+        'Temporal queries (FOR SYSTEM_TIME) are not supported by the MySQL dialect. ' +
+          'Use the @ts-linq/plugin-audit package for row-history tracking on MySQL.'
+      );
+    }
     const parameters: SqlParameter[] = [];
     let query = this.buildSelectHead(options);
     // SELECT-clause params must precede FROM params so placeholder indices are correct.

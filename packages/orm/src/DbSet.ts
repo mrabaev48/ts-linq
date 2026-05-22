@@ -126,6 +126,57 @@ export class DbSet<T extends object> {
     return this.newQueryable().asNoTrackingWithIdentityResolution();
   }
 
+  // ─── Temporal API (SQL Server system-versioned tables / EF Core parity) ──
+
+  /**
+   * Query the entity state at a specific point in time.
+   * Emits `FOR SYSTEM_TIME AS OF @p` on MSSQL; throws on other dialects.
+   *
+   * @example
+   * const snapshot = await ctx.employees
+   *   .temporalAsOf(new Date('2023-01-01'))
+   *   .where(e => e.department === 'Sales')
+   *   .toArray();
+   */
+  public temporalAsOf(pointInTime: Date): Queryable<T> {
+    return this.newQueryable().temporalAsOf(pointInTime);
+  }
+
+  /**
+   * Query all historical and current rows.
+   * Emits `FOR SYSTEM_TIME ALL` on MSSQL; throws on other dialects.
+   *
+   * @example
+   * const history = await ctx.employees.temporalAll().orderBy('PeriodStart').toArray();
+   */
+  public temporalAll(): Queryable<T> {
+    return this.newQueryable().temporalAll();
+  }
+
+  /**
+   * Query rows active at any point within the half-open interval [from, to).
+   * Emits `FOR SYSTEM_TIME BETWEEN @from AND @to` on MSSQL; throws on other dialects.
+   */
+  public temporalBetween(from: Date, to: Date): Queryable<T> {
+    return this.newQueryable().temporalBetween(from, to);
+  }
+
+  /**
+   * Query rows active at any point within the open interval (from, to).
+   * Emits `FOR SYSTEM_TIME FROM @from TO @to` on MSSQL; throws on other dialects.
+   */
+  public temporalFromTo(from: Date, to: Date): Queryable<T> {
+    return this.newQueryable().temporalFromTo(from, to);
+  }
+
+  /**
+   * Query rows whose entire active period falls within [from, to].
+   * Emits `FOR SYSTEM_TIME CONTAINED IN (@from, @to)` on MSSQL; throws on other dialects.
+   */
+  public temporalContainedIn(from: Date, to: Date): Queryable<T> {
+    return this.newQueryable().temporalContainedIn(from, to);
+  }
+
   // ─── Raw SQL entry points ──────────────────────────────────────────────────
 
   /**

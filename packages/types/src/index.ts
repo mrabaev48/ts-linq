@@ -26,6 +26,23 @@ export interface GroupByClause {
   having?: WhereClause;
 }
 
+/**
+ * Temporal query mode — mirrors EF Core's five system-versioned table operators.
+ * Only supported by MSSQL (SQL Server FOR SYSTEM_TIME clause).
+ */
+export type TemporalMode = 'AsOf' | 'All' | 'Between' | 'FromTo' | 'ContainedIn';
+
+/**
+ * Describes a temporal query constraint to be appended to a FROM clause.
+ * `from` is required for AsOf, Between, FromTo, ContainedIn.
+ * `to` is required for Between, FromTo, ContainedIn.
+ */
+export interface TemporalClause {
+  readonly mode: TemporalMode;
+  readonly from?: Date;
+  readonly to?: Date;
+}
+
 export interface QueryOptions {
   select?: string[];
   selectParams?: SqlParameter[];
@@ -40,6 +57,8 @@ export interface QueryOptions {
   from?: string;
   cte?: { name: string; sql: string };
   rawSqlSource?: { readonly sql: string; readonly params: readonly SqlParameter[] };
+  /** Temporal query constraint for SQL Server system-versioned tables (FOR SYSTEM_TIME). */
+  temporal?: TemporalClause;
 }
 
 // Entity metadata types
@@ -622,6 +641,10 @@ export interface EntityMetadata {
   primaryKeys?: string[];
   primaryKeyColumn?: string;
   schema?: string;
+  /** Whether this entity maps to a SQL Server system-versioned (temporal) table. */
+  isTemporal?: boolean;
+  /** Custom history table name (default: `tableName + 'History'`). */
+  historyTableName?: string;
 }
 
 // Entity cache interface
@@ -664,6 +687,7 @@ export {
   DatabaseError,
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
+  TemporalNotSupportedError,
   UniqueConstraintError,
   ValidationError
 } from './errors';
