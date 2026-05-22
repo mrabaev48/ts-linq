@@ -89,7 +89,7 @@ describe('DbSet + SqlCache Integration', () => {
     expect(sqlCache.size()).toBe(2);
   });
 
-  it.skip('should invalidate cache on INSERT', async () => {
+  it('should invalidate cache on INSERT', async () => {
     const users = context.set(User);
     await users.where((u) => u.age > 20).toArray();
     expect(sqlCache.size()).toBe(1);
@@ -100,7 +100,7 @@ describe('DbSet + SqlCache Integration', () => {
     expect(sqlCache.size()).toBe(0);
   });
 
-  it.skip('should invalidate cache on UPDATE', async () => {
+  it('should invalidate cache on UPDATE', async () => {
     const users = context.set(User);
     await users.where((u) => u.age > 20).toArray();
     expect(sqlCache.size()).toBe(1);
@@ -114,7 +114,7 @@ describe('DbSet + SqlCache Integration', () => {
     expect(sqlCache.size()).toBe(0);
   });
 
-  it.skip('should invalidate cache on DELETE', async () => {
+  it('should invalidate cache on DELETE', async () => {
     const users = context.set(User);
     await users.where((u) => u.age > 20).toArray();
 
