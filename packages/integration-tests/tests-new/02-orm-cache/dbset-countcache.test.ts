@@ -23,11 +23,18 @@ class User {
 class TestCountCache implements CountCache {
   private readonly store = new Map<string, CountCacheEntry>();
 
-  public constructor(private readonly maxSize: number = 100) {}
+  public constructor(
+    private readonly maxSize: number = 100,
+    private readonly ttlMs: number = 0
+  ) {}
 
   public get(key: string): number | undefined {
     const entry = this.store.get(key);
     if (!entry) return undefined;
+    if (this.ttlMs > 0 && Date.now() - entry.ts > this.ttlMs) {
+      this.store.delete(key);
+      return undefined;
+    }
     return entry.value;
   }
 
@@ -88,7 +95,7 @@ class TestDbContext extends DbContext {
 
   async function setupDatabase(options?: { ttlMs?: number; maxSize?: number }): Promise<void> {
     provider = new MockProvider();
-    countCache = new TestCountCache(options?.maxSize ?? 100);
+    countCache = new TestCountCache(options?.maxSize ?? 100, options?.ttlMs ?? 10_000);
     context = new TestDbContext(provider, countCache, options?.ttlMs ?? 10_000);
 
     // ensureCreated typically not needed for mock provider but defined in DbContext

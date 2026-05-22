@@ -211,7 +211,7 @@ describe('MssqlDdlStrategy', () => {
 
       const def = strategy.generateColumnDefinition(column);
 
-      expect(def).toBe('[code] NVARCHAR(MAX)(50) NOT NULL');
+      expect(def).toBe('[code] NVARCHAR(50) NOT NULL');
     });
 
     it('should generate column with defaultValue', () => {

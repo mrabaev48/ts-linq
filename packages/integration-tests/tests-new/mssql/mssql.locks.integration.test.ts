@@ -38,6 +38,8 @@ d('[integration][mssql] locks (UPDLOCK/HOLDLOCK)', () => {
         'SELECT [id] FROM [dbo].[items_lock] WITH (UPDLOCK, HOLDLOCK) WHERE [id]=@p1',
         [lockedId]
       );
+      // Make p2 time out immediately instead of waiting indefinitely for p1's lock.
+      await p2.executeNonQuery('SET LOCK_TIMEOUT 50');
       await expect(
         p2.executeNonQuery('UPDATE [dbo].[items_lock] SET [name]=[name] WHERE [id]=@p1', [
           lockedId as unknown as never
