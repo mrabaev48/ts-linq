@@ -24,7 +24,7 @@ class ValidationContext extends DbContext {
   }
 }
 
-describe.skip('Metadata Integration - Validation', () => {
+describe('Metadata Integration - Validation', () => {
   let provider: TestProvider;
   let context: ValidationContext;
 

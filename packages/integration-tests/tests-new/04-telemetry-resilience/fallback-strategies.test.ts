@@ -71,12 +71,20 @@ describe('Telemetry Integration - Fallback Strategies', () => {
     expect(result[0].name).toBe('FromMemory');
   });
 
-  it.skip('should support predicates in fallback', async () => {
+  it('should support predicates in fallback', async () => {
     provider.shouldFail = true;
 
     const result = await (context.set(Item) as any)
       .fallbackTo(fallback)
-      .where((x: any) => x.id === 2)
+      .whereCompiled({
+        ast: {
+          type: 'binary',
+          operator: '===',
+          left: { type: 'property', name: 'id' },
+          right: { type: 'literal', value: 2 }
+        },
+        parameters: []
+      })
       .toArray();
 
     expect(result).toHaveLength(2);
