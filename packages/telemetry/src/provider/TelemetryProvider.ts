@@ -14,6 +14,8 @@ import type {
   TransactionInfo
 } from '@ts-linq/types';
 
+import { parseTagsFromSql } from '../tag-span-attributes';
+
 export interface TracerLike {
   startSpan(name: string, options?: { attributes?: Record<string, unknown> }): SpanLike;
 }
@@ -78,6 +80,12 @@ export class TelemetryProvider implements SqlLogger {
     };
     if (info.compiledPlan === true) {
       attrs['db.query.compiled'] = true;
+    }
+    // Expose query tags as a structured span attribute so they can be
+    // filtered/searched in OTEL backends without parsing the SQL string.
+    const tags = parseTagsFromSql(info.sql);
+    if (tags !== undefined) {
+      attrs['db.query.tags'] = JSON.stringify(tags);
     }
     const span = this.tracer.startSpan('db.query', { attributes: attrs });
     this.querySpans.set(info.traceId, span);

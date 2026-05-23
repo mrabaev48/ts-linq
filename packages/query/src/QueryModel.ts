@@ -8,6 +8,8 @@ import type {
   WhereClause
 } from '@ts-linq/types';
 
+import type { QueryTagList } from './ast/query-tags';
+
 /**
  * Immutable-ish carrier for a query intent. Used by Queryable to
  * accumulate options (with cloning), and by QueryBuilder to generate SQL.
@@ -34,6 +36,11 @@ export class QueryModel {
   splittingBehavior?: QuerySplittingBehavior;
   /** Temporal query constraint for SQL Server system-versioned tables (FOR SYSTEM_TIME). */
   temporal?: TemporalClause;
+  /**
+   * Ordered list of diagnostic tags attached via `tagWith()` / `tagWithCallSite()`.
+   * Each tag is emitted as a leading `-- <tag>` SQL comment before the statement.
+   */
+  tags?: QueryTagList;
 
   /**
    * Create a deep copy of the query model to preserve immutability
@@ -67,6 +74,7 @@ export class QueryModel {
       : undefined;
     clonedModel.splittingBehavior = this.splittingBehavior;
     clonedModel.temporal = this.temporal;
+    clonedModel.tags = this.tags ? [...this.tags] : undefined;
     clonedModel.unions = this.unions
       ? this.unions.map((unionItem) => ({
           all: unionItem.all,

@@ -1,3 +1,4 @@
+export { emitTagComments } from './emit-tags';
 export { ParameterState, ParameterStyle } from './ParameterStyle';
 export { SqlVisitor, type SqlVisitorOptions } from './SqlVisitor';
 export type { ColumnResolver } from './visitors/BinaryVisitor';

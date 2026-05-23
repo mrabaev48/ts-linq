@@ -1,3 +1,5 @@
+export type { QueryTagList } from './ast/query-tags';
+export { QueryTagError, sanitizeTag } from './ast/query-tags';
 export { STREAMING_CHUNK_SIZE } from './async/AsyncQueryable';
 export { CapturedQueryPlan } from './compiled/CapturedQueryPlan';
 export type { CompiledQueryFn } from './EF';
