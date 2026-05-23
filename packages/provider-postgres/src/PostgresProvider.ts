@@ -43,6 +43,7 @@ interface PgPoolLike {
   query<T = unknown>(sql: string, params?: readonly SqlParameter[]): Promise<PgQueryResult<T>>;
   connect(): Promise<PgClientLike>;
   end(): Promise<void>;
+  on(event: 'error', listener: (err: Error) => void): this;
 }
 
 /**
@@ -147,6 +148,13 @@ export class PostgresProvider extends DatabaseProvider {
       if (typeof poolOpts.connectionTimeoutMs === 'number')
         pgConfig.connectionTimeoutMillis = poolOpts.connectionTimeoutMs;
       this.pool = new Pool(pgConfig as { connectionString: string });
+      // Suppress idle-client errors that fire when the database server
+      // terminates connections (e.g., during Docker teardown, FATAL 57P01).
+      // Without this handler Node.js would throw an unhandled 'error' event.
+      this.pool.on('error', (_err: Error) => {
+        // Intentionally silent: idle-connection termination is expected
+        // when the server shuts down or when the pool itself is ended.
+      });
       this.ownsPool = true;
     }
 

@@ -1,7 +1,7 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { NavigationProxy, OrderedQueryable } from '@ts-linq/query';
+import type { NavigationProxy, OrderedQueryable, QueryTagList } from '@ts-linq/query';
 import type { IncludeSubquery } from '@ts-linq/query';
 import { Queryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
@@ -124,6 +124,33 @@ export class DbSet<T extends object> {
   /** Return a Queryable that deduplicates entities by PK without attaching to the change tracker. */
   public asNoTrackingWithIdentityResolution(): Queryable<T> {
     return this.newQueryable().asNoTrackingWithIdentityResolution();
+  }
+
+  // ─── Query tagging API (EF Core parity) ─────────────────────────────────
+
+  /**
+   * Attach a diagnostic comment to the emitted SQL statement (mirrors EF Core `TagWith`).
+   *
+   * @param tag - Single-line label. Must not contain newline characters or the sequence `*\/`.
+   * @throws {QueryTagError} When the tag contains forbidden characters.
+   */
+  public tagWith(tag: string): Queryable<T> {
+    return this.newQueryable().tagWith(tag);
+  }
+
+  /**
+   * Attach the caller's source file and line number as a diagnostic tag (mirrors EF Core `TagWithCallSite`).
+   */
+  public tagWithCallSite(): Queryable<T> {
+    return this.newQueryable().tagWithCallSite();
+  }
+
+  /**
+   * Return the ordered list of tags attached to the underlying queryable.
+   * Returns an empty array when no tags have been set.
+   */
+  public getTags(): QueryTagList {
+    return this.newQueryable().getTags();
   }
 
   // ─── Temporal API (SQL Server system-versioned tables / EF Core parity) ──
