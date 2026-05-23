@@ -2,6 +2,8 @@ import { ExecutionStrategy } from '@ts-linq/concurrency';
 import type { DatabaseProvider } from '@ts-linq/core';
 import { Queryable } from '@ts-linq/query';
 
+import type { MigrateOptions } from './database/has-pending-model-changes';
+import { PendingModelChangesChecker } from './database/has-pending-model-changes';
 import type { DbSetContext } from './DbSetContext';
 import type { SqlInterpolated } from './sql/sqlTag';
 import { interpolatedToRaw, toSqlParam } from './sql/sqlTag';
@@ -26,10 +28,27 @@ import { DbContextTransaction } from './transactions/DbContextTransaction';
  *   .toArray();
  */
 export class DatabaseFacade {
-  constructor(private readonly _context: DbSetContext) {}
+  private readonly _migrationsDir: string | undefined;
+
+  constructor(context: DbSetContext, migrationsDir?: string) {
+    this._context = context;
+    this._migrationsDir = migrationsDir;
+  }
+
+  private readonly _context: DbSetContext;
 
   private get _provider(): DatabaseProvider {
     return this._context.provider;
+  }
+
+  private get _checker(): PendingModelChangesChecker {
+    if (!this._migrationsDir) {
+      throw new Error(
+        'Migrations directory is not configured on this DbContext.\n' +
+          'Call .migrations({ directory: "./migrations" }) on DbContextOptionsBuilder.'
+      );
+    }
+    return new PendingModelChangesChecker(this._provider, this._migrationsDir);
   }
 
   /**
@@ -158,5 +177,61 @@ export class DatabaseFacade {
       maxRetryDelay: 30_000
     };
     return new ExecutionStrategy(opts, (e: unknown) => this._provider.checkTransientError(e));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Migration helpers — mirrors EF Core's Database.HasPendingModelChanges / Migrate
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns `true` when the application model (read from `MetadataStorage`) differs
+   * from the snapshot committed alongside the last migration.
+   *
+   * This is a **synchronous** file-system check — no database access is performed.
+   * Mirrors EF Core's `context.Database.HasPendingModelChanges()`.
+   *
+   * Requires `.migrations({ directory })` to be set on `DbContextOptionsBuilder`.
+   *
+   * @example
+   * if (ctx.database.hasPendingModelChanges()) {
+   *   throw new Error('Model is out of sync with migrations');
+   * }
+   */
+  hasPendingModelChanges(): boolean {
+    return this._checker.hasPendingModelChanges();
+  }
+
+  /**
+   * Returns the list of migration versions that exist on disk but have **not**
+   * yet been applied to the database.
+   *
+   * Mirrors EF Core's `context.Database.GetPendingMigrationsAsync()`.
+   *
+   * @example
+   * const pending = await ctx.database.getPendingMigrations();
+   * console.log(`${pending.length} migration(s) pending`);
+   */
+  async getPendingMigrations(): Promise<string[]> {
+    return this._checker.getPendingMigrations();
+  }
+
+  /**
+   * Apply all pending migrations to the database.
+   *
+   * When `options.idempotent` is `true`, an idempotency guard (dialect-specific
+   * IF NOT EXISTS check against `__migrations`) is wrapped around each migration
+   * so the operation is safe to re-run.
+   *
+   * Mirrors EF Core's `await context.Database.MigrateAsync()`.
+   *
+   * @example
+   * // Standard — run pending migrations once:
+   * await ctx.database.migrate();
+   *
+   * // Idempotent — safe to call repeatedly:
+   * await ctx.database.migrate({ idempotent: true });
+   */
+  async migrate(options?: MigrateOptions): Promise<void> {
+    return this._checker.migrate(options);
   }
 }

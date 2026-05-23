@@ -9,8 +9,10 @@ import { GenerateEntityCommand } from './commands/GenerateEntityCommand';
 import { GenerateMigrationCommand } from './commands/GenerateMigrationCommand';
 import { InitCommand } from './commands/InitCommand';
 import { MetricsServeCommand } from './commands/MetricsServeCommand';
+import { MigrationsBundleCommand } from './commands/MigrationsBundleCommand';
 import { MigrationsDryRunCommand } from './commands/MigrationsDryRunCommand';
 import { MigrationsRollbackCommand } from './commands/MigrationsRollbackCommand';
+import { MigrationsScriptCommand } from './commands/MigrationsScriptCommand';
 import { MigrationsStatusCommand } from './commands/MigrationsStatusCommand';
 import { MigrationsValidateCommand } from './commands/MigrationsValidateCommand';
 import { SchemaApplyCommand } from './commands/SchemaApplyCommand';
@@ -39,6 +41,8 @@ async function main() {
     new MigrationsDryRunCommand(),
     new MigrationsRollbackCommand(),
     new MigrationsValidateCommand(),
+    new MigrationsScriptCommand(),
+    new MigrationsBundleCommand(),
     new SeedCommand(),
     new MetricsServeCommand()
   ]);

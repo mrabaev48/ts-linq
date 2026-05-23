@@ -99,6 +99,13 @@ export interface DbContextOptions {
   executionStrategy?: import('@ts-linq/types').ExecutionStrategyOptions;
   /** When true, spatial WKB encoding/decoding is enabled in providers that support it. */
   spatialEnabled?: boolean;
+  /**
+   * Absolute or relative path to the directory containing migration files.
+   * Required for `ctx.database.hasPendingModelChanges()`, `getPendingMigrations()`,
+   * and `migrate()` to work.
+   * Configure via `DbContextOptionsBuilder.migrations({ directory })`.
+   */
+  migrationsDirectory?: string;
 }
 
 /** Circuit Breaker options */
