@@ -77,7 +77,7 @@ Provider-specific, ecosystem, or operational features.
 | P2-37 | [Cosmos DB provider](./P2-37-cosmos-provider.md)                                 | Cosmos provider rework — hierarchical PK, full-text + vector search (EF9)                                   | - [ ]  | XL     | P0-03, P0-04     |
 | P2-38 | [SQLite provider](./P2-38-sqlite-provider.md)                                    | First-class SQLite + `:memory:` for integration tests                                                       | - [ ]  | L      | P0-03, P0-04     |
 | P2-39 | [InMemory provider](./P2-39-in-memory-provider.md)                               | Pure in-memory provider for unit tests                                                                      | - [ ]  | M      | P0-03, P0-04     |
-| P2-40 | [DbContext pooling / factory](./P2-40-db-context-pooling-factory.md)             | `AddDbContextPool`, `IDbContextFactory<T>`, `PooledDbContextFactory`                                        | - [ ]  | M      | —                |
+| P2-40 | [DbContext pooling / factory](./P2-40-db-context-pooling-factory.md)             | `AddDbContextPool`, `IDbContextFactory<T>`, `PooledDbContextFactory`                                        | ✅     | M      | —                |
 | P2-41 | [Query tags / TagWithCallSite](./P2-41-query-tags-call-site.md)                  | `TagWith("name")`, `TagWithCallSite()` (EF8)                                                                | - [ ]  | S      | —                |
 | P2-42 | [Migration bundles / idempotent](./P2-42-migration-bundles-idempotent.md)        | `migrations bundle`, `--idempotent`, `HasPendingModelChanges`                                               | - [ ]  | M      | —                |
 | P2-43 | [DB-first scaffolding](./P2-43-db-first-scaffolding.md)                          | `Scaffold-DbContext` reverse-engineer + template system                                                     | - [ ]  | XL     | P0-01            |
@@ -191,7 +191,7 @@ flowchart LR
 
 ## 5. Progress
 
-`11 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure done)
+`12 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure done)
 
 Update this number when a task moves to `status: done`.
 
@@ -235,7 +235,7 @@ whose `depends_on` points into the current step.
 | RF-01 | Transformer Refactor — Clean Architecture     | ✅ done   |
 | P2-35 | HierarchyId                    | ✅ done   |
 | P2-36 | Temporal queries               | ✅ done   |
-| P2-40 | DbContext pooling / factory    | —         |
+| P2-40 | DbContext pooling / factory    | ✅ done   |
 | P2-41 | Query tags / TagWithCallSite   | —         |
 | P2-42 | Migration bundles / idempotent | —         |
 | P2-45 | Logging / diagnostics          | —         |
