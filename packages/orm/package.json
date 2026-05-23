@@ -15,10 +15,11 @@
   "dependencies": {
     "@ts-linq/concurrency": "workspace:*",
     "@ts-linq/core": "workspace:*",
-    "@ts-linq/types": "workspace:*",
     "@ts-linq/metadata": "workspace:*",
     "@ts-linq/metrics-safe": "workspace:*",
-    "@ts-linq/query": "workspace:*"
+    "@ts-linq/migrations": "workspace:*",
+    "@ts-linq/query": "workspace:*",
+    "@ts-linq/types": "workspace:*"
   },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",

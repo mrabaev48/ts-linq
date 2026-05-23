@@ -1,7 +1,8 @@
 /**
  * Barrel file re-exporting migration building blocks.
- * Import from 'src/migrations' to access the public migration API.
+ * Import from '@ts-linq/migrations' to access the public migration API.
  */
+export * from './bundle/build-bundle';
 export * from './DialectMigrationSql';
 export * from './DiffBasedMigration';
 export * from './DiffMigrationGenerator';
@@ -12,3 +13,6 @@ export * from './MigrationFileBuilder';
 export * from './MigrationRunner';
 export * from './SchemaComparator';
 export * from './SchemaSnapshot';
+export * from './script/idempotent-emitter';
+export * from './snapshot/diff';
+export * from './snapshot/model-snapshot';
