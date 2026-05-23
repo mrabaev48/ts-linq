@@ -22,6 +22,7 @@ import type {
 import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
 
 import { AggregateOperations } from './AggregateOperations';
+import { type QueryTagList } from './ast/query-tags';
 import { IncludeResolutionError } from './errors';
 import { FallbackManager } from './FallbackManager';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
@@ -34,6 +35,8 @@ import { QueryBuilder } from './QueryBuilder';
 import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
 import { RowMaterializer } from './RowMaterializer';
+import { applyTagWith } from './tag-with';
+import { captureCallSiteTag } from './tag-with-call-site';
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
@@ -228,6 +231,63 @@ export class Queryable<T> {
     const cloned = this.clone();
     cloned._trackingMode = QueryTrackingBehavior.NoTrackingWithIdentityResolution;
     return cloned;
+  }
+
+  // ─── Query tagging API (EF Core parity) ─────────────────────────────────
+
+  /**
+   * Attach a diagnostic comment to the emitted SQL statement (mirrors EF Core `TagWith`).
+   *
+   * The tag is prepended as a leading `-- <tag>` comment before the SELECT/UPDATE/etc.
+   * Multiple `tagWith()` calls accumulate in call order.
+   *
+   * @example
+   * const orders = await ctx.orders
+   *   .tagWith('dashboard-top-orders')
+   *   .where(o => o.status === 'OPEN')
+   *   .toArray();
+   * // Emitted SQL:
+   * // -- dashboard-top-orders
+   * // SELECT ...
+   *
+   * @param tag - Single-line label. Must not contain newline characters or the sequence `*\/`.
+   * @throws {QueryTagError} When the tag contains forbidden characters.
+   */
+  public tagWith(tag: string): Queryable<T> {
+    const cloned = this.clone();
+    applyTagWith(tag, cloned._model);
+    return cloned;
+  }
+
+  /**
+   * Attach the caller's source file and line number as a diagnostic tag (mirrors EF Core `TagWithCallSite`).
+   *
+   * Captures `Error().stack` at call time using V8 stack introspection.
+   * Appended after any tags already set by `tagWith()`.
+   *
+   * @example
+   * const orders = await ctx.orders
+   *   .tagWith('dashboard-top-orders')
+   *   .tagWithCallSite()
+   *   .toArray();
+   * // Emitted SQL:
+   * // -- dashboard-top-orders
+   * // -- File: orders-controller.ts:42
+   * // SELECT ...
+   */
+  public tagWithCallSite(): Queryable<T> {
+    const cloned = this.clone();
+    const callSiteTag = captureCallSiteTag(2);
+    applyTagWith(callSiteTag, cloned._model);
+    return cloned;
+  }
+
+  /**
+   * Return the ordered list of tags currently attached to this query chain.
+   * Returns an empty array when no tags have been set.
+   */
+  public getTags(): QueryTagList {
+    return this._model.tags ?? [];
   }
 
   // ─── Query splitting API (EF Core parity) ────────────────────────────────

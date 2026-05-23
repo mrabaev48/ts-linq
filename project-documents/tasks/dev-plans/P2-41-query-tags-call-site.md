@@ -1,7 +1,7 @@
 ---
 title: Query Tags and Call-Site Tagging
 ef_core_api: IQueryable<T>.TagWith("name") / IQueryable<T>.TagWithCallSite()
-status: not-started
+status: done
 priority: P2
 effort: S
 depends_on: []

@@ -1,4 +1,5 @@
 import { safeCacheSize } from '@ts-linq/metrics-safe';
+import { emitTagComments } from '@ts-linq/sql-visitor';
 import type { QueryOptions, SqlDialect, SqlLogger, SqlParameter } from '@ts-linq/types';
 import type { SqlCache, SqlCacheEntry } from '@ts-linq/types';
 import { isTemplateSqlCache } from '@ts-linq/types';
@@ -110,6 +111,10 @@ export class QueryBuilder {
       temporal: model.temporal
     };
     const base = this.generateSql(entityClass, opts);
+
+    // Build the final SQL: tags are prepended OUTSIDE the cache so the cache holds clean SQL.
+    const tagPrefix = model.tags && model.tags.length > 0 ? emitTagComments(model.tags) : '';
+
     // Handle UNION / UNION ALL / EXCEPT / INTERSECT chains
     if (model.unions && model.unions.length > 0) {
       let sql = `${base.query}`;
@@ -117,12 +122,15 @@ export class QueryBuilder {
       for (const unionEntry of model.unions) {
         const next = this.generateFromModel(unionEntry.entity, unionEntry.other);
         const kw = unionEntry.setOp ?? (unionEntry.all ? 'UNION ALL' : 'UNION');
-        sql += ` ${kw} ${next.query}`;
+        // Strip any tag prefix from sub-queries before joining (tags belong to the root only)
+        const nextSqlBody = next.query;
+        sql += ` ${kw} ${nextSqlBody}`;
         params.push(...next.parameters);
       }
-      return { query: sql, parameters: params };
+      return { query: tagPrefix + sql, parameters: params };
     }
-    return base;
+
+    return { query: tagPrefix + base.query, parameters: base.parameters };
   }
 
   /** Clear this instance's SQL cache. */
