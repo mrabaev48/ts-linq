@@ -14,7 +14,7 @@ export interface IdempotentMigrationStep {
 }
 
 /**
- * Emits a complete idempotent SQL script from an ordered list of migration steps.
+ * Emits idempotent SQL from an ordered list of migration steps.
  *
  * Each migration step is wrapped in a dialect-specific guard block that checks
  * `__migrations` before executing, making the script safe to re-run.
@@ -23,29 +23,58 @@ export interface IdempotentMigrationStep {
  *
  * Mirrors the behaviour of `dotnet ef migrations script --idempotent`.
  *
+ * ### Programmatic execution
+ *
+ * Use `emitStatements()` when feeding SQL to a database driver, since drivers
+ * do not support client-side commands (`GO`, `DELIMITER`, etc.).
+ * Use `emit()` only for writing `.sql` files intended for CLI tools.
+ *
  * @example
- * const emitter = new IdempotentEmitter();
- * const sql = emitter.emit(steps, 'postgresql');
- * fs.writeFileSync('migrate.sql', sql);
+ * // Write to file (CLI tools handle multi-statement SQL)
+ * fs.writeFileSync('migrate.sql', emitter.emit(steps, 'postgresql'));
+ *
+ * // Execute programmatically via a database driver
+ * for (const stmt of emitter.emitStatements(steps, 'mysql')) {
+ *   await provider.executeNonQuery(stmt);
+ * }
  */
 export class IdempotentEmitter {
   private static readonly MIGRATIONS_TABLE = '__migrations';
 
   /**
-   * Produce a complete idempotent SQL script for all provided migration steps.
+   * Produce a complete idempotent SQL script as a single string.
+   *
+   * For PostgreSQL and SQL Server the result is suitable for direct
+   * programmatic execution.
+   * For MySQL the result is a file-oriented script — use `emitStatements()`
+   * when executing via the `mysql2` driver.
    *
    * @param steps  Ordered list of migrations (caller must sort by version).
    * @param dialect  Target database dialect.
-   * @returns  A single SQL string safe to feed to the database driver or `psql`/`sqlcmd`/`mysql`.
    */
   public emit(steps: IdempotentMigrationStep[], dialect: Dialect): string {
+    return this.emitStatements(steps, dialect).join('\n\n');
+  }
+
+  /**
+   * Produce an array of individually-executable SQL statements.
+   *
+   * Each element may be sent to the database driver via a single
+   * `executeNonQuery()` call. This avoids issues with batch separators
+   * (`GO` for SQL Server) and client-only commands (`DELIMITER` for MySQL)
+   * that are not understood by programmatic database drivers.
+   *
+   * @param steps  Ordered list of migrations (caller must sort by version).
+   * @param dialect  Target database dialect.
+   */
+  public emitStatements(steps: IdempotentMigrationStep[], dialect: Dialect): string[] {
     const header = this.buildHeader(dialect);
-    const blocks = steps.map((step) => this.buildBlock(step, dialect));
-    return [header, ...blocks].join('\n\n');
+    const blocks = steps.flatMap((step) => this.buildStatements(step, dialect));
+    return [header, ...blocks];
   }
 
   // ---------------------------------------------------------------------------
-  // Header: ensure __migrations table exists
+  // Header: ensure __migrations table exists (one executable statement)
   // ---------------------------------------------------------------------------
 
   private buildHeader(dialect: Dialect): string {
@@ -72,6 +101,11 @@ export class IdempotentEmitter {
     ].join('\n');
   }
 
+  /**
+   * SQL Server: use IF NOT EXISTS guard — no GO separator.
+   * GO is a SQL Server Management Studio batch separator; it is not understood
+   * by programmatic drivers (mssql / tedious).
+   */
   private mssqlEnsureTable(): string {
     return [
       '-- Idempotent migration script (SQL Server)',
@@ -83,9 +117,8 @@ export class IdempotentEmitter {
       '        version NVARCHAR(50) NOT NULL PRIMARY KEY,',
       '        name NVARCHAR(255) NOT NULL,',
       '        applied_at NVARCHAR(50) NOT NULL',
-      '    );',
-      'END',
-      'GO'
+      '    )',
+      'END'
     ].join('\n');
   }
 
@@ -103,26 +136,29 @@ export class IdempotentEmitter {
   }
 
   // ---------------------------------------------------------------------------
-  // Per-migration guard blocks
+  // Per-migration guard blocks — returns one or more executable statements
   // ---------------------------------------------------------------------------
 
-  private buildBlock(step: IdempotentMigrationStep, dialect: Dialect): string {
+  private buildStatements(step: IdempotentMigrationStep, dialect: Dialect): string[] {
     switch (dialect) {
       case 'postgresql':
-        return this.pgBlock(step);
+        return [this.pgBlock(step)];
       case 'mssql':
-        return this.mssqlBlock(step);
+        return [this.mssqlBlock(step)];
       case 'mysql':
-        return this.mysqlBlock(step);
+        return this.mysqlStatements(step);
     }
   }
 
   /**
-   * PostgreSQL: wrap each migration in a PL/pgSQL anonymous block.
-   * DDL is fully supported inside DO $$ … $$ blocks in PostgreSQL.
+   * PostgreSQL: one PL/pgSQL anonymous block per migration.
+   * DDL is fully supported inside DO $$ … $$ blocks.
+   * PL/pgSQL requires every statement inside a block to be terminated with `;`.
    */
   private pgBlock(step: IdempotentMigrationStep): string {
-    const stmts = step.upSql.map((s) => this.indentSql(s, '        ')).join('\n\n');
+    const stmts = step.upSql
+      .map((s) => this.ensureSemicolon(this.indentSql(s, '        ')))
+      .join('\n\n');
     const insertRecord = [
       `        INSERT INTO ${IdempotentEmitter.MIGRATIONS_TABLE} (version, name, applied_at)`,
       `        VALUES ('${step.version}', '${step.name}', NOW()::TEXT);`
@@ -145,14 +181,14 @@ export class IdempotentEmitter {
   }
 
   /**
-   * SQL Server (T-SQL): use IF NOT EXISTS / BEGIN...END.
-   * Each statement is terminated with a semicolon; a GO batch separator follows.
+   * SQL Server (T-SQL): IF NOT EXISTS / BEGIN...END block per migration.
+   * GO is intentionally omitted — programmatic drivers do not support it.
    */
   private mssqlBlock(step: IdempotentMigrationStep): string {
     const stmts = step.upSql.map((s) => this.indentSql(s, '    ')).join('\n\n');
     const insertRecord = [
       `    INSERT INTO ${IdempotentEmitter.MIGRATIONS_TABLE} (version, name, applied_at)`,
-      `    VALUES ('${step.version}', '${step.name}', CONVERT(VARCHAR(50), GETDATE(), 126));`
+      `    VALUES ('${step.version}', '${step.name}', CONVERT(VARCHAR(50), GETDATE(), 126))`
     ].join('\n');
 
     return [
@@ -165,42 +201,45 @@ export class IdempotentEmitter {
       stmts,
       '',
       insertRecord,
-      `END`,
-      `GO`
+      `END`
     ].join('\n');
   }
 
   /**
-   * MySQL: wrap each migration in a temporary stored procedure.
-   * MySQL does not support IF...THEN blocks outside stored procedures.
+   * MySQL: returns multiple individually-executable statements per migration.
+   *
+   * MySQL does not support IF…THEN blocks outside stored procedures, and the
+   * `DELIMITER` command is a MySQL *client* directive that is NOT sent to the
+   * server — it is therefore unavailable in programmatic drivers (mysql2).
+   *
+   * Instead we emit:
+   * 1. Each DDL statement as-is (DDL should use `IF NOT EXISTS` variants for idempotency).
+   * 2. An `INSERT IGNORE` to record the migration — safe to re-run thanks to the
+   *    PRIMARY KEY constraint.
+   *
+   * Limitation: non-idempotent DDL (e.g. `ALTER TABLE ADD COLUMN` without
+   * `IF NOT EXISTS`) will fail on re-runs. Use `IF NOT EXISTS`-aware DDL in
+   * migrations targeting MySQL.
    */
-  private mysqlBlock(step: IdempotentMigrationStep): string {
-    const procName = `_apply_migration_${step.version}`;
-    const stmts = step.upSql.map((s) => this.indentSql(s, '    ')).join('\n\n');
-    const insertRecord = [
-      `    INSERT INTO ${IdempotentEmitter.MIGRATIONS_TABLE} (version, name, applied_at)`,
-      `    VALUES ('${step.version}', '${step.name}', NOW());`
+  private mysqlStatements(step: IdempotentMigrationStep): string[] {
+    const comment = `-- Migration: ${step.version}_${step.name}`;
+    const ddlStatements = step.upSql.map((s, i) => {
+      const prefix = i === 0 ? `${comment}\n` : '';
+      return `${prefix}${s.trim()};`;
+    });
+
+    const insertIgnore = [
+      `INSERT IGNORE INTO ${IdempotentEmitter.MIGRATIONS_TABLE} (version, name, applied_at)`,
+      `VALUES ('${step.version}', '${step.name}', NOW());`
     ].join('\n');
 
-    return [
-      `-- Migration: ${step.version}_${step.name}`,
-      `DROP PROCEDURE IF EXISTS ${procName};`,
-      `DELIMITER //`,
-      `CREATE PROCEDURE ${procName}()`,
-      `BEGIN`,
-      `    IF NOT EXISTS (`,
-      `        SELECT 1 FROM ${IdempotentEmitter.MIGRATIONS_TABLE}`,
-      `        WHERE version = '${step.version}'`,
-      `    ) THEN`,
-      stmts,
-      '',
-      insertRecord,
-      `    END IF;`,
-      `END //`,
-      `DELIMITER ;`,
-      `CALL ${procName}();`,
-      `DROP PROCEDURE IF EXISTS ${procName};`
-    ].join('\n');
+    return [...ddlStatements, insertIgnore];
+  }
+
+  /** Append a semicolon if the statement does not already end with one. */
+  private ensureSemicolon(sql: string): string {
+    const trimmed = sql.trimEnd();
+    return trimmed.endsWith(';') ? trimmed : `${trimmed};`;
   }
 
   /** Indent every line of a SQL statement consistently. */

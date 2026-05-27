@@ -47,16 +47,15 @@ export class MigrationsScriptCommand implements DbCommand {
       return;
     }
 
-    const steps = await this.collectMigrationSteps(provider, migrationsDir, isIdempotent);
+    const steps = await this.collectMigrationSteps(provider, migrationsDir);
 
     if (steps.length === 0) {
       this.logger.info('No migrations found — nothing to script.');
       return;
     }
 
-    const sql = isIdempotent
-      ? new IdempotentEmitter().emit(steps, dialect)
-      : this.buildPlainScript(steps, dialect);
+    const emitter = new IdempotentEmitter();
+    const sql = isIdempotent ? emitter.emit(steps, dialect) : this.buildPlainScript(steps, dialect);
 
     if (outputFile) {
       const resolved = path.resolve(process.cwd(), outputFile);
@@ -103,8 +102,7 @@ export class MigrationsScriptCommand implements DbCommand {
 
   private async collectMigrationSteps(
     provider: DatabaseProvider,
-    migrationsDir: string,
-    collectSql: boolean
+    migrationsDir: string
   ): Promise<IdempotentMigrationStep[]> {
     const files = this.fsAdapter
       .readDir(migrationsDir)
@@ -113,8 +111,6 @@ export class MigrationsScriptCommand implements DbCommand {
 
     if (files.length === 0) return [];
 
-    // For non-idempotent scripts, we only need version+name+upSql.
-    // For idempotent, we also need SQL (same path).
     const steps: IdempotentMigrationStep[] = [];
 
     // Register ts-node if needed for .ts files
@@ -129,11 +125,8 @@ export class MigrationsScriptCommand implements DbCommand {
       const version = match[1];
       const name = match[2];
 
-      let upSql: string[] = [];
-
-      if (collectSql) {
-        upSql = await this.extractUpSql(path.join(migrationsDir, file), provider);
-      }
+      // Always collect UP SQL — needed both for plain scripts and idempotent scripts.
+      const upSql = await this.extractUpSql(path.join(migrationsDir, file), provider);
 
       steps.push({ version, name, upSql });
     }

@@ -68,13 +68,14 @@ describe('Idempotent Script + Model Snapshot — integration (no DB)', () => {
     });
 
     describe('SQL Server output', () => {
-      it('produces valid T-SQL with IF NOT EXISTS guards', () => {
+      it('produces valid T-SQL with IF NOT EXISTS guards (no GO separator)', () => {
         const sql = emitter.emit(steps, 'mssql');
 
         expect(sql).toContain('IF NOT EXISTS');
         expect(sql).toContain('BEGIN');
         expect(sql).toContain('END');
-        expect(sql).toContain('GO');
+        // GO is a SSMS batch separator — must not appear for programmatic execution
+        expect(sql).not.toContain('GO');
       });
 
       it('includes CONVERT for applied_at timestamp', () => {
@@ -82,23 +83,28 @@ describe('Idempotent Script + Model Snapshot — integration (no DB)', () => {
 
         expect(sql).toContain('CONVERT(VARCHAR(50), GETDATE(), 126)');
       });
+
+      it('emitStatements returns one statement per block', () => {
+        const stmts = emitter.emitStatements(steps, 'mssql');
+        // header + one IF block per step
+        expect(stmts).toHaveLength(1 + steps.length);
+      });
     });
 
     describe('MySQL output', () => {
-      it('produces valid stored procedure pattern', () => {
+      it('uses INSERT IGNORE without DELIMITER (programmatic-safe)', () => {
         const sql = emitter.emit(steps, 'mysql');
 
-        expect(sql).toContain('CREATE PROCEDURE');
-        expect(sql).toContain('DELIMITER //');
-        expect(sql).toContain('CALL ');
-        expect(sql).toContain('DROP PROCEDURE IF EXISTS');
+        expect(sql).toContain('INSERT IGNORE INTO __migrations');
+        expect(sql).not.toContain('DELIMITER');
+        expect(sql).not.toContain('CREATE PROCEDURE');
       });
 
-      it('creates and drops a unique procedure for each migration', () => {
-        const sql = emitter.emit(steps, 'mysql');
-
-        expect(sql).toContain('_apply_migration_20241201000000');
-        expect(sql).toContain('_apply_migration_20241202000000');
+      it('emitStatements returns header + ddl + INSERT IGNORE per step', () => {
+        const singleStepList: IdempotentMigrationStep[] = [steps[0]];
+        const stmts = emitter.emitStatements(singleStepList, 'mysql');
+        // header + 1 DDL + INSERT IGNORE = 3
+        expect(stmts).toHaveLength(3);
       });
     });
   });
