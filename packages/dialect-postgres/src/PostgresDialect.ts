@@ -1,5 +1,7 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
+  BatchInsertResult,
+  BatchUpdateResult,
   ColumnMetadata,
   EntityMetadata,
   GroupByClause,
@@ -14,6 +16,12 @@ import type {
 } from '@ts-linq/types';
 import { TemporalNotSupportedError } from '@ts-linq/types';
 
+import {
+  buildPgBatchDelete,
+  buildPgBatchInsert,
+  buildPgBatchUpdate,
+  PG_PARAM_LIMIT
+} from './batch-syntax';
 import { PgGroupEmitter } from './emitters/PgGroupEmitter';
 import { PgJoinEmitter } from './emitters/PgJoinEmitter';
 import { PgOrderEmitter } from './emitters/PgOrderEmitter';
@@ -31,8 +39,32 @@ export class PostgresDialect implements SqlDialect {
   private readonly joinEmitter = new PgJoinEmitter();
   private readonly orderEmitter = new PgOrderEmitter();
   private readonly groupEmitter = new PgGroupEmitter();
+
+  readonly parameterLimit = PG_PARAM_LIMIT;
+
   public quoteIdentifier(identifier: string): string {
     return `"${identifier.replace(/"/g, '""')}"`;
+  }
+
+  public buildBatchInsert(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchInsertResult {
+    return buildPgBatchInsert(entities, metadata);
+  }
+
+  public buildBatchUpdate(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchUpdateResult {
+    return buildPgBatchUpdate(entities, metadata);
+  }
+
+  public buildBatchDelete(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): SqlWithParams {
+    return buildPgBatchDelete(entities, metadata);
   }
   /**
    * Generate a PostgreSQL SELECT query from normalized QueryOptions.

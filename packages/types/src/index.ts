@@ -225,6 +225,27 @@ export interface SqlWithReturning extends SqlWithParams {
   returningPk?: string;
 }
 
+/** Result from a dialect batch INSERT — sql + params for the multi-row statement. */
+export interface BatchInsertResult {
+  sql: string;
+  parameters: SqlParameter[];
+  /** Whether the INSERT statement itself returns the inserted rows inline (PG RETURNING, MSSQL OUTPUT).
+   *  When false, a separate query is needed to retrieve generated PKs (e.g. MySQL LAST_INSERT_ID). */
+  returnsRows?: boolean;
+  /** Optional SELECT to retrieve the first auto-generated ID after INSERT (MySQL only). */
+  fetchFirstInsertIdSql?: string;
+}
+
+/** Result from a dialect batch UPDATE.
+ *  PG / MSSQL return a single CTE/JOIN statement; MySQL returns multiple per-row statements. */
+export interface BatchUpdateResult {
+  /** Single multi-row statement (Postgres / MSSQL). */
+  sql?: string;
+  parameters?: SqlParameter[];
+  /** Multiple per-row statements (MySQL). */
+  statements?: Array<{ sql: string; parameters: SqlParameter[] }>;
+}
+
 // SQL Dialect interface
 export interface SqlDialect {
   buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult;
@@ -236,6 +257,17 @@ export interface SqlDialect {
   ): SqlWithParams;
   buildDelete?(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithParams;
   quoteIdentifier(identifier: string): string;
+  /** Maximum number of bind parameters this dialect/driver supports per statement. */
+  readonly parameterLimit?: number;
+  buildBatchInsert?(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchInsertResult;
+  buildBatchUpdate?(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchUpdateResult;
+  buildBatchDelete?(entities: Record<string, unknown>[], metadata: EntityMetadata): SqlWithParams;
 }
 
 // Middleware hook parameter types
