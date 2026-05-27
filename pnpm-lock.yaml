@@ -620,6 +620,9 @@ importers:
       '@ts-linq/query':
         specifier: workspace:*
         version: link:../query
+      '@ts-linq/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
       '@ts-linq/types':
         specifier: workspace:*
         version: link:../types
