@@ -113,6 +113,14 @@ export interface DbContextOptions {
    * When set, a DiagnosticEmitter is attached to the provider as an additional SqlLogger.
    */
   logging?: import('@ts-linq/types').DiagnosticConfig;
+  /**
+   * Maximum number of entities per SQL batch statement emitted by saveChanges().
+   * Mirrors EF Core's provider-level MaxBatchSize.
+   * When set, saveChanges() groups tracked changes by (table, operation) and emits
+   * multi-row INSERT / bulk UPDATE / DELETE IN (…) statements capped at this size.
+   * When not set (default), the existing per-row path is used.
+   */
+  maxBatchSize?: number;
 }
 
 /** Circuit Breaker options */

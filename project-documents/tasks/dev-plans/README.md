@@ -83,7 +83,7 @@ Provider-specific, ecosystem, or operational features.
 | P2-43 | [DB-first scaffolding](./P2-43-db-first-scaffolding.md)                          | `Scaffold-DbContext` reverse-engineer + template system                                                     | - [ ]  | XL     | P0-01            |
 | P2-44 | [Compiled models / AOT prep](./P2-44-compiled-models-aot.md)                     | `dotnet ef dbcontext optimize`, NativeAOT-friendly emit                                                     | - [ ]  | L      | P1-20            |
 | P2-45 | [Logging / diagnostics](./P2-45-logging-diagnostics.md)                          | `LogTo`, `EnableSensitiveDataLogging`, `EnableDetailedErrors`, `ConfigureWarnings`                          | ✅     | M      | —                |
-| P2-46 | [Batching / MaxBatchSize](./P2-46-batching-max-batch-size.md)                    | `MaxBatchSize`, multi-row INSERT/UPDATE/DELETE batching at SaveChanges                                      | - [ ]  | M      | —                |
+| P2-46 | [Batching / MaxBatchSize](./P2-46-batching-max-batch-size.md)                    | `MaxBatchSize`, multi-row INSERT/UPDATE/DELETE batching at SaveChanges                                      | ✅     | M      | —                |
 | P2-47 | [Read replica / multi-tenancy](./P2-47-read-replica-multi-tenancy.md)            | Read replica routing + per-tenant connection strings (extend existing multi-tenant plugin)                  | - [ ]  | L      | P0-11            |
 | P2-48 | [Vector search](./P2-48-vector-search.md)                                        | Cosmos vector + hybrid search (EF9 preview); pgvector for Postgres                                          | - [ ]  | L      | P2-37            |
 
@@ -191,7 +191,7 @@ flowchart LR
 
 ## 5. Progress
 
-`14 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure done)
+`15 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure done)
 
 Update this number when a task moves to `status: done`.
 
@@ -239,7 +239,7 @@ whose `depends_on` points into the current step.
 | P2-41 | Query tags / TagWithCallSite   | ✅ done   |
 | P2-42 | Migration bundles / idempotent | ✅ done   |
 | P2-45 | Logging / diagnostics          | ✅ done   |
-| P2-46 | Batching / MaxBatchSize        | —         |
+| P2-46 | Batching / MaxBatchSize        | ✅ done   |
 
 ### Step 2 — Unlocked after Step 1
 

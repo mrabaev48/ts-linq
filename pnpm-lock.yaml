@@ -312,6 +312,9 @@ importers:
       '@ts-linq/metadata':
         specifier: workspace:*
         version: link:../metadata
+      '@ts-linq/sql-visitor':
+        specifier: workspace:*
+        version: link:../sql-visitor
       '@ts-linq/types':
         specifier: workspace:*
         version: link:../types
@@ -334,6 +337,9 @@ importers:
       '@ts-linq/metadata':
         specifier: workspace:*
         version: link:../metadata
+      '@ts-linq/sql-visitor':
+        specifier: workspace:*
+        version: link:../sql-visitor
       '@ts-linq/types':
         specifier: workspace:*
         version: link:../types
@@ -356,6 +362,9 @@ importers:
       '@ts-linq/metadata':
         specifier: workspace:*
         version: link:../metadata
+      '@ts-linq/sql-visitor':
+        specifier: workspace:*
+        version: link:../sql-visitor
       '@ts-linq/types':
         specifier: workspace:*
         version: link:../types
@@ -620,6 +629,9 @@ importers:
       '@ts-linq/query':
         specifier: workspace:*
         version: link:../query
+      '@ts-linq/sql-visitor':
+        specifier: workspace:*
+        version: link:../sql-visitor
       '@ts-linq/telemetry':
         specifier: workspace:*
         version: link:../telemetry
