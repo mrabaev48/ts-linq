@@ -78,7 +78,7 @@ class TestDbContext extends DbContext {
   }
 }
 
-describe.skip('Telemetry Integration - Prometheus + Provider', () => {
+describe('Telemetry Integration - Prometheus + Provider', () => {
   let provider: TestProvider;
   let context: TestDbContext;
   let logger: PrometheusSqlLogger;
@@ -90,9 +90,8 @@ describe.skip('Telemetry Integration - Prometheus + Provider', () => {
       prefix: 'tslinq_'
     });
 
-    // 2. Setup Provider
-    provider = new TestProvider(':memory:');
-    // logger attachment is manual in test provider or ignored for this test scope
+    // 2. Setup Provider — pass logger so insert/update/delete fire queryStart/queryEnd
+    provider = new TestProvider({ logger });
 
     // 3. Setup Context
     context = new TestDbContext(provider);
@@ -108,15 +107,13 @@ describe.skip('Telemetry Integration - Prometheus + Provider', () => {
     const users = context.set(User);
     users.add({ name: 'Alice' } as User);
 
-    // Act
-    await context.saveChanges(); // INSERT
+    // Act — INSERT goes through TestProvider.insert → logger.queryEnd
+    await context.saveChanges();
 
     // Assert
-    // Check if query_total incremented
     const queryTotal = (logger as any).queryTotal as MockCounter;
     expect(queryTotal).toBeDefined();
 
-    // Expect at least one INSERT
     let found = false;
     for (const [labelsStr, val] of queryTotal.values.entries()) {
       const labels = JSON.parse(labelsStr);
@@ -134,14 +131,13 @@ describe.skip('Telemetry Integration - Prometheus + Provider', () => {
     users.add({ name: 'Bob' } as User);
     await context.saveChanges();
 
-    // Act
-    await users.toArray(); // SELECT
+    // Act — SELECT goes through executeWithRetry → logger.queryEnd
+    await users.toArray();
 
     // Assert
     const duration = (logger as any).queryDuration as MockHistogram;
     expect(duration).toBeDefined();
 
-    // Expect SELECT duration observed
     let found = false;
     for (const [labelsStr, vals] of duration.values.entries()) {
       const labels = JSON.parse(labelsStr);
@@ -155,21 +151,25 @@ describe.skip('Telemetry Integration - Prometheus + Provider', () => {
   });
 
   it('should track error counter by type', async () => {
-    // Act: execute bad SQL to cause error
+    // TestProvider.doExecuteNonQuery returns 0 by default (no real DB).
+    // Override it to simulate a DB error so logger.queryEnd receives an error payload.
+    jest
+      .spyOn(provider, 'doExecuteNonQuery')
+      .mockRejectedValueOnce(new Error('Connection timeout'));
+
     try {
       await provider.executeNonQuery('SELECT * FROM non_existent_table');
-    } catch (e) {
-      // ignore
+    } catch {
+      // expected — the error triggers logger.queryEnd({ error })
     }
 
-    // Assert
+    // Assert errorTotal was incremented
     const errorTotal = (logger as any).errorTotal as MockCounter;
     expect(errorTotal).toBeDefined();
 
     let found = false;
     for (const [labelsStr, val] of errorTotal.values.entries()) {
       const labels = JSON.parse(labelsStr);
-      // Expect some error
       if (labels.error_type) {
         expect(val).toBeGreaterThan(0);
         found = true;
@@ -177,12 +177,4 @@ describe.skip('Telemetry Integration - Prometheus + Provider', () => {
     }
     expect(found).toBe(true);
   });
-
-  //   it('should track connection health', async () => {
-  //       // Health checks run via timer, difficult to test deterministically in integration
-  //       // without exposing internals or waiting.
-  //       // We can manually trigger it if we had access, but for now we skip or verify initialization.
-  //       const healthGauge = (logger as any).connectionHealthGauge as MockGauge;
-  //       expect(healthGauge).toBeDefined();
-  //   });
 });

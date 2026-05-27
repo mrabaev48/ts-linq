@@ -128,7 +128,15 @@ export class TestProvider extends DatabaseProvider {
 
   public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass)!;
-    await this.beforeExecute(`INSERT INTO ${meta.tableName}`, []);
+    const sql = `INSERT INTO ${meta.tableName}`;
+    const startedAt = Date.now();
+    this.logger?.queryStart?.({
+      sql,
+      params: [],
+      traceId: this.currentTraceId,
+      provider: this.providerName
+    });
+    await this.beforeExecute(sql, []);
     await this.ensureTable(meta);
     const table = this.data.get(meta.tableName)!;
     const rec: Record<string, unknown> = {};
@@ -155,13 +163,29 @@ export class TestProvider extends DatabaseProvider {
       }
     }
     table.push(rec);
-    await this.afterExecute(`INSERT INTO ${meta.tableName}`, [], 1);
+    await this.afterExecute(sql, [], 1);
+    this.logger?.queryEnd?.({
+      sql,
+      params: [],
+      durationMs: Date.now() - startedAt,
+      rows: 1,
+      traceId: this.currentTraceId,
+      provider: this.providerName
+    });
     return entity;
   }
 
   public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass)!;
-    await this.beforeExecute(`UPDATE ${meta.tableName}`, []);
+    const sql = `UPDATE ${meta.tableName}`;
+    const startedAt = Date.now();
+    this.logger?.queryStart?.({
+      sql,
+      params: [],
+      traceId: this.currentTraceId,
+      provider: this.providerName
+    });
+    await this.beforeExecute(sql, []);
     const table = this.data.get(meta.tableName) || [];
     const pks = meta.primaryKeys || [];
     const pk = pks[0];
@@ -178,13 +202,29 @@ export class TestProvider extends DatabaseProvider {
         if (val !== undefined) row[col.columnName] = val;
       }
     }
-    await this.afterExecute(`UPDATE ${meta.tableName}`, [], 1);
+    await this.afterExecute(sql, [], 1);
+    this.logger?.queryEnd?.({
+      sql,
+      params: [],
+      durationMs: Date.now() - startedAt,
+      rows: 1,
+      traceId: this.currentTraceId,
+      provider: this.providerName
+    });
     return entity;
   }
 
   public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
     const meta = MetadataStorage.getEntity(entityClass)!;
-    await this.beforeExecute(`DELETE FROM ${meta.tableName}`, []);
+    const sql = `DELETE FROM ${meta.tableName}`;
+    const startedAt = Date.now();
+    this.logger?.queryStart?.({
+      sql,
+      params: [],
+      traceId: this.currentTraceId,
+      provider: this.providerName
+    });
+    await this.beforeExecute(sql, []);
     const table = this.data.get(meta.tableName) || [];
     const pks = meta.primaryKeys || [];
     const pk = pks[0];
@@ -195,7 +235,15 @@ export class TestProvider extends DatabaseProvider {
     if (idx >= 0) {
       table.splice(idx, 1);
     }
-    await this.afterExecute(`DELETE FROM ${meta.tableName}`, [], 1);
+    await this.afterExecute(sql, [], 1);
+    this.logger?.queryEnd?.({
+      sql,
+      params: [],
+      durationMs: Date.now() - startedAt,
+      rows: 0,
+      traceId: this.currentTraceId,
+      provider: this.providerName
+    });
   }
 
   public async findByPk<T extends object>(

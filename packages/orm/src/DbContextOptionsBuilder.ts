@@ -14,11 +14,22 @@ import { QuerySplittingBehavior } from '@ts-linq/types';
  */
 export { QuerySplittingBehavior };
 
+/** Options for configuring the migrations integration on `DbContextOptionsBuilder`. */
+export interface MigrationsOptions {
+  /**
+   * Absolute or relative path to the directory containing migration files.
+   * Used by `ctx.database.hasPendingModelChanges()`, `getPendingMigrations()`,
+   * and `migrate()`.
+   */
+  directory: string;
+}
+
 export class DbContextOptionsBuilder {
   private readonly _interceptors: object[] = [];
   private _splittingBehavior?: QuerySplittingBehavior;
   private _executionStrategyOptions?: ExecutionStrategyOptions;
   private _spatialEnabled = false;
+  private _migrationsDirectory?: string;
 
   constructor(private readonly _base: DbContextOptions) {}
 
@@ -85,6 +96,22 @@ export class DbContextOptionsBuilder {
   }
 
   /**
+   * Configure the migrations directory used by `ctx.database.hasPendingModelChanges()`,
+   * `ctx.database.getPendingMigrations()`, and `ctx.database.migrate()`.
+   *
+   * Mirrors EF Core's per-context migration configuration.
+   *
+   * @example
+   * const opts = new DbContextOptionsBuilder({ provider })
+   *   .migrations({ directory: './migrations' })
+   *   .build();
+   */
+  migrations(options: MigrationsOptions): this {
+    this._migrationsDirectory = options.directory;
+    return this;
+  }
+
+  /**
    * Produce a DbContextOptions with all accumulated interceptors merged in.
    * Interceptors already present in the base options appear first, preserving
    * any prior registration order.
@@ -99,7 +126,10 @@ export class DbContextOptionsBuilder {
       ...(this._executionStrategyOptions !== undefined
         ? { executionStrategy: this._executionStrategyOptions }
         : {}),
-      ...(this._spatialEnabled ? { spatialEnabled: true } : {})
+      ...(this._spatialEnabled ? { spatialEnabled: true } : {}),
+      ...(this._migrationsDirectory !== undefined
+        ? { migrationsDirectory: this._migrationsDirectory }
+        : {})
     };
   }
 }

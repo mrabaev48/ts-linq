@@ -1,5 +1,6 @@
 export * from './builders';
 export * from './ChangeTracker';
+export * from './database/has-pending-model-changes';
 export * from './DatabaseFacade';
 export * from './DbContext';
 export * from './DbContextOptionsBuilder';
