@@ -55,6 +55,7 @@ export interface IDatabaseProvider {
   configureSoftDelete(options?: import('@ts-linq/types').SoftDeleteOptions): void;
   readonly providerLabel: string;
   readonly loggerRef: import('@ts-linq/types').SqlLogger | undefined;
+  attachLogger(extra: import('@ts-linq/types').SqlLogger): void;
   configureConnection(options: {
     pool?: import('@ts-linq/types').ConnectionPoolOptions;
     health?: import('@ts-linq/types').ConnectionHealthCheckOptions;
@@ -106,6 +107,12 @@ export interface DbContextOptions {
    * Configure via `DbContextOptionsBuilder.migrations({ directory })`.
    */
   migrationsDirectory?: string;
+  /**
+   * Diagnostic logging configuration produced by DbContextOptionsBuilder.logTo() /
+   * enableSensitiveDataLogging() / enableDetailedErrors() / configureWarnings().
+   * When set, a DiagnosticEmitter is attached to the provider as an additional SqlLogger.
+   */
+  logging?: import('@ts-linq/types').DiagnosticConfig;
 }
 
 /** Circuit Breaker options */
