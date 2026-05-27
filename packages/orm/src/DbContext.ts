@@ -9,6 +9,7 @@ import { EntityCache } from '@ts-linq/core';
 import { type MetadataRegistry, MetadataStorage, reflectGetOwnMetadata } from '@ts-linq/metadata';
 import { safeCacheSize } from '@ts-linq/metrics-safe';
 import { EnhancedSqlCache, InMemoryCountCache } from '@ts-linq/query/internal';
+import { DiagnosticEmitter } from '@ts-linq/telemetry';
 import type { GlobalFilter, PerformanceOptions, Result, SoftDeleteOptions } from '@ts-linq/types';
 import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
@@ -90,6 +91,10 @@ export abstract class DbContext {
     this._softDelete = options.softDelete;
     // Propagate soft-delete settings into provider for GlobalFilterApplier and ProviderStub
     this._provider.configureSoftDelete(options.softDelete);
+    // Wire DiagnosticEmitter when logTo() was configured on the builder
+    if (options.logging?.sink) {
+      this._provider.attachLogger(new DiagnosticEmitter(options.logging));
+    }
     this._globalFilters = options.globalFilters;
     this._diagnostics = options.diagnostics;
     // Start external memory profiler if provided

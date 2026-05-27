@@ -520,6 +520,116 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     return this.logger;
   }
 
+  /**
+   * Attach an additional SqlLogger alongside any existing one.
+   * Both loggers receive every event; errors in one delegate do not affect the other.
+   * Used by DbContext to wire the DiagnosticEmitter from options.logging.
+   */
+  public attachLogger(extra: SqlLogger): void {
+    this.logger = this.logger ? DatabaseProvider.mergeLoggers(this.logger, extra) : extra;
+  }
+
+  private static mergeLoggers(a: SqlLogger, b: SqlLogger): SqlLogger {
+    return {
+      debug: (m, meta) => {
+        try {
+          a.debug(m, meta);
+        } catch {
+          /* ignore */
+        }
+        try {
+          b.debug(m, meta);
+        } catch {
+          /* ignore */
+        }
+      },
+      info: (m, meta) => {
+        try {
+          a.info(m, meta);
+        } catch {
+          /* ignore */
+        }
+        try {
+          b.info(m, meta);
+        } catch {
+          /* ignore */
+        }
+      },
+      warn: (m, meta) => {
+        try {
+          a.warn(m, meta);
+        } catch {
+          /* ignore */
+        }
+        try {
+          b.warn(m, meta);
+        } catch {
+          /* ignore */
+        }
+      },
+      error: (m, meta) => {
+        try {
+          a.error(m, meta);
+        } catch {
+          /* ignore */
+        }
+        try {
+          b.error(m, meta);
+        } catch {
+          /* ignore */
+        }
+      },
+      queryStart: (i) => {
+        a.queryStart?.(i);
+        b.queryStart?.(i);
+      },
+      queryEnd: (i) => {
+        a.queryEnd?.(i);
+        b.queryEnd?.(i);
+      },
+      retry: (i) => {
+        a.retry?.(i);
+        b.retry?.(i);
+      },
+      transactionStart: (i) => {
+        a.transactionStart?.(i);
+        b.transactionStart?.(i);
+      },
+      transactionEnd: (i) => {
+        a.transactionEnd?.(i);
+        b.transactionEnd?.(i);
+      },
+      connectionHealth: (i) => {
+        a.connectionHealth?.(i);
+        b.connectionHealth?.(i);
+      },
+      circuit: (i) => {
+        a.circuit?.(i);
+        b.circuit?.(i);
+      },
+      fallback: (i) => {
+        a.fallback?.(i);
+        b.fallback?.(i);
+      },
+      hedgedWin: (i) => {
+        a.hedgedWin?.(i);
+        b.hedgedWin?.(i);
+      },
+      analysis: (i) => {
+        a.analysis?.(i);
+        b.analysis?.(i);
+      },
+      crossQuery: (i) => {
+        a.crossQuery?.(i);
+        b.crossQuery?.(i);
+      },
+      cacheSize: (i) => {
+        a.cacheSize?.(i);
+        b.cacheSize?.(i);
+      }
+    };
+  }
+
   /** Configure connection pool and health-check options at runtime. */
   public configureConnection(options: {
     pool?: ConnectionPoolOptions;

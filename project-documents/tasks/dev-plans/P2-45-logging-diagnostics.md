@@ -1,7 +1,7 @@
 ---
 title: Logging, Sensitive Data, Detailed Errors, ConfigureWarnings
 ef_core_api: optionsBuilder.LogTo(...) / EnableSensitiveDataLogging() / EnableDetailedErrors() / ConfigureWarnings(...)
-status: not-started
+status: done
 priority: P2
 effort: M
 depends_on: []
