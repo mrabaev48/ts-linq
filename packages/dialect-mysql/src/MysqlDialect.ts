@@ -1,5 +1,7 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
+  BatchInsertResult,
+  BatchUpdateResult,
   ColumnMetadata,
   EntityMetadata,
   QueryOptions,
@@ -11,6 +13,12 @@ import type {
 } from '@ts-linq/types';
 import { TemporalNotSupportedError } from '@ts-linq/types';
 
+import {
+  buildMysqlBatchDelete,
+  buildMysqlBatchInsert,
+  buildMysqlBatchUpdate,
+  MYSQL_PARAM_LIMIT
+} from './batch-syntax';
 import { MySqlGroupEmitter } from './emitters/MySqlGroupEmitter';
 import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
 import { MySqlOrderEmitter } from './emitters/MySqlOrderEmitter';
@@ -27,8 +35,32 @@ export class MysqlDialect implements SqlDialect {
   private readonly joinEmitter = new MySqlJoinEmitter();
   private readonly orderEmitter = new MySqlOrderEmitter();
   private readonly groupEmitter = new MySqlGroupEmitter();
+
+  readonly parameterLimit = MYSQL_PARAM_LIMIT;
+
   public quoteIdentifier(identifier: string): string {
     return `\`${identifier.replace(/`/g, '``')}\``;
+  }
+
+  public buildBatchInsert(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchInsertResult {
+    return buildMysqlBatchInsert(entities, metadata);
+  }
+
+  public buildBatchUpdate(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchUpdateResult {
+    return buildMysqlBatchUpdate(entities, metadata);
+  }
+
+  public buildBatchDelete(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): SqlWithParams {
+    return buildMysqlBatchDelete(entities, metadata);
   }
   /**
    * Build SELECT for MySQL based on normalized QueryOptions.

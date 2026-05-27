@@ -1,0 +1,181 @@
+import { calcChunkSize, chunkArray } from '@ts-linq/sql-visitor';
+import type {
+  BatchInsertResult,
+  BatchUpdateResult,
+  EntityMetadata,
+  SqlParameter,
+  SqlWithParams
+} from '@ts-linq/types';
+
+/** SQL Server hard cap on bind parameters per statement. */
+export const MSSQL_PARAM_LIMIT = 2100;
+
+type Entity = Record<string, unknown>;
+
+function coerce(value: unknown): SqlParameter {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    value instanceof Date ||
+    value instanceof Uint8Array
+  ) {
+    return value;
+  }
+  try {
+    return JSON.stringify(value ?? null);
+  } catch {
+    return String(value);
+  }
+}
+
+/** Replace positional `?` markers with @p1, @p2, … */
+function numberPlaceholders(sql: string): string {
+  let idx = 0;
+  return sql.replace(/\?/g, () => `@p${++idx}`);
+}
+
+function insertableCols(metadata: EntityMetadata, entity: Entity) {
+  return metadata.columns.filter(
+    (col) => !col.isGenerated || entity[col.propertyName] !== undefined
+  );
+}
+
+/**
+ * Build a SQL Server multi-row INSERT with OUTPUT:
+ *   INSERT INTO [t] ([c1],[c2]) OUTPUT INSERTED.[pk] VALUES (@p1,@p2),(@p3,@p4)
+ */
+export function buildMssqlBatchInsert(
+  entities: Entity[],
+  metadata: EntityMetadata
+): BatchInsertResult {
+  if (entities.length === 0) throw new Error('buildMssqlBatchInsert: empty entity list');
+
+  const cols = insertableCols(metadata, entities[0]);
+  if (cols.length === 0) throw new Error('buildMssqlBatchInsert: no insertable columns');
+
+  const parameters: SqlParameter[] = [];
+  const rowPlaceholders: string[] = [];
+
+  for (const entity of entities) {
+    const rowPh = cols.map(() => '?').join(',');
+    rowPlaceholders.push(`(${rowPh})`);
+    for (const c of cols) {
+      parameters.push(coerce(entity[c.propertyName]));
+    }
+  }
+
+  const firstPk = metadata.primaryKeys?.[0];
+  const pkColMeta = firstPk ? metadata.columns.find((c) => c.propertyName === firstPk) : undefined;
+
+  const colNames = cols.map((c) => `[${c.columnName}]`).join(',');
+  let sql: string;
+  if (pkColMeta?.isGenerated) {
+    sql = `INSERT INTO [${metadata.tableName}] (${colNames}) OUTPUT INSERTED.[${pkColMeta.columnName}] AS id VALUES ${rowPlaceholders.join(',')}`;
+  } else {
+    sql = `INSERT INTO [${metadata.tableName}] (${colNames}) VALUES ${rowPlaceholders.join(',')}`;
+  }
+
+  return { sql: numberPlaceholders(sql), parameters };
+}
+
+/**
+ * Build a SQL Server VALUES JOIN bulk UPDATE:
+ *   UPDATE t SET t.[c1]=b.[c1]
+ *   FROM [t] t JOIN (VALUES (@p1,@p2),(@p3,@p4)) AS b([pk],[c1]) ON t.[pk]=b.[pk]
+ */
+export function buildMssqlBatchUpdate(
+  entities: Entity[],
+  metadata: EntityMetadata
+): BatchUpdateResult {
+  if (entities.length === 0) throw new Error('buildMssqlBatchUpdate: empty entity list');
+  if (!metadata.primaryKeys?.length) {
+    throw new Error(`buildMssqlBatchUpdate: no primary key on ${metadata.tableName}`);
+  }
+
+  const pks = metadata.primaryKeys;
+  const setCols = metadata.columns.filter(
+    (c) => !pks.includes(c.propertyName) && !c.isGenerated && !c.isComputed
+  );
+  if (setCols.length === 0) throw new Error('buildMssqlBatchUpdate: no updatable columns');
+
+  const allCols = [
+    ...pks.map((pk) => metadata.columns.find((c) => c.propertyName === pk)!),
+    ...setCols
+  ];
+
+  const parameters: SqlParameter[] = [];
+  const rowPlaceholders: string[] = [];
+
+  for (const entity of entities) {
+    const rowPh = allCols.map(() => '?').join(',');
+    rowPlaceholders.push(`(${rowPh})`);
+    for (const c of allCols) {
+      parameters.push(coerce(entity[c.propertyName]));
+    }
+  }
+
+  const bColNames = allCols.map((c) => `[${c.columnName}]`).join(',');
+  const setClause = setCols.map((c) => `t.[${c.columnName}]=b.[${c.columnName}]`).join(',');
+  const onClause = pks
+    .map((pk) => {
+      const col = metadata.columns.find((c) => c.propertyName === pk)!;
+      return `t.[${col.columnName}]=b.[${col.columnName}]`;
+    })
+    .join(' AND ');
+
+  const sql =
+    `UPDATE t SET ${setClause} ` +
+    `FROM [${metadata.tableName}] t ` +
+    `JOIN (VALUES ${rowPlaceholders.join(',')}) AS b(${bColNames}) ON ${onClause}`;
+
+  return { sql: numberPlaceholders(sql), parameters };
+}
+
+/**
+ * Build a SQL Server DELETE with IN clause:
+ *   DELETE FROM [t] WHERE [pk] IN (@p1,@p2,…)
+ */
+export function buildMssqlBatchDelete(entities: Entity[], metadata: EntityMetadata): SqlWithParams {
+  if (entities.length === 0) throw new Error('buildMssqlBatchDelete: empty entity list');
+  if (!metadata.primaryKeys?.length) {
+    throw new Error(`buildMssqlBatchDelete: no primary key on ${metadata.tableName}`);
+  }
+
+  const pk = metadata.primaryKeys[0];
+  const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
+  const parameters: SqlParameter[] = entities.map((e) => coerce(e[pk]));
+  const placeholders = parameters.map(() => '?').join(',');
+  const sql = numberPlaceholders(
+    `DELETE FROM [${metadata.tableName}] WHERE [${pkCol.columnName}] IN (${placeholders})`
+  );
+  return { sql, parameters };
+}
+
+/**
+ * Split entities into chunks respecting maxBatchSize and MSSQL_PARAM_LIMIT.
+ */
+export function chunkMssqlBatch(
+  entities: Entity[],
+  metadata: EntityMetadata,
+  maxBatchSize: number,
+  operation: 'insert' | 'update' | 'delete'
+): Entity[][] {
+  let paramsPerRow: number;
+  if (operation === 'insert') {
+    const cols = insertableCols(metadata, entities[0] ?? {});
+    paramsPerRow = cols.length;
+  } else if (operation === 'update') {
+    const pks = metadata.primaryKeys ?? [];
+    const setCols = metadata.columns.filter(
+      (c) => !pks.includes(c.propertyName) && !c.isGenerated && !c.isComputed
+    );
+    paramsPerRow = pks.length + setCols.length;
+  } else {
+    paramsPerRow = 1;
+  }
+
+  const size = calcChunkSize(paramsPerRow, maxBatchSize, MSSQL_PARAM_LIMIT);
+  return chunkArray(entities, size);
+}

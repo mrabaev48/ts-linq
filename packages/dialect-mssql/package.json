@@ -23,6 +23,7 @@
   ],
   "dependencies": {
     "@ts-linq/metadata": "workspace:*",
+    "@ts-linq/sql-visitor": "workspace:*",
     "@ts-linq/types": "workspace:*",
     "@ts-linq/core": "workspace:*"
   },

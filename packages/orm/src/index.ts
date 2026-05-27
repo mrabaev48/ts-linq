@@ -17,5 +17,7 @@ export * from './options/enable-sensitive-data-logging';
 export * from './options/log-to';
 export * from './pooling/DbContextPool';
 export * from './pooling/PooledDbContextFactory';
+export * from './save-changes/batch-executor';
+export * from './save-changes/batch-grouper';
 export { sql, SqlInterpolated } from './sql/sqlTag';
 export * from './transactions/DbContextTransaction';
