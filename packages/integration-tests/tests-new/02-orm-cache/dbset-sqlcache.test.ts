@@ -55,6 +55,12 @@ describe('DbSet + SqlCache Integration', () => {
   });
 
   it.skip('should cache SELECT query results', async () => {
+    // SKIP REASON: EnhancedSqlCache is a SQL-generation cache — it caches the compiled SQL
+    // string (lambda→AST→SQL), not the result rows. Result-level caching (where a second
+    // identical query skips the DB entirely and returns rows from memory) is a separate
+    // feature that has not yet been implemented. When a ResultCache layer is added on top of
+    // the provider, this test should be revisited and the skip removed.
+    //
     // Arrange
     const users = context.set(User);
 
@@ -148,6 +154,11 @@ describe('DbSet + SqlCache Integration', () => {
   });
 
   it.skip('should support manual cache warming', async () => {
+    // SKIP REASON: warmUp pre-executes queries into a ResultCache. Since result-level caching
+    // is not yet implemented (see "should cache SELECT query results" above), warming up has
+    // no observable effect — the second identical query still hits the DB. Re-enable once a
+    // ResultCache layer is available and context.cache.warmUp populates it.
+    //
     // Create a specific query string that matches what QueryBuilder produces
     // This is tricky without access to internal builder, but we can do it via context.cache.warmUp
     // provided we pass the query execution function?

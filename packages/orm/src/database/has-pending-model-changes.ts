@@ -192,8 +192,15 @@ export class PendingModelChangesChecker {
         upSql: await this.collectUpSql(migration, this._provider)
       };
 
-      const sql = emitter.emit([step], dialect);
-      await this._provider.executeNonQuery(sql);
+      // Use emitStatements() instead of emit() to get individually-executable
+      // statements — database drivers do not support GO (MSSQL) or DELIMITER (MySQL).
+      const statements = emitter.emitStatements([step], dialect);
+      for (const stmt of statements) {
+        const trimmed = stmt.replace(/^--[^\n]*\n/gm, '').trim();
+        if (trimmed) {
+          await this._provider.executeNonQuery(trimmed);
+        }
+      }
     }
   }
 
