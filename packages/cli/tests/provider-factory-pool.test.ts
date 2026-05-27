@@ -161,7 +161,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       const mockProvider = {
         configureCircuit: jest.fn()
       };
-      (PostgresProvider as jest.Mock).mockReturnValue(mockProvider);
+      (PostgresProvider as unknown as jest.Mock).mockReturnValue(mockProvider);
 
       process.env.DB_PROVIDER = 'postgresql';
       process.env.POSTGRES_URL = 'postgres://localhost/db';
@@ -197,7 +197,7 @@ describe('Provider Factory - Environment Variable Mapping', () => {
       const mockProvider = {
         configureCircuit: jest.fn()
       };
-      (PostgresProvider as jest.Mock).mockReturnValue(mockProvider);
+      (PostgresProvider as unknown as jest.Mock).mockReturnValue(mockProvider);
 
       const provider = await createProviderFromEnv();
 
