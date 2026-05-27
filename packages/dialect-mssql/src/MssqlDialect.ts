@@ -1,5 +1,7 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
+  BatchInsertResult,
+  BatchUpdateResult,
   ColumnMetadata,
   EntityMetadata,
   QueryOptions,
@@ -10,6 +12,12 @@ import type {
   SqlWithReturning
 } from '@ts-linq/types';
 
+import {
+  buildMssqlBatchDelete,
+  buildMssqlBatchInsert,
+  buildMssqlBatchUpdate,
+  MSSQL_PARAM_LIMIT
+} from './batch-syntax';
 import { buildTemporalClause } from './emit-temporal';
 import { MssqlGroupEmitter } from './emitters/MssqlGroupEmitter';
 import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
@@ -28,8 +36,32 @@ export class MssqlDialect implements SqlDialect {
   private readonly joinEmitter = new MssqlJoinEmitter();
   private readonly orderEmitter = new MssqlOrderEmitter();
   private readonly groupEmitter = new MssqlGroupEmitter();
+
+  readonly parameterLimit = MSSQL_PARAM_LIMIT;
+
   public quoteIdentifier(identifier: string): string {
     return `[${identifier.replace(/]/g, ']]')}]`;
+  }
+
+  public buildBatchInsert(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchInsertResult {
+    return buildMssqlBatchInsert(entities, metadata);
+  }
+
+  public buildBatchUpdate(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchUpdateResult {
+    return buildMssqlBatchUpdate(entities, metadata);
+  }
+
+  public buildBatchDelete(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): SqlWithParams {
+    return buildMssqlBatchDelete(entities, metadata);
   }
   /**
    * Build a SELECT statement for MSSQL based on normalized QueryOptions.

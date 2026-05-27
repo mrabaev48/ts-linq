@@ -23,6 +23,7 @@ import { DbSet } from './DbSet';
 import type { DbSetContext } from './DbSetContext';
 import { InterceptorRegistry } from './interceptors/InterceptorRegistry';
 import { ModelBuilder } from './ModelBuilder';
+import { BatchExecutor } from './save-changes/batch-executor';
 import { AuditInterceptor } from './services/AuditInterceptor';
 import { CacheCoordinator } from './services/CacheCoordinator';
 import { ChangeValidationService } from './services/ChangeValidationService';
@@ -78,6 +79,8 @@ export abstract class DbContext {
   private _executionStrategyOptions?: import('@ts-linq/types').ExecutionStrategyOptions;
   /** @internal Callback set by a pooled factory; overrides dispose to return context to pool. */
   private _returnToPool?: () => Promise<void>;
+  /** maxBatchSize from DbContextOptionsBuilder.maxBatchSize(); 0 = per-row path. */
+  private _maxBatchSize = 0;
 
   /**
    * Create a new database context instance.
@@ -112,6 +115,7 @@ export abstract class DbContext {
     this._changeTracker = new ChangeTracker(this._registry);
     this._entityLoader = new EntityLoader(this._provider);
     this._querySplittingBehavior = options.querySplittingBehavior;
+    this._maxBatchSize = options.maxBatchSize ?? 0;
     this._insertCmd = new InsertCommand(this._provider, (c) =>
       this._cacheCoordinator.updateEntry(c)
     );
@@ -369,9 +373,15 @@ export abstract class DbContext {
     }
     try {
       let affectedRows = 0;
-      for (const change of changes) {
-        const normalized = this.normalizeChange(change);
-        affectedRows += await this.processChange(normalized);
+      if (this._maxBatchSize > 0) {
+        const allNormalized = changes.map((c) => this.normalizeChange(c));
+        const batchExecutor = new BatchExecutor(this._provider, this._maxBatchSize, this._registry);
+        affectedRows = await batchExecutor.execute(allNormalized);
+      } else {
+        for (const change of changes) {
+          const normalized = this.normalizeChange(change);
+          affectedRows += await this.processChange(normalized);
+        }
       }
       if (ownTransaction) {
         await this._provider.commitTransaction();

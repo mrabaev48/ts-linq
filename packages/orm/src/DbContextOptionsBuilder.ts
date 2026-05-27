@@ -37,6 +37,9 @@ export class DbContextOptionsBuilder {
   private _spatialEnabled = false;
   private _migrationsDirectory?: string;
 
+  // ── Batching state ───────────────────────────────────────────────────────
+  private _maxBatchSize?: number;
+
   // ── Diagnostic logging state ─────────────────────────────────────────────
   private _logSink?: (message: string) => void;
   private _logLevel?: LogLevel;
@@ -125,6 +128,24 @@ export class DbContextOptionsBuilder {
   }
 
   /**
+   * Cap the number of entities per batch SQL statement emitted by saveChanges().
+   * Mirrors EF Core's provider-level `MaxBatchSize` extension.
+   *
+   * When set, saveChanges() groups tracked changes by (table, operation) and emits
+   * multi-row INSERT / bulk UPDATE / DELETE IN (…) statements, each limited to `size` rows.
+   * Also respects the dialect's hard parameter limit (PG: 65535, MSSQL: 2100).
+   *
+   * @example
+   * const opts = new DbContextOptionsBuilder({ provider })
+   *   .maxBatchSize(50)
+   *   .build();
+   */
+  maxBatchSize(size: number): this {
+    this._maxBatchSize = size;
+    return this;
+  }
+
+  /**
    * Direct diagnostic events to a user-supplied sink function.
    * Mirrors EF Core's `optionsBuilder.LogTo(sink, logLevel)`.
    *
@@ -209,7 +230,8 @@ export class DbContextOptionsBuilder {
               warningRoutes: this._warningRoutes
             } satisfies DiagnosticConfig
           }
-        : {})
+        : {}),
+      ...(this._maxBatchSize !== undefined ? { maxBatchSize: this._maxBatchSize } : {})
     };
   }
 }

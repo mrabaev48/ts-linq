@@ -1,3 +1,4 @@
+export { buildQuestionMarkRows, calcChunkSize, chunkArray } from './batch-emitter';
 export { emitTagComments } from './emit-tags';
 export { ParameterState, ParameterStyle } from './ParameterStyle';
 export { SqlVisitor, type SqlVisitorOptions } from './SqlVisitor';

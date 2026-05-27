@@ -1,7 +1,7 @@
 ---
 title: SaveChanges Batching with MaxBatchSize
 ef_core_api: optionsBuilder.UseSqlServer(conn, o => o.MaxBatchSize(50))
-status: not-started
+status: done
 priority: P2
 effort: M
 depends_on: []

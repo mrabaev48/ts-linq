@@ -19,6 +19,7 @@
     "@ts-linq/metrics-safe": "workspace:*",
     "@ts-linq/migrations": "workspace:*",
     "@ts-linq/query": "workspace:*",
+    "@ts-linq/sql-visitor": "workspace:*",
     "@ts-linq/telemetry": "workspace:*",
     "@ts-linq/types": "workspace:*"
   },
