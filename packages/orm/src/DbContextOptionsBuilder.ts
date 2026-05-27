@@ -1,5 +1,11 @@
 import type { DbContextOptions } from '@ts-linq/core';
-import type { ExecutionStrategyOptions } from '@ts-linq/types';
+import { WarningConfigurationBuilder } from '@ts-linq/telemetry';
+import type {
+  DiagnosticConfig,
+  ExecutionStrategyOptions,
+  LogLevel,
+  WarningBehavior
+} from '@ts-linq/types';
 import { QuerySplittingBehavior } from '@ts-linq/types';
 
 /**
@@ -30,6 +36,13 @@ export class DbContextOptionsBuilder {
   private _executionStrategyOptions?: ExecutionStrategyOptions;
   private _spatialEnabled = false;
   private _migrationsDirectory?: string;
+
+  // ── Diagnostic logging state ─────────────────────────────────────────────
+  private _logSink?: (message: string) => void;
+  private _logLevel?: LogLevel;
+  private _sensitiveDataEnabled = false;
+  private _detailedErrors = false;
+  private _warningRoutes?: ReadonlyMap<string, WarningBehavior>;
 
   constructor(private readonly _base: DbContextOptions) {}
 
@@ -112,6 +125,62 @@ export class DbContextOptionsBuilder {
   }
 
   /**
+   * Direct diagnostic events to a user-supplied sink function.
+   * Mirrors EF Core's `optionsBuilder.LogTo(sink, logLevel)`.
+   *
+   * @param sink     Function that receives formatted diagnostic messages.
+   * @param level    Minimum severity forwarded to the sink. Defaults to 'information'.
+   *
+   * @example
+   * new DbContextOptionsBuilder({ provider })
+   *   .logTo(msg => console.log(msg), 'debug')
+   *   .build();
+   */
+  logTo(sink: (message: string) => void, level?: LogLevel): this {
+    this._logSink = sink;
+    this._logLevel = level;
+    return this;
+  }
+
+  /**
+   * Include raw SQL parameter values in diagnostic messages.
+   * By default parameters are masked as :p0, :p1, … to prevent PII leakage.
+   * Call this only in non-production environments.
+   * Mirrors EF Core's `optionsBuilder.EnableSensitiveDataLogging()`.
+   */
+  enableSensitiveDataLogging(): this {
+    this._sensitiveDataEnabled = true;
+    return this;
+  }
+
+  /**
+   * Append full stack traces to error diagnostic messages.
+   * Mirrors EF Core's `optionsBuilder.EnableDetailedErrors()`.
+   */
+  enableDetailedErrors(): this {
+    this._detailedErrors = true;
+    return this;
+  }
+
+  /**
+   * Configure per-event warning routing: escalate to exception, force-log, or suppress.
+   * Mirrors EF Core's `optionsBuilder.ConfigureWarnings(w => w.Throw(...).Log(...))`.
+   *
+   * @example
+   * new DbContextOptionsBuilder({ provider })
+   *   .configureWarnings(w => w
+   *     .throw('relational.multiple-collection-include')
+   *     .log('core.first-without-order-by-and-filter'))
+   *   .build();
+   */
+  configureWarnings(configure: (w: WarningConfigurationBuilder) => void): this {
+    const builder = new WarningConfigurationBuilder();
+    configure(builder);
+    this._warningRoutes = builder.build();
+    return this;
+  }
+
+  /**
    * Produce a DbContextOptions with all accumulated interceptors merged in.
    * Interceptors already present in the base options appear first, preserving
    * any prior registration order.
@@ -129,6 +198,17 @@ export class DbContextOptionsBuilder {
       ...(this._spatialEnabled ? { spatialEnabled: true } : {}),
       ...(this._migrationsDirectory !== undefined
         ? { migrationsDirectory: this._migrationsDirectory }
+        : {}),
+      ...(this._logSink !== undefined
+        ? {
+            logging: {
+              sink: this._logSink,
+              level: this._logLevel,
+              sensitiveDataEnabled: this._sensitiveDataEnabled,
+              detailedErrors: this._detailedErrors,
+              warningRoutes: this._warningRoutes
+            } satisfies DiagnosticConfig
+          }
         : {})
     };
   }
