@@ -1,12 +1,12 @@
 ---
 title: Migration Bundles, Idempotent Scripts, HasPendingModelChanges
 ef_core_api: dotnet ef migrations bundle / dotnet ef migrations script --idempotent / context.Database.HasPendingModelChanges()
-status: not-started
+status: done
 priority: P2
 effort: L
 depends_on: []
 related: [P2-38-sqlite-provider.md, P2-43-db-first-scaffolding.md]
-ts_linq_packages_touched: [@ts-linq/migrations, @ts-linq/orm, @ts-linq/metadata]
+ts_linq_packages_touched: [@ts-linq/migrations, @ts-linq/orm, @ts-linq/core, @ts-linq/cli]
 ---
 
 # Migration Bundles, Idempotent Scripts, HasPendingModelChanges
@@ -98,13 +98,13 @@ Option A — matches the EF Core bundle UX and produces lightweight artifacts.
 
 ## 7. Acceptance criteria
 
-- [ ] CLI `migrations bundle` produces a runnable executable per supported OS
-- [ ] CLI `migrations script --idempotent` emits guarded SQL verified by re-run test
-- [ ] `hasPendingModelChanges` returns true when model drifts
-- [ ] Unit tests for snapshot diff
-- [ ] Integration test: drift detection in CI
-- [ ] Docs in `apps/docs/` updated
-- [ ] No regressions in `pnpm typecheck`, `pnpm arch:deps`, `pnpm arch:cycles`, `pnpm arch:dead`
+- [x] CLI `migrations bundle` produces a runnable executable per supported OS
+- [x] CLI `migrations script --idempotent` emits guarded SQL verified by re-run test
+- [x] `hasPendingModelChanges` returns true when model drifts
+- [x] Unit tests for snapshot diff
+- [x] Integration test: drift detection in CI
+- [x] Docs in `apps/docs/` updated
+- [x] No regressions in `pnpm typecheck`, `pnpm arch:deps`, `pnpm arch:cycles`, `pnpm arch:dead`
 
 ## 8. Pre-PR sweep (mandatory)
 

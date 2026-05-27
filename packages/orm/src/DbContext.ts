@@ -207,7 +207,7 @@ export abstract class DbContext {
     modelBuilder._finalize();
 
     this.initializeDbSets();
-    this._database = new DatabaseFacade(this.buildDbSetContext());
+    this._database = new DatabaseFacade(this.buildDbSetContext(), options.migrationsDirectory);
   }
 
   /**

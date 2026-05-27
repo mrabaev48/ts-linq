@@ -30,14 +30,33 @@ export class MigrationRunner {
 
   /** Ensure the migrations bookkeeping table exists. */
   public async ensureMigrationTableExists(): Promise<void> {
-    const sql = `
-            CREATE TABLE IF NOT EXISTS __migrations (
-                version TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                applied_at TEXT NOT NULL
-            )
-        `;
+    const sql = this.buildEnsureTableSql(this._provider.providerLabel as string);
     await this._provider.executeNonQuery(sql);
+  }
+
+  private buildEnsureTableSql(dialect: string): string {
+    if (dialect === 'mssql') {
+      return `
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = '__migrations')
+BEGIN
+    CREATE TABLE __migrations (
+        version NVARCHAR(50) NOT NULL PRIMARY KEY,
+        name NVARCHAR(255) NOT NULL,
+        applied_at NVARCHAR(50) NOT NULL
+    )
+END`;
+    }
+    // PostgreSQL, MySQL, SQLite — use standard IF NOT EXISTS syntax.
+    // MySQL requires VARCHAR with explicit length for indexed/primary-key columns.
+    const vt = dialect === 'mysql' ? 'VARCHAR(50)' : 'TEXT';
+    const nt = dialect === 'mysql' ? 'VARCHAR(255)' : 'TEXT';
+    const dt = dialect === 'mysql' ? 'VARCHAR(50)' : 'TEXT';
+    return `
+CREATE TABLE IF NOT EXISTS __migrations (
+    version ${vt} PRIMARY KEY,
+    name ${nt} NOT NULL,
+    applied_at ${dt} NOT NULL
+)`;
   }
 
   /** Read the list of applied migrations from the database. */

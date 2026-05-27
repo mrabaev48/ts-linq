@@ -15,7 +15,8 @@
   "dependencies": {
     "@ts-linq/core": "workspace:*",
     "@ts-linq/metadata": "workspace:*",
-    "@ts-linq/types": "workspace:*"
+    "@ts-linq/types": "workspace:*",
+    "esbuild": "^0.28.0"
   },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",

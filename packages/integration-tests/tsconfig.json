@@ -11,7 +11,11 @@
     "types": ["node", "jest"],
     "noEmit": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "@ts-linq/query/internal": ["./node_modules/@ts-linq/query/dist/internal/index.d.ts"]
+    }
   },
   "include": ["tests-new/**/*.ts", "src/**/*.ts"]
 }
