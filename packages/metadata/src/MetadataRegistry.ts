@@ -87,8 +87,8 @@ export class MetadataRegistry {
   private registerEntity(target: Function, tableName?: string): void {
     const key = this.normalizeTarget(target);
     const finalized = this.entities.get(key);
-    if (finalized && tableName) {
-      finalized.tableName = tableName;
+    if (finalized) {
+      if (tableName) finalized.tableName = tableName;
       return;
     }
     const builder = this.getOrCreateBuilder(target);

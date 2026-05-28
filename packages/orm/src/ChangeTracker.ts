@@ -102,7 +102,7 @@ export class ChangeTracker implements EntityAttacher {
       entity,
       entityClass,
       state: EntityState.Modified,
-      originalValues: this.cloneObject(entity)
+      originalValues: this.cloneObject(entity, entityClass)
     };
     this._trackedEntities.set(entity, tracked);
     this.registerInPkMap(tracked);
@@ -132,14 +132,14 @@ export class ChangeTracker implements EntityAttacher {
     const existing = this.findByPk(entity, entityClass);
     if (existing) {
       existing.state = EntityState.Unchanged;
-      existing.originalValues = this.cloneObject(existing.entity);
+      existing.originalValues = this.cloneObject(existing.entity, entityClass);
       return;
     }
     const tracked: TrackedEntity = {
       entity,
       entityClass,
       state: EntityState.Unchanged,
-      originalValues: this.cloneObject(entity)
+      originalValues: this.cloneObject(entity, entityClass)
     };
     this._trackedEntities.set(entity, tracked);
     this.registerInPkMap(tracked);
@@ -166,7 +166,7 @@ export class ChangeTracker implements EntityAttacher {
         this.unregisterFromPkMap(tracked);
       } else {
         tracked.state = EntityState.Unchanged;
-        tracked.originalValues = this.cloneObject(tracked.entity);
+        tracked.originalValues = this.cloneObject(tracked.entity, tracked.entityClass);
       }
     }
   }
@@ -181,20 +181,59 @@ export class ChangeTracker implements EntityAttacher {
    * Scan all Unchanged tracked entities and mark them Modified when their
    * current state differs from the stored `originalValues`.
    * Called automatically by `DbContext.saveChanges()`.
+   * Uses ValueComparer.equals for properties that have a comparer configured.
    */
   public detectChanges(): void {
     for (const tracked of this._trackedEntities.values()) {
       if (tracked.state === EntityState.Unchanged && tracked.originalValues) {
-        if (!this.areObjectsEqual(tracked.entity, tracked.originalValues)) {
+        if (this.hasChanged(tracked.entity, tracked.originalValues, tracked.entityClass)) {
           tracked.state = EntityState.Modified;
         }
       }
     }
   }
 
+  private hasChanged(entity: object, original: object, entityClass: Function): boolean {
+    const meta = this._registry.getEntity(entityClass);
+    if (!meta) return !this.areObjectsEqual(entity, original);
+
+    const rec = entity as Record<string, unknown>;
+    const orig = original as Record<string, unknown>;
+
+    for (const col of meta.columns) {
+      const current = rec[col.propertyName];
+      const prev = orig[col.propertyName];
+      if (col.comparer) {
+        if (!col.comparer.equals(current, prev)) return true;
+      } else {
+        if (!this.areObjectsEqual(current, prev)) return true;
+      }
+    }
+    return false;
+  }
+
   // ─── Cloning & equality ───────────────────────────────────────────────────
 
-  private cloneObject<T>(obj: T): T {
+  private cloneObject<T>(obj: T, entityClass?: Function): T {
+    const meta = entityClass ? this._registry.getEntity(entityClass) : undefined;
+    if (meta) {
+      // Use comparer.snapshot for columns that have one, structuredClone for the rest
+      const cloned = this.baseClone(obj);
+      const rec = cloned as Record<string, unknown>;
+      for (const col of meta.columns) {
+        if (col.comparer) {
+          const val = (obj as Record<string, unknown>)[col.propertyName];
+          if (val !== undefined && val !== null) {
+            rec[col.propertyName] = col.comparer.snapshot(val);
+          }
+        }
+      }
+      return cloned;
+    }
+    return this.baseClone(obj);
+  }
+
+  private baseClone<T>(obj: T): T {
     if (typeof structuredClone === 'function') {
       return structuredClone(obj);
     }
