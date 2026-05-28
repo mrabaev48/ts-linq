@@ -246,7 +246,7 @@ whose `depends_on` points into the current step.
 | Task | Title | Unblocked by | Status |
 |------|-------|--------------|--------|
 | P0-04 | ExecuteUpdate / ExecuteDelete | P0-03 | ✅ done |
-| P0-05 | Value converters | P0-01 |
+| P0-05 | Value converters | P0-01 | ✅ done |
 | P0-06 | Owned entity types | P0-01 |
 | P0-07 | Inheritance — TPH/TPT/TPC | P0-01 |
 | P0-08 | Many-to-many skip navigations | P0-01 |
