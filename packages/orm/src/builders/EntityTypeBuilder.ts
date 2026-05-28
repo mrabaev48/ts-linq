@@ -3,9 +3,24 @@ import type { ColumnMetadata, IndexMetadata, RelationshipMetadata } from '@ts-li
 
 import { CollectionNavigationBuilder } from './CollectionNavigationBuilder';
 import { IndexBuilder } from './IndexBuilder';
+import { OwnedNavigationBuilder } from './OwnedNavigationBuilder';
 import { PropertyBuilder } from './PropertyBuilder';
 import { ReferenceNavigationBuilder } from './ReferenceNavigationBuilder';
 import { extractPropertyName } from './utils';
+
+function resolveOwnedArgs<TOwned, TOwner>(
+  ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<TOwner, TOwned>) => void),
+  configure?: (b: OwnedNavigationBuilder<TOwner, TOwned>) => void
+): [new () => TOwned, ((b: OwnedNavigationBuilder<TOwner, TOwned>) => void) | undefined] {
+  // Arrow functions have undefined prototype; class constructors have an object prototype.
+  if (typeof ownedCtorOrConfigure === 'function' && ownedCtorOrConfigure.prototype !== undefined) {
+    return [ownedCtorOrConfigure as new () => TOwned, configure];
+  }
+  return [
+    Object as unknown as new () => TOwned,
+    ownedCtorOrConfigure as ((b: OwnedNavigationBuilder<TOwner, TOwned>) => void) | undefined
+  ];
+}
 
 /**
  * Fluent builder for configuring a single entity type.
@@ -24,6 +39,8 @@ export class EntityTypeBuilder<T> {
   private readonly _indexes: IndexMetadata[] = [];
   private _isTemporal?: boolean;
   private _historyTableName?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly _ownedBuilders: OwnedNavigationBuilder<T, any>[] = [];
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -71,6 +88,42 @@ export class EntityTypeBuilder<T> {
 
   hasIndex<K extends keyof T>(...keys: K[]): IndexBuilder<T> {
     return new IndexBuilder<T>(this._ctor, keys as string[], this._indexes);
+  }
+
+  ownsOne<TOwned>(
+    selector: (e: T) => TOwned | undefined,
+    ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<T, TOwned>) => void),
+    configure?: (b: OwnedNavigationBuilder<T, TOwned>) => void
+  ): OwnedNavigationBuilder<T, TOwned> {
+    const propName = extractPropertyName(selector);
+    const [resolvedCtor, resolvedConfigure] = resolveOwnedArgs(ownedCtorOrConfigure, configure);
+    const builder = new OwnedNavigationBuilder<T, TOwned>(
+      this._ctor,
+      resolvedCtor as new () => TOwned,
+      propName,
+      false
+    );
+    resolvedConfigure?.(builder);
+    this._ownedBuilders.push(builder);
+    return builder;
+  }
+
+  ownsMany<TOwned>(
+    selector: (e: T) => TOwned[],
+    ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<T, TOwned>) => void),
+    configure?: (b: OwnedNavigationBuilder<T, TOwned>) => void
+  ): OwnedNavigationBuilder<T, TOwned> {
+    const propName = extractPropertyName(selector);
+    const [resolvedCtor, resolvedConfigure] = resolveOwnedArgs(ownedCtorOrConfigure, configure);
+    const builder = new OwnedNavigationBuilder<T, TOwned>(
+      this._ctor,
+      resolvedCtor as new () => TOwned,
+      propName,
+      true
+    );
+    resolvedConfigure?.(builder);
+    this._ownedBuilders.push(builder);
+    return builder;
   }
 
   /**
@@ -123,6 +176,10 @@ export class EntityTypeBuilder<T> {
 
     if (this._isTemporal !== undefined) {
       registry.mergeFluentTemporal(this._ctor, this._isTemporal, this._historyTableName);
+    }
+
+    for (const ob of this._ownedBuilders) {
+      registry.addOwnedEntity(this._ctor, ob._buildMetadata());
     }
   }
 }

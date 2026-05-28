@@ -15,7 +15,13 @@ export * from './resolveEntityRef';
 export * from './ValidIf';
 export * from './ValueComparer';
 export * from './ValueConverter';
-export { DeleteBehavior, type ValueComparerLike, type ValueConverterLike } from '@ts-linq/types';
+export {
+  DeleteBehavior,
+  type OwnedEntityMetadata,
+  StorageStrategy,
+  type ValueComparerLike,
+  type ValueConverterLike
+} from '@ts-linq/types';
 
 import { MetadataRegistry } from './MetadataRegistry';
 

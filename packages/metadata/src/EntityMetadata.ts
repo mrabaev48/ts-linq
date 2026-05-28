@@ -2,6 +2,7 @@ import type {
   ColumnMetadata,
   EntityMetadata,
   IndexMetadata,
+  OwnedEntityMetadata,
   RelationshipMetadata,
   ValidationRule
 } from '@ts-linq/types';
@@ -12,7 +13,7 @@ import type {
  * primary keys, relationships, and indexes for an entity class.
  */
 export class EntityMetadataBuilder {
-  private metadata: Partial<EntityMetadata>;
+  private metadata: Partial<EntityMetadata> & { ownedEntities?: OwnedEntityMetadata[] };
 
   /**
    * Create a metadata builder for a specific entity constructor.
@@ -147,6 +148,12 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  public addOwnedEntity(owned: OwnedEntityMetadata): this {
+    this.metadata.ownedEntities = this.metadata.ownedEntities || [];
+    this.metadata.ownedEntities.push(owned);
+    return this;
+  }
+
   /**
    * Finalize and return the constructed `EntityMetadata` object.
    */
@@ -167,6 +174,9 @@ export class EntityMetadataBuilder {
       ...(this.metadata.isTemporal !== undefined ? { isTemporal: this.metadata.isTemporal } : {}),
       ...(this.metadata.historyTableName !== undefined
         ? { historyTableName: this.metadata.historyTableName }
+        : {}),
+      ...(this.metadata.ownedEntities !== undefined && this.metadata.ownedEntities.length > 0
+        ? { ownedEntities: this.metadata.ownedEntities }
         : {})
     };
   }
