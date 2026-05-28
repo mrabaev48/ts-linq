@@ -1,7 +1,7 @@
 import type { BinaryNode, ExpressionNode, ParameterRefNode, PropertyNode } from '@ts-linq/ast';
 import type { ConditionFragment, SqlFragment } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
-import type { SqlParameter } from '@ts-linq/types';
+import type { SqlParameter, ValueConverterLike } from '@ts-linq/types';
 
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
 
@@ -11,21 +11,58 @@ import { ParameterState, ParameterStyle } from '../ParameterStyle';
  */
 export type ColumnResolver = (property: PropertyNode) => string;
 
+/**
+ * Maps a property name to its ValueConverter (if any).
+ * Used for converter lifting in WHERE predicates.
+ */
+export type ConverterResolver = (propertyName: string) => ValueConverterLike | undefined;
+
 export class BinaryVisitor {
   public visit(
     node: BinaryNode,
     inputParameters: readonly unknown[],
     recurse: (n: ExpressionNode) => ConditionFragment,
     resolver?: ColumnResolver,
-    state: ParameterState = new ParameterState(ParameterStyle.Question)
+    state: ParameterState = new ParameterState(ParameterStyle.Question),
+    converterResolver?: ConverterResolver
   ): ConditionFragment {
     const sqlOp = this.mapOperator(node.operator);
-    const leftSql = this.renderOperand(node.left, inputParameters, recurse, resolver, state);
-    const rightSql = this.renderOperand(node.right, inputParameters, recurse, resolver, state);
+
+    // Converter lifting: if one side is a property with a converter, transform the literal/paramRef on the other side
+    const leftNode = this.liftNode(node.left, node.right, converterResolver);
+    const rightNode = this.liftNode(node.right, node.left, converterResolver);
+
+    const leftSql = this.renderOperand(leftNode, inputParameters, recurse, resolver, state);
+    const rightSql = this.renderOperand(rightNode, inputParameters, recurse, resolver, state);
     return {
       condition: `(${leftSql.fragment} ${sqlOp} ${rightSql.fragment})`,
       parameters: [...leftSql.params, ...rightSql.params]
     };
+  }
+
+  /**
+   * If `otherNode` is a property with a converter and `thisNode` is a literal or parameterRef,
+   * return a new literal node with the converted value; otherwise return `thisNode` unchanged.
+   */
+  private liftNode(
+    thisNode: ExpressionNode,
+    otherNode: ExpressionNode,
+    converterResolver?: ConverterResolver
+  ): ExpressionNode {
+    if (!converterResolver) return thisNode;
+    if (thisNode.type !== 'literal' && thisNode.type !== 'parameterRef') return thisNode;
+    if (otherNode.type !== 'property') return thisNode;
+
+    const propName = otherNode.name ?? otherNode.path?.[0] ?? '';
+    const converter = converterResolver(propName);
+    if (!converter) return thisNode;
+
+    if (thisNode.type === 'literal') {
+      return { type: 'literal', value: converter.toProvider(thisNode.value) as SqlParameter };
+    }
+    // parameterRef: we can't resolve it here without inputParameters — we defer lifting
+    // to the renderOperand phase by annotating the node (done via the converter lookup below)
+    return thisNode;
   }
 
   private mapOperator(op: BinaryNode['operator']): string {

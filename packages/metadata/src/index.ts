@@ -1,3 +1,7 @@
+export * from './builtins/BoolToZeroOneConverter';
+export * from './builtins/DateOnlyToStringConverter';
+export * from './builtins/EnumToNumberConverter';
+export * from './builtins/EnumToStringConverter';
 export * from './Column';
 export * from './Entity';
 export * from './EntityMetadata';
@@ -9,7 +13,9 @@ export { reflectGetOwnMetadata } from './reflectUtils';
 export * from './Relationships';
 export * from './resolveEntityRef';
 export * from './ValidIf';
-export { DeleteBehavior } from '@ts-linq/types';
+export * from './ValueComparer';
+export * from './ValueConverter';
+export { DeleteBehavior, type ValueComparerLike, type ValueConverterLike } from '@ts-linq/types';
 
 import { MetadataRegistry } from './MetadataRegistry';
 

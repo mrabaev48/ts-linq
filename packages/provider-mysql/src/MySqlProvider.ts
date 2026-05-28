@@ -471,9 +471,10 @@ export class MySqlProvider extends DatabaseProvider {
     if (metadata) {
       for (const column of metadata.columns) {
         if (Object.prototype.hasOwnProperty.call(row as object, column.columnName)) {
-          (entity as Record<string, unknown>)[column.propertyName] = (
-            row as Record<string, unknown>
-          )[column.columnName];
+          const rawVal = (row as Record<string, unknown>)[column.columnName];
+          (entity as Record<string, unknown>)[column.propertyName] = column.converter
+            ? column.converter.fromProvider(rawVal)
+            : rawVal;
         }
       }
     } else {

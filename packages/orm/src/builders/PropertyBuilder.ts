@@ -1,4 +1,4 @@
-import type { ColumnMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, ValueComparerLike, ValueConverterLike } from '@ts-linq/types';
 
 export class PropertyBuilder<TValue> {
   private readonly _col: ColumnMetadata;
@@ -56,6 +56,46 @@ export class PropertyBuilder<TValue> {
 
   isUnique(unique = true): this {
     this._col.unique = unique;
+    return this;
+  }
+
+  /**
+   * Configures a value converter for this property.
+   * Mirrors EF Core's PropertyBuilder.HasConversion().
+   *
+   * Overload 1: pass a pre-built ValueConverterLike instance with optional comparer.
+   * Overload 2: pass explicit toProvider/fromProvider functions with optional comparer.
+   */
+  hasConversion<TProvider>(
+    converter: ValueConverterLike<TValue, TProvider>,
+    comparer?: ValueComparerLike<TValue>
+  ): this;
+  hasConversion<TProvider>(
+    toProvider: (v: TValue) => TProvider,
+    fromProvider: (v: TProvider) => TValue,
+    comparer?: ValueComparerLike<TValue>
+  ): this;
+  hasConversion<TProvider>(
+    converterOrToProvider: ValueConverterLike<TValue, TProvider> | ((v: TValue) => TProvider),
+    fromProviderOrComparer?: ((v: TProvider) => TValue) | ValueComparerLike<TValue>,
+    comparer?: ValueComparerLike<TValue>
+  ): this {
+    if (typeof converterOrToProvider === 'function') {
+      const fromProvider = fromProviderOrComparer as (v: TProvider) => TValue;
+      if (!fromProvider)
+        throw new Error('fromProvider is required when passing toProvider as a function');
+      this._col.converter = {
+        toProvider: converterOrToProvider as (v: unknown) => unknown,
+        fromProvider: fromProvider as (v: unknown) => unknown
+      };
+      if (comparer !== undefined) this._col.comparer = comparer as ValueComparerLike;
+    } else {
+      this._col.converter = converterOrToProvider as ValueConverterLike;
+      if (fromProviderOrComparer !== undefined && typeof fromProviderOrComparer !== 'function') {
+        this._col.comparer = fromProviderOrComparer as ValueComparerLike;
+      }
+      if (comparer !== undefined) this._col.comparer = comparer as ValueComparerLike;
+    }
     return this;
   }
 }

@@ -70,10 +70,10 @@ export class PostgresProvider extends DatabaseProvider {
     if (meta) {
       for (const col of meta.columns) {
         if (Object.prototype.hasOwnProperty.call(row as object, col.columnName)) {
-          (entity as Record<string, unknown>)[col.propertyName] = convertValueFromPg(
-            (row as Record<string, unknown>)[col.columnName],
-            col.type
-          );
+          const rawVal = (row as Record<string, unknown>)[col.columnName];
+          (entity as Record<string, unknown>)[col.propertyName] = col.converter
+            ? col.converter.fromProvider(rawVal)
+            : convertValueFromPg(rawVal, col.type);
         }
       }
     } else {

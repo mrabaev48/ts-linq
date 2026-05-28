@@ -63,7 +63,14 @@ export class RowMaterializer<T> {
 
   private materializeEntity(
     row: unknown,
-    metadata: { columns: Array<{ propertyName: string; columnName: string; type: string }> } | null
+    metadata: {
+      columns: Array<{
+        propertyName: string;
+        columnName: string;
+        type: string;
+        converter?: { fromProvider(v: unknown): unknown };
+      }>;
+    } | null
   ): T {
     const entity = new this.entityClass();
     if (metadata) {
@@ -73,10 +80,10 @@ export class RowMaterializer<T> {
           ? r[column.columnName]
           : r[column.propertyName];
         if (val !== undefined) {
-          (entity as unknown as Record<string, unknown>)[column.propertyName] = this.convertValue(
-            val,
-            column.type
-          );
+          const converted = column.converter
+            ? column.converter.fromProvider(val)
+            : this.convertValue(val, column.type);
+          (entity as unknown as Record<string, unknown>)[column.propertyName] = converted;
         }
       }
     } else {
