@@ -203,7 +203,7 @@ export class PostgresDialect implements SqlDialect {
     const names = cols.map((c) => `"${c.columnName}"`);
     const placeholders = cols.map((_, i) => `$${i + 1}`);
     const parameters: SqlParameter[] = cols.map((c) =>
-      this.coerceParameter(entity[c.propertyName])
+      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
     const sql = `INSERT INTO "${metadata.tableName}" (${names.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
     return { sql, parameters };
@@ -225,7 +225,7 @@ export class PostgresDialect implements SqlDialect {
 
     const sets = setCols.map((c, i) => `"${c.columnName}" = $${i + 1}`);
     const parameters: SqlParameter[] = setCols.map((c) =>
-      this.coerceParameter(entity[c.propertyName])
+      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
 
     if (versionCol) {
@@ -236,14 +236,19 @@ export class PostgresDialect implements SqlDialect {
       (pk, i) =>
         `"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${setCols.length + i + 1}`
     );
-    const whereVals: SqlParameter[] = primaryKeys.map((pk) => this.coerceParameter(entity[pk]));
+    const whereVals: SqlParameter[] = primaryKeys.map((pk) => {
+      const col = metadata.columns.find((c) => c.propertyName === pk);
+      return this.coerceParameter(col ? this.applyConverter(entity[pk], col) : entity[pk]);
+    });
     parameters.push(...whereVals);
 
     let sql = `UPDATE "${metadata.tableName}" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
 
     if (versionCol) {
       sql += ` AND "${versionCol.columnName}" = $${parameters.length + 1}`;
-      parameters.push(this.coerceParameter(entity[versionCol.propertyName]));
+      parameters.push(
+        this.coerceParameter(this.applyConverter(entity[versionCol.propertyName], versionCol))
+      );
     }
 
     return { sql, parameters };
@@ -302,6 +307,10 @@ export class PostgresDialect implements SqlDialect {
 
     sql = this.numberPlaceholders(sql, params.length);
     return { sql, parameters: params };
+  }
+
+  private applyConverter(value: unknown, col: ColumnMetadata): unknown {
+    return col.converter ? col.converter.toProvider(value) : value;
   }
 
   private coerceParameter(value: unknown): SqlParameter {

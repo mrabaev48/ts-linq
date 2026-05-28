@@ -141,7 +141,7 @@ export class MssqlDialect implements SqlDialect {
     const columnNames = insertable.map((c) => c.columnName);
     const placeholders = insertable.map(() => '?');
     const parameters: SqlParameter[] = insertable.map((c) =>
-      this.coerceParameter(entity[c.propertyName])
+      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
 
     const firstPk = metadata.primaryKeys?.[0];
@@ -182,7 +182,7 @@ export class MssqlDialect implements SqlDialect {
 
     const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
     const setParams: SqlParameter[] = updatable.map((c) =>
-      this.coerceParameter(entity[c.propertyName])
+      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
 
     if (versionCol) {
@@ -194,12 +194,14 @@ export class MssqlDialect implements SqlDialect {
     for (const pk of primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${col.columnName} = ?`);
-      whereParams.push(this.coerceParameter(entity[pk]));
+      whereParams.push(this.coerceParameter(this.applyConverter(entity[pk], col)));
     }
 
     if (versionCol) {
       whereClauses.push(`${versionCol.columnName} = ?`);
-      whereParams.push(this.coerceParameter(entity[versionCol.propertyName]));
+      whereParams.push(
+        this.coerceParameter(this.applyConverter(entity[versionCol.propertyName], versionCol))
+      );
     }
 
     let sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
@@ -271,6 +273,10 @@ export class MssqlDialect implements SqlDialect {
 
     sql = this.numberPlaceholders(sql, params.length);
     return { sql, parameters: params };
+  }
+
+  private applyConverter(value: unknown, col: ColumnMetadata): unknown {
+    return col.converter ? col.converter.toProvider(value) : value;
   }
 
   private coerceParameter(value: unknown): SqlParameter {

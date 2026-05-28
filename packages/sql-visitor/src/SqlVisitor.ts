@@ -4,7 +4,11 @@ import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { HierarchyIdTranslator, SpatialTranslator } from '@ts-linq/types';
 
 import { ParameterState, ParameterStyle } from './ParameterStyle';
-import { BinaryVisitor, type ColumnResolver } from './visitors/BinaryVisitor';
+import {
+  BinaryVisitor,
+  type ColumnResolver,
+  type ConverterResolver
+} from './visitors/BinaryVisitor';
 import { HierarchyMethodVisitor } from './visitors/HierarchyMethodVisitor';
 import { InVisitor } from './visitors/InVisitor';
 import { LogicalVisitor } from './visitors/LogicalVisitor';
@@ -16,6 +20,8 @@ import { UnaryVisitor } from './visitors/UnaryVisitor';
 export interface SqlVisitorOptions {
   spatialTranslator?: SpatialTranslator;
   hierarchyTranslator?: HierarchyIdTranslator;
+  /** Resolves property names to their ValueConverter for predicate lifting. */
+  converterResolver?: ConverterResolver;
 }
 
 /**
@@ -32,6 +38,9 @@ export interface SqlVisitorOptions {
  *
  * Pass `options.spatialTranslator` to enable spatial method translation
  * (distance, intersects, within, buffer, area, length, contains).
+ *
+ * Pass `options.converterResolver` to enable converter lifting in WHERE predicates —
+ * literal values compared against a converted property are automatically transformed.
  */
 export class SqlVisitor {
   private readonly binary = new BinaryVisitor();
@@ -40,6 +49,7 @@ export class SqlVisitor {
   private readonly nullV = new NullVisitor();
   private readonly inV = new InVisitor();
   private readonly method: MethodVisitor;
+  private readonly converterResolver?: ConverterResolver;
 
   constructor(
     private readonly parameterStyle: ParameterStyle = ParameterStyle.Question,
@@ -52,6 +62,7 @@ export class SqlVisitor {
       ? new HierarchyMethodVisitor(options.hierarchyTranslator)
       : undefined;
     this.method = new MethodVisitor(spatialVisitor, hierarchyVisitor);
+    this.converterResolver = options?.converterResolver;
   }
 
   public toSql(
@@ -73,7 +84,14 @@ export class SqlVisitor {
 
     switch (node.type) {
       case 'binary':
-        return this.binary.visit(node, inputParameters, recurse, resolver, state);
+        return this.binary.visit(
+          node,
+          inputParameters,
+          recurse,
+          resolver,
+          state,
+          this.converterResolver
+        );
       case 'logical':
         return this.logical.visit(node, recurse);
       case 'not':

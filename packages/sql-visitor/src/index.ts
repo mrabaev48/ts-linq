@@ -2,7 +2,7 @@ export { buildQuestionMarkRows, calcChunkSize, chunkArray } from './batch-emitte
 export { emitTagComments } from './emit-tags';
 export { ParameterState, ParameterStyle } from './ParameterStyle';
 export { SqlVisitor, type SqlVisitorOptions } from './SqlVisitor';
-export type { ColumnResolver } from './visitors/BinaryVisitor';
+export type { ColumnResolver, ConverterResolver } from './visitors/BinaryVisitor';
 export { BinaryVisitor, renderPropertyName, resolveParameterRef } from './visitors/BinaryVisitor';
 export { HierarchyMethodVisitor, isHierarchyMethod } from './visitors/HierarchyMethodVisitor';
 export { InVisitor } from './visitors/InVisitor';

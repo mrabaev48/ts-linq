@@ -616,6 +616,17 @@ export type ColumnType =
   | 'TIMESTAMP'
   | string;
 
+export interface ValueConverterLike<TModel = unknown, TProvider = unknown> {
+  toProvider(v: TModel): TProvider;
+  fromProvider(v: TProvider): TModel;
+}
+
+export interface ValueComparerLike<T = unknown> {
+  equals(a: T, b: T): boolean;
+  hash(v: T): number;
+  snapshot(v: T): T;
+}
+
 export interface ColumnMetadata {
   propertyName: string;
   columnName: string;
@@ -636,6 +647,8 @@ export interface ColumnMetadata {
   isComputed?: boolean;
   version?: boolean;
   isVersion?: boolean;
+  converter?: ValueConverterLike;
+  comparer?: ValueComparerLike;
 }
 
 export enum DeleteBehavior {
