@@ -26,13 +26,13 @@ class EuUser {
   @Column()
   name!: string;
 
-  @Column({ columnName: 'is_locked' })
+  @Column({ name: 'is_locked' })
   isLocked!: boolean;
 
-  @Column({ columnName: 'login_count' })
+  @Column({ name: 'login_count' })
   loginCount!: number;
 
-  @Column({ columnName: 'display_name' })
+  @Column({ name: 'display_name' })
   displayName!: string;
 }
 
@@ -41,7 +41,7 @@ class EuLog {
   @PrimaryKey({ autoIncrement: true })
   id!: number;
 
-  @Column({ columnName: 'created_at' })
+  @Column({ name: 'created_at' })
   createdAt!: Date;
 
   @Column()
@@ -124,11 +124,16 @@ describe('ExecuteUpdate / ExecuteDelete — integration (P0-04)', () => {
       const { ctx } = makeCtx();
       await ctx.ensureCreated();
 
-      // Manually trigger include-then-executeDelete — include resolves a relation key;
-      // since there is no 'posts' relation on EuLog, we directly push to _includes
-      // by first calling where() to get a Queryable and then mutating it.
+      // Simulate include()-then-executeDelete: since EuLog has no actual
+      // relationships we cannot call include() directly, so we get a Queryable
+      // via a valid whereCompiled call and then push a fake entry into _includes.
       const q = ctx.logs.whereCompiled({
-        ast: { type: 'literal', value: true },
+        ast: {
+          type: 'binary',
+          operator: '==',
+          left: { type: 'property', name: 'id' },
+          right: { type: 'literal', value: 0 }
+        },
         parameters: []
       });
       (q as unknown as { _includes: string[] })._includes.push('fake');
@@ -244,8 +249,15 @@ describe('ExecuteUpdate / ExecuteDelete — integration (P0-04)', () => {
       const { ctx } = makeCtx();
       await ctx.ensureCreated();
 
+      // Same pattern: get a Queryable via a valid whereCompiled, then push a
+      // fake entry into _includes to simulate include()-before-executeUpdate.
       const q = ctx.users.whereCompiled({
-        ast: { type: 'literal', value: true },
+        ast: {
+          type: 'binary',
+          operator: '==',
+          left: { type: 'property', name: 'id' },
+          right: { type: 'literal', value: 0 }
+        },
         parameters: []
       });
       (q as unknown as { _includes: string[] })._includes.push('fake');
