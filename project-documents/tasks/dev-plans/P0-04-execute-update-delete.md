@@ -1,7 +1,7 @@
 ---
 title: ExecuteUpdate and ExecuteDelete — bulk updates without materialization
 ef_core_api: IQueryable<T>.ExecuteUpdate(setters => setters.SetProperty(e => e.Prop, value)) / IQueryable<T>.ExecuteDelete() + async variants
-status: not-started
+status: done
 priority: P0
 effort: L
 depends_on: [P0-03]
