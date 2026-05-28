@@ -87,6 +87,9 @@ export * from './spatial';
 // HierarchyId type
 export * from './hierarchy';
 
+// Owned entity hydration utilities
+export * from './OwnedEntityHydrator';
+
 // Interceptors
 export type { IDbCommandInterceptor } from './interceptors/IDbCommandInterceptor';
 export type { IDbConnectionInterceptor } from './interceptors/IDbConnectionInterceptor';

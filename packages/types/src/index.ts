@@ -699,6 +699,24 @@ export interface ValidationRule {
   messageParams?: Record<string, unknown>;
 }
 
+export enum StorageStrategy {
+  TableSplit = 'TableSplit',
+  SeparateTable = 'SeparateTable',
+  Json = 'Json'
+}
+
+export interface OwnedEntityMetadata {
+  ownerPropertyName: string;
+  ownedType: Function;
+  strategy: StorageStrategy;
+  columnPrefix?: string;
+  jsonColumnName?: string;
+  foreignKeyColumns?: string[];
+  principalKeyColumns?: string[];
+  compositeKeyColumns?: string[];
+  isCollection: boolean;
+}
+
 export interface EntityMetadata {
   target?: Function;
   className?: string;
@@ -715,6 +733,7 @@ export interface EntityMetadata {
   isTemporal?: boolean;
   /** Custom history table name (default: `tableName + 'History'`). */
   historyTableName?: string;
+  ownedEntities?: OwnedEntityMetadata[];
 }
 
 // Entity cache interface

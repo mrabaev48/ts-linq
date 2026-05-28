@@ -3,6 +3,7 @@ export { CollectionReferenceBuilder } from './CollectionReferenceBuilder';
 export { EntityTypeBuilder } from './EntityTypeBuilder';
 export type { IEntityTypeConfiguration } from './IEntityTypeConfiguration';
 export { IndexBuilder } from './IndexBuilder';
+export { OwnedNavigationBuilder } from './OwnedNavigationBuilder';
 export { PropertiesConfigBuilder } from './PropertiesConfigBuilder';
 export { PropertyBuilder } from './PropertyBuilder';
 export { ReferenceCollectionBuilder } from './ReferenceCollectionBuilder';

@@ -29,7 +29,7 @@ Blocks EF parity baseline. Required before any non-trivial EF Core → ts-linq m
 | P0-03 | [FromSql / FromSqlInterpolated](./P0-03-from-sql-interpolated.md)           | `FromSql`, `FromSqlRaw`, `FromSqlInterpolated`, `SqlQuery`, `Database.ExecuteSqlInterpolated`                     | - [x]  | M      | —          |
 | P0-04 | [ExecuteUpdate / ExecuteDelete](./P0-04-execute-update-delete.md)           | `ExecuteUpdate(SetProperty...)`, `ExecuteDelete` + async                                                          | ✅     | L      | P0-03      |
 | P0-05 | [Value converters](./P0-05-value-converters.md)                             | `HasConversion`, `ValueConverter<T,U>`, `ValueComparer`, bulk `Properties<T>().HaveConversion`                    | ✅      | M      | P0-01      |
-| P0-06 | [Owned entity types](./P0-06-owned-entity-types.md)                         | `OwnsOne`, `OwnsMany`, table splitting, `ToJson()`                                                                | - [ ]  | L      | P0-01      |
+| P0-06 | [Owned entity types](./P0-06-owned-entity-types.md)                         | `OwnsOne`, `OwnsMany`, table splitting, `ToJson()`                                                                | ✅      | L      | P0-01      |
 | P0-07 | [Inheritance — TPH/TPT/TPC](./P0-07-inheritance-tph-tpt-tpc.md)             | `HasDiscriminator`, `UseTptMappingStrategy`, `UseTpcMappingStrategy`                                              | - [ ]  | L      | P0-01      |
 | P0-08 | [Many-to-many skip navigations](./P0-08-many-to-many-skip-navigations.md)   | `HasMany().WithMany()`, `UsingEntity<T>`                                                                          | - [ ]  | M      | P0-01      |
 | P0-09 | [Cascade delete behaviors](./P0-09-cascade-delete-behaviors.md)             | `OnDelete(DeleteBehavior.{Cascade,Restrict,SetNull,ClientSetNull,NoAction,ClientCascade,ClientNoAction})`         | - [ ]  | M      | P0-01      |
@@ -191,7 +191,7 @@ flowchart LR
 
 ## 5. Progress
 
-`16 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure done)
+`17 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure done)
 
 Update this number when a task moves to `status: done`.
 
@@ -247,7 +247,7 @@ whose `depends_on` points into the current step.
 |------|-------|--------------|--------|
 | P0-04 | ExecuteUpdate / ExecuteDelete | P0-03 | ✅ done |
 | P0-05 | Value converters | P0-01 | ✅ done |
-| P0-06 | Owned entity types | P0-01 |
+| P0-06 | Owned entity types | P0-01 | ✅ done |
 | P0-07 | Inheritance — TPH/TPT/TPC | P0-01 |
 | P0-08 | Many-to-many skip navigations | P0-01 |
 | P0-09 | Cascade delete behaviors | P0-01 |
