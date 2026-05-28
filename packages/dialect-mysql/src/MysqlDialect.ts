@@ -130,7 +130,7 @@ export class MysqlDialect implements SqlDialect {
     const names = insertable.map((c) => c.columnName);
     const placeholders = insertable.map(() => '?');
     const parameters: SqlParameter[] = insertable.map((c) =>
-      this.coerceParameter(entity[c.propertyName])
+      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
     return {
       sql: `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
@@ -152,7 +152,7 @@ export class MysqlDialect implements SqlDialect {
     );
     const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
     const setParams: SqlParameter[] = updatable.map((c) =>
-      this.coerceParameter(entity[c.propertyName])
+      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
     if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
     const whereClauses: string[] = [];
@@ -160,11 +160,13 @@ export class MysqlDialect implements SqlDialect {
     for (const pk of primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${col.columnName} = ?`);
-      whereParams.push(this.coerceParameter(entity[pk]));
+      whereParams.push(this.coerceParameter(this.applyConverter(entity[pk], col)));
     }
     if (versionCol) {
       whereClauses.push(`${versionCol.columnName} = ?`);
-      whereParams.push(this.coerceParameter(entity[versionCol.propertyName]));
+      whereParams.push(
+        this.coerceParameter(this.applyConverter(entity[versionCol.propertyName], versionCol))
+      );
     }
     const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, parameters: [...setParams, ...whereParams] };
@@ -221,6 +223,10 @@ export class MysqlDialect implements SqlDialect {
     }
 
     return { sql, parameters: params };
+  }
+
+  private applyConverter(value: unknown, col: ColumnMetadata): unknown {
+    return col.converter ? col.converter.toProvider(value) : value;
   }
 
   private coerceParameter(value: unknown): SqlParameter {

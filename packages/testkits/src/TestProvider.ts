@@ -213,7 +213,8 @@ export class TestProvider extends DatabaseProvider {
     const entityRecord = entity as unknown as Record<string, unknown>;
     for (const col of meta.columns) {
       const val = entityRecord[col.propertyName];
-      if (val !== undefined) rec[col.columnName] = val;
+      if (val !== undefined)
+        rec[col.columnName] = col.converter ? col.converter.toProvider(val) : val;
     }
     for (const [k, v] of Object.entries(entityRecord)) {
       if (rec[k] === undefined) rec[k] = v;
@@ -269,7 +270,8 @@ export class TestProvider extends DatabaseProvider {
       for (const col of meta.columns) {
         if (col.propertyName === pk) continue;
         const val = entityRecord[col.propertyName];
-        if (val !== undefined) row[col.columnName] = val;
+        if (val !== undefined)
+          row[col.columnName] = col.converter ? col.converter.toProvider(val) : val;
       }
     }
     await this.afterExecute(sql, [], 1);
@@ -330,7 +332,10 @@ export class TestProvider extends DatabaseProvider {
     if (!rec) return null;
     const instance = new entityClass();
     for (const col of meta.columns) {
-      (instance as Record<string, unknown>)[col.propertyName] = rec[col.columnName];
+      const rawVal = rec[col.columnName];
+      (instance as Record<string, unknown>)[col.propertyName] = col.converter
+        ? col.converter.fromProvider(rawVal)
+        : rawVal;
     }
     return instance;
   }
@@ -354,7 +359,10 @@ export class TestProvider extends DatabaseProvider {
       const instance = new entityClass();
       if (meta) {
         for (const col of meta.columns) {
-          (instance as Record<string, unknown>)[col.propertyName] = rec[col.columnName];
+          const rawVal = rec[col.columnName];
+          (instance as Record<string, unknown>)[col.propertyName] = col.converter
+            ? col.converter.fromProvider(rawVal)
+            : rawVal;
         }
       } else {
         Object.assign(instance, rec);
@@ -385,7 +393,10 @@ export class TestProvider extends DatabaseProvider {
     return table.map((rec) => {
       const instance = new entityClass();
       for (const col of meta.columns) {
-        (instance as Record<string, unknown>)[col.propertyName] = rec[col.columnName];
+        const rawVal = rec[col.columnName];
+        (instance as Record<string, unknown>)[col.propertyName] = col.converter
+          ? col.converter.fromProvider(rawVal)
+          : rawVal;
       }
       return instance;
     });

@@ -2,6 +2,10 @@ import type { MetadataRegistry } from '@ts-linq/metadata';
 
 import { EntityTypeBuilder } from './builders/EntityTypeBuilder';
 import type { IEntityTypeConfiguration } from './builders/IEntityTypeConfiguration';
+import {
+  type GlobalConverterRule,
+  PropertiesConfigBuilder
+} from './builders/PropertiesConfigBuilder';
 
 /**
  * Central fluent configuration surface for the ORM model.
@@ -18,6 +22,7 @@ import type { IEntityTypeConfiguration } from './builders/IEntityTypeConfigurati
  */
 export class ModelBuilder {
   private readonly _builders: Map<Function, EntityTypeBuilder<unknown>> = new Map();
+  private readonly _globalConverterRules: Map<Function, GlobalConverterRule> = new Map();
 
   constructor(private readonly _registry: MetadataRegistry) {}
 
@@ -58,10 +63,49 @@ export class ModelBuilder {
     return this;
   }
 
+  /**
+   * Registers a global default converter for all entity properties whose TypeScript type
+   * matches `ctor`. Uses Reflect.getMetadata('design:type') for matching.
+   * Mirrors EF Core's ModelBuilder.Properties<T>().HaveConversion().
+   *
+   * @example
+   *   mb.properties(Date).haveConversion(DateOnlyToStringConverter);
+   */
+  properties<T>(ctor: abstract new (...args: unknown[]) => T): PropertiesConfigBuilder<T> {
+    return new PropertiesConfigBuilder<T>(ctor, this._globalConverterRules);
+  }
+
   /** @internal — called by DbContext after onModelCreating() returns. */
   _finalize(): void {
     for (const builder of this._builders.values()) {
       builder._applyToRegistry(this._registry);
+    }
+
+    if (this._globalConverterRules.size === 0) return;
+
+    // Apply global converter rules to columns whose reflected type matches
+    const allEntities = this._registry.getEntities();
+    for (const entityMeta of allEntities) {
+      if (!entityMeta.target) continue;
+      const proto = (entityMeta.target as Function).prototype as object;
+      for (const col of entityMeta.columns) {
+        if (col.converter) continue; // explicit converter takes priority
+        const reflectedType = this.safeGetDesignType(proto, col.propertyName);
+        if (!reflectedType) continue;
+        const rule = this._globalConverterRules.get(reflectedType);
+        if (rule) {
+          col.converter = rule.converter;
+          if (rule.comparer && !col.comparer) col.comparer = rule.comparer;
+        }
+      }
+    }
+  }
+
+  private safeGetDesignType(proto: object, propertyName: string): Function | undefined {
+    try {
+      return Reflect.getMetadata('design:type', proto, propertyName) as Function | undefined;
+    } catch {
+      return undefined;
     }
   }
 }
