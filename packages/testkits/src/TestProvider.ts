@@ -4,6 +4,8 @@ import { MetadataStorage } from '@ts-linq/metadata';
 import type {
   BatchInsertResult,
   BatchUpdateResult,
+  BulkDeleteContext,
+  BulkUpdateContext,
   ConnectionHealthCheckOptions,
   ConnectionPoolOptions,
   EntityMetadata,
@@ -99,6 +101,37 @@ class TestDialect implements SqlDialect {
     const pkValues = entities.map((e) => e[pks[0]]);
     const payload = JSON.stringify({ table: metadata.tableName, pkValues, pkCol: pks[0] });
     return { sql: `BATCH_DELETE ${payload}`, parameters: [] };
+  }
+
+  public buildBulkUpdate(ctx: BulkUpdateContext): SqlWithParams {
+    const params: SqlParameter[] = [];
+    const setClauses: string[] = [];
+    for (const setter of ctx.setters) {
+      if (setter.value.kind === 'literal') {
+        setClauses.push(`\`${setter.columnName}\` = ?`);
+        params.push(...setter.value.params);
+      } else {
+        setClauses.push(`\`${setter.columnName}\` = \`${setter.value.refColumnName}\``);
+      }
+    }
+    let sql = `UPDATE \`${ctx.tableName}\` SET ${setClauses.join(', ')}`;
+    if (ctx.where.length > 0) {
+      const conditions = ctx.where.map((w) => w.condition).join(' AND ');
+      for (const w of ctx.where) params.push(...w.parameters);
+      sql += ` WHERE ${conditions}`;
+    }
+    return { sql, parameters: params };
+  }
+
+  public buildBulkDelete(ctx: BulkDeleteContext): SqlWithParams {
+    const params: SqlParameter[] = [];
+    let sql = `DELETE FROM \`${ctx.tableName}\``;
+    if (ctx.where.length > 0) {
+      const conditions = ctx.where.map((w) => w.condition).join(' AND ');
+      for (const w of ctx.where) params.push(...w.parameters);
+      sql += ` WHERE ${conditions}`;
+    }
+    return { sql, parameters: params };
   }
 
   readonly parameterLimit = 65535;
@@ -558,7 +591,8 @@ export class TestProvider extends DatabaseProvider {
       return before - filtered.length;
     }
 
-    return 0;
+    // Default: return 1 for any DML statement (UPDATE/DELETE) not handled above
+    return 1;
   }
 
   public override async beginTransaction(): Promise<void> {}
