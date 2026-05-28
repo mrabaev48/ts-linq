@@ -1,165 +1,50 @@
-# P0-06: Owned Entity Types Implementation Analysis
+# P0-06: Owned Entity Types — DONE
 
-## Task Overview
-Implement owned entity types with support for three storage strategies: table-splitting (columns prefixed on owner table), JSON storage, and separate table with composite FK (for ownsMany).
+## Status: ✅ Completed (feat/p0-06-owned-entity-types)
 
-**File**: `/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/dev-plans/P0-06-owned-entity-types.md`
+## What was implemented
 
-**Status**: not-started  
-**Priority**: P0  
-**Effort**: L  
-**Depends on**: P0-01 (complete)  
-**Related**: P0-05, P0-15
+### New types — `@ts-linq/types`
+- `StorageStrategy` enum: `TableSplit | SeparateTable | Json`
+- `OwnedEntityMetadata` interface (ownerPropertyName, ownedType, strategy, columnPrefix, jsonColumnName, foreignKeyColumns, compositeKeyColumns, isCollection)
+- `EntityMetadata.ownedEntities?: OwnedEntityMetadata[]`
 
-## API Requirements (Must Mirror EF Core)
-```ts
-export class EntityTypeBuilder<T> {
-  ownsOne<TOwned>(
-    selector: (e: T) => TOwned | undefined,
-    configure?: (b: OwnedNavigationBuilder<T, TOwned>) => void,
-  ): OwnedNavigationBuilder<T, TOwned>;
+### Metadata layer — `@ts-linq/metadata`
+- `EntityMetadataBuilder.addOwnedEntity(owned): this`
+- `MetadataRegistry.addOwnedEntity(owner, owned): void`
+- `MetadataRegistry.getOwnedEntities(owner): OwnedEntityMetadata[]`
+- Re-exports: `StorageStrategy`, `OwnedEntityMetadata` from `@ts-linq/types`
 
-  ownsMany<TOwned>(
-    selector: (e: T) => TOwned[],
-    configure?: (b: OwnedNavigationBuilder<T, TOwned>) => void,
-  ): OwnedNavigationBuilder<T, TOwned>;
-}
+### ORM builders — `@ts-linq/orm`
+- NEW: `OwnedNavigationBuilder<TOwner, TOwned>` — fluent builder with `property()`, `withOwner()`, `hasForeignKey()`, `hasKey()`, `toTable()`, `toJson()`, `columnPrefix()`
+- `EntityTypeBuilder.ownsOne(selector, ownedCtor?, configure?)` — defaults to TableSplit
+- `EntityTypeBuilder.ownsMany(selector, ownedCtor?, configure?)` — defaults to SeparateTable (because isCollection=true)
+- Internal helper `resolveOwnedArgs()` — distinguishes class constructors from arrow functions via `.prototype`
 
-export class OwnedNavigationBuilder<TOwner, TOwned> {
-  property<K extends keyof TOwned>(s: (e: TOwned) => TOwned[K]): PropertyBuilder<TOwned[K]>;
-  withOwner(selector?: (e: TOwned) => TOwner): this;
-  hasForeignKey(...props: string[]): this;
-  hasKey(...props: string[]): this;
-  toTable(name: string): this;
-  toJson(columnName?: string): this;
-}
-```
+### Migration snapshot — `@ts-linq/migrations`
+- `ModelSnapshotBuilder.buildFromMetadata()` now expands owned entities:
+  - TableSplit: adds prefixed columns to owner table
+  - Json: adds a single `JSON` column to owner table
+  - SeparateTable: creates extra `ModelTableSnapshot` with FK primary keys
 
-## Current Codebase State
+### Materialization utilities — `@ts-linq/core`
+- `hydrateTableSplit(row, ctor, prefix, propToColMap?)` — rebuilds owned from flat row
+- `hydrateJson(row, ctor, columnName)` — rebuilds owned from JSON column
+- `hydrateOwnedEntities(row, ownerInstance, ownedMetas)` — applies all strategies to owner
 
-### EntityTypeBuilder.ts
-- **Location**: `packages/orm/src/builders/EntityTypeBuilder.ts`
-- **Current Methods**: toTable, hasKey, property, hasOne, hasMany, hasIndex, isTemporal, withHistoryTable
-- **Lines**: 129 total
-- **Pattern**: Stores metadata in private Maps (_columns, _relationships, _indexes), applies to registry in _applyToRegistry()
+## Design decisions
+- `ownsMany` with TableSplit → auto-promotes to SeparateTable (you can't inline a collection)
+- `withOwner()` is a no-op (returns `this`) — ownership is tracked via OwnedEntityMetadata
+- Second argument to `ownsOne`/`ownsMany` is disambiguated: if `.prototype !== undefined` → class constructor; otherwise → configure callback
+- SeparateTable materialization is deferred (requires separate query, out of P0-06 scope)
 
-### EntityMetadata Interface
-- **Location**: `packages/types/src/index.ts` lines 702-718
-- **Current Fields**: target, className, tableName, columns, relationships, indexes, primaryKeys, primaryKeyColumn, schema, isTemporal, historyTableName, validationRules, validations
-- **Missing**: No ownedEntities or owned-type metadata
+## Files changed
+- `packages/types/src/index.ts`
+- `packages/metadata/src/EntityMetadata.ts`, `MetadataRegistry.ts`, `index.ts`
+- `packages/orm/src/builders/EntityTypeBuilder.ts`, `OwnedNavigationBuilder.ts`, `builders/index.ts`
+- `packages/migrations/src/snapshot/model-snapshot.ts`
+- `packages/core/src/OwnedEntityHydrator.ts`, `index.ts`
+- Tests: 5 new test files across metadata, orm, migrations, core, integration-tests
 
-### PropertyBuilder.ts
-- **Location**: `packages/orm/src/builders/PropertyBuilder.ts`
-- **Current Methods**: hasColumnName, hasColumnType, isRequired, isNullable, hasMaxLength, hasPrecision, hasDefaultValue, hasDefaultValueSql, isUnique, hasConversion (with overloads)
-- **Pattern**: Maintains reference to ColumnMetadata, mutates it, returns this for chaining
-
-### MetadataRegistry
-- **Location**: `packages/metadata/src/MetadataRegistry.ts`
-- **Provides**: addEntity, mergeFluentColumn, mergeFluentRelationship, setFluentPrimaryKeys, mergeFluentSchema, mergeFluentTemporal, mergeFluentIndex
-- **No owned entity methods yet**
-
-### SchemaComparator.ts
-- **Location**: `packages/migrations/src/SchemaComparator.ts` (42 lines)
-- **Current Logic**: diffColumns, diffIndexes, compares expected vs actual tables
-- **Missing**: No logic for owned entity DDL (table splitting or JSON columns)
-
-### Grep Results
-- No existing references to ownsOne, ownsMany, ownedEntities, OwnedEntity in codebase
-
-## New Artifacts Required
-
-### 1. StorageStrategy Enum
-```ts
-// packages/metadata/src/StorageStrategy.ts
-export enum StorageStrategy {
-  TableSplit = 'TableSplit',      // columns prefixed on owner table
-  SeparateTable = 'SeparateTable', // ownsMany: separate table with composite FK
-  Json = 'Json'                    // single JSON column
-}
-```
-
-### 2. OwnedEntityMetadata Interface
-```ts
-// packages/metadata/src/OwnedEntityMetadata.ts
-export interface OwnedEntityMetadata {
-  ownerPropertyName: string;      // e.g., "address" in Order.address
-  ownedEntityType: Function;       // the owned class
-  storageStrategy: StorageStrategy;
-  jsonColumnName?: string;         // for Json strategy
-  ownerClass: Function;            // back-reference to owner
-  columns: ColumnMetadata[];       // for TableSplit: prefixed columns
-  foreignKeyPropertyName?: string; // for SeparateTable
-  ownedNavigations?: OwnedEntityMetadata[]; // nested ownership
-  isCollection?: boolean;          // ownsMany vs ownsOne
-}
-```
-
-### 3. OwnedNavigationBuilder
-```ts
-// packages/orm/src/builders/OwnedNavigationBuilder.ts
-export class OwnedNavigationBuilder<TOwner, TOwned> {
-  private _metadata: Partial<OwnedEntityMetadata>;
-  
-  property<K extends keyof TOwned>(s: (e: TOwned) => TOwned[K]): PropertyBuilder<TOwned[K]>;
-  withOwner(selector?: (e: TOwned) => TOwner): this;
-  hasForeignKey(...props: string[]): this;
-  hasKey(...props: string[]): this;
-  toTable(name: string): this;    // table splitting
-  toJson(columnName?: string): this; // JSON storage
-}
-```
-
-### 4. Updated EntityMetadata Interface
-Add to `packages/types/src/index.ts`:
-```ts
-export interface EntityMetadata {
-  // ...existing fields...
-  ownedEntities?: OwnedEntityMetadata[]; // array of owned children
-}
-```
-
-### 5. MetadataRegistry Extensions
-Add methods to `packages/metadata/src/MetadataRegistry.ts`:
-```ts
-addOwnedEntity(ownerCtor: Function, ownedMetadata: OwnedEntityMetadata): void;
-getOwnedEntities(entityCtor: Function): OwnedEntityMetadata[];
-```
-
-## Key Implementation Points
-
-### EntityTypeBuilder Changes
-- Add ownsOne<TOwned>() and ownsMany<TOwned>() methods
-- Return OwnedNavigationBuilder instance
-- Store OwnedEntityMetadata in private array
-- Apply to registry in _applyToRegistry()
-
-### Metadata Finalization
-- At metadata finalize time, collapse OwnedEntityMetadata into owner's column list (for TableSplit)
-- Register as JSON column for Json strategy
-- Create separate table metadata for SeparateTable strategy
-
-### Query Translation (SelectVisitor)
-- Flatten owned columns in projection for TableSplit
-- Handle JSON path extraction for Json strategy
-- Owned navigations always eager-loaded (no Include needed)
-
-### Schema DDL (SchemaComparator, MigrationBuilder)
-- TableSplit: emit owner-table columns with prefix (e.g., "Address_Street")
-- Json: single JSON column on owner table
-- SeparateTable: separate table with composite PK (e.g., InvoiceId, ItemIdx)
-
-### Materialization
-- Rebuild owned graph from flat columns or parsed JSON
-- Match logic to storage strategy
-
-## Acceptance Criteria
-- [ ] Public API mirrors EF Core signature
-- [ ] Table-splitting emits prefixed columns on owner's table (DDL test)
-- [ ] ToJson() stores the graph in a single JSON column
-- [ ] Materialization rebuilds nested instance correctly for both strategies
-- [ ] ownsMany correctly persists collections (separate table with composite key)
-- [ ] No regressions in typecheck, arch:deps, arch:cycles, arch:dead
-
-## No Existing Code Found
-- grep search found ZERO references to ownsOne, ownsMany, ownedEntities, OwnedEntity
-- This is a greenfield implementation on top of P0-01 (ModelBuilder - complete)
+## Follow-up (P0-15)
+Full LINQ query integration into JSON paths and eager materialization via EntityLoader.
