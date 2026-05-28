@@ -2,6 +2,7 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { NavigationProxy, OrderedQueryable, QueryTagList } from '@ts-linq/query';
+import type { ISetPropertyCalls } from '@ts-linq/query';
 import type { IncludeSubquery } from '@ts-linq/query';
 import { Queryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
@@ -427,6 +428,36 @@ export class DbSet<T extends object> {
   /** Attaches an AbortSignal to cancel the query before it hits the provider. */
   public withAbort(signal: AbortSignal): Queryable<T> {
     return this.newQueryable().withAbort(signal);
+  }
+
+  // ─── Bulk DML — ExecuteUpdate / ExecuteDelete ─────────────────────────────
+
+  /**
+   * Executes a bulk UPDATE in a single SQL statement without loading entities.
+   * Mirrors EF Core's `ExecuteUpdateAsync(setters => setters.SetProperty(...))`.
+   *
+   * @example
+   * const n = await ctx.users
+   *   .where(u => u.isActive)
+   *   .executeUpdate(s => s.setProperty(u => u.name, 'Locked'));
+   */
+  public async executeUpdate(
+    setters: (s: ISetPropertyCalls<T>) => ISetPropertyCalls<T>
+  ): Promise<number> {
+    return this.newQueryable().executeUpdate(setters);
+  }
+
+  /**
+   * Executes a bulk DELETE in a single SQL statement without loading entities.
+   * Mirrors EF Core's `ExecuteDeleteAsync()`.
+   *
+   * @example
+   * const n = await ctx.logs
+   *   .where(l => l.createdAt < cutoff)
+   *   .executeDelete();
+   */
+  public async executeDelete(): Promise<number> {
+    return this.newQueryable().executeDelete();
   }
 
   // ─── Terminal — element retrieval ─────────────────────────────────────────

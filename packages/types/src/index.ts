@@ -246,6 +246,27 @@ export interface BatchUpdateResult {
   statements?: Array<{ sql: string; parameters: SqlParameter[] }>;
 }
 
+// Bulk DML (ExecuteUpdate / ExecuteDelete) types
+
+/** Describes one SET assignment in a bulk UPDATE. */
+export interface SetterSpec {
+  columnName: string;
+  value: { kind: 'literal'; params: SqlParameter[] } | { kind: 'column'; refColumnName: string };
+}
+
+/** Context passed to SqlDialect.buildBulkUpdate(). */
+export interface BulkUpdateContext {
+  tableName: string;
+  setters: SetterSpec[];
+  where: WhereClause[];
+}
+
+/** Context passed to SqlDialect.buildBulkDelete(). */
+export interface BulkDeleteContext {
+  tableName: string;
+  where: WhereClause[];
+}
+
 // SQL Dialect interface
 export interface SqlDialect {
   buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult;
@@ -268,6 +289,10 @@ export interface SqlDialect {
     metadata: EntityMetadata
   ): BatchUpdateResult;
   buildBatchDelete?(entities: Record<string, unknown>[], metadata: EntityMetadata): SqlWithParams;
+  /** Bulk UPDATE: single-statement SET ... WHERE without loading entities. */
+  buildBulkUpdate?(ctx: BulkUpdateContext): SqlWithParams;
+  /** Bulk DELETE: single-statement DELETE ... WHERE without loading entities. */
+  buildBulkDelete?(ctx: BulkDeleteContext): SqlWithParams;
 }
 
 // Middleware hook parameter types
