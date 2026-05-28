@@ -13,6 +13,8 @@ export { LruCache } from './LruCache';
 export * from './Queryable';
 export * from './QueryBuilder';
 export * from './QueryModel';
+export type { ISetPropertyCalls, SetterEntry } from './SetPropertyCalls';
+export { SetPropertyCalls } from './SetPropertyCalls';
 export { InMemorySqlCache } from './SqlCache';
 export * from './TypedQueryable';
 export { QuerySplittingBehavior } from '@ts-linq/types';

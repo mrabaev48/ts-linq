@@ -35,6 +35,7 @@ import { QueryBuilder } from './QueryBuilder';
 import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
 import { RowMaterializer } from './RowMaterializer';
+import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
 import { applyTagWith } from './tag-with';
 import { captureCallSiteTag } from './tag-with-call-site';
 
@@ -1483,6 +1484,107 @@ export class Queryable<T> {
       entity: other._entityClass
     });
     return cloned;
+  }
+
+  /**
+   * Executes a bulk UPDATE without materialising entities (EF Core ExecuteUpdateAsync parity).
+   * Returns the number of rows affected.
+   *
+   * @throws if `include()` was called before this — bulk DML does not support eager loading.
+   *
+   * @example
+   * const n = await ctx.users
+   *   .where(u => u.isActive)
+   *   .executeUpdate(s => s.setProperty(u => u.name, 'Locked'));
+   */
+  public async executeUpdate(
+    setters: (s: ISetPropertyCalls<T>) => ISetPropertyCalls<T>
+  ): Promise<number> {
+    if (this._includes.length > 0 || this._filteredIncludes.size > 0) {
+      throw new Error(
+        'Cannot call executeUpdate() after include(). ' +
+          'Bulk DML does not support eager loading. Remove the include() call.'
+      );
+    }
+
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    if (!metadata) {
+      throw new Error(
+        `ts-linq: entity metadata not found for ${this._entityClass.name}. ` +
+          'Ensure the class is decorated with @Entity().'
+      );
+    }
+
+    const collector = new SetPropertyCalls<T>();
+    setters(collector);
+    const setterSpecs = collector.toSetterSpecs(metadata.columns);
+
+    if (setterSpecs.length === 0) {
+      throw new Error('executeUpdate() requires at least one setProperty() call.');
+    }
+
+    const queryModel = this.prepareQueryModel();
+    const dialect = this._provider.getDialect();
+
+    if (!dialect.buildBulkUpdate) {
+      throw new Error(
+        `The current dialect (${this._provider.providerLabel ?? 'unknown'}) does not support buildBulkUpdate. ` +
+          'Implement buildBulkUpdate() on the dialect class.'
+      );
+    }
+
+    const { sql, parameters } = dialect.buildBulkUpdate({
+      tableName: metadata.tableName,
+      setters: setterSpecs,
+      where: queryModel.where ?? []
+    });
+
+    return this._provider.executeNonQuery(sql, parameters);
+  }
+
+  /**
+   * Executes a bulk DELETE without materialising entities (EF Core ExecuteDeleteAsync parity).
+   * Returns the number of rows affected.
+   *
+   * @throws if `include()` was called before this — bulk DML does not support eager loading.
+   *
+   * @example
+   * const n = await ctx.logs
+   *   .where(l => l.createdAt < cutoff)
+   *   .executeDelete();
+   */
+  public async executeDelete(): Promise<number> {
+    if (this._includes.length > 0 || this._filteredIncludes.size > 0) {
+      throw new Error(
+        'Cannot call executeDelete() after include(). ' +
+          'Bulk DML does not support eager loading. Remove the include() call.'
+      );
+    }
+
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    if (!metadata) {
+      throw new Error(
+        `ts-linq: entity metadata not found for ${this._entityClass.name}. ` +
+          'Ensure the class is decorated with @Entity().'
+      );
+    }
+
+    const queryModel = this.prepareQueryModel();
+    const dialect = this._provider.getDialect();
+
+    if (!dialect.buildBulkDelete) {
+      throw new Error(
+        `The current dialect (${this._provider.providerLabel ?? 'unknown'}) does not support buildBulkDelete. ` +
+          'Implement buildBulkDelete() on the dialect class.'
+      );
+    }
+
+    const { sql, parameters } = dialect.buildBulkDelete({
+      tableName: metadata.tableName,
+      where: queryModel.where ?? []
+    });
+
+    return this._provider.executeNonQuery(sql, parameters);
   }
 
   private _addJoinOn<TOther>(

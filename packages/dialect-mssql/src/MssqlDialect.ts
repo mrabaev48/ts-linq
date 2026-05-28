@@ -2,6 +2,8 @@ import { MetadataStorage } from '@ts-linq/metadata';
 import type {
   BatchInsertResult,
   BatchUpdateResult,
+  BulkDeleteContext,
+  BulkUpdateContext,
   ColumnMetadata,
   EntityMetadata,
   QueryOptions,
@@ -229,6 +231,46 @@ export class MssqlDialect implements SqlDialect {
     sql = this.numberPlaceholders(sql, parameters.length);
 
     return { sql, parameters };
+  }
+
+  public buildBulkUpdate(ctx: BulkUpdateContext): SqlWithParams {
+    const params: SqlParameter[] = [];
+    const setClauses: string[] = [];
+
+    for (const setter of ctx.setters) {
+      const col = `[${setter.columnName}]`;
+      if (setter.value.kind === 'literal') {
+        setClauses.push(`${col} = ?`);
+        params.push(...setter.value.params);
+      } else {
+        setClauses.push(`${col} = [${setter.value.refColumnName}]`);
+      }
+    }
+
+    let sql = `UPDATE [${ctx.tableName}] SET ${setClauses.join(', ')}`;
+
+    if (ctx.where.length > 0) {
+      const conditions = ctx.where.map((w) => w.condition).join(' AND ');
+      for (const w of ctx.where) params.push(...w.parameters);
+      sql += ` WHERE ${conditions}`;
+    }
+
+    sql = this.numberPlaceholders(sql, params.length);
+    return { sql, parameters: params };
+  }
+
+  public buildBulkDelete(ctx: BulkDeleteContext): SqlWithParams {
+    const params: SqlParameter[] = [];
+    let sql = `DELETE FROM [${ctx.tableName}]`;
+
+    if (ctx.where.length > 0) {
+      const conditions = ctx.where.map((w) => w.condition).join(' AND ');
+      for (const w of ctx.where) params.push(...w.parameters);
+      sql += ` WHERE ${conditions}`;
+    }
+
+    sql = this.numberPlaceholders(sql, params.length);
+    return { sql, parameters: params };
   }
 
   private coerceParameter(value: unknown): SqlParameter {
