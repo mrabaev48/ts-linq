@@ -1,7 +1,9 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import type { ColumnMetadata, IndexMetadata, RelationshipMetadata } from '@ts-linq/types';
+import { InheritanceStrategy } from '@ts-linq/types';
 
 import { CollectionNavigationBuilder } from './CollectionNavigationBuilder';
+import { DiscriminatorBuilder } from './DiscriminatorBuilder';
 import { IndexBuilder } from './IndexBuilder';
 import { OwnedNavigationBuilder } from './OwnedNavigationBuilder';
 import { PropertyBuilder } from './PropertyBuilder';
@@ -41,6 +43,9 @@ export class EntityTypeBuilder<T> {
   private _historyTableName?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly _ownedBuilders: OwnedNavigationBuilder<T, any>[] = [];
+  private _inheritanceStrategy?: InheritanceStrategy;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _discriminatorBuilder?: DiscriminatorBuilder<any>;
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -127,6 +132,41 @@ export class EntityTypeBuilder<T> {
   }
 
   /**
+   * Configures a discriminator column for TPH inheritance.
+   * Automatically sets strategy to TPH; chain `.hasValue()` to register subtypes.
+   *
+   * @example
+   * mb.entity(Payment)
+   *   .hasDiscriminator<string>('kind')
+   *   .hasValue(CardPayment, 'card')
+   *   .hasValue(BankPayment, 'bank');
+   */
+  hasDiscriminator<TKey>(name: string, type = 'TEXT'): DiscriminatorBuilder<TKey> {
+    this._inheritanceStrategy = InheritanceStrategy.Tph;
+    const builder = new DiscriminatorBuilder<TKey>(name, type);
+    this._discriminatorBuilder = builder;
+    return builder;
+  }
+
+  /** Explicitly select Table-per-Hierarchy storage strategy. */
+  useTphMappingStrategy(): this {
+    this._inheritanceStrategy = InheritanceStrategy.Tph;
+    return this;
+  }
+
+  /** Select Table-per-Type storage strategy (base table + per-subtype joined tables). */
+  useTptMappingStrategy(): this {
+    this._inheritanceStrategy = InheritanceStrategy.Tpt;
+    return this;
+  }
+
+  /** Select Table-per-Concrete-type storage strategy (one table per leaf, UNION ALL). */
+  useTpcMappingStrategy(): this {
+    this._inheritanceStrategy = InheritanceStrategy.Tpc;
+    return this;
+  }
+
+  /**
    * Declares that this entity maps to a SQL Server system-versioned (temporal) table.
    * Allows querying historical data via `temporalAsOf`, `temporalAll`, etc.
    *
@@ -180,6 +220,20 @@ export class EntityTypeBuilder<T> {
 
     for (const ob of this._ownedBuilders) {
       registry.addOwnedEntity(this._ctor, ob._buildMetadata());
+    }
+
+    if (this._inheritanceStrategy !== undefined) {
+      const disc = this._discriminatorBuilder?._buildMetadata();
+      const subtypes = disc?.entries.map((e) => e.ctor) ?? [];
+      registry.setHierarchyMetadata(this._ctor, {
+        strategy: this._inheritanceStrategy,
+        rootEntity: this._ctor,
+        discriminator: disc,
+        subtypes
+      });
+      for (const sub of subtypes) {
+        registry.setHierarchyRoot(sub, this._ctor);
+      }
     }
   }
 }

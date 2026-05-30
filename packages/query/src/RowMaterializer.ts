@@ -13,6 +13,22 @@ export class RowMaterializer<T> {
 
   public mapRowToEntity(row: unknown): T {
     const metadata = MetadataStorage.getEntity(this.entityClass);
+
+    // Polymorphic dispatch: if root entity has a discriminator, pick the concrete subtype ctor.
+    const hierarchy = metadata?.hierarchy;
+    if (hierarchy?.discriminator) {
+      const discCol = hierarchy.discriminator.columnName;
+      const discVal = (row as Record<string, unknown>)[discCol];
+      const entry = hierarchy.discriminator.entries.find((e) => e.value === discVal);
+      if (entry) {
+        const concreteCtor = entry.ctor as new () => T;
+        const concreteMeta = MetadataStorage.getEntity(concreteCtor) ?? metadata ?? null;
+        const entity = this.materializeEntityWith(row, concreteCtor, concreteMeta);
+        this.notifyMaterialized(entity, concreteMeta);
+        return entity;
+      }
+    }
+
     if (this.shouldUseL2Cache(metadata)) {
       const cached = this.tryGetFromCache(row, metadata!);
       if (cached) return cached;
@@ -61,8 +77,9 @@ export class RowMaterializer<T> {
     return cached;
   }
 
-  private materializeEntity(
+  private materializeEntityWith<TEntity>(
     row: unknown,
+    ctor: new () => TEntity,
     metadata: {
       columns: Array<{
         propertyName: string;
@@ -71,8 +88,8 @@ export class RowMaterializer<T> {
         converter?: { fromProvider(v: unknown): unknown };
       }>;
     } | null
-  ): T {
-    const entity = new this.entityClass();
+  ): TEntity {
+    const entity = new ctor();
     if (metadata) {
       for (const column of metadata.columns) {
         const r = row as Record<string, unknown>;
@@ -90,6 +107,20 @@ export class RowMaterializer<T> {
       Object.assign(entity as object, row as object);
     }
     return entity;
+  }
+
+  private materializeEntity(
+    row: unknown,
+    metadata: {
+      columns: Array<{
+        propertyName: string;
+        columnName: string;
+        type: string;
+        converter?: { fromProvider(v: unknown): unknown };
+      }>;
+    } | null
+  ): T {
+    return this.materializeEntityWith(row, this.entityClass, metadata);
   }
 
   private rememberInCache(

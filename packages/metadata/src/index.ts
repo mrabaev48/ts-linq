@@ -17,6 +17,10 @@ export * from './ValueComparer';
 export * from './ValueConverter';
 export {
   DeleteBehavior,
+  type DiscriminatorEntry,
+  type DiscriminatorMetadata,
+  type HierarchyMetadata,
+  InheritanceStrategy,
   type OwnedEntityMetadata,
   StorageStrategy,
   type ValueComparerLike,

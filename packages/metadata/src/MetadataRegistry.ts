@@ -1,6 +1,7 @@
 import type {
   ColumnMetadata,
   EntityMetadata,
+  HierarchyMetadata,
   IndexMetadata,
   OwnedEntityMetadata,
   RelationshipMetadata,
@@ -369,6 +370,28 @@ export class MetadataRegistry {
   /** Get all owned entity relationships for the given owner entity. */
   public getOwnedEntities(owner: Function): OwnedEntityMetadata[] {
     return this.getEntity(owner)?.ownedEntities ?? [];
+  }
+
+  /** Set hierarchy metadata on the root entity. */
+  public setHierarchyMetadata(target: Function, h: HierarchyMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.hierarchy = h;
+      return;
+    }
+    this.getOrCreateBuilder(target).setHierarchy(h);
+  }
+
+  /** Mark a subtype entity as belonging to a hierarchy rooted at `root`. */
+  public setHierarchyRoot(subtype: Function, root: Function): void {
+    const key = this.normalizeTarget(subtype);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.hierarchyRoot = root;
+      return;
+    }
+    this.getOrCreateBuilder(subtype).setHierarchyRoot(root);
   }
 
   /** Clear all stored metadata and pending builders. */

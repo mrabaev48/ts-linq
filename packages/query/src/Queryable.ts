@@ -19,6 +19,7 @@ import type {
   TemporalClause,
   WhereClause
 } from '@ts-linq/types';
+import { InheritanceStrategy } from '@ts-linq/types';
 import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
 
 import { AggregateOperations } from './AggregateOperations';
@@ -794,6 +795,66 @@ export class Queryable<T> {
       entity: other._entityClass
     });
     return this;
+  }
+
+  /**
+   * Filters the query to return only instances of the given subtype.
+   * Mirrors EF Core's `OfType<TSub>()`.
+   *
+   * - **TPH**: adds a WHERE clause on the discriminator column.
+   * - **TPT**: adds an INNER JOIN to the subtype table on the shared PK.
+   * - **TPC**: changes the FROM table to the concrete leaf table.
+   *
+   * @example
+   * const emails = ctx.notifications.ofType(EmailNotification);
+   */
+  public ofType<TSub extends T>(ctor: new () => TSub): Queryable<TSub> {
+    const sub = new Queryable<TSub>(
+      ctor,
+      this._provider,
+      this._entityLoader,
+      this._entityCache,
+      this._performance,
+      this._globalFilters,
+      this._softDeleteOptions,
+      this._entityAttacher,
+      this._trackingMode,
+      this._globalSplittingBehavior
+    );
+    sub._model = this._model.clone();
+
+    const subtypeMeta = MetadataStorage.getEntity(ctor);
+    if (!subtypeMeta?.hierarchyRoot) return sub;
+
+    const rootMeta = MetadataStorage.getEntity(subtypeMeta.hierarchyRoot as unknown as new () => T);
+    if (!rootMeta?.hierarchy) return sub;
+
+    const { strategy, discriminator } = rootMeta.hierarchy;
+
+    if (strategy === InheritanceStrategy.Tph) {
+      const entry = discriminator?.entries.find((e) => e.ctor === ctor);
+      if (entry && discriminator) {
+        sub._model.where = sub._model.where ?? [];
+        sub._model.where.push({
+          condition: `"${discriminator.columnName}" = ?`,
+          parameters: [entry.value as SqlParameter]
+        });
+      }
+    } else if (strategy === InheritanceStrategy.Tpt) {
+      const pk = rootMeta.primaryKeys?.[0] ?? 'id';
+      const baseTable = rootMeta.tableName;
+      const subTable = subtypeMeta.tableName;
+      sub._model.joins = sub._model.joins ?? [];
+      sub._model.joins.push({
+        type: 'INNER',
+        table: subTable,
+        on: `"${baseTable}"."${pk}" = "${subTable}"."${pk}"`
+      });
+    } else if (strategy === InheritanceStrategy.Tpc) {
+      sub._model.from = subtypeMeta.tableName;
+    }
+
+    return sub;
   }
 
   /**
