@@ -2,6 +2,7 @@ import type {
   ColumnMetadata,
   EntityMetadata,
   IndexMetadata,
+  OwnedEntityMetadata,
   RelationshipMetadata,
   ValidationRule
 } from '@ts-linq/types';
@@ -352,6 +353,22 @@ export class MetadataRegistry {
     const builder = this.getOrCreateBuilder(target);
     builder.setTemporal(isTemporal);
     if (historyTableName !== undefined) builder.setHistoryTableName(historyTableName);
+  }
+
+  /** Register an owned entity relationship for the given owner entity. */
+  public addOwnedEntity(owner: Function, owned: OwnedEntityMetadata): void {
+    const key = this.normalizeTarget(owner);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.ownedEntities = [...(finalized.ownedEntities || []), owned];
+      return;
+    }
+    this.getOrCreateBuilder(owner).addOwnedEntity(owned);
+  }
+
+  /** Get all owned entity relationships for the given owner entity. */
+  public getOwnedEntities(owner: Function): OwnedEntityMetadata[] {
+    return this.getEntity(owner)?.ownedEntities ?? [];
   }
 
   /** Clear all stored metadata and pending builders. */

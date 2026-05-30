@@ -1,5 +1,11 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnMetadata, EntityMetadata, IndexMetadata } from '@ts-linq/types';
+import type {
+  ColumnMetadata,
+  EntityMetadata,
+  IndexMetadata,
+  OwnedEntityMetadata
+} from '@ts-linq/types';
+import { StorageStrategy } from '@ts-linq/types';
 
 /**
  * A normalized snapshot of a single column in the model.
@@ -65,6 +71,11 @@ export class ModelSnapshotBuilder {
    */
   public buildFromMetadata(): ModelSnapshot {
     const entities = MetadataStorage.getEntities();
+    const entityByType = new Map<Function, EntityMetadata>(
+      entities.filter((e) => e.target).map((e) => [e.target!, e])
+    );
+
+    const extraTables: ModelTableSnapshot[] = [];
 
     const tables: ModelTableSnapshot[] = entities
       .map((entity: EntityMetadata): ModelTableSnapshot => {
@@ -83,6 +94,11 @@ export class ModelSnapshotBuilder {
           )
           .sort((a, b) => a.name.localeCompare(b.name));
 
+        // Expand owned entity columns into the owner table snapshot
+        for (const owned of entity.ownedEntities ?? []) {
+          this._expandOwnedEntity(owned, entity, entityByType, columns, extraTables);
+        }
+
         const primaryKeys: string[] = primaryKeyProps
           .map((pk) => entity.columns.find((c) => c.propertyName === pk)?.columnName ?? pk)
           .sort();
@@ -98,6 +114,8 @@ export class ModelSnapshotBuilder {
           )
           .sort((a, b) => a.name.localeCompare(b.name));
 
+        columns.sort((a, b) => a.name.localeCompare(b.name));
+
         return {
           name: entity.tableName,
           columns,
@@ -107,7 +125,81 @@ export class ModelSnapshotBuilder {
       })
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    return { version: 1, tables };
+    return {
+      version: 1,
+      tables: [...tables, ...extraTables].sort((a, b) => a.name.localeCompare(b.name))
+    };
+  }
+
+  private _expandOwnedEntity(
+    owned: OwnedEntityMetadata,
+    ownerEntity: EntityMetadata,
+    entityByType: Map<Function, EntityMetadata>,
+    ownerColumns: ModelColumnSnapshot[],
+    extraTables: ModelTableSnapshot[]
+  ): void {
+    const ownedEntityMeta = entityByType.get(owned.ownedType);
+
+    if (owned.strategy === StorageStrategy.TableSplit) {
+      const prefix = owned.columnPrefix ?? `${owned.ownerPropertyName}_`;
+      const sourceCols: ColumnMetadata[] = ownedEntityMeta?.columns ?? [];
+      for (const col of sourceCols) {
+        ownerColumns.push({
+          name: `${prefix}${col.columnName}`,
+          type: String(col.type ?? '').toUpperCase(),
+          nullable: col.nullable ?? true,
+          isPrimaryKey: false,
+          defaultValue: col.defaultValue,
+          defaultExpression: col.defaultExpression
+        });
+      }
+    } else if (owned.strategy === StorageStrategy.Json) {
+      const jsonCol = owned.jsonColumnName ?? owned.ownerPropertyName;
+      ownerColumns.push({
+        name: jsonCol,
+        type: 'JSON',
+        nullable: true,
+        isPrimaryKey: false
+      });
+    } else if (owned.strategy === StorageStrategy.SeparateTable) {
+      const ownedTableName = ownedEntityMeta?.tableName ?? owned.ownerPropertyName;
+      const ownerPrimaryKeys = ownerEntity.primaryKeys ?? [];
+      const fkColumns: ModelColumnSnapshot[] =
+        owned.foreignKeyColumns?.map((fk) => ({
+          name: fk,
+          type: 'INTEGER',
+          nullable: false,
+          isPrimaryKey: true
+        })) ??
+        ownerPrimaryKeys.map((pk) => {
+          const col = ownerEntity.columns.find((c) => c.propertyName === pk);
+          return {
+            name: `${ownerEntity.tableName}_${col?.columnName ?? pk}`,
+            type: String(col?.type ?? 'INTEGER').toUpperCase(),
+            nullable: false,
+            isPrimaryKey: true
+          };
+        });
+
+      const ownedCols: ModelColumnSnapshot[] = (ownedEntityMeta?.columns ?? []).map((col) => ({
+        name: col.columnName,
+        type: String(col.type ?? '').toUpperCase(),
+        nullable: col.nullable ?? true,
+        isPrimaryKey: false,
+        defaultValue: col.defaultValue,
+        defaultExpression: col.defaultExpression
+      }));
+
+      const allCols = [...fkColumns, ...ownedCols].sort((a, b) => a.name.localeCompare(b.name));
+      const primaryKeys = fkColumns.map((c) => c.name).sort();
+
+      extraTables.push({
+        name: ownedTableName,
+        columns: allCols,
+        primaryKeys,
+        indexes: []
+      });
+    }
   }
 }
 
