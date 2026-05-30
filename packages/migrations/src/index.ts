@@ -2,6 +2,13 @@
  * Barrel file re-exporting migration building blocks.
  * Import from '@ts-linq/migrations' to access the public migration API.
  */
+export {
+  buildAddFkSql,
+  buildDropFkSql,
+  buildInlineFkSql,
+  deleteBehaviorToSql
+} from './builders/handlers/ForeignKeyHandlers';
+export { buildCreateTableSql } from './builders/handlers/TableHandlers';
 export * from './bundle/build-bundle';
 export * from './DialectMigrationSql';
 export * from './DiffBasedMigration';

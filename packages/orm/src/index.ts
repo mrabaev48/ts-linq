@@ -1,5 +1,6 @@
 export * from './builders';
 export * from './ChangeTracker';
+export { CascadeWalker } from './changetracker/CascadeWalker';
 export * from './database/has-pending-model-changes';
 export * from './DatabaseFacade';
 export * from './DbContext';

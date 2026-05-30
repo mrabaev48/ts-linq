@@ -1,8 +1,20 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnMetadata, EntityMetadata, IndexMetadata } from '@ts-linq/types';
+import type {
+  ColumnMetadata,
+  EntityMetadata,
+  IndexMetadata,
+  RelationshipMetadata
+} from '@ts-linq/types';
 
-import type { ColumnDef, IndexDef, SchemaSnapshot, TableSnapshot } from './DiffTypes';
+import { deleteBehaviorToSql } from './builders/handlers/ForeignKeyHandlers';
+import type {
+  ColumnDef,
+  ForeignKeyDef,
+  IndexDef,
+  SchemaSnapshot,
+  TableSnapshot
+} from './DiffTypes';
 import {
   MssqlSchemaInspector,
   MySqlSchemaInspector,
@@ -21,6 +33,14 @@ export class SchemaSnapshotBuilder {
 
   public buildExpectedFromMetadata(): SchemaSnapshot {
     const entities = MetadataStorage.getEntities();
+
+    // Build a lookup map for resolving target entity metadata by class reference or class name.
+    const entityByTarget = new Map<Function | string, EntityMetadata>();
+    for (const e of entities) {
+      if (e.target) entityByTarget.set(e.target, e);
+      if (e.className) entityByTarget.set(e.className, e);
+    }
+
     const tables: TableSnapshot[] = entities.map((entityMeta: EntityMetadata) => {
       const primaryKeyProps = entityMeta.primaryKeys ?? [];
       const columns: ColumnDef[] = entityMeta.columns.map((column: ColumnMetadata) => ({
@@ -55,15 +75,80 @@ export class SchemaSnapshotBuilder {
           .mysqlVisibility,
         include: (indexDef as { include?: string[] }).include
       }));
+
+      const foreignKeys = this.buildForeignKeys(entityMeta, entityByTarget);
+
       return {
         name: entityMeta.tableName,
         columns,
         primaryKeys,
         indexes,
-        foreignKeys: []
+        foreignKeys
       };
     });
     return { tables };
+  }
+
+  private buildForeignKeys(
+    entityMeta: EntityMetadata,
+    entityByTarget: Map<Function | string, EntityMetadata>
+  ): ForeignKeyDef[] {
+    const fks: ForeignKeyDef[] = [];
+    for (const rel of entityMeta.relationships ?? []) {
+      // Only the dependent side (many-to-one / one-to-one with foreignKey) owns the FK column.
+      if (rel.type !== 'many-to-one' && rel.type !== 'one-to-one') continue;
+      if (!rel.foreignKey) continue;
+
+      const targetMeta = this.resolveTargetMeta(rel, entityByTarget);
+      if (!targetMeta) continue;
+
+      const refPkProps = targetMeta.primaryKeys ?? [];
+      if (refPkProps.length === 0) continue;
+
+      const refColumns = refPkProps
+        .map((pk) => targetMeta.columns.find((c) => c.propertyName === pk)?.columnName ?? pk)
+        .filter(Boolean);
+
+      if (refColumns.length === 0) continue;
+
+      const fk: ForeignKeyDef = {
+        columns: [rel.foreignKey],
+        refTable: targetMeta.tableName,
+        refColumns
+      };
+
+      if (rel.onDelete) {
+        const clause = deleteBehaviorToSql(rel.onDelete);
+        if (clause) fk.onDelete = clause;
+      }
+
+      fks.push(fk);
+    }
+    return fks;
+  }
+
+  private resolveTargetMeta(
+    rel: RelationshipMetadata,
+    entityByTarget: Map<Function | string, EntityMetadata>
+  ): EntityMetadata | undefined {
+    const { targetEntity } = rel;
+    if (!targetEntity) return undefined;
+    if (typeof targetEntity === 'function') {
+      // Could be the class itself or a lazy factory (() => Class).
+      const direct = entityByTarget.get(targetEntity);
+      if (direct) return direct;
+      // Try calling it as a factory.
+      try {
+        const resolved = (targetEntity as () => Function)();
+        if (resolved) return entityByTarget.get(resolved);
+      } catch {
+        // Not a factory, ignore.
+      }
+    }
+    if (typeof targetEntity === 'string') {
+      return entityByTarget.get(targetEntity);
+    }
+    return undefined;
   }
 
   public async buildActualFromProvider(expected?: SchemaSnapshot): Promise<SchemaSnapshot> {

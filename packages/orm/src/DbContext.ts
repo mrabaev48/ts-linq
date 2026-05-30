@@ -339,6 +339,7 @@ export abstract class DbContext {
    */
   public async saveChanges(): Promise<number> {
     this._changeTracker.detectChanges();
+    this._changeTracker.applyCascades();
     const changes = this._changeTracker.getChanges();
     if (!changes || changes.length === 0) return 0;
     this.prefillDefaults(changes);
