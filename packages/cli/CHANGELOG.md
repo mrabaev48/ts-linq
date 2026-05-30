@@ -1,5 +1,31 @@
 # @ts-linq/cli
 
+## 1.1.0
+
+### Minor Changes
+
+- f177bb9: feat(migrations): add migration bundles, idempotent scripts, and HasPendingModelChanges (P2-42)
+  - `@ts-linq/migrations`: new `IdempotentEmitter` that wraps each migration in a per-dialect guard block (PostgreSQL DO $$, MSSQL IF NOT EXISTS, MySQL stored procedure); new `MigrationBundleBuilder` using esbuild to produce self-contained Node.js bundle scripts; new `ModelSnapshotBuilder` / `ModelSnapshotSerializer` for deterministic model-state JSON; new `ModelSnapshotDiff` for structural change detection between two snapshots
+  - `@ts-linq/orm`: `DatabaseFacade` gains `hasPendingModelChanges()` (synchronous), `getPendingMigrations()`, and `migrate({ idempotent? })` mirroring EF Core's `HasPendingModelChanges`, `GetPendingMigrationsAsync`, and `MigrateAsync`; `DbContextOptionsBuilder` gains `.migrations({ directory })` fluent method; `DbContextOptions` gains `migrationsDirectory` field
+  - `@ts-linq/cli`: new `migration:script` command (`--idempotent`, `--output`); new `migration:bundle` command (`--target`, `--output`)
+
+### Patch Changes
+
+- Updated dependencies [51516f8]
+- Updated dependencies [cd77e1f]
+- Updated dependencies [7745012]
+- Updated dependencies [90402db]
+- Updated dependencies [240059c]
+- Updated dependencies [e4c55db]
+- Updated dependencies [2f86a0d]
+- Updated dependencies [b738384]
+- Updated dependencies [f177bb9]
+- Updated dependencies [6cad9cf]
+- Updated dependencies [d0668cb]
+  - @ts-linq/types@2.3.0
+  - @ts-linq/migrations@2.1.0
+  - @ts-linq/core@1.4.0
+
 ## 1.0.3
 
 ### Patch Changes
