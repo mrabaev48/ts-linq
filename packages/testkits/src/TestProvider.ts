@@ -480,7 +480,11 @@ export class TestProvider extends DatabaseProvider {
       const match = sql.match(/WHERE\s+(.*?)(\s+ORDER\s+BY|\s+LIMIT|\s*$)/i);
       if (match) {
         const wherePart = match[1];
-        const conditions = wherePart.split(/\s+AND\s+/i).map((c) => c.trim());
+        const conditions = wherePart.split(/\s+AND\s+/i).map((c) => {
+          // Strip optional outer parentheses so "(col = ?)" parses like "col = ?"
+          const t = c.trim();
+          return t.startsWith('(') && t.endsWith(')') ? t.slice(1, -1).trim() : t;
+        });
 
         table = table.filter((rec) => {
           return conditions.every((cond) => {

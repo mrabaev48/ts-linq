@@ -1,10 +1,11 @@
 import * as ts from 'typescript';
 
 import type { DiagnosticSink } from './diagnostics/DiagnosticSink';
+import { rewriteHasQueryFilterCall } from './rewriters/HasQueryFilterRewriter';
 import { rewriteSelectCall } from './rewriters/SelectRewriter';
 import { rewriteCall } from './rewriters/WhereHavingRewriter';
 
-const TARGET_METHODS = new Set(['where', 'having', 'select']);
+const TARGET_METHODS = new Set(['where', 'having', 'select', 'hasQueryFilter']);
 
 /**
  * Wrapper around the default transformer that allows injecting a diagnostic collector.
@@ -29,7 +30,9 @@ export function createWhereTransformer(
           const rewritten =
             expr.name.text === 'select'
               ? rewriteSelectCall(node, checker, ctx, sink)
-              : rewriteCall(node, checker, ctx, sink);
+              : expr.name.text === 'hasQueryFilter'
+                ? rewriteHasQueryFilterCall(node, checker, ctx, sink)
+                : rewriteCall(node, checker, ctx, sink);
           if (rewritten !== null && rewritten !== node) {
             // Visit the original receiver AFTER rewriting this call so that inner
             // chained calls (e.g. .where().where()) also get rewritten in this pass.

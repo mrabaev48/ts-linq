@@ -1,4 +1,5 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
+import type { QueryFilterMetadata } from '@ts-linq/types';
 
 import { EntityTypeBuilder } from './builders/EntityTypeBuilder';
 import type { IEntityTypeConfiguration } from './builders/IEntityTypeConfiguration';
@@ -6,6 +7,9 @@ import {
   type GlobalConverterRule,
   PropertiesConfigBuilder
 } from './builders/PropertiesConfigBuilder';
+
+/** Per-DbContext query filter map: entityClass → named filters. */
+export type EntityQueryFilterMap = Map<Function, ReadonlyArray<QueryFilterMetadata>>;
 
 /**
  * Central fluent configuration surface for the ORM model.
@@ -23,6 +27,8 @@ import {
 export class ModelBuilder {
   private readonly _builders: Map<Function, EntityTypeBuilder<unknown>> = new Map();
   private readonly _globalConverterRules: Map<Function, GlobalConverterRule> = new Map();
+  /** Collected after _finalize(). Keys are entity constructors. */
+  private _queryFilterMap?: EntityQueryFilterMap;
 
   constructor(private readonly _registry: MetadataRegistry) {}
 
@@ -75,11 +81,23 @@ export class ModelBuilder {
     return new PropertiesConfigBuilder<T>(ctor, this._globalConverterRules);
   }
 
+  /** @internal — returns per-context entity query filter map after _finalize() was called. */
+  _getQueryFilterMap(): EntityQueryFilterMap {
+    return this._queryFilterMap ?? new Map();
+  }
+
   /** @internal — called by DbContext after onModelCreating() returns. */
   _finalize(): void {
-    for (const builder of this._builders.values()) {
+    // Collect per-context query filters before applying to registry
+    const filterMap: EntityQueryFilterMap = new Map();
+    for (const [ctor, builder] of this._builders.entries()) {
       builder._applyToRegistry(this._registry);
+      const filters = builder._getQueryFilters();
+      if (filters.length > 0) {
+        filterMap.set(ctor, filters);
+      }
     }
+    this._queryFilterMap = filterMap;
 
     if (this._globalConverterRules.size === 0) return;
 

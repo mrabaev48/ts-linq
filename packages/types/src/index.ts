@@ -452,6 +452,15 @@ export interface GlobalFilter {
   predicate?: (query: QueryOptions) => QueryOptions;
 }
 
+// Model-level named query filter (P0-11)
+export interface QueryFilterMetadata {
+  /** Filter name — `'_default'` for unnamed `hasQueryFilter(pred)` overload. */
+  name: string;
+  /** Compiled AST node (ExpressionNode at runtime, typed as unknown to avoid @ts-linq/ast dependency). */
+  ast: unknown;
+  parameters: readonly unknown[];
+}
+
 // Join type
 export type JoinType = 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
 
@@ -792,6 +801,8 @@ export interface EntityMetadata {
   hierarchyRoot?: Function;
   /** Skip navigation metadata for many-to-many relationships (P0-08). */
   skipNavigations?: SkipNavigationMetadata[];
+  /** Named model-level query filters (P0-11). Auto-appended to every SELECT. */
+  queryFilters?: QueryFilterMetadata[];
 }
 
 // Entity cache interface
