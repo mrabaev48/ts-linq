@@ -1,3 +1,4 @@
+export { CollectionCollectionBuilder } from './CollectionCollectionBuilder';
 export { CollectionNavigationBuilder } from './CollectionNavigationBuilder';
 export { CollectionReferenceBuilder } from './CollectionReferenceBuilder';
 export { DiscriminatorBuilder } from './DiscriminatorBuilder';

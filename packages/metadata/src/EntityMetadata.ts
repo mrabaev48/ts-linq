@@ -5,6 +5,7 @@ import type {
   IndexMetadata,
   OwnedEntityMetadata,
   RelationshipMetadata,
+  SkipNavigationMetadata,
   ValidationRule
 } from '@ts-linq/types';
 
@@ -18,6 +19,7 @@ export class EntityMetadataBuilder {
     ownedEntities?: OwnedEntityMetadata[];
     hierarchy?: HierarchyMetadata;
     hierarchyRoot?: Function;
+    skipNavigations?: SkipNavigationMetadata[];
   };
 
   /**
@@ -169,6 +171,19 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  public addSkipNavigation(nav: SkipNavigationMetadata): this {
+    this.metadata.skipNavigations = this.metadata.skipNavigations ?? [];
+    const idx = this.metadata.skipNavigations.findIndex(
+      (sn) => sn.propertyName === nav.propertyName
+    );
+    if (idx >= 0) {
+      this.metadata.skipNavigations[idx] = nav;
+    } else {
+      this.metadata.skipNavigations.push(nav);
+    }
+    return this;
+  }
+
   /**
    * Finalize and return the constructed `EntityMetadata` object.
    */
@@ -196,6 +211,9 @@ export class EntityMetadataBuilder {
       ...(this.metadata.hierarchy !== undefined ? { hierarchy: this.metadata.hierarchy } : {}),
       ...(this.metadata.hierarchyRoot !== undefined
         ? { hierarchyRoot: this.metadata.hierarchyRoot }
+        : {}),
+      ...(this.metadata.skipNavigations !== undefined && this.metadata.skipNavigations.length > 0
+        ? { skipNavigations: this.metadata.skipNavigations }
         : {})
     };
   }

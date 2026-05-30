@@ -14,7 +14,7 @@ import type { GlobalFilter, PerformanceOptions, Result, SoftDeleteOptions } from
 import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
 
-import { ChangeTracker } from './ChangeTracker';
+import { ChangeTracker, type JoinRowChange } from './ChangeTracker';
 import { DeleteCommand } from './commands/DeleteCommand';
 import { InsertCommand } from './commands/InsertCommand';
 import { UpdateCommand } from './commands/UpdateCommand';
@@ -383,6 +383,11 @@ export abstract class DbContext {
           affectedRows += await this.processChange(normalized);
         }
       }
+
+      // Process many-to-many skip navigation join-row inserts/deletes
+      const skipNavChanges = this._changeTracker.collectSkipNavigationChanges();
+      affectedRows += await this._applySkipNavigationChanges(skipNavChanges);
+
       if (ownTransaction) {
         await this._provider.commitTransaction();
       }
@@ -818,6 +823,19 @@ export abstract class DbContext {
       entityClass: change.entityClass,
       state: change.state
     };
+  }
+
+  private async _applySkipNavigationChanges(changes: JoinRowChange[]): Promise<number> {
+    let count = 0;
+    for (const change of changes) {
+      if (change.operation === 'insert') {
+        await this._provider.insert(change.joinRow, change.joinEntityCtor);
+      } else {
+        await this._provider.delete(change.joinRow, change.joinEntityCtor);
+      }
+      count++;
+    }
+    return count;
   }
 
   private async processChange(change: NormalizedChange): Promise<number> {

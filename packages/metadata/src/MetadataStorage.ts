@@ -4,6 +4,7 @@ import type {
   HierarchyMetadata,
   IndexMetadata,
   RelationshipMetadata,
+  SkipNavigationMetadata,
   ValidationRule
 } from '@ts-linq/types';
 
@@ -123,6 +124,10 @@ export class MetadataStorage {
 
   public static setHierarchyRoot(subtype: Function, root: Function): void {
     MetadataStorage.getInstance().setHierarchyRoot(subtype, root);
+  }
+
+  public static mergeFluentSkipNavigation(target: Function, nav: SkipNavigationMetadata): void {
+    MetadataStorage.getInstance().mergeFluentSkipNavigation(target, nav);
   }
 
   public static clear(): void {
