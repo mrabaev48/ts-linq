@@ -705,6 +705,31 @@ export enum StorageStrategy {
   Json = 'Json'
 }
 
+export enum InheritanceStrategy {
+  Tph = 'Tph',
+  Tpt = 'Tpt',
+  Tpc = 'Tpc'
+}
+
+export interface DiscriminatorEntry {
+  ctor: Function;
+  value: unknown;
+}
+
+export interface DiscriminatorMetadata {
+  columnName: string;
+  columnType: string;
+  entries: DiscriminatorEntry[];
+  isComplete: boolean;
+}
+
+export interface HierarchyMetadata {
+  strategy: InheritanceStrategy;
+  rootEntity: Function;
+  discriminator?: DiscriminatorMetadata;
+  subtypes: Function[];
+}
+
 export interface OwnedEntityMetadata {
   ownerPropertyName: string;
   ownedType: Function;
@@ -734,6 +759,10 @@ export interface EntityMetadata {
   /** Custom history table name (default: `tableName + 'History'`). */
   historyTableName?: string;
   ownedEntities?: OwnedEntityMetadata[];
+  /** Hierarchy metadata — present on the root entity of a TPH/TPT/TPC hierarchy. */
+  hierarchy?: HierarchyMetadata;
+  /** Points to the root entity constructor — present on every subtype in a hierarchy. */
+  hierarchyRoot?: Function;
 }
 
 // Entity cache interface

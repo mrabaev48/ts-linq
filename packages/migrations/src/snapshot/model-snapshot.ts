@@ -5,7 +5,7 @@ import type {
   IndexMetadata,
   OwnedEntityMetadata
 } from '@ts-linq/types';
-import { StorageStrategy } from '@ts-linq/types';
+import { InheritanceStrategy, StorageStrategy } from '@ts-linq/types';
 
 /**
  * A normalized snapshot of a single column in the model.
@@ -99,6 +99,22 @@ export class ModelSnapshotBuilder {
           this._expandOwnedEntity(owned, entity, entityByType, columns, extraTables);
         }
 
+        // TPH: add discriminator column to the root entity table
+        if (
+          entity.hierarchy?.strategy === InheritanceStrategy.Tph &&
+          entity.hierarchy.discriminator
+        ) {
+          const { columnName, columnType } = entity.hierarchy.discriminator;
+          if (!columns.some((c) => c.name === columnName)) {
+            columns.push({
+              name: columnName,
+              type: columnType.toUpperCase(),
+              nullable: true,
+              isPrimaryKey: false
+            });
+          }
+        }
+
         const primaryKeys: string[] = primaryKeyProps
           .map((pk) => entity.columns.find((c) => c.propertyName === pk)?.columnName ?? pk)
           .sort();
@@ -124,6 +140,107 @@ export class ModelSnapshotBuilder {
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
+
+    // TPT / TPC: register subtype tables
+    for (const entity of entities) {
+      if (!entity.hierarchy) continue;
+
+      const { strategy, subtypes, discriminator } = entity.hierarchy;
+
+      if (strategy === InheritanceStrategy.Tpt) {
+        // Each subtype gets its own table with its own columns + FK to root PK
+        for (const subtypeCtor of subtypes) {
+          const subtypeMeta = entityByType.get(subtypeCtor);
+          if (!subtypeMeta) continue;
+          // Skip if this table is already in the main tables list
+          if (tables.some((t) => t.name === subtypeMeta.tableName)) continue;
+
+          const pkCols: string[] = (entity.primaryKeys ?? []).map(
+            (pk) => entity.columns.find((c) => c.propertyName === pk)?.columnName ?? pk
+          );
+
+          const subtypeColumns: ModelColumnSnapshot[] = subtypeMeta.columns
+            .map(
+              (col): ModelColumnSnapshot => ({
+                name: col.columnName,
+                type: String(col.type ?? '').toUpperCase(),
+                nullable: col.nullable ?? true,
+                isPrimaryKey: pkCols.includes(col.columnName)
+              })
+            )
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+          extraTables.push({
+            name: subtypeMeta.tableName,
+            columns: subtypeColumns,
+            primaryKeys: pkCols.sort(),
+            indexes: []
+          });
+        }
+      } else if (strategy === InheritanceStrategy.Tpc) {
+        // Each concrete leaf gets a full table (root columns + subtype columns)
+        const rootColumns: ModelColumnSnapshot[] = entity.columns.map(
+          (col): ModelColumnSnapshot => ({
+            name: col.columnName,
+            type: String(col.type ?? '').toUpperCase(),
+            nullable: col.nullable ?? true,
+            isPrimaryKey: (entity.primaryKeys ?? []).some(
+              (pk) =>
+                entity.columns.find((c) => c.propertyName === pk)?.columnName === col.columnName
+            )
+          })
+        );
+        // Add discriminator column if any (synthetic)
+        if (discriminator) {
+          if (!rootColumns.some((c) => c.name === discriminator.columnName)) {
+            rootColumns.push({
+              name: discriminator.columnName,
+              type: discriminator.columnType.toUpperCase(),
+              nullable: true,
+              isPrimaryKey: false
+            });
+          }
+        }
+
+        for (const subtypeCtor of subtypes) {
+          const subtypeMeta = entityByType.get(subtypeCtor);
+          if (!subtypeMeta) continue;
+          const pkCols: string[] = (entity.primaryKeys ?? []).map(
+            (pk) => entity.columns.find((c) => c.propertyName === pk)?.columnName ?? pk
+          );
+
+          const allCols: ModelColumnSnapshot[] = [
+            ...rootColumns,
+            ...subtypeMeta.columns
+              .filter((col) => !rootColumns.some((rc) => rc.name === col.columnName))
+              .map(
+                (col): ModelColumnSnapshot => ({
+                  name: col.columnName,
+                  type: String(col.type ?? '').toUpperCase(),
+                  nullable: col.nullable ?? true,
+                  isPrimaryKey: pkCols.includes(col.columnName)
+                })
+              )
+          ].sort((a, b) => a.name.localeCompare(b.name));
+
+          const fullTable: ModelTableSnapshot = {
+            name: subtypeMeta.tableName,
+            columns: allCols,
+            primaryKeys: pkCols.sort(),
+            indexes: []
+          };
+
+          // Replace the partial-column table created in the main loop (TPC subtypes have
+          // separate table entries but they only contain subtype-own columns at that point)
+          const existingIdx = tables.findIndex((t) => t.name === subtypeMeta.tableName);
+          if (existingIdx >= 0) {
+            tables[existingIdx] = fullTable;
+          } else {
+            extraTables.push(fullTable);
+          }
+        }
+      }
+    }
 
     return {
       version: 1,
