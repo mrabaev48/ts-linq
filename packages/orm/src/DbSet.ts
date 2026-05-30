@@ -11,6 +11,7 @@ import type {
   GlobalFilter,
   PerformanceOptions,
   QueryFallback,
+  QueryFilterMetadata,
   QuerySplittingBehavior
 } from '@ts-linq/types';
 
@@ -42,6 +43,7 @@ export class DbSet<T extends object> {
   private _globalFilters: GlobalFilter[] | undefined;
   private _softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions;
   private _querySplittingBehavior?: QuerySplittingBehavior;
+  private _entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>;
   private static readonly DEFAULT_IN_CHUNK_SIZE = 1000;
 
   /**
@@ -80,6 +82,7 @@ export class DbSet<T extends object> {
     this._globalFilters = context.globalFilters;
     this._softDeleteOptions = context.softDeleteOptions;
     this._querySplittingBehavior = context.querySplittingBehavior;
+    this._entityQueryFilters = context.entityQueryFilterMap?.get(this._entityClass);
   }
 
   /** The entity constructor this set operates on. */
@@ -106,7 +109,22 @@ export class DbSet<T extends object> {
       this._softDeleteOptions,
       this._changeTracker,
       this._changeTracker?.queryTrackingBehavior,
-      this._querySplittingBehavior
+      this._querySplittingBehavior,
+      this._entityQueryFilters
+    );
+  }
+
+  // ─── Global filter API (P0-11) ────────────────────────────────────────────
+
+  /**
+   * Disables all model-level global query filters for this query (EF9 parity).
+   * Pass one or more filter names to disable only specific named filters.
+   */
+  public ignoreQueryFilters(): Queryable<T>;
+  public ignoreQueryFilters(...names: string[]): Queryable<T>;
+  public ignoreQueryFilters(...names: string[]): Queryable<T> {
+    return (this.newQueryable().ignoreQueryFilters as (...args: string[]) => Queryable<T>)(
+      ...names
     );
   }
 

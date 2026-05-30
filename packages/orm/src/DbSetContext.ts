@@ -4,6 +4,7 @@ import type {
   ExecutionStrategyOptions,
   GlobalFilter,
   PerformanceOptions,
+  QueryFilterMetadata,
   QuerySplittingBehavior,
   SoftDeleteOptions
 } from '@ts-linq/types';
@@ -26,4 +27,6 @@ export interface DbSetContext {
   rollbackTransaction?: () => Promise<void>;
   /** ExecutionStrategy options set via DbContextOptionsBuilder.enableRetryOnFailure(). */
   executionStrategyOptions?: ExecutionStrategyOptions;
+  /** Per-context named query filters from onModelCreating (P0-11). */
+  entityQueryFilterMap?: Map<Function, ReadonlyArray<QueryFilterMetadata>>;
 }

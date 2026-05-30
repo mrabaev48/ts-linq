@@ -1,7 +1,7 @@
 ---
 title: Global query filters with EF9 named filters
 ef_core_api: EntityTypeBuilder<T>.HasQueryFilter(e => !e.IsDeleted) / HasQueryFilter("tenant", e => e.TenantId == ctx.TenantId) / IQueryable<T>.IgnoreQueryFilters()
-status: not-started
+status: done
 priority: P0
 effort: M
 depends_on: [P0-01]

@@ -12,10 +12,11 @@ export type { EFCompileQueryVisitorVersion } from './visitors/EFCompileQueryVisi
 import * as ts from 'typescript';
 
 import { extractSinkFromCtx } from './diagnostics';
+import { rewriteHasQueryFilterCall } from './rewriters/HasQueryFilterRewriter';
 import { rewriteSelectCall } from './rewriters/SelectRewriter';
 import { rewriteCall } from './rewriters/WhereHavingRewriter';
 
-const TARGET_METHODS = new Set(['where', 'having', 'select']);
+const TARGET_METHODS = new Set(['where', 'having', 'select', 'hasQueryFilter']);
 
 export default function tsLinqTransformer(
   program: ts.Program,
@@ -35,7 +36,9 @@ export default function tsLinqTransformer(
           const rewritten =
             expr.name.text === 'select'
               ? rewriteSelectCall(node, checker, ctx, sink)
-              : rewriteCall(node, checker, ctx, sink);
+              : expr.name.text === 'hasQueryFilter'
+                ? rewriteHasQueryFilterCall(node, checker, ctx, sink)
+                : rewriteCall(node, checker, ctx, sink);
           if (rewritten !== null && rewritten !== node) {
             // Visit the original receiver AFTER rewriting this call so that inner
             // chained calls (e.g. .where().where()) also get rewritten in this pass.

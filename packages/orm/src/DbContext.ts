@@ -25,7 +25,7 @@ import { DbSet } from './DbSet';
 import type { DbSetContext } from './DbSetContext';
 import { DbUpdateConcurrencyException } from './exceptions/DbUpdateConcurrencyException';
 import { InterceptorRegistry } from './interceptors/InterceptorRegistry';
-import { ModelBuilder } from './ModelBuilder';
+import { type EntityQueryFilterMap, ModelBuilder } from './ModelBuilder';
 import { BatchExecutor } from './save-changes/batch-executor';
 import { AuditInterceptor } from './services/AuditInterceptor';
 import { CacheCoordinator } from './services/CacheCoordinator';
@@ -64,6 +64,7 @@ export abstract class DbContext {
   private _loadingDefaults: LoadingDefaults = {};
   private _softDelete?: SoftDeleteOptions;
   private _globalFilters?: GlobalFilter[];
+  private _entityQueryFilterMap: EntityQueryFilterMap = new Map();
   private _diagnostics?: DiagnosticsOptions;
   private _memoryProfiler?: MemoryProfilerLike;
   private _validationService!: ChangeValidationService;
@@ -217,6 +218,7 @@ export abstract class DbContext {
     const modelBuilder = new ModelBuilder(this._registry);
     this.onModelCreating(modelBuilder);
     modelBuilder._finalize();
+    this._entityQueryFilterMap = modelBuilder._getQueryFilterMap();
 
     this.initializeDbSets();
     this._database = new DatabaseFacade(this.buildDbSetContext(), options.migrationsDirectory);
@@ -756,7 +758,8 @@ export abstract class DbContext {
       beginTransaction: async () => this.beginTransaction(),
       commitTransaction: async () => this.commitTransaction(),
       rollbackTransaction: async () => this.rollbackTransaction(),
-      executionStrategyOptions: this._executionStrategyOptions
+      executionStrategyOptions: this._executionStrategyOptions,
+      entityQueryFilterMap: this._entityQueryFilterMap
     };
   }
 
