@@ -141,9 +141,17 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   /** Insert an entity instance into its table and return the inserted entity. */
   public abstract insert<T extends object>(entity: T, entityClass: Function): Promise<T>;
   /** Update an existing entity row and return the updated entity. */
-  public abstract update<T extends object>(entity: T, entityClass: Function): Promise<T>;
+  public abstract update<T extends object>(
+    entity: T,
+    entityClass: Function,
+    originalValues?: object
+  ): Promise<T>;
   /** Delete an entity row. */
-  public abstract delete<T extends object>(entity: T, entityClass: Function): Promise<void>;
+  public abstract delete<T extends object>(
+    entity: T,
+    entityClass: Function,
+    originalValues?: object
+  ): Promise<void>;
   /** Find an entity by primary key value. */
   public abstract findById<T extends object>(
     id: unknown,

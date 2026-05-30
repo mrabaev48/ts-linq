@@ -218,7 +218,11 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Update a row by primary key; supports optimistic concurrency via version column. */
-  public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async update<T extends object>(
+    entity: T,
+    entityClass: Function,
+    originalValues?: object
+  ): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
@@ -226,15 +230,18 @@ export class PostgresProvider extends DatabaseProvider {
     if (!dialect.buildUpdate) throw new Error('Dialect does not support buildUpdate');
 
     const versionCol = meta.columns.find((c) => c.isVersion);
+    const concurrencyTokens = meta.columns.filter((c) => c.isConcurrencyToken && !c.isVersion);
     const { sql, parameters } = dialect.buildUpdate(
       entity as Record<string, unknown>,
       meta,
-      versionCol
+      versionCol,
+      concurrencyTokens,
+      originalValues as Record<string, unknown> | undefined
     );
 
     const affected = await this.executeNonQuery(sql, parameters);
     if (affected === 0) {
-      if (versionCol)
+      if (versionCol || concurrencyTokens.length > 0)
         throw new OptimisticConcurrencyError('Version mismatch detected during update');
       throw new Error('No rows were updated. Not found or no changes.');
     }
@@ -284,15 +291,30 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Delete a row by primary key. */
-  public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
+  public async delete<T extends object>(
+    entity: T,
+    entityClass: Function,
+    originalValues?: object
+  ): Promise<void> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
     const dialect = this.getDialect();
     if (!dialect.buildDelete) throw new Error('Dialect does not support buildDelete');
 
-    const { sql, parameters } = dialect.buildDelete(entity as Record<string, unknown>, meta);
-    await this.executeNonQuery(sql, parameters);
+    const concurrencyTokens = meta.columns.filter((c) => c.isConcurrencyToken);
+    const { sql, parameters } = dialect.buildDelete(
+      entity as Record<string, unknown>,
+      meta,
+      concurrencyTokens,
+      originalValues as Record<string, unknown> | undefined
+    );
+    const affected = await this.executeNonQuery(sql, parameters);
+    if (affected === 0) {
+      if (concurrencyTokens.length > 0)
+        throw new OptimisticConcurrencyError('Version mismatch detected during delete');
+      throw new Error('No rows were deleted.');
+    }
   }
 
   /** Provide SQL dialect for this provider. */

@@ -141,7 +141,9 @@ export class MysqlDialect implements SqlDialect {
   public buildUpdate(
     entity: Record<string, unknown>,
     metadata: EntityMetadata,
-    versionCol?: ColumnMetadata
+    versionCol?: ColumnMetadata,
+    concurrencyTokens?: ColumnMetadata[],
+    originalValues?: Record<string, unknown>
   ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for entity ${metadata.tableName}`);
@@ -168,11 +170,21 @@ export class MysqlDialect implements SqlDialect {
         this.coerceParameter(this.applyConverter(entity[versionCol.propertyName], versionCol))
       );
     }
+    for (const col of (concurrencyTokens ?? []).filter((c) => !c.isVersion)) {
+      const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
+      whereClauses.push(`${col.columnName} = ?`);
+      whereParams.push(this.coerceParameter(this.applyConverter(origVal, col)));
+    }
     const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, parameters: [...setParams, ...whereParams] };
   }
 
-  public buildDelete(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithParams {
+  public buildDelete(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    concurrencyTokens?: ColumnMetadata[],
+    originalValues?: Record<string, unknown>
+  ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for entity ${metadata.tableName}`);
     }
@@ -182,6 +194,11 @@ export class MysqlDialect implements SqlDialect {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${col.columnName} = ?`);
       parameters.push(this.coerceParameter(entity[pk]));
+    }
+    for (const col of concurrencyTokens ?? []) {
+      const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
+      whereClauses.push(`${col.columnName} = ?`);
+      parameters.push(this.coerceParameter(this.applyConverter(origVal, col)));
     }
     const sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, parameters };

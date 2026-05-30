@@ -59,6 +59,17 @@ export class PropertyBuilder<TValue> {
     return this;
   }
 
+  isConcurrencyToken(yes = true): this {
+    this._col.isConcurrencyToken = yes;
+    return this;
+  }
+
+  isRowVersion(): this {
+    this._col.isVersion = true;
+    this._col.isConcurrencyToken = true;
+    return this;
+  }
+
   /**
    * Configures a value converter for this property.
    * Mirrors EF Core's PropertyBuilder.HasConversion().

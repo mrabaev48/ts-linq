@@ -4,6 +4,7 @@ export type TrackedChange = {
   entity: Record<string, unknown>;
   entityClass: Function;
   state: string;
+  originalValues?: object;
 };
 
 export class UpdateCommand {
@@ -14,7 +15,7 @@ export class UpdateCommand {
 
   public async execute(change: TrackedChange): Promise<void> {
     if (!change.entity || typeof change.entity !== 'object') return;
-    await this.provider.update(change.entity, change.entityClass);
+    await this.provider.update(change.entity, change.entityClass, change.originalValues);
     this.onAfterUpdate(change);
   }
 }
