@@ -187,20 +187,27 @@ export class MySqlProvider extends DatabaseProvider {
     return col?.isGenerated ? pk : undefined;
   }
 
-  public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async update<T extends object>(
+    entity: T,
+    entityClass: Function,
+    originalValues?: object
+  ): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const versionCol = metadata.columns.find((c) => c.isVersion);
+    const concurrencyTokens = metadata.columns.filter((c) => c.isConcurrencyToken && !c.isVersion);
     const dialect = this.getDialect();
     if (!dialect.buildUpdate) throw new Error('Dialect does not support buildUpdate');
     const { sql, parameters } = dialect.buildUpdate(
       entity as Record<string, unknown>,
       metadata,
-      versionCol
+      versionCol,
+      concurrencyTokens,
+      originalValues as Record<string, unknown> | undefined
     );
     const affectedRows = await this.executeNonQuery(sql, parameters);
     if (affectedRows === 0) {
-      if (versionCol)
+      if (versionCol || concurrencyTokens.length > 0)
         throw new OptimisticConcurrencyError('Version mismatch detected during update');
       throw new Error('No rows were updated.');
     }
@@ -238,14 +245,28 @@ export class MySqlProvider extends DatabaseProvider {
     return entity;
   }
 
-  public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
+  public async delete<T extends object>(
+    entity: T,
+    entityClass: Function,
+    originalValues?: object
+  ): Promise<void> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
+    const concurrencyTokens = metadata.columns.filter((c) => c.isConcurrencyToken);
     const dialect = this.getDialect();
     if (!dialect.buildDelete) throw new Error('Dialect does not support buildDelete');
-    const { sql, parameters } = dialect.buildDelete(entity as Record<string, unknown>, metadata);
+    const { sql, parameters } = dialect.buildDelete(
+      entity as Record<string, unknown>,
+      metadata,
+      concurrencyTokens,
+      originalValues as Record<string, unknown> | undefined
+    );
     const affectedRows = await this.executeNonQuery(sql, parameters);
-    if (affectedRows === 0) throw new Error('No rows were deleted.');
+    if (affectedRows === 0) {
+      if (concurrencyTokens.length > 0)
+        throw new OptimisticConcurrencyError('Version mismatch detected during delete');
+      throw new Error('No rows were deleted.');
+    }
   }
 
   public async findById<T extends object>(

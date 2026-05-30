@@ -274,9 +274,16 @@ export interface SqlDialect {
   buildUpdate?(
     entity: Record<string, unknown>,
     metadata: EntityMetadata,
-    versionCol?: ColumnMetadata
+    versionCol?: ColumnMetadata,
+    concurrencyTokens?: ColumnMetadata[],
+    originalValues?: Record<string, unknown>
   ): SqlWithParams;
-  buildDelete?(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithParams;
+  buildDelete?(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    concurrencyTokens?: ColumnMetadata[],
+    originalValues?: Record<string, unknown>
+  ): SqlWithParams;
   quoteIdentifier(identifier: string): string;
   /** Maximum number of bind parameters this dialect/driver supports per statement. */
   readonly parameterLimit?: number;
@@ -647,6 +654,7 @@ export interface ColumnMetadata {
   isComputed?: boolean;
   version?: boolean;
   isVersion?: boolean;
+  isConcurrencyToken?: boolean;
   converter?: ValueConverterLike;
   comparer?: ValueComparerLike;
 }
