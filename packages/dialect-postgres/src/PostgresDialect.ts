@@ -212,7 +212,9 @@ export class PostgresDialect implements SqlDialect {
   public buildUpdate(
     entity: Record<string, unknown>,
     metadata: EntityMetadata,
-    versionCol?: ColumnMetadata
+    versionCol?: ColumnMetadata,
+    concurrencyTokens?: ColumnMetadata[],
+    originalValues?: Record<string, unknown>
   ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for ${metadata.tableName}`);
@@ -223,18 +225,18 @@ export class PostgresDialect implements SqlDialect {
     );
     if (setCols.length === 0) throw new Error('No columns to update');
 
-    const sets = setCols.map((c, i) => `"${c.columnName}" = $${i + 1}`);
+    const sets = setCols.map((c, i) => `\"${c.columnName}\" = $${i + 1}`);
     const parameters: SqlParameter[] = setCols.map((c) =>
       this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
 
     if (versionCol) {
-      sets.push(`"${versionCol.columnName}" = "${versionCol.columnName}" + 1`);
+      sets.push(`\"${versionCol.columnName}\" = \"${versionCol.columnName}\" + 1`);
     }
 
     const where = primaryKeys.map(
       (pk, i) =>
-        `"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${setCols.length + i + 1}`
+        `\"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}\" = $${setCols.length + i + 1}`
     );
     const whereVals: SqlParameter[] = primaryKeys.map((pk) => {
       const col = metadata.columns.find((c) => c.propertyName === pk);
@@ -242,30 +244,49 @@ export class PostgresDialect implements SqlDialect {
     });
     parameters.push(...whereVals);
 
-    let sql = `UPDATE "${metadata.tableName}" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
+    let sql = `UPDATE \"${metadata.tableName}\" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
 
     if (versionCol) {
-      sql += ` AND "${versionCol.columnName}" = $${parameters.length + 1}`;
+      sql += ` AND \"${versionCol.columnName}\" = $${parameters.length + 1}`;
       parameters.push(
         this.coerceParameter(this.applyConverter(entity[versionCol.propertyName], versionCol))
       );
     }
 
+    const tokens = (concurrencyTokens ?? []).filter((c) => !c.isVersion);
+    for (const col of tokens) {
+      const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
+      sql += ` AND \"${col.columnName}\" = $${parameters.length + 1}`;
+      parameters.push(this.coerceParameter(this.applyConverter(origVal, col)));
+    }
+
     return { sql, parameters };
   }
 
-  public buildDelete(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithParams {
+  public buildDelete(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    concurrencyTokens?: ColumnMetadata[],
+    originalValues?: Record<string, unknown>
+  ): SqlWithParams {
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
       throw new Error(`No primary key defined for ${metadata.tableName}`);
     }
     const where = metadata.primaryKeys.map(
       (pk, i) =>
-        `"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}" = $${i + 1}`
+        `\"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}\" = $${i + 1}`
     );
     const parameters: SqlParameter[] = metadata.primaryKeys.map((pk) =>
       this.coerceParameter(entity[pk])
     );
-    const sql = `DELETE FROM "${metadata.tableName}" WHERE ${where.join(' AND ')}`;
+    let sql = `DELETE FROM \"${metadata.tableName}\" WHERE ${where.join(' AND ')}`;
+
+    for (const col of concurrencyTokens ?? []) {
+      const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
+      sql += ` AND \"${col.columnName}\" = $${parameters.length + 1}`;
+      parameters.push(this.coerceParameter(this.applyConverter(origVal, col)));
+    }
+
     return { sql, parameters };
   }
 
