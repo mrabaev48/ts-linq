@@ -742,6 +742,25 @@ export interface OwnedEntityMetadata {
   isCollection: boolean;
 }
 
+export interface SkipNavigationMetadata {
+  /** Property name on the owning entity (e.g. "tags" on Post). */
+  propertyName: string;
+  /** Constructor of the related entity (e.g. Tag). */
+  targetEntity: Function;
+  /** Name of the join table (e.g. "PostTag"). */
+  joinTableName: string;
+  /** Synthetic or explicit join entity constructor registered in MetadataRegistry. */
+  joinEntityCtor: Function;
+  /** FK column on the join table pointing back to the owning entity (e.g. "postId"). */
+  leftForeignKey: string;
+  /** FK column on the join table pointing to the related entity (e.g. "tagId"). */
+  rightForeignKey: string;
+  /** Property name of the inverse navigation on the related entity (e.g. "posts" on Tag). */
+  inverseSide?: string;
+  /** True when the join entity was auto-synthesised (no explicit UsingEntity call). */
+  isSynthesized: boolean;
+}
+
 export interface EntityMetadata {
   target?: Function;
   className?: string;
@@ -763,6 +782,8 @@ export interface EntityMetadata {
   hierarchy?: HierarchyMetadata;
   /** Points to the root entity constructor — present on every subtype in a hierarchy. */
   hierarchyRoot?: Function;
+  /** Skip navigation metadata for many-to-many relationships (P0-08). */
+  skipNavigations?: SkipNavigationMetadata[];
 }
 
 // Entity cache interface

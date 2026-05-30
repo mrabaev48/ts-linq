@@ -22,6 +22,7 @@ export {
   type HierarchyMetadata,
   InheritanceStrategy,
   type OwnedEntityMetadata,
+  type SkipNavigationMetadata,
   StorageStrategy,
   type ValueComparerLike,
   type ValueConverterLike

@@ -18,11 +18,19 @@ import type { EntityAttacher } from '@ts-linq/types';
  *    DbContext.saveChanges() so property mutations are picked up without an
  *    explicit `update()` call.
  */
+export interface JoinRowChange {
+  joinRow: Record<string, unknown>;
+  joinEntityCtor: Function;
+  operation: 'insert' | 'delete';
+}
+
 export class ChangeTracker implements EntityAttacher {
   private _trackedEntities: Map<object, TrackedEntity> = new Map();
   /** Identity map: entityClass → (pkValue → TrackedEntity) */
   private _trackedByPk: Map<Function, Map<unknown, TrackedEntity>> = new Map();
   private readonly _registry: MetadataRegistry;
+  /** Snapshots of skip-navigation collection PKs at attach time: entity → (propName → Set<pk>) */
+  private _collectionSnapshots: Map<object, Map<string, Set<unknown>>> = new Map();
 
   /** Default tracking behavior applied to all queries originating from this context. */
   public queryTrackingBehavior: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -133,6 +141,7 @@ export class ChangeTracker implements EntityAttacher {
     if (existing) {
       existing.state = EntityState.Unchanged;
       existing.originalValues = this.cloneObject(existing.entity, entityClass);
+      this._collectionSnapshots.set(entity, this._snapshotCollections(entity, entityClass));
       return;
     }
     const tracked: TrackedEntity = {
@@ -143,6 +152,7 @@ export class ChangeTracker implements EntityAttacher {
     };
     this._trackedEntities.set(entity, tracked);
     this.registerInPkMap(tracked);
+    this._collectionSnapshots.set(entity, this._snapshotCollections(entity, entityClass));
   }
 
   /** Return all tracked entities that have pending changes. */
@@ -163,10 +173,15 @@ export class ChangeTracker implements EntityAttacher {
     for (const tracked of Array.from(this._trackedEntities.values())) {
       if (tracked.state === EntityState.Deleted) {
         this._trackedEntities.delete(tracked.entity);
+        this._collectionSnapshots.delete(tracked.entity);
         this.unregisterFromPkMap(tracked);
       } else {
         tracked.state = EntityState.Unchanged;
         tracked.originalValues = this.cloneObject(tracked.entity, tracked.entityClass);
+        this._collectionSnapshots.set(
+          tracked.entity,
+          this._snapshotCollections(tracked.entity, tracked.entityClass)
+        );
       }
     }
   }
@@ -175,6 +190,7 @@ export class ChangeTracker implements EntityAttacher {
   public clear(): void {
     this._trackedEntities.clear();
     this._trackedByPk.clear();
+    this._collectionSnapshots.clear();
   }
 
   /**
@@ -210,6 +226,97 @@ export class ChangeTracker implements EntityAttacher {
       }
     }
     return false;
+  }
+
+  // ─── Skip navigation (many-to-many) collection tracking ─────────────────
+
+  private _snapshotCollections(entity: object, entityClass: Function): Map<string, Set<unknown>> {
+    const result = new Map<string, Set<unknown>>();
+    const meta = this._registry.getEntity(entityClass);
+    if (!meta?.skipNavigations?.length) return result;
+
+    const rec = entity as Record<string, unknown>;
+    for (const sn of meta.skipNavigations) {
+      const collection = rec[sn.propertyName];
+      if (!Array.isArray(collection)) continue;
+
+      const targetMeta = this._registry.getEntity(sn.targetEntity);
+      const targetPk = targetMeta?.primaryKeys?.[0];
+      const pks = new Set<unknown>();
+      for (const item of collection) {
+        const pkVal = targetPk ? (item as Record<string, unknown>)[targetPk] : undefined;
+        if (pkVal !== undefined && pkVal !== null) pks.add(pkVal);
+      }
+      result.set(sn.propertyName, pks);
+    }
+    return result;
+  }
+
+  /**
+   * Compares current many-to-many collections against their snapshots and
+   * returns the join-row inserts/deletes needed by `DbContext.saveChanges()`.
+   */
+  public collectSkipNavigationChanges(): JoinRowChange[] {
+    const changes: JoinRowChange[] = [];
+
+    for (const tracked of this._trackedEntities.values()) {
+      // Skip deleted entities — removing the entity removes join rows via cascade or explicit delete
+      if (tracked.state === EntityState.Deleted) continue;
+
+      const meta = this._registry.getEntity(tracked.entityClass);
+      if (!meta?.skipNavigations?.length) continue;
+
+      const snapshot = this._collectionSnapshots.get(tracked.entity);
+      const rec = tracked.entity as Record<string, unknown>;
+      const ownerMeta = meta;
+      const ownerPk = ownerMeta.primaryKeys?.[0];
+      const ownerPkVal = ownerPk ? rec[ownerPk] : undefined;
+      if (ownerPkVal === undefined || ownerPkVal === null) continue;
+
+      for (const sn of meta.skipNavigations) {
+        const current = rec[sn.propertyName];
+        if (!Array.isArray(current)) continue;
+
+        const targetMeta = this._registry.getEntity(sn.targetEntity);
+        const targetPk = targetMeta?.primaryKeys?.[0];
+
+        const currentPks = new Set<unknown>();
+        const currentItemsByPk = new Map<unknown, unknown>();
+        for (const item of current) {
+          const pkVal = targetPk ? (item as Record<string, unknown>)[targetPk] : undefined;
+          if (pkVal !== undefined && pkVal !== null) {
+            currentPks.add(pkVal);
+            currentItemsByPk.set(pkVal, pkVal);
+          }
+        }
+
+        const originalPks = snapshot?.get(sn.propertyName) ?? new Set<unknown>();
+
+        // Added items
+        for (const pk of currentPks) {
+          if (!originalPks.has(pk)) {
+            changes.push({
+              joinRow: { [sn.leftForeignKey]: ownerPkVal, [sn.rightForeignKey]: pk },
+              joinEntityCtor: sn.joinEntityCtor,
+              operation: 'insert'
+            });
+          }
+        }
+
+        // Removed items
+        for (const pk of originalPks) {
+          if (!currentPks.has(pk)) {
+            changes.push({
+              joinRow: { [sn.leftForeignKey]: ownerPkVal, [sn.rightForeignKey]: pk },
+              joinEntityCtor: sn.joinEntityCtor,
+              operation: 'delete'
+            });
+          }
+        }
+      }
+    }
+
+    return changes;
   }
 
   // ─── Cloning & equality ───────────────────────────────────────────────────
