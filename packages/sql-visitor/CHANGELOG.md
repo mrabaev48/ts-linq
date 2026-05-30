@@ -1,5 +1,68 @@
 # @ts-linq/sql-visitor
 
+## 2.3.0
+
+### Minor Changes
+
+- cd77e1f: feat(p0-05): add ValueConverter, ValueComparer and HasConversion fluent API
+
+  Adds bidirectional model↔provider value conversion (EF Core HasConversion parity):
+  - `ValueConverter<TModel, TProvider>` and `ValueComparer<T>` concrete classes in `@ts-linq/metadata`
+  - Built-in converters: `BoolToZeroOneConverter`, `EnumToStringConverter`, `EnumToNumberConverter`, `DateOnlyToStringConverter`
+  - `PropertyBuilder.hasConversion()` fluent overloads (converter instance or function pair + optional comparer)
+  - `ModelBuilder.properties<T>().haveConversion()` for global type-level converters
+  - `ChangeTracker.detectChanges()` uses `ValueComparer.equals/snapshot` for reference-type properties
+  - `RowMaterializer` applies `fromProvider` on read; all dialects and providers apply `toProvider` on write
+  - `BinaryVisitor` lifts converter to literals in WHERE predicates
+  - Bug fix: `MetadataRegistry.registerEntity` no longer overwrites finalized entities when called without a table name
+
+- 84a1e2d: Add `tagWith()` / `tagWithCallSite()` query tagging API (mirrors EF Core 8 `TagWith` / `TagWithCallSite`).
+
+  Tags are emitted as leading `-- comment` SQL lines before the statement, making queries identifiable
+  in DBA tools, query stores, and slow-query logs without ambiguity.
+
+  Key changes:
+  - `Queryable.tagWith(tag)`: attach a diagnostic string comment to the emitted SQL. Multiple calls accumulate in order.
+  - `Queryable.tagWithCallSite()`: auto-capture caller's source file and line via `Error().stack` and append as a tag.
+  - `Queryable.getTags()`: inspect the current tag list without executing.
+  - `DbSet.tagWith()` / `DbSet.tagWithCallSite()` / `DbSet.getTags()`: delegation methods on `DbSet<T>`.
+  - `QueryTagError`: thrown at call time when a tag contains newlines or comment-break sequences (`*/`).
+  - `QueryTagList` type and `sanitizeTag()` exported from `@ts-linq/query`.
+  - `emitTagComments(tags)` exported from `@ts-linq/sql-visitor`: converts a tag list to a SQL comment block.
+  - `parseTagsFromSql(sql)` exported from `@ts-linq/telemetry`: extracts leading `-- ` comment lines from SQL.
+  - `TelemetryProvider.queryStart()` now adds `db.query.tags` as a structured OTEL span attribute when tags are present.
+  - Tags are NOT part of the SQL cache key — the clean SQL is cached, tags are prepended at execution time.
+
+### Patch Changes
+
+- d0668cb: feat(p2-46): add MaxBatchSize support for SaveChanges batching
+
+  `DbContextOptionsBuilder.maxBatchSize(n)` enables multi-row INSERT/UPDATE/DELETE
+  batching in `saveChanges()`, reducing N round-trips to ceil(N/batchSize) calls.
+  - `@ts-linq/orm`: `DbContextOptionsBuilder.maxBatchSize()`, `BatchExecutor`, `BatchGrouper`
+  - `@ts-linq/types`: `BatchInsertResult`, `BatchUpdateResult` interfaces; extended `SqlDialect`
+  - `@ts-linq/sql-visitor`: `buildQuestionMarkRows`, `chunkArray`, `calcChunkSize` utilities
+  - `@ts-linq/dialect-postgres`: `buildPgBatchInsert/Update/Delete`, `PostgresOptionsBuilder`
+  - `@ts-linq/dialect-mssql`: `buildMssqlBatchInsert/Update/Delete`, `MssqlOptionsBuilder`
+  - `@ts-linq/dialect-mysql`: `buildMysqlBatchInsert/Update/Delete`, `MysqlOptionsBuilder`
+
+  PostgreSQL uses `INSERT ... RETURNING *` and CTE-based bulk UPDATE with type casts.
+  MSSQL uses `INSERT ... OUTPUT INSERTED` and VALUES-JOIN bulk UPDATE.
+  MySQL uses multi-row INSERT with `LAST_INSERT_ID()` for sequential PK assignment.
+  MySQL UPDATE falls back to per-row statements (no clean multi-row UPDATE syntax).
+
+- Updated dependencies [51516f8]
+- Updated dependencies [cd77e1f]
+- Updated dependencies [7745012]
+- Updated dependencies [90402db]
+- Updated dependencies [240059c]
+- Updated dependencies [2f86a0d]
+- Updated dependencies [b738384]
+- Updated dependencies [6cad9cf]
+- Updated dependencies [d0668cb]
+  - @ts-linq/types@2.3.0
+  - @ts-linq/ast@2.2.1
+
 ## 2.2.0
 
 ### Minor Changes

@@ -1,5 +1,59 @@
 # @ts-linq/core
 
+## 1.4.0
+
+### Minor Changes
+
+- 7745012: feat(p0-06): add OwnedEntityTypes — OwnsOne, OwnsMany, ToJson, table-splitting
+  - `StorageStrategy` enum (TableSplit | SeparateTable | Json) in `@ts-linq/types`
+  - `OwnedEntityMetadata` interface + `EntityMetadata.ownedEntities` field
+  - `MetadataRegistry.addOwnedEntity()` / `getOwnedEntities()` in `@ts-linq/metadata`
+  - New `OwnedNavigationBuilder<TOwner, TOwned>` in `@ts-linq/orm` with `property()`, `withOwner()`, `hasForeignKey()`, `hasKey()`, `toTable()`, `toJson()`
+  - `EntityTypeBuilder.ownsOne()` / `ownsMany()` on existing builder
+  - `ModelSnapshotBuilder` expands owned columns (TableSplit prefixed columns, Json column, SeparateTable extra table)
+  - `hydrateTableSplit` / `hydrateJson` / `hydrateOwnedEntities` materialization utilities in `@ts-linq/core`
+
+### Patch Changes
+
+- 2f86a0d: feat(p0-10): implement concurrency tokens, RowVersion, and DbUpdateConcurrencyException
+  - `PropertyBuilder.isConcurrencyToken()` and `isRowVersion()` fluent API methods
+  - `ColumnMetadata.isConcurrencyToken` flag in `@ts-linq/types`
+  - `DbUpdateConcurrencyException` with populated `entries: EntityEntry[]`
+  - `EntityEntry.reload()` and `getDatabaseValues()` recovery helpers
+  - WHERE-clause injection of original token values in UPDATE/DELETE for all three dialects (postgres, mysql, mssql)
+  - `originalValues` propagated from ChangeTracker snapshot through the full save pipeline
+  - `OptimisticConcurrencyError` re-thrown as `DbUpdateConcurrencyException` in `saveChanges()`
+
+- 6cad9cf: Add `logTo()` / `enableSensitiveDataLogging()` / `enableDetailedErrors()` / `configureWarnings()` diagnostic API (mirrors EF Core `LogTo` / `EnableSensitiveDataLogging` / `EnableDetailedErrors` / `ConfigureWarnings`).
+
+  Key changes:
+  - `DbContextOptionsBuilder.logTo(sink, level?)`: routes all diagnostic events to a user-supplied sink function. Level defaults to `'information'`.
+  - `DbContextOptionsBuilder.enableSensitiveDataLogging()`: exposes raw SQL parameter values in messages. **Parameters are masked by default** (`:p0`, `:p1`, …) to prevent PII leakage.
+  - `DbContextOptionsBuilder.enableDetailedErrors()`: appends full stack traces to error messages.
+  - `DbContextOptionsBuilder.configureWarnings(w => w.throw(eventId).log(eventId).suppress(eventId))`: per-event routing — escalate to `EfWarningError`, force-log, or suppress entirely.
+  - `DiagnosticEmitter` (new in `@ts-linq/telemetry`): single-chokepoint `SqlLogger` that applies masking, level filtering, and warning escalation. Automatically attached to the provider by `DbContext` when `logTo()` is configured.
+  - `WarningConfigurationBuilder` (new in `@ts-linq/telemetry`): fluent builder for the warning route table.
+  - `EfWarningError` (new in `@ts-linq/telemetry`): thrown when an event matches a `.throw(eventId)` route.
+  - `CoreEventId` / `RelationalEventId` (new in `@ts-linq/telemetry`): string-constant event ID catalog mirroring EF Core's taxonomy.
+  - `maskParams()` (new in `@ts-linq/telemetry`): utility that replaces param values with `:p0`, `:p1`, … positional placeholders.
+  - `DatabaseProvider.attachLogger(extra)` (new in `@ts-linq/core`): public method to compose an additional `SqlLogger` alongside any existing one without replacing it.
+  - `DbContextOptions.logging` (new in `@ts-linq/core`): optional field carrying the `DiagnosticConfig` produced by the builder.
+  - `LogLevel`, `WarningBehavior`, `DiagnosticConfig` types added to `@ts-linq/types`.
+  - Coexists with OTEL / custom loggers set at the provider level — both receive every event independently.
+
+- Updated dependencies [51516f8]
+- Updated dependencies [cd77e1f]
+- Updated dependencies [7745012]
+- Updated dependencies [90402db]
+- Updated dependencies [240059c]
+- Updated dependencies [2f86a0d]
+- Updated dependencies [b738384]
+- Updated dependencies [6cad9cf]
+- Updated dependencies [d0668cb]
+  - @ts-linq/types@2.3.0
+  - @ts-linq/metadata@2.1.0
+  - @ts-linq/ast@2.2.1
+
 ## 1.3.0
 
 ### Minor Changes

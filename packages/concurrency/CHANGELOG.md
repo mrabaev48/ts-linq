@@ -1,5 +1,20 @@
 # @ts-linq/concurrency
 
+## 2.0.3
+
+### Patch Changes
+
+- Updated dependencies [51516f8]
+- Updated dependencies [cd77e1f]
+- Updated dependencies [7745012]
+- Updated dependencies [90402db]
+- Updated dependencies [240059c]
+- Updated dependencies [2f86a0d]
+- Updated dependencies [b738384]
+- Updated dependencies [6cad9cf]
+- Updated dependencies [d0668cb]
+  - @ts-linq/types@2.3.0
+
 ## 2.0.2
 
 ### Patch Changes
