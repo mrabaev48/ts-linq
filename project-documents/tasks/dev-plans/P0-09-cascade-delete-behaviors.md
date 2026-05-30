@@ -1,7 +1,7 @@
 ---
 title: Cascade delete behaviors — OnDelete with all seven modes
 ef_core_api: ReferenceCollectionBuilder<...>.OnDelete(DeleteBehavior.Cascade | Restrict | SetNull | ClientSetNull | NoAction | ClientCascade | ClientNoAction)
-status: not-started
+status: done
 priority: P0
 effort: M
 depends_on: [P0-01]

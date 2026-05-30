@@ -3,6 +3,8 @@ import { EntityState, QueryTrackingBehavior } from '@ts-linq/core';
 import { type MetadataRegistry, MetadataStorage } from '@ts-linq/metadata';
 import type { EntityAttacher } from '@ts-linq/types';
 
+import { CascadeWalker } from './changetracker/CascadeWalker';
+
 /**
  * Tracks entities and their states (Added, Modified, Deleted, Unchanged)
  * to enable unit-of-work style persistence via `saveChanges`.
@@ -153,6 +155,15 @@ export class ChangeTracker implements EntityAttacher {
     this._trackedEntities.set(entity, tracked);
     this.registerInPkMap(tracked);
     this._collectionSnapshots.set(entity, this._snapshotCollections(entity, entityClass));
+  }
+
+  /**
+   * Apply client-side cascade delete behaviors for all currently-deleted tracked entities.
+   * Must be called after detectChanges() and before getChanges() in the saveChanges pipeline.
+   */
+  public applyCascades(): void {
+    const walker = new CascadeWalker(this._registry);
+    walker.walk(this._trackedEntities);
   }
 
   /** Return all tracked entities that have pending changes. */

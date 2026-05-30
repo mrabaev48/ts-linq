@@ -1,6 +1,51 @@
 import { diffColumns } from './comparators/ColumnComparator';
 import { diffIndexes } from './comparators/IndexComparator';
-import type { SchemaDiff, SchemaSnapshot, TableDiff, TableSnapshot } from './DiffTypes';
+import type {
+  ForeignKeyDef,
+  SchemaDiff,
+  SchemaSnapshot,
+  TableDiff,
+  TableSnapshot
+} from './DiffTypes';
+
+function fkFingerprint(fk: ForeignKeyDef): string {
+  return fk.columns.slice().sort().join(',');
+}
+
+function diffForeignKeys(
+  expectedTable: TableSnapshot,
+  actualTable: TableSnapshot
+): { creates: ForeignKeyDef[]; drops: string[] } {
+  const expectedFks = expectedTable.foreignKeys ?? [];
+  const actualFks = actualTable.foreignKeys ?? [];
+
+  const actualByFingerprint = new Map(actualFks.map((fk) => [fkFingerprint(fk), fk]));
+  const expectedByFingerprint = new Map(expectedFks.map((fk) => [fkFingerprint(fk), fk]));
+
+  const creates: ForeignKeyDef[] = [];
+  const drops: string[] = [];
+
+  for (const fk of expectedFks) {
+    const fp = fkFingerprint(fk);
+    const existing = actualByFingerprint.get(fp);
+    if (!existing) {
+      creates.push(fk);
+    } else if (existing.onDelete !== fk.onDelete || existing.refTable !== fk.refTable) {
+      // FK changed — drop and recreate.
+      if (existing.name) drops.push(existing.name);
+      creates.push(fk);
+    }
+  }
+
+  for (const fk of actualFks) {
+    const fp = fkFingerprint(fk);
+    if (!expectedByFingerprint.has(fp) && fk.name) {
+      drops.push(fk.name);
+    }
+  }
+
+  return { creates, drops };
+}
 
 function diffExistingTable(
   expectedTable: TableSnapshot,
@@ -8,14 +53,23 @@ function diffExistingTable(
 ): TableDiff | null {
   const columnChanges = diffColumns(expectedTable, actualTable);
   const { creates: indexCreates, drops: indexDrops } = diffIndexes(expectedTable, actualTable);
-  if (columnChanges.length === 0 && indexCreates.length === 0 && indexDrops.length === 0) {
+  const { creates: fkCreates, drops: fkDrops } = diffForeignKeys(expectedTable, actualTable);
+  if (
+    columnChanges.length === 0 &&
+    indexCreates.length === 0 &&
+    indexDrops.length === 0 &&
+    fkCreates.length === 0 &&
+    fkDrops.length === 0
+  ) {
     return null;
   }
   return {
     table: expectedTable.name,
     columnChanges: columnChanges.length ? columnChanges : undefined,
     indexCreates: indexCreates.length ? indexCreates : undefined,
-    indexDrops: indexDrops.length ? indexDrops : undefined
+    indexDrops: indexDrops.length ? indexDrops : undefined,
+    fkCreates: fkCreates.length ? fkCreates : undefined,
+    fkDrops: fkDrops.length ? fkDrops : undefined
   };
 }
 
