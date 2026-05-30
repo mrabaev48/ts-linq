@@ -1,5 +1,10 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
-import type { ColumnMetadata, IndexMetadata, RelationshipMetadata } from '@ts-linq/types';
+import type {
+  ColumnMetadata,
+  IndexMetadata,
+  QueryFilterMetadata,
+  RelationshipMetadata
+} from '@ts-linq/types';
 import { InheritanceStrategy } from '@ts-linq/types';
 
 import type { CollectionCollectionBuilder } from './CollectionCollectionBuilder';
@@ -34,6 +39,9 @@ function resolveOwnedArgs<TOwned, TOwner>(
  * This ensures decorator metadata is fully settled before fluent overrides run.
  */
 export class EntityTypeBuilder<T> {
+  /** Brand used by the compile-time transformer to identify EntityTypeBuilder receivers. */
+  declare readonly __tsLinqEntityTypeBuilderBrand: true;
+
   private _tableName?: string;
   private _schema?: string;
   private _primaryKeys?: string[];
@@ -49,6 +57,7 @@ export class EntityTypeBuilder<T> {
   private _discriminatorBuilder?: DiscriminatorBuilder<any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly _skipNavBuilders: CollectionCollectionBuilder<T, any>[] = [];
+  private readonly _queryFilters: QueryFilterMetadata[] = [];
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -194,6 +203,48 @@ export class EntityTypeBuilder<T> {
     return this;
   }
 
+  /**
+   * Adds a global query filter applied to every SELECT for this entity.
+   * Use the unnamed overload for a single filter, or supply a name (EF9) to compose multiple.
+   *
+   * **Requires the ts-linq compile-time transformer** — the predicate lambda is rewritten
+   * by the TypeScript transformer plugin into `hasQueryFilterCompiled(...)`.
+   */
+  hasQueryFilter(predicate: (e: T) => boolean): this;
+  hasQueryFilter(name: string, predicate: (e: T) => boolean): this;
+  hasQueryFilter(
+    _nameOrPredicate: string | ((e: T) => boolean),
+    _predicate?: (e: T) => boolean
+  ): this {
+    throw new Error(
+      "ts-linq(hasQueryFilter): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
+    );
+  }
+
+  /** @internal — called by the compile-time transformer in place of hasQueryFilter. */
+  hasQueryFilterCompiled(
+    nameOrCompiled: string | { ast: unknown; parameters: readonly unknown[] },
+    compiled?: { ast: unknown; parameters: readonly unknown[] }
+  ): this {
+    let name: string;
+    let filter: { ast: unknown; parameters: readonly unknown[] };
+    if (typeof nameOrCompiled === 'string') {
+      name = nameOrCompiled;
+      filter = compiled!;
+    } else {
+      name = '_default';
+      filter = nameOrCompiled;
+    }
+    const idx = this._queryFilters.findIndex((f) => f.name === name);
+    const entry: QueryFilterMetadata = { name, ast: filter.ast, parameters: filter.parameters };
+    if (idx >= 0) {
+      this._queryFilters[idx] = entry;
+    } else {
+      this._queryFilters.push(entry);
+    }
+    return this;
+  }
+
   /** @internal */
   _applyToRegistry(registry: MetadataRegistry): void {
     registry.addEntity(this._ctor, this._tableName);
@@ -245,5 +296,10 @@ export class EntityTypeBuilder<T> {
     for (const snb of this._skipNavBuilders) {
       snb._applyToRegistry(registry, leftPk, 'id');
     }
+  }
+
+  /** @internal — returns per-context query filters (not stored in global MetadataRegistry). */
+  _getQueryFilters(): ReadonlyArray<import('@ts-linq/types').QueryFilterMetadata> {
+    return this._queryFilters;
   }
 }

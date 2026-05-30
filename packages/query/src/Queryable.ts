@@ -14,6 +14,7 @@ import type {
   OrderByClause,
   PerformanceOptions,
   QueryFallback,
+  QueryFilterMetadata,
   QuerySplittingBehavior,
   SqlParameter,
   TemporalClause,
@@ -64,6 +65,10 @@ export class Queryable<T> {
   private _abortSignal?: AbortSignal;
   private _globalFilters?: GlobalFilter[];
   private _globalFilterApplier = new GlobalFilterApplier();
+  /** Model-level filter names to skip. `'all'` disables every model-level filter. */
+  private _ignoredFilters?: Set<string> | 'all';
+  /** Per-context entity query filters from ModelBuilder.hasQueryFilter (P0-11). */
+  private _entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>;
   private _materializer!: RowMaterializer<T>;
   private _includePlanner!: IncludePlanner<T>;
   // Lightweight signature of WHERE clauses for fast count() cache keys
@@ -112,7 +117,8 @@ export class Queryable<T> {
     softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions,
     entityAttacher?: EntityAttacher,
     trackingMode?: QueryTrackingBehavior,
-    globalSplittingBehavior?: QuerySplittingBehavior
+    globalSplittingBehavior?: QuerySplittingBehavior,
+    entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>
   ) {
     this._entityClass = entityClass;
     this._provider = provider;
@@ -125,6 +131,7 @@ export class Queryable<T> {
     if (trackingMode !== undefined) this._trackingMode = trackingMode;
     if (globalSplittingBehavior !== undefined)
       this._globalSplittingBehavior = globalSplittingBehavior;
+    if (entityQueryFilters !== undefined) this._entityQueryFilters = entityQueryFilters;
     this._externalCountCache = performance?.countCache;
     this._sqlBuilder = new QueryBuilder(
       provider.getDialect(),
@@ -178,7 +185,8 @@ export class Queryable<T> {
       this._softDeleteOptions,
       undefined,
       undefined,
-      this._globalSplittingBehavior
+      this._globalSplittingBehavior,
+      this._entityQueryFilters
     );
     clonedQueryable._model = this._model.clone();
     // preserve where signature for accurate count cache keys
@@ -206,6 +214,8 @@ export class Queryable<T> {
     clonedQueryable._entityAttacher = this._entityAttacher;
     // Carry per-query splitting behavior override
     clonedQueryable._splittingBehavior = this._splittingBehavior;
+    // Carry ignored filter set
+    clonedQueryable._ignoredFilters = this._ignoredFilters;
     return clonedQueryable;
   }
 
@@ -507,7 +517,10 @@ export class Queryable<T> {
       this._entityClass,
       model,
       this._softDeleteOptions ?? this._provider.softDeleteOptions,
-      this._globalFilters
+      this._globalFilters,
+      this._ignoredFilters,
+      this.buildColumnResolver(),
+      this._entityQueryFilters
     );
   }
 
@@ -566,6 +579,27 @@ export class Queryable<T> {
     alias?: string
   ): Queryable<T> {
     this._addJoinOn('LEFT', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
+    return this;
+  }
+
+  /**
+   * Disables all model-level global query filters for this query (EF9 parity).
+   * Pass one or more filter names to disable only those named filters.
+   *
+   * @example
+   * // disable all filters
+   * ctx.posts.ignoreQueryFilters().toArray();
+   * // disable only soft-delete filter
+   * ctx.posts.ignoreQueryFilters('softDelete').toArray();
+   */
+  public ignoreQueryFilters(): this;
+  public ignoreQueryFilters(...names: string[]): this;
+  public ignoreQueryFilters(...names: string[]): this {
+    if (names.length === 0) {
+      this._ignoredFilters = 'all';
+    } else {
+      this._ignoredFilters = new Set(names);
+    }
     return this;
   }
 
