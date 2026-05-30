@@ -2,6 +2,7 @@ import type { MetadataRegistry } from '@ts-linq/metadata';
 import type { ColumnMetadata, IndexMetadata, RelationshipMetadata } from '@ts-linq/types';
 import { InheritanceStrategy } from '@ts-linq/types';
 
+import type { CollectionCollectionBuilder } from './CollectionCollectionBuilder';
 import { CollectionNavigationBuilder } from './CollectionNavigationBuilder';
 import { DiscriminatorBuilder } from './DiscriminatorBuilder';
 import { IndexBuilder } from './IndexBuilder';
@@ -46,6 +47,8 @@ export class EntityTypeBuilder<T> {
   private _inheritanceStrategy?: InheritanceStrategy;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _discriminatorBuilder?: DiscriminatorBuilder<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly _skipNavBuilders: CollectionCollectionBuilder<T, any>[] = [];
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -87,7 +90,8 @@ export class EntityTypeBuilder<T> {
       this._ctor,
       propName,
       relClass,
-      this._relationships
+      this._relationships,
+      this._skipNavBuilders
     );
   }
 
@@ -234,6 +238,12 @@ export class EntityTypeBuilder<T> {
       for (const sub of subtypes) {
         registry.setHierarchyRoot(sub, this._ctor);
       }
+    }
+
+    // Process skip navigation (many-to-many) builders after primary keys are set
+    const leftPk = this._primaryKeys?.[0] ?? 'id';
+    for (const snb of this._skipNavBuilders) {
+      snb._applyToRegistry(registry, leftPk, 'id');
     }
   }
 }

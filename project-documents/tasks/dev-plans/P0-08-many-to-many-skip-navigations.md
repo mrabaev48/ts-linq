@@ -1,7 +1,7 @@
 ---
 title: Many-to-many with skip navigations
 ef_core_api: EntityTypeBuilder<T>.HasMany(e => e.Tags).WithMany(t => t.Posts).UsingEntity<PostTag>(...)
-status: not-started
+status: done
 priority: P0
 effort: L
 depends_on: [P0-01]

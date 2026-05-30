@@ -242,6 +242,26 @@ export class ModelSnapshotBuilder {
       }
     }
 
+    // Skip navigation join tables (many-to-many, synthesized)
+    const emittedJoinTables = new Set<string>();
+    for (const entity of entities) {
+      for (const sn of entity.skipNavigations ?? []) {
+        if (!sn.isSynthesized) continue;
+        if (emittedJoinTables.has(sn.joinTableName)) continue;
+        emittedJoinTables.add(sn.joinTableName);
+        const pks = [sn.leftForeignKey, sn.rightForeignKey].sort();
+        extraTables.push({
+          name: sn.joinTableName,
+          columns: [
+            { name: sn.leftForeignKey, type: 'INT', nullable: false, isPrimaryKey: true },
+            { name: sn.rightForeignKey, type: 'INT', nullable: false, isPrimaryKey: true }
+          ].sort((a, b) => a.name.localeCompare(b.name)),
+          primaryKeys: pks,
+          indexes: []
+        });
+      }
+    }
+
     return {
       version: 1,
       tables: [...tables, ...extraTables].sort((a, b) => a.name.localeCompare(b.name))

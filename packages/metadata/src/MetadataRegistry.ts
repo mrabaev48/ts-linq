@@ -5,6 +5,7 @@ import type {
   IndexMetadata,
   OwnedEntityMetadata,
   RelationshipMetadata,
+  SkipNavigationMetadata,
   ValidationRule
 } from '@ts-linq/types';
 import { ValidationError } from '@ts-linq/types';
@@ -392,6 +393,23 @@ export class MetadataRegistry {
       return;
     }
     this.getOrCreateBuilder(subtype).setHierarchyRoot(root);
+  }
+
+  /** Register or replace a skip navigation on an entity. */
+  public mergeFluentSkipNavigation(target: Function, nav: SkipNavigationMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.skipNavigations = finalized.skipNavigations ?? [];
+      const idx = finalized.skipNavigations.findIndex((sn) => sn.propertyName === nav.propertyName);
+      if (idx >= 0) {
+        finalized.skipNavigations[idx] = nav;
+      } else {
+        finalized.skipNavigations.push(nav);
+      }
+      return;
+    }
+    this.getOrCreateBuilder(target).addSkipNavigation(nav);
   }
 
   /** Clear all stored metadata and pending builders. */
