@@ -4,6 +4,7 @@ import type {
   HierarchyMetadata,
   IndexMetadata,
   OwnedEntityMetadata,
+  QueryFilterMetadata,
   RelationshipMetadata,
   SkipNavigationMetadata,
   ValidationRule
@@ -410,6 +411,22 @@ export class MetadataRegistry {
       return;
     }
     this.getOrCreateBuilder(target).addSkipNavigation(nav);
+  }
+
+  public mergeFluentQueryFilter(target: Function, filter: QueryFilterMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.queryFilters = finalized.queryFilters ?? [];
+      const idx = finalized.queryFilters.findIndex((f) => f.name === filter.name);
+      if (idx >= 0) {
+        finalized.queryFilters[idx] = filter;
+      } else {
+        finalized.queryFilters.push(filter);
+      }
+      return;
+    }
+    this.getOrCreateBuilder(target).addQueryFilter(filter);
   }
 
   /** Clear all stored metadata and pending builders. */

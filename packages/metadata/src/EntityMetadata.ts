@@ -4,6 +4,7 @@ import type {
   HierarchyMetadata,
   IndexMetadata,
   OwnedEntityMetadata,
+  QueryFilterMetadata,
   RelationshipMetadata,
   SkipNavigationMetadata,
   ValidationRule
@@ -20,6 +21,7 @@ export class EntityMetadataBuilder {
     hierarchy?: HierarchyMetadata;
     hierarchyRoot?: Function;
     skipNavigations?: SkipNavigationMetadata[];
+    queryFilters?: QueryFilterMetadata[];
   };
 
   /**
@@ -171,6 +173,17 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  public addQueryFilter(filter: QueryFilterMetadata): this {
+    this.metadata.queryFilters = this.metadata.queryFilters ?? [];
+    const idx = this.metadata.queryFilters.findIndex((f) => f.name === filter.name);
+    if (idx >= 0) {
+      this.metadata.queryFilters[idx] = filter;
+    } else {
+      this.metadata.queryFilters.push(filter);
+    }
+    return this;
+  }
+
   public addSkipNavigation(nav: SkipNavigationMetadata): this {
     this.metadata.skipNavigations = this.metadata.skipNavigations ?? [];
     const idx = this.metadata.skipNavigations.findIndex(
@@ -214,6 +227,9 @@ export class EntityMetadataBuilder {
         : {}),
       ...(this.metadata.skipNavigations !== undefined && this.metadata.skipNavigations.length > 0
         ? { skipNavigations: this.metadata.skipNavigations }
+        : {}),
+      ...(this.metadata.queryFilters !== undefined && this.metadata.queryFilters.length > 0
+        ? { queryFilters: this.metadata.queryFilters }
         : {})
     };
   }
