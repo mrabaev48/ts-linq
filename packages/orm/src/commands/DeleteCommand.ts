@@ -4,6 +4,7 @@ export type TrackedChange = {
   entity: Record<string, unknown>;
   entityClass: Function;
   state: string;
+  originalValues?: object;
 };
 
 export interface SoftDeleteHandler {
@@ -26,7 +27,7 @@ export class DeleteCommand {
       return true;
     }
 
-    await this.provider.delete(change.entity, change.entityClass);
+    await this.provider.delete(change.entity, change.entityClass, change.originalValues);
     this.onAfterDelete(change);
     return true;
   }

@@ -13,14 +13,17 @@ import { DiagnosticEmitter } from '@ts-linq/telemetry';
 import type { GlobalFilter, PerformanceOptions, Result, SoftDeleteOptions } from '@ts-linq/types';
 import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
+import { OptimisticConcurrencyError } from '@ts-linq/types';
 
 import { ChangeTracker, type JoinRowChange } from './ChangeTracker';
+import { EntityEntry } from './changetracker/EntityEntry';
 import { DeleteCommand } from './commands/DeleteCommand';
 import { InsertCommand } from './commands/InsertCommand';
 import { UpdateCommand } from './commands/UpdateCommand';
 import { DatabaseFacade } from './DatabaseFacade';
 import { DbSet } from './DbSet';
 import type { DbSetContext } from './DbSetContext';
+import { DbUpdateConcurrencyException } from './exceptions/DbUpdateConcurrencyException';
 import { InterceptorRegistry } from './interceptors/InterceptorRegistry';
 import { ModelBuilder } from './ModelBuilder';
 import { BatchExecutor } from './save-changes/batch-executor';
@@ -409,6 +412,12 @@ export abstract class DbContext {
       // saveChangesFailed — notify interceptors of the failure
       for (const ic of saveChangesInterceptors) {
         await ic.saveChangesFailed?.(eventData, error as Error);
+      }
+      if (error instanceof OptimisticConcurrencyError) {
+        const failedEntries = changes.map(
+          (c) => new EntityEntry(c.entity, c.entityClass, this._provider)
+        );
+        throw new DbUpdateConcurrencyException(error.message, failedEntries);
       }
       throw error;
     }
@@ -814,15 +823,22 @@ export abstract class DbContext {
     }));
   }
 
-  private normalizeChange(change: { entity: object; entityClass: Function; state: string }): {
+  private normalizeChange(change: {
+    entity: object;
+    entityClass: Function;
+    state: string;
+    originalValues?: object;
+  }): {
     entity: Record<string, unknown>;
     entityClass: Function;
     state: string;
+    originalValues?: object;
   } {
     return {
       entity: change.entity as Record<string, unknown>,
       entityClass: change.entityClass,
-      state: change.state
+      state: change.state,
+      originalValues: change.originalValues
     };
   }
 
@@ -861,13 +877,13 @@ export abstract class DbContext {
   }
 
   private async applyUpdate(
-    change: Pick<NormalizedChange, 'entity' | 'entityClass'>
+    change: Pick<NormalizedChange, 'entity' | 'entityClass' | 'originalValues'>
   ): Promise<void> {
     await this._updateCmd.execute({ ...change, state: 'modified' });
   }
 
   private async applyDelete(
-    change: Pick<NormalizedChange, 'entity' | 'entityClass'>
+    change: Pick<NormalizedChange, 'entity' | 'entityClass' | 'originalValues'>
   ): Promise<boolean> {
     return await this._deleteCmd.execute({ ...change, state: 'deleted' });
   }

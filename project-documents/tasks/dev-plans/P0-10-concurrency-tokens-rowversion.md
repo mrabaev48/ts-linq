@@ -1,7 +1,7 @@
 ---
 title: Concurrency tokens, RowVersion, DbUpdateConcurrencyException
 ef_core_api: PropertyBuilder.IsConcurrencyToken() / IsRowVersion() / [Timestamp] / DbUpdateConcurrencyException / entry.Reload() / entry.GetDatabaseValues()
-status: not-started
+status: done
 priority: P0
 effort: M
 depends_on: [P0-01]
