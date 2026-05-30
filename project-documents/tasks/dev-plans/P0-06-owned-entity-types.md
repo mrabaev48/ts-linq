@@ -1,7 +1,7 @@
 ---
 title: Owned entity types — OwnsOne, OwnsMany, table splitting and ToJson
 ef_core_api: EntityTypeBuilder<T>.OwnsOne(e => e.Address, b => b.Property(a => a.Street).HasMaxLength(...)) / OwnsMany / ToJson
-status: not-started
+status: done
 priority: P0
 effort: L
 depends_on: [P0-01]
