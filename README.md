@@ -117,6 +117,54 @@ npx tspc -p tsconfig.json
 - If your environment cannot run the transformer, you can call `whereCompiled(...)` / `havingCompiled(...)`
   manually (but you lose the nice `where(u => ...)` UX).
 
+## Cascade delete behaviors
+
+`onDelete()` configures what happens to dependent rows when their principal is deleted.
+Seven behaviors mirror EF Core's `DeleteBehavior` enum:
+
+| Behavior | DB `ON DELETE` clause | Client-side (ChangeTracker) |
+|---|---|---|
+| `Cascade` | `CASCADE` | marks dependents `Deleted`, recurses |
+| `Restrict` | `RESTRICT` | none |
+| `SetNull` | `SET NULL` | sets FK column to `null`, marks `Modified` |
+| `ClientSetNull` | _(none)_ | sets FK column to `null`, marks `Modified` |
+| `NoAction` | `NO ACTION` | none |
+| `ClientCascade` | _(none)_ | marks dependents `Deleted`, recurses |
+| `ClientNoAction` | _(none)_ | none |
+
+`Client*` variants omit the database-level clause — the cascade/null logic runs only inside the ChangeTracker before the SQL is sent.
+
+```ts
+import { DeleteBehavior } from '@ts-linq/types';
+
+class AppDbContext extends DbContext {
+  protected onModelCreating(mb: ModelBuilder): void {
+    // DB-level CASCADE: database deletes child rows automatically
+    mb.entity(Post)
+      .hasMany((p) => p.comments)
+      .withOne((c) => c.post)
+      .hasForeignKey((c) => c.postId)
+      .onDelete(DeleteBehavior.Cascade);
+
+    // DB-level SET NULL: FK column set to NULL when parent deleted
+    mb.entity(Post)
+      .hasOne((p) => p.author)
+      .withMany((a) => a.posts)
+      .hasForeignKey((p) => p.authorId)
+      .onDelete(DeleteBehavior.SetNull);
+
+    // Client-side only: ChangeTracker nulls FK before INSERT/UPDATE/DELETE
+    mb.entity(Post)
+      .hasOne((p) => p.category)
+      .withMany()
+      .hasForeignKey((p) => p.categoryId)
+      .onDelete(DeleteBehavior.ClientSetNull);
+  }
+}
+```
+
+Client-side cascade only applies to entities that are currently tracked. Unloaded related entities are governed entirely by the database constraint.
+
 ## Local PostgreSQL via Docker
 
 This repository ships a minimal `docker-compose.yml` for PostgreSQL.
