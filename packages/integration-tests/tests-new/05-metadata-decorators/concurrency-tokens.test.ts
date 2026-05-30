@@ -1,47 +1,14 @@
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
+import { createMetadataRegistry } from '@ts-linq/metadata';
 import { ModelBuilder } from '@ts-linq/orm';
 import type { ColumnMetadata } from '@ts-linq/types';
-
-// ── Entity helpers ────────────────────────────────────────────────────────────
-
-class Article {
-  id!: number;
-  title!: string;
-  version!: number;
-  updatedBy!: string;
-}
-
-function makeArticleMeta(configure: (mb: ModelBuilder) => void) {
-  const mb = new ModelBuilder();
-  mb.entity(Article).hasKey('id');
-  configure(mb);
-  const columns: Map<string, ColumnMetadata> =
-    (mb as any)._getColumns?.(Article) ??
-    ((mb as any)._registry?.getEntity(Article)?.columns ?? []).reduce(
-      (m: Map<string, ColumnMetadata>, c: ColumnMetadata) => m.set(c.propertyName, c),
-      new Map()
-    );
-  return columns;
-}
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('PropertyBuilder — isConcurrencyToken / isRowVersion', () => {
-  test('isConcurrencyToken() marks column flag', () => {
-    let titleCol: ColumnMetadata | undefined;
-    const mb = new ModelBuilder();
-    mb.entity(Article).property('title', (pb) => {
-      pb.isConcurrencyToken();
-    });
-    const meta =
-      (mb as any)._registry?.getEntity?.(Article) ?? (mb as any).getEntityMetadata?.(Article);
-    // If registry is not accessible, we just verify PropertyBuilder doesn't throw
-    expect(true).toBe(true);
-  });
-
-  test('PropertyBuilder.isConcurrencyToken() is fluent', () => {
+  test('isConcurrencyToken() is fluent and sets flag', () => {
     const { PropertyBuilder } = require('@ts-linq/orm');
     const cols = new Map<string, ColumnMetadata>();
     const pb = new PropertyBuilder('title', cols);
@@ -49,13 +16,33 @@ describe('PropertyBuilder — isConcurrencyToken / isRowVersion', () => {
     expect(cols.get('title')?.isConcurrencyToken).toBe(true);
   });
 
-  test('PropertyBuilder.isRowVersion() sets isVersion + isConcurrencyToken', () => {
+  test('isConcurrencyToken(false) clears flag', () => {
+    const { PropertyBuilder } = require('@ts-linq/orm');
+    const cols = new Map<string, ColumnMetadata>();
+    const pb = new PropertyBuilder('title', cols);
+    pb.isConcurrencyToken().isConcurrencyToken(false);
+    expect(cols.get('title')?.isConcurrencyToken).toBe(false);
+  });
+
+  test('isRowVersion() sets isVersion + isConcurrencyToken', () => {
     const { PropertyBuilder } = require('@ts-linq/orm');
     const cols = new Map<string, ColumnMetadata>();
     const pb = new PropertyBuilder('version', cols);
     pb.isRowVersion();
     expect(cols.get('version')?.isVersion).toBe(true);
     expect(cols.get('version')?.isConcurrencyToken).toBe(true);
+  });
+
+  test('EntityTypeBuilder.property() returns PropertyBuilder with isConcurrencyToken', () => {
+    class Post {
+      id!: number;
+      title!: string;
+    }
+    const registry = createMetadataRegistry();
+    const mb = new ModelBuilder(registry);
+    const pb = mb.entity(Post).property((p) => p.title);
+    expect(typeof pb.isConcurrencyToken).toBe('function');
+    expect(pb.isConcurrencyToken()).toBe(pb);
   });
 });
 
