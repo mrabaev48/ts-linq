@@ -17,7 +17,12 @@ export {
   buildDropColumnSql,
   renderColumn
 } from './handlers/ColumnHandlers';
-export { buildAddFkSql, buildDropFkSql, buildInlineFkSql } from './handlers/ForeignKeyHandlers';
+export {
+  buildAddFkSql,
+  buildDropFkSql,
+  buildInlineFkSql,
+  deleteBehaviorToSql
+} from './handlers/ForeignKeyHandlers';
 export {
   buildCreateTableSql,
   handleCreateTable,

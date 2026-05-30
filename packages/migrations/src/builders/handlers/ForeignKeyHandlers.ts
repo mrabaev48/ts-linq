@@ -1,6 +1,30 @@
+import { DeleteBehavior } from '@ts-linq/types';
+
 import type { Dialect } from '../../Dialect';
 import type { TableDiff } from '../../DiffTypes';
 import { q } from '../SqlUtils';
+
+/**
+ * Maps a DeleteBehavior enum value to the SQL ON DELETE clause string.
+ * Client-side-only behaviors (ClientCascade, ClientSetNull, ClientNoAction) return
+ * undefined — no ON DELETE clause is emitted and the database uses its default (NO ACTION).
+ */
+export function deleteBehaviorToSql(behavior: DeleteBehavior): string | undefined {
+  switch (behavior) {
+    case DeleteBehavior.Cascade:
+      return 'CASCADE';
+    case DeleteBehavior.Restrict:
+      return 'RESTRICT';
+    case DeleteBehavior.SetNull:
+      return 'SET NULL';
+    case DeleteBehavior.NoAction:
+      return 'NO ACTION';
+    case DeleteBehavior.ClientSetNull:
+    case DeleteBehavior.ClientCascade:
+    case DeleteBehavior.ClientNoAction:
+      return undefined;
+  }
+}
 
 export function handleFkDrops(td: TableDiff, dialect: Dialect, up: string[]): void {
   const fkd = td.fkDrops;
