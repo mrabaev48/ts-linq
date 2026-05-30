@@ -1,6 +1,7 @@
 import type {
   ColumnMetadata,
   EntityMetadata,
+  HierarchyMetadata,
   IndexMetadata,
   RelationshipMetadata,
   ValidationRule
@@ -114,5 +115,17 @@ export class MetadataStorage {
 
   public static getValidationRules(target: Function): ValidationRule[] {
     return MetadataStorage.getInstance().getValidationRules(target);
+  }
+
+  public static setHierarchyMetadata(target: Function, h: HierarchyMetadata): void {
+    MetadataStorage.getInstance().setHierarchyMetadata(target, h);
+  }
+
+  public static setHierarchyRoot(subtype: Function, root: Function): void {
+    MetadataStorage.getInstance().setHierarchyRoot(subtype, root);
+  }
+
+  public static clear(): void {
+    MetadataStorage.getInstance().clear();
   }
 }

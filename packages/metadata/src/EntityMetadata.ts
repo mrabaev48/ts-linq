@@ -1,6 +1,7 @@
 import type {
   ColumnMetadata,
   EntityMetadata,
+  HierarchyMetadata,
   IndexMetadata,
   OwnedEntityMetadata,
   RelationshipMetadata,
@@ -13,7 +14,11 @@ import type {
  * primary keys, relationships, and indexes for an entity class.
  */
 export class EntityMetadataBuilder {
-  private metadata: Partial<EntityMetadata> & { ownedEntities?: OwnedEntityMetadata[] };
+  private metadata: Partial<EntityMetadata> & {
+    ownedEntities?: OwnedEntityMetadata[];
+    hierarchy?: HierarchyMetadata;
+    hierarchyRoot?: Function;
+  };
 
   /**
    * Create a metadata builder for a specific entity constructor.
@@ -154,6 +159,16 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  public setHierarchy(h: HierarchyMetadata): this {
+    this.metadata.hierarchy = h;
+    return this;
+  }
+
+  public setHierarchyRoot(root: Function): this {
+    this.metadata.hierarchyRoot = root;
+    return this;
+  }
+
   /**
    * Finalize and return the constructed `EntityMetadata` object.
    */
@@ -177,6 +192,10 @@ export class EntityMetadataBuilder {
         : {}),
       ...(this.metadata.ownedEntities !== undefined && this.metadata.ownedEntities.length > 0
         ? { ownedEntities: this.metadata.ownedEntities }
+        : {}),
+      ...(this.metadata.hierarchy !== undefined ? { hierarchy: this.metadata.hierarchy } : {}),
+      ...(this.metadata.hierarchyRoot !== undefined
+        ? { hierarchyRoot: this.metadata.hierarchyRoot }
         : {})
     };
   }

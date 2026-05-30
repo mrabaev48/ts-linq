@@ -46,6 +46,7 @@ describe('Type Exports', () => {
       'DeleteBehavior',
       'QuerySplittingBehavior',
       'StorageStrategy',
+      'InheritanceStrategy',
       'isTemplateSqlCache'
     ];
 

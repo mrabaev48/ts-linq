@@ -1,7 +1,7 @@
 ---
 title: Inheritance mapping — TPH, TPT, TPC
 ef_core_api: EntityTypeBuilder<T>.HasDiscriminator<TKey>(e => e.Type).HasValue<Sub>("sub") / UseTptMappingStrategy() / UseTpcMappingStrategy()
-status: not-started
+status: done
 priority: P0
 effort: XL
 depends_on: [P0-01]
