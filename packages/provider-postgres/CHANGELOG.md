@@ -1,5 +1,46 @@
 # @ts-linq/provider-postgres
 
+## 2.3.0
+
+### Minor Changes
+
+- cd77e1f: feat(p0-05): add ValueConverter, ValueComparer and HasConversion fluent API
+
+  Adds bidirectional model↔provider value conversion (EF Core HasConversion parity):
+  - `ValueConverter<TModel, TProvider>` and `ValueComparer<T>` concrete classes in `@ts-linq/metadata`
+  - Built-in converters: `BoolToZeroOneConverter`, `EnumToStringConverter`, `EnumToNumberConverter`, `DateOnlyToStringConverter`
+  - `PropertyBuilder.hasConversion()` fluent overloads (converter instance or function pair + optional comparer)
+  - `ModelBuilder.properties<T>().haveConversion()` for global type-level converters
+  - `ChangeTracker.detectChanges()` uses `ValueComparer.equals/snapshot` for reference-type properties
+  - `RowMaterializer` applies `fromProvider` on read; all dialects and providers apply `toProvider` on write
+  - `BinaryVisitor` lifts converter to literals in WHERE predicates
+  - Bug fix: `MetadataRegistry.registerEntity` no longer overwrites finalized entities when called without a table name
+
+### Patch Changes
+
+- 2f86a0d: feat(p0-10): implement concurrency tokens, RowVersion, and DbUpdateConcurrencyException
+  - `PropertyBuilder.isConcurrencyToken()` and `isRowVersion()` fluent API methods
+  - `ColumnMetadata.isConcurrencyToken` flag in `@ts-linq/types`
+  - `DbUpdateConcurrencyException` with populated `entries: EntityEntry[]`
+  - `EntityEntry.reload()` and `getDatabaseValues()` recovery helpers
+  - WHERE-clause injection of original token values in UPDATE/DELETE for all three dialects (postgres, mysql, mssql)
+  - `originalValues` propagated from ChangeTracker snapshot through the full save pipeline
+  - `OptimisticConcurrencyError` re-thrown as `DbUpdateConcurrencyException` in `saveChanges()`
+
+- Updated dependencies [51516f8]
+- Updated dependencies [cd77e1f]
+- Updated dependencies [7745012]
+- Updated dependencies [90402db]
+- Updated dependencies [240059c]
+- Updated dependencies [2f86a0d]
+- Updated dependencies [b738384]
+- Updated dependencies [6cad9cf]
+- Updated dependencies [d0668cb]
+  - @ts-linq/types@2.3.0
+  - @ts-linq/dialect-postgres@2.3.0
+  - @ts-linq/metadata@2.1.0
+  - @ts-linq/core@1.4.0
+
 ## 2.2.0
 
 ### Minor Changes
