@@ -8,6 +8,7 @@ export interface ColumnDef {
   isComputed?: boolean;
   computedExpression?: string;
   computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED';
+  comment?: string;
 }
 
 export interface IndexDef {
@@ -41,6 +42,8 @@ export interface TableSnapshot {
   primaryKeys: string[];
   indexes: IndexDef[];
   foreignKeys: ForeignKeyDef[];
+  checkConstraints?: Array<{ name: string; sql: string }>;
+  comment?: string;
 }
 
 export interface SchemaSnapshot {
