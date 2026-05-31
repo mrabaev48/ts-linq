@@ -3,12 +3,14 @@ import type { ConditionFragment } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { HierarchyIdTranslator, SpatialTranslator } from '@ts-linq/types';
 
+import type { EfFunctionTranslator } from './functions/FunctionTranslator';
 import { ParameterState, ParameterStyle } from './ParameterStyle';
 import {
   BinaryVisitor,
   type ColumnResolver,
   type ConverterResolver
 } from './visitors/BinaryVisitor';
+import { EfFunctionVisitor } from './visitors/EfFunctionVisitor';
 import { HierarchyMethodVisitor } from './visitors/HierarchyMethodVisitor';
 import { InVisitor } from './visitors/InVisitor';
 import { LogicalVisitor } from './visitors/LogicalVisitor';
@@ -22,6 +24,10 @@ export interface SqlVisitorOptions {
   hierarchyTranslator?: HierarchyIdTranslator;
   /** Resolves property names to their ValueConverter for predicate lifting. */
   converterResolver?: ConverterResolver;
+  /** Enables EF.functions.xxx() translation for the target dialect. */
+  efFunctionTranslator?: EfFunctionTranslator;
+  /** User-defined functions registered via ModelBuilder.hasDbFunction(). Maps fn key → SQL name. */
+  userFunctions?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -49,6 +55,7 @@ export class SqlVisitor {
   private readonly nullV = new NullVisitor();
   private readonly inV = new InVisitor();
   private readonly method: MethodVisitor;
+  private readonly efFunction?: EfFunctionVisitor;
   private readonly converterResolver?: ConverterResolver;
 
   constructor(
@@ -62,6 +69,9 @@ export class SqlVisitor {
       ? new HierarchyMethodVisitor(options.hierarchyTranslator)
       : undefined;
     this.method = new MethodVisitor(spatialVisitor, hierarchyVisitor);
+    this.efFunction = options?.efFunctionTranslator
+      ? new EfFunctionVisitor(options.efFunctionTranslator, options.userFunctions)
+      : undefined;
     this.converterResolver = options?.converterResolver;
   }
 
@@ -104,6 +114,15 @@ export class SqlVisitor {
         return this.inV.visit(node, inputParameters, resolver, state);
       case 'method':
         return this.method.visit(node, inputParameters, resolver, state);
+      case 'efFunction':
+        if (!this.efFunction) {
+          throw new AstSqlGenerationError(
+            'UNSUPPORTED_FUNCTION',
+            `EF.functions.${node.fn}() requires an efFunctionTranslator. Pass one via SqlVisitor options.`,
+            { nodeType: 'efFunction', fn: node.fn }
+          );
+        }
+        return this.efFunction.visit(node, inputParameters, resolver, state);
       case 'unsupported':
         throw new AstSqlGenerationError(
           'UNSUPPORTED_NODE_TYPE',

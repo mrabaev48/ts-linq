@@ -52,40 +52,7 @@ Lands after P0. Necessary for power users but not blocking baseline migration.
 | P1-19 | [Filtered Include](./P1-19-filtered-include.md)                               | `Include(b => b.Posts.Where(...).OrderBy(...).Take(n))`                                                | - [x]  | M      | —            |
 | P1-20 | [Compiled queries](./P1-20-compiled-queries.md)                               | `EF.CompileQuery`, `EF.CompileAsyncQuery`                                                              | - [x]  | M      | —            |
 | P1-21 | [Sequences / HiLo](./P1-21-sequences-hi-lo.md)                                | `HasSequence`, `UseHiLo`, `UseSequence`                                                                | - [ ]  | M      | P1-30        |
-| P1-22 | [EF.Functions / DbFunctions](./P1-22-ef-functions.md)                         | `EF.Functions.Like/ILike/Random/DateDiff*/Greatest/Least/StDev/Variance`, `HasDbFunction`              | - [ ]  | L      | P0-01        |
-| P1-23 | [Savepoints + retry strategy](./P1-23-transaction-savepoints-retry.md)        | `CreateSavepoint`, `RollbackToSavepoint`, `EnableRetryOnFailure`, `ExecutionStrategy`                  | - [x]  | M      | —            |
-| P1-24 | [Primitive collections](./P1-24-primitive-collections.md)                     | `Property(e => e.Tags)` with `string[]`/`int[]`, `Contains` translation (EF8)                          | - [ ]  | M      | P0-05, P0-15 |
-| P1-25 | [Table / entity splitting](./P1-25-table-entity-splitting.md)                 | `SplitToTable`, multiple entities into one table, one entity across multiple tables                    | - [ ]  | M      | P0-01        |
-| P1-26 | [Views / keyless entities](./P1-26-views-keyless-entities.md)                 | `ToView("v_name")`, `HasNoKey()`                                                                       | - [ ]  | S      | P0-01        |
-| P1-27 | [Async streaming](./P1-27-async-streaming-enumerable.md)                      | `AsAsyncEnumerable`, `ForEachAsync`, `ToDictionaryAsync`                                               | - [x]  | S      | —            |
-| P1-28 | [TrackGraph / DetectChanges](./P1-28-track-graph-detect-changes.md)           | `ChangeTracker.TrackGraph`, `DetectChanges`, `AutoDetectChangesEnabled`                                | - [ ]  | M      | P0-02        |
-| P1-29 | [LocalView / Find / FindAsync](./P1-29-local-view-find.md)                    | `DbSet.Local`, `LocalView<T>`, `FindEntry`, `GetEntries` (EF8), `Find`/`FindAsync`                     | - [ ]  | M      | P1-28        |
-| P1-30 | [Value generators / Sentinel](./P1-30-value-generators-sentinel.md)           | `ValueGeneratedOnAdd/OnUpdate/Never`, custom `ValueGenerator`, `HasSentinel` (EF8)                     | - [ ]  | M      | P0-01        |
-| P1-31 | [Alternate keys / advanced indexes](./P1-31-alternate-keys-indexes.md)        | `HasAlternateKey`, filtered/unique/covering/descending indexes via `HasIndex(...).IsUnique...`         | - [ ]  | M      | P0-01        |
-| P1-32 | [Backing fields / PropertyAccessMode](./P1-32-backing-fields-property-access.md) | `HasField`, `UsePropertyAccessMode`                                                                | - [ ]  | M      | P0-01        |
-
-### P2 — Advanced / niche (16 tasks)
-
-Provider-specific, ecosystem, or operational features.
-
-| #     | Title                                                                            | EF Core API                                                                                                 | Status | Effort | Depends on       |
-|-------|----------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|:------:|:------:|------------------|
-| P2-33 | [Stored procedure mapping](./P2-33-stored-procedure-mapping.md)                  | `InsertUsingStoredProcedure`, `UpdateUsingStoredProcedure`, `DeleteUsingStoredProcedure` (EF7+)             | - [ ]  | L      | P0-01            |
-| P2-34 | [Spatial types](./P2-34-spatial-types.md)                                        | NetTopologySuite equivalent — PostGIS / MSSQL spatial / MySQL spatial                                       | ✅     | XL     | —                |
-| P2-35 | [HierarchyId](./P2-35-hierarchy-id.md)                                           | SQL Server `HierarchyId` (EF8); Postgres `ltree` fallback                                                   | ✅     | L      | —                |
-| P2-36 | [Temporal queries](./P2-36-temporal-queries.md)                                  | `TemporalAsOf`, `TemporalAll`, `TemporalBetween`, `TemporalFromTo`, `TemporalContainedIn`                   | ✅     | L      | —                |
-| P2-37 | [Cosmos DB provider](./P2-37-cosmos-provider.md)                                 | Cosmos provider rework — hierarchical PK, full-text + vector search (EF9)                                   | - [ ]  | XL     | P0-03, P0-04     |
-| P2-38 | [SQLite provider](./P2-38-sqlite-provider.md)                                    | First-class SQLite + `:memory:` for integration tests                                                       | - [ ]  | L      | P0-03, P0-04     |
-| P2-39 | [InMemory provider](./P2-39-in-memory-provider.md)                               | Pure in-memory provider for unit tests                                                                      | - [ ]  | M      | P0-03, P0-04     |
-| P2-40 | [DbContext pooling / factory](./P2-40-db-context-pooling-factory.md)             | `AddDbContextPool`, `IDbContextFactory<T>`, `PooledDbContextFactory`                                        | ✅     | M      | —                |
-| P2-41 | [Query tags / TagWithCallSite](./P2-41-query-tags-call-site.md)                  | `TagWith("name")`, `TagWithCallSite()` (EF8)                                                                | ✅     | S      | —                |
-| P2-42 | [Migration bundles / idempotent](./P2-42-migration-bundles-idempotent.md)        | `migrations bundle`, `--idempotent`, `HasPendingModelChanges`                                               | ✅     | M      | —                |
-| P2-43 | [DB-first scaffolding](./P2-43-db-first-scaffolding.md)                          | `Scaffold-DbContext` reverse-engineer + template system                                                     | - [ ]  | XL     | P0-01            |
-| P2-44 | [Compiled models / AOT prep](./P2-44-compiled-models-aot.md)                     | `dotnet ef dbcontext optimize`, NativeAOT-friendly emit                                                     | - [ ]  | L      | P1-20            |
-| P2-45 | [Logging / diagnostics](./P2-45-logging-diagnostics.md)                          | `LogTo`, `EnableSensitiveDataLogging`, `EnableDetailedErrors`, `ConfigureWarnings`                          | ✅     | M      | —                |
-| P2-46 | [Batching / MaxBatchSize](./P2-46-batching-max-batch-size.md)                    | `MaxBatchSize`, multi-row INSERT/UPDATE/DELETE batching at SaveChanges                                      | ✅     | M      | —                |
-| P2-47 | [Read replica / multi-tenancy](./P2-47-read-replica-multi-tenancy.md)            | Read replica routing + per-tenant connection strings (extend existing multi-tenant plugin)                  | - [ ]  | L      | P0-11            |
-| P2-48 | [Vector search](./P2-48-vector-search.md)                                        | Cosmos vector + hybrid search (EF9 preview); pgvector for Postgres                                          | - [ ]  | L      | P2-37            |
+| P1-22 | [EF.Functions / DbFunctions](./P1-22-ef-functions.md)                         | `EF.Functions.Like/ILike/Random/DateDiff*/Greatest/Least/StDev/Variance`, `HasDbFunction`              | ✅      | L      | P2-37            |
 
 ### RF — Infrastructure / Engineering (1 task)
 
@@ -191,7 +158,7 @@ flowchart LR
 
 ## 5. Progress
 
-`17 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure done)
+`18 / 49 tasks done.`  (48 EF Core feature-parity + 1 RF infrastructure done)
 
 Update this number when a task moves to `status: done`.
 
@@ -256,7 +223,7 @@ whose `depends_on` points into the current step.
 | P0-13 | HasData seeding | P0-01 | ✅ done |
 | P0-14 | Computed / default / check | P0-01 | ✅ done |
 | P1-16 | Shadow properties | P0-01 | ✅ done |
-| P1-22 | EF.Functions / DbFunctions | P0-01 |
+| P1-22 | EF.Functions / DbFunctions | P0-01 | ✅ done |
 | P1-25 | Table / entity splitting | P0-01 |
 | P1-26 | Views / keyless entities | P0-01 |
 | P1-28 | TrackGraph / DetectChanges | P0-02 |

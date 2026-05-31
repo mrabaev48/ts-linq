@@ -1,7 +1,7 @@
 ---
 title: EF.Functions and HasDbFunction
 ef_core_api: EF.Functions.* / ModelBuilder.HasDbFunction
-status: not-started
+status: done
 priority: P1
 effort: L
 depends_on: []
