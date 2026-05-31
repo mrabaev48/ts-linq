@@ -90,7 +90,12 @@ function calcParamsPerRow(group: ChangeGroup): number {
     return metadata.columns.filter((c) => {
       if (c.isComputed) return false;
       const v = firstEntity[c.propertyName];
-      if (c.isGenerated && (v === null || v === undefined)) return false;
+      // DB-side generated column with no value: skip (IDENTITY/SERIAL/SEQUENCE)
+      const isDbSideGenerated =
+        (c.isGenerated && !c.valueGeneratorClass) ||
+        (c.valueGeneratedPolicy === 'OnAdd' && !c.valueGeneratorClass) ||
+        (c.valueGeneratedPolicy === 'OnAddOrUpdate' && !c.valueGeneratorClass);
+      if (isDbSideGenerated && (v === null || v === undefined)) return false;
       if (pks.has(c.propertyName) && (v === null || v === undefined)) return false;
       return true;
     }).length;
@@ -98,7 +103,11 @@ function calcParamsPerRow(group: ChangeGroup): number {
   if (operation === 'update') {
     const pks = metadata.primaryKeys ?? [];
     const setCols = metadata.columns.filter(
-      (c) => !pks.includes(c.propertyName) && !c.isGenerated && !c.isComputed
+      (c) =>
+        !pks.includes(c.propertyName) &&
+        !c.isGenerated &&
+        !c.isComputed &&
+        c.valueGeneratedPolicy !== 'Never'
     );
     return pks.length + setCols.length;
   }

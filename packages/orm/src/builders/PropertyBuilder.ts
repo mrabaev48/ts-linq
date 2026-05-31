@@ -1,4 +1,10 @@
-import type { ColumnMetadata, ValueComparerLike, ValueConverterLike } from '@ts-linq/types';
+import type {
+  ColumnMetadata,
+  ValueComparerLike,
+  ValueConverterLike,
+  ValueGeneratorClass
+} from '@ts-linq/types';
+import { ValueGeneratedPolicy } from '@ts-linq/types';
 
 export class PropertyBuilder<TValue> {
   private readonly _col: ColumnMetadata;
@@ -125,6 +131,36 @@ export class PropertyBuilder<TValue> {
       }
       if (comparer !== undefined) this._col.comparer = comparer as ValueComparerLike;
     }
+    return this;
+  }
+
+  valueGeneratedOnAdd(): this {
+    this._col.valueGeneratedPolicy = ValueGeneratedPolicy.OnAdd;
+    return this;
+  }
+
+  valueGeneratedOnUpdate(): this {
+    this._col.valueGeneratedPolicy = ValueGeneratedPolicy.OnUpdate;
+    return this;
+  }
+
+  valueGeneratedOnAddOrUpdate(): this {
+    this._col.valueGeneratedPolicy = ValueGeneratedPolicy.OnAddOrUpdate;
+    return this;
+  }
+
+  valueGeneratedNever(): this {
+    this._col.valueGeneratedPolicy = ValueGeneratedPolicy.Never;
+    return this;
+  }
+
+  hasValueGenerator<T>(generatorClass: ValueGeneratorClass<T>): this {
+    this._col.valueGeneratorClass = generatorClass as ValueGeneratorClass;
+    return this;
+  }
+
+  hasSentinel(value: TValue): this {
+    this._col.sentinel = value;
     return this;
   }
 }

@@ -814,13 +814,54 @@ export abstract class DbContext {
     changes: Array<{ entity: object; entityClass: Function; state: string }>
   ): void {
     for (const change of changes) {
-      if (change.state !== 'added') continue;
+      const { state } = change;
+      if (state !== 'added' && state !== 'modified') continue;
       const meta = this._registry.getEntity(change.entityClass);
       if (!meta) continue;
+      const record = change.entity as Record<string, unknown>;
       for (const col of meta.columns) {
-        const record = change.entity as Record<string, unknown>;
-        if (record[col.propertyName] === undefined && col.defaultValue !== undefined) {
-          record[col.propertyName] = col.defaultValue;
+        const policy = col.valueGeneratedPolicy;
+        if (!policy) {
+          // Legacy defaultValue fill for added entities only
+          if (
+            state === 'added' &&
+            record[col.propertyName] === undefined &&
+            col.defaultValue !== undefined
+          ) {
+            record[col.propertyName] = col.defaultValue;
+          }
+          continue;
+        }
+
+        if (policy === 'Never') continue;
+        if (policy === 'OnAdd' && state !== 'added') continue;
+        if (policy === 'OnUpdate' && state !== 'modified') continue;
+        // OnAddOrUpdate: runs for both
+
+        if (!col.valueGeneratorClass) {
+          // DB-side generation — fill defaultValue for added entities only
+          if (
+            state === 'added' &&
+            record[col.propertyName] === undefined &&
+            col.defaultValue !== undefined
+          ) {
+            record[col.propertyName] = col.defaultValue;
+          }
+          continue;
+        }
+
+        // Client-side generator: run when value equals sentinel (or undefined if no sentinel set)
+        const currentValue = record[col.propertyName];
+        const sentinel = col.sentinel;
+        const shouldGenerate =
+          sentinel !== undefined ? currentValue === sentinel : currentValue === undefined;
+
+        if (shouldGenerate) {
+          const generator = new col.valueGeneratorClass();
+          record[col.propertyName] = generator.next({
+            entityClass: change.entityClass,
+            propertyName: col.propertyName
+          });
         }
       }
     }

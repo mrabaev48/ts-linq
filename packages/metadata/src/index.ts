@@ -26,7 +26,11 @@ export {
   type SkipNavigationMetadata,
   StorageStrategy,
   type ValueComparerLike,
-  type ValueConverterLike
+  type ValueConverterLike,
+  ValueGeneratedPolicy,
+  type ValueGenerator,
+  type ValueGeneratorClass,
+  type ValueGeneratorContext
 } from '@ts-linq/types';
 
 import { MetadataRegistry } from './MetadataRegistry';
