@@ -425,6 +425,20 @@ export abstract class DbContext {
     }
   }
 
+  /**
+   * Returns an EntityEntry for the given tracked entity, providing access to
+   * state, shadow property values, and database reload.
+   * Mirrors EF Core's DbContext.Entry<T>(entity).
+   */
+  public entry<T extends object>(entity: T): EntityEntry<T> {
+    return new EntityEntry<T>(
+      entity,
+      entity.constructor as Function,
+      this._provider,
+      this._changeTracker
+    );
+  }
+
   /** Try-version of saveChanges without throwing exceptions. */
   public async trySaveChanges(): Promise<Result<number, Error>> {
     try {
@@ -837,8 +851,14 @@ export abstract class DbContext {
     state: string;
     originalValues?: object;
   } {
+    const shadowValues = this._changeTracker.getShadowValues(change.entity);
+    const entity =
+      shadowValues && shadowValues.size > 0
+        ? { ...(change.entity as Record<string, unknown>), ...Object.fromEntries(shadowValues) }
+        : (change.entity as Record<string, unknown>);
+
     return {
-      entity: change.entity as Record<string, unknown>,
+      entity,
       entityClass: change.entityClass,
       state: change.state,
       originalValues: change.originalValues

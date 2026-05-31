@@ -73,4 +73,20 @@ export class EF {
   ): CompiledQueryFn<TCtx, TParams, TResult> {
     return EF.compileQuery(factory);
   }
+
+  /**
+   * Accesses a shadow property in a LINQ query expression.
+   * Mirrors EF Core's EF.Property<TProperty>(entity, propertyName).
+   *
+   * This method is a compile-time marker — the ts-linq transformer replaces
+   * it with a direct column reference in the generated SQL. At runtime (outside
+   * a transformed LINQ expression) it throws to surface misuse early.
+   */
+
+  static property<TValue>(_entity: object, _name: string): TValue {
+    throw new Error(
+      `EF.property() can only be used inside a compiled LINQ expression (e.g. .where(...) or .orderBy(...)). ` +
+        `Use context.entry(entity).property("${_name}").currentValue to read shadow values at runtime.`
+    );
+  }
 }
