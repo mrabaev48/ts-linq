@@ -108,6 +108,33 @@ export interface MethodNode {
  * The transformer also emits a compiler Error diagnostic pointing at the source node.
  * The runtime throws `AstSqlGenerationError` if this node reaches SQL generation.
  */
+/**
+ * A built-in or user-defined DB function call via `EF.functions.xxx(...)`.
+ * The `fn` field is a canonical EfFunction name or a user-supplied SQL name
+ * registered via `ModelBuilder.hasDbFunction()`.
+ */
+export type EfFunction =
+  | 'like'
+  | 'iLike'
+  | 'random'
+  | 'dateDiffDay'
+  | 'dateDiffMonth'
+  | 'greatest'
+  | 'least'
+  | 'stDev'
+  | 'variance';
+
+export interface EfFunctionNode {
+  type: 'efFunction';
+  fn: EfFunction | string;
+  args: (PropertyNode | LiteralNode | ParameterRefNode)[];
+}
+
+/**
+ * Sentinel emitted by the transformer when it encounters an unsupported expression.
+ * The transformer also emits a compiler Error diagnostic pointing at the source node.
+ * The runtime throws `AstSqlGenerationError` if this node reaches SQL generation.
+ */
 export interface UnsupportedNode {
   type: 'unsupported';
   syntaxKind: number;
@@ -125,4 +152,5 @@ export type ExpressionNode =
   | IsNotNullNode
   | InNode
   | MethodNode
+  | EfFunctionNode
   | UnsupportedNode;

@@ -1,4 +1,5 @@
 import { CapturedQueryPlan } from './compiled/CapturedQueryPlan';
+import { type EfFunctions, efFunctions } from './EF.functions';
 
 /**
  * A compiled query function returned by EF.compileQuery / EF.compileAsyncQuery.
@@ -36,6 +37,15 @@ export type CompiledQueryFn<TCtx, TParams extends unknown[], TResult> = ((
  * ```
  */
 export class EF {
+  /**
+   * Provides access to database-specific functions in LINQ expressions.
+   * Mirrors `EF.Functions` from EF Core.
+   *
+   * These methods are compile-time markers — the ts-linq transformer replaces
+   * them with dialect-appropriate SQL. At runtime (outside a transformed LINQ
+   * expression) each method throws to surface misuse early.
+   */
+  static readonly functions: EfFunctions = efFunctions;
   /**
    * Compiles a parameterized query factory into a reusable plan.
    * Mirrors `EF.CompileQuery` from EF Core.

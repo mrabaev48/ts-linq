@@ -10,7 +10,9 @@ export type AstSqlGenerationErrorCode =
   | 'INVALID_IN_NODE'
   | 'INVALID_METHOD_NODE'
   | 'INVALID_METHOD_ARG'
-  | 'UNSUPPORTED_METHOD';
+  | 'UNSUPPORTED_METHOD'
+  | 'UNSUPPORTED_FUNCTION'
+  | 'INVALID_FUNCTION_NODE';
 
 export interface AstSqlGenerationErrorDetails {
   readonly nodeType?: string;
@@ -19,6 +21,7 @@ export interface AstSqlGenerationErrorDetails {
   readonly operandType?: string;
   readonly syntaxKind?: number;
   readonly method?: string;
+  readonly fn?: string;
 }
 
 /**
