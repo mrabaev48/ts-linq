@@ -224,7 +224,7 @@ whose `depends_on` points into the current step.
 | P0-14 | Computed / default / check | P0-01 | ✅ done |
 | P1-16 | Shadow properties | P0-01 | ✅ done |
 | P1-22 | EF.Functions / DbFunctions | P0-01 | ✅ done |
-| P1-25 | Table / entity splitting | P0-01 |
+| P1-25 | Table / entity splitting | P0-01 | ✅ done |
 | P1-26 | Views / keyless entities | P0-01 |
 | P1-28 | TrackGraph / DetectChanges | P0-02 |
 | P1-30 | Value generators / Sentinel | P0-01 |

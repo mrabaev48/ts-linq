@@ -9,6 +9,7 @@ import type {
   RelationshipMetadata,
   ShadowPropertyMetadata,
   SkipNavigationMetadata,
+  TableFragmentMetadata,
   ValidationRule
 } from '@ts-linq/types';
 import { ValidationError } from '@ts-linq/types';
@@ -462,6 +463,17 @@ export class MetadataRegistry {
       return;
     }
     this.getOrCreateBuilder(target).setEntityComment(comment);
+  }
+
+  /** Set (replace) table fragment metadata for entity splitting (P1-25). */
+  public mergeFluentTableFragments(target: Function, fragments: TableFragmentMetadata[]): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.tableFragments = [...fragments];
+      return;
+    }
+    this.getOrCreateBuilder(target).setTableFragments(fragments);
   }
 
   /** Add or replace a shadow property for an entity (P1-16). */
