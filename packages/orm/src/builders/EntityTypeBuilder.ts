@@ -5,7 +5,8 @@ import type {
   IndexMetadata,
   QueryFilterMetadata,
   RelationshipMetadata,
-  ShadowPropertyMetadata
+  ShadowPropertyMetadata,
+  TableFragmentMetadata
 } from '@ts-linq/types';
 import { InheritanceStrategy } from '@ts-linq/types';
 
@@ -16,6 +17,7 @@ import { IndexBuilder } from './IndexBuilder';
 import { OwnedNavigationBuilder } from './OwnedNavigationBuilder';
 import { PropertyBuilder } from './PropertyBuilder';
 import { ReferenceNavigationBuilder } from './ReferenceNavigationBuilder';
+import { TableSplitConfigBuilder } from './TableSplitConfigBuilder';
 import { extractPropertyName } from './utils';
 
 function resolveOwnedArgs<TOwned, TOwner>(
@@ -64,12 +66,38 @@ export class EntityTypeBuilder<T> {
   private readonly _checkConstraints: CheckConstraintMetadata[] = [];
   private _entityComment?: string;
   private readonly _shadowColumns: Map<string, ColumnMetadata> = new Map();
+  private readonly _tableFragments: TableFragmentMetadata[] = [];
 
   constructor(private readonly _ctor: new () => T) {}
 
   toTable(name: string, schema?: string): this {
     this._tableName = name;
     if (schema !== undefined) this._schema = schema;
+    return this;
+  }
+
+  /**
+   * Maps additional properties of this entity to a separate physical table (entity splitting).
+   * Mirrors EF Core's `SplitToTable(tableName, configure)`.
+   *
+   * @example
+   * b.splitToTable("OrdersDetails", s => {
+   *   s.property(o => o.notes);
+   *   s.property(o => o.internalRef);
+   * });
+   */
+  splitToTable(
+    tableName: string,
+    configure: (b: TableSplitConfigBuilder<T>) => void,
+    schema?: string
+  ): this {
+    const configBuilder = new TableSplitConfigBuilder<T>();
+    configure(configBuilder);
+    this._tableFragments.push({
+      tableName,
+      ...(schema !== undefined ? { schema } : {}),
+      properties: configBuilder._build()
+    });
     return this;
   }
 
@@ -363,6 +391,10 @@ export class EntityTypeBuilder<T> {
         scale: col.scale
       };
       registry.addShadowProperty(this._ctor, shadowProp);
+    }
+
+    if (this._tableFragments.length > 0) {
+      registry.mergeFluentTableFragments(this._ctor, this._tableFragments);
     }
   }
 

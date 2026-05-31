@@ -4,7 +4,8 @@ import type {
   ColumnMetadata,
   EntityMetadata,
   IndexMetadata,
-  RelationshipMetadata
+  RelationshipMetadata,
+  TableFragmentMetadata
 } from '@ts-linq/types';
 
 import { deleteBehaviorToSql } from './builders/handlers/ForeignKeyHandlers';
@@ -41,28 +42,39 @@ export class SchemaSnapshotBuilder {
       if (e.className) entityByTarget.set(e.className, e);
     }
 
-    const tables: TableSnapshot[] = entities.map((entityMeta: EntityMetadata) => {
-      const primaryKeyProps = entityMeta.primaryKeys ?? [];
-      const columns: ColumnDef[] = entityMeta.columns.map((column: ColumnMetadata) => ({
-        name: column.columnName,
-        type: this.mapPortableType(column.type),
-        nullable: column.nullable ?? true,
-        defaultValue:
-          column.converter && column.defaultValue !== undefined
-            ? column.converter.toProvider(column.defaultValue)
-            : column.defaultValue,
-        defaultExpression: column.defaultExpression,
-        isPrimaryKey: primaryKeyProps.includes(column.propertyName),
-        isComputed: column.isComputed,
-        computedExpression: column.computedExpression,
-        computedStorage: column.computedStorage,
-        comment: column.comment
-      }));
+    // Collect all TableSnapshot entries; use a Map keyed by table name to merge table splitting.
+    const tableMap = new Map<string, TableSnapshot>();
 
-      // Shadow properties appear as regular columns in DDL (P1-16)
+    for (const entityMeta of entities) {
+      const primaryKeyProps = entityMeta.primaryKeys ?? [];
+      const fragments = entityMeta.tableFragments ?? [];
+
+      // Determine which property names are assigned to secondary fragments.
+      const fragmentedProps = new Set<string>(fragments.flatMap((f) => f.properties ?? []));
+
+      // Build primary-table columns (exclude fragment-only properties when splitting).
+      const primaryColumns: ColumnDef[] = entityMeta.columns
+        .filter((col) => fragments.length === 0 || !fragmentedProps.has(col.propertyName))
+        .map((column: ColumnMetadata) => ({
+          name: column.columnName,
+          type: this.mapPortableType(column.type),
+          nullable: column.nullable ?? true,
+          defaultValue:
+            column.converter && column.defaultValue !== undefined
+              ? column.converter.toProvider(column.defaultValue)
+              : column.defaultValue,
+          defaultExpression: column.defaultExpression,
+          isPrimaryKey: primaryKeyProps.includes(column.propertyName),
+          isComputed: column.isComputed,
+          computedExpression: column.computedExpression,
+          computedStorage: column.computedStorage,
+          comment: column.comment
+        }));
+
+      // Shadow properties appear as regular columns in DDL (P1-16).
       if (entityMeta.shadowProperties) {
         for (const sp of entityMeta.shadowProperties.values()) {
-          columns.push({
+          primaryColumns.push({
             name: sp.columnName,
             type: this.mapPortableType(sp.type),
             nullable: sp.nullable ?? true,
@@ -72,6 +84,7 @@ export class SchemaSnapshotBuilder {
           });
         }
       }
+
       const primaryKeys = primaryKeyProps.map(
         (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
       );
@@ -95,19 +108,92 @@ export class SchemaSnapshotBuilder {
 
       const foreignKeys = this.buildForeignKeys(entityMeta, entityByTarget);
 
-      return {
-        name: entityMeta.tableName,
-        columns,
+      // Table splitting: merge into existing snapshot when another entity already claimed this table.
+      const primaryTableName = entityMeta.tableName;
+      const existing = tableMap.get(primaryTableName);
+      if (existing) {
+        // Merge columns that are not already present (table splitting — shared table).
+        for (const col of primaryColumns) {
+          if (!existing.columns.some((c) => c.name === col.name)) {
+            existing.columns.push(col);
+          }
+        }
+        for (const fk of foreignKeys) {
+          if (!existing.foreignKeys.some((f) => f.columns.join() === fk.columns.join())) {
+            existing.foreignKeys.push(fk);
+          }
+        }
+      } else {
+        tableMap.set(primaryTableName, {
+          name: primaryTableName,
+          columns: primaryColumns,
+          primaryKeys,
+          indexes,
+          foreignKeys,
+          ...(entityMeta.checkConstraints?.length
+            ? { checkConstraints: entityMeta.checkConstraints }
+            : {}),
+          ...(entityMeta.comment !== undefined ? { comment: entityMeta.comment } : {})
+        });
+      }
+
+      // Entity splitting: emit one additional TableSnapshot per fragment.
+      for (const fragment of fragments) {
+        this.buildFragmentSnapshot(entityMeta, fragment, primaryKeys, tableMap);
+      }
+    }
+
+    return { tables: Array.from(tableMap.values()) };
+  }
+
+  private buildFragmentSnapshot(
+    entityMeta: EntityMetadata,
+    fragment: TableFragmentMetadata,
+    primaryKeys: string[],
+    tableMap: Map<string, TableSnapshot>
+  ): void {
+    const primaryKeyProps = entityMeta.primaryKeys ?? [];
+    const fragmentPropSet = new Set<string>(fragment.properties ?? []);
+
+    // Fragment table contains PK columns + its own properties.
+    const fragmentColumns: ColumnDef[] = entityMeta.columns
+      .filter(
+        (col) => primaryKeyProps.includes(col.propertyName) || fragmentPropSet.has(col.propertyName)
+      )
+      .map((column: ColumnMetadata) => ({
+        name: column.columnName,
+        type: this.mapPortableType(column.type),
+        nullable: column.nullable ?? true,
+        defaultValue:
+          column.converter && column.defaultValue !== undefined
+            ? column.converter.toProvider(column.defaultValue)
+            : column.defaultValue,
+        defaultExpression: column.defaultExpression,
+        isPrimaryKey: primaryKeyProps.includes(column.propertyName),
+        isComputed: column.isComputed,
+        computedExpression: column.computedExpression,
+        computedStorage: column.computedStorage,
+        comment: column.comment
+      }));
+
+    if (fragmentColumns.length === 0) return;
+
+    const existing = tableMap.get(fragment.tableName);
+    if (existing) {
+      for (const col of fragmentColumns) {
+        if (!existing.columns.some((c) => c.name === col.name)) {
+          existing.columns.push(col);
+        }
+      }
+    } else {
+      tableMap.set(fragment.tableName, {
+        name: fragment.tableName,
+        columns: fragmentColumns,
         primaryKeys,
-        indexes,
-        foreignKeys,
-        ...(entityMeta.checkConstraints?.length
-          ? { checkConstraints: entityMeta.checkConstraints }
-          : {}),
-        ...(entityMeta.comment !== undefined ? { comment: entityMeta.comment } : {})
-      };
-    });
-    return { tables };
+        indexes: [],
+        foreignKeys: []
+      });
+    }
   }
 
   private buildForeignKeys(
