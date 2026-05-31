@@ -130,6 +130,10 @@ export class MetadataStorage {
     MetadataStorage.getInstance().mergeFluentSkipNavigation(target, nav);
   }
 
+  public static setSeedData(target: Function, rows: Record<string, unknown>[]): void {
+    MetadataStorage.getInstance().setSeedData(target, rows);
+  }
+
   public static clear(): void {
     MetadataStorage.getInstance().clear();
   }
