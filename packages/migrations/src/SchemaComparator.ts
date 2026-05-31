@@ -4,9 +4,12 @@ import type {
   ForeignKeyDef,
   SchemaDiff,
   SchemaSnapshot,
+  SeedRowOp,
   TableDiff,
   TableSnapshot
 } from './DiffTypes';
+import { diffSeeds } from './seed/SeedDiff';
+import type { ModelSnapshot } from './snapshot/model-snapshot';
 
 function fkFingerprint(fk: ForeignKeyDef): string {
   return fk.columns.slice().sort().join(',');
@@ -71,6 +74,14 @@ function diffExistingTable(
     fkCreates: fkCreates.length ? fkCreates : undefined,
     fkDrops: fkDrops.length ? fkDrops : undefined
   };
+}
+
+/**
+ * Diffs seed data between two ModelSnapshot versions.
+ * Returns the SeedRowOp[] needed to transition from prev to current.
+ */
+export function compareModelSeeds(prev: ModelSnapshot, current: ModelSnapshot): SeedRowOp[] {
+  return diffSeeds(prev.tables, current.tables);
 }
 
 export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot): SchemaDiff {

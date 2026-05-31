@@ -22,6 +22,7 @@ export class EntityMetadataBuilder {
     hierarchyRoot?: Function;
     skipNavigations?: SkipNavigationMetadata[];
     queryFilters?: QueryFilterMetadata[];
+    seedData?: Record<string, unknown>[];
   };
 
   /**
@@ -184,6 +185,11 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  public setSeedData(rows: Record<string, unknown>[]): this {
+    this.metadata.seedData = rows;
+    return this;
+  }
+
   public addSkipNavigation(nav: SkipNavigationMetadata): this {
     this.metadata.skipNavigations = this.metadata.skipNavigations ?? [];
     const idx = this.metadata.skipNavigations.findIndex(
@@ -230,6 +236,9 @@ export class EntityMetadataBuilder {
         : {}),
       ...(this.metadata.queryFilters !== undefined && this.metadata.queryFilters.length > 0
         ? { queryFilters: this.metadata.queryFilters }
+        : {}),
+      ...(this.metadata.seedData !== undefined && this.metadata.seedData.length > 0
+        ? { seedData: this.metadata.seedData }
         : {})
     };
   }

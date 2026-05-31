@@ -36,7 +36,7 @@ Blocks EF parity baseline. Required before any non-trivial EF Core → ts-linq m
 | P0-10 | [Concurrency tokens / RowVersion](./P0-10-concurrency-tokens-rowversion.md) | `IsConcurrencyToken`, `IsRowVersion`, `[Timestamp]`, `DbUpdateConcurrencyException`                               | ✅      | M      | P0-01      |
 | P0-11 | [Global query filters](./P0-11-global-query-filters.md)                     | `HasQueryFilter` (+ EF9 multiple named filters), `IgnoreQueryFilters`                                             | ✅     | M      | P0-01      |
 | P0-12 | [Interceptors](./P0-12-interceptors.md)                                     | `IDbCommandInterceptor`, `IDbConnectionInterceptor`, `ISaveChangesInterceptor`, `IMaterializationInterceptor`     | - [x]  | L      | —          |
-| P0-13 | [HasData seeding](./P0-13-has-data-seeding.md)                              | `modelBuilder.Entity<T>().HasData(...)`                                                                           | - [ ]  | M      | P0-01      |
+| P0-13 | [HasData seeding](./P0-13-has-data-seeding.md)                              | `modelBuilder.Entity<T>().HasData(...)`                                                                           | ✅      | M      | P0-01      |
 | P0-14 | [Computed / default / check](./P0-14-computed-default-check.md)             | `HasDefaultValue(Sql)`, `HasComputedColumnSql`, `HasCheckConstraint`, `HasComment`                                | - [ ]  | M      | P0-01      |
 | P0-15 | [JSON columns](./P0-15-json-columns.md)                                     | `OwnsOne(..., b => b.ToJson())`, LINQ over JSON paths                                                             | - [ ]  | L      | P0-06      |
 
@@ -253,7 +253,7 @@ whose `depends_on` points into the current step.
 | P0-09 | Cascade delete behaviors | P0-01 | ✅ done |
 | P0-10 | Concurrency tokens / RowVersion | P0-01 | ✅ done |
 | P0-11 | Global query filters | P0-01 | ✅ done |
-| P0-13 | HasData seeding | P0-01 |
+| P0-13 | HasData seeding | P0-01 | ✅ done |
 | P0-14 | Computed / default / check | P0-01 |
 | P1-16 | Shadow properties | P0-01 |
 | P1-22 | EF.Functions / DbFunctions | P0-01 |
