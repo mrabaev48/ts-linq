@@ -18,6 +18,7 @@ import { OptimisticConcurrencyError } from '@ts-linq/types';
 import { ChangeTracker, type JoinRowChange } from './ChangeTracker';
 import { EntityEntry } from './changetracker/EntityEntry';
 import { DeleteCommand } from './commands/DeleteCommand';
+import { FragmentDmlExecutor } from './commands/FragmentDmlExecutor';
 import { InsertCommand } from './commands/InsertCommand';
 import { UpdateCommand } from './commands/UpdateCommand';
 import { DatabaseFacade } from './DatabaseFacade';
@@ -71,6 +72,7 @@ export abstract class DbContext {
   private _insertCmd!: InsertCommand;
   private _updateCmd!: UpdateCommand;
   private _deleteCmd!: DeleteCommand;
+  private _fragmentExecutor!: FragmentDmlExecutor;
   /** SQL cache created and owned by this context (undefined when user supplied their own). */
   private _ownedSqlCache?: EnhancedSqlCache;
   private _querySplittingBehavior?: import('@ts-linq/types').QuerySplittingBehavior;
@@ -126,6 +128,7 @@ export abstract class DbContext {
     this._updateCmd = new UpdateCommand(this._provider, (c) =>
       this._cacheCoordinator.updateEntry(c)
     );
+    this._fragmentExecutor = new FragmentDmlExecutor(this._provider);
     this._deleteCmd = new DeleteCommand(
       this._provider,
       async (c) => this._softDeleteInterceptor.apply(c),
@@ -896,18 +899,54 @@ export abstract class DbContext {
   private async applyInsert(
     change: Pick<NormalizedChange, 'entity' | 'entityClass'>
   ): Promise<void> {
+    // Primary table insert (normal path).
     await this._insertCmd.execute({ ...change, state: 'added' });
+
+    // Entity splitting: insert into each secondary fragment table.
+    const meta = this._registry.getEntity(change.entityClass);
+    if (meta?.tableFragments?.length) {
+      for (const fragment of meta.tableFragments) {
+        await this._fragmentExecutor.insertFragment(change.entity, meta, fragment);
+      }
+    }
   }
 
   private async applyUpdate(
     change: Pick<NormalizedChange, 'entity' | 'entityClass' | 'originalValues'>
   ): Promise<void> {
+    // Primary table update (normal path).
     await this._updateCmd.execute({ ...change, state: 'modified' });
+
+    // Entity splitting: update each secondary fragment table.
+    const meta = this._registry.getEntity(change.entityClass);
+    if (meta?.tableFragments?.length) {
+      for (const fragment of meta.tableFragments) {
+        await this._fragmentExecutor.updateFragment(
+          change.entity,
+          meta,
+          fragment,
+          change.originalValues
+        );
+      }
+    }
   }
 
   private async applyDelete(
     change: Pick<NormalizedChange, 'entity' | 'entityClass' | 'originalValues'>
   ): Promise<boolean> {
+    // Entity splitting: delete from secondary fragments first (reverse order) before primary.
+    const meta = this._registry.getEntity(change.entityClass);
+    if (meta?.tableFragments?.length) {
+      for (const fragment of [...meta.tableFragments].reverse()) {
+        await this._fragmentExecutor.deleteFragment(
+          change.entity,
+          meta,
+          fragment,
+          change.originalValues
+        );
+      }
+    }
+
     return await this._deleteCmd.execute({ ...change, state: 'deleted' });
   }
 

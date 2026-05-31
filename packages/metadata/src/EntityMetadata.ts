@@ -9,6 +9,7 @@ import type {
   RelationshipMetadata,
   ShadowPropertyMetadata,
   SkipNavigationMetadata,
+  TableFragmentMetadata,
   ValidationRule
 } from '@ts-linq/types';
 
@@ -28,6 +29,7 @@ export class EntityMetadataBuilder {
     checkConstraints?: CheckConstraintMetadata[];
     comment?: string;
     shadowProperties?: Map<string, ShadowPropertyMetadata>;
+    tableFragments?: TableFragmentMetadata[];
   };
 
   /**
@@ -213,6 +215,11 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  public setTableFragments(fragments: TableFragmentMetadata[]): this {
+    this.metadata.tableFragments = [...fragments];
+    return this;
+  }
+
   public addSkipNavigation(nav: SkipNavigationMetadata): this {
     this.metadata.skipNavigations = this.metadata.skipNavigations ?? [];
     const idx = this.metadata.skipNavigations.findIndex(
@@ -269,6 +276,9 @@ export class EntityMetadataBuilder {
       ...(this.metadata.comment !== undefined ? { comment: this.metadata.comment } : {}),
       ...(this.metadata.shadowProperties !== undefined && this.metadata.shadowProperties.size > 0
         ? { shadowProperties: this.metadata.shadowProperties }
+        : {}),
+      ...(this.metadata.tableFragments !== undefined && this.metadata.tableFragments.length > 0
+        ? { tableFragments: this.metadata.tableFragments }
         : {})
     };
   }
