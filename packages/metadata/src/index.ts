@@ -15,6 +15,7 @@ export * from './resolveEntityRef';
 export * from './ValidIf';
 export * from './ValueComparer';
 export * from './ValueConverter';
+export * from './ViewMetadata';
 export {
   DeleteBehavior,
   type DiscriminatorEntry,

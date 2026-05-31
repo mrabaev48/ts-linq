@@ -67,12 +67,42 @@ export class EntityTypeBuilder<T> {
   private _entityComment?: string;
   private readonly _shadowColumns: Map<string, ColumnMetadata> = new Map();
   private readonly _tableFragments: TableFragmentMetadata[] = [];
+  private _isKeyless?: boolean;
+  private _viewName?: string;
+  private _viewSql?: string;
 
   constructor(private readonly _ctor: new () => T) {}
 
   toTable(name: string, schema?: string): this {
     this._tableName = name;
     if (schema !== undefined) this._schema = schema;
+    return this;
+  }
+
+  /**
+   * Maps this entity to a database view.
+   * Mirrors EF Core's `ToView(viewName)`.
+   */
+  toView(name: string): this {
+    this._viewName = name;
+    return this;
+  }
+
+  /**
+   * Declares this entity as keyless — no primary key, never tracked, mutations forbidden.
+   * Mirrors EF Core's `HasNoKey()`.
+   */
+  hasNoKey(): this {
+    this._isKeyless = true;
+    return this;
+  }
+
+  /**
+   * Supplies optional CREATE VIEW DDL to be emitted by migrations.
+   * If omitted, the view is assumed pre-existing.
+   */
+  hasViewSql(sql: string): this {
+    this._viewSql = sql;
     return this;
   }
 
@@ -395,6 +425,18 @@ export class EntityTypeBuilder<T> {
 
     if (this._tableFragments.length > 0) {
       registry.mergeFluentTableFragments(this._ctor, this._tableFragments);
+    }
+
+    if (this._isKeyless !== undefined) {
+      registry.setFluentKeyless(this._ctor, this._isKeyless);
+    }
+
+    if (this._viewName !== undefined) {
+      registry.setFluentViewName(this._ctor, this._viewName);
+    }
+
+    if (this._viewSql !== undefined) {
+      registry.setFluentViewSql(this._ctor, this._viewSql);
     }
   }
 

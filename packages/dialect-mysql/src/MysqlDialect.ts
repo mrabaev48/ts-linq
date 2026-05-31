@@ -86,7 +86,7 @@ export class MysqlDialect implements SqlDialect {
     } else {
       const metadata = MetadataStorage.getEntity(entityClass);
       if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-      query += this.buildFromClause(options.from ?? metadata.tableName);
+      query += this.buildFromClause(options.from ?? metadata.viewName ?? metadata.tableName);
     }
     query += this.joinEmitter.emit(options);
     query += this.whereEmitter.emit(parameters, options);
