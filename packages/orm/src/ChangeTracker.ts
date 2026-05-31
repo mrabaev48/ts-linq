@@ -33,6 +33,8 @@ export class ChangeTracker implements EntityAttacher {
   private readonly _registry: MetadataRegistry;
   /** Snapshots of skip-navigation collection PKs at attach time: entity → (propName → Set<pk>) */
   private _collectionSnapshots: Map<object, Map<string, Set<unknown>>> = new Map();
+  /** Shadow property values: entity → (propertyName → value). Parallel to _trackedEntities (P1-16). */
+  private readonly _shadowValues: WeakMap<object, Map<string, unknown>> = new WeakMap();
 
   /** Default tracking behavior applied to all queries originating from this context. */
   public queryTrackingBehavior: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -204,6 +206,28 @@ export class ChangeTracker implements EntityAttacher {
     this._collectionSnapshots.clear();
   }
 
+  // ─── Shadow property API (P1-16) ─────────────────────────────────────────
+
+  /** Read a shadow property value for a tracked entity. */
+  public getShadowValue(entity: object, name: string): unknown {
+    return this._shadowValues.get(entity)?.get(name);
+  }
+
+  /** Write a shadow property value for a tracked entity. */
+  public setShadowValue(entity: object, name: string, value: unknown): void {
+    let map = this._shadowValues.get(entity);
+    if (!map) {
+      map = new Map();
+      this._shadowValues.set(entity, map);
+    }
+    map.set(name, value);
+  }
+
+  /** Collect all shadow values for a tracked entity (used during persistence). */
+  public getShadowValues(entity: object): Map<string, unknown> | undefined {
+    return this._shadowValues.get(entity);
+  }
+
   /**
    * Scan all Unchanged tracked entities and mark them Modified when their
    * current state differs from the stored `originalValues`.
@@ -213,11 +237,23 @@ export class ChangeTracker implements EntityAttacher {
   public detectChanges(): void {
     for (const tracked of this._trackedEntities.values()) {
       if (tracked.state === EntityState.Unchanged && tracked.originalValues) {
-        if (this.hasChanged(tracked.entity, tracked.originalValues, tracked.entityClass)) {
+        if (
+          this.hasChanged(tracked.entity, tracked.originalValues, tracked.entityClass) ||
+          this.hasShadowChanged(tracked.entity, tracked.entityClass)
+        ) {
           tracked.state = EntityState.Modified;
         }
       }
     }
+  }
+
+  private hasShadowChanged(entity: object, entityClass: Function): boolean {
+    const meta = this._registry.getEntity(entityClass);
+    if (!meta?.shadowProperties) return false;
+    const shadowValues = this._shadowValues.get(entity);
+    if (!shadowValues) return false;
+    // Any shadow value set after attach counts as a change
+    return shadowValues.size > 0;
   }
 
   private hasChanged(entity: object, original: object, entityClass: Function): boolean {

@@ -4,7 +4,8 @@ import type {
   ColumnMetadata,
   IndexMetadata,
   QueryFilterMetadata,
-  RelationshipMetadata
+  RelationshipMetadata,
+  ShadowPropertyMetadata
 } from '@ts-linq/types';
 import { InheritanceStrategy } from '@ts-linq/types';
 
@@ -62,6 +63,7 @@ export class EntityTypeBuilder<T> {
   private readonly _seedRows: Record<string, unknown>[] = [];
   private readonly _checkConstraints: CheckConstraintMetadata[] = [];
   private _entityComment?: string;
+  private readonly _shadowColumns: Map<string, ColumnMetadata> = new Map();
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -76,8 +78,15 @@ export class EntityTypeBuilder<T> {
     return this;
   }
 
-  property<K extends keyof T>(selector: (e: T) => T[K]): PropertyBuilder<T[K]> {
-    const propName = extractPropertyName(selector);
+  property<TValue>(name: string): PropertyBuilder<TValue>;
+  property<K extends keyof T>(selector: (e: T) => T[K]): PropertyBuilder<T[K]>;
+  property<TValue, K extends keyof T>(
+    selectorOrName: ((e: T) => T[K]) | string
+  ): PropertyBuilder<TValue> | PropertyBuilder<T[K]> {
+    if (typeof selectorOrName === 'string') {
+      return new PropertyBuilder<TValue>(selectorOrName, this._shadowColumns, true);
+    }
+    const propName = extractPropertyName(selectorOrName);
     return new PropertyBuilder<T[K]>(propName, this._columns);
   }
 
@@ -338,6 +347,22 @@ export class EntityTypeBuilder<T> {
 
     if (this._entityComment !== undefined) {
       registry.setEntityComment(this._ctor, this._entityComment);
+    }
+
+    for (const col of this._shadowColumns.values()) {
+      const shadowProp: ShadowPropertyMetadata = {
+        propertyName: col.propertyName,
+        columnName: col.columnName,
+        type: col.type,
+        nullable: col.nullable,
+        defaultValue: col.defaultValue,
+        defaultExpression: col.defaultExpression,
+        comment: col.comment,
+        length: col.length,
+        precision: col.precision,
+        scale: col.scale
+      };
+      registry.addShadowProperty(this._ctor, shadowProp);
     }
   }
 

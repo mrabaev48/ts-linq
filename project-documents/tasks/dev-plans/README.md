@@ -46,7 +46,7 @@ Lands after P0. Necessary for power users but not blocking baseline migration.
 
 | #     | Title                                                                         | EF Core API                                                                                            | Status | Effort | Depends on   |
 |-------|-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|:------:|:------:|--------------|
-| P1-16 | [Shadow properties](./P1-16-shadow-properties.md)                             | `Property<int>("Foo")` without CLR field, access via `EntityEntry`                                     | - [ ]  | M      | P0-01        |
+| P1-16 | [Shadow properties](./P1-16-shadow-properties.md)                             | `Property<int>("Foo")` without CLR field, access via `EntityEntry`                                     | - [x]  | M      | P0-01        |
 | P1-17 | [Complex types](./P1-17-complex-types.md)                                     | `ComplexProperty` (EF8) value-object semantics without identity                                        | - [ ]  | M      | P0-06        |
 | P1-18 | [AsSplitQuery / AsSingleQuery](./P1-18-as-split-query.md)                     | `AsSplitQuery`, `AsSingleQuery`, `UseQuerySplittingBehavior`                                           | - [x]  | M      | —            |
 | P1-19 | [Filtered Include](./P1-19-filtered-include.md)                               | `Include(b => b.Posts.Where(...).OrderBy(...).Take(n))`                                                | - [x]  | M      | —            |
@@ -255,7 +255,7 @@ whose `depends_on` points into the current step.
 | P0-11 | Global query filters | P0-01 | ✅ done |
 | P0-13 | HasData seeding | P0-01 | ✅ done |
 | P0-14 | Computed / default / check | P0-01 | ✅ done |
-| P1-16 | Shadow properties | P0-01 |
+| P1-16 | Shadow properties | P0-01 | ✅ done |
 | P1-22 | EF.Functions / DbFunctions | P0-01 |
 | P1-25 | Table / entity splitting | P0-01 |
 | P1-26 | Views / keyless entities | P0-01 |

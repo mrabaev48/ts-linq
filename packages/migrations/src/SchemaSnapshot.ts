@@ -58,6 +58,20 @@ export class SchemaSnapshotBuilder {
         computedStorage: column.computedStorage,
         comment: column.comment
       }));
+
+      // Shadow properties appear as regular columns in DDL (P1-16)
+      if (entityMeta.shadowProperties) {
+        for (const sp of entityMeta.shadowProperties.values()) {
+          columns.push({
+            name: sp.columnName,
+            type: this.mapPortableType(sp.type),
+            nullable: sp.nullable ?? true,
+            defaultValue: sp.defaultValue,
+            defaultExpression: sp.defaultExpression,
+            comment: sp.comment
+          });
+        }
+      }
       const primaryKeys = primaryKeyProps.map(
         (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
       );

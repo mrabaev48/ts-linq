@@ -7,6 +7,7 @@ import type {
   OwnedEntityMetadata,
   QueryFilterMetadata,
   RelationshipMetadata,
+  ShadowPropertyMetadata,
   SkipNavigationMetadata,
   ValidationRule
 } from '@ts-linq/types';
@@ -461,6 +462,20 @@ export class MetadataRegistry {
       return;
     }
     this.getOrCreateBuilder(target).setEntityComment(comment);
+  }
+
+  /** Add or replace a shadow property for an entity (P1-16). */
+  public addShadowProperty(target: Function, prop: ShadowPropertyMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      if (!finalized.shadowProperties) {
+        finalized.shadowProperties = new Map();
+      }
+      finalized.shadowProperties.set(prop.propertyName, prop);
+      return;
+    }
+    this.getOrCreateBuilder(target).addShadowProperty(prop);
   }
 
   /** Clear all stored metadata and pending builders. */

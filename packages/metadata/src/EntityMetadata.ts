@@ -7,6 +7,7 @@ import type {
   OwnedEntityMetadata,
   QueryFilterMetadata,
   RelationshipMetadata,
+  ShadowPropertyMetadata,
   SkipNavigationMetadata,
   ValidationRule
 } from '@ts-linq/types';
@@ -26,6 +27,7 @@ export class EntityMetadataBuilder {
     seedData?: Record<string, unknown>[];
     checkConstraints?: CheckConstraintMetadata[];
     comment?: string;
+    shadowProperties?: Map<string, ShadowPropertyMetadata>;
   };
 
   /**
@@ -203,6 +205,14 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  public addShadowProperty(prop: ShadowPropertyMetadata): this {
+    if (!this.metadata.shadowProperties) {
+      this.metadata.shadowProperties = new Map();
+    }
+    this.metadata.shadowProperties.set(prop.propertyName, prop);
+    return this;
+  }
+
   public addSkipNavigation(nav: SkipNavigationMetadata): this {
     this.metadata.skipNavigations = this.metadata.skipNavigations ?? [];
     const idx = this.metadata.skipNavigations.findIndex(
@@ -256,7 +266,10 @@ export class EntityMetadataBuilder {
       ...(this.metadata.checkConstraints !== undefined && this.metadata.checkConstraints.length > 0
         ? { checkConstraints: this.metadata.checkConstraints }
         : {}),
-      ...(this.metadata.comment !== undefined ? { comment: this.metadata.comment } : {})
+      ...(this.metadata.comment !== undefined ? { comment: this.metadata.comment } : {}),
+      ...(this.metadata.shadowProperties !== undefined && this.metadata.shadowProperties.size > 0
+        ? { shadowProperties: this.metadata.shadowProperties }
+        : {})
     };
   }
 }
