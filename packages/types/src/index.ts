@@ -787,6 +787,14 @@ export interface SkipNavigationMetadata {
   isSynthesized: boolean;
 }
 
+/** Describes a single physical table fragment for entity splitting (P1-25). */
+export interface TableFragmentMetadata {
+  tableName: string;
+  schema?: string;
+  /** Property names mapped to this fragment. Undefined means "all remaining properties". */
+  properties?: string[];
+}
+
 export interface EntityMetadata {
   target?: Function;
   className?: string;
@@ -820,6 +828,8 @@ export interface EntityMetadata {
   comment?: string;
   /** Shadow properties — exist in DB but have no field on the entity class (P1-16). */
   shadowProperties?: Map<string, ShadowPropertyMetadata>;
+  /** Additional table fragments for entity splitting (P1-25). Length > 0 means entity splitting is active. */
+  tableFragments?: TableFragmentMetadata[];
 }
 
 /** Metadata for a shadow property (P1-16): a DB column with no corresponding entity field. */

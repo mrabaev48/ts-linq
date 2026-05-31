@@ -1,7 +1,7 @@
 ---
 title: Table Splitting and Entity Splitting
 ef_core_api: ModelBuilder.Entity<T>().SplitToTable(...) / ToTable(...) with shared keys
-status: not-started
+status: done
 priority: P1
 effort: L
 depends_on: ["P0-01-fluent-configuration-api"]

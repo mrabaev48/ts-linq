@@ -3,7 +3,7 @@ import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
 import { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
-import { type ColumnResolver, SqlVisitor } from '@ts-linq/sql-visitor';
+import { type ColumnResolver, FragmentJoinPlanner, SqlVisitor } from '@ts-linq/sql-visitor';
 import type {
   CountCache,
   CteDefinition,
@@ -527,6 +527,16 @@ export class Queryable<T> {
   private prepareQueryModel(): QueryModel {
     const model = this._model.clone();
     this.applyGlobalFiltersToModel(model);
+
+    // Auto-join table fragments for entity splitting (P1-25).
+    const meta = MetadataStorage.getEntity(this._entityClass);
+    if (meta?.tableFragments?.length) {
+      const fragmentJoins = new FragmentJoinPlanner().plan(meta);
+      if (fragmentJoins.length > 0) {
+        model.joins = [...(model.joins ?? []), ...fragmentJoins];
+      }
+    }
+
     return model;
   }
 
