@@ -1,7 +1,7 @@
 ---
 title: Value Generators and Sentinel (EF8)
 ef_core_api: Property.ValueGeneratedOnAdd / OnUpdate / Never / HasValueGenerator / HasSentinel
-status: not-started
+status: done
 priority: P1
 effort: M
 depends_on: ["P0-01-fluent-configuration-api"]
