@@ -23,19 +23,23 @@ export class MssqlDdlStrategy {
       });
       columns.push(`PRIMARY KEY (${pkCols.join(', ')})`);
     }
+
+    for (const cc of metadata.checkConstraints ?? []) {
+      columns.push(`CONSTRAINT [${cc.name}] CHECK (${cc.sql})`);
+    }
+
     return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${metadata.tableName}') BEGIN CREATE TABLE [${metadata.tableName}] (${columns.join(', ')}) END`;
   }
 
   public generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string {
     if (column.isComputed && column.computedExpression) {
-      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
-        .computedStorage;
+      const storage = column.computedStorage;
       if (storage && storage !== 'PERSISTED') {
         this.logger?.warn(
           `MSSQL: computedStorage='${storage}' is not supported; use 'PERSISTED' or omit. Applying non-persisted computed for ${column.columnName}`
         );
       }
-      const persisted = storage === 'PERSISTED' ? ' PERSISTED' : '';
+      const persisted = storage === 'PERSISTED' || storage === 'STORED' ? ' PERSISTED' : '';
       return `[${column.columnName}] AS (${column.computedExpression})${persisted}`;
     }
     let sqlType = this.mapTypeToMssql(column.type);
@@ -118,6 +122,28 @@ export class MssqlDdlStrategy {
       sql += ` ON UPDATE ${fk.onUpdate}`;
     }
     return sql;
+  }
+
+  /**
+   * Generates sp_addextendedproperty calls for table and column comments.
+   * Returns an empty array when neither the table nor any column has a comment.
+   */
+  public generateCommentSql(entityMetadata: EntityMetadata): string[] {
+    const stmts: string[] = [];
+    const table = entityMetadata.tableName;
+    if (entityMetadata.comment) {
+      stmts.push(
+        `EXEC sp_addextendedproperty 'MS_Description', N'${entityMetadata.comment.replace(/'/g, "''")}', 'SCHEMA', N'dbo', 'TABLE', N'${table}'`
+      );
+    }
+    for (const col of entityMetadata.columns) {
+      if (col.comment) {
+        stmts.push(
+          `EXEC sp_addextendedproperty 'MS_Description', N'${col.comment.replace(/'/g, "''")}', 'SCHEMA', N'dbo', 'TABLE', N'${table}', 'COLUMN', N'${col.columnName}'`
+        );
+      }
+    }
+    return stmts;
   }
 
   public mapTypeToMssql(type: string): string {

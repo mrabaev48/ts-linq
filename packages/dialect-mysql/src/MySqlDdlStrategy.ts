@@ -22,7 +22,15 @@ export class MySqlDdlStrategy {
       });
       cols.push(`PRIMARY KEY (${pkCols.join(', ')})`);
     }
-    return `CREATE TABLE IF NOT EXISTS \`${metadata.tableName}\` (${cols.join(', ')})`;
+
+    for (const cc of metadata.checkConstraints ?? []) {
+      cols.push(`CONSTRAINT \`${cc.name}\` CHECK (${cc.sql})`);
+    }
+
+    const tableComment = metadata.comment
+      ? ` COMMENT='${metadata.comment.replace(/'/g, "''")}'`
+      : '';
+    return `CREATE TABLE IF NOT EXISTS \`${metadata.tableName}\` (${cols.join(', ')})${tableComment}`;
   }
 
   public generateCreateIndexSql(
@@ -90,8 +98,7 @@ export class MySqlDdlStrategy {
 
   public generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string {
     if (column.isComputed && column.computedExpression) {
-      const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
-        .computedStorage;
+      const storage = column.computedStorage;
       if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
         this.logger?.warn(
           `MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`
@@ -108,6 +115,9 @@ export class MySqlDdlStrategy {
       def += ` DEFAULT ${(column as { defaultExpression?: string }).defaultExpression}`;
     } else if (column.defaultValue !== undefined) {
       def += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
+    }
+    if (column.comment) {
+      def += ` COMMENT '${column.comment.replace(/'/g, "''")}'`;
     }
     return def;
   }

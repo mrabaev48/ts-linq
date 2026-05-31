@@ -655,6 +655,8 @@ export interface ColumnMetadata {
   defaultExpression?: string;
   defaultExpressionDialect?: Record<string, string | undefined>;
   computedExpression?: string;
+  computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED';
+  comment?: string;
   length?: number;
   precision?: number;
   scale?: number;
@@ -688,6 +690,11 @@ export interface RelationshipMetadata {
   through?: string | object;
   onDelete?: DeleteBehavior;
   nullable?: boolean;
+}
+
+export interface CheckConstraintMetadata {
+  name: string;
+  sql: string;
 }
 
 export interface IndexMetadata {
@@ -805,6 +812,10 @@ export interface EntityMetadata {
   queryFilters?: QueryFilterMetadata[];
   /** Seed rows declared via hasData() (P0-13). Keyed by property names. */
   seedData?: Record<string, unknown>[];
+  /** CHECK constraints declared via hasCheckConstraint() (P0-14). */
+  checkConstraints?: CheckConstraintMetadata[];
+  /** Table-level comment declared via hasComment() (P0-14). */
+  comment?: string;
 }
 
 // Entity cache interface

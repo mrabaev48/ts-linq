@@ -1,5 +1,6 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import type {
+  CheckConstraintMetadata,
   ColumnMetadata,
   IndexMetadata,
   QueryFilterMetadata,
@@ -59,6 +60,8 @@ export class EntityTypeBuilder<T> {
   private readonly _skipNavBuilders: CollectionCollectionBuilder<T, any>[] = [];
   private readonly _queryFilters: QueryFilterMetadata[] = [];
   private readonly _seedRows: Record<string, unknown>[] = [];
+  private readonly _checkConstraints: CheckConstraintMetadata[] = [];
+  private _entityComment?: string;
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -247,6 +250,24 @@ export class EntityTypeBuilder<T> {
   }
 
   /**
+   * Adds a CHECK constraint to this entity's table.
+   * Mirrors EF Core's `HasCheckConstraint(name, sql)`.
+   */
+  hasCheckConstraint(name: string, sql: string): this {
+    this._checkConstraints.push({ name, sql });
+    return this;
+  }
+
+  /**
+   * Sets a documentation comment for this entity's table.
+   * Mirrors EF Core's `HasComment(comment)`.
+   */
+  hasComment(comment: string): this {
+    this._entityComment = comment;
+    return this;
+  }
+
+  /**
    * Declares seed rows for this entity. Rows must have stable primary key values.
    * Mirrors EF Core's `HasData(...)`.
    */
@@ -309,6 +330,14 @@ export class EntityTypeBuilder<T> {
 
     if (this._seedRows.length > 0) {
       registry.setSeedData(this._ctor, [...this._seedRows]);
+    }
+
+    if (this._checkConstraints.length > 0) {
+      registry.setCheckConstraints(this._ctor, [...this._checkConstraints]);
+    }
+
+    if (this._entityComment !== undefined) {
+      registry.setEntityComment(this._ctor, this._entityComment);
     }
   }
 
