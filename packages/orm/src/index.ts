@@ -9,6 +9,7 @@ export * from './DbContext';
 export * from './DbContextOptionsBuilder';
 export * from './DbSet';
 export { DbUpdateConcurrencyException } from './exceptions/DbUpdateConcurrencyException';
+export { KeylessMutationError } from './exceptions/KeylessMutationError';
 export * from './factory';
 export * from './factory/DbContextFactory';
 export * from './factory/IDbContextFactory';

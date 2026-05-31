@@ -490,6 +490,39 @@ export class MetadataRegistry {
     this.getOrCreateBuilder(target).addShadowProperty(prop);
   }
 
+  /** Mark an entity as keyless — no PK, never tracked (P1-26). */
+  public setFluentKeyless(target: Function, value: boolean): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.isKeyless = value;
+      return;
+    }
+    this.getOrCreateBuilder(target).setIsKeyless(value);
+  }
+
+  /** Set the database view name for an entity (P1-26). */
+  public setFluentViewName(target: Function, name: string): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.viewName = name;
+      return;
+    }
+    this.getOrCreateBuilder(target).setViewName(name);
+  }
+
+  /** Set optional CREATE VIEW DDL for migration emission (P1-26). */
+  public setFluentViewSql(target: Function, sql: string): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.viewSql = sql;
+      return;
+    }
+    this.getOrCreateBuilder(target).setViewSql(sql);
+  }
+
   /** Clear all stored metadata and pending builders. */
   public clear(): void {
     this.entities.clear();

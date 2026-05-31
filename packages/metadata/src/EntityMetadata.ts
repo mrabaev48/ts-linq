@@ -30,6 +30,9 @@ export class EntityMetadataBuilder {
     comment?: string;
     shadowProperties?: Map<string, ShadowPropertyMetadata>;
     tableFragments?: TableFragmentMetadata[];
+    isKeyless?: boolean;
+    viewName?: string;
+    viewSql?: string;
   };
 
   /**
@@ -220,6 +223,24 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  /** Mark entity as keyless — no PK, never tracked (P1-26). */
+  public setIsKeyless(value: boolean): this {
+    this.metadata.isKeyless = value;
+    return this;
+  }
+
+  /** Set the database view name this entity maps to (P1-26). */
+  public setViewName(name: string): this {
+    this.metadata.viewName = name;
+    return this;
+  }
+
+  /** Set optional CREATE VIEW DDL to be emitted by migrations (P1-26). */
+  public setViewSql(sql: string): this {
+    this.metadata.viewSql = sql;
+    return this;
+  }
+
   public addSkipNavigation(nav: SkipNavigationMetadata): this {
     this.metadata.skipNavigations = this.metadata.skipNavigations ?? [];
     const idx = this.metadata.skipNavigations.findIndex(
@@ -279,7 +300,10 @@ export class EntityMetadataBuilder {
         : {}),
       ...(this.metadata.tableFragments !== undefined && this.metadata.tableFragments.length > 0
         ? { tableFragments: this.metadata.tableFragments }
-        : {})
+        : {}),
+      ...(this.metadata.isKeyless !== undefined ? { isKeyless: this.metadata.isKeyless } : {}),
+      ...(this.metadata.viewName !== undefined ? { viewName: this.metadata.viewName } : {}),
+      ...(this.metadata.viewSql !== undefined ? { viewSql: this.metadata.viewSql } : {})
     };
   }
 }
