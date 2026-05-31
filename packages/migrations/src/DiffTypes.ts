@@ -77,8 +77,35 @@ export interface TableDiff {
   primaryKeysAfter?: string[];
 }
 
+export interface SeedRowInsert {
+  kind: 'insert';
+  table: string;
+  pkColumns: string[];
+  row: Record<string, unknown>;
+}
+
+export interface SeedRowUpdate {
+  kind: 'update';
+  table: string;
+  pkColumns: string[];
+  row: Record<string, unknown>;
+  /** Previous column values — used to generate reversible DOWN SQL. */
+  prev: Record<string, unknown>;
+}
+
+export interface SeedRowDelete {
+  kind: 'delete';
+  table: string;
+  pkColumns: string[];
+  /** Full row needed for rollback INSERT. */
+  row: Record<string, unknown>;
+}
+
+export type SeedRowOp = SeedRowInsert | SeedRowUpdate | SeedRowDelete;
+
 export interface SchemaDiff {
   tables: TableDiff[];
+  seedOps?: SeedRowOp[];
 }
 
 export interface MigrationSql {

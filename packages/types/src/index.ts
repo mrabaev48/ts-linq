@@ -803,6 +803,8 @@ export interface EntityMetadata {
   skipNavigations?: SkipNavigationMetadata[];
   /** Named model-level query filters (P0-11). Auto-appended to every SELECT. */
   queryFilters?: QueryFilterMetadata[];
+  /** Seed rows declared via hasData() (P0-13). Keyed by property names. */
+  seedData?: Record<string, unknown>[];
 }
 
 // Entity cache interface
