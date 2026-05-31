@@ -1,4 +1,5 @@
 import type {
+  CheckConstraintMetadata,
   ColumnMetadata,
   EntityMetadata,
   HierarchyMetadata,
@@ -23,6 +24,8 @@ export class EntityMetadataBuilder {
     skipNavigations?: SkipNavigationMetadata[];
     queryFilters?: QueryFilterMetadata[];
     seedData?: Record<string, unknown>[];
+    checkConstraints?: CheckConstraintMetadata[];
+    comment?: string;
   };
 
   /**
@@ -190,6 +193,16 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  public setCheckConstraints(constraints: CheckConstraintMetadata[]): this {
+    this.metadata.checkConstraints = constraints;
+    return this;
+  }
+
+  public setEntityComment(comment: string): this {
+    this.metadata.comment = comment;
+    return this;
+  }
+
   public addSkipNavigation(nav: SkipNavigationMetadata): this {
     this.metadata.skipNavigations = this.metadata.skipNavigations ?? [];
     const idx = this.metadata.skipNavigations.findIndex(
@@ -239,7 +252,11 @@ export class EntityMetadataBuilder {
         : {}),
       ...(this.metadata.seedData !== undefined && this.metadata.seedData.length > 0
         ? { seedData: this.metadata.seedData }
-        : {})
+        : {}),
+      ...(this.metadata.checkConstraints !== undefined && this.metadata.checkConstraints.length > 0
+        ? { checkConstraints: this.metadata.checkConstraints }
+        : {}),
+      ...(this.metadata.comment !== undefined ? { comment: this.metadata.comment } : {})
     };
   }
 }

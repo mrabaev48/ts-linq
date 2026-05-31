@@ -13,8 +13,7 @@ export class PostgresDdlStrategy {
     const columnSqls = entityMetadata.columns.map((column: ColumnMetadata) => {
       if (column.isComputed && column.computedExpression) {
         // PostgreSQL supports only STORED
-        const storage = (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
-          .computedStorage;
+        const storage = column.computedStorage;
         if (storage && storage !== 'STORED') {
           this.logger?.warn(
             `Postgres: computedStorage='${storage}' is not supported; coercing to STORED for ${column.columnName}`
@@ -54,6 +53,11 @@ export class PostgresDdlStrategy {
         .join(', ');
       columnSqls.push(`PRIMARY KEY (${primaryKeySql})`);
     }
+
+    for (const cc of entityMetadata.checkConstraints ?? []) {
+      columnSqls.push(`CONSTRAINT "${cc.name}" CHECK (${cc.sql})`);
+    }
+
     return `CREATE TABLE IF NOT EXISTS "${entityMetadata.tableName}" (${columnSqls.join(', ')})`;
   }
 
@@ -130,6 +134,26 @@ export class PostgresDdlStrategy {
   }
 
   // index helpers relocated to PgIndexBuilder
+
+  /**
+   * Generates COMMENT ON TABLE / COLUMN statements for the entity and its columns.
+   * Returns an empty array when neither the table nor any column has a comment.
+   */
+  public generateCommentSql(entityMetadata: EntityMetadata): string[] {
+    const stmts: string[] = [];
+    const table = entityMetadata.tableName;
+    if (entityMetadata.comment) {
+      stmts.push(`COMMENT ON TABLE "${table}" IS '${entityMetadata.comment.replace(/'/g, "''")}'`);
+    }
+    for (const col of entityMetadata.columns) {
+      if (col.comment) {
+        stmts.push(
+          `COMMENT ON COLUMN "${table}"."${col.columnName}" IS '${col.comment.replace(/'/g, "''")}'`
+        );
+      }
+    }
+    return stmts;
+  }
 
   public mapTypeToPg(type: string): string {
     const key = (type || '').toUpperCase();

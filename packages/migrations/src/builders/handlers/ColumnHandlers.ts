@@ -37,7 +37,8 @@ export function renderColumn(dialect: Dialect, c: ColumnDef): string {
         return `${q(dialect, c.name)} ${mapType(dialect, c.type)} GENERATED ALWAYS AS (${c.computedExpression}) ${kind}`;
       }
       case 'mssql': {
-        const persisted = c.computedStorage === 'PERSISTED' ? ' PERSISTED' : '';
+        const persisted =
+          c.computedStorage === 'PERSISTED' || c.computedStorage === 'STORED' ? ' PERSISTED' : '';
         return `${q(dialect, c.name)} AS (${c.computedExpression})${persisted}`;
       }
       default: {
@@ -54,7 +55,9 @@ export function renderColumn(dialect: Dialect, c: ColumnDef): string {
     : c.defaultValue !== undefined
       ? ' DEFAULT ' + formatValue(dialect, c.defaultValue)
       : '';
-  return `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${defSql}`;
+  const commentSql =
+    dialect === 'mysql' && c.comment ? ` COMMENT '${c.comment.replace(/'/g, "''")}'` : '';
+  return `${q(dialect, c.name)} ${mapType(dialect, c.type)}${c.nullable ? '' : ' NOT NULL'}${defSql}${commentSql}`;
 }
 
 export function buildAddColumnSql(
@@ -99,6 +102,10 @@ export function buildAlterTypeSql(
       return _exhaustive;
     }
   }
+}
+
+export function renderCheckConstraint(dialect: Dialect, c: { name: string; sql: string }): string {
+  return `CONSTRAINT ${q(dialect, c.name)} CHECK (${c.sql})`;
 }
 
 export function buildAlterNullSql(

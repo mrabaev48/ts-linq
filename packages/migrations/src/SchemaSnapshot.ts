@@ -47,13 +47,16 @@ export class SchemaSnapshotBuilder {
         name: column.columnName,
         type: this.mapPortableType(column.type),
         nullable: column.nullable ?? true,
-        defaultValue: column.defaultValue,
+        defaultValue:
+          column.converter && column.defaultValue !== undefined
+            ? column.converter.toProvider(column.defaultValue)
+            : column.defaultValue,
         defaultExpression: column.defaultExpression,
         isPrimaryKey: primaryKeyProps.includes(column.propertyName),
         isComputed: column.isComputed,
         computedExpression: column.computedExpression,
-        computedStorage: (column as { computedStorage?: 'VIRTUAL' | 'STORED' | 'PERSISTED' })
-          .computedStorage
+        computedStorage: column.computedStorage,
+        comment: column.comment
       }));
       const primaryKeys = primaryKeyProps.map(
         (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
@@ -83,7 +86,11 @@ export class SchemaSnapshotBuilder {
         columns,
         primaryKeys,
         indexes,
-        foreignKeys
+        foreignKeys,
+        ...(entityMeta.checkConstraints?.length
+          ? { checkConstraints: entityMeta.checkConstraints }
+          : {}),
+        ...(entityMeta.comment !== undefined ? { comment: entityMeta.comment } : {})
       };
     });
     return { tables };
