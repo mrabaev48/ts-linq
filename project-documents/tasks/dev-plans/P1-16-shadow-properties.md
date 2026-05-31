@@ -1,7 +1,7 @@
 ---
 title: Shadow Properties
 ef_core_api: ModelBuilder.Entity<T>().Property<TValue>("Name"); EntityEntry.Property("Name").CurrentValue
-status: not-started
+status: done
 priority: P1
 effort: M
 depends_on: ["P0-01-fluent-configuration-api"]
