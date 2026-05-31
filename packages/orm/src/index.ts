@@ -2,6 +2,7 @@ export * from './builders';
 export * from './ChangeTracker';
 export { CascadeWalker } from './changetracker/CascadeWalker';
 export { EntityEntry } from './changetracker/EntityEntry';
+export type { EntityEntryGraphNode } from './changetracker/EntityEntryGraphNode';
 export { PropertyEntry } from './changetracker/PropertyEntry';
 export * from './database/has-pending-model-changes';
 export * from './DatabaseFacade';

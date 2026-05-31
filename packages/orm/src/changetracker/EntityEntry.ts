@@ -1,3 +1,4 @@
+import { EntityState } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 
 import type { ChangeTracker } from '../ChangeTracker';
@@ -11,6 +12,37 @@ export class EntityEntry<T = unknown> {
     private readonly provider: any,
     private readonly changeTracker?: ChangeTracker
   ) {}
+
+  /**
+   * Current tracking state of this entity.
+   * Setting this value directly updates the tracker — use inside `trackGraph` callbacks.
+   */
+  get state(): EntityState {
+    if (!this.changeTracker) return EntityState.Unchanged;
+    return this.changeTracker.getEntityState(this.entity as object);
+  }
+
+  set state(value: EntityState) {
+    if (!this.changeTracker) {
+      throw new Error(
+        'Cannot set state: EntityEntry was created without a ChangeTracker. ' +
+          'Use context.entry(entity) or obtain the entry via trackGraph.'
+      );
+    }
+    this.changeTracker.setState(this.entity as object, this.entityClass, value);
+  }
+
+  /**
+   * Returns true when the entity's primary key field is set to a non-empty value.
+   * Use inside `trackGraph` callbacks to decide Added vs Modified state.
+   */
+  get isKeySet(): boolean {
+    const meta = MetadataStorage.getEntity(this.entityClass);
+    const pk = meta?.primaryKeys?.[0];
+    if (!pk) return false;
+    const val = (this.entity as Record<string, unknown>)[pk];
+    return val !== undefined && val !== null && val !== 0 && val !== '';
+  }
 
   async reload(): Promise<void> {
     const meta = MetadataStorage.getEntity(this.entityClass);
