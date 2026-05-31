@@ -776,7 +776,8 @@ export abstract class DbContext {
       commitTransaction: async () => this.commitTransaction(),
       rollbackTransaction: async () => this.rollbackTransaction(),
       executionStrategyOptions: this._executionStrategyOptions,
-      entityQueryFilterMap: this._entityQueryFilterMap
+      entityQueryFilterMap: this._entityQueryFilterMap,
+      registry: this._registry
     };
   }
 

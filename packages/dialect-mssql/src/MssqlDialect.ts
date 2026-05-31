@@ -85,7 +85,7 @@ export class MssqlDialect implements SqlDialect {
     } else {
       const metadata = MetadataStorage.getEntity(entityClass);
       if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-      query = `${selectHead}${selectList} FROM [${options.from ?? metadata.tableName}]`;
+      query = `${selectHead}${selectList} FROM [${options.from ?? metadata.viewName ?? metadata.tableName}]`;
       if (options.temporal) {
         query += buildTemporalClause(options.temporal, parameters);
       }

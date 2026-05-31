@@ -14,7 +14,8 @@ import type {
   ForeignKeyDef,
   IndexDef,
   SchemaSnapshot,
-  TableSnapshot
+  TableSnapshot,
+  ViewSnapshot
 } from './DiffTypes';
 import {
   MssqlSchemaInspector,
@@ -44,8 +45,20 @@ export class SchemaSnapshotBuilder {
 
     // Collect all TableSnapshot entries; use a Map keyed by table name to merge table splitting.
     const tableMap = new Map<string, TableSnapshot>();
+    const viewMap = new Map<string, ViewSnapshot>();
 
     for (const entityMeta of entities) {
+      // Keyless entities map to views — skip table DDL; collect view snapshot if DDL supplied.
+      if (entityMeta.isKeyless && entityMeta.viewName) {
+        if (!viewMap.has(entityMeta.viewName)) {
+          viewMap.set(entityMeta.viewName, {
+            name: entityMeta.viewName,
+            ...(entityMeta.viewSql !== undefined ? { sql: entityMeta.viewSql } : {})
+          });
+        }
+        continue;
+      }
+
       const primaryKeyProps = entityMeta.primaryKeys ?? [];
       const fragments = entityMeta.tableFragments ?? [];
 
@@ -143,7 +156,11 @@ export class SchemaSnapshotBuilder {
       }
     }
 
-    return { tables: Array.from(tableMap.values()) };
+    const views = Array.from(viewMap.values());
+    return {
+      tables: Array.from(tableMap.values()),
+      ...(views.length > 0 ? { views } : {})
+    };
   }
 
   private buildFragmentSnapshot(

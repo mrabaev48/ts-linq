@@ -17,6 +17,7 @@ import type {
 
 import type { ChangeTracker } from './ChangeTracker';
 import type { DbSetContext } from './DbSetContext';
+import { KeylessMutationError } from './exceptions/KeylessMutationError';
 import type { SqlInterpolated } from './sql/sqlTag';
 import { interpolatedToRaw, toSqlParam } from './sql/sqlTag';
 
@@ -44,6 +45,7 @@ export class DbSet<T extends object> {
   private _softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions;
   private _querySplittingBehavior?: QuerySplittingBehavior;
   private _entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>;
+  private _registry?: import('@ts-linq/metadata').MetadataRegistry;
   private static readonly DEFAULT_IN_CHUNK_SIZE = 1000;
 
   /**
@@ -83,6 +85,16 @@ export class DbSet<T extends object> {
     this._softDeleteOptions = context.softDeleteOptions;
     this._querySplittingBehavior = context.querySplittingBehavior;
     this._entityQueryFilters = context.entityQueryFilterMap?.get(this._entityClass);
+    this._registry = context.registry;
+  }
+
+  private _assertNotKeyless(operation: string): void {
+    const meta = this._registry
+      ? this._registry.getEntity(this._entityClass)
+      : MetadataStorage.getEntity(this._entityClass);
+    if (meta?.isKeyless) {
+      throw new KeylessMutationError(this._entityClass.name, operation);
+    }
   }
 
   /** The entity constructor this set operates on. */
@@ -614,36 +626,42 @@ export class DbSet<T extends object> {
 
   /** Track entity for insertion on next saveChanges(). */
   public add(entity: T): T {
+    this._assertNotKeyless('add');
     this._changeTracker.add(entity, this._entityClass);
     return entity;
   }
 
   /** Track entity for update on next saveChanges(). */
   public update(entity: T): T {
+    this._assertNotKeyless('update');
     this._changeTracker.update(entity, this._entityClass);
     return entity;
   }
 
   /** Track entity for deletion on next saveChanges(). */
   public remove(entity: T): T {
+    this._assertNotKeyless('remove');
     this._changeTracker.remove(entity, this._entityClass);
     return entity;
   }
 
   /** Track multiple entities for insertion. */
   public addRange(entities: T[]): T[] {
+    this._assertNotKeyless('addRange');
     for (const entity of entities) this._changeTracker.add(entity, this._entityClass);
     return entities;
   }
 
   /** Track multiple entities for update. */
   public updateRange(entities: T[]): T[] {
+    this._assertNotKeyless('updateRange');
     for (const entity of entities) this._changeTracker.update(entity, this._entityClass);
     return entities;
   }
 
   /** Track multiple entities for deletion. */
   public removeRange(entities: T[]): T[] {
+    this._assertNotKeyless('removeRange');
     for (const entity of entities) this._changeTracker.remove(entity, this._entityClass);
     return entities;
   }

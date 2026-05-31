@@ -830,6 +830,12 @@ export interface EntityMetadata {
   shadowProperties?: Map<string, ShadowPropertyMetadata>;
   /** Additional table fragments for entity splitting (P1-25). Length > 0 means entity splitting is active. */
   tableFragments?: TableFragmentMetadata[];
+  /** Whether this entity is keyless — no PK, never tracked, mutations forbidden (P1-26). */
+  isKeyless?: boolean;
+  /** Maps this entity to a database view instead of a table (P1-26). */
+  viewName?: string;
+  /** Optional CREATE VIEW DDL supplied via hasViewSql() (P1-26). Emitted by migrations if present. */
+  viewSql?: string;
 }
 
 /** Metadata for a shadow property (P1-16): a DB column with no corresponding entity field. */
