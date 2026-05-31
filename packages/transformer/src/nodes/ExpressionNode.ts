@@ -12,6 +12,7 @@ export type ExpressionNodeKind =
   | 'in'
   | 'isNull'
   | 'isNotNull'
+  | 'efFunction'
   | 'unsupported';
 
 export interface BinaryNode {
@@ -74,6 +75,12 @@ export interface IsNotNullNode {
   readonly property: PropertyNode;
 }
 
+export interface EfFunctionNode {
+  readonly type: 'efFunction';
+  readonly fn: string;
+  readonly args: readonly ExpressionNode[];
+}
+
 export interface UnsupportedNode {
   readonly type: 'unsupported';
   readonly syntaxKind: number;
@@ -91,4 +98,5 @@ export type ExpressionNode =
   | InNode
   | IsNullNode
   | IsNotNullNode
+  | EfFunctionNode
   | UnsupportedNode;

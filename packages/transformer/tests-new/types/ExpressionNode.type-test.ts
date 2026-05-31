@@ -36,6 +36,8 @@ function exhaustivenessCheck(node: ExpressionNode): string {
       return 'isNull';
     case 'isNotNull':
       return 'isNotNull';
+    case 'efFunction':
+      return 'efFunction';
     case 'unsupported':
       return 'unsupported';
     default:

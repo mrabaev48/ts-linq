@@ -1,6 +1,7 @@
 // mssql SQL Dialect
 export * from './batch-syntax';
 export * from './emit-temporal';
+export * from './functions/index';
 export * from './hierarchy-functions';
 export * from './MssqlDdlStrategy';
 export * from './MssqlDialect';
