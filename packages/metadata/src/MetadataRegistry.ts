@@ -1,4 +1,5 @@
 import type {
+  CheckConstraintMetadata,
   ColumnMetadata,
   EntityMetadata,
   HierarchyMetadata,
@@ -438,6 +439,28 @@ export class MetadataRegistry {
       return;
     }
     this.getOrCreateBuilder(target).setSeedData(rows);
+  }
+
+  /** Set CHECK constraints for an entity (P0-14). */
+  public setCheckConstraints(target: Function, constraints: CheckConstraintMetadata[]): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.checkConstraints = constraints;
+      return;
+    }
+    this.getOrCreateBuilder(target).setCheckConstraints(constraints);
+  }
+
+  /** Set table-level comment for an entity (P0-14). */
+  public setEntityComment(target: Function, comment: string): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.comment = comment;
+      return;
+    }
+    this.getOrCreateBuilder(target).setEntityComment(comment);
   }
 
   /** Clear all stored metadata and pending builders. */

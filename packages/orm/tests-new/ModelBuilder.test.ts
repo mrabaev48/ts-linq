@@ -353,4 +353,95 @@ describe('ModelBuilder', () => {
       expect(meta?.primaryKeys).toEqual(['id']);
     });
   });
+
+  describe('hasComputedColumnSql()', () => {
+    it('sets isComputed, computedExpression, and computedStorage=VIRTUAL by default', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.property((a) => a.content).hasComputedColumnSql('title || content');
+      });
+      mb._finalize();
+      const col = registry.getEntity(Article)?.columns.find((c) => c.propertyName === 'content');
+      expect(col?.isComputed).toBe(true);
+      expect(col?.computedExpression).toBe('title || content');
+      expect(col?.computedStorage).toBe('VIRTUAL');
+    });
+
+    it('sets computedStorage=STORED when options.stored=true', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.property((a) => a.content).hasComputedColumnSql('title || content', { stored: true });
+      });
+      mb._finalize();
+      const col = registry.getEntity(Article)?.columns.find((c) => c.propertyName === 'content');
+      expect(col?.computedStorage).toBe('STORED');
+    });
+
+    it('returns this for chaining', () => {
+      const { mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        const result = b.property((a) => a.content).hasComputedColumnSql('1+1');
+        expect(result).toBeDefined();
+      });
+      mb._finalize();
+    });
+  });
+
+  describe('PropertyBuilder.hasComment()', () => {
+    it('stores column comment in metadata', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.property((a) => a.title).hasComment('Article title');
+      });
+      mb._finalize();
+      const col = registry.getEntity(Article)?.columns.find((c) => c.propertyName === 'title');
+      expect(col?.comment).toBe('Article title');
+    });
+  });
+
+  describe('hasCheckConstraint()', () => {
+    it('stores a check constraint in entity metadata', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.toTable('articles');
+        b.hasCheckConstraint('CK_id_positive', 'id > 0');
+      });
+      mb._finalize();
+      const meta = registry.getEntity(Article);
+      expect(meta?.checkConstraints).toHaveLength(1);
+      expect(meta?.checkConstraints?.[0]).toEqual({ name: 'CK_id_positive', sql: 'id > 0' });
+    });
+
+    it('accumulates multiple check constraints', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.toTable('articles');
+        b.hasCheckConstraint('CK_id_positive', 'id > 0');
+        b.hasCheckConstraint('CK_title_length', 'LENGTH(title) > 0');
+      });
+      mb._finalize();
+      expect(registry.getEntity(Article)?.checkConstraints).toHaveLength(2);
+    });
+
+    it('returns this for chaining', () => {
+      const { mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        const result = b.toTable('articles').hasCheckConstraint('CK_x', 'id > 0');
+        expect(result).toBe(b);
+      });
+      mb._finalize();
+    });
+  });
+
+  describe('EntityTypeBuilder.hasComment()', () => {
+    it('stores table comment in entity metadata', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.toTable('articles');
+        b.hasComment('Main articles table');
+      });
+      mb._finalize();
+      expect(registry.getEntity(Article)?.comment).toBe('Main articles table');
+    });
+  });
 });

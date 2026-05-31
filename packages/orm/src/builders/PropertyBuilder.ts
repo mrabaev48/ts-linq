@@ -54,6 +54,18 @@ export class PropertyBuilder<TValue> {
     return this;
   }
 
+  hasComputedColumnSql(sql: string, options?: { stored?: boolean }): this {
+    this._col.isComputed = true;
+    this._col.computedExpression = sql;
+    this._col.computedStorage = options?.stored ? 'STORED' : 'VIRTUAL';
+    return this;
+  }
+
+  hasComment(comment: string): this {
+    this._col.comment = comment;
+    return this;
+  }
+
   isUnique(unique = true): this {
     this._col.unique = unique;
     return this;

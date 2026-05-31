@@ -1,7 +1,7 @@
 ---
 title: HasDefaultValue, HasDefaultValueSql, HasComputedColumnSql, HasCheckConstraint, HasComment
 ef_core_api: PropertyBuilder.HasDefaultValue(v) / HasDefaultValueSql("now()") / HasComputedColumnSql("a + b", stored: true) / EntityTypeBuilder.HasCheckConstraint("ck_age", "age >= 0") / HasComment("...")
-status: not-started
+status: completed
 priority: P0
 effort: M
 depends_on: [P0-01]
