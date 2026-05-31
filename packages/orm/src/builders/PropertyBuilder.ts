@@ -5,10 +5,16 @@ export class PropertyBuilder<TValue> {
 
   constructor(
     propertyName: string,
-    private readonly _columns: Map<string, ColumnMetadata>
+    private readonly _columns: Map<string, ColumnMetadata>,
+    isShadow = false
   ) {
     if (!_columns.has(propertyName)) {
-      _columns.set(propertyName, { propertyName, columnName: propertyName, type: 'TEXT' });
+      _columns.set(propertyName, {
+        propertyName,
+        columnName: propertyName,
+        type: 'TEXT',
+        ...(isShadow ? { isShadow: true } : {})
+      });
     }
     this._col = _columns.get(propertyName)!;
   }

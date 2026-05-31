@@ -668,6 +668,8 @@ export interface ColumnMetadata {
   isConcurrencyToken?: boolean;
   converter?: ValueConverterLike;
   comparer?: ValueComparerLike;
+  /** True if this column is a shadow property — no field on the entity class (P1-16). */
+  isShadow?: boolean;
 }
 
 export enum DeleteBehavior {
@@ -816,6 +818,22 @@ export interface EntityMetadata {
   checkConstraints?: CheckConstraintMetadata[];
   /** Table-level comment declared via hasComment() (P0-14). */
   comment?: string;
+  /** Shadow properties — exist in DB but have no field on the entity class (P1-16). */
+  shadowProperties?: Map<string, ShadowPropertyMetadata>;
+}
+
+/** Metadata for a shadow property (P1-16): a DB column with no corresponding entity field. */
+export interface ShadowPropertyMetadata {
+  propertyName: string;
+  columnName: string;
+  type: ColumnType;
+  nullable?: boolean;
+  defaultValue?: unknown;
+  defaultExpression?: string;
+  comment?: string;
+  length?: number;
+  precision?: number;
+  scale?: number;
 }
 
 // Entity cache interface
