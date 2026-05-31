@@ -4,6 +4,8 @@ import { type MetadataRegistry, MetadataStorage } from '@ts-linq/metadata';
 import type { EntityAttacher } from '@ts-linq/types';
 
 import { CascadeWalker } from './changetracker/CascadeWalker';
+import type { EntityEntryGraphNode, ITrackGraphEntry } from './changetracker/EntityEntryGraphNode';
+import { GraphIterator } from './changetracker/GraphIterator';
 
 /**
  * Tracks entities and their states (Added, Modified, Deleted, Unchanged)
@@ -39,8 +41,25 @@ export class ChangeTracker implements EntityAttacher {
   /** Default tracking behavior applied to all queries originating from this context. */
   public queryTrackingBehavior: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
 
+  /**
+   * Controls whether `detectChanges()` is called automatically inside `saveChanges()`.
+   * Default: true. Set to false for bulk-update scenarios and call `detectChanges()` manually.
+   *
+   * ⚠ If you set this to false and forget to call `detectChanges()` before `saveChanges()`,
+   * property mutations on Unchanged entities will not be persisted.
+   */
+  public autoDetectChangesEnabled: boolean = true;
+
+  /** Provider reference passed to EntityEntry nodes created by trackGraph. */
+  private _provider: unknown = undefined;
+
   constructor(registry?: MetadataRegistry) {
     this._registry = registry ?? MetadataStorage.getInstance();
+  }
+
+  /** Called by DbContext to wire the provider into trackGraph's EntityEntry nodes. */
+  public setProvider(provider: unknown): void {
+    this._provider = provider;
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────
@@ -204,6 +223,84 @@ export class ChangeTracker implements EntityAttacher {
     this._trackedEntities.clear();
     this._trackedByPk.clear();
     this._collectionSnapshots.clear();
+  }
+
+  // ─── trackGraph / setState ───────────────────────────────────────────────
+
+  /**
+   * Walk a detached object graph starting at `root`, visiting each reachable
+   * entity exactly once (BFS, cycle-safe). For each node the `callback` receives
+   * an `EntityEntryGraphNode` whose `entry` exposes `state` and `isKeySet`.
+   *
+   * Mirrors EF Core's `ChangeTracker.TrackGraph(root, callback)`.
+   *
+   * @example
+   * context.changeTracker.trackGraph(blog, Blog, node => {
+   *   node.entry.state = node.entry.isKeySet
+   *     ? EntityState.Modified
+   *     : EntityState.Added;
+   * });
+   */
+  public trackGraph(
+    root: object,
+    entityClass: Function,
+    callback: (node: EntityEntryGraphNode) => void
+  ): void {
+    const nodeFactory = (
+      entity: object,
+      cls: Function,
+      inboundNavigation: string | undefined
+    ): EntityEntryGraphNode => {
+      // Capture methods as closures so getters/setters don't need 'this' inside object literal.
+      const getState = (): EntityState => this.getEntityState(entity);
+      const setStateFn = (value: EntityState): void => this.setState(entity, cls, value);
+      const getIsKeySet = (): boolean => {
+        const meta = this._registry.getEntity(cls);
+        const pk = meta?.primaryKeys?.[0];
+        if (!pk) return false;
+        const val = (entity as Record<string, unknown>)[pk];
+        return val !== undefined && val !== null && val !== 0 && val !== '';
+      };
+      const entry: ITrackGraphEntry = {
+        entity,
+        entityClass: cls,
+        get state() {
+          return getState();
+        },
+        set state(value: EntityState) {
+          setStateFn(value);
+        },
+        get isKeySet() {
+          return getIsKeySet();
+        }
+      };
+      return { entry, inboundNavigation };
+    };
+    const iterator = new GraphIterator(this._registry, nodeFactory);
+    iterator.traverse(root, entityClass, callback);
+  }
+
+  /**
+   * Directly set the tracking state of an already-tracked entity.
+   * Used by `EntityEntry.state` setter and by `trackGraph` callbacks.
+   */
+  public setState(entity: object, entityClass: Function, state: EntityState): void {
+    let tracked = this._trackedEntities.get(entity) ?? this.findByPk(entity, entityClass);
+    if (tracked) {
+      tracked.state = state;
+      return;
+    }
+    tracked = {
+      entity,
+      entityClass,
+      state,
+      originalValues:
+        state === EntityState.Modified || state === EntityState.Unchanged
+          ? this.cloneObject(entity, entityClass)
+          : undefined
+    };
+    this._trackedEntities.set(entity, tracked);
+    this.registerInPkMap(tracked);
   }
 
   // ─── Shadow property API (P1-16) ─────────────────────────────────────────
