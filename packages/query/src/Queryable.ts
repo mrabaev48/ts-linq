@@ -440,6 +440,8 @@ export class Queryable<T> {
 
   /** Apply tracking / identity-resolution logic to a freshly materialized entity list. */
   private _applyTracking(entities: T[]): T[] {
+    const meta = MetadataStorage.getEntity(this._entityClass);
+    if (meta?.isKeyless) return entities;
     if (this._trackingMode === QueryTrackingBehavior.TrackAll && this._entityAttacher) {
       for (const entity of entities) {
         this._entityAttacher.attach(entity as object, this._entityClass);

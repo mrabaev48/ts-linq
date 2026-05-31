@@ -46,8 +46,17 @@ export interface TableSnapshot {
   comment?: string;
 }
 
+/** Represents a database view tracked by the snapshot (P1-26). */
+export interface ViewSnapshot {
+  name: string;
+  /** CREATE VIEW SQL — present only when supplied via hasViewSql(). */
+  sql?: string;
+}
+
 export interface SchemaSnapshot {
   tables: TableSnapshot[];
+  /** Views declared via toView() + hasViewSql() (P1-26). */
+  views?: ViewSnapshot[];
 }
 
 export interface ColumnChange {

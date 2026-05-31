@@ -1,4 +1,5 @@
 import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
+import type { MetadataRegistry } from '@ts-linq/metadata';
 import type {
   EntityCacheLike,
   ExecutionStrategyOptions,
@@ -29,4 +30,6 @@ export interface DbSetContext {
   executionStrategyOptions?: ExecutionStrategyOptions;
   /** Per-context named query filters from onModelCreating (P0-11). */
   entityQueryFilterMap?: Map<Function, ReadonlyArray<QueryFilterMetadata>>;
+  /** Active metadata registry — used for keyless guards and other metadata lookups (P1-26). */
+  registry?: MetadataRegistry;
 }

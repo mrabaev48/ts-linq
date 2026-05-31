@@ -1,7 +1,7 @@
 ---
 title: Views and Keyless Entities
 ef_core_api: ModelBuilder.Entity<T>().ToView(...).HasNoKey()
-status: not-started
+status: done
 priority: P1
 effort: M
 depends_on: ["P0-01-fluent-configuration-api"]
