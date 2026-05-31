@@ -28,6 +28,8 @@ export interface ModelTableSnapshot {
   columns: ModelColumnSnapshot[];
   primaryKeys: string[];
   indexes: ModelIndexSnapshot[];
+  /** Seed rows declared via hasData(), keyed by column names. Sorted by PK for stable JSON. */
+  seedData?: Record<string, unknown>[];
 }
 
 /**
@@ -56,6 +58,24 @@ export interface ModelSnapshot {
   /** Schema version — increment when the snapshot structure itself changes. */
   readonly version: 1;
   readonly tables: ModelTableSnapshot[];
+}
+
+function comparePkValue(a: unknown, b: unknown): number {
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a ?? '').localeCompare(String(b ?? ''));
+}
+
+function sortSeedRows(
+  rows: Record<string, unknown>[],
+  pkColumns: string[]
+): Record<string, unknown>[] {
+  return [...rows].sort((a, b) => {
+    for (const pk of pkColumns) {
+      const cmp = comparePkValue(a[pk], b[pk]);
+      if (cmp !== 0) return cmp;
+    }
+    return 0;
+  });
 }
 
 /**
@@ -132,11 +152,16 @@ export class ModelSnapshotBuilder {
 
         columns.sort((a, b) => a.name.localeCompare(b.name));
 
+        const seedData = entity.seedData?.length
+          ? sortSeedRows(entity.seedData, primaryKeys)
+          : undefined;
+
         return {
           name: entity.tableName,
           columns,
           primaryKeys,
-          indexes
+          indexes,
+          ...(seedData !== undefined ? { seedData } : {})
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));

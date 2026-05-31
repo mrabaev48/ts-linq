@@ -1,6 +1,7 @@
 import { ColumnsSqlBuilder } from './builders/ColumnsSqlBuilder';
 import { ForeignKeysSqlBuilder } from './builders/ForeignKeysSqlBuilder';
 import { IndexesSqlBuilder } from './builders/IndexesSqlBuilder';
+import { SeedsSqlBuilder } from './builders/SeedsSqlBuilder';
 // no local SQL utils needed here; builders render SQL
 import { TablesSqlBuilder } from './builders/TablesSqlBuilder';
 import type { Dialect } from './Dialect';
@@ -19,18 +20,23 @@ class MigrationSqlBuilder {
   private readonly indexes: IndexesSqlBuilder;
   private readonly fks: ForeignKeysSqlBuilder;
   private readonly columns: ColumnsSqlBuilder;
+  private readonly seeds: SeedsSqlBuilder;
   constructor(dialect: Dialect) {
     this.dialect = dialect;
     this.tables = new TablesSqlBuilder(dialect);
     this.indexes = new IndexesSqlBuilder(dialect);
     this.fks = new ForeignKeysSqlBuilder(dialect);
     this.columns = new ColumnsSqlBuilder(dialect);
+    this.seeds = new SeedsSqlBuilder(dialect);
   }
 
   public build(diff: SchemaDiff): MigrationSql {
     const up: string[] = [];
     const down: string[] = [];
     for (const tableDiff of diff.tables) this.handleTable(tableDiff, up, down);
+    if (diff.seedOps?.length) {
+      this.seeds.generate(diff.seedOps, up, down);
+    }
     return { up, down };
   }
 

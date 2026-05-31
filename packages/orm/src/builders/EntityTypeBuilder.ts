@@ -58,6 +58,7 @@ export class EntityTypeBuilder<T> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly _skipNavBuilders: CollectionCollectionBuilder<T, any>[] = [];
   private readonly _queryFilters: QueryFilterMetadata[] = [];
+  private readonly _seedRows: Record<string, unknown>[] = [];
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -245,6 +246,15 @@ export class EntityTypeBuilder<T> {
     return this;
   }
 
+  /**
+   * Declares seed rows for this entity. Rows must have stable primary key values.
+   * Mirrors EF Core's `HasData(...)`.
+   */
+  hasData(...rows: T[]): this {
+    this._seedRows.push(...(rows as Record<string, unknown>[]));
+    return this;
+  }
+
   /** @internal */
   _applyToRegistry(registry: MetadataRegistry): void {
     registry.addEntity(this._ctor, this._tableName);
@@ -295,6 +305,10 @@ export class EntityTypeBuilder<T> {
     const leftPk = this._primaryKeys?.[0] ?? 'id';
     for (const snb of this._skipNavBuilders) {
       snb._applyToRegistry(registry, leftPk, 'id');
+    }
+
+    if (this._seedRows.length > 0) {
+      registry.setSeedData(this._ctor, [...this._seedRows]);
     }
   }
 

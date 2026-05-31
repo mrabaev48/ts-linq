@@ -1,7 +1,7 @@
 ---
 title: HasData seeding integrated with migrations
 ef_core_api: modelBuilder.Entity<T>().HasData(new T { ... }, new T { ... })
-status: not-started
+status: done
 priority: P0
 effort: M
 depends_on: [P0-01]

@@ -295,6 +295,45 @@ describe('ModelBuilder', () => {
     });
   });
 
+  describe('hasData()', () => {
+    it('stores seed rows in registry after finalize', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Tag, (b) => {
+        b.toTable('tags');
+        b.hasKey('id');
+        b.hasData({ id: 1, name: 'typescript' }, { id: 2, name: 'orm' });
+      });
+      mb._finalize();
+      const meta = registry.getEntity(Tag);
+      expect(meta?.seedData).toHaveLength(2);
+      expect(meta?.seedData?.[0]).toMatchObject({ id: 1, name: 'typescript' });
+    });
+
+    it('supports fluent chaining on EntityTypeBuilder', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Tag, (b) => {
+        // hasData returns `this` (EntityTypeBuilder), enabling chaining
+        const result = b.toTable('tags').hasKey('id').hasData({ id: 1, name: 'a' });
+        expect(result).toBe(b);
+      });
+      mb._finalize();
+      expect(registry.getEntity(Tag)?.seedData).toHaveLength(1);
+    });
+
+    it('accumulates rows across multiple hasData() calls', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Tag, (b) => {
+        b.toTable('tags');
+        b.hasKey('id');
+        b.hasData({ id: 1, name: 'a' });
+        b.hasData({ id: 2, name: 'b' });
+      });
+      mb._finalize();
+      const meta = registry.getEntity(Tag);
+      expect(meta?.seedData).toHaveLength(2);
+    });
+  });
+
   describe('applyConfigurationsFromAssembly()', () => {
     it('discovers and applies configuration classes from module exports', () => {
       class CommentConfig implements IEntityTypeConfiguration<Comment> {

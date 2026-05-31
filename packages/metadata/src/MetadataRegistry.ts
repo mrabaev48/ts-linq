@@ -429,6 +429,17 @@ export class MetadataRegistry {
     this.getOrCreateBuilder(target).addQueryFilter(filter);
   }
 
+  /** Set (replace) seed data rows for an entity (P0-13). */
+  public setSeedData(target: Function, rows: Record<string, unknown>[]): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.seedData = rows;
+      return;
+    }
+    this.getOrCreateBuilder(target).setSeedData(rows);
+  }
+
   /** Clear all stored metadata and pending builders. */
   public clear(): void {
     this.entities.clear();
