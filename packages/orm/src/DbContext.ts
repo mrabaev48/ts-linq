@@ -119,6 +119,7 @@ export abstract class DbContext {
 
     this._registry = options.registry ?? MetadataStorage.getInstance();
     this._changeTracker = new ChangeTracker(this._registry);
+    this._changeTracker.setProvider(this._provider);
     this._entityLoader = new EntityLoader(this._provider);
     this._querySplittingBehavior = options.querySplittingBehavior;
     this._maxBatchSize = options.maxBatchSize ?? 0;
@@ -346,7 +347,9 @@ export abstract class DbContext {
    * @returns Number of affected rows.
    */
   public async saveChanges(): Promise<number> {
-    this._changeTracker.detectChanges();
+    if (this._changeTracker.autoDetectChangesEnabled) {
+      this._changeTracker.detectChanges();
+    }
     this._changeTracker.applyCascades();
     const changes = this._changeTracker.getChanges();
     if (!changes || changes.length === 0) return 0;
