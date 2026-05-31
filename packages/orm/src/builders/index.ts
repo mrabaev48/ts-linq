@@ -1,6 +1,7 @@
 export { CollectionCollectionBuilder } from './CollectionCollectionBuilder';
 export { CollectionNavigationBuilder } from './CollectionNavigationBuilder';
 export { CollectionReferenceBuilder } from './CollectionReferenceBuilder';
+export { DbFunctionBuilder } from './DbFunctionBuilder';
 export { DiscriminatorBuilder } from './DiscriminatorBuilder';
 export { EntityTypeBuilder } from './EntityTypeBuilder';
 export type { IEntityTypeConfiguration } from './IEntityTypeConfiguration';

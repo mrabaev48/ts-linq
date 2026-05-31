@@ -1,6 +1,7 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import type { QueryFilterMetadata } from '@ts-linq/types';
 
+import { DbFunctionBuilder } from './builders/DbFunctionBuilder';
 import { EntityTypeBuilder } from './builders/EntityTypeBuilder';
 import type { IEntityTypeConfiguration } from './builders/IEntityTypeConfiguration';
 import {
@@ -26,6 +27,7 @@ export type EntityQueryFilterMap = Map<Function, ReadonlyArray<QueryFilterMetada
  */
 export class ModelBuilder {
   private readonly _builders: Map<Function, EntityTypeBuilder<unknown>> = new Map();
+  private readonly _dbFunctions: DbFunctionBuilder[] = [];
   private readonly _globalConverterRules: Map<Function, GlobalConverterRule> = new Map();
   /** Collected after _finalize(). Keys are entity constructors. */
   private _queryFilterMap?: EntityQueryFilterMap;
@@ -79,6 +81,37 @@ export class ModelBuilder {
    */
   properties<T>(ctor: abstract new (...args: unknown[]) => T): PropertiesConfigBuilder<T> {
     return new PropertiesConfigBuilder<T>(ctor, this._globalConverterRules);
+  }
+
+  /**
+   * Registers a user-defined database function for use in LINQ expressions via `EF.functions`.
+   * Mirrors EF Core's `ModelBuilder.HasDbFunction()`.
+   *
+   * @example
+   *   mb.hasDbFunction(MyContext.prototype.jsonExtract).hasName('jsonb_extract_path_text');
+   */
+  hasDbFunction(fn: Function): DbFunctionBuilder {
+    const existing = this._dbFunctions.find((b) => b.getFn() === fn);
+    if (existing) return existing;
+    const builder = new DbFunctionBuilder(fn);
+    this._dbFunctions.push(builder);
+    return builder;
+  }
+
+  /**
+   * Returns a map from the function's own name to the registered SQL name.
+   * Used by SqlVisitor to resolve user-defined function calls.
+   * @internal
+   */
+  getDbFunctionMap(): ReadonlyMap<string, string> {
+    const map = new Map<string, string>();
+    for (const builder of this._dbFunctions) {
+      const sqlName = builder.getSqlName();
+      if (sqlName !== undefined) {
+        map.set(builder.getFn().name, sqlName);
+      }
+    }
+    return map;
   }
 
   /** @internal — returns per-context entity query filter map after _finalize() was called. */
