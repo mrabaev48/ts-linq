@@ -18,6 +18,7 @@ import type {
 import type { ChangeTracker } from './ChangeTracker';
 import type { DbSetContext } from './DbSetContext';
 import { KeylessMutationError } from './exceptions/KeylessMutationError';
+import type { LocalView } from './LocalView';
 import type { SqlInterpolated } from './sql/sqlTag';
 import { interpolatedToRaw, toSqlParam } from './sql/sqlTag';
 
@@ -100,6 +101,76 @@ export class DbSet<T extends object> {
   /** The entity constructor this set operates on. */
   get entityClass(): new () => T {
     return this._entityClass;
+  }
+
+  // ─── Local / Find (P1-29) ─────────────────────────────────────────────────
+
+  /**
+   * An observable in-memory view of all entities of type `T` that are currently
+   * tracked by the change tracker with state `Added`, `Unchanged`, or `Modified`.
+   * Mirrors EF Core's `DbSet<T>.Local`.
+   *
+   * @example
+   * const local = context.posts.local;
+   * const off = local.subscribe(ch => console.log(ch.type, ch.entity));
+   * const all = local.toArray();
+   */
+  get local(): LocalView<T> {
+    return this._changeTracker.getLocalView<T>(this._entityClass);
+  }
+
+  /**
+   * Synchronously looks up an entity in the change tracker by its primary key.
+   * Returns the tracked entity instance, or `null` if not currently tracked.
+   *
+   * Unlike `findAsync`, this method never issues a database query.
+   * For composite PKs, pass values in the same order as `primaryKeys` in the
+   * entity metadata (alphabetical).
+   *
+   * Mirrors EF Core's `DbSet<T>.Find(keyValues)`.
+   *
+   * @example
+   * const post = context.posts.find(42);
+   * const order = context.orders.find(customerId, orderId); // composite PK
+   */
+  public find(...pkValues: unknown[]): T | null {
+    if (!this._changeTracker) return null;
+    const tracked = this._changeTracker.findTrackedByPk(this._entityClass, ...pkValues);
+    return tracked ? (tracked.entity as T) : null;
+  }
+
+  /**
+   * Looks up an entity by primary key: tracker first, database on cache miss.
+   * On a tracker hit the entity is returned immediately without a round-trip.
+   * On a miss, a `WHERE pk = ?` query is issued and the result is attached to
+   * the tracker.  Returns `null` when not found in either source.
+   *
+   * Mirrors EF Core's `DbSet<T>.FindAsync(keyValues)`.
+   *
+   * @example
+   * const post = await context.posts.findAsync(42);
+   */
+  public async findAsync(...pkValues: unknown[]): Promise<T | null> {
+    // 1. Tracker hit
+    if (this._changeTracker) {
+      const tracked = this._changeTracker.findTrackedByPk(this._entityClass, ...pkValues);
+      if (tracked) return tracked.entity as T;
+    }
+
+    // 2. Database miss — build WHERE clause from metadata
+    const registry = this._registry ?? MetadataStorage.getInstance();
+    const meta = registry.getEntity(this._entityClass);
+    const pks = meta?.primaryKeys ? [...meta.primaryKeys].sort() : [];
+    if (!pks.length || pkValues.length === 0) return null;
+
+    let query = this.newQueryable();
+    for (let i = 0; i < pks.length; i++) {
+      const col = pks[i] as keyof T & string;
+      const val = pkValues[i];
+      // Use whereIn for a single-value scalar equality to avoid transformer overhead.
+      query = query.whereIn(col, [val as T[typeof col]]);
+    }
+    return query.firstOrDefault();
   }
 
   // ─── Internal Queryable factory ───────────────────────────────────────────

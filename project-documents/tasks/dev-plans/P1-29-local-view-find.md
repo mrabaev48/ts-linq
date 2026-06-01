@@ -1,7 +1,7 @@
 ---
 title: DbSet.Local, FindEntry, Find / FindAsync
 ef_core_api: DbSet<T>.Local / DbSet<T>.Find / ChangeTracker.FindEntry / GetEntries (EF8)
-status: not-started
+status: done
 priority: P1
 effort: M
 depends_on: ["P0-02-as-no-tracking", "P1-28-track-graph-detect-changes"]
