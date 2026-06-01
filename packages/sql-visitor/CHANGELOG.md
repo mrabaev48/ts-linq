@@ -1,5 +1,41 @@
 # @ts-linq/sql-visitor
 
+## 2.4.0
+
+### Minor Changes
+
+- [#121](https://github.com/mrabaev48/ts-linq/pull/121) [`568ec79`](https://github.com/mrabaev48/ts-linq/commit/568ec792462bc5f1f9686d7a903bbe01592f71bb) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-22): implement EF.functions and HasDbFunction
+
+  Adds `EF.functions` marker object with `like`, `iLike`, `random`, `dateDiffDay`,
+  `dateDiffMonth`, `greatest`, `least`, `stDev`, `variance` — all as compile-time
+  markers that throw at runtime outside LINQ expressions.
+
+  Adds a new `EfFunctionNode` AST node, transformer CallVisitor recognition of
+  `EF.functions.xxx(...)` patterns, per-dialect `EfFunctionTranslator` implementations
+  for PostgreSQL (`postgresEfFunctions`), MySQL (`mysqlEfFunctions`), and MSSQL
+  (`mssqlEfFunctions`), and `EfFunctionVisitor` in `@ts-linq/sql-visitor`.
+
+  Adds `ModelBuilder.hasDbFunction()` with `DbFunctionBuilder.hasName()` for
+  registering user-defined SQL functions for use in LINQ expressions.
+
+- [#122](https://github.com/mrabaev48/ts-linq/pull/122) [`cda8a4e`](https://github.com/mrabaev48/ts-linq/commit/cda8a4edac105bffd343fe8637f0340c361486e2) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-25): implement table splitting and entity splitting
+
+  Introduces `TableFragmentMetadata` and `EntityMetadata.tableFragments` allowing one entity to be spread across multiple physical tables (entity splitting) and multiple entities to share a single table (table splitting).
+
+  Public API additions:
+  - `EntityTypeBuilder.splitToTable(tableName, configure, schema?)` — maps secondary properties of an entity to a separate table
+  - `TableSplitConfigBuilder.property(selector)` — configures which properties go into the fragment table
+  - `FragmentJoinPlanner.plan(meta)` — auto-generates INNER JOIN clauses for fragment tables in SELECT queries
+  - Two or more entities calling `.toTable()` with the same name merge into a single DDL table (table splitting)
+
+  Migration DDL now emits separate `CREATE TABLE` statements for each fragment. `SaveChanges` issues per-fragment INSERT/UPDATE/DELETE within the same transaction. Queries auto-join fragment tables via `FragmentJoinPlanner`.
+
+### Patch Changes
+
+- Updated dependencies [[`2f86a0d`](https://github.com/mrabaev48/ts-linq/commit/2f86a0d8b0487673603aa6816997ed394e9d91e7), [`2aa9392`](https://github.com/mrabaev48/ts-linq/commit/2aa939259c682cad252f89818db47909e1af16f8), [`69ecc17`](https://github.com/mrabaev48/ts-linq/commit/69ecc171e11a03f46c02533dc2b13351f5cd16a3), [`5284cc5`](https://github.com/mrabaev48/ts-linq/commit/5284cc519fe8c5c6486b35c6d88a00e114317a7b), [`66043bb`](https://github.com/mrabaev48/ts-linq/commit/66043bb78642b837464d20a8040660af69e61795), [`568ec79`](https://github.com/mrabaev48/ts-linq/commit/568ec792462bc5f1f9686d7a903bbe01592f71bb), [`03caeac`](https://github.com/mrabaev48/ts-linq/commit/03caeac9ea0c29aca70922b0c349aae30dc3d907)]:
+  - @ts-linq/types@2.4.0
+  - @ts-linq/ast@2.3.0
+
 ## 2.3.0
 
 ### Minor Changes
