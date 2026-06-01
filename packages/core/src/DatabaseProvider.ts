@@ -811,6 +811,27 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   protected abstract doRollbackTransaction(): Promise<void>;
 
   /**
+   * Reserves the next Hi-Lo block from a database sequence and returns the high-water mark.
+   * For native sequences (PG, MSSQL) this executes NEXTVAL / NEXT VALUE FOR.
+   * For MySQL this updates the emulation counter table.
+   *
+   * The returned value is the *maximum* ID of the reserved block.
+   * The block covers [returnedValue - blockSize + 1, returnedValue].
+   *
+   * Override in dialect providers that support sequences. The base implementation throws.
+   */
+  public async nextSequenceValue(
+    _sequenceName: string,
+    _schema: string | undefined,
+    _blockSize: number
+  ): Promise<number> {
+    throw new Error(
+      `Provider "${this.providerName}" does not support database sequences. ` +
+        'Override nextSequenceValue() in the provider implementation.'
+    );
+  }
+
+  /**
    * Create a named savepoint within the current transaction.
    * Default implementation uses ANSI SQL syntax (`SAVEPOINT name`).
    * Providers that use different syntax (e.g. MSSQL) must override.

@@ -1,7 +1,7 @@
 ---
 title: Sequences and HiLo
 ef_core_api: ModelBuilder.HasSequence / Property.UseHiLo / Property.UseSequence
-status: not-started
+status: done
 priority: P1
 effort: L
 depends_on: ["P1-30-value-generators-sentinel"]
