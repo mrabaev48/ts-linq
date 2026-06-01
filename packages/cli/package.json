@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@ts-linq/core": "workspace:*",
+    "@ts-linq/metadata": "workspace:*",
     "@ts-linq/types": "workspace:*",
     "@ts-linq/migrations": "workspace:*"
   },

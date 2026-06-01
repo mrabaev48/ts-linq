@@ -13,9 +13,10 @@
  * @see packages/query/src/compiled/CapturedQueryPlan.ts
  * @see packages/query/src/EF.ts
  *
- * @todo TODO(P2-44): Implement the real visitor when Compiled models / AOT prep task ships.
+ * The compiled-model (AOT) feature (P2-44) is implemented via the CLI command
+ * `pnpm ts-linq dbcontext optimize` — a transformer extension is not required.
  */
 export const EFCompileQueryVisitorVersion = '1.0.0';
 
-/** @internal placeholder type — will become a real type in P2-44 */
+/** @internal */
 export type EFCompileQueryVisitorVersion = typeof EFCompileQueryVisitorVersion;
