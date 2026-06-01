@@ -2,6 +2,7 @@ import type {
   AlternateKeyMetadata,
   CheckConstraintMetadata,
   ColumnMetadata,
+  ComplexTypePropertyMetadata,
   EntityMetadata,
   HierarchyMetadata,
   IndexMetadata,
@@ -35,6 +36,7 @@ export class EntityMetadataBuilder {
     viewName?: string;
     viewSql?: string;
     alternateKeys?: AlternateKeyMetadata[];
+    complexProperties?: ComplexTypePropertyMetadata[];
   };
 
   /**
@@ -185,6 +187,12 @@ export class EntityMetadataBuilder {
     return this;
   }
 
+  public addComplexProperty(complex: ComplexTypePropertyMetadata): this {
+    this.metadata.complexProperties = this.metadata.complexProperties ?? [];
+    this.metadata.complexProperties.push(complex);
+    return this;
+  }
+
   public addOwnedEntity(owned: OwnedEntityMetadata): this {
     this.metadata.ownedEntities = this.metadata.ownedEntities || [];
     this.metadata.ownedEntities.push(owned);
@@ -323,6 +331,10 @@ export class EntityMetadataBuilder {
       ...(this.metadata.viewSql !== undefined ? { viewSql: this.metadata.viewSql } : {}),
       ...(this.metadata.alternateKeys !== undefined && this.metadata.alternateKeys.length > 0
         ? { alternateKeys: this.metadata.alternateKeys }
+        : {}),
+      ...(this.metadata.complexProperties !== undefined &&
+      this.metadata.complexProperties.length > 0
+        ? { complexProperties: this.metadata.complexProperties }
         : {})
     };
   }

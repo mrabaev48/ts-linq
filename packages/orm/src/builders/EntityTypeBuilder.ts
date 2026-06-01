@@ -16,6 +16,7 @@ import { InheritanceStrategy } from '@ts-linq/types';
 
 import type { CollectionCollectionBuilder } from './CollectionCollectionBuilder';
 import { CollectionNavigationBuilder } from './CollectionNavigationBuilder';
+import { ComplexTypeBuilder } from './ComplexTypeBuilder';
 import { DiscriminatorBuilder } from './DiscriminatorBuilder';
 import { IndexBuilder } from './IndexBuilder';
 import { OwnedNavigationBuilder } from './OwnedNavigationBuilder';
@@ -60,6 +61,8 @@ export class EntityTypeBuilder<T> {
   private _historyTableName?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly _ownedBuilders: OwnedNavigationBuilder<T, any>[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly _complexBuilders: ComplexTypeBuilder<any>[] = [];
   private _inheritanceStrategy?: InheritanceStrategy;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _discriminatorBuilder?: DiscriminatorBuilder<any>;
@@ -264,6 +267,28 @@ export class EntityTypeBuilder<T> {
   }
 
   /**
+   * Configures a complex type property — a value-object with no identity, no DbSet, and
+   * no ChangeTracker entry. Its columns are flattened into the owner table.
+   * Mirrors EF Core's `ComplexProperty(selector, configure?)`.
+   *
+   * @example
+   * builder.complexProperty(c => c.shippingAddress, b => {
+   *   b.property(a => a.street).hasMaxLength(200);
+   *   b.property(a => a.city).hasMaxLength(100);
+   * });
+   */
+  complexProperty<TComplex>(
+    selector: (e: T) => TComplex | undefined,
+    configure?: (b: ComplexTypeBuilder<NonNullable<TComplex>>) => void
+  ): this {
+    const propName = extractPropertyName(selector);
+    const builder = new ComplexTypeBuilder<NonNullable<TComplex>>(propName);
+    if (configure) configure(builder);
+    this._complexBuilders.push(builder);
+    return this;
+  }
+
+  /**
    * Configures a discriminator column for TPH inheritance.
    * Automatically sets strategy to TPH; chain `.hasValue()` to register subtypes.
    *
@@ -464,6 +489,10 @@ export class EntityTypeBuilder<T> {
 
     for (const ob of this._ownedBuilders) {
       registry.addOwnedEntity(this._ctor, ob._buildMetadata());
+    }
+
+    for (const cb of this._complexBuilders) {
+      registry.addComplexProperty(this._ctor, cb._build());
     }
 
     if (this._inheritanceStrategy !== undefined) {
