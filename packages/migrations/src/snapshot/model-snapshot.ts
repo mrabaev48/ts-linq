@@ -317,9 +317,11 @@ export class ModelSnapshotBuilder {
       }
     } else if (owned.strategy === StorageStrategy.Json) {
       const jsonCol = owned.jsonColumnName ?? owned.ownerPropertyName;
+      // Use JSONB as the canonical abstract type for JSON-strategy columns.
+      // Dialects map: Postgres → JSONB, MySQL → JSON, MSSQL → NVARCHAR(MAX).
       ownerColumns.push({
         name: jsonCol,
-        type: 'JSON',
+        type: 'JSONB',
         nullable: true,
         isPrimaryKey: false
       });

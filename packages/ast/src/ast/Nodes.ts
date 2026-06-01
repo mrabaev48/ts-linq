@@ -153,4 +153,16 @@ export type ExpressionNode =
   | InNode
   | MethodNode
   | EfFunctionNode
-  | UnsupportedNode;
+  | UnsupportedNode
+  | JsonPathNode;
+
+/**
+ * Re-export from JsonPathExpression for use in ExpressionNode union.
+ * Imported inline to avoid a separate module for a simple type alias.
+ */
+export interface JsonPathNode {
+  type: 'jsonPath';
+  column: string;
+  path: string[];
+  cast?: 'text' | 'int' | 'bool' | 'float';
+}

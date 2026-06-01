@@ -187,6 +187,10 @@ export class MssqlDdlStrategy {
         return 'VARBINARY(MAX)';
       case 'UUID':
         return 'UNIQUEIDENTIFIER';
+      case 'JSON':
+      case 'JSONB':
+        // SQL Server stores JSON as NVARCHAR(MAX); use a CHECK ISJSON constraint separately.
+        return 'NVARCHAR(MAX)';
       default:
         return 'NVARCHAR(MAX)';
     }

@@ -1,4 +1,4 @@
-import type { ColumnMetadata, OwnedEntityMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, JsonShape, JsonShapeNode, OwnedEntityMetadata } from '@ts-linq/types';
 import { StorageStrategy } from '@ts-linq/types';
 
 import { PropertyBuilder } from './PropertyBuilder';
@@ -19,6 +19,7 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
   private _principalKeyColumns?: string[];
   private _compositeKeyColumns?: string[];
   private readonly _columns: Map<string, ColumnMetadata> = new Map();
+  private readonly _nestedOwned: OwnedNavigationBuilder<TOwned, unknown>[] = [];
 
   constructor(
     private readonly _ownerCtor: new () => TOwner,
@@ -62,6 +63,48 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
     return this;
   }
 
+  /**
+   * Registers a nested owned-one navigation inside a JSON aggregate.
+   * The nested type is stored as a nested JSON object, not as a separate table.
+   */
+  ownsOne<TNested>(
+    selector: (e: TOwned) => TNested | undefined,
+    nestedCtor: new () => TNested,
+    configure?: (b: OwnedNavigationBuilder<TOwned, TNested>) => void
+  ): this {
+    const propName = extractPropertyName(selector);
+    const nested = new OwnedNavigationBuilder<TOwned, TNested>(
+      this._ownedCtor,
+      nestedCtor,
+      propName,
+      false
+    );
+    if (configure) configure(nested);
+    this._nestedOwned.push(nested as unknown as OwnedNavigationBuilder<TOwned, unknown>);
+    return this;
+  }
+
+  /**
+   * Registers a nested owned-many navigation inside a JSON aggregate.
+   * The nested collection is stored as a JSON array, not as a separate table.
+   */
+  ownsMany<TNested>(
+    selector: (e: TOwned) => TNested[],
+    nestedCtor: new () => TNested,
+    configure?: (b: OwnedNavigationBuilder<TOwned, TNested>) => void
+  ): this {
+    const propName = extractPropertyName(selector);
+    const nested = new OwnedNavigationBuilder<TOwned, TNested>(
+      this._ownedCtor,
+      nestedCtor,
+      propName,
+      true
+    );
+    if (configure) configure(nested);
+    this._nestedOwned.push(nested as unknown as OwnedNavigationBuilder<TOwned, unknown>);
+    return this;
+  }
+
   /** @internal — called from EntityTypeBuilder._applyToRegistry() */
   _buildMetadata(): OwnedEntityMetadata {
     const strategy =
@@ -79,7 +122,12 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
     if (strategy === StorageStrategy.TableSplit) {
       meta.columnPrefix = this._columnPrefix ?? `${this._ownerPropertyName}_`;
     } else if (strategy === StorageStrategy.Json) {
-      meta.jsonColumnName = this._jsonColumnName ?? this._ownerPropertyName;
+      const colName = this._jsonColumnName ?? this._ownerPropertyName;
+      meta.jsonColumnName = colName;
+      meta.jsonShape = this._buildJsonShape(colName);
+      if (this._nestedOwned.length > 0) {
+        meta.nestedOwned = this._nestedOwned.map((b) => b._buildMetadata());
+      }
     } else if (strategy === StorageStrategy.SeparateTable) {
       if (this._foreignKeyColumns) meta.foreignKeyColumns = this._foreignKeyColumns;
       if (this._principalKeyColumns) meta.principalKeyColumns = this._principalKeyColumns;
@@ -87,6 +135,29 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
     }
 
     return meta;
+  }
+
+  private _buildJsonShape(columnName: string): JsonShape {
+    const properties = new Map<string, JsonShapeNode>();
+
+    // Leaf properties configured via .property()
+    for (const [propName, colMeta] of this._columns) {
+      const node: JsonShapeNode = {};
+      if (colMeta.converter) node.converter = colMeta.converter;
+      properties.set(propName, node);
+    }
+
+    // Nested owned navigations → aggregate/array nodes in the shape tree
+    for (const nested of this._nestedOwned) {
+      const nestedShape = nested._buildJsonShape(nested._ownerPropertyName);
+      const node: JsonShapeNode = {
+        children: nestedShape.properties,
+        isArray: nested._isCollection
+      };
+      properties.set(nested._ownerPropertyName, node);
+    }
+
+    return { columnName, properties };
   }
 
   /** @internal — property overrides configured via .property() */
