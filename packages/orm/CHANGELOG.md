@@ -1,5 +1,30 @@
 # @ts-linq/orm
 
+## 2.9.0
+
+### Minor Changes
+
+- [#139](https://github.com/mrabaev48/ts-linq/pull/139) [`f03dbf1`](https://github.com/mrabaev48/ts-linq/commit/f03dbf1d4c9ee5f10faf70a3d87babc638918508) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-17): implement Complex Types — ComplexProperty value-object semantics without identity
+
+  Adds `complexProperty()` API mirroring EF Core 8's `ComplexProperty`. Complex type columns
+  are flattened into the owner table (e.g. `shippingAddress_street`), detected via deep-value
+  equality in ChangeTracker, and rewritten to flat column names in the SQL visitor.
+
+  New exports: `ComplexTypePropertyMetadata` (types), `ComplexTypeBuilder` (orm),
+  `ComplexAccessRewriter` (sql-visitor). `EntityMetadata.complexProperties` field added.
+
+### Patch Changes
+
+- Updated dependencies [[`f03dbf1`](https://github.com/mrabaev48/ts-linq/commit/f03dbf1d4c9ee5f10faf70a3d87babc638918508)]:
+  - @ts-linq/types@2.10.0
+  - @ts-linq/sql-visitor@2.7.0
+  - @ts-linq/migrations@2.5.0
+  - @ts-linq/concurrency@2.0.10
+  - @ts-linq/core@1.4.8
+  - @ts-linq/metadata@2.6.2
+  - @ts-linq/query@2.4.5
+  - @ts-linq/telemetry@2.1.7
+
 ## 2.8.0
 
 ### Minor Changes
