@@ -1,7 +1,7 @@
 ---
 title: Complex Types (EF8)
 ef_core_api: ModelBuilder.Entity<T>().ComplexProperty(e => e.Address)
-status: not-started
+status: done
 priority: P1
 effort: L
 depends_on: ["P0-01-fluent-configuration-api", "P0-06-owned-types"]

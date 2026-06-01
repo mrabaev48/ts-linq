@@ -34,6 +34,7 @@ export * from './ValueComparer';
 export * from './ValueConverter';
 export * from './ViewMetadata';
 export {
+  type ComplexTypePropertyMetadata,
   DeleteBehavior,
   type DiscriminatorEntry,
   type DiscriminatorMetadata,

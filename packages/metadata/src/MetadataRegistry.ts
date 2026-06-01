@@ -2,6 +2,7 @@ import type {
   AlternateKeyMetadata,
   CheckConstraintMetadata,
   ColumnMetadata,
+  ComplexTypePropertyMetadata,
   EntityMetadata,
   HierarchyMetadata,
   IndexMetadata,
@@ -382,6 +383,16 @@ export class MetadataRegistry {
   }
 
   /** Register an owned entity relationship for the given owner entity. */
+  public addComplexProperty(owner: Function, complex: ComplexTypePropertyMetadata): void {
+    const key = this.normalizeTarget(owner);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.complexProperties = [...(finalized.complexProperties ?? []), complex];
+      return;
+    }
+    this.getOrCreateBuilder(owner).addComplexProperty(complex);
+  }
+
   public addOwnedEntity(owner: Function, owned: OwnedEntityMetadata): void {
     const key = this.normalizeTarget(owner);
     const finalized = this.entities.get(key);

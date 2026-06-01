@@ -3,6 +3,7 @@ import type { ConditionFragment } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { HierarchyIdTranslator, SpatialTranslator } from '@ts-linq/types';
 
+import type { ComplexAccessRewriter } from './ComplexAccessRewriter';
 import type { EfFunctionTranslator } from './functions/FunctionTranslator';
 import type { JsonAccessRewriter } from './JsonAccessRewriter';
 import { ParameterState, ParameterStyle } from './ParameterStyle';
@@ -22,6 +23,7 @@ import { NullVisitor } from './visitors/NullVisitor';
 import { SpatialMethodVisitor } from './visitors/SpatialMethodVisitor';
 import { UnaryVisitor } from './visitors/UnaryVisitor';
 
+export { ComplexAccessRewriter } from './ComplexAccessRewriter';
 export { JsonAccessRewriter } from './JsonAccessRewriter';
 export type { JsonPathTranslator } from './visitors/JsonPathVisitor';
 
@@ -38,6 +40,8 @@ export interface SqlVisitorOptions {
   jsonPathTranslator?: JsonPathTranslator;
   /** Rewrites multi-segment property paths into JSON path expressions before SQL generation. */
   jsonAccessRewriter?: JsonAccessRewriter;
+  /** Rewrites multi-segment property paths for complex type properties into flat column names (P1-17). */
+  complexAccessRewriter?: ComplexAccessRewriter;
 }
 
 /**
@@ -69,6 +73,7 @@ export class SqlVisitor {
   private readonly converterResolver?: ConverterResolver;
   private readonly jsonPath?: JsonPathVisitor;
   private readonly jsonRewriter?: JsonAccessRewriter;
+  private readonly complexRewriter?: ComplexAccessRewriter;
 
   constructor(
     private readonly parameterStyle: ParameterStyle = ParameterStyle.Question,
@@ -89,6 +94,7 @@ export class SqlVisitor {
       ? new JsonPathVisitor(options.jsonPathTranslator)
       : undefined;
     this.jsonRewriter = options?.jsonAccessRewriter;
+    this.complexRewriter = options?.complexAccessRewriter;
   }
 
   public toSql(
@@ -97,7 +103,10 @@ export class SqlVisitor {
     resolver?: ColumnResolver
   ): ConditionFragment {
     const state = new ParameterState(this.parameterStyle);
-    const rewritten = this.jsonRewriter ? this.jsonRewriter.rewrite(node) : node;
+    // Complex type paths must be flattened before JSON rewriting, as JSON rewriting
+    // operates on the already-flattened column names.
+    const afterComplex = this.complexRewriter ? this.complexRewriter.rewrite(node) : node;
+    const rewritten = this.jsonRewriter ? this.jsonRewriter.rewrite(afterComplex) : afterComplex;
     return this._visit(rewritten, inputParameters, resolver, state);
   }
 
