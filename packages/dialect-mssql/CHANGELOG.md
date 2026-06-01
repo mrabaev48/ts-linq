@@ -1,5 +1,15 @@
 # @ts-linq/dialect-mssql
 
+## 2.6.1
+
+### Patch Changes
+
+- Updated dependencies [[`f03dbf1`](https://github.com/mrabaev48/ts-linq/commit/f03dbf1d4c9ee5f10faf70a3d87babc638918508)]:
+  - @ts-linq/types@2.10.0
+  - @ts-linq/sql-visitor@2.7.0
+  - @ts-linq/core@1.4.8
+  - @ts-linq/metadata@2.6.2
+
 ## 2.6.0
 
 ### Minor Changes
