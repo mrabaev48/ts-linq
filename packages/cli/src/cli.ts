@@ -15,6 +15,7 @@ import { MigrationsRollbackCommand } from './commands/MigrationsRollbackCommand'
 import { MigrationsScriptCommand } from './commands/MigrationsScriptCommand';
 import { MigrationsStatusCommand } from './commands/MigrationsStatusCommand';
 import { MigrationsValidateCommand } from './commands/MigrationsValidateCommand';
+import { ScaffoldCommand } from './commands/ScaffoldCommand';
 import { SchemaApplyCommand } from './commands/SchemaApplyCommand';
 import { SchemaDiffCommand } from './commands/SchemaDiffCommand';
 import { SchemaExportCommand } from './commands/SchemaExportCommand';
@@ -43,6 +44,7 @@ async function main() {
     new MigrationsValidateCommand(),
     new MigrationsScriptCommand(),
     new MigrationsBundleCommand(),
+    new ScaffoldCommand(),
     new SeedCommand(),
     new MetricsServeCommand()
   ]);

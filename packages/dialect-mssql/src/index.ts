@@ -3,6 +3,7 @@ export * from './batch-syntax';
 export * from './emit-temporal';
 export * from './functions/index';
 export * from './hierarchy-functions';
+export * from './introspector';
 export * from './MssqlDdlStrategy';
 export * from './MssqlDialect';
 export * from './MssqlOptionsBuilder';
