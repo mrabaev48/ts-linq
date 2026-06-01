@@ -13,6 +13,7 @@ import type {
   TableFragmentMetadata,
   ValidationRule
 } from '@ts-linq/types';
+import type { EntityStoredProcedureMapping } from '@ts-linq/types';
 import { ValidationError } from '@ts-linq/types';
 
 import { EntityMetadataBuilder } from './EntityMetadata';
@@ -33,6 +34,7 @@ import { reflectGetOwnMetadata } from './reflectUtils';
 export class MetadataRegistry {
   private entities: Map<Function, EntityMetadata> = new Map();
   private builders: Map<Function, EntityMetadataBuilder> = new Map();
+  private readonly spMappings = new Map<Function, EntityStoredProcedureMapping>();
 
   // ─── Normalization ────────────────────────────────────────────────────────
 
@@ -541,9 +543,22 @@ export class MetadataRegistry {
     this.getOrCreateBuilder(target).setViewSql(sql);
   }
 
+  /** Set (replace) stored procedure CUD mapping for an entity (P2-33). */
+  public setStoredProcedureMapping(target: Function, mapping: EntityStoredProcedureMapping): void {
+    const key = this.normalizeTarget(target);
+    this.spMappings.set(key, mapping);
+  }
+
+  /** Get stored procedure CUD mapping for an entity (P2-33). */
+  public getStoredProcedureMapping(target: Function): EntityStoredProcedureMapping | undefined {
+    const key = this.normalizeTarget(target);
+    return this.spMappings.get(key);
+  }
+
   /** Clear all stored metadata and pending builders. */
   public clear(): void {
     this.entities.clear();
     this.builders.clear();
+    this.spMappings.clear();
   }
 }

@@ -33,3 +33,22 @@ users.thenByDescending('name');
 
 // @ts-expect-error — lambda returning a literal (not a property) fails to compile
 users.orderBy(() => 42 as unknown as User[keyof User]);
+
+// ── P2-33: StoredProcedureBuilder type-level tests ──────────────────────────
+import { StoredProcedureBuilder } from '@ts-linq/metadata';
+import type { EntityTypeBuilder } from '../src/builders/EntityTypeBuilder';
+
+type Person = { id: number; name: string };
+declare const etb: EntityTypeBuilder<Person>;
+
+// insertUsingStoredProcedure / updateUsingStoredProcedure / deleteUsingStoredProcedure
+// must return the same EntityTypeBuilder<Person> for chaining.
+expectType<EntityTypeBuilder<Person>>(etb.insertUsingStoredProcedure('Proc_Insert'));
+expectType<EntityTypeBuilder<Person>>(etb.updateUsingStoredProcedure('Proc_Update'));
+expectType<EntityTypeBuilder<Person>>(etb.deleteUsingStoredProcedure('Proc_Delete'));
+
+// hasParameter must accept valid property selectors.
+declare const spb: StoredProcedureBuilder<Person>;
+expectType<StoredProcedureBuilder<Person>>(spb.hasParameter((p) => p.name));
+expectType<StoredProcedureBuilder<Person>>(spb.hasParameter((p) => p.id, (b) => b.isOutput()));
+expectType<StoredProcedureBuilder<Person>>(spb.hasOriginalValueParameter((p) => p.id));

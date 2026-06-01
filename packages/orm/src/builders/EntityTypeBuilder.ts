@@ -1,5 +1,7 @@
 import type { MetadataRegistry, PropertyAccessMode } from '@ts-linq/metadata';
 import { createPropertyAccessor, type PropertyAccessor } from '@ts-linq/metadata';
+import { StoredProcedureBuilder } from '@ts-linq/metadata';
+import type { EntityStoredProcedureMapping } from '@ts-linq/types';
 import type {
   AlternateKeyMetadata,
   CheckConstraintMetadata,
@@ -74,6 +76,7 @@ export class EntityTypeBuilder<T> {
   private _viewSql?: string;
   private readonly _alternateKeys: AlternateKeyMetadata[] = [];
   private _entityAccessMode?: PropertyAccessMode;
+  private readonly _spMapping: EntityStoredProcedureMapping = {};
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -388,6 +391,36 @@ export class EntityTypeBuilder<T> {
     return this;
   }
 
+  insertUsingStoredProcedure(
+    name: string,
+    configure?: (b: StoredProcedureBuilder<T>) => StoredProcedureBuilder<T>
+  ): this {
+    const builder = new StoredProcedureBuilder<T>();
+    const configured = configure ? configure(builder) : builder;
+    this._spMapping.insert = configured._build(name);
+    return this;
+  }
+
+  updateUsingStoredProcedure(
+    name: string,
+    configure?: (b: StoredProcedureBuilder<T>) => StoredProcedureBuilder<T>
+  ): this {
+    const builder = new StoredProcedureBuilder<T>();
+    const configured = configure ? configure(builder) : builder;
+    this._spMapping.update = configured._build(name);
+    return this;
+  }
+
+  deleteUsingStoredProcedure(
+    name: string,
+    configure?: (b: StoredProcedureBuilder<T>) => StoredProcedureBuilder<T>
+  ): this {
+    const builder = new StoredProcedureBuilder<T>();
+    const configured = configure ? configure(builder) : builder;
+    this._spMapping.delete = configured._build(name);
+    return this;
+  }
+
   /** @internal */
   _applyToRegistry(registry: MetadataRegistry): void {
     registry.addEntity(this._ctor, this._tableName);
@@ -495,6 +528,14 @@ export class EntityTypeBuilder<T> {
 
     if (this._viewSql !== undefined) {
       registry.setFluentViewSql(this._ctor, this._viewSql);
+    }
+
+    if (
+      this._spMapping.insert !== undefined ||
+      this._spMapping.update !== undefined ||
+      this._spMapping.delete !== undefined
+    ) {
+      registry.setStoredProcedureMapping(this._ctor, this._spMapping);
     }
   }
 

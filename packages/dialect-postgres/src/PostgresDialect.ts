@@ -28,6 +28,7 @@ import { PgGroupEmitter } from './emitters/PgGroupEmitter';
 import { PgJoinEmitter } from './emitters/PgJoinEmitter';
 import { PgOrderEmitter } from './emitters/PgOrderEmitter';
 import { PgWhereEmitter } from './emitters/PgWhereEmitter';
+import { createPostgresSpCallSyntax } from './sp-syntax';
 
 /**
  * PostgreSQL implementation of SqlDialect.
@@ -46,6 +47,10 @@ export class PostgresDialect implements SqlDialect {
 
   public quoteIdentifier(identifier: string): string {
     return `"${identifier.replace(/"/g, '""')}"`;
+  }
+
+  public getSpCallSyntax() {
+    return createPostgresSpCallSyntax();
   }
 
   public buildBatchInsert(

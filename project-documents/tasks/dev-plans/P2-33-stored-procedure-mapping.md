@@ -1,7 +1,7 @@
 ---
 title: Stored Procedure Mapping for Insert/Update/Delete
 ef_core_api: ModelBuilder.Entity<T>().InsertUsingStoredProcedure(...).UpdateUsingStoredProcedure(...).DeleteUsingStoredProcedure(...)
-status: not-started
+status: done
 priority: P2
 effort: L
 depends_on: []
