@@ -1,5 +1,19 @@
 # @ts-linq/orm
 
+## 2.6.1
+
+### Patch Changes
+
+- Updated dependencies [[`9c2ad23`](https://github.com/mrabaev48/ts-linq/commit/9c2ad23d0a2f934f881524e280e76329f4d1eed0)]:
+  - @ts-linq/migrations@2.4.0
+  - @ts-linq/types@2.8.0
+  - @ts-linq/concurrency@2.0.8
+  - @ts-linq/core@1.4.5
+  - @ts-linq/metadata@2.5.1
+  - @ts-linq/query@2.4.2
+  - @ts-linq/sql-visitor@2.5.1
+  - @ts-linq/telemetry@2.1.5
+
 ## 2.6.0
 
 ### Minor Changes
