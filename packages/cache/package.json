@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/cache",
-  "version": "5.0.7",
+  "version": "5.0.8",
   "private": true,
   "dependencies": {
     "@ts-linq/types": "workspace:*",
