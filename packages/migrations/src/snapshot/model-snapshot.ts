@@ -1,6 +1,7 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
   ColumnMetadata,
+  ComplexTypePropertyMetadata,
   EntityMetadata,
   IndexMetadata,
   OwnedEntityMetadata
@@ -117,6 +118,11 @@ export class ModelSnapshotBuilder {
         // Expand owned entity columns into the owner table snapshot
         for (const owned of entity.ownedEntities ?? []) {
           this._expandOwnedEntity(owned, entity, entityByType, columns, extraTables);
+        }
+
+        // Expand complex type columns into the owner table snapshot (P1-17)
+        for (const cp of entity.complexProperties ?? []) {
+          this._expandComplexProperty(cp, cp.columnPrefix, columns);
         }
 
         // TPH: add discriminator column to the root entity table
@@ -291,6 +297,27 @@ export class ModelSnapshotBuilder {
       version: 1,
       tables: [...tables, ...extraTables].sort((a, b) => a.name.localeCompare(b.name))
     };
+  }
+
+  private _expandComplexProperty(
+    complex: ComplexTypePropertyMetadata,
+    prefix: string,
+    ownerColumns: ModelColumnSnapshot[]
+  ): void {
+    for (const col of complex.properties) {
+      ownerColumns.push({
+        name: `${prefix}${col.columnName}`,
+        type: String(col.type ?? '').toUpperCase(),
+        nullable: !complex.isRequired || (col.nullable ?? true),
+        isPrimaryKey: false,
+        defaultValue: col.defaultValue,
+        defaultExpression: col.defaultExpression
+      });
+    }
+
+    for (const nested of complex.nested) {
+      this._expandComplexProperty(nested, `${prefix}${nested.columnPrefix}`, ownerColumns);
+    }
   }
 
   private _expandOwnedEntity(

@@ -47,7 +47,7 @@ Lands after P0. Necessary for power users but not blocking baseline migration.
 | #     | Title                                                                         | EF Core API                                                                                            | Status | Effort | Depends on   |
 |-------|-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|:------:|:------:|--------------|
 | P1-16 | [Shadow properties](./P1-16-shadow-properties.md)                             | `Property<int>("Foo")` without CLR field, access via `EntityEntry`                                     | - [x]  | M      | P0-01        |
-| P1-17 | [Complex types](./P1-17-complex-types.md)                                     | `ComplexProperty` (EF8) value-object semantics without identity                                        | - [ ]  | M      | P0-06        |
+| P1-17 | [Complex types](./P1-17-complex-types.md)                                     | `ComplexProperty` (EF8) value-object semantics without identity                                        | ✅      | M      | P0-06        |
 | P1-18 | [AsSplitQuery / AsSingleQuery](./P1-18-as-split-query.md)                     | `AsSplitQuery`, `AsSingleQuery`, `UseQuerySplittingBehavior`                                           | - [x]  | M      | —            |
 | P1-19 | [Filtered Include](./P1-19-filtered-include.md)                               | `Include(b => b.Posts.Where(...).OrderBy(...).Take(n))`                                                | - [x]  | M      | —            |
 | P1-20 | [Compiled queries](./P1-20-compiled-queries.md)                               | `EF.CompileQuery`, `EF.CompileAsyncQuery`                                                              | - [x]  | M      | —            |
@@ -236,10 +236,10 @@ whose `depends_on` points into the current step.
 
 ### Step 3 — Unlocked after Step 2
 
-| Task | Title | Unblocked by |
-|------|-------|--------------|
+| Task | Title | Unblocked by |Unblocked by |
+|------|-------|--------------|-------------|
 | P0-15 | JSON columns | P0-06 | ✅ done |
-| P1-17 | Complex types | P0-06 |
+| P1-17 | Complex types | P0-06 | ✅ done |
 | P1-21 | Sequences / HiLo | P1-30 |
 | P1-29 | LocalView / Find / FindAsync | P1-28 |
 | P2-37 | Cosmos DB provider | P0-03 + P0-04 |

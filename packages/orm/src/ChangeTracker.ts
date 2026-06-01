@@ -9,6 +9,7 @@ import {
 import type { EntityAttacher } from '@ts-linq/types';
 
 import { CascadeWalker } from './changetracker/CascadeWalker';
+import { complexDeepEquals, complexSnapshot } from './changetracker/complexValueComparer';
 import type { EntityEntryGraphNode, ITrackGraphEntry } from './changetracker/EntityEntryGraphNode';
 import { GraphIterator } from './changetracker/GraphIterator';
 
@@ -374,6 +375,14 @@ export class ChangeTracker implements EntityAttacher {
         if (!this.areObjectsEqual(current, prev)) return true;
       }
     }
+
+    // Check complex type properties using deep structural equality (value semantics, P1-17).
+    const rec = entity as Record<string, unknown>;
+    const origRec = original as Record<string, unknown>;
+    for (const cp of meta.complexProperties ?? []) {
+      if (!complexDeepEquals(rec[cp.propertyName], origRec[cp.propertyName])) return true;
+    }
+
     return false;
   }
 
@@ -485,6 +494,14 @@ export class ChangeTracker implements EntityAttacher {
             // Write the snapshot value back via the same accessor so it lands in the right key.
             accessor.set(cloned as object, col.comparer.snapshot(val));
           }
+        }
+      }
+      // Ensure complex type properties are deep-cloned by value (P1-17).
+      const rec = obj as Record<string, unknown>;
+      const clonedRec = cloned as Record<string, unknown>;
+      for (const cp of meta.complexProperties ?? []) {
+        if (rec[cp.propertyName] !== undefined && rec[cp.propertyName] !== null) {
+          clonedRec[cp.propertyName] = complexSnapshot(rec[cp.propertyName]);
         }
       }
       return cloned;
