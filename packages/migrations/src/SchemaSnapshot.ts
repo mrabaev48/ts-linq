@@ -1,5 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/metadata';
+import { MetadataStorage, SequenceRegistry } from '@ts-linq/metadata';
 import type {
   ColumnMetadata,
   EntityMetadata,
@@ -14,6 +14,7 @@ import type {
   ForeignKeyDef,
   IndexDef,
   SchemaSnapshot,
+  SequenceDef,
   TableSnapshot,
   ViewSnapshot
 } from './DiffTypes';
@@ -170,9 +171,23 @@ export class SchemaSnapshotBuilder {
     }
 
     const views = Array.from(viewMap.values());
+
+    const rawSequences = SequenceRegistry.getAll();
+    const sequences: SequenceDef[] = rawSequences.map((s) => ({
+      name: s.name,
+      ...(s.schema !== undefined ? { schema: s.schema } : {}),
+      ...(s.type !== undefined ? { type: s.type } : {}),
+      ...(s.startsAt !== undefined ? { startsAt: s.startsAt } : {}),
+      ...(s.incrementsBy !== undefined ? { incrementsBy: s.incrementsBy } : {}),
+      ...(s.minValue !== undefined ? { minValue: s.minValue } : {}),
+      ...(s.maxValue !== undefined ? { maxValue: s.maxValue } : {}),
+      ...(s.cyclesOn !== undefined ? { cyclesOn: s.cyclesOn } : {})
+    }));
+
     return {
       tables: Array.from(tableMap.values()),
-      ...(views.length > 0 ? { views } : {})
+      ...(views.length > 0 ? { views } : {}),
+      ...(sequences.length > 0 ? { sequences } : {})
     };
   }
 

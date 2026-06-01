@@ -646,6 +646,30 @@ export interface ValueComparerLike<T = unknown> {
 }
 
 // ---------------------------------------------------------------------------
+// Sequences (P1-21)
+// ---------------------------------------------------------------------------
+
+/** Model-level database sequence metadata. */
+export interface SequenceMetadata {
+  /** Sequence name as it will appear in the database. */
+  name: string;
+  /** Optional database schema (e.g. "shared"). */
+  schema?: string;
+  /** Numeric type of the sequence. Defaults to 'int'. */
+  type?: 'int' | 'bigint';
+  /** First value produced by the sequence. */
+  startsAt?: number;
+  /** Step between consecutive values. */
+  incrementsBy?: number;
+  /** Minimum value the sequence can produce. */
+  minValue?: number;
+  /** Maximum value the sequence can produce before cycling or throwing. */
+  maxValue?: number;
+  /** Whether the sequence wraps around when it reaches the boundary. */
+  cyclesOn?: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Value generators (P1-30)
 // ---------------------------------------------------------------------------
 
@@ -706,6 +730,12 @@ export interface ColumnMetadata {
   fieldName?: string;
   /** Property access mode controlling how the ORM reads/writes this property (P1-32). */
   accessMode?: string;
+  /** Name of a database sequence used for this column via useSequence() (P1-21). */
+  sequenceName?: string;
+  /** Schema of the sequence used for this column (P1-21). */
+  sequenceSchema?: string;
+  /** HiLo block size: reserves this many IDs per round-trip (P1-21). Default 10. */
+  hiLoBlockSize?: number;
   /**
    * Pre-built property accessor resolved at model-build time (P1-32).
    * Opaque at the types layer — typed as `unknown` to avoid a dependency on @ts-linq/metadata.

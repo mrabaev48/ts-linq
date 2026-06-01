@@ -63,10 +63,32 @@ export interface ViewSnapshot {
   sql?: string;
 }
 
+/** A database sequence (or MySQL emulation row) declared via ModelBuilder.hasSequence() (P1-21). */
+export interface SequenceDef {
+  /** Sequence name as declared in the model. */
+  name: string;
+  /** Optional database schema. */
+  schema?: string;
+  /** Numeric column type. Defaults to 'int'. */
+  type?: string;
+  /** First value produced by the sequence. */
+  startsAt?: number;
+  /** Increment between consecutive values. */
+  incrementsBy?: number;
+  /** Minimum value. */
+  minValue?: number;
+  /** Maximum value. */
+  maxValue?: number;
+  /** Whether the sequence cycles. */
+  cyclesOn?: boolean;
+}
+
 export interface SchemaSnapshot {
   tables: TableSnapshot[];
   /** Views declared via toView() + hasViewSql() (P1-26). */
   views?: ViewSnapshot[];
+  /** Database sequences declared via ModelBuilder.hasSequence() (P1-21). */
+  sequences?: SequenceDef[];
 }
 
 export interface ColumnChange {
@@ -128,9 +150,19 @@ export interface SeedRowDelete {
 
 export type SeedRowOp = SeedRowInsert | SeedRowUpdate | SeedRowDelete;
 
+/** Diff operation for a single database sequence (P1-21). */
+export interface SequenceDiff {
+  kind: 'create' | 'drop' | 'alter';
+  sequence: SequenceDef;
+  /** Previous definition — present for 'alter' only. */
+  prev?: SequenceDef;
+}
+
 export interface SchemaDiff {
   tables: TableDiff[];
   seedOps?: SeedRowOp[];
+  /** Sequence create/drop/alter operations (P1-21). */
+  sequenceOps?: SequenceDiff[];
 }
 
 export interface MigrationSql {

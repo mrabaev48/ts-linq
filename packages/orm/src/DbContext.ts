@@ -35,6 +35,7 @@ import { CacheCoordinator } from './services/CacheCoordinator';
 import { ChangeValidationService } from './services/ChangeValidationService';
 import { SoftDeleteInterceptor } from './services/SoftDeleteInterceptor';
 import type { NormalizedChange } from './types';
+import { HiLoValueGenerator } from './valueGenerators/HiLoValueGenerator';
 // import { logInternalError } from '@ts-linq/core'; // REMOVED
 
 function getOriginal<T extends Function>(target: T): T {
@@ -81,6 +82,8 @@ export abstract class DbContext {
   private _querySplittingBehavior?: import('@ts-linq/types').QuerySplittingBehavior;
   private _cacheCoordinator!: CacheCoordinator;
   private _auditInterceptor!: AuditInterceptor;
+  /** Per-context Hi-Lo generator instances, keyed by "schema.name" or "name". */
+  private readonly _hiLoGenerators = new Map<string, HiLoValueGenerator>();
   private _softDeleteInterceptor!: SoftDeleteInterceptor;
   private _interceptorRegistry!: InterceptorRegistry;
   private _transactionDepth = 0;
@@ -365,6 +368,7 @@ export abstract class DbContext {
     this._changeTracker.applyCascades();
     const changes = this._changeTracker.getChanges();
     if (!changes || changes.length === 0) return 0;
+    await this.prefillHiLoIds(changes);
     this.prefillDefaults(changes);
     const normalizedForValidation = this.normalizeForValidation(changes);
     this._validationService.validate(normalizedForValidation);
@@ -838,6 +842,44 @@ export abstract class DbContext {
         enumerable: true,
         configurable: true
       });
+    }
+  }
+
+  /**
+   * Async pre-pass: assigns Hi-Lo IDs to all "added" entities whose PK/FK column
+   * declares a sequence with a block size. Reserves blocks in batches per sequence.
+   */
+  private async prefillHiLoIds(
+    changes: Array<{ entity: object; entityClass: Function; state: string }>
+  ): Promise<void> {
+    for (const change of changes) {
+      if (change.state !== 'added') continue;
+      const meta = this._registry.getEntity(change.entityClass);
+      if (!meta) continue;
+      const record = change.entity as Record<string, unknown>;
+      for (const col of meta.columns) {
+        if (!col.hiLoBlockSize || !col.sequenceName) continue;
+        if (record[col.propertyName] !== undefined) continue;
+        const key = col.sequenceSchema
+          ? `${col.sequenceSchema}.${col.sequenceName}`
+          : col.sequenceName;
+        let gen = this._hiLoGenerators.get(key);
+        if (!gen) {
+          const seqName = col.sequenceName;
+          const seqSchema = col.sequenceSchema;
+          const blockSize = col.hiLoBlockSize;
+          const provider = this._provider;
+          gen = new HiLoValueGenerator(seqName, seqSchema, blockSize, async (n, s, bs) =>
+            provider.nextSequenceValue(n, s, bs)
+          );
+          this._hiLoGenerators.set(key, gen);
+        }
+        await gen.ensureBlock();
+        record[col.propertyName] = gen.next({
+          entityClass: change.entityClass,
+          propertyName: col.propertyName
+        });
+      }
     }
   }
 

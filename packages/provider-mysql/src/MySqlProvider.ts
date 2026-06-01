@@ -1,5 +1,5 @@
 import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
-import { MySqlDdlStrategy, MysqlDialect } from '@ts-linq/dialect-mysql';
+import { buildMysqlNextBlockSql, MySqlDdlStrategy, MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityMetadata, MySqlConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
 import {
@@ -462,6 +462,30 @@ export class MySqlProvider extends DatabaseProvider {
   /** Provide SQL dialect for this provider. */
   public getDialect(): SqlDialect {
     return new MysqlDialect();
+  }
+
+  /**
+   * Reserves the next Hi-Lo block using the MySQL emulation counter table.
+   * The UPDATE + SELECT pair must run within the same connection.
+   */
+  public override async nextSequenceValue(
+    sequenceName: string,
+    schema: string | undefined,
+    blockSize: number
+  ): Promise<number> {
+    const { updateSql, selectSql, params } = buildMysqlNextBlockSql(sequenceName, blockSize);
+    await this.executeNonQuery(updateSql, params as import('@ts-linq/types').SqlParameter[]);
+    const rows = await this.executeQuery<{ val: unknown }>(selectSql, [
+      sequenceName
+    ] as import('@ts-linq/types').SqlParameter[]);
+    const raw = rows[0]?.val;
+    if (raw === undefined) {
+      throw new Error(
+        `MySQL sequence emulation: no row found for sequence "${sequenceName}". ` +
+          'Ensure the sequence was registered via ModelBuilder.hasSequence().'
+      );
+    }
+    return Number(raw);
   }
 
   /** Coerce arbitrary JS value into a valid SqlParameter for MySQL. */
