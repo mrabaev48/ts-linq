@@ -444,4 +444,115 @@ describe('ModelBuilder', () => {
       expect(registry.getEntity(Article)?.comment).toBe('Main articles table');
     });
   });
+
+  describe('hasAlternateKey()', () => {
+    it('registers a single-column alternate key', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.toTable('articles');
+        b.property((a) => a.title)
+          .hasColumnName('title')
+          .hasColumnType('TEXT');
+        b.hasAlternateKey((a) => a.title);
+      });
+      mb._finalize();
+      const meta = registry.getEntity(Article);
+      expect(meta?.alternateKeys).toHaveLength(1);
+      expect(meta?.alternateKeys?.[0].name).toBe('AK_Article_title');
+      expect(meta?.alternateKeys?.[0].columns).toEqual(['title']);
+    });
+
+    it('registers a multi-column alternate key', () => {
+      const { registry, mb } = makeBuilder();
+
+      class Order {
+        id!: number;
+        tenantId!: string;
+        publicNumber!: string;
+      }
+
+      mb.entity(Order, (b) => {
+        b.toTable('orders');
+        b.property((o) => o.tenantId)
+          .hasColumnName('tenantId')
+          .hasColumnType('TEXT');
+        b.property((o) => o.publicNumber)
+          .hasColumnName('publicNumber')
+          .hasColumnType('TEXT');
+        b.hasAlternateKey((o) => [o.tenantId, o.publicNumber]);
+      });
+      mb._finalize();
+      const meta = registry.getEntity(Order);
+      expect(meta?.alternateKeys).toHaveLength(1);
+      expect(meta?.alternateKeys?.[0].name).toBe('AK_Order_tenantId_publicNumber');
+      expect(meta?.alternateKeys?.[0].columns).toEqual(['tenantId', 'publicNumber']);
+    });
+
+    it('returns this for chaining', () => {
+      const { mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        const result = b.toTable('articles').hasAlternateKey((a) => a.title);
+        expect(result).toBe(b);
+      });
+      mb._finalize();
+    });
+  });
+
+  describe('hasIndex() — lambda selector form', () => {
+    it('registers a multi-column index via lambda selector', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.toTable('articles');
+        b.property((a) => a.title)
+          .hasColumnName('title')
+          .hasColumnType('TEXT');
+        b.property((a) => a.content)
+          .hasColumnName('content')
+          .hasColumnType('TEXT');
+        b.hasIndex((a) => [a.title, a.content]).isUnique();
+      });
+      mb._finalize();
+      const meta = registry.getEntity(Article);
+      const idx = meta?.indexes.find((i) => i.columns.includes('title'));
+      expect(idx).toBeDefined();
+      expect(idx?.columns).toEqual(['title', 'content']);
+      expect(idx?.unique).toBe(true);
+    });
+
+    it('registers includeProperties on an index', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.toTable('articles');
+        b.property((a) => a.title)
+          .hasColumnName('title')
+          .hasColumnType('TEXT');
+        b.property((a) => a.content)
+          .hasColumnName('content')
+          .hasColumnType('TEXT');
+        b.hasIndex((a) => a.title).includeProperties((a) => [a.content]);
+      });
+      mb._finalize();
+      const meta = registry.getEntity(Article);
+      const idx = meta?.indexes.find((i) => i.columns.includes('title'));
+      expect(idx?.include).toEqual(['content']);
+    });
+
+    it('registers isDescending on an index', () => {
+      const { registry, mb } = makeBuilder();
+      mb.entity(Article, (b) => {
+        b.toTable('articles');
+        b.property((a) => a.title)
+          .hasColumnName('title')
+          .hasColumnType('TEXT');
+        b.property((a) => a.content)
+          .hasColumnName('content')
+          .hasColumnType('TEXT');
+        b.hasIndex((a) => [a.title, a.content]).isDescending([false, true]);
+      });
+      mb._finalize();
+      const meta = registry.getEntity(Article);
+      const idx = meta?.indexes.find((i) => i.columns.includes('title'));
+      expect(idx?.isDescending).toEqual([false, true]);
+    });
+  });
 });

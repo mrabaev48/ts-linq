@@ -743,6 +743,16 @@ export interface IndexMetadata {
   withParams?: Record<string, unknown>;
   mysqlVisibility?: 'VISIBLE' | 'INVISIBLE';
   include?: string[];
+  /** Per-column descending flags (mirrors EF Core's IsDescending). Index matches columns[]. */
+  isDescending?: boolean[];
+}
+
+/** Describes an alternate (non-PK) unique key — a named UNIQUE constraint usable as FK target. */
+export interface AlternateKeyMetadata {
+  /** Constraint name, e.g. "AK_User_email". */
+  name: string;
+  /** Property names that form this alternate key. */
+  columns: string[];
 }
 
 export interface ValidationRule {
@@ -866,6 +876,8 @@ export interface EntityMetadata {
   viewName?: string;
   /** Optional CREATE VIEW DDL supplied via hasViewSql() (P1-26). Emitted by migrations if present. */
   viewSql?: string;
+  /** Alternate (non-PK) unique keys declared via hasAlternateKey() (P1-31). */
+  alternateKeys?: AlternateKeyMetadata[];
 }
 
 /** Metadata for a shadow property (P1-16): a DB column with no corresponding entity field. */

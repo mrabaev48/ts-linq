@@ -228,7 +228,7 @@ whose `depends_on` points into the current step.
 | P1-26 | Views / keyless entities | P0-01 | ✅ done |
 | P1-28 | TrackGraph / DetectChanges | P0-02 | ✅ done |
 | P1-30 | Value generators / Sentinel | P0-01 | ✅ done |
-| P1-31 | Alternate keys / advanced indexes | P0-01 |
+| P1-31 | Alternate keys / advanced indexes | P0-01 | ✅ done |
 | P1-32 | Backing fields / PropertyAccessMode | P0-01 |
 | P2-33 | Stored procedure mapping | P0-01 |
 | P2-43 | DB-first scaffolding | P0-01 |

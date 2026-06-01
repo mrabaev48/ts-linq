@@ -36,6 +36,14 @@ export interface ForeignKeyDef {
   onUpdate?: string;
 }
 
+/** A named UNIQUE constraint (alternate key) — distinct from a plain unique index. */
+export interface UniqueConstraintDef {
+  /** Constraint name, e.g. "AK_User_email". */
+  name: string;
+  /** Column names participating in the constraint. */
+  columns: string[];
+}
+
 export interface TableSnapshot {
   name: string;
   columns: ColumnDef[];
@@ -44,6 +52,8 @@ export interface TableSnapshot {
   foreignKeys: ForeignKeyDef[];
   checkConstraints?: Array<{ name: string; sql: string }>;
   comment?: string;
+  /** Named UNIQUE constraints (alternate keys). Separate from plain indexes (P1-31). */
+  uniqueConstraints?: UniqueConstraintDef[];
 }
 
 /** Represents a database view tracked by the snapshot (P1-26). */
@@ -82,7 +92,10 @@ export interface TableDiff {
   fkCreates?: ForeignKeyDef[];
   /** Drop these foreign key constraint names from the existing table. */
   fkDrops?: string[];
-  // future: fkChanges
+  /** Create these named UNIQUE constraints (alternate keys) on the existing table (P1-31). */
+  uniqueConstraintCreates?: UniqueConstraintDef[];
+  /** Drop these UNIQUE constraint names from the existing table (P1-31). */
+  uniqueConstraintDrops?: string[];
   /** Optional snapshot of expected columns after changes. */
   columnsAfter?: ColumnDef[];
   /** Optional snapshot of expected primary keys after changes. */

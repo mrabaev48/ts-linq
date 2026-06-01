@@ -133,6 +133,26 @@ export class PostgresDdlStrategy {
     return sql;
   }
 
+  /**
+   * Generates `ALTER TABLE ... ADD CONSTRAINT ... UNIQUE (...)` for an alternate key.
+   * Mirrors EF Core's HasAlternateKey DDL for PostgreSQL.
+   */
+  public generateAddUniqueConstraintSql(
+    tableName: string,
+    name: string,
+    columns: string[]
+  ): string {
+    const cols = columns.map((c) => `"${c}"`).join(', ');
+    return `ALTER TABLE "${tableName}" ADD CONSTRAINT "${name}" UNIQUE (${cols})`;
+  }
+
+  /**
+   * Generates `ALTER TABLE ... DROP CONSTRAINT ...` for an alternate key.
+   */
+  public generateDropUniqueConstraintSql(tableName: string, name: string): string {
+    return `ALTER TABLE "${tableName}" DROP CONSTRAINT IF EXISTS "${name}"`;
+  }
+
   // index helpers relocated to PgIndexBuilder
 
   /**

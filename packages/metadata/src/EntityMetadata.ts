@@ -1,4 +1,5 @@
 import type {
+  AlternateKeyMetadata,
   CheckConstraintMetadata,
   ColumnMetadata,
   EntityMetadata,
@@ -33,6 +34,7 @@ export class EntityMetadataBuilder {
     isKeyless?: boolean;
     viewName?: string;
     viewSql?: string;
+    alternateKeys?: AlternateKeyMetadata[];
   };
 
   /**
@@ -94,6 +96,21 @@ export class EntityMetadataBuilder {
   public addIndex(index: IndexMetadata): this {
     this.metadata.indexes = this.metadata.indexes || [];
     this.metadata.indexes.push(index);
+    return this;
+  }
+
+  /**
+   * Add an alternate key definition to the entity.
+   * Replaces existing entry with the same name.
+   */
+  public addAlternateKey(ak: AlternateKeyMetadata): this {
+    this.metadata.alternateKeys = this.metadata.alternateKeys || [];
+    const idx = this.metadata.alternateKeys.findIndex((k) => k.name === ak.name);
+    if (idx >= 0) {
+      this.metadata.alternateKeys[idx] = ak;
+    } else {
+      this.metadata.alternateKeys.push(ak);
+    }
     return this;
   }
 
@@ -303,7 +320,10 @@ export class EntityMetadataBuilder {
         : {}),
       ...(this.metadata.isKeyless !== undefined ? { isKeyless: this.metadata.isKeyless } : {}),
       ...(this.metadata.viewName !== undefined ? { viewName: this.metadata.viewName } : {}),
-      ...(this.metadata.viewSql !== undefined ? { viewSql: this.metadata.viewSql } : {})
+      ...(this.metadata.viewSql !== undefined ? { viewSql: this.metadata.viewSql } : {}),
+      ...(this.metadata.alternateKeys !== undefined && this.metadata.alternateKeys.length > 0
+        ? { alternateKeys: this.metadata.alternateKeys }
+        : {})
     };
   }
 }

@@ -31,6 +31,20 @@ export function handleCreateTable(
 ): boolean {
   if (!td.create) return false;
   up.push(buildCreateTableSql(td, dialect));
+  if (td.create.uniqueConstraints && td.create.uniqueConstraints.length > 0) {
+    for (const uc of td.create.uniqueConstraints) {
+      const cols = uc.columns.map((c) => q(dialect, c)).join(', ');
+      if (dialect === 'mysql') {
+        up.push(`ALTER TABLE \`${td.create.name}\` ADD UNIQUE KEY \`${uc.name}\` (${cols})`);
+      } else if (dialect === 'mssql') {
+        up.push(`ALTER TABLE [${td.create.name}] ADD CONSTRAINT [${uc.name}] UNIQUE (${cols})`);
+      } else {
+        up.push(
+          `ALTER TABLE ${q(dialect, td.create.name)} ADD CONSTRAINT ${q(dialect, uc.name)} UNIQUE (${cols})`
+        );
+      }
+    }
+  }
   if (td.create.indexes && td.create.indexes.length > 0) {
     for (const idx of td.create.indexes) {
       const uniq = idx.unique ? 'UNIQUE ' : '';
