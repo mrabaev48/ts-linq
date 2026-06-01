@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/cache-memcached",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Memcached adapters for ts-linq caches (SqlCache, CountCache)",
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",
