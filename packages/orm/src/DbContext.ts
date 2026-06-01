@@ -28,6 +28,7 @@ import { DbUpdateConcurrencyException } from './exceptions/DbUpdateConcurrencyEx
 import { InterceptorRegistry } from './interceptors/InterceptorRegistry';
 import { type EntityQueryFilterMap, ModelBuilder } from './ModelBuilder';
 import { BatchExecutor } from './save-changes/batch-executor';
+import { SpExecutor } from './save-changes/sp-executor';
 import { AuditInterceptor } from './services/AuditInterceptor';
 import { CacheCoordinator } from './services/CacheCoordinator';
 import { ChangeValidationService } from './services/ChangeValidationService';
@@ -73,6 +74,7 @@ export abstract class DbContext {
   private _updateCmd!: UpdateCommand;
   private _deleteCmd!: DeleteCommand;
   private _fragmentExecutor!: FragmentDmlExecutor;
+  private _spExecutor!: SpExecutor;
   /** SQL cache created and owned by this context (undefined when user supplied their own). */
   private _ownedSqlCache?: EnhancedSqlCache;
   private _querySplittingBehavior?: import('@ts-linq/types').QuerySplittingBehavior;
@@ -130,6 +132,7 @@ export abstract class DbContext {
       this._cacheCoordinator.updateEntry(c)
     );
     this._fragmentExecutor = new FragmentDmlExecutor(this._provider);
+    this._spExecutor = new SpExecutor(this._provider, this._registry);
     this._deleteCmd = new DeleteCommand(
       this._provider,
       async (c) => this._softDeleteInterceptor.apply(c),
@@ -387,8 +390,27 @@ export abstract class DbContext {
       let affectedRows = 0;
       if (this._maxBatchSize > 0) {
         const allNormalized = changes.map((c) => this.normalizeChange(c));
-        const batchExecutor = new BatchExecutor(this._provider, this._maxBatchSize, this._registry);
-        affectedRows = await batchExecutor.execute(allNormalized);
+        const spChanges: typeof allNormalized = [];
+        const dmlChanges: typeof allNormalized = [];
+        for (const c of allNormalized) {
+          const op = c.state === 'added' ? 'insert' : c.state === 'modified' ? 'update' : 'delete';
+          if (this._spExecutor.hasSp(c.entityClass, op as 'insert' | 'update' | 'delete')) {
+            spChanges.push(c);
+          } else {
+            dmlChanges.push(c);
+          }
+        }
+        for (const c of spChanges) {
+          affectedRows += await this.processChange(c);
+        }
+        if (dmlChanges.length > 0) {
+          const batchExecutor = new BatchExecutor(
+            this._provider,
+            this._maxBatchSize,
+            this._registry
+          );
+          affectedRows += await batchExecutor.execute(dmlChanges);
+        }
       } else {
         for (const change of changes) {
           const normalized = this.normalizeChange(change);
@@ -929,12 +951,30 @@ export abstract class DbContext {
   private async processChange(change: NormalizedChange): Promise<number> {
     switch (change.state) {
       case 'added':
+        if (this._spExecutor.hasSp(change.entityClass, 'insert')) {
+          await this._spExecutor.executeInsert(change.entity, change.entityClass);
+          return 1;
+        }
         await this.applyInsert(change);
         return 1;
       case 'modified':
+        if (this._spExecutor.hasSp(change.entityClass, 'update')) {
+          return await this._spExecutor.executeUpdate(
+            change.entity,
+            change.originalValues as Record<string, unknown> | undefined,
+            change.entityClass
+          );
+        }
         await this.applyUpdate(change);
         return 1;
       case 'deleted':
+        if (this._spExecutor.hasSp(change.entityClass, 'delete')) {
+          return await this._spExecutor.executeDelete(
+            change.entity,
+            change.originalValues as Record<string, unknown> | undefined,
+            change.entityClass
+          );
+        }
         return (await this.applyDelete(change)) ? 1 : 0;
       default:
         return 0;

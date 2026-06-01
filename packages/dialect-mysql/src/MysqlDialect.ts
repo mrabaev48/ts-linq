@@ -25,6 +25,7 @@ import { MySqlGroupEmitter } from './emitters/MySqlGroupEmitter';
 import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
 import { MySqlOrderEmitter } from './emitters/MySqlOrderEmitter';
 import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
+import { createMysqlSpCallSyntax } from './sp-syntax';
 
 /**
  * MySQL dialect for SELECT generation.
@@ -42,6 +43,10 @@ export class MysqlDialect implements SqlDialect {
 
   public quoteIdentifier(identifier: string): string {
     return `\`${identifier.replace(/`/g, '``')}\``;
+  }
+
+  public getSpCallSyntax() {
+    return createMysqlSpCallSyntax();
   }
 
   public buildBatchInsert(

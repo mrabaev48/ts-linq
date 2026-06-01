@@ -25,6 +25,7 @@ import { MssqlGroupEmitter } from './emitters/MssqlGroupEmitter';
 import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
 import { MssqlOrderEmitter } from './emitters/MssqlOrderEmitter';
 import { MssqlWhereEmitter } from './emitters/MssqlWhereEmitter';
+import { createMssqlSpCallSyntax } from './sp-syntax';
 
 /**
  * MSSQL dialect for SELECT generation.
@@ -43,6 +44,10 @@ export class MssqlDialect implements SqlDialect {
 
   public quoteIdentifier(identifier: string): string {
     return `[${identifier.replace(/]/g, ']]')}]`;
+  }
+
+  public getSpCallSyntax() {
+    return createMssqlSpCallSyntax();
   }
 
   public buildBatchInsert(
