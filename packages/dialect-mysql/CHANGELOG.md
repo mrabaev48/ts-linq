@@ -1,5 +1,19 @@
 # @ts-linq/dialect-mysql
 
+## 2.5.0
+
+### Minor Changes
+
+- [#137](https://github.com/mrabaev48/ts-linq/pull/137) [`40a9c1e`](https://github.com/mrabaev48/ts-linq/commit/40a9c1ed468d089e3ec236423612afa4ce17b252) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P0-15): implement JSON columns — OwnsOne/OwnsMany with ToJson(), LINQ querying into JSON paths, per-dialect SQL translation (Postgres JSONB, MySQL JSON, MSSQL JSON_VALUE), JsonShape descriptor, JsonAccessRewriter, JsonSnapshotter for change tracking, and dialect-native DDL emission.
+
+### Patch Changes
+
+- Updated dependencies [[`40a9c1e`](https://github.com/mrabaev48/ts-linq/commit/40a9c1ed468d089e3ec236423612afa4ce17b252)]:
+  - @ts-linq/sql-visitor@2.6.0
+  - @ts-linq/core@1.4.7
+  - @ts-linq/types@2.9.0
+  - @ts-linq/metadata@2.6.1
+
 ## 2.4.1
 
 ### Patch Changes
