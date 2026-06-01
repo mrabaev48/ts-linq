@@ -1,5 +1,32 @@
 # @ts-linq/orm
 
+## 2.4.0
+
+### Minor Changes
+
+- [#127](https://github.com/mrabaev48/ts-linq/pull/127) [`4c6abea`](https://github.com/mrabaev48/ts-linq/commit/4c6abead6c23c96d3faa01c4f12368f92ed935f5) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-31): implement alternate keys and rich indexes
+  - Add `hasAlternateKey(selector)` to EntityTypeBuilder — emits named UNIQUE constraints usable as FK targets
+  - Add `includeProperties(selector)` and `isDescending(flags[])` to IndexBuilder — covering indexes and per-column sort order
+  - Add lambda-selector overload to `hasIndex(selector)` — mirrors EF Core's API
+  - Wire `hasPrincipalKey()` → alternate key FK resolution in SchemaSnapshot
+  - Add `AlternateKeyMetadata` type and `alternateKeys` field to `EntityMetadata`
+  - Add `UniqueConstraintDef` to DiffTypes; diff + DDL emit alternate keys separately from plain indexes
+  - All dialects: `generateAddUniqueConstraintSql` / `generateDropUniqueConstraintSql`
+  - PostgreSQL covering indexes via INCLUDE clause
+  - MySQL: hasFilter silently dropped with warning (not supported natively)
+
+### Patch Changes
+
+- Updated dependencies [[`4c6abea`](https://github.com/mrabaev48/ts-linq/commit/4c6abead6c23c96d3faa01c4f12368f92ed935f5)]:
+  - @ts-linq/types@2.5.0
+  - @ts-linq/metadata@2.3.0
+  - @ts-linq/migrations@2.3.0
+  - @ts-linq/concurrency@2.0.5
+  - @ts-linq/core@1.4.2
+  - @ts-linq/query@2.3.1
+  - @ts-linq/sql-visitor@2.4.1
+  - @ts-linq/telemetry@2.1.2
+
 ## 2.3.0
 
 ### Minor Changes
