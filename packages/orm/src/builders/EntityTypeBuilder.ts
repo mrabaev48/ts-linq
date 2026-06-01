@@ -1,5 +1,6 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import type {
+  AlternateKeyMetadata,
   CheckConstraintMetadata,
   ColumnMetadata,
   IndexMetadata,
@@ -18,7 +19,7 @@ import { OwnedNavigationBuilder } from './OwnedNavigationBuilder';
 import { PropertyBuilder } from './PropertyBuilder';
 import { ReferenceNavigationBuilder } from './ReferenceNavigationBuilder';
 import { TableSplitConfigBuilder } from './TableSplitConfigBuilder';
-import { extractPropertyName } from './utils';
+import { extractPropertyName, extractPropertyNames } from './utils';
 
 function resolveOwnedArgs<TOwned, TOwner>(
   ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<TOwner, TOwned>) => void),
@@ -70,6 +71,7 @@ export class EntityTypeBuilder<T> {
   private _isKeyless?: boolean;
   private _viewName?: string;
   private _viewSql?: string;
+  private readonly _alternateKeys: AlternateKeyMetadata[] = [];
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -175,8 +177,39 @@ export class EntityTypeBuilder<T> {
     );
   }
 
-  hasIndex<K extends keyof T>(...keys: K[]): IndexBuilder<T> {
-    return new IndexBuilder<T>(this._ctor, keys as string[], this._indexes);
+  /**
+   * Registers an index on one or more columns.
+   * Accepts either a lambda selector (`p => [p.a, p.b]`) or spread key names (`'a', 'b'`).
+   * Mirrors EF Core's `HasIndex(...)`.
+   */
+  hasIndex(selector: (e: T) => unknown): IndexBuilder<T>;
+  hasIndex<K extends keyof T>(...keys: K[]): IndexBuilder<T>;
+  hasIndex<K extends keyof T>(
+    selectorOrKey: ((e: T) => unknown) | K,
+    ...restKeys: K[]
+  ): IndexBuilder<T> {
+    if (typeof selectorOrKey === 'function') {
+      const cols = extractPropertyNames(selectorOrKey as (e: T) => unknown);
+      return new IndexBuilder<T>(this._ctor, cols, this._indexes);
+    }
+    const cols = [selectorOrKey as string, ...(restKeys as string[])];
+    return new IndexBuilder<T>(this._ctor, cols, this._indexes);
+  }
+
+  /**
+   * Declares an alternate (non-PK) unique key on one or more columns.
+   * The alternate key is emitted as a named UNIQUE constraint and can be the target of an FK.
+   * Mirrors EF Core's `HasAlternateKey(...)`.
+   *
+   * @example
+   * b.hasAlternateKey(u => u.email);
+   * b.hasAlternateKey(o => [o.tenantId, o.publicNumber]);
+   */
+  hasAlternateKey(selector: (e: T) => unknown): this {
+    const cols = extractPropertyNames(selector);
+    const name = `AK_${this._ctor.name}_${cols.join('_')}`;
+    this._alternateKeys.push({ name, columns: cols });
+    return this;
   }
 
   ownsOne<TOwned>(
@@ -365,6 +398,10 @@ export class EntityTypeBuilder<T> {
 
     for (const idx of this._indexes) {
       registry.mergeFluentIndex(this._ctor, idx);
+    }
+
+    for (const ak of this._alternateKeys) {
+      registry.mergeFluentAlternateKey(this._ctor, ak);
     }
 
     if (this._isTemporal !== undefined) {

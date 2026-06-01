@@ -125,6 +125,26 @@ export class MssqlDdlStrategy {
   }
 
   /**
+   * Generates `ALTER TABLE ... ADD CONSTRAINT ... UNIQUE (...)` for an alternate key.
+   * Mirrors EF Core's HasAlternateKey DDL for SQL Server.
+   */
+  public generateAddUniqueConstraintSql(
+    tableName: string,
+    name: string,
+    columns: string[]
+  ): string {
+    const cols = columns.map((c) => `[${c}]`).join(', ');
+    return `ALTER TABLE [${tableName}] ADD CONSTRAINT [${name}] UNIQUE (${cols})`;
+  }
+
+  /**
+   * Generates `ALTER TABLE ... DROP CONSTRAINT ...` for an alternate key.
+   */
+  public generateDropUniqueConstraintSql(tableName: string, name: string): string {
+    return `ALTER TABLE [${tableName}] DROP CONSTRAINT [${name}]`;
+  }
+
+  /**
    * Generates sp_addextendedproperty calls for table and column comments.
    * Returns an empty array when neither the table nor any column has a comment.
    */

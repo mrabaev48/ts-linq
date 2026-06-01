@@ -9,6 +9,11 @@ export {
   deleteBehaviorToSql
 } from './builders/handlers/ForeignKeyHandlers';
 export { buildCreateTableSql } from './builders/handlers/TableHandlers';
+export {
+  buildAddUniqueConstraintSql,
+  buildCreateIndexSql,
+  buildDropUniqueConstraintSql
+} from './builders/MigrationHandlers';
 export * from './bundle/build-bundle';
 export * from './DialectMigrationSql';
 export * from './DiffBasedMigration';
