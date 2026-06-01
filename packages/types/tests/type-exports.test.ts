@@ -30,6 +30,14 @@ describe('Type Exports', () => {
     expect(types.EntityState.Deleted).toBe('deleted');
   });
 
+  it('should export ValueGeneratedPolicy enum', () => {
+    expect(types.ValueGeneratedPolicy).toBeDefined();
+    expect(types.ValueGeneratedPolicy.Never).toBe('Never');
+    expect(types.ValueGeneratedPolicy.OnAdd).toBe('OnAdd');
+    expect(types.ValueGeneratedPolicy.OnUpdate).toBe('OnUpdate');
+    expect(types.ValueGeneratedPolicy.OnAddOrUpdate).toBe('OnAddOrUpdate');
+  });
+
   it('should not export any unexpected runtime values', () => {
     const exportedKeys = Object.keys(types);
     const expectedExports = [
@@ -47,7 +55,8 @@ describe('Type Exports', () => {
       'QuerySplittingBehavior',
       'StorageStrategy',
       'InheritanceStrategy',
-      'isTemplateSqlCache'
+      'isTemplateSqlCache',
+      'ValueGeneratedPolicy'
     ];
 
     expect(exportedKeys.sort()).toEqual(expectedExports.sort());
