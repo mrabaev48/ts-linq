@@ -1,5 +1,24 @@
 # @ts-linq/provider-mysql
 
+## 2.2.1
+
+### Patch Changes
+
+- [#115](https://github.com/mrabaev48/ts-linq/pull/115) [`2f86a0d`](https://github.com/mrabaev48/ts-linq/commit/2f86a0d8b0487673603aa6816997ed394e9d91e7) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(p0-10): implement concurrency tokens, RowVersion, and DbUpdateConcurrencyException
+  - `PropertyBuilder.isConcurrencyToken()` and `isRowVersion()` fluent API methods
+  - `ColumnMetadata.isConcurrencyToken` flag in `@ts-linq/types`
+  - `DbUpdateConcurrencyException` with populated `entries: EntityEntry[]`
+  - `EntityEntry.reload()` and `getDatabaseValues()` recovery helpers
+  - WHERE-clause injection of original token values in UPDATE/DELETE for all three dialects (postgres, mysql, mssql)
+  - `originalValues` propagated from ChangeTracker snapshot through the full save pipeline
+  - `OptimisticConcurrencyError` re-thrown as `DbUpdateConcurrencyException` in `saveChanges()`
+
+- Updated dependencies [[`2f86a0d`](https://github.com/mrabaev48/ts-linq/commit/2f86a0d8b0487673603aa6816997ed394e9d91e7), [`2aa9392`](https://github.com/mrabaev48/ts-linq/commit/2aa939259c682cad252f89818db47909e1af16f8), [`69ecc17`](https://github.com/mrabaev48/ts-linq/commit/69ecc171e11a03f46c02533dc2b13351f5cd16a3), [`5284cc5`](https://github.com/mrabaev48/ts-linq/commit/5284cc519fe8c5c6486b35c6d88a00e114317a7b), [`66043bb`](https://github.com/mrabaev48/ts-linq/commit/66043bb78642b837464d20a8040660af69e61795), [`568ec79`](https://github.com/mrabaev48/ts-linq/commit/568ec792462bc5f1f9686d7a903bbe01592f71bb), [`cda8a4e`](https://github.com/mrabaev48/ts-linq/commit/cda8a4edac105bffd343fe8637f0340c361486e2), [`5f07aeb`](https://github.com/mrabaev48/ts-linq/commit/5f07aebaac481349bfd4ce43079ac34aee351fe4), [`03caeac`](https://github.com/mrabaev48/ts-linq/commit/03caeac9ea0c29aca70922b0c349aae30dc3d907)]:
+  - @ts-linq/types@2.4.0
+  - @ts-linq/core@1.4.1
+  - @ts-linq/dialect-mysql@2.3.0
+  - @ts-linq/metadata@2.2.0
+
 ## 2.2.0
 
 ### Minor Changes

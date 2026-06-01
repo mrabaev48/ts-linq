@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/cache-redis",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Redis adapters for ts-linq caches (SqlCache, CountCache)",
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",
