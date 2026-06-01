@@ -14,6 +14,7 @@ export * from './PropertyAccessor';
 export { reflectGetOwnMetadata } from './reflectUtils';
 export * from './Relationships';
 export * from './resolveEntityRef';
+export * from './stored-procedure-mapping';
 export * from './ValidIf';
 export * from './ValueComparer';
 export * from './ValueConverter';

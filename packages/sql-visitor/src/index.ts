@@ -2,6 +2,7 @@ export { buildQuestionMarkRows, calcChunkSize, chunkArray } from './batch-emitte
 export { emitTagComments } from './emit-tags';
 export type { EfFunctionTranslator } from './functions/FunctionTranslator';
 export { ParameterState, ParameterStyle } from './ParameterStyle';
+export { CallSyntaxEmitter, ExecSyntaxEmitter } from './sp-call-emitter';
 export { SqlVisitor, type SqlVisitorOptions } from './SqlVisitor';
 export type { ColumnResolver, ConverterResolver } from './visitors/BinaryVisitor';
 export { BinaryVisitor, renderPropertyName, resolveParameterRef } from './visitors/BinaryVisitor';
