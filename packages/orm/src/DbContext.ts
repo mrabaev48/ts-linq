@@ -16,8 +16,9 @@ import { err, ok } from '@ts-linq/types';
 import { OptimisticConcurrencyError } from '@ts-linq/types';
 
 import { applyCompiledModel } from './bootstrap/use-compiled-model';
-import { ChangeTracker, type JoinRowChange } from './ChangeTracker';
+import { type JoinRowChange } from './ChangeTracker';
 import { EntityEntry } from './changetracker/EntityEntry';
+import { ChangeTrackerFacade } from './ChangeTrackerFacade';
 import { DeleteCommand } from './commands/DeleteCommand';
 import { FragmentDmlExecutor } from './commands/FragmentDmlExecutor';
 import { InsertCommand } from './commands/InsertCommand';
@@ -58,7 +59,7 @@ function getOriginal<T extends Function>(target: T): T {
 export abstract class DbContext {
   private _provider: DatabaseProvider;
   private _registry: MetadataRegistry;
-  private _changeTracker: ChangeTracker;
+  private _changeTracker: ChangeTrackerFacade;
   private _entityLoader: EntityLoader;
   private _dbSets: Map<Function, DbSet<object>> = new Map();
   private _decoratedDbSets: Map<Function, DbSet<object>> = new Map();
@@ -124,7 +125,7 @@ export abstract class DbContext {
     );
 
     this._registry = options.registry ?? MetadataStorage.getInstance();
-    this._changeTracker = new ChangeTracker(this._registry);
+    this._changeTracker = new ChangeTrackerFacade(this._registry);
     this._changeTracker.setProvider(this._provider);
     this._entityLoader = new EntityLoader(this._provider);
     this._querySplittingBehavior = options.querySplittingBehavior;
@@ -687,7 +688,7 @@ export abstract class DbContext {
    *
    * @returns The `ChangeTracker` handling entity states for this context.
    */
-  public get changeTracker(): ChangeTracker {
+  public get changeTracker(): ChangeTrackerFacade {
     return this._changeTracker;
   }
 

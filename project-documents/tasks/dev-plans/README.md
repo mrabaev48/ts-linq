@@ -53,6 +53,7 @@ Lands after P0. Necessary for power users but not blocking baseline migration.
 | P1-20 | [Compiled queries](./P1-20-compiled-queries.md)                               | `EF.CompileQuery`, `EF.CompileAsyncQuery`                                                              | - [x]  | M      | —            |
 | P1-21 | [Sequences / HiLo](./P1-21-sequences-hi-lo.md)                                | `HasSequence`, `UseHiLo`, `UseSequence`                                                                | ✅      | L      | P1-30        |
 | P1-22 | [EF.Functions / DbFunctions](./P1-22-ef-functions.md)                         | `EF.Functions.Like/ILike/Random/DateDiff*/Greatest/Least/StDev/Variance`, `HasDbFunction`              | ✅      | L      | P2-37            |
+| P1-29 | [DbSet.Local / FindEntry / Find / FindAsync](./P1-29-local-view-find.md)       | `DbSet<T>.Local`, `Find`, `FindAsync`, `ChangeTracker.FindEntry`, `ChangeTracker.Entries`               | ✅      | M      | P1-28        |
 
 ### RF — Infrastructure / Engineering (1 task)
 
@@ -241,7 +242,7 @@ whose `depends_on` points into the current step.
 | P0-15 | JSON columns | P0-06 | ✅ done |
 | P1-17 | Complex types | P0-06 | ✅ done |
 | P1-21 | Sequences / HiLo | P1-30 | ✅ done |
-| P1-29 | LocalView / Find / FindAsync | P1-28 |
+| P1-29 | LocalView / Find / FindAsync | P1-28 | ✅ done |
 | P2-37 | Cosmos DB provider | P0-03 + P0-04 |
 | P2-38 | SQLite provider | P0-03 + P0-04 |
 | P2-39 | InMemory provider | P0-03 + P0-04 |
