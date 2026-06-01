@@ -643,6 +643,30 @@ export interface ValueComparerLike<T = unknown> {
   snapshot(v: T): T;
 }
 
+// ---------------------------------------------------------------------------
+// Value generators (P1-30)
+// ---------------------------------------------------------------------------
+
+export enum ValueGeneratedPolicy {
+  Never = 'Never',
+  OnAdd = 'OnAdd',
+  OnUpdate = 'OnUpdate',
+  OnAddOrUpdate = 'OnAddOrUpdate'
+}
+
+export interface ValueGeneratorContext {
+  entityClass: Function;
+  propertyName: string;
+}
+
+export interface ValueGenerator<T = unknown> {
+  next(context: ValueGeneratorContext): T;
+}
+
+export type ValueGeneratorClass<T = unknown> = new () => ValueGenerator<T>;
+
+// ---------------------------------------------------------------------------
+
 export interface ColumnMetadata {
   propertyName: string;
   columnName: string;
@@ -670,6 +694,12 @@ export interface ColumnMetadata {
   comparer?: ValueComparerLike;
   /** True if this column is a shadow property — no field on the entity class (P1-16). */
   isShadow?: boolean;
+  /** Value generation policy for this column (P1-30). */
+  valueGeneratedPolicy?: ValueGeneratedPolicy;
+  /** Sentinel value: if the current property value equals this, the client-side generator runs (P1-30). */
+  sentinel?: unknown;
+  /** Client-side value generator class (P1-30). Instantiated per-call. */
+  valueGeneratorClass?: ValueGeneratorClass;
 }
 
 export enum DeleteBehavior {
