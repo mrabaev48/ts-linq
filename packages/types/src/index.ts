@@ -903,6 +903,24 @@ export interface OwnedEntityMetadata {
   nestedOwned?: OwnedEntityMetadata[];
 }
 
+/**
+ * Metadata for a complex type property (P1-17).
+ * A complex type is a value-object with no identity, no DbSet, and no ChangeTracker entry.
+ * Columns are flattened into the owner table with a prefix (e.g. shippingAddress_street).
+ */
+export interface ComplexTypePropertyMetadata {
+  /** Property name on the owner entity (e.g. "shippingAddress"). */
+  propertyName: string;
+  /** Column name prefix. Defaults to "<propertyName>_". */
+  columnPrefix: string;
+  /** Whether the complex property is required (non-nullable). Defaults to true, mirroring EF Core. */
+  isRequired: boolean;
+  /** Leaf column overrides configured via ComplexTypeBuilder.property(). */
+  properties: ColumnMetadata[];
+  /** Recursively nested complex types within this complex type. */
+  nested: ComplexTypePropertyMetadata[];
+}
+
 export interface SkipNavigationMetadata {
   /** Property name on the owning entity (e.g. "tags" on Post). */
   propertyName: string;
@@ -973,6 +991,8 @@ export interface EntityMetadata {
   viewSql?: string;
   /** Alternate (non-PK) unique keys declared via hasAlternateKey() (P1-31). */
   alternateKeys?: AlternateKeyMetadata[];
+  /** Complex type properties (P1-17): value-objects flattened into the owner table. */
+  complexProperties?: ComplexTypePropertyMetadata[];
 }
 
 /** Metadata for a shadow property (P1-16): a DB column with no corresponding entity field. */
