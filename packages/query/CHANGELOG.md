@@ -1,5 +1,16 @@
 # @ts-linq/query
 
+## 2.4.6
+
+### Patch Changes
+
+- Updated dependencies [[`6304976`](https://github.com/mrabaev48/ts-linq/commit/6304976b1ad6aeaf3db8f9fc2182b89f766340c6)]:
+  - @ts-linq/types@2.11.0
+  - @ts-linq/metadata@2.7.0
+  - @ts-linq/core@1.5.0
+  - @ts-linq/ast@2.4.2
+  - @ts-linq/sql-visitor@2.7.1
+
 ## 2.4.5
 
 ### Patch Changes
