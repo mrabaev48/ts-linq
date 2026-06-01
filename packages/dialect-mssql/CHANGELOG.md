@@ -1,5 +1,21 @@
 # @ts-linq/dialect-mssql
 
+## 2.5.0
+
+### Minor Changes
+
+- [#133](https://github.com/mrabaev48/ts-linq/pull/133) [`9c2ad23`](https://github.com/mrabaev48/ts-linq/commit/9c2ad23d0a2f934f881524e280e76329f4d1eed0) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P2-43): implement database-first scaffolding (reverse engineer)
+
+  Add `scaffoldDbContext()` to `@ts-linq/migrations` that reverse-engineers an existing database into TypeScript entity classes and a `DbContext`. Includes per-dialect introspectors (`PostgresDbIntrospector`, `MySqlDbIntrospector`, `MssqlDbIntrospector`) exported from dialect packages, a name normalizer with `--use-database-names` / `--no-pluralize` options, entity and DbContext code generators, and a new `scaffold` CLI command.
+
+### Patch Changes
+
+- Updated dependencies [[`9c2ad23`](https://github.com/mrabaev48/ts-linq/commit/9c2ad23d0a2f934f881524e280e76329f4d1eed0)]:
+  - @ts-linq/types@2.8.0
+  - @ts-linq/core@1.4.5
+  - @ts-linq/metadata@2.5.1
+  - @ts-linq/sql-visitor@2.5.1
+
 ## 2.4.3
 
 ### Patch Changes
