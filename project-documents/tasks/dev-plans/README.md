@@ -38,7 +38,7 @@ Blocks EF parity baseline. Required before any non-trivial EF Core → ts-linq m
 | P0-12 | [Interceptors](./P0-12-interceptors.md)                                     | `IDbCommandInterceptor`, `IDbConnectionInterceptor`, `ISaveChangesInterceptor`, `IMaterializationInterceptor`     | - [x]  | L      | —          |
 | P0-13 | [HasData seeding](./P0-13-has-data-seeding.md)                              | `modelBuilder.Entity<T>().HasData(...)`                                                                           | ✅      | M      | P0-01      |
 | P0-14 | [Computed / default / check](./P0-14-computed-default-check.md)             | `HasDefaultValue(Sql)`, `HasComputedColumnSql`, `HasCheckConstraint`, `HasComment`                                | ✅      | M      | P0-01      |
-| P0-15 | [JSON columns](./P0-15-json-columns.md)                                     | `OwnsOne(..., b => b.ToJson())`, LINQ over JSON paths                                                             | - [ ]  | L      | P0-06      |
+| P0-15 | [JSON columns](./P0-15-json-columns.md)                                     | `OwnsOne(..., b => b.ToJson())`, LINQ over JSON paths                                                             | ✅      | L      | P0-06      |
 
 ### P1 — Important parity (17 tasks)
 
@@ -238,7 +238,7 @@ whose `depends_on` points into the current step.
 
 | Task | Title | Unblocked by |
 |------|-------|--------------|
-| P0-15 | JSON columns | P0-06 |
+| P0-15 | JSON columns | P0-06 | ✅ done |
 | P1-17 | Complex types | P0-06 |
 | P1-21 | Sequences / HiLo | P1-30 |
 | P1-29 | LocalView / Find / FindAsync | P1-28 |
