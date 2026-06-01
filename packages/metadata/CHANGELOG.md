@@ -1,5 +1,14 @@
 # @ts-linq/metadata
 
+## 2.6.0
+
+### Minor Changes
+
+- [#135](https://github.com/mrabaev48/ts-linq/pull/135) [`a3c75aa`](https://github.com/mrabaev48/ts-linq/commit/a3c75aab0b5c3304f0e4bf3c6471f74ee9e4f580) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P2-44): implement compiled models / AOT optimization
+  - `@ts-linq/metadata`: adds `CompiledModel` interface and `loadCompiledModel()` hydration service
+  - `@ts-linq/orm`: DbContext pre-populates MetadataRegistry from `compiledModel` option, skipping reflective decorator scan
+  - `@ts-linq/cli`: new `dbcontext optimize` command generates `.generated.ts` AOT snapshots; `--check` flag for CI drift detection
+
 ## 2.5.1
 
 ### Patch Changes
