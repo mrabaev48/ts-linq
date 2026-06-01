@@ -4,6 +4,7 @@ import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { HierarchyIdTranslator, SpatialTranslator } from '@ts-linq/types';
 
 import type { EfFunctionTranslator } from './functions/FunctionTranslator';
+import type { JsonAccessRewriter } from './JsonAccessRewriter';
 import { ParameterState, ParameterStyle } from './ParameterStyle';
 import {
   BinaryVisitor,
@@ -13,11 +14,16 @@ import {
 import { EfFunctionVisitor } from './visitors/EfFunctionVisitor';
 import { HierarchyMethodVisitor } from './visitors/HierarchyMethodVisitor';
 import { InVisitor } from './visitors/InVisitor';
+import type { JsonPathTranslator } from './visitors/JsonPathVisitor';
+import { JsonPathVisitor } from './visitors/JsonPathVisitor';
 import { LogicalVisitor } from './visitors/LogicalVisitor';
 import { MethodVisitor } from './visitors/MethodVisitor';
 import { NullVisitor } from './visitors/NullVisitor';
 import { SpatialMethodVisitor } from './visitors/SpatialMethodVisitor';
 import { UnaryVisitor } from './visitors/UnaryVisitor';
+
+export { JsonAccessRewriter } from './JsonAccessRewriter';
+export type { JsonPathTranslator } from './visitors/JsonPathVisitor';
 
 export interface SqlVisitorOptions {
   spatialTranslator?: SpatialTranslator;
@@ -28,6 +34,10 @@ export interface SqlVisitorOptions {
   efFunctionTranslator?: EfFunctionTranslator;
   /** User-defined functions registered via ModelBuilder.hasDbFunction(). Maps fn key → SQL name. */
   userFunctions?: ReadonlyMap<string, string>;
+  /** Translates JSON path expressions for the target dialect. Required when querying JSON columns. */
+  jsonPathTranslator?: JsonPathTranslator;
+  /** Rewrites multi-segment property paths into JSON path expressions before SQL generation. */
+  jsonAccessRewriter?: JsonAccessRewriter;
 }
 
 /**
@@ -57,6 +67,8 @@ export class SqlVisitor {
   private readonly method: MethodVisitor;
   private readonly efFunction?: EfFunctionVisitor;
   private readonly converterResolver?: ConverterResolver;
+  private readonly jsonPath?: JsonPathVisitor;
+  private readonly jsonRewriter?: JsonAccessRewriter;
 
   constructor(
     private readonly parameterStyle: ParameterStyle = ParameterStyle.Question,
@@ -73,6 +85,10 @@ export class SqlVisitor {
       ? new EfFunctionVisitor(options.efFunctionTranslator, options.userFunctions)
       : undefined;
     this.converterResolver = options?.converterResolver;
+    this.jsonPath = options?.jsonPathTranslator
+      ? new JsonPathVisitor(options.jsonPathTranslator)
+      : undefined;
+    this.jsonRewriter = options?.jsonAccessRewriter;
   }
 
   public toSql(
@@ -81,7 +97,8 @@ export class SqlVisitor {
     resolver?: ColumnResolver
   ): ConditionFragment {
     const state = new ParameterState(this.parameterStyle);
-    return this._visit(node, inputParameters, resolver, state);
+    const rewritten = this.jsonRewriter ? this.jsonRewriter.rewrite(node) : node;
+    return this._visit(rewritten, inputParameters, resolver, state);
   }
 
   private _visit(
@@ -123,6 +140,15 @@ export class SqlVisitor {
           );
         }
         return this.efFunction.visit(node, inputParameters, resolver, state);
+      case 'jsonPath':
+        if (!this.jsonPath) {
+          throw new AstSqlGenerationError(
+            'UNSUPPORTED_NODE_TYPE',
+            `JSON path expression requires a jsonPathTranslator. Pass one via SqlVisitor options.`,
+            { nodeType: 'jsonPath', column: node.column, path: node.path }
+          );
+        }
+        return this.jsonPath.visit(node, state);
       case 'unsupported':
         throw new AstSqlGenerationError(
           'UNSUPPORTED_NODE_TYPE',

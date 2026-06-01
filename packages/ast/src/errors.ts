@@ -22,6 +22,9 @@ export interface AstSqlGenerationErrorDetails {
   readonly syntaxKind?: number;
   readonly method?: string;
   readonly fn?: string;
+  /** JSON path expression details. */
+  readonly column?: string;
+  readonly path?: readonly string[];
 }
 
 /**

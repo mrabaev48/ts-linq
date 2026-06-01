@@ -162,6 +162,9 @@ export class MySqlDdlStrategy {
         return 'DATETIME';
       case 'BLOB':
         return 'BLOB';
+      case 'JSON':
+      case 'JSONB':
+        return 'JSON';
       default:
         return 'TEXT';
     }

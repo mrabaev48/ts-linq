@@ -866,16 +866,41 @@ export interface HierarchyMetadata {
   subtypes: Function[];
 }
 
+/**
+ * Describes a single node in the JSON shape tree.
+ * A leaf node has no children; an aggregate node has children mapping property names to sub-nodes.
+ */
+export interface JsonShapeNode {
+  children?: Map<string, JsonShapeNode>;
+  isArray?: boolean;
+  converter?: ValueConverterLike;
+}
+
+/**
+ * Describes the complete shape of a JSON-stored owned aggregate.
+ * Used by the SQL visitor rewriter, hydrator, and change tracker.
+ */
+export interface JsonShape {
+  /** Physical column name on the owner table. */
+  columnName: string;
+  /** Top-level property names of the aggregate mapped to their shape nodes. */
+  properties: Map<string, JsonShapeNode>;
+}
+
 export interface OwnedEntityMetadata {
   ownerPropertyName: string;
   ownedType: Function;
   strategy: StorageStrategy;
   columnPrefix?: string;
   jsonColumnName?: string;
+  /** Full shape descriptor for Json-strategy owned aggregates. */
+  jsonShape?: JsonShape;
   foreignKeyColumns?: string[];
   principalKeyColumns?: string[];
   compositeKeyColumns?: string[];
   isCollection: boolean;
+  /** Nested owned navigations when strategy === Json (stored inside JSON, not as separate rows). */
+  nestedOwned?: OwnedEntityMetadata[];
 }
 
 export interface SkipNavigationMetadata {

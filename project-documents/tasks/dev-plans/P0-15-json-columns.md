@@ -1,7 +1,7 @@
 ---
 title: JSON columns — OwnsOne(...).ToJson() and LINQ querying into JSON
 ef_core_api: EntityTypeBuilder<T>.OwnsOne(o => o.Foo, b => b.ToJson()) / OwnsMany(...).ToJson() / LINQ projection and Where over JSON paths
-status: not-started
+status: done
 priority: P0
 effort: L
 depends_on: [P0-01, P0-06]

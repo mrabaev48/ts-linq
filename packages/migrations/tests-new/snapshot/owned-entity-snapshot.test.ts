@@ -99,7 +99,7 @@ describe('ModelSnapshotBuilder — owned entities (Json)', () => {
 
     const jsonCol = usersTable!.columns.find((c) => c.name === 'preferences_json');
     expect(jsonCol).toBeDefined();
-    expect(jsonCol!.type).toBe('JSON');
+    expect(jsonCol!.type).toBe('JSONB');
     expect(jsonCol!.nullable).toBe(true);
   });
 });
