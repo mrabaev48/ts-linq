@@ -1,3 +1,8 @@
+import {
+  createPropertyAccessor,
+  PropertyAccessMode,
+  type PropertyAccessor
+} from '@ts-linq/metadata';
 import type {
   ColumnMetadata,
   ValueComparerLike,
@@ -162,5 +167,45 @@ export class PropertyBuilder<TValue> {
   hasSentinel(value: TValue): this {
     this._col.sentinel = value;
     return this;
+  }
+
+  /**
+   * Specifies the backing field name used to store this property's value.
+   * By convention `_propertyName` is assumed when not provided.
+   * Mirrors EF Core's `PropertyBuilder.HasField(fieldName)`.
+   */
+  hasField(fieldName: string): this {
+    this._col.fieldName = fieldName;
+    this._rebuildAccessor();
+    return this;
+  }
+
+  /**
+   * Sets the property access mode controlling how the ORM reads/writes this property.
+   * Mirrors EF Core's `PropertyBuilder.UsePropertyAccessMode(mode)`.
+   */
+  usePropertyAccessMode(mode: PropertyAccessMode): this {
+    this._col.accessMode = mode;
+    this._rebuildAccessor();
+    return this;
+  }
+
+  private _rebuildAccessor(): void {
+    const explicitMode = this._col.accessMode as PropertyAccessMode | undefined;
+    const isDefaultPropertyMode =
+      (!explicitMode || explicitMode === PropertyAccessMode.Property) && !this._col.fieldName;
+    if (isDefaultPropertyMode) {
+      // No accessor needed: default property-mode access is handled by the hot-path fallback.
+      this._col.accessor = undefined;
+      return;
+    }
+    // When only a fieldName is provided (no explicit mode), default to FieldDuringConstruction:
+    // hydration bypasses the setter (DDD-friendly), post-construction reads go through the property.
+    const mode = explicitMode ?? PropertyAccessMode.FieldDuringConstruction;
+    this._col.accessor = createPropertyAccessor(
+      this._col.propertyName,
+      this._col.fieldName,
+      mode
+    ) as PropertyAccessor;
   }
 }
