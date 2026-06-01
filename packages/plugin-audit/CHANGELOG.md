@@ -1,5 +1,13 @@
 # @ts-linq/plugin-audit
 
+## 2.0.5
+
+### Patch Changes
+
+- Updated dependencies [[`4c6abea`](https://github.com/mrabaev48/ts-linq/commit/4c6abead6c23c96d3faa01c4f12368f92ed935f5)]:
+  - @ts-linq/types@2.5.0
+  - @ts-linq/metadata@2.3.0
+
 ## 2.0.4
 
 ### Patch Changes
