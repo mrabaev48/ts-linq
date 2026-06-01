@@ -9,6 +9,8 @@ export * from './MetadataRegistry';
 export * from './MetadataStorage';
 export * from './PendingMetadataCollector';
 export * from './PrimaryKey';
+export * from './PropertyAccessMode';
+export * from './PropertyAccessor';
 export { reflectGetOwnMetadata } from './reflectUtils';
 export * from './Relationships';
 export * from './resolveEntityRef';

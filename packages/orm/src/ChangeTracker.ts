@@ -1,6 +1,11 @@
 import type { TrackedEntity } from '@ts-linq/core';
 import { EntityState, QueryTrackingBehavior } from '@ts-linq/core';
-import { type MetadataRegistry, MetadataStorage } from '@ts-linq/metadata';
+import {
+  defaultPropertyAccessor,
+  type MetadataRegistry,
+  MetadataStorage,
+  type PropertyAccessor
+} from '@ts-linq/metadata';
 import type { EntityAttacher } from '@ts-linq/types';
 
 import { CascadeWalker } from './changetracker/CascadeWalker';
@@ -357,12 +362,12 @@ export class ChangeTracker implements EntityAttacher {
     const meta = this._registry.getEntity(entityClass);
     if (!meta) return !this.areObjectsEqual(entity, original);
 
-    const rec = entity as Record<string, unknown>;
-    const orig = original as Record<string, unknown>;
-
     for (const col of meta.columns) {
-      const current = rec[col.propertyName];
-      const prev = orig[col.propertyName];
+      const accessor =
+        (col.accessor as PropertyAccessor | undefined) ?? defaultPropertyAccessor(col.propertyName);
+      const current = accessor.get(entity);
+      // Original snapshot was cloned from the entity; use the same accessor to read it.
+      const prev = accessor.get(original);
       if (col.comparer) {
         if (!col.comparer.equals(current, prev)) return true;
       } else {
@@ -468,14 +473,17 @@ export class ChangeTracker implements EntityAttacher {
   private cloneObject<T>(obj: T, entityClass?: Function): T {
     const meta = entityClass ? this._registry.getEntity(entityClass) : undefined;
     if (meta) {
-      // Use comparer.snapshot for columns that have one, structuredClone for the rest
+      // structuredClone copies all enumerable own properties, including _underscored backing fields.
       const cloned = this.baseClone(obj);
-      const rec = cloned as Record<string, unknown>;
       for (const col of meta.columns) {
         if (col.comparer) {
-          const val = (obj as Record<string, unknown>)[col.propertyName];
+          const accessor =
+            (col.accessor as PropertyAccessor | undefined) ??
+            defaultPropertyAccessor(col.propertyName);
+          const val = accessor.get(obj as object);
           if (val !== undefined && val !== null) {
-            rec[col.propertyName] = col.comparer.snapshot(val);
+            // Write the snapshot value back via the same accessor so it lands in the right key.
+            accessor.set(cloned as object, col.comparer.snapshot(val));
           }
         }
       }

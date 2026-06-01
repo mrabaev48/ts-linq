@@ -1,5 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
-import { MetadataStorage } from '@ts-linq/metadata';
+import { defaultPropertyAccessor, MetadataStorage, type PropertyAccessor } from '@ts-linq/metadata';
 import type { EntityCacheLike, PerformanceOptions } from '@ts-linq/types';
 
 /** @internal */
@@ -86,6 +86,7 @@ export class RowMaterializer<T> {
         columnName: string;
         type: string;
         converter?: { fromProvider(v: unknown): unknown };
+        accessor?: unknown;
       }>;
     } | null
   ): TEntity {
@@ -100,7 +101,10 @@ export class RowMaterializer<T> {
           const converted = column.converter
             ? column.converter.fromProvider(val)
             : this.convertValue(val, column.type);
-          (entity as unknown as Record<string, unknown>)[column.propertyName] = converted;
+          const accessor =
+            (column.accessor as PropertyAccessor | undefined) ??
+            defaultPropertyAccessor(column.propertyName);
+          accessor.constructionSet(entity as object, converted);
         }
       }
     } else {
