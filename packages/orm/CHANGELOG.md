@@ -1,5 +1,11 @@
 # @ts-linq/orm
 
+## 2.11.0
+
+### Minor Changes
+
+- [#143](https://github.com/mrabaev48/ts-linq/pull/143) [`32280c5`](https://github.com/mrabaev48/ts-linq/commit/32280c57ad0e8efa9b003b1a0d3b8e3e1a28e97f) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-29): implement DbSet.local (LocalView<T>), DbSet.find/findAsync, ChangeTracker.findEntry/entries — adds observable in-memory view of tracked entities, O(1) PK-index lookup with composite PK support, and tracker-first / database-fallback FindAsync semantics mirroring EF Core
+
 ## 2.10.0
 
 ### Minor Changes
