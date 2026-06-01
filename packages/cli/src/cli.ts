@@ -4,6 +4,7 @@
 //
 import { CommandRegistry } from './CommandRegistry';
 import type { Command, DbCommand } from './commands/Command';
+import { DbContextOptimizeCommand } from './commands/DbContextOptimizeCommand';
 import { GenerateEntitiesCommand } from './commands/GenerateEntitiesCommand';
 import { GenerateEntityCommand } from './commands/GenerateEntityCommand';
 import { GenerateMigrationCommand } from './commands/GenerateMigrationCommand';
@@ -44,6 +45,7 @@ async function main() {
     new MigrationsValidateCommand(),
     new MigrationsScriptCommand(),
     new MigrationsBundleCommand(),
+    new DbContextOptimizeCommand(),
     new ScaffoldCommand(),
     new SeedCommand(),
     new MetricsServeCommand()

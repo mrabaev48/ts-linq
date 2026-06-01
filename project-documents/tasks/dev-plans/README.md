@@ -232,7 +232,7 @@ whose `depends_on` points into the current step.
 | P1-32 | Backing fields / PropertyAccessMode | P0-01 | ✅ done |
 | P2-33 | Stored procedure mapping | P0-01 | ✅ done |
 | P2-43 | DB-first scaffolding | P0-01 | ✅ done |
-| P2-44 | Compiled models / AOT prep | P1-20 |
+| P2-44 | Compiled models / AOT prep | P1-20 | ✅ done |
 
 ### Step 3 — Unlocked after Step 2
 
