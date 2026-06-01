@@ -1,5 +1,23 @@
 # @ts-linq/dialect-mssql
 
+## 2.4.3
+
+### Patch Changes
+
+- [#131](https://github.com/mrabaev48/ts-linq/pull/131) [`1dd26bb`](https://github.com/mrabaev48/ts-linq/commit/1dd26bbb55d4e7ca1e522a5e763c4893ea3dde54) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P2-33): implement stored procedure mapping for Insert/Update/Delete operations
+
+  Adds `insertUsingStoredProcedure()`, `updateUsingStoredProcedure()`, and `deleteUsingStoredProcedure()`
+  fluent API on `EntityTypeBuilder<T>`. When configured, `SaveChanges` routes entity CUD operations
+  to dialect-specific CALL/EXEC statements instead of inline DML. Supports input/output parameters,
+  original-value parameters, and rows-affected via result column, OUT parameter, or return value.
+  Implemented for PostgreSQL (CALL), MySQL (CALL + follow-up SELECT), and MSSQL (EXEC).
+
+- Updated dependencies [[`1dd26bb`](https://github.com/mrabaev48/ts-linq/commit/1dd26bbb55d4e7ca1e522a5e763c4893ea3dde54)]:
+  - @ts-linq/metadata@2.5.0
+  - @ts-linq/sql-visitor@2.5.0
+  - @ts-linq/types@2.7.0
+  - @ts-linq/core@1.4.4
+
 ## 2.4.2
 
 ### Patch Changes
