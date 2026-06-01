@@ -1,5 +1,61 @@
 # @ts-linq/query
 
+## 2.3.0
+
+### Minor Changes
+
+- [#117](https://github.com/mrabaev48/ts-linq/pull/117) [`2aa9392`](https://github.com/mrabaev48/ts-linq/commit/2aa939259c682cad252f89818db47909e1af16f8) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P0-11): Add global query filters with EF9 named-filter support
+
+  Adds model-level named query filters (`hasQueryFilter`) on `EntityTypeBuilder<T>` and
+  per-query opt-out (`ignoreQueryFilters()`) on `DbSet<T>` / `Queryable<T>`, matching
+  EF Core 9 semantics.
+  - **`@ts-linq/types`**: New `QueryFilterMetadata` interface.
+  - **`@ts-linq/metadata`**: `EntityMetadataBuilder.addQueryFilter()` and `MetadataRegistry.mergeFluentQueryFilter()`.
+  - **`@ts-linq/orm`**: `EntityTypeBuilder.hasQueryFilter(pred)` / `hasQueryFilter(name, pred)` (transformer-compiled), `DbSet.ignoreQueryFilters()`, `ModelBuilder` exposes per-context filter map.
+  - **`@ts-linq/query`**: `Queryable.ignoreQueryFilters()`, `GlobalFilterApplier` applies per-context filters at query time.
+  - **`@ts-linq/transformer`**: Rewrites `hasQueryFilter(lambda)` → `hasQueryFilterCompiled(ast, params)` at compile time (same mechanism as `where()`).
+
+- [#120](https://github.com/mrabaev48/ts-linq/pull/120) [`66043bb`](https://github.com/mrabaev48/ts-linq/commit/66043bb78642b837464d20a8040660af69e61795) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-16): shadow properties — declare DB columns without entity class fields
+  - ShadowPropertyMetadata interface added to @ts-linq/types
+  - EntityMetadata extended with optional shadowProperties: Map<string, ShadowPropertyMetadata>
+  - ColumnMetadata extended with optional isShadow flag
+  - EntityTypeBuilder: property<T>(name: string) overload registers shadow properties
+  - MetadataRegistry.addShadowProperty() and EntityMetadataBuilder.addShadowProperty()
+  - ChangeTracker: \_shadowValues WeakMap for per-entity shadow value storage
+  - ChangeTracker: getShadowValue / setShadowValue / getShadowValues public API
+  - ChangeTracker.detectChanges() marks entity Modified when shadow values change
+  - PropertyEntry<TValue> class with currentValue getter/setter
+  - EntityEntry.property<T>(name) returns PropertyEntry backed by ChangeTracker
+  - DbContext.entry<T>(entity) public method returning a fully-initialized EntityEntry
+  - DbContext.normalizeChange() merges shadow values into entity record before INSERT/UPDATE
+  - EF.property<TValue>(entity, name) compile-time marker for LINQ shadow column access
+  - SchemaSnapshot.buildExpectedFromMetadata() includes shadow columns in DDL output
+
+- [#121](https://github.com/mrabaev48/ts-linq/pull/121) [`568ec79`](https://github.com/mrabaev48/ts-linq/commit/568ec792462bc5f1f9686d7a903bbe01592f71bb) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-22): implement EF.functions and HasDbFunction
+
+  Adds `EF.functions` marker object with `like`, `iLike`, `random`, `dateDiffDay`,
+  `dateDiffMonth`, `greatest`, `least`, `stDev`, `variance` — all as compile-time
+  markers that throw at runtime outside LINQ expressions.
+
+  Adds a new `EfFunctionNode` AST node, transformer CallVisitor recognition of
+  `EF.functions.xxx(...)` patterns, per-dialect `EfFunctionTranslator` implementations
+  for PostgreSQL (`postgresEfFunctions`), MySQL (`mysqlEfFunctions`), and MSSQL
+  (`mssqlEfFunctions`), and `EfFunctionVisitor` in `@ts-linq/sql-visitor`.
+
+  Adds `ModelBuilder.hasDbFunction()` with `DbFunctionBuilder.hasName()` for
+  registering user-defined SQL functions for use in LINQ expressions.
+
+### Patch Changes
+
+- [#123](https://github.com/mrabaev48/ts-linq/pull/123) [`5f07aeb`](https://github.com/mrabaev48/ts-linq/commit/5f07aebaac481349bfd4ce43079ac34aee351fe4) Thanks [@mrabaev48](https://github.com/mrabaev48)! - Add `toView()`, `hasNoKey()`, and `hasViewSql()` for mapping entities to database views as keyless (read-only) types. Keyless entities are never tracked, throw `KeylessMutationError` on mutations, and query via `FROM viewName` in all dialects.
+
+- Updated dependencies [[`2f86a0d`](https://github.com/mrabaev48/ts-linq/commit/2f86a0d8b0487673603aa6816997ed394e9d91e7), [`2aa9392`](https://github.com/mrabaev48/ts-linq/commit/2aa939259c682cad252f89818db47909e1af16f8), [`69ecc17`](https://github.com/mrabaev48/ts-linq/commit/69ecc171e11a03f46c02533dc2b13351f5cd16a3), [`5284cc5`](https://github.com/mrabaev48/ts-linq/commit/5284cc519fe8c5c6486b35c6d88a00e114317a7b), [`66043bb`](https://github.com/mrabaev48/ts-linq/commit/66043bb78642b837464d20a8040660af69e61795), [`568ec79`](https://github.com/mrabaev48/ts-linq/commit/568ec792462bc5f1f9686d7a903bbe01592f71bb), [`cda8a4e`](https://github.com/mrabaev48/ts-linq/commit/cda8a4edac105bffd343fe8637f0340c361486e2), [`5f07aeb`](https://github.com/mrabaev48/ts-linq/commit/5f07aebaac481349bfd4ce43079ac34aee351fe4), [`03caeac`](https://github.com/mrabaev48/ts-linq/commit/03caeac9ea0c29aca70922b0c349aae30dc3d907)]:
+  - @ts-linq/types@2.4.0
+  - @ts-linq/core@1.4.1
+  - @ts-linq/metadata@2.2.0
+  - @ts-linq/ast@2.3.0
+  - @ts-linq/sql-visitor@2.4.0
+
 ## 2.2.0
 
 ### Minor Changes
