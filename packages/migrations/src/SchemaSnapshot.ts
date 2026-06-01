@@ -101,22 +101,34 @@ export class SchemaSnapshotBuilder {
       const primaryKeys = primaryKeyProps.map(
         (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
       );
-      const indexes = ((entityMeta.indexes || []) as IndexMetadata[]).map((indexDef) => ({
-        name: indexDef.name,
-        columns: indexDef.columns,
-        unique: !!indexDef.unique,
-        where: indexDef.where,
-        orders: indexDef.orders,
-        collations: indexDef.collations,
-        nulls: indexDef.nulls,
-        expressions: indexDef.expressions,
-        using: (indexDef as { using?: 'btree' | 'hash' | 'gin' | 'gist' }).using,
-        concurrently: (indexDef as { concurrently?: boolean }).concurrently,
-        withParams: (indexDef as { withParams?: Record<string, string | number | boolean> })
-          .withParams,
-        mysqlVisibility: (indexDef as { mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' })
-          .mysqlVisibility,
-        include: (indexDef as { include?: string[] }).include
+      const indexes = ((entityMeta.indexes || []) as IndexMetadata[]).map((indexDef) => {
+        const orders: { [col: string]: 'ASC' | 'DESC' } | undefined = indexDef.isDescending
+          ? Object.fromEntries(
+              indexDef.columns.map((col, i) => [col, indexDef.isDescending![i] ? 'DESC' : 'ASC'])
+            )
+          : indexDef.orders;
+        return {
+          name: indexDef.name,
+          columns: indexDef.columns,
+          unique: !!indexDef.unique,
+          where: indexDef.where,
+          orders,
+          collations: indexDef.collations,
+          nulls: indexDef.nulls,
+          expressions: indexDef.expressions,
+          using: (indexDef as { using?: 'btree' | 'hash' | 'gin' | 'gist' }).using,
+          concurrently: (indexDef as { concurrently?: boolean }).concurrently,
+          withParams: (indexDef as { withParams?: Record<string, string | number | boolean> })
+            .withParams,
+          mysqlVisibility: (indexDef as { mysqlVisibility?: 'VISIBLE' | 'INVISIBLE' })
+            .mysqlVisibility,
+          include: indexDef.include
+        };
+      });
+
+      const uniqueConstraints = (entityMeta.alternateKeys ?? []).map((ak) => ({
+        name: ak.name,
+        columns: ak.columns
       }));
 
       const foreignKeys = this.buildForeignKeys(entityMeta, entityByTarget);
@@ -146,7 +158,8 @@ export class SchemaSnapshotBuilder {
           ...(entityMeta.checkConstraints?.length
             ? { checkConstraints: entityMeta.checkConstraints }
             : {}),
-          ...(entityMeta.comment !== undefined ? { comment: entityMeta.comment } : {})
+          ...(entityMeta.comment !== undefined ? { comment: entityMeta.comment } : {}),
+          ...(uniqueConstraints.length > 0 ? { uniqueConstraints } : {})
         });
       }
 
@@ -226,12 +239,30 @@ export class SchemaSnapshotBuilder {
       const targetMeta = this.resolveTargetMeta(rel, entityByTarget);
       if (!targetMeta) continue;
 
-      const refPkProps = targetMeta.primaryKeys ?? [];
-      if (refPkProps.length === 0) continue;
-
-      const refColumns = refPkProps
-        .map((pk) => targetMeta.columns.find((c) => c.propertyName === pk)?.columnName ?? pk)
-        .filter(Boolean);
+      // If hasPrincipalKey() was called, resolve refColumns from the named alternate key.
+      let refColumns: string[];
+      if (rel.inverseSide) {
+        const ak = (targetMeta.alternateKeys ?? []).find((k) =>
+          k.columns.includes(rel.inverseSide!)
+        );
+        if (ak) {
+          refColumns = ak.columns.map(
+            (col) => targetMeta.columns.find((c) => c.propertyName === col)?.columnName ?? col
+          );
+        } else {
+          // Fall back to PK if the referenced property happens to be a PK column.
+          refColumns = [
+            targetMeta.columns.find((c) => c.propertyName === rel.inverseSide)?.columnName ??
+              rel.inverseSide
+          ];
+        }
+      } else {
+        const refPkProps = targetMeta.primaryKeys ?? [];
+        if (refPkProps.length === 0) continue;
+        refColumns = refPkProps
+          .map((pk) => targetMeta.columns.find((c) => c.propertyName === pk)?.columnName ?? pk)
+          .filter(Boolean);
+      }
 
       if (refColumns.length === 0) continue;
 

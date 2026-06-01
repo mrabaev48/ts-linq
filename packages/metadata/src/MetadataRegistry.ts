@@ -1,4 +1,5 @@
 import type {
+  AlternateKeyMetadata,
   CheckConstraintMetadata,
   ColumnMetadata,
   EntityMetadata,
@@ -330,6 +331,23 @@ export class MetadataRegistry {
       return;
     }
     this.getOrCreateBuilder(target).mergeIndex(index);
+  }
+
+  /** Merge an alternate key definition (fluent wins on conflict). */
+  public mergeFluentAlternateKey(target: Function, ak: AlternateKeyMetadata): void {
+    const key = this.normalizeTarget(target);
+    const finalized = this.entities.get(key);
+    if (finalized) {
+      finalized.alternateKeys = finalized.alternateKeys ?? [];
+      const idx = finalized.alternateKeys.findIndex((k) => k.name === ak.name);
+      if (idx >= 0) {
+        finalized.alternateKeys[idx] = ak;
+      } else {
+        finalized.alternateKeys.push(ak);
+      }
+      return;
+    }
+    this.getOrCreateBuilder(target).addAlternateKey(ak);
   }
 
   /** Set the schema for an entity (fluent override). */

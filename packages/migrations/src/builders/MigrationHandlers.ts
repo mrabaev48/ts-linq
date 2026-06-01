@@ -1,6 +1,6 @@
 // Re-export legacy API from split handlers for backwards compatibility
 import type { Dialect } from '../Dialect';
-import type { ColumnDef, TableDiff } from '../DiffTypes';
+import type { ColumnDef, TableDiff, UniqueConstraintDef } from '../DiffTypes';
 import {
   buildAddColumnSql,
   buildAlterNullSql,
@@ -152,9 +152,13 @@ export function buildCreateIndexSql(
   const withSql = buildIndexWithParams(dialect, idx.withParams);
   const visibility = buildIndexVisibility(dialect, idx.mysqlVisibility);
   const include = buildIndexInclude(dialect, idx.include);
+  const pgInclude =
+    dialect === 'postgresql' && idx.include && idx.include.length > 0
+      ? ` INCLUDE (${idx.include.map((c) => q(dialect, c)).join(', ')})`
+      : '';
   switch (dialect) {
     case 'postgresql':
-      return `CREATE ${uniq}INDEX${concurrently} ${name} ON ${q(dialect, table)}${using} (${cols})${withSql}${where}`;
+      return `CREATE ${uniq}INDEX${concurrently} ${name} ON ${q(dialect, table)}${using} (${cols})${pgInclude}${withSql}${where}`;
     case 'mysql':
       return `CREATE ${uniq}INDEX ${name} ON ${q(dialect, table)} (${cols})${visibility}`;
     case 'mssql':
@@ -304,3 +308,52 @@ export { handleColumnRenames } from './handlers/ColumnHandlers';
 // moved to handlers/ColumnHandlers.ts
 
 // moved to handlers/ColumnHandlers.ts
+
+export function buildAddUniqueConstraintSql(
+  dialect: Dialect,
+  tableName: string,
+  uc: UniqueConstraintDef
+): string {
+  const cols = uc.columns.map((c) => q(dialect, c)).join(', ');
+  switch (dialect) {
+    case 'postgresql':
+      return `ALTER TABLE ${q(dialect, tableName)} ADD CONSTRAINT ${q(dialect, uc.name)} UNIQUE (${cols})`;
+    case 'mysql':
+      return `ALTER TABLE \`${tableName}\` ADD UNIQUE KEY \`${uc.name}\` (${cols})`;
+    case 'mssql':
+      return `ALTER TABLE [${tableName}] ADD CONSTRAINT [${uc.name}] UNIQUE (${cols})`;
+    default:
+      return `ALTER TABLE ${q(dialect, tableName)} ADD CONSTRAINT ${q(dialect, uc.name)} UNIQUE (${cols})`;
+  }
+}
+
+export function buildDropUniqueConstraintSql(
+  dialect: Dialect,
+  tableName: string,
+  name: string
+): string {
+  switch (dialect) {
+    case 'postgresql':
+      return `ALTER TABLE ${q(dialect, tableName)} DROP CONSTRAINT IF EXISTS ${q(dialect, name)}`;
+    case 'mysql':
+      return `ALTER TABLE \`${tableName}\` DROP INDEX \`${name}\``;
+    case 'mssql':
+      return `ALTER TABLE [${tableName}] DROP CONSTRAINT [${name}]`;
+    default:
+      return `ALTER TABLE ${q(dialect, tableName)} DROP CONSTRAINT ${q(dialect, name)}`;
+  }
+}
+
+export function handleUniqueConstraintCreates(td: TableDiff, dialect: Dialect, up: string[]): void {
+  if (!td.uniqueConstraintCreates || td.uniqueConstraintCreates.length === 0) return;
+  for (const uc of td.uniqueConstraintCreates) {
+    up.push(buildAddUniqueConstraintSql(dialect, td.table, uc));
+  }
+}
+
+export function handleUniqueConstraintDrops(td: TableDiff, dialect: Dialect, up: string[]): void {
+  if (!td.uniqueConstraintDrops || td.uniqueConstraintDrops.length === 0) return;
+  for (const name of td.uniqueConstraintDrops) {
+    up.push(buildDropUniqueConstraintSql(dialect, td.table, name));
+  }
+}

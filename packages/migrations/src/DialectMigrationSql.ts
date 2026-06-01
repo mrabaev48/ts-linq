@@ -4,6 +4,7 @@ import { IndexesSqlBuilder } from './builders/IndexesSqlBuilder';
 import { SeedsSqlBuilder } from './builders/SeedsSqlBuilder';
 // no local SQL utils needed here; builders render SQL
 import { TablesSqlBuilder } from './builders/TablesSqlBuilder';
+import { UniqueConstraintsSqlBuilder } from './builders/UniqueConstraintsSqlBuilder';
 import type { Dialect } from './Dialect';
 import type { MigrationSql, SchemaDiff, TableDiff } from './DiffTypes';
 
@@ -21,6 +22,7 @@ class MigrationSqlBuilder {
   private readonly fks: ForeignKeysSqlBuilder;
   private readonly columns: ColumnsSqlBuilder;
   private readonly seeds: SeedsSqlBuilder;
+  private readonly uniqueConstraints: UniqueConstraintsSqlBuilder;
   constructor(dialect: Dialect) {
     this.dialect = dialect;
     this.tables = new TablesSqlBuilder(dialect);
@@ -28,6 +30,7 @@ class MigrationSqlBuilder {
     this.fks = new ForeignKeysSqlBuilder(dialect);
     this.columns = new ColumnsSqlBuilder(dialect);
     this.seeds = new SeedsSqlBuilder(dialect);
+    this.uniqueConstraints = new UniqueConstraintsSqlBuilder(dialect);
   }
 
   public build(diff: SchemaDiff): MigrationSql {
@@ -44,6 +47,8 @@ class MigrationSqlBuilder {
     this.tables.rename(tableDiff, up);
     if (this.tables.create(tableDiff, up, down)) return;
     if (this.tables.drop(tableDiff, up)) return;
+    this.uniqueConstraints.drop(tableDiff, up);
+    this.uniqueConstraints.create(tableDiff, up);
     this.indexes.create(tableDiff, up);
     this.indexes.drop(tableDiff, up);
     this.fks.create(tableDiff, up);
