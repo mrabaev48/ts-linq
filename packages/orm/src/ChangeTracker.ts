@@ -12,6 +12,8 @@ import { CascadeWalker } from './changetracker/CascadeWalker';
 import { complexDeepEquals, complexSnapshot } from './changetracker/complexValueComparer';
 import type { EntityEntryGraphNode, ITrackGraphEntry } from './changetracker/EntityEntryGraphNode';
 import { GraphIterator } from './changetracker/GraphIterator';
+import type { LocalViewChangeType } from './LocalView';
+import { LocalView } from './LocalView';
 
 /**
  * Tracks entities and their states (Added, Modified, Deleted, Unchanged)
@@ -36,13 +38,16 @@ export interface JoinRowChange {
 
 export class ChangeTracker implements EntityAttacher {
   private _trackedEntities: Map<object, TrackedEntity> = new Map();
-  /** Identity map: entityClass → (pkValue → TrackedEntity) */
-  private _trackedByPk: Map<Function, Map<unknown, TrackedEntity>> = new Map();
+  /** Identity map: entityClass → (pkTuple → TrackedEntity) */
+  private _trackedByPk: Map<Function, Map<string, TrackedEntity>> = new Map();
   private readonly _registry: MetadataRegistry;
   /** Snapshots of skip-navigation collection PKs at attach time: entity → (propName → Set<pk>) */
   private _collectionSnapshots: Map<object, Map<string, Set<unknown>>> = new Map();
   /** Shadow property values: entity → (propertyName → value). Parallel to _trackedEntities (P1-16). */
   private readonly _shadowValues: WeakMap<object, Map<string, unknown>> = new WeakMap();
+  /** Observable LocalView instances: entityClass → LocalView. Created lazily on first access. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly _localViews: Map<Function, LocalView<any>> = new Map();
 
   /** Default tracking behavior applied to all queries originating from this context. */
   public queryTrackingBehavior: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -56,8 +61,8 @@ export class ChangeTracker implements EntityAttacher {
    */
   public autoDetectChangesEnabled: boolean = true;
 
-  /** Provider reference passed to EntityEntry nodes created by trackGraph. */
-  private _provider: unknown = undefined;
+  /** Provider reference passed to EntityEntry nodes created by trackGraph / findEntry. */
+  protected _provider: unknown = undefined;
 
   constructor(registry?: MetadataRegistry) {
     this._registry = registry ?? MetadataStorage.getInstance();
@@ -70,13 +75,23 @@ export class ChangeTracker implements EntityAttacher {
 
   // ─── Private helpers ─────────────────────────────────────────────────────
 
-  private getPkValue(entity: object, entityClass: Function): unknown {
+  /**
+   * Build a stable string key for the PK index that supports composite PKs.
+   * Keys are sorted alphabetically so the result is independent of property
+   * enumeration order.  Returns `undefined` when any PK column is missing.
+   */
+  private getPkTuple(entity: object, entityClass: Function): string | undefined {
     const meta = this._registry.getEntity(entityClass);
-    const pk = meta?.primaryKeys?.[0];
-    return pk !== undefined ? (entity as Record<string, unknown>)[pk] : undefined;
+    const pks = meta?.primaryKeys;
+    if (!pks?.length) return undefined;
+    const rec = entity as Record<string, unknown>;
+    const sorted = [...pks].sort();
+    const values = sorted.map((k) => rec[k]);
+    if (values.some((v) => v === undefined || v === null)) return undefined;
+    return JSON.stringify(values);
   }
 
-  private getPkMap(entityClass: Function): Map<unknown, TrackedEntity> {
+  private getPkMap(entityClass: Function): Map<string, TrackedEntity> {
     let map = this._trackedByPk.get(entityClass);
     if (!map) {
       map = new Map();
@@ -87,23 +102,32 @@ export class ChangeTracker implements EntityAttacher {
 
   /** Return existing TrackedEntity if the same PK is already tracked. */
   private findByPk(entity: object, entityClass: Function): TrackedEntity | undefined {
-    const pk = this.getPkValue(entity, entityClass);
-    if (pk === undefined) return undefined;
-    return this.getPkMap(entityClass).get(pk);
+    const key = this.getPkTuple(entity, entityClass);
+    if (key === undefined) return undefined;
+    return this.getPkMap(entityClass).get(key);
   }
 
   private registerInPkMap(tracked: TrackedEntity): void {
-    const pk = this.getPkValue(tracked.entity, tracked.entityClass);
-    if (pk !== undefined) {
-      this.getPkMap(tracked.entityClass).set(pk, tracked);
+    const key = this.getPkTuple(tracked.entity, tracked.entityClass);
+    if (key !== undefined) {
+      this.getPkMap(tracked.entityClass).set(key, tracked);
     }
   }
 
   private unregisterFromPkMap(tracked: TrackedEntity): void {
-    const pk = this.getPkValue(tracked.entity, tracked.entityClass);
-    if (pk !== undefined) {
+    const key = this.getPkTuple(tracked.entity, tracked.entityClass);
+    if (key !== undefined) {
       const map = this._trackedByPk.get(tracked.entityClass);
-      if (map) map.delete(pk);
+      if (map) map.delete(key);
+    }
+  }
+
+  // ─── LocalView helpers ────────────────────────────────────────────────────
+
+  private notifyLocalView(tracked: TrackedEntity, changeType: LocalViewChangeType): void {
+    const view = this._localViews.get(tracked.entityClass);
+    if (view) {
+      view._onTracked(tracked, changeType);
     }
   }
 
@@ -118,11 +142,13 @@ export class ChangeTracker implements EntityAttacher {
     const existing = this._trackedEntities.get(entity);
     if (existing) {
       existing.state = EntityState.Added;
+      this.notifyLocalView(existing, 'modified');
       return;
     }
     const tracked: TrackedEntity = { entity, entityClass, state: EntityState.Added };
     this._trackedEntities.set(entity, tracked);
     this.registerInPkMap(tracked);
+    this.notifyLocalView(tracked, 'added');
   }
 
   /**
@@ -133,6 +159,7 @@ export class ChangeTracker implements EntityAttacher {
     const existing = this._trackedEntities.get(entity) ?? this.findByPk(entity, entityClass);
     if (existing) {
       existing.state = EntityState.Modified;
+      this.notifyLocalView(existing, 'modified');
       return;
     }
     const tracked: TrackedEntity = {
@@ -143,6 +170,7 @@ export class ChangeTracker implements EntityAttacher {
     };
     this._trackedEntities.set(entity, tracked);
     this.registerInPkMap(tracked);
+    this.notifyLocalView(tracked, 'added');
   }
 
   /**
@@ -153,11 +181,13 @@ export class ChangeTracker implements EntityAttacher {
     const existing = this._trackedEntities.get(entity) ?? this.findByPk(entity, entityClass);
     if (existing) {
       existing.state = EntityState.Deleted;
+      this.notifyLocalView(existing, 'removed');
       return;
     }
     const tracked: TrackedEntity = { entity, entityClass, state: EntityState.Deleted };
     this._trackedEntities.set(entity, tracked);
     this.registerInPkMap(tracked);
+    // Deleted entities are not visible in LocalView — no 'added' notification.
   }
 
   /**
@@ -171,6 +201,7 @@ export class ChangeTracker implements EntityAttacher {
       existing.state = EntityState.Unchanged;
       existing.originalValues = this.cloneObject(existing.entity, entityClass);
       this._collectionSnapshots.set(entity, this._snapshotCollections(entity, entityClass));
+      this.notifyLocalView(existing, 'modified');
       return;
     }
     const tracked: TrackedEntity = {
@@ -182,6 +213,7 @@ export class ChangeTracker implements EntityAttacher {
     this._trackedEntities.set(entity, tracked);
     this.registerInPkMap(tracked);
     this._collectionSnapshots.set(entity, this._snapshotCollections(entity, entityClass));
+    this.notifyLocalView(tracked, 'added');
   }
 
   /**
@@ -222,6 +254,10 @@ export class ChangeTracker implements EntityAttacher {
         );
       }
     }
+    // Re-sync all LocalViews to remove deleted entries that were purged above.
+    for (const view of this._localViews.values()) {
+      view._sync(this._trackedEntities);
+    }
   }
 
   /** Clear all tracked entities from both maps. */
@@ -229,6 +265,66 @@ export class ChangeTracker implements EntityAttacher {
     this._trackedEntities.clear();
     this._trackedByPk.clear();
     this._collectionSnapshots.clear();
+    // Re-sync all LocalViews so they reflect the empty state.
+    for (const view of this._localViews.values()) {
+      view._sync(this._trackedEntities);
+    }
+  }
+
+  // ─── LocalView / FindEntry / Entries (P1-29) ──────────────────────────────
+
+  /**
+   * Returns (or lazily creates) the `LocalView<T>` for the given entity class.
+   * The view is an observable snapshot of all non-Deleted tracked entities of
+   * that type.  Mirrors `DbSet<T>.Local` in EF Core.
+   */
+  public getLocalView<T extends object>(entityClass: Function): LocalView<T> {
+    let view = this._localViews.get(entityClass) as LocalView<T> | undefined;
+    if (!view) {
+      view = new LocalView<T>();
+      view._entityClass = entityClass;
+      // Populate with already-tracked entities so the view is never stale.
+      for (const tracked of this._trackedEntities.values()) {
+        if (tracked.entityClass === entityClass && tracked.state !== EntityState.Deleted) {
+          view._onTracked(tracked, 'added');
+        }
+      }
+      this._localViews.set(entityClass, view);
+    }
+    return view;
+  }
+
+  /**
+   * Finds a raw `TrackedEntity` by primary key value(s).
+   * Returns `undefined` when the entity is not currently tracked.
+   *
+   * @remarks
+   * This is the low-level API. Consumers should call
+   * `context.changeTracker.findEntry(...)` which wraps the result in an
+   * {@link EntityEntry} with full state/property access.
+   */
+  public findTrackedByPk(entityClass: Function, ...pkValues: unknown[]): TrackedEntity | undefined {
+    const meta = this._registry.getEntity(entityClass);
+    const pks = meta?.primaryKeys;
+    if (!pks?.length || pkValues.length === 0) return undefined;
+
+    const key = JSON.stringify(pkValues.slice(0, pks.length));
+    return this._trackedByPk.get(entityClass)?.get(key);
+  }
+
+  /**
+   * Returns all `TrackedEntity` records for a given entity class.
+   *
+   * @remarks
+   * This is the low-level API. Consumers should call
+   * `context.changeTracker.entries(...)` which wraps results in {@link EntityEntry}.
+   */
+  public getTrackedForType(entityClass: Function): TrackedEntity[] {
+    const result: TrackedEntity[] = [];
+    for (const tracked of this._trackedEntities.values()) {
+      if (tracked.entityClass === entityClass) result.push(tracked);
+    }
+    return result;
   }
 
   // ─── trackGraph / setState ───────────────────────────────────────────────
@@ -294,6 +390,9 @@ export class ChangeTracker implements EntityAttacher {
     let tracked = this._trackedEntities.get(entity) ?? this.findByPk(entity, entityClass);
     if (tracked) {
       tracked.state = state;
+      const changeType: LocalViewChangeType =
+        state === EntityState.Deleted ? 'removed' : 'modified';
+      this.notifyLocalView(tracked, changeType);
       return;
     }
     tracked = {
@@ -307,6 +406,9 @@ export class ChangeTracker implements EntityAttacher {
     };
     this._trackedEntities.set(entity, tracked);
     this.registerInPkMap(tracked);
+    if (state !== EntityState.Deleted) {
+      this.notifyLocalView(tracked, 'added');
+    }
   }
 
   // ─── Shadow property API (P1-16) ─────────────────────────────────────────
