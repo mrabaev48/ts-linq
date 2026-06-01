@@ -1,5 +1,29 @@
 # @ts-linq/query
 
+## 2.4.0
+
+### Minor Changes
+
+- [#129](https://github.com/mrabaev48/ts-linq/pull/129) [`1a0d098`](https://github.com/mrabaev48/ts-linq/commit/1a0d098baa3e18f406eafae8281ee7daf442cdea) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-32): implement backing fields and property access mode
+  - Add `PropertyAccessMode` enum (`Property` | `Field` | `FieldDuringConstruction`) to `@ts-linq/metadata`
+  - Add `PropertyAccessor<T>` interface and `createPropertyAccessor` / `defaultPropertyAccessor` factory to `@ts-linq/metadata`
+  - Add `hasField(fieldName)` and `usePropertyAccessMode(mode)` to `PropertyBuilder` — mirrors EF Core's API
+  - Add entity-level `usePropertyAccessMode(mode)` to `EntityTypeBuilder` — default for all properties, overridable per-property
+  - Extend `ColumnMetadata` with `fieldName?`, `accessMode?`, `accessor?` fields
+  - Update `RowMaterializer` to call `accessor.constructionSet` during hydration — bypasses setter invariants when configured
+  - Update `ChangeTracker.hasChanged` and `cloneObject` to read property values through `accessor.get` / `accessor.set`
+  - Default behavior when only `hasField()` is provided: `FieldDuringConstruction` (hydration bypasses setter, user mutations go through setter)
+  - No breaking changes — all existing code defaults to `Property` mode (previous behavior)
+
+### Patch Changes
+
+- Updated dependencies [[`1a0d098`](https://github.com/mrabaev48/ts-linq/commit/1a0d098baa3e18f406eafae8281ee7daf442cdea)]:
+  - @ts-linq/types@2.6.0
+  - @ts-linq/metadata@2.4.0
+  - @ts-linq/ast@2.3.2
+  - @ts-linq/core@1.4.3
+  - @ts-linq/sql-visitor@2.4.2
+
 ## 2.3.1
 
 ### Patch Changes
