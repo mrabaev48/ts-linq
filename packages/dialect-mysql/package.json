@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/dialect-mysql",
-  "version": "2.3.2",
+  "version": "2.3.3",
   "private": true,
   "description": "MYSQL SQL dialect for ts-linq ORM",
   "main": "./dist/index.js",
