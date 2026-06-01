@@ -96,6 +96,27 @@ export class MySqlDdlStrategy {
     return sql;
   }
 
+  /**
+   * Generates `ALTER TABLE ... ADD UNIQUE KEY ... (...)` for an alternate key.
+   * Mirrors EF Core's HasAlternateKey DDL for MySQL.
+   */
+  public generateAddUniqueConstraintSql(
+    tableName: string,
+    name: string,
+    columns: string[]
+  ): string {
+    const cols = columns.map((c) => `\`${c}\``).join(', ');
+    return `ALTER TABLE \`${tableName}\` ADD UNIQUE KEY \`${name}\` (${cols})`;
+  }
+
+  /**
+   * Generates `ALTER TABLE ... DROP INDEX ...` for an alternate key.
+   * MySQL uses DROP INDEX syntax for unique keys.
+   */
+  public generateDropUniqueConstraintSql(tableName: string, name: string): string {
+    return `ALTER TABLE \`${tableName}\` DROP INDEX \`${name}\``;
+  }
+
   public generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string {
     if (column.isComputed && column.computedExpression) {
       const storage = column.computedStorage;

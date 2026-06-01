@@ -1,7 +1,7 @@
 ---
 title: Alternate Keys and Rich Indexes
 ef_core_api: ModelBuilder.Entity<T>().HasAlternateKey / HasIndex(...).IsUnique().HasFilter(...).IncludeProperties(...).IsDescending(...)
-status: not-started
+status: done
 priority: P1
 effort: M
 depends_on: ["P0-01-fluent-configuration-api"]
