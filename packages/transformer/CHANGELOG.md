@@ -1,5 +1,40 @@
 # @ts-linq/transformer
 
+## 2.1.0
+
+### Minor Changes
+
+- [#117](https://github.com/mrabaev48/ts-linq/pull/117) [`2aa9392`](https://github.com/mrabaev48/ts-linq/commit/2aa939259c682cad252f89818db47909e1af16f8) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P0-11): Add global query filters with EF9 named-filter support
+
+  Adds model-level named query filters (`hasQueryFilter`) on `EntityTypeBuilder<T>` and
+  per-query opt-out (`ignoreQueryFilters()`) on `DbSet<T>` / `Queryable<T>`, matching
+  EF Core 9 semantics.
+  - **`@ts-linq/types`**: New `QueryFilterMetadata` interface.
+  - **`@ts-linq/metadata`**: `EntityMetadataBuilder.addQueryFilter()` and `MetadataRegistry.mergeFluentQueryFilter()`.
+  - **`@ts-linq/orm`**: `EntityTypeBuilder.hasQueryFilter(pred)` / `hasQueryFilter(name, pred)` (transformer-compiled), `DbSet.ignoreQueryFilters()`, `ModelBuilder` exposes per-context filter map.
+  - **`@ts-linq/query`**: `Queryable.ignoreQueryFilters()`, `GlobalFilterApplier` applies per-context filters at query time.
+  - **`@ts-linq/transformer`**: Rewrites `hasQueryFilter(lambda)` → `hasQueryFilterCompiled(ast, params)` at compile time (same mechanism as `where()`).
+
+### Patch Changes
+
+- [#121](https://github.com/mrabaev48/ts-linq/pull/121) [`568ec79`](https://github.com/mrabaev48/ts-linq/commit/568ec792462bc5f1f9686d7a903bbe01592f71bb) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-22): implement EF.functions and HasDbFunction
+
+  Adds `EF.functions` marker object with `like`, `iLike`, `random`, `dateDiffDay`,
+  `dateDiffMonth`, `greatest`, `least`, `stDev`, `variance` — all as compile-time
+  markers that throw at runtime outside LINQ expressions.
+
+  Adds a new `EfFunctionNode` AST node, transformer CallVisitor recognition of
+  `EF.functions.xxx(...)` patterns, per-dialect `EfFunctionTranslator` implementations
+  for PostgreSQL (`postgresEfFunctions`), MySQL (`mysqlEfFunctions`), and MSSQL
+  (`mssqlEfFunctions`), and `EfFunctionVisitor` in `@ts-linq/sql-visitor`.
+
+  Adds `ModelBuilder.hasDbFunction()` with `DbFunctionBuilder.hasName()` for
+  registering user-defined SQL functions for use in LINQ expressions.
+
+- Updated dependencies [[`2f86a0d`](https://github.com/mrabaev48/ts-linq/commit/2f86a0d8b0487673603aa6816997ed394e9d91e7), [`2aa9392`](https://github.com/mrabaev48/ts-linq/commit/2aa939259c682cad252f89818db47909e1af16f8), [`69ecc17`](https://github.com/mrabaev48/ts-linq/commit/69ecc171e11a03f46c02533dc2b13351f5cd16a3), [`5284cc5`](https://github.com/mrabaev48/ts-linq/commit/5284cc519fe8c5c6486b35c6d88a00e114317a7b), [`66043bb`](https://github.com/mrabaev48/ts-linq/commit/66043bb78642b837464d20a8040660af69e61795), [`568ec79`](https://github.com/mrabaev48/ts-linq/commit/568ec792462bc5f1f9686d7a903bbe01592f71bb), [`03caeac`](https://github.com/mrabaev48/ts-linq/commit/03caeac9ea0c29aca70922b0c349aae30dc3d907)]:
+  - @ts-linq/types@2.4.0
+  - @ts-linq/ast@2.3.0
+
 ## 2.0.4
 
 ### Patch Changes
