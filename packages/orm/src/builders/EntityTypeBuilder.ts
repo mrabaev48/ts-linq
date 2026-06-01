@@ -1,4 +1,5 @@
-import type { MetadataRegistry } from '@ts-linq/metadata';
+import type { MetadataRegistry, PropertyAccessMode } from '@ts-linq/metadata';
+import { createPropertyAccessor, type PropertyAccessor } from '@ts-linq/metadata';
 import type {
   AlternateKeyMetadata,
   CheckConstraintMetadata,
@@ -72,6 +73,7 @@ export class EntityTypeBuilder<T> {
   private _viewName?: string;
   private _viewSql?: string;
   private readonly _alternateKeys: AlternateKeyMetadata[] = [];
+  private _entityAccessMode?: PropertyAccessMode;
 
   constructor(private readonly _ctor: new () => T) {}
 
@@ -96,6 +98,16 @@ export class EntityTypeBuilder<T> {
    */
   hasNoKey(): this {
     this._isKeyless = true;
+    return this;
+  }
+
+  /**
+   * Sets the default property access mode for all properties on this entity.
+   * Can be overridden per-property with `property(...).usePropertyAccessMode(mode)`.
+   * Mirrors EF Core's `EntityTypeBuilder.UsePropertyAccessMode(mode)`.
+   */
+  usePropertyAccessMode(mode: PropertyAccessMode): this {
+    this._entityAccessMode = mode;
     return this;
   }
 
@@ -389,6 +401,15 @@ export class EntityTypeBuilder<T> {
     }
 
     for (const column of this._columns.values()) {
+      // Apply entity-level access mode when the property does not have its own mode.
+      if (this._entityAccessMode !== undefined && !column.accessMode) {
+        column.accessMode = this._entityAccessMode;
+        column.accessor = createPropertyAccessor(
+          column.propertyName,
+          column.fieldName,
+          this._entityAccessMode
+        ) as PropertyAccessor;
+      }
       registry.mergeFluentColumn(this._ctor, column);
     }
 

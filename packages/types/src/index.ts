@@ -700,6 +700,16 @@ export interface ColumnMetadata {
   sentinel?: unknown;
   /** Client-side value generator class (P1-30). Instantiated per-call. */
   valueGeneratorClass?: ValueGeneratorClass;
+  /** Backing field name for this property (P1-32). E.g. `_total` for a `total` property. */
+  fieldName?: string;
+  /** Property access mode controlling how the ORM reads/writes this property (P1-32). */
+  accessMode?: string;
+  /**
+   * Pre-built property accessor resolved at model-build time (P1-32).
+   * Opaque at the types layer — typed as `unknown` to avoid a dependency on @ts-linq/metadata.
+   * Cast to `PropertyAccessor` in packages that import @ts-linq/metadata.
+   */
+  accessor?: unknown;
 }
 
 export enum DeleteBehavior {
