@@ -3,6 +3,20 @@ export * from './builtins/DateOnlyToStringConverter';
 export * from './builtins/EnumToNumberConverter';
 export * from './builtins/EnumToStringConverter';
 export * from './Column';
+export {
+  CompiledModelHydrationError,
+  CompiledModelVersionError,
+  loadCompiledModel
+} from './compiled-model-hydrator';
+export type {
+  CompiledAlternateKeyModel,
+  CompiledEntityModel,
+  CompiledHierarchyModel,
+  CompiledModel,
+  CompiledOwnedEntityModel,
+  CompiledShadowPropertyModel,
+  CompiledSkipNavigationModel
+} from './CompiledModel';
 export * from './Entity';
 export * from './EntityMetadata';
 export * from './MetadataRegistry';

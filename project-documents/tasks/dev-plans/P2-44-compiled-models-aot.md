@@ -1,7 +1,7 @@
 ---
 title: Compiled Models / AOT Optimization
 ef_core_api: dotnet ef dbcontext optimize / [DbContext(typeof(AppContextModel))]
-status: not-started
+status: done
 priority: P2
 effort: L
 depends_on: [P1-20-compiled-queries.md]

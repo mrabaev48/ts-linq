@@ -105,6 +105,6 @@ describe('scaffoldDbContext', () => {
       useDatabaseNames: true
     });
 
-    expect(fs.existsSync(path.join(tmpDir, 'Products.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, 'products.ts'))).toBe(true);
   });
 });

@@ -15,6 +15,7 @@ import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
 import { OptimisticConcurrencyError } from '@ts-linq/types';
 
+import { applyCompiledModel } from './bootstrap/use-compiled-model';
 import { ChangeTracker, type JoinRowChange } from './ChangeTracker';
 import { EntityEntry } from './changetracker/EntityEntry';
 import { DeleteCommand } from './commands/DeleteCommand';
@@ -220,6 +221,14 @@ export abstract class DbContext {
       this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
     } else {
       this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
+    }
+
+    if (options.compiledModel) {
+      applyCompiledModel(
+        options.compiledModel,
+        options.compiledModelClassMap ?? {},
+        this._registry
+      );
     }
 
     const modelBuilder = new ModelBuilder(this._registry);
