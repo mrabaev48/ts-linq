@@ -237,6 +237,15 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
     optionalDependencies:
+      '@ts-linq/dialect-mssql':
+        specifier: workspace:*
+        version: link:../dialect-mssql
+      '@ts-linq/dialect-mysql':
+        specifier: workspace:*
+        version: link:../dialect-mysql
+      '@ts-linq/dialect-postgres':
+        specifier: workspace:*
+        version: link:../dialect-postgres
       '@ts-linq/provider-mssql':
         specifier: workspace:*
         version: link:../provider-mssql
@@ -583,6 +592,15 @@ importers:
         specifier: ^0.28.0
         version: 0.28.0
     devDependencies:
+      '@ts-linq/dialect-mssql':
+        specifier: workspace:*
+        version: link:../dialect-mssql
+      '@ts-linq/dialect-mysql':
+        specifier: workspace:*
+        version: link:../dialect-mysql
+      '@ts-linq/dialect-postgres':
+        specifier: workspace:*
+        version: link:../dialect-postgres
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config

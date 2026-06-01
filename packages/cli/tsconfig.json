@@ -14,7 +14,9 @@
     { "path": "../types" },
     { "path": "../core" },
     { "path": "../migrations" },
-
+    { "path": "../dialect-postgres" },
+    { "path": "../dialect-mysql" },
+    { "path": "../dialect-mssql" },
     { "path": "../provider-postgres" },
     { "path": "../provider-mysql" },
     { "path": "../provider-mssql" }
