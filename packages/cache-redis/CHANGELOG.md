@@ -1,5 +1,13 @@
 # @ts-linq/cache-redis
 
+## 1.0.11
+
+### Patch Changes
+
+- Updated dependencies [[`40a9c1e`](https://github.com/mrabaev48/ts-linq/commit/40a9c1ed468d089e3ec236423612afa4ce17b252)]:
+  - @ts-linq/core@1.4.7
+  - @ts-linq/types@2.9.0
+
 ## 1.0.10
 
 ### Patch Changes

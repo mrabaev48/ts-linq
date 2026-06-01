@@ -1,5 +1,15 @@
 # @ts-linq/provider-postgres
 
+## 2.3.7
+
+### Patch Changes
+
+- Updated dependencies [[`40a9c1e`](https://github.com/mrabaev48/ts-linq/commit/40a9c1ed468d089e3ec236423612afa4ce17b252)]:
+  - @ts-linq/core@1.4.7
+  - @ts-linq/dialect-postgres@2.6.0
+  - @ts-linq/types@2.9.0
+  - @ts-linq/metadata@2.6.1
+
 ## 2.3.6
 
 ### Patch Changes
