@@ -1,4 +1,4 @@
-import type { OwnedEntityMetadata } from '@ts-linq/types';
+import type { JsonShape, JsonShapeNode, OwnedEntityMetadata } from '@ts-linq/types';
 import { StorageStrategy } from '@ts-linq/types';
 
 /**
@@ -37,11 +37,13 @@ export function hydrateTableSplit<TOwned>(
 /**
  * Hydrate an owned entity instance from a JSON column.
  * Parses the JSON string and assigns all properties to a new instance.
+ * When a JsonShape is provided, nested aggregates are recursively hydrated.
  */
 export function hydrateJson<TOwned>(
   row: Record<string, unknown>,
   ownedCtor: new () => TOwned,
-  columnName: string
+  columnName: string,
+  shape?: JsonShape
 ): TOwned | undefined {
   const raw = row[columnName];
   if (raw === null || raw === undefined) return undefined;
@@ -59,11 +61,63 @@ export function hydrateJson<TOwned>(
     return undefined;
   }
 
+  return hydrateJsonObject(data, ownedCtor, shape);
+}
+
+/**
+ * Recursively hydrate a plain JSON object into an owned entity instance.
+ * Uses the JsonShape descriptor for nested aggregates.
+ */
+function hydrateJsonObject<TOwned>(
+  data: Record<string, unknown>,
+  ownedCtor: new () => TOwned,
+  shape?: JsonShape
+): TOwned {
   const instance = new ownedCtor();
   for (const [key, value] of Object.entries(data)) {
-    (instance as Record<string, unknown>)[key] = value;
+    const shapeNode = shape?.properties.get(key);
+    if (shapeNode && shapeNode.children && value !== null && value !== undefined) {
+      (instance as Record<string, unknown>)[key] = hydrateJsonNode(value, shapeNode);
+    } else if (shapeNode?.converter && value !== null && value !== undefined) {
+      (instance as Record<string, unknown>)[key] = shapeNode.converter.fromProvider(value);
+    } else {
+      (instance as Record<string, unknown>)[key] = value;
+    }
   }
   return instance;
+}
+
+function hydrateJsonNode(value: unknown, node: JsonShapeNode): unknown {
+  if (node.isArray) {
+    if (!Array.isArray(value)) return value;
+    return value.map((item) =>
+      typeof item === 'object' && item !== null
+        ? hydrateJsonObjectPlain(item as Record<string, unknown>, node.children)
+        : item
+    );
+  }
+  if (typeof value === 'object' && value !== null) {
+    return hydrateJsonObjectPlain(value as Record<string, unknown>, node.children);
+  }
+  return value;
+}
+
+function hydrateJsonObjectPlain(
+  data: Record<string, unknown>,
+  children?: Map<string, JsonShapeNode>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    const childNode = children?.get(key);
+    if (childNode?.children && value !== null && value !== undefined) {
+      result[key] = hydrateJsonNode(value, childNode);
+    } else if (childNode?.converter && value !== null && value !== undefined) {
+      result[key] = childNode.converter.fromProvider(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
 }
 
 /**
@@ -88,7 +142,7 @@ export function hydrateOwnedEntities(
     } else if (owned.strategy === StorageStrategy.Json) {
       const colName = owned.jsonColumnName ?? owned.ownerPropertyName;
       const ctor = owned.ownedType as new () => unknown;
-      const hydrated = hydrateJson(row, ctor, colName);
+      const hydrated = hydrateJson(row, ctor, colName, owned.jsonShape);
       if (hydrated !== undefined) {
         ownerInstance[owned.ownerPropertyName] = hydrated;
       }
