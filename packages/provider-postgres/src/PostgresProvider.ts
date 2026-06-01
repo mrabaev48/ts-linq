@@ -512,6 +512,25 @@ export class PostgresProvider extends DatabaseProvider {
     if (isPgTransientErrorCode((error as { code?: string })?.code)) return true;
     return super.isTransientError(error);
   }
+
+  /**
+   * Reserves the next Hi-Lo block by advancing the sequence by `blockSize`.
+   * The sequence must be declared with INCREMENT BY = blockSize.
+   * Returns the high-water mark of the reserved block.
+   */
+  public override async nextSequenceValue(
+    sequenceName: string,
+    schema: string | undefined,
+    _blockSize: number
+  ): Promise<number> {
+    const qualifiedName = schema ? `"${schema}"."${sequenceName}"` : `"${sequenceName}"`;
+    const rows = await this.executeQuery<{ nextval: string }>(`SELECT nextval(${qualifiedName})`);
+    const raw = rows[0]?.nextval;
+    if (raw === undefined) {
+      throw new Error(`Failed to fetch next value for sequence "${qualifiedName}"`);
+    }
+    return Number(raw);
+  }
 }
 
 /** Convert JS value to a PostgreSQL parameter according to column type. */

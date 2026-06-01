@@ -551,6 +551,27 @@ export class MssqlProvider extends DatabaseProvider {
     return new MssqlDialect();
   }
 
+  /**
+   * Reserves the next Hi-Lo block via MSSQL native sequence.
+   * The sequence must be declared with INCREMENT BY = blockSize.
+   * Returns the high-water mark of the reserved block.
+   */
+  public override async nextSequenceValue(
+    sequenceName: string,
+    schema: string | undefined,
+    _blockSize: number
+  ): Promise<number> {
+    const qualifiedName = schema ? `[${schema}].[${sequenceName}]` : `[${sequenceName}]`;
+    const rows = await this.executeQuery<{ val: unknown }>(
+      `SELECT NEXT VALUE FOR ${qualifiedName} AS val`
+    );
+    const raw = rows[0]?.val;
+    if (raw === undefined) {
+      throw new Error(`Failed to fetch next value for sequence "${qualifiedName}"`);
+    }
+    return Number(raw);
+  }
+
   private mapRowToEntity<T extends object>(row: unknown, entityClass: new () => T): T {
     const entity = new entityClass();
     const metadata = MetadataStorage.getEntity(entityClass);

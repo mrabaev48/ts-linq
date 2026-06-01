@@ -1,4 +1,5 @@
 export * from './builders';
+export { SequenceBuilder } from './builders/SequenceBuilder';
 export * from './ChangeTracker';
 export { CascadeWalker } from './changetracker/CascadeWalker';
 export { EntityEntry } from './changetracker/EntityEntry';
@@ -28,6 +29,8 @@ export * from './save-changes/batch-executor';
 export * from './save-changes/batch-grouper';
 export { sql, SqlInterpolated } from './sql/sqlTag';
 export * from './transactions/DbContextTransaction';
+export type { FetchNextHiLoBlock } from './valueGenerators/HiLoValueGenerator';
+export { HiLoValueGenerator } from './valueGenerators/HiLoValueGenerator';
 export { UlidValueGenerator } from './valueGenerators/UlidValueGenerator';
 export { UtcNowValueGenerator } from './valueGenerators/UtcNowValueGenerator';
 export { UuidV7ValueGenerator } from './valueGenerators/UuidV7ValueGenerator';

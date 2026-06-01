@@ -1,5 +1,6 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
-import type { QueryFilterMetadata } from '@ts-linq/types';
+import { SequenceRegistry } from '@ts-linq/metadata';
+import type { QueryFilterMetadata, SequenceMetadata } from '@ts-linq/types';
 
 import { DbFunctionBuilder } from './builders/DbFunctionBuilder';
 import { EntityTypeBuilder } from './builders/EntityTypeBuilder';
@@ -8,6 +9,7 @@ import {
   type GlobalConverterRule,
   PropertiesConfigBuilder
 } from './builders/PropertiesConfigBuilder';
+import { SequenceBuilder } from './builders/SequenceBuilder';
 
 /** Per-DbContext query filter map: entityClass → named filters. */
 export type EntityQueryFilterMap = Map<Function, ReadonlyArray<QueryFilterMetadata>>;
@@ -29,6 +31,7 @@ export class ModelBuilder {
   private readonly _builders: Map<Function, EntityTypeBuilder<unknown>> = new Map();
   private readonly _dbFunctions: DbFunctionBuilder[] = [];
   private readonly _globalConverterRules: Map<Function, GlobalConverterRule> = new Map();
+  private readonly _sequences: Map<string, SequenceBuilder> = new Map();
   /** Collected after _finalize(). Keys are entity constructors. */
   private _queryFilterMap?: EntityQueryFilterMap;
 
@@ -84,6 +87,32 @@ export class ModelBuilder {
   }
 
   /**
+   * Declares a database sequence at model level.
+   * Mirrors EF Core's `ModelBuilder.HasSequence<T>()`.
+   *
+   * @example
+   *   mb.hasSequence('OrderNumbers', { schema: 'shared' })
+   *     .startsAt(1000)
+   *     .incrementsBy(5);
+   */
+  hasSequence(
+    name: string,
+    options?: { schema?: string; type?: 'int' | 'bigint' }
+  ): SequenceBuilder {
+    const key = options?.schema ? `${options.schema}.${name}` : name;
+    const existing = this._sequences.get(key);
+    if (existing) return existing;
+    const builder = new SequenceBuilder(name, options);
+    this._sequences.set(key, builder);
+    return builder;
+  }
+
+  /** @internal — returns all declared sequences for SchemaSnapshot building. */
+  _getSequences(): ReadonlyArray<SequenceMetadata> {
+    return Array.from(this._sequences.values()).map((b) => b._getMeta());
+  }
+
+  /**
    * Registers a user-defined database function for use in LINQ expressions via `EF.functions`.
    * Mirrors EF Core's `ModelBuilder.HasDbFunction()`.
    *
@@ -121,6 +150,11 @@ export class ModelBuilder {
 
   /** @internal — called by DbContext after onModelCreating() returns. */
   _finalize(): void {
+    // Publish declared sequences to the global SequenceRegistry so SchemaSnapshot can read them.
+    for (const seqBuilder of this._sequences.values()) {
+      SequenceRegistry.register(seqBuilder._getMeta());
+    }
+
     // Collect per-context query filters before applying to registry
     const filterMap: EntityQueryFilterMap = new Map();
     for (const [ctor, builder] of this._builders.entries()) {
