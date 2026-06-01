@@ -1,5 +1,18 @@
 # @ts-linq/core
 
+## 1.5.0
+
+### Minor Changes
+
+- [#141](https://github.com/mrabaev48/ts-linq/pull/141) [`6304976`](https://github.com/mrabaev48/ts-linq/commit/6304976b1ad6aeaf3db8f9fc2182b89f766340c6) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(P1-21): implement Sequences and HiLo — ModelBuilder.hasSequence(), PropertyBuilder.useHiLo()/useSequence(), HiLoValueGenerator with per-context block reservation, native CREATE SEQUENCE DDL for PostgreSQL/MSSQL, counter-table emulation for MySQL, full schema diff and migration support
+
+### Patch Changes
+
+- Updated dependencies [[`6304976`](https://github.com/mrabaev48/ts-linq/commit/6304976b1ad6aeaf3db8f9fc2182b89f766340c6)]:
+  - @ts-linq/types@2.11.0
+  - @ts-linq/metadata@2.7.0
+  - @ts-linq/ast@2.4.2
+
 ## 1.4.8
 
 ### Patch Changes
