@@ -51,7 +51,7 @@ Lands after P0. Necessary for power users but not blocking baseline migration.
 | P1-18 | [AsSplitQuery / AsSingleQuery](./P1-18-as-split-query.md)                     | `AsSplitQuery`, `AsSingleQuery`, `UseQuerySplittingBehavior`                                           | - [x]  | M      | —            |
 | P1-19 | [Filtered Include](./P1-19-filtered-include.md)                               | `Include(b => b.Posts.Where(...).OrderBy(...).Take(n))`                                                | - [x]  | M      | —            |
 | P1-20 | [Compiled queries](./P1-20-compiled-queries.md)                               | `EF.CompileQuery`, `EF.CompileAsyncQuery`                                                              | - [x]  | M      | —            |
-| P1-21 | [Sequences / HiLo](./P1-21-sequences-hi-lo.md)                                | `HasSequence`, `UseHiLo`, `UseSequence`                                                                | - [ ]  | M      | P1-30        |
+| P1-21 | [Sequences / HiLo](./P1-21-sequences-hi-lo.md)                                | `HasSequence`, `UseHiLo`, `UseSequence`                                                                | ✅      | L      | P1-30        |
 | P1-22 | [EF.Functions / DbFunctions](./P1-22-ef-functions.md)                         | `EF.Functions.Like/ILike/Random/DateDiff*/Greatest/Least/StDev/Variance`, `HasDbFunction`              | ✅      | L      | P2-37            |
 
 ### RF — Infrastructure / Engineering (1 task)
@@ -240,7 +240,7 @@ whose `depends_on` points into the current step.
 |------|-------|--------------|-------------|
 | P0-15 | JSON columns | P0-06 | ✅ done |
 | P1-17 | Complex types | P0-06 | ✅ done |
-| P1-21 | Sequences / HiLo | P1-30 |
+| P1-21 | Sequences / HiLo | P1-30 | ✅ done |
 | P1-29 | LocalView / Find / FindAsync | P1-28 |
 | P2-37 | Cosmos DB provider | P0-03 + P0-04 |
 | P2-38 | SQLite provider | P0-03 + P0-04 |

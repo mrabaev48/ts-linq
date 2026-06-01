@@ -5,12 +5,50 @@ import type {
   SchemaDiff,
   SchemaSnapshot,
   SeedRowOp,
+  SequenceDef,
+  SequenceDiff,
   TableDiff,
   TableSnapshot,
   UniqueConstraintDef
 } from './DiffTypes';
 import { diffSeeds } from './seed/SeedDiff';
 import type { ModelSnapshot } from './snapshot/model-snapshot';
+
+function seqKey(s: SequenceDef): string {
+  return s.schema ? `${s.schema}.${s.name}` : s.name;
+}
+
+function diffSequences(expected: SequenceDef[], actual: SequenceDef[]): SequenceDiff[] {
+  const ops: SequenceDiff[] = [];
+  const actualMap = new Map(actual.map((s) => [seqKey(s), s]));
+  const expectedMap = new Map(expected.map((s) => [seqKey(s), s]));
+
+  for (const exp of expected) {
+    const act = actualMap.get(seqKey(exp));
+    if (!act) {
+      ops.push({ kind: 'create', sequence: exp });
+    } else if (sequenceChanged(exp, act)) {
+      ops.push({ kind: 'alter', sequence: exp, prev: act });
+    }
+  }
+  for (const act of actual) {
+    if (!expectedMap.has(seqKey(act))) {
+      ops.push({ kind: 'drop', sequence: act });
+    }
+  }
+  return ops;
+}
+
+function sequenceChanged(a: SequenceDef, b: SequenceDef): boolean {
+  return (
+    a.type !== b.type ||
+    a.startsAt !== b.startsAt ||
+    a.incrementsBy !== b.incrementsBy ||
+    a.minValue !== b.minValue ||
+    a.maxValue !== b.maxValue ||
+    a.cyclesOn !== b.cyclesOn
+  );
+}
 
 function fkFingerprint(fk: ForeignKeyDef): string {
   return fk.columns.slice().sort().join(',');
@@ -131,5 +169,7 @@ export function compareSchemas(expected: SchemaSnapshot, actual: SchemaSnapshot)
   for (const actualTable of actual.tables) {
     if (!expectedByName.has(actualTable.name)) diffs.push({ table: actualTable.name, drop: true });
   }
-  return { tables: diffs };
+
+  const sequenceOps = diffSequences(expected.sequences ?? [], actual.sequences ?? []);
+  return { tables: diffs, ...(sequenceOps.length > 0 ? { sequenceOps } : {}) };
 }

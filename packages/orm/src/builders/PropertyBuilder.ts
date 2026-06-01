@@ -170,6 +170,36 @@ export class PropertyBuilder<TValue> {
   }
 
   /**
+   * Configures the property to use the Hi-Lo key generation pattern.
+   * The ORM reserves a block of IDs in a single round-trip and assigns them locally.
+   * Mirrors EF Core's `PropertyBuilder.UseHiLo()`.
+   *
+   * @example
+   *   b.property(c => c.id).useHiLo('CustomerHiLo', { schema: 'shared', blockSize: 20 });
+   */
+  useHiLo(sequenceName = '__hilo', options?: { schema?: string; blockSize?: number }): this {
+    this._col.sequenceName = sequenceName;
+    this._col.sequenceSchema = options?.schema;
+    this._col.hiLoBlockSize = options?.blockSize ?? 10;
+    this._col.valueGeneratedPolicy = ValueGeneratedPolicy.OnAdd;
+    return this;
+  }
+
+  /**
+   * Configures the property to draw its value from a database sequence via DEFAULT expression.
+   * Mirrors EF Core's `PropertyBuilder.UseSequence()`.
+   *
+   * @example
+   *   b.property(p => p.id).useSequence('ProductSeq');
+   */
+  useSequence(sequenceName: string, options?: { schema?: string }): this {
+    this._col.sequenceName = sequenceName;
+    this._col.sequenceSchema = options?.schema;
+    this._col.valueGeneratedPolicy = ValueGeneratedPolicy.OnAdd;
+    return this;
+  }
+
+  /**
    * Specifies the backing field name used to store this property's value.
    * By convention `_propertyName` is assumed when not provided.
    * Mirrors EF Core's `PropertyBuilder.HasField(fieldName)`.
