@@ -1,5 +1,14 @@
 # @ts-linq/cli
 
+## 1.1.3
+
+### Patch Changes
+
+- Updated dependencies [[`1a0d098`](https://github.com/mrabaev48/ts-linq/commit/1a0d098baa3e18f406eafae8281ee7daf442cdea)]:
+  - @ts-linq/types@2.6.0
+  - @ts-linq/core@1.4.3
+  - @ts-linq/migrations@2.3.1
+
 ## 1.1.2
 
 ### Patch Changes

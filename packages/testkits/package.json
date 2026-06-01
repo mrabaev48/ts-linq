@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/testkits",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "private": true,
   "description": "Contract and integration test utilities",
   "main": "./dist/index.js",
