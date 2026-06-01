@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/index.js"
+    },
+    "./scaffold": {
+      "types": "./dist/scaffold/scaffold-db-context.d.ts",
+      "import": "./dist/esm/scaffold/scaffold-db-context.js",
+      "require": "./dist/scaffold/scaffold-db-context.js"
     }
   },
   "dependencies": {
@@ -19,6 +24,9 @@
     "esbuild": "^0.28.0"
   },
   "devDependencies": {
+    "@ts-linq/dialect-mssql": "workspace:*",
+    "@ts-linq/dialect-mysql": "workspace:*",
+    "@ts-linq/dialect-postgres": "workspace:*",
     "@ts-linq/typescript-config": "workspace:*",
     "typescript": "^5.4.5"
   },
