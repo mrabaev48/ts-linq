@@ -1,7 +1,7 @@
 ---
 title: Database-First Scaffolding (Reverse Engineer)
 ef_core_api: dotnet ef dbcontext scaffold "Conn" Microsoft.EntityFrameworkCore.SqlServer
-status: not-started
+status: done
 priority: P2
 effort: L
 depends_on: []
