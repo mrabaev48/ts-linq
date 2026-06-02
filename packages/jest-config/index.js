@@ -9,7 +9,7 @@ const tsLinqTsJestConfig = {
   tsconfig: {
     experimentalDecorators: true,
     emitDecoratorMetadata: true,
-    lib: ['ES2021', 'DOM'],
+    lib: ['ES2021', 'ES2022.Error', 'DOM'],
     baseUrl: '.',
     paths: {
       '@ts-linq/types': ['packages/types/src'],

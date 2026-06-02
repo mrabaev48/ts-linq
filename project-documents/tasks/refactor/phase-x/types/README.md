@@ -21,12 +21,12 @@ guards, enums) and the base error hierarchy. `package.json` declares no dependen
 - Tighten entity-target typing at the source to enable downstream cast removal.
 
 ## Recommended task order
-| Order | Task | Priority | Reason |
-|---:|---|---|---|
-| 1 | task-1 | P1 | Split the mega-barrel into modules (enables everything else) |
-| 2 | task-2 | P1 | Consolidate error hierarchy (prereq for core typed throws) |
-| 3 | task-3 | P2 | Isolate runtime values from pure types |
-| 4 | task-4 | P3 | Tighten `Function`/union metadata types (enabler) |
+| Order | Task | Priority | Reason | Status |
+|---:|---|---|---|---|
+| 1 | task-1 | P1 | Split the mega-barrel into modules (enables everything else) | ✅ done |
+| 2 | task-2 | P1 | Consolidate error hierarchy (prereq for core typed throws) | ✅ done |
+| 3 | task-3 | P2 | Isolate runtime values from pure types | not-started |
+| 4 | task-4 | P3 | Tighten `Function`/union metadata types (enabler) | not-started |
 
 ## Dependencies on other packages
 - None inbound (zero-dep). Outbound impact: every package consumes these types, so changes

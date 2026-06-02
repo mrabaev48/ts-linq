@@ -36,7 +36,7 @@ The package is organized into cohesive concern modules under `src/`. The public 
 | `spatial-hierarchy.ts` | Translator interfaces (P2-34/35) | `SpatialTranslator`, `HierarchyIdTranslator` |
 | `diagnostics.ts` | Diagnostic configuration (P2-45) | `LogLevel`, `WarningBehavior`, `DiagnosticConfig` |
 | `scaffolding.ts` | DB-First scaffolding types (P2-43) | `DatabaseModel`, `DbIntrospector`, `ScaffoldOptions` |
-| `errors.ts` | Base error hierarchy | `DatabaseError`, `ValidationError`, `OptimisticConcurrencyError` |
+| `errors.ts` | Base error hierarchy | `OrmError` (abstract root), `OrmErrorCode`, `OrmErrorOptions`, `DatabaseError`, `OptimisticConcurrencyError`, `UniqueConstraintError`, `ForeignKeyConstraintError`, `ValidationError`, `TemporalNotSupportedError`, `UnsupportedOperationError`, `MetadataError`, `DecoratorUsageError`, `BatchConfigurationError`, `InvalidIncludeError`, `OperationAbortedError` |
 
 ## Usage
 
