@@ -6,11 +6,20 @@ export * from './config';
 export * from './diagnostics';
 export * from './dialect';
 export {
+  BatchConfigurationError,
   DatabaseError,
+  DecoratorUsageError,
   ForeignKeyConstraintError,
+  InvalidIncludeError,
+  MetadataError,
+  OperationAbortedError,
   OptimisticConcurrencyError,
+  OrmError,
+  OrmErrorCode,
+  type OrmErrorOptions,
   TemporalNotSupportedError,
   UniqueConstraintError,
+  UnsupportedOperationError,
   ValidationError
 } from './errors';
 export * from './logging';
