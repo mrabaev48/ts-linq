@@ -19,6 +19,9 @@ The query **intermediate representation (IR)**. Produced by `@ts-linq/transforme
   `sql-visitor`; keep one source of truth (see refactor task below).
 - `nodes/RawSqlNode.ts` — the only sanctioned passthrough for provider-rendered SQL.
 - `spec/Specification.ts` — composable predicate objects.
+- `errors.ts` — `AstSqlGenerationError`. Re-rooted under `@ts-linq/types`' `OrmError`
+  (`types/task-2`) so it shares the project-wide error taxonomy (`instanceof OrmError`, `code`,
+  `details`, `cause`); keeps its AST-specific `AstSqlGenerationErrorCode` / `AstSqlGenerationErrorDetails`.
 
 ## Public API surface & stability
 

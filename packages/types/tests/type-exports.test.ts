@@ -2,12 +2,20 @@ import * as types from '../src/index';
 
 describe('Type Exports', () => {
   it('should export all error classes', () => {
+    expect(types.OrmError).toBeDefined();
+    expect(types.OrmErrorCode).toBeDefined();
     expect(types.DatabaseError).toBeDefined();
     expect(types.OptimisticConcurrencyError).toBeDefined();
     expect(types.UniqueConstraintError).toBeDefined();
     expect(types.ForeignKeyConstraintError).toBeDefined();
     expect(types.ValidationError).toBeDefined();
     expect(types.TemporalNotSupportedError).toBeDefined();
+    expect(types.UnsupportedOperationError).toBeDefined();
+    expect(types.MetadataError).toBeDefined();
+    expect(types.DecoratorUsageError).toBeDefined();
+    expect(types.BatchConfigurationError).toBeDefined();
+    expect(types.InvalidIncludeError).toBeDefined();
+    expect(types.OperationAbortedError).toBeDefined();
   });
 
   it('should export Result helper functions', () => {
@@ -41,12 +49,20 @@ describe('Type Exports', () => {
   it('should not export any unexpected runtime values', () => {
     const exportedKeys = Object.keys(types);
     const expectedExports = [
+      'OrmError',
+      'OrmErrorCode',
       'DatabaseError',
       'OptimisticConcurrencyError',
       'UniqueConstraintError',
       'ForeignKeyConstraintError',
       'ValidationError',
       'TemporalNotSupportedError',
+      'UnsupportedOperationError',
+      'MetadataError',
+      'DecoratorUsageError',
+      'BatchConfigurationError',
+      'InvalidIncludeError',
+      'OperationAbortedError',
       'ok',
       'err',
       'LoadingStrategy',

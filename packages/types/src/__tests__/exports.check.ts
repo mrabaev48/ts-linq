@@ -72,6 +72,7 @@ import type {
   MssqlConfig,
   MySqlConfig,
   OrderByClause,
+  OrmError,
   OrmMiddleware,
   OwnedEntityMetadata,
   PerformanceOptions,
@@ -132,16 +133,24 @@ import type {
   WarningBehavior,
   WhereClause
 } from '..';
+import type { OrmErrorOptions } from '..';
 // Runtime value imports (functions, enums, classes)
 import {
+  BatchConfigurationError,
   DatabaseError,
+  DecoratorUsageError,
   err,
   ForeignKeyConstraintError,
+  InvalidIncludeError,
   isTemplateSqlCache,
+  MetadataError,
   ok,
+  OperationAbortedError,
   OptimisticConcurrencyError,
+  OrmErrorCode,
   TemporalNotSupportedError,
   UniqueConstraintError,
+  UnsupportedOperationError,
   ValidationError
 } from '..';
 
@@ -284,5 +293,15 @@ const _occError = new OptimisticConcurrencyError('test');
 const _temporalError = new TemporalNotSupportedError('test');
 const _uniqueError = new UniqueConstraintError('test');
 const _validationError = new ValidationError('test');
+const _unsupportedError = new UnsupportedOperationError('test');
+const _metadataError = new MetadataError('test');
+const _decoratorError = new DecoratorUsageError('test');
+const _batchError = new BatchConfigurationError('test');
+const _includeError = new InvalidIncludeError('test');
+const _abortedError = new OperationAbortedError('test');
+const _ormErrorCode = OrmErrorCode.DatabaseError;
+declare const _ormErrorOptions: OrmErrorOptions;
+// OrmError is abstract: reference the type, never instantiate it directly.
+declare const _ormError: OrmError;
 
 export {};
