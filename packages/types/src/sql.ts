@@ -85,28 +85,3 @@ export interface FilteredIncludeSpec {
    */
   applyFilter(items: unknown[]): unknown[];
 }
-
-/**
- * Controls whether queries with collection Includes are executed as a single
- * SQL statement with JOINs (SingleQuery) or as a series of separate statements
- * (SplitQuery). Mirrors EF Core's QuerySplittingBehavior.
- *
- * ## SplitQuery (recommended default)
- * Each Include path that targets a collection navigation is loaded via a
- * separate batched IN-query against the database, preventing cartesian-product
- * row explosion at the cost of additional round trips.
- *
- * ## SingleQuery
- * All data is retrieved in a single SQL statement. For queries with multiple
- * collection Includes this can produce cartesian explosion (N × M rows).
- * Prefer this mode only when the result set is known to be small.
- *
- * > **Warning (mirrors EF Core):** Split queries are not transactionally
- * > consistent unless the caller wraps the operation in an explicit transaction.
- */
-export enum QuerySplittingBehavior {
-  /** One SQL SELECT per collection Include path. Avoids cartesian explosion. */
-  SplitQuery = 'SplitQuery',
-  /** Single SQL SELECT with JOINs for all Includes. May cause cartesian explosion. */
-  SingleQuery = 'SingleQuery'
-}

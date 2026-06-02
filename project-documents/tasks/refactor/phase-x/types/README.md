@@ -25,7 +25,7 @@ guards, enums) and the base error hierarchy. `package.json` declares no dependen
 |---:|---|---|---|---|
 | 1 | task-1 | P1 | Split the mega-barrel into modules (enables everything else) | ✅ done |
 | 2 | task-2 | P1 | Consolidate error hierarchy (prereq for core typed throws) | ✅ done |
-| 3 | task-3 | P2 | Isolate runtime values from pure types | not-started |
+| 3 | task-3 | P2 | Isolate runtime values from pure types | ✅ done |
 | 4 | task-4 | P3 | Tighten `Function`/union metadata types (enabler) | not-started |
 
 ## Dependencies on other packages
