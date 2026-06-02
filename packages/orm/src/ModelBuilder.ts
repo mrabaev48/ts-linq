@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import { SequenceRegistry } from '@ts-linq/metadata';
 import type { QueryFilterMetadata, SequenceMetadata } from '@ts-linq/types';

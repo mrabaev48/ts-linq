@@ -14,6 +14,7 @@
   },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",
+    "@ts-linq/eslint-config": "workspace:*",
     "@types/node": "^24.3.0",
     "typescript": "^5.4.5"
   },
@@ -22,6 +23,7 @@
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
     "copy:types": "node ../../scripts/copy-types.js",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix"
   }
 }

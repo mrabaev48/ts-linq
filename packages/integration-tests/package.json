@@ -7,7 +7,8 @@
   "scripts": {
     "test": "jest -c jest.config.js",
     "test:watch": "jest -c jest.config.js --watch",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "lint": "eslint . --fix"
   },
   "devDependencies": {
     "@ts-linq/cache-memcached": "workspace:*",
@@ -29,6 +30,7 @@
     "@ts-linq/testkits": "workspace:*",
     "@ts-linq/types": "workspace:*",
     "@ts-linq/typescript-config": "workspace:*",
+    "@ts-linq/eslint-config": "workspace:*",
     "@types/node": "^24.3.0",
     "typescript": "^5.4.5"
   }
