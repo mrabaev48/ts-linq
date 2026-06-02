@@ -1,5 +1,28 @@
 # @ts-linq/orm
 
+## 2.11.1
+
+### Patch Changes
+
+- [#145](https://github.com/mrabaev48/ts-linq/pull/145) [`6db0e1b`](https://github.com/mrabaev48/ts-linq/commit/6db0e1b0b55cba00da9a8f0098873253f2321ac8) Thanks [@mrabaev48](https://github.com/mrabaev48)! - fix(orm): add missing `import 'reflect-metadata'` in ModelBuilder
+
+  `ModelBuilder.safeGetDesignType()` calls `Reflect.getMetadata()` which is
+  type-augmented by `reflect-metadata`. Without an explicit import the
+  TypeScript compiler (ts-jest) cannot find the method declaration and emits
+  `TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'`,
+  causing `ModelBuilder.test.ts` to fail intermittently depending on module
+  load order in the Jest runner.
+
+- Updated dependencies [[`2df83e5`](https://github.com/mrabaev48/ts-linq/commit/2df83e5c5c49a1c4be98748905fdf2d9511b4d56)]:
+  - @ts-linq/types@2.11.1
+  - @ts-linq/concurrency@2.0.12
+  - @ts-linq/core@1.5.1
+  - @ts-linq/metadata@2.7.1
+  - @ts-linq/migrations@2.6.1
+  - @ts-linq/query@2.4.7
+  - @ts-linq/sql-visitor@2.7.2
+  - @ts-linq/telemetry@2.1.9
+
 ## 2.11.0
 
 ### Minor Changes
