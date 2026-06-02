@@ -1,4 +1,4 @@
-// SQL-примитивы, query-опции и execution-поведение
+// SQL primitives, query options and execution behaviour
 
 export type SqlParameter = string | number | boolean | Date | Uint8Array | null;
 

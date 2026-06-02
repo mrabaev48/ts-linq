@@ -1,4 +1,4 @@
-// Change tracking примитивы
+// Change tracking primitives
 
 /** Entity state for change tracking */
 export enum EntityState {

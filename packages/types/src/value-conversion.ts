@@ -1,4 +1,4 @@
-// Value converters, comparers, generators и sequence metadata
+// Value converters, comparers, generators and sequence metadata
 
 // Metadata types for decorators
 export type ColumnType =

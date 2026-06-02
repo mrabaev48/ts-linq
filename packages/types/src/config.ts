@@ -1,4 +1,4 @@
-// Конфигурация подключений, пулов и провайдеров
+// Connection, pool and provider configuration
 
 import type { SqlLogger } from './logging';
 import type { OrmMiddleware, RetryPolicy } from './middleware';

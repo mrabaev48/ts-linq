@@ -1,4 +1,4 @@
-// Транслятор-интерфейсы для spatial и hierarchyid (P2-34, P2-35)
+// Translator interfaces for spatial and hierarchyid types (P2-34, P2-35)
 
 /**
  * HierarchyId translator interface for dialect-specific SQL function mapping.
