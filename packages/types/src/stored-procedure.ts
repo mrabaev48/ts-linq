@@ -1,4 +1,4 @@
-// Маппинг хранимых процедур (P2-33)
+// Stored procedure mapping types (P2-33)
 
 import type { SqlParameter } from './sql';
 

@@ -1,4 +1,4 @@
-// Модель метаданных ORM — ColumnMetadata, EntityMetadata и вся система описания сущностей
+// ORM metadata model — ColumnMetadata, EntityMetadata and the full entity description system
 
 import type { QueryFilterMetadata } from './query-filters';
 import type {

@@ -1,4 +1,4 @@
-// Конфигурация диагностики и severity levels (P2-45)
+// Diagnostic configuration and severity levels (P2-45)
 
 /** Severity levels mirroring EF Core's LogLevel enum. */
 export type LogLevel =

@@ -1,4 +1,4 @@
-// Result-тип, runtime helpers и fallback-политика
+// Result type, runtime helpers and fallback policy
 
 import type { QueryOptions, SqlParameter } from './sql';
 

@@ -1,4 +1,4 @@
-// Глобальные и именованные фильтры запросов (P0-11)
+// Global and named query filters (P0-11)
 
 import type { QueryOptions, WhereClause } from './sql';
 

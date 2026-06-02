@@ -1,4 +1,4 @@
-// Кеш-интерфейсы, производительность и loading defaults
+// Cache interfaces, performance options and loading defaults
 
 import type { FallbackPolicy } from './results';
 import type { SqlParameter } from './sql';

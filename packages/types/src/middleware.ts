@@ -1,4 +1,4 @@
-// Middleware-хуки, контекст изменений и политика повторов
+// Middleware hooks, entity change context and retry policy
 
 import type { QueryAnalysisInfo } from './logging';
 import type { EntityMetadata } from './metadata';

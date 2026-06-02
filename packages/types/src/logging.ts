@@ -1,4 +1,4 @@
-// Логирование и события базы данных
+// Logger interfaces and database event DTOs
 
 import type { SqlParameter } from './sql';
 

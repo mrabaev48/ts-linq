@@ -1,7 +1,7 @@
 /**
  * Type-level export verification for @ts-linq/types.
  * Every symbol previously exported from the 1275-line index.ts must still resolve.
- * This file is excluded from the build (tsconfig.build.json) but checked by tsc --noEmit.
+ * Excluded from the build (tsconfig.build.json) but checked by tsc --noEmit.
  */
 
 import type {
@@ -145,7 +145,7 @@ import {
   ValidationError
 } from '..';
 
-// Type-level assertions: each symbol must be a valid type/value
+// Type-level assertions: each symbol must be a valid type/value.
 // All variables use _-prefix so ESLint varsIgnorePattern suppresses unused warnings.
 
 declare const _sqlParam: SqlParameter;

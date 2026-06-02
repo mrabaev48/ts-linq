@@ -1,4 +1,4 @@
-// Контракт SQL-диалекта и DML-результаты
+// SQL dialect contract and DML result types
 
 import type { ColumnMetadata, EntityMetadata } from './metadata';
 import type { QueryOptions, SqlParameter, WhereClause } from './sql';

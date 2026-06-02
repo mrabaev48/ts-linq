@@ -1,4 +1,4 @@
-// Database-First scaffolding типы (P2-43)
+// Database-First scaffolding types (P2-43)
 
 export interface DatabaseColumnModel {
   name: string;
