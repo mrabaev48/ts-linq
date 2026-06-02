@@ -1,12 +1,6 @@
 // Change tracking primitives
 
-/** Entity state for change tracking */
-export enum EntityState {
-  Unchanged = 'unchanged',
-  Added = 'added',
-  Modified = 'modified',
-  Deleted = 'deleted'
-}
+import type { EntityState } from './enums';
 
 /** Tracked entity with state for change tracking */
 export interface TrackedEntity {

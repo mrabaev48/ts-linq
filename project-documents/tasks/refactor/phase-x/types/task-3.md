@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: types
 priority: P2
@@ -58,10 +58,24 @@ the runtime footprint explicit and intentional.
 - Regression: monorepo typecheck/build unchanged.
 
 ## Acceptance criteria
-- [ ] Runtime functions/guards/enums live in clearly-named modules, re-exported.
-- [ ] Package README documents the runtime surface.
-- [ ] No semantic change to enums unless `const enum` is confirmed safe.
-- [ ] Validations pass.
+- [x] Runtime functions/guards/enums live in clearly-named modules, re-exported.
+- [x] Package README documents the runtime surface.
+- [x] No semantic change to enums unless `const enum` is confirmed safe.
+- [x] Validations pass.
+
+## Outcome
+`ok`/`err`/`isTemplateSqlCache` moved to `src/runtime.ts`; the seven enums (`EntityState`,
+`LoadingStrategy`, `ValueGeneratedPolicy`, `DeleteBehavior`, `StorageStrategy`,
+`InheritanceStrategy`, `QuerySplittingBehavior`) moved to `src/enums.ts`. Both re-exported via
+`export *` from the `index.ts` barrel — the public surface is byte-for-byte unchanged (verified by
+`tests/type-exports.test.ts`'s exact `Object.keys` manifest and `src/__tests__/exports.check.ts`).
+
+**`const enum` decision — rejected, regular enums kept.** The monorepo leaves `isolatedModules`,
+`preserveConstEnums` and `verbatimModuleSyntax` unset; each package compiles separately with
+`declaration: true`. Cross-package `const enum` inlines values from `.d.ts` while emitting no runtime
+object (the same hazard that applied to `OrmErrorCode`), and breaks `export *` re-export plus dynamic
+access. All seven enums are consumed as runtime values downstream (`EntityState.Added`,
+`switch (DeleteBehavior)`, default parameters), so `const enum` would be a breaking change.
 
 ## Refactor order
 After `types/task-1` (module split) — this is a natural continuation of that reorganization.
