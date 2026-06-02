@@ -1,5 +1,12 @@
 # @ts-linq/metadata
 
+## 2.7.2
+
+### Patch Changes
+
+- Updated dependencies [[`288f77d`](https://github.com/mrabaev48/ts-linq/commit/288f77d2a8027e912e60edfe6b9e171d6c9f548f)]:
+  - @ts-linq/types@2.12.0
+
 ## 2.7.1
 
 ### Patch Changes
