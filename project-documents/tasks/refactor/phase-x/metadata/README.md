@@ -1,0 +1,49 @@
+# Refactor Audit: metadata
+
+## Package responsibility
+`@ts-linq/metadata` owns the runtime entity-metadata model: the injectable
+`MetadataRegistry` store, the process-wide `MetadataStorage` singleton facade,
+`EntityMetadataBuilder`, pending-metadata collection, value converters/comparers,
+property-access abstractions, compiled-model hydration, sequence registry, and
+stored-procedure mapping. It depends only on `@ts-linq/types`.
+
+## Current architectural problems
+- **God class `MetadataRegistry`** (~575 LOC) with the identical "finalized-vs-builder" branch duplicated across ~25 mutators and index validation duplicated within one method (task-2).
+- **Singleton without a port**: `MetadataStorage` global is consumed directly across packages; no `MetadataSource` abstraction to depend on (task-1).
+- **24 committed build artifacts** (`.d.ts`/`.map`) interleaved in `src` — stale-file trap (task-3).
+- **Silent-swallow control flow** in `getEntity`'s try/catch fallback that diverges metadata shape (task-4).
+- **`Function`-typed keys + `as unknown as` casts** weaken type safety across the model (task-5).
+
+## Refactor goals
+- Provide a `MetadataSource`/`MetadataSink` port so consumers depend on abstractions, not the singleton.
+- Collapse the duplicated mutate-branch and validation into single helpers; split into facet stores.
+- Keep `src` source-only; outputs in `dist`.
+- Make metadata resolution deterministic and typed; no silent fallbacks.
+- Replace `Function` with a constructor type and remove unsafe casts.
+
+## Recommended task order
+| Order | Task | Priority | Reason |
+|---:|---|---|---|
+| 1 | task-3 | P0 | Remove stale build artifacts first — clears the stale-file trap |
+| 2 | task-1 | P1 | Introduce `MetadataSource` port (unblocks core DI) |
+| 3 | task-2 | P1 | Split god class; dedupe mutate-branch + index validation |
+| 4 | task-4 | P2 | Fix silent-swallow fallback in `getEntity` |
+| 5 | task-5 | P2 | Constructor type + remove `as unknown as` |
+
+## Dependencies on other packages
+- `@ts-linq/types` — proposed home for `MetadataSource`/`EntityCtor` (zero-dep package keeps direction clean).
+- Consumed by `@ts-linq/core` loaders (see `core/task-2`), `@ts-linq/orm`, `@ts-linq/migrations`.
+
+## Testing strategy
+- Unit tests per facet store after the split; `mutate()` template behaviour; single-source index validation.
+- Contract test that a fake `MetadataSource` substitutes the registry.
+- Capability test for the no-`reflect-metadata` environment.
+- Type-level tests for `EntityCtor` rejecting non-constructors.
+- Regression: full decorator + fluent registration suite unchanged; `pnpm build`/`arch:dead` clean after artifact removal.
+
+## Notes
+`MetadataStorage.getInstance()` is correct to keep as the *default* source for decorator
+call-sites (decorators run at module load) — the goal is to stop *library internals* from
+referencing it. `SequenceRegistry` here is a second singleton with the same getInstance
+pattern; it is consumed by `orm`/`migrations` (out of this cluster) — flag for those clusters
+rather than refactoring it from metadata in isolation.

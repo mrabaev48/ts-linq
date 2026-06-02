@@ -53,7 +53,7 @@ const typescriptRules = {
   '@typescript-eslint/consistent-type-imports': 'warn',
   '@typescript-eslint/no-explicit-any': 'error',
   // handled by unused-imports plugin
-  '@typescript-eslint/no-unused-vars': 'off',
+  '@typescript-eslint/no-unused-vars': 'warn',
   '@typescript-eslint/require-await': 'warn',
   '@typescript-eslint/no-unnecessary-type-assertion': 'off',
   // permissive unsafe rules — turn on per-package as needed

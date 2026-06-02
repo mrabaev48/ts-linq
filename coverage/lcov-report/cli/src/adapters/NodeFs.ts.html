@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">83.33% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>10/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>1/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>4/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">90% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>9/10</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -86,50 +86,53 @@
 <a name='L21'></a><a href='#L21'>21</a>
 <a name='L22'></a><a href='#L22'>22</a>
 <a name='L23'></a><a href='#L23'>23</a>
-<a name='L24'></a><a href='#L24'>24</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import * as fs from 'fs';</span>
-<span class="cstat-no" title="statement not covered" >import * as path from 'path';</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import * as fs from 'fs';
+import * as path from 'path';
+&nbsp;
 import type { FileSystem } from '../ports/FileSystem';
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export class N</span>odeFs implements FileSystem {
-  public <span class="fstat-no" title="function not covered" >exists(</span>p: string): boolean {
-<span class="cstat-no" title="statement not covered" >    return fs.existsSync(p);</span>
+export class NodeFs implements FileSystem {
+  public exists(p: string): boolean {
+    return fs.existsSync(p);
   }
-  public <span class="fstat-no" title="function not covered" >readText(</span>p: string): string {
-<span class="cstat-no" title="statement not covered" >    return fs.readFileSync(p, 'utf8');</span>
+  public readText(p: string): string {
+    return fs.readFileSync(p, 'utf8');
   }
-  public <span class="fstat-no" title="function not covered" >writeText(</span>p: string, contents: string): void {
-    const dir = <span class="cstat-no" title="statement not covered" >path.dirname(p);</span>
-<span class="cstat-no" title="statement not covered" >    if (!fs.existsSync(dir)) <span class="cstat-no" title="statement not covered" >fs.mkdirSync(dir, { recursive: true });</span></span>
-<span class="cstat-no" title="statement not covered" >    fs.writeFileSync(p, contents, 'utf8');</span>
+  public writeText(p: string, contents: string): void {
+    const dir = path.dirname(p);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(p, contents, 'utf8');
   }
   public <span class="fstat-no" title="function not covered" >ensureDir(</span>dirPath: string): void {
-<span class="cstat-no" title="statement not covered" >    if (!fs.existsSync(dirPath)) <span class="cstat-no" title="statement not covered" >fs.mkdirSync(dirPath, { recursive: true });</span></span>
+<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!fs.existsSync(dirPath)) <span class="cstat-no" title="statement not covered" >fs.mkdirSync(dirPath, { recursive: true });</span></span>
   }
-  public <span class="fstat-no" title="function not covered" >readDir(</span>p: string): string[] {
-<span class="cstat-no" title="statement not covered" >    return fs.readdirSync(p);</span>
+  public readDir(p: string): string[] {
+    return fs.readdirSync(p);
   }
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -139,7 +142,7 @@ import type { FileSystem } from '../ports/FileSystem';
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-30T21:10:49.505Z
+                at 2026-06-02T09:42:42.868Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

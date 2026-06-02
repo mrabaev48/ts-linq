@@ -19,7 +19,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix"
   },
   "files": [
     "dist/**/*"
@@ -32,6 +33,7 @@
     "@jest/globals": "^29.5.0",
     "@ts-linq/jest-config": "workspace:*",
     "@ts-linq/typescript-config": "workspace:*",
+    "@ts-linq/eslint-config": "workspace:*",
     "@types/jest": "^29.5.0",
     "@types/node": "^24.3.0",
     "jest": "^29.5.0",
