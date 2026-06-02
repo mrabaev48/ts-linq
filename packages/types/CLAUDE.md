@@ -36,7 +36,7 @@ base error hierarchy. Every package imports from here; this package imports from
 | `spatial-hierarchy.ts` | Translator interfaces (no deps) |
 | `diagnostics.ts` | Diagnostic config types (no deps) |
 | `scaffolding.ts` | DB-First scaffolding types (no deps) |
-| `errors.ts` | Base error hierarchy (no deps — pre-existing module) |
+| `errors.ts` | Base error hierarchy: `OrmError` abstract root, `OrmErrorCode`, `OrmErrorOptions`, and all concrete error classes (no deps) |
 
 The internal dependency graph is a strict DAG — no cycles.
 
@@ -52,8 +52,12 @@ The internal dependency graph is a strict DAG — no cycles.
 
 See `project-documents/tasks/refactor/phase-x/types/`:
 - `task-1` ✅ **completed** — barrel split into 15 concern modules; `index.ts` is now a thin facade.
-- `task-2` — establish the canonical, code-carrying error hierarchy here (typed codes, cause
-  chains, `OrmError` root) so downstream packages stop hand-rolling `throw new Error(...)`.
+- `task-2` ✅ **completed** — canonical, code-carrying error hierarchy: `abstract class OrmError`
+  (root, `code`/`details`/`cause`), the `OrmErrorCode` const-object union, existing errors re-rooted
+  under it (backward-compatible — `instanceof` unchanged), and new categories for `core/task-6`
+  (`UnsupportedOperationError`, `MetadataError`, `DecoratorUsageError`, `BatchConfigurationError`,
+  `InvalidIncludeError`, `OperationAbortedError`). `@ts-linq/ast`'s `AstSqlGenerationError` now
+  extends `OrmError`. Requires `ES2022.Error` in `lib` for native `Error` `cause`.
 - `task-3` — enforce a public/internal boundary (not yet started).
 - `task-4` — additional type-level test coverage (partially addressed by `src/__tests__/exports.check.ts`).
 

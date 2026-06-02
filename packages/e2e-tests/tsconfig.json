@@ -4,7 +4,7 @@
     "outDir": "./dist",
     "module": "commonjs",
     "target": "ES2020",
-    "lib": ["ES2021"],
+    "lib": ["ES2021", "ES2022.Error"],
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true,

@@ -237,7 +237,7 @@ Each package only depends on packages already completed above it.
 | telemetry | 3 | 0 | 2 | 1 | 0 | not-started |
 | testkits | 6 | 0 | 3 | 3 | 0 | not-started |
 | transformer | 4 | 0 | 2 | 2 | 0 | not-started |
-| types | 4 | 0 | 2 | 1 | 1 | in-progress (task-1 ✅) |
+| types | 4 | 0 | 2 | 1 | 1 | in-progress (task-1, task-2 ✅) |
 | typescript-config | 2 | 0 | 1 | 1 | 0 | not-started |
 | **Total** | **178** | **30** | **92** | **51** | **5** | not-started |
 
