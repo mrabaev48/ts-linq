@@ -1,5 +1,6 @@
 // Cache interfaces, performance options and loading defaults
 
+import type { LoadingStrategy } from './enums';
 import type { FallbackPolicy } from './results';
 import type { SqlParameter } from './sql';
 
@@ -55,11 +56,6 @@ export interface TemplateSqlCache extends SqlCache {
   readonly cacheMisses: number;
 }
 
-/** Type guard for TemplateSqlCache. */
-export function isTemplateSqlCache(cache: SqlCache): cache is TemplateSqlCache {
-  return typeof (cache as TemplateSqlCache).getTemplate === 'function';
-}
-
 // Entity cache interface
 export interface EntityCacheLike {
   get<T>(entityClass: Function, id: unknown): T | undefined;
@@ -85,13 +81,6 @@ export interface PerformanceOptions {
   /** Optional IN() chunk size for large value lists. */
   inClauseChunkSize?: number;
   analysis?: Record<string, unknown>;
-}
-
-// Loading strategy enum
-export enum LoadingStrategy {
-  Lazy = 'lazy',
-  Eager = 'eager',
-  Explicit = 'explicit'
 }
 
 // Cache options
