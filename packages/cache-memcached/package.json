@@ -23,7 +23,8 @@
     "gen:esm-entry": "node scripts/gen-esm-entry.cjs",
     "clean": "rm -rf dist *.tsbuildinfo",
     "prepublishOnly": "npm run clean && npm run build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix"
   },
   "keywords": [
     "orm",
@@ -42,6 +43,7 @@
   },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",
+    "@ts-linq/eslint-config": "workspace:*",
     "@types/node": "^24.3.0",
     "typescript": "^5.4.5"
   },

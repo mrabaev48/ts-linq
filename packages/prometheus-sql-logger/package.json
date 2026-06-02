@@ -20,7 +20,8 @@
     "build": "tsc -b tsconfig.json && tsc -b tsconfig.esm.json",
     "clean": "rm -rf dist *.tsbuildinfo",
     "prepublishOnly": "npm run clean && npm run build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix"
   },
   "dependencies": {
     "@ts-linq/types": "workspace:*"
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",
+    "@ts-linq/eslint-config": "workspace:*",
     "@types/node": "^24.3.0",
     "typescript": "^5.4.5"
   }

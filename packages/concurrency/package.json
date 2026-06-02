@@ -17,11 +17,13 @@
   },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",
+    "@ts-linq/eslint-config": "workspace:*",
     "typescript": "^5.4.5"
   },
   "scripts": {
     "build": "tsc -b tsconfig.json && tsc -b tsconfig.esm.json",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix"
   }
 }

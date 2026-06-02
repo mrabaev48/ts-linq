@@ -22,11 +22,13 @@
     "build:esm": "tsc -p tsconfig.esm.json",
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix"
   },
   "peerDependencies": {},
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",
+    "@ts-linq/eslint-config": "workspace:*",
     "@types/node": "^24.3.0",
     "typescript": "^5.4.5"
   }
