@@ -1,5 +1,12 @@
 # @ts-linq/ast
 
+## 2.4.3
+
+### Patch Changes
+
+- Updated dependencies [[`2df83e5`](https://github.com/mrabaev48/ts-linq/commit/2df83e5c5c49a1c4be98748905fdf2d9511b4d56)]:
+  - @ts-linq/types@2.11.1
+
 ## 2.4.2
 
 ### Patch Changes
