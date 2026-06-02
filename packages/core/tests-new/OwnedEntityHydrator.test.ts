@@ -102,7 +102,7 @@ describe('hydrateOwnedEntities', () => {
     hydrateOwnedEntities(row, owner, [
       {
         ownerPropertyName: 'shippingAddress',
-        ownedType: Address as unknown as Function,
+        ownedType: Address,
         strategy: StorageStrategy.TableSplit,
         columnPrefix: 'shipping_',
         isCollection: false
@@ -123,7 +123,7 @@ describe('hydrateOwnedEntities', () => {
     hydrateOwnedEntities(row, owner, [
       {
         ownerPropertyName: 'preferences',
-        ownedType: Preferences as unknown as Function,
+        ownedType: Preferences,
         strategy: StorageStrategy.Json,
         jsonColumnName: 'preferences',
         isCollection: false
@@ -141,7 +141,7 @@ describe('hydrateOwnedEntities', () => {
     hydrateOwnedEntities(row, owner, [
       {
         ownerPropertyName: 'lineItems',
-        ownedType: class LineItem {} as unknown as Function,
+        ownedType: class LineItem {},
         strategy: StorageStrategy.SeparateTable,
         isCollection: true
       }

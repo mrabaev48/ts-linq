@@ -11,10 +11,10 @@ function deriveFk(ctorName: string): string {
 }
 
 /** Creates a synthetic named class used as the join-entity key in MetadataRegistry. */
-function createSyntheticClass(name: string): new () => unknown {
+function createSyntheticClass(name: string): new () => object {
   const cls = class {};
   Object.defineProperty(cls, 'name', { value: name, writable: false });
-  return cls as new () => unknown;
+  return cls as new () => object;
 }
 
 /**
@@ -22,8 +22,8 @@ function createSyntheticClass(name: string): new () => unknown {
  * Represents a configured many-to-many relationship; call `usingEntity()` for
  * explicit join-entity support (extra columns, custom FK names).
  */
-export class CollectionCollectionBuilder<TLeft, TRight> {
-  private _usingEntityBuilder?: EntityTypeBuilder<unknown>;
+export class CollectionCollectionBuilder<TLeft extends object, TRight extends object> {
+  private _usingEntityBuilder?: EntityTypeBuilder<object>;
 
   constructor(
     private readonly _leftCtor: new () => TLeft,
@@ -37,7 +37,7 @@ export class CollectionCollectionBuilder<TLeft, TRight> {
    * Configure an explicit join entity (e.g. PostTag) with custom columns/FKs.
    * Mirrors EF Core's `.UsingEntity<TJoin>(configureRight, configureLeft, configureJoin)`.
    */
-  usingEntity<TJoin>(
+  usingEntity<TJoin extends object>(
     configureRight: (j: EntityTypeBuilder<TJoin>) => ReferenceCollectionBuilder<TRight, TJoin>,
     configureLeft: (j: EntityTypeBuilder<TJoin>) => ReferenceCollectionBuilder<TLeft, TJoin>,
     configureJoin?: (j: EntityTypeBuilder<TJoin>) => void
@@ -56,7 +56,7 @@ export class CollectionCollectionBuilder<TLeft, TRight> {
     configureLeft(joinBuilder);
     configureJoin?.(joinBuilder);
 
-    this._usingEntityBuilder = joinBuilder as unknown as EntityTypeBuilder<unknown>;
+    this._usingEntityBuilder = joinBuilder as unknown as EntityTypeBuilder<object>;
     return joinBuilder;
   }
 

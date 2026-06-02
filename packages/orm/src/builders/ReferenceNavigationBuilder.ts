@@ -4,7 +4,7 @@ import { ReferenceCollectionBuilder } from './ReferenceCollectionBuilder';
 import { ReferenceReferenceBuilder } from './ReferenceReferenceBuilder';
 import { extractPropertyName } from './utils';
 
-export class ReferenceNavigationBuilder<T, TRel> {
+export class ReferenceNavigationBuilder<T extends object, TRel extends object> {
   constructor(
     private readonly _ownerCtor: new () => T,
     private readonly _propertyName: string,

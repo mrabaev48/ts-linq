@@ -30,7 +30,7 @@ The package is organized into cohesive concern modules under `src/`. The public 
 | `results.ts` | Result type & fallback | `Result<T,E>`, `FallbackPolicy`, `QueryFallback` |
 | `cache.ts` | Cache interfaces & performance | `SqlCache`, `TemplateSqlCache`, `PerformanceOptions`, `EntityCacheLike` |
 | `value-conversion.ts` | Value converters, generators & sequences | `ValueConverterLike`, `ValueComparerLike`, `ValueGenerator`, `SequenceMetadata` |
-| `metadata.ts` | ORM metadata model | `EntityMetadata`, `ColumnMetadata`, `RelationshipMetadata`, `JsonShape` |
+| `metadata.ts` | ORM metadata model | `EntityMetadata`, `ColumnMetadata`, `RelationshipMetadata`, `JsonShape`, `EntityCtor`, `EntityRef` |
 | `stored-procedure.ts` | Stored procedure mapping (P2-33) | `SpCallSyntax`, `StoredProcedureConfig`, `SpParameterMapping` |
 | `tracking.ts` | Change tracking primitives | `TrackedEntity` |
 | `enums.ts` | Runtime enums (the package's value-emitting enums) | `EntityState`, `LoadingStrategy`, `ValueGeneratedPolicy`, `DeleteBehavior`, `StorageStrategy`, `InheritanceStrategy`, `QuerySplittingBehavior` |

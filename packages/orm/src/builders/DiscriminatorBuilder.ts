@@ -1,4 +1,4 @@
-import type { DiscriminatorMetadata } from '@ts-linq/types';
+import type { DiscriminatorMetadata, EntityCtor } from '@ts-linq/types';
 
 /**
  * Fluent builder for configuring a TPH discriminator column.
@@ -11,7 +11,7 @@ import type { DiscriminatorMetadata } from '@ts-linq/types';
  *   .hasValue(BankPayment, 'bank');
  */
 export class DiscriminatorBuilder<TKey> {
-  private readonly _entries: Array<{ ctor: Function; value: TKey }> = [];
+  private readonly _entries: Array<{ ctor: EntityCtor; value: TKey }> = [];
   private _isComplete = true;
 
   constructor(
@@ -19,7 +19,7 @@ export class DiscriminatorBuilder<TKey> {
     readonly _columnType: string
   ) {}
 
-  hasValue<TSub>(ctor: new () => TSub, value: TKey): this {
+  hasValue<TSub extends object>(ctor: new () => TSub, value: TKey): this {
     const existing = this._entries.findIndex((e) => e.ctor === ctor);
     if (existing >= 0) {
       this._entries[existing] = { ctor, value };

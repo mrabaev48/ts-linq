@@ -24,7 +24,7 @@ class Article {
   title!: string;
   content!: string;
   comments?: Comment[];
-  profile?: unknown;
+  profile?: object;
 }
 
 @Entity({ name: 'decorated_users' })

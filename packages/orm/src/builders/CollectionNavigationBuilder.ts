@@ -4,7 +4,7 @@ import { CollectionCollectionBuilder } from './CollectionCollectionBuilder';
 import { CollectionReferenceBuilder } from './CollectionReferenceBuilder';
 import { extractPropertyName } from './utils';
 
-export class CollectionNavigationBuilder<T, TRel> {
+export class CollectionNavigationBuilder<T extends object, TRel extends object> {
   constructor(
     private readonly _ownerCtor: new () => T,
     private readonly _propertyName: string,

@@ -14,6 +14,23 @@ import type {
   ValueGeneratorClass
 } from './value-conversion';
 
+/**
+ * Constructor of an entity class.
+ *
+ * Accepts both `abstract` and concrete classes via an abstract construct signature.
+ * A plain `function` or arrow function is NOT assignable to a construct signature,
+ * so this makes non-constructor entity targets unrepresentable at compile time —
+ * unlike the opaque `Function`, which accepts any callable.
+ */
+export type EntityCtor = abstract new (...args: unknown[]) => object;
+
+/**
+ * A reference to an entity class: either the constructor itself, or a lazy thunk
+ * returning it. The thunk form (`() => Target`) resolves declaration-order cycles
+ * in relationship decorators (e.g. `@ManyToOne(() => Post)`).
+ */
+export type EntityRef = EntityCtor | (() => EntityCtor);
+
 // Entity metadata types
 export interface ColumnOptions {
   name?: string;
@@ -25,7 +42,7 @@ export interface ColumnOptions {
 }
 
 export interface RelationshipOptions {
-  targetEntity: () => Function;
+  targetEntity: () => EntityCtor;
   inverseSide?: string;
   cascade?: boolean;
 }
@@ -84,7 +101,7 @@ export interface ColumnMetadata {
 export interface RelationshipMetadata {
   propertyName: string;
   type: 'one-to-many' | 'many-to-one' | 'one-to-one' | 'many-to-many';
-  targetEntity: string | Function | (() => Function) | undefined;
+  targetEntity: string | EntityRef | undefined;
   foreignKey?: string;
   inverseSide?: string;
   cascade?: boolean;
@@ -137,7 +154,7 @@ export interface ValidationRule {
 }
 
 export interface DiscriminatorEntry {
-  ctor: Function;
+  ctor: EntityCtor;
   value: unknown;
 }
 
@@ -150,9 +167,9 @@ export interface DiscriminatorMetadata {
 
 export interface HierarchyMetadata {
   strategy: InheritanceStrategy;
-  rootEntity: Function;
+  rootEntity: EntityCtor;
   discriminator?: DiscriminatorMetadata;
-  subtypes: Function[];
+  subtypes: EntityCtor[];
 }
 
 /**
@@ -178,7 +195,7 @@ export interface JsonShape {
 
 export interface OwnedEntityMetadata {
   ownerPropertyName: string;
-  ownedType: Function;
+  ownedType: EntityCtor;
   strategy: StorageStrategy;
   columnPrefix?: string;
   jsonColumnName?: string;
@@ -214,11 +231,11 @@ export interface SkipNavigationMetadata {
   /** Property name on the owning entity (e.g. "tags" on Post). */
   propertyName: string;
   /** Constructor of the related entity (e.g. Tag). */
-  targetEntity: Function;
+  targetEntity: EntityCtor;
   /** Name of the join table (e.g. "PostTag"). */
   joinTableName: string;
   /** Synthetic or explicit join entity constructor registered in MetadataRegistry. */
-  joinEntityCtor: Function;
+  joinEntityCtor: EntityCtor;
   /** FK column on the join table pointing back to the owning entity (e.g. "postId"). */
   leftForeignKey: string;
   /** FK column on the join table pointing to the related entity (e.g. "tagId"). */
@@ -238,7 +255,7 @@ export interface TableFragmentMetadata {
 }
 
 export interface EntityMetadata {
-  target?: Function;
+  target?: EntityCtor;
   className?: string;
   tableName: string;
   columns: ColumnMetadata[];
@@ -257,7 +274,7 @@ export interface EntityMetadata {
   /** Hierarchy metadata — present on the root entity of a TPH/TPT/TPC hierarchy. */
   hierarchy?: HierarchyMetadata;
   /** Points to the root entity constructor — present on every subtype in a hierarchy. */
-  hierarchyRoot?: Function;
+  hierarchyRoot?: EntityCtor;
   /** Skip navigation metadata for many-to-many relationships (P0-08). */
   skipNavigations?: SkipNavigationMetadata[];
   /** Named model-level query filters (P0-11). Auto-appended to every SELECT. */
