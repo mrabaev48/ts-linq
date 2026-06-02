@@ -1,5 +1,18 @@
 # @ts-linq/ast
 
+## 2.4.4
+
+### Patch Changes
+
+- [#148](https://github.com/mrabaev48/ts-linq/pull/148) [`288f77d`](https://github.com/mrabaev48/ts-linq/commit/288f77d2a8027e912e60edfe6b9e171d6c9f548f) Thanks [@mrabaev48](https://github.com/mrabaev48)! - fix(ast): re-root AstSqlGenerationError under OrmError for unified error taxonomy
+
+  `AstSqlGenerationError` now extends `@ts-linq/types`' `OrmError` instead of `Error`, so it shares
+  the project-wide error taxonomy (`instanceof OrmError`, `code`, `details`, `cause`). Its
+  AST-specific `code` union and `details` payload are unchanged; constructor signature is preserved.
+
+- Updated dependencies [[`288f77d`](https://github.com/mrabaev48/ts-linq/commit/288f77d2a8027e912e60edfe6b9e171d6c9f548f)]:
+  - @ts-linq/types@2.12.0
+
 ## 2.4.3
 
 ### Patch Changes
