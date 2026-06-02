@@ -1,5 +1,18 @@
 # @ts-linq/types
 
+## 2.11.1
+
+### Patch Changes
+
+- [#147](https://github.com/mrabaev48/ts-linq/pull/147) [`2df83e5`](https://github.com/mrabaev48/ts-linq/commit/2df83e5c5c49a1c4be98748905fdf2d9511b4d56) Thanks [@mrabaev48](https://github.com/mrabaev48)! - refactor: split 1275-line index.ts barrel into cohesive concern modules (no public API change)
+
+  The 1275-line mega-barrel `packages/types/src/index.ts` has been reorganized into 15 focused
+  concern modules: `sql.ts`, `logging.ts`, `dialect.ts`, `middleware.ts`, `config.ts`,
+  `query-filters.ts`, `results.ts`, `cache.ts`, `value-conversion.ts`, `metadata.ts`,
+  `stored-procedure.ts`, `tracking.ts`, `spatial-hierarchy.ts`, `diagnostics.ts`, `scaffolding.ts`.
+  `index.ts` is now a thin re-export barrel. All previously exported names remain available at
+  `@ts-linq/types` — zero consumer changes required.
+
 ## 2.11.0
 
 ### Minor Changes
