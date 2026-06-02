@@ -15,31 +15,33 @@ pnpm add @ts-linq/types
 
 ## What lives here
 
-- **SQL primitives** — `SqlParameter`, `SqlWithParams`, `SqlWithReturning`, `SqlQueryResult`.
-- **Query clauses** — `WhereClause`, `OrderByClause`, `JoinClause`, `GroupByClause`,
-  `TemporalClause`, `QueryOptions`, `CteDefinition`, `JoinType`.
-- **Dialect / provider contracts** — `SqlDialect`, `BaseProviderConfig`, `PostgresConfig`,
-  `MySqlConfig`, `MssqlConfig`.
-- **Mapping options** — `ColumnOptions`, `RelationshipOptions`, `SoftDeleteOptions`.
-- **Resilience / concurrency** — `RetryPolicy`, `ExecutionStrategyOptions`,
-  `ConnectionPoolOptions`, `ConnectionHealthCheckOptions`, `CircuitState`,
-  `ConnectionHealthStatus`.
-- **Telemetry info objects** — `QueryStartInfo`, `QueryEndInfo`, `RetryInfo`, `TransactionInfo`,
-  `CacheInfo`, `ConnectionHealthInfo`, `CircuitEventInfo`, `FallbackInfo`, `HedgedWinInfo`,
-  `QueryAnalysisInfo`, `CacheSizeInfo`.
-- **Logging** — `Logger`, `SqlLogger`, `SqlLoggerFactory`.
-- **Lifecycle / middleware** — `OrmMiddleware`, `BeforeExecuteInfo`, `AfterExecuteInfo`,
-  `EntityChangeContext`.
-- **Query filters** — `GlobalFilter`, `QueryFilterMetadata`.
-- **Functional helpers** — `Result<T, E>`, `ok()`, `err()`, and the fallback contracts
-  (`FallbackOperation`, `FallbackRequest`, `QueryFallback`, `FallbackPolicy`).
-- **Errors** — the base error hierarchy in `errors.ts`.
-- **Enums re-exported elsewhere** — e.g. `EntityState`, `QuerySplittingBehavior`.
+The package is organized into cohesive concern modules under `src/`. The public entrypoint
+`src/index.ts` is a thin re-export barrel over all modules — consumers always import from
+`@ts-linq/types`.
+
+| Module | Concern | Key exports |
+|---|---|---|
+| `sql.ts` | SQL primitives & query options | `SqlParameter`, `WhereClause`, `QueryOptions`, `FilteredIncludeSpec`, `QuerySplittingBehavior` |
+| `logging.ts` | Logger interfaces & event DTOs | `Logger`, `SqlLogger`, `SqlLoggerFactory`, `QueryStartInfo`, `QueryEndInfo`, `CircuitState` |
+| `dialect.ts` | SQL dialect contract & DML result types | `SqlDialect`, `SqlWithParams`, `BatchInsertResult`, `SqlDialect` |
+| `middleware.ts` | Middleware hooks & retry policy | `OrmMiddleware`, `RetryPolicy`, `ExecutionStrategyOptions`, `BeforeExecuteInfo` |
+| `config.ts` | Provider configuration | `BaseProviderConfig`, `PostgresConfig`, `MySqlConfig`, `MssqlConfig`, `AuditOptions` |
+| `query-filters.ts` | Global & named query filters | `GlobalFilter`, `QueryFilterMetadata` |
+| `results.ts` | Result type, helpers & fallback | `Result<T,E>`, `ok()`, `err()`, `FallbackPolicy`, `QueryFallback` |
+| `cache.ts` | Cache interfaces & performance | `SqlCache`, `TemplateSqlCache`, `PerformanceOptions`, `EntityCacheLike`, `LoadingStrategy` |
+| `value-conversion.ts` | Value converters, generators & sequences | `ValueConverterLike`, `ValueComparerLike`, `ValueGenerator`, `SequenceMetadata` |
+| `metadata.ts` | ORM metadata model | `EntityMetadata`, `ColumnMetadata`, `RelationshipMetadata`, `StorageStrategy`, `JsonShape` |
+| `stored-procedure.ts` | Stored procedure mapping (P2-33) | `SpCallSyntax`, `StoredProcedureConfig`, `SpParameterMapping` |
+| `tracking.ts` | Change tracking primitives | `EntityState`, `TrackedEntity` |
+| `spatial-hierarchy.ts` | Translator interfaces (P2-34/35) | `SpatialTranslator`, `HierarchyIdTranslator` |
+| `diagnostics.ts` | Diagnostic configuration (P2-45) | `LogLevel`, `WarningBehavior`, `DiagnosticConfig` |
+| `scaffolding.ts` | DB-First scaffolding types (P2-43) | `DatabaseModel`, `DbIntrospector`, `ScaffoldOptions` |
+| `errors.ts` | Base error hierarchy | `DatabaseError`, `ValidationError`, `OptimisticConcurrencyError` |
 
 ## Usage
 
 ```ts
-import type { SqlDialect, WhereClause, Result } from '@ts-linq/types';
+import type { SqlDialect, WhereClause, Result, EntityMetadata } from '@ts-linq/types';
 import { ok, err } from '@ts-linq/types';
 
 function parse(input: string): Result<number> {
@@ -52,8 +54,25 @@ function parse(input: string): Result<number> {
 
 ```
 src/
-  index.ts    # the single public barrel — all contracts
-  errors.ts   # base error hierarchy
+  index.ts              # thin re-export barrel — all contracts
+  sql.ts                # SQL primitives & query options
+  logging.ts            # logger interfaces & telemetry DTOs
+  dialect.ts            # SQL dialect contract & DML results
+  middleware.ts         # middleware hooks & retry
+  config.ts             # provider & connection configuration
+  query-filters.ts      # global & named query filters
+  results.ts            # Result<T,E>, ok/err, fallback
+  cache.ts              # cache interfaces & performance options
+  value-conversion.ts   # converters, generators, sequences
+  metadata.ts           # ORM metadata model (central module)
+  stored-procedure.ts   # stored procedure mapping
+  tracking.ts           # change tracking primitives
+  spatial-hierarchy.ts  # spatial & hierarchyid translators
+  diagnostics.ts        # diagnostic configuration
+  scaffolding.ts        # DB-first scaffolding types
+  errors.ts             # base error hierarchy
+  __tests__/
+    exports.check.ts    # type-level export verification
 ```
 
 ## Dependencies
