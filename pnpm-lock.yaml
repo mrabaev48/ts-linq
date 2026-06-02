@@ -164,6 +164,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -183,6 +186,9 @@ importers:
         specifier: '>=1.3.0'
         version: 1.3.2
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -208,6 +214,9 @@ importers:
         specifier: '>=4.0.0'
         version: 5.9.0
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -233,6 +242,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -271,6 +283,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -287,6 +302,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -309,6 +327,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -334,6 +355,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -359,6 +383,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -384,6 +411,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -439,6 +469,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/jest-config':
         specifier: workspace:*
         version: link:../jest-config
@@ -480,6 +513,9 @@ importers:
 
   packages/integration-nestjs:
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -510,6 +546,9 @@ importers:
       '@ts-linq/dialect-postgres':
         specifier: workspace:*
         version: link:../dialect-postgres
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/jest-config':
         specifier: workspace:*
         version: link:../jest-config
@@ -564,6 +603,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -573,6 +615,9 @@ importers:
 
   packages/metrics-safe:
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -607,6 +652,9 @@ importers:
       '@ts-linq/dialect-postgres':
         specifier: workspace:*
         version: link:../dialect-postgres
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -623,6 +671,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -663,6 +714,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -672,6 +726,9 @@ importers:
 
   packages/pagination:
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -691,6 +748,9 @@ importers:
       '@jest/globals':
         specifier: ^29.5.0
         version: 29.7.0
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/jest-config':
         specifier: workspace:*
         version: link:../jest-config
@@ -725,6 +785,9 @@ importers:
       '@jest/globals':
         specifier: ^29.5.0
         version: 29.7.0
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/jest-config':
         specifier: workspace:*
         version: link:../jest-config
@@ -759,6 +822,9 @@ importers:
       '@jest/globals':
         specifier: ^29.5.0
         version: 29.7.0
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/jest-config':
         specifier: workspace:*
         version: link:../jest-config
@@ -790,6 +856,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -821,6 +890,9 @@ importers:
       '@ts-linq/dialect-postgres':
         specifier: workspace:*
         version: link:../dialect-postgres
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/migrations':
         specifier: workspace:*
         version: link:../migrations
@@ -867,6 +939,9 @@ importers:
       '@ts-linq/dialect-postgres':
         specifier: workspace:*
         version: link:../dialect-postgres
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/migrations':
         specifier: workspace:*
         version: link:../migrations
@@ -904,6 +979,9 @@ importers:
       '@ts-linq/dialect-mysql':
         specifier: workspace:*
         version: link:../dialect-mysql
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/migrations':
         specifier: workspace:*
         version: link:../migrations
@@ -941,6 +1019,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -960,6 +1041,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -976,6 +1060,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1007,6 +1094,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1026,6 +1116,9 @@ importers:
         specifier: workspace:*
         version: link:../types
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1038,6 +1131,9 @@ importers:
 
   packages/types:
     devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
