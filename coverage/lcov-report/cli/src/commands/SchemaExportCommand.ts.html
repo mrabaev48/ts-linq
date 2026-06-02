@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/16</span>
+                <span class='fraction'>16/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>2/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/16</span>
+                <span class='fraction'>16/16</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -90,58 +90,61 @@
 <a name='L25'></a><a href='#L25'>25</a>
 <a name='L26'></a><a href='#L26'>26</a>
 <a name='L27'></a><a href='#L27'>27</a>
-<a name='L28'></a><a href='#L28'>28</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import * as path from 'path';</span>
-<span class="cstat-no" title="statement not covered" >import { SchemaSnapshotBuilder, SchemaSnapshotSerializer } from '@ts-linq/core';</span>
-import type { Command } from './Command';
-import type { Logger } from '../ports/Logger';
-<span class="cstat-no" title="statement not covered" >import { ConsoleLogger } from '../adapters/ConsoleLogger';</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { SchemaSnapshotBuilder, SchemaSnapshotSerializer } from '@ts-linq/migrations';
+import * as path from 'path';
+&nbsp;
+import { ConsoleLogger } from '../adapters/ConsoleLogger';
+import { NodeFs } from '../adapters/NodeFs';
 import type { FileSystem } from '../ports/FileSystem';
-<span class="cstat-no" title="statement not covered" >import { NodeFs } from '../adapters/NodeFs';</span>
+import type { Logger } from '../ports/Logger';
+import type { Command } from './Command';
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export class S</span>chemaExportCommand implements Command {
-  public readonly name = <span class="cstat-no" title="statement not covered" >'schema:export';</span>
-  public readonly describe = <span class="cstat-no" title="statement not covered" >'Экспортирует snapshot схемы из метаданных в файл';</span>
-  public readonly aliases = <span class="cstat-no" title="statement not covered" >['schema export'];</span>
+export class SchemaExportCommand implements Command {
+  public readonly name = 'schema:export';
+  public readonly describe = 'Exports schema snapshot from metadata to a file';
+  public readonly aliases = ['schema export'];
 &nbsp;
-<span class="fstat-no" title="function not covered" >  public constructor(</span>
-    private readonly <span class="cstat-no" title="statement not covered" >logger: Logger = <span class="branch-0 cbranch-no" title="branch not covered" >n</span>ew ConsoleLogger(),</span>
-    private readonly <span class="cstat-no" title="statement not covered" >fsAdapter: FileSystem = <span class="branch-0 cbranch-no" title="branch not covered" >n</span>ew NodeFs()</span>
+  public constructor(
+    private readonly logger: Logger = <span class="branch-0 cbranch-no" title="branch not covered" >new ConsoleLogger(),</span>
+    private readonly fsAdapter: FileSystem = <span class="branch-0 cbranch-no" title="branch not covered" >new NodeFs()</span>
   ) {}
 &nbsp;
-  public <span class="fstat-no" title="function not covered" >run(</span>argv: string[]): Promise&lt;void&gt; {
-    const out = <span class="cstat-no" title="statement not covered" >argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');</span>
-    const snapshot = <span class="cstat-no" title="statement not covered" >new SchemaSnapshotBuilder().buildExpectedFromMetadata();</span>
-    const json = <span class="cstat-no" title="statement not covered" >new SchemaSnapshotSerializer().serialize(snapshot);</span>
-<span class="cstat-no" title="statement not covered" >    this.fsAdapter.writeText(out, json);</span>
-<span class="cstat-no" title="statement not covered" >    this.logger.info(`Schema snapshot saved to ${out}`);</span>
-<span class="cstat-no" title="statement not covered" >    return Promise.resolve();</span>
+  public async run(argv: string[]): Promise&lt;void&gt; {
+    const out = argv[1] || path.resolve(process.cwd(), 'schema.snapshot.json');
+    const snapshot = new SchemaSnapshotBuilder().buildExpectedFromMetadata();
+    const json = new SchemaSnapshotSerializer().serialize(snapshot);
+    this.fsAdapter.writeText(out, json);
+    this.logger.info(`Schema snapshot saved to ${out}`);
+    return Promise.resolve();
   }
 }
 &nbsp;</pre></td></tr></table></pre>
@@ -151,7 +154,7 @@ import type { FileSystem } from '../ports/FileSystem';
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-30T21:10:49.505Z
+                at 2026-06-02T09:42:42.868Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

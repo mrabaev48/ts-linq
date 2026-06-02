@@ -28,6 +28,7 @@
     "@ts-linq/dialect-mysql": "workspace:*",
     "@ts-linq/dialect-postgres": "workspace:*",
     "@ts-linq/typescript-config": "workspace:*",
+    "@ts-linq/eslint-config": "workspace:*",
     "typescript": "^5.4.5"
   },
   "scripts": {
@@ -35,6 +36,7 @@
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
     "copy:types": "node ../../scripts/copy-types.js",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix"
   }
 }
