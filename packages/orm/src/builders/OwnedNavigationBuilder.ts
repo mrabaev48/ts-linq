@@ -11,7 +11,7 @@ import { extractPropertyName } from './utils';
  * Accumulates configuration and produces OwnedEntityMetadata via _buildMetadata().
  * Called from EntityTypeBuilder.ownsOne() / ownsMany().
  */
-export class OwnedNavigationBuilder<TOwner, TOwned> {
+export class OwnedNavigationBuilder<TOwner, TOwned extends object> {
   private _strategy: StorageStrategy = StorageStrategy.TableSplit;
   private _columnPrefix?: string;
   private _jsonColumnName?: string;
@@ -19,7 +19,7 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
   private _principalKeyColumns?: string[];
   private _compositeKeyColumns?: string[];
   private readonly _columns: Map<string, ColumnMetadata> = new Map();
-  private readonly _nestedOwned: OwnedNavigationBuilder<TOwned, unknown>[] = [];
+  private readonly _nestedOwned: OwnedNavigationBuilder<TOwned, object>[] = [];
 
   constructor(
     private readonly _ownerCtor: new () => TOwner,
@@ -67,7 +67,7 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
    * Registers a nested owned-one navigation inside a JSON aggregate.
    * The nested type is stored as a nested JSON object, not as a separate table.
    */
-  ownsOne<TNested>(
+  ownsOne<TNested extends object>(
     selector: (e: TOwned) => TNested | undefined,
     nestedCtor: new () => TNested,
     configure?: (b: OwnedNavigationBuilder<TOwned, TNested>) => void
@@ -80,7 +80,7 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
       false
     );
     if (configure) configure(nested);
-    this._nestedOwned.push(nested as unknown as OwnedNavigationBuilder<TOwned, unknown>);
+    this._nestedOwned.push(nested as unknown as OwnedNavigationBuilder<TOwned, object>);
     return this;
   }
 
@@ -88,7 +88,7 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
    * Registers a nested owned-many navigation inside a JSON aggregate.
    * The nested collection is stored as a JSON array, not as a separate table.
    */
-  ownsMany<TNested>(
+  ownsMany<TNested extends object>(
     selector: (e: TOwned) => TNested[],
     nestedCtor: new () => TNested,
     configure?: (b: OwnedNavigationBuilder<TOwned, TNested>) => void
@@ -101,7 +101,7 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
       true
     );
     if (configure) configure(nested);
-    this._nestedOwned.push(nested as unknown as OwnedNavigationBuilder<TOwned, unknown>);
+    this._nestedOwned.push(nested as unknown as OwnedNavigationBuilder<TOwned, object>);
     return this;
   }
 
@@ -114,7 +114,7 @@ export class OwnedNavigationBuilder<TOwner, TOwned> {
 
     const meta: OwnedEntityMetadata = {
       ownerPropertyName: this._ownerPropertyName,
-      ownedType: this._ownedCtor as unknown as Function,
+      ownedType: this._ownedCtor,
       strategy,
       isCollection: this._isCollection
     };

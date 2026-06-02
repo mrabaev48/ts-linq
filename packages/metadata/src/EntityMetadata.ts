@@ -3,6 +3,7 @@ import type {
   CheckConstraintMetadata,
   ColumnMetadata,
   ComplexTypePropertyMetadata,
+  EntityCtor,
   EntityMetadata,
   HierarchyMetadata,
   IndexMetadata,
@@ -24,7 +25,7 @@ export class EntityMetadataBuilder {
   private metadata: Partial<EntityMetadata> & {
     ownedEntities?: OwnedEntityMetadata[];
     hierarchy?: HierarchyMetadata;
-    hierarchyRoot?: Function;
+    hierarchyRoot?: EntityCtor;
     skipNavigations?: SkipNavigationMetadata[];
     queryFilters?: QueryFilterMetadata[];
     seedData?: Record<string, unknown>[];
@@ -45,7 +46,9 @@ export class EntityMetadataBuilder {
    */
   constructor(target: Function) {
     this.metadata = {
-      target,
+      // Registry keys are still typed `Function` (tightened to EntityCtor in metadata/task-5);
+      // an entity target is always a constructor, so bridge to EntityCtor here.
+      target: target as EntityCtor,
       tableName: target.name, // Default to class name, can be overridden by setTableName
       columns: [],
       primaryKeys: [],
@@ -205,7 +208,8 @@ export class EntityMetadataBuilder {
   }
 
   public setHierarchyRoot(root: Function): this {
-    this.metadata.hierarchyRoot = root;
+    // task-5: registry keys remain `Function`; the hierarchy root is a constructor.
+    this.metadata.hierarchyRoot = root as EntityCtor;
     return this;
   }
 

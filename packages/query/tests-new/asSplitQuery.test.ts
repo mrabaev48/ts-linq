@@ -396,7 +396,7 @@ describe('Mixed reference + collection include in SplitQuery mode', () => {
     MetadataStorage.addRelationship(Blog, {
       propertyName: 'owner',
       type: 'many-to-one',
-      targetEntity: () => ({ name: 'Owner' }) as unknown as Function
+      targetEntity: () => class Owner {}
     });
     provider.setRows([{ id: 1, name: 'Blog A' }]);
   });

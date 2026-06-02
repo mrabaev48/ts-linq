@@ -1,4 +1,4 @@
-import type { EntityMetadata } from '@ts-linq/types';
+import type { EntityCtor, EntityMetadata } from '@ts-linq/types';
 
 import type { CompiledEntityModel, CompiledModel } from './CompiledModel';
 import type { MetadataRegistry } from './MetadataRegistry';
@@ -22,7 +22,11 @@ export class CompiledModelVersionError extends Error {
   }
 }
 
-function resolveClass(name: string, classMap: Record<string, Function>, context: string): Function {
+function resolveClass(
+  name: string,
+  classMap: Record<string, EntityCtor>,
+  context: string
+): EntityCtor {
   const resolved = classMap[name];
   if (!resolved) {
     throw new CompiledModelHydrationError(
@@ -35,8 +39,8 @@ function resolveClass(name: string, classMap: Record<string, Function>, context:
 
 function hydrateEntity(
   em: CompiledEntityModel,
-  classMap: Record<string, Function>
-): { target: Function; metadata: EntityMetadata } {
+  classMap: Record<string, EntityCtor>
+): { target: EntityCtor; metadata: EntityMetadata } {
   const target = resolveClass(em.entityClassName, classMap, 'entity');
 
   const metadata: EntityMetadata = {
@@ -152,12 +156,12 @@ function hydrateEntity(
  * Called by the DbContext bootstrap path when `options.compiledModel` is set.
  *
  * @param model   - The frozen compiled model (from the .generated.ts file).
- * @param classMap - Maps entity class names (string) → constructor Function.
+ * @param classMap - Maps entity class names (string) → entity constructor.
  * @param registry - The isolated registry to populate.
  */
 export function loadCompiledModel(
   model: CompiledModel,
-  classMap: Record<string, Function>,
+  classMap: Record<string, EntityCtor>,
   registry: MetadataRegistry
 ): void {
   if (model.version !== 1) {

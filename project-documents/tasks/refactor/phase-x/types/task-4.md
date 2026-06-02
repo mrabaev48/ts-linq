@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: types
 priority: P3
@@ -50,10 +50,66 @@ explicit. Tightening here lets `metadata/task-5` and `core/task-7` drop their ca
 - Regression: no runtime behaviour change.
 
 ## Acceptance criteria
-- [ ] `EntityCtor`/`EntityRef` exist in `@ts-linq/types`.
-- [ ] `Function` removed from the cited metadata fields.
-- [ ] Downstream casts (`metadata/task-5`, `core/task-7`) can be removed.
-- [ ] Monorepo `typecheck`/`build` pass.
+- [x] `EntityCtor`/`EntityRef` exist in `@ts-linq/types`.
+- [x] `Function` removed from the cited metadata fields.
+- [x] Downstream casts (`metadata/task-5`, `core/task-7`) can be removed.
+- [x] Monorepo `typecheck`/`build` pass.
+
+## Outcome
+
+**Aliases** (`packages/types/src/metadata.ts`, re-exported via the `index.ts` barrel):
+- `export type EntityCtor = abstract new (...args: unknown[]) => object;`
+- `export type EntityRef = EntityCtor | (() => EntityCtor);`
+
+Note on the rest-arg type: the audit suggested `(...a: any[])`. We use `unknown[]` instead —
+it is the existing repo convention (`ModelBuilder.properties`), is lint-clean under the
+`no-explicit-any` rule of `@ts-linq/types` (no `eslint-disable` needed), and is functionally
+equivalent for entity constructors, which are uniformly parameterless (`new () => T`). The
+construct-signature (`abstract new`) is what makes plain/arrow functions unrepresentable; the
+return type (`object`) and the rest-arg type do not affect that guarantee.
+
+**Fields retyped** (all in `metadata.ts`, all `Function`/`() => Function`/`Function[]` → the
+aliases): `EntityMetadata.target`, `EntityMetadata.hierarchyRoot`,
+`RelationshipMetadata.targetEntity` (→ `string | EntityRef | undefined`),
+`RelationshipOptions.targetEntity` (→ `() => EntityCtor`), `DiscriminatorEntry.ctor`,
+`HierarchyMetadata.rootEntity`, `HierarchyMetadata.subtypes`, `OwnedEntityMetadata.ownedType`,
+`SkipNavigationMetadata.targetEntity`, `SkipNavigationMetadata.joinEntityCtor`.
+(`EntityAttacher.attach(entityClass: Function)` is a method param, not an entity-target field —
+left as-is.)
+
+**`EntityRef` shape — simple union, not discriminated.** Modelling it as a discriminated union
+was rejected: it would require a runtime tag/wrapper (forbidden in this type-only package) and
+break the natural `() => Target` decorator ergonomics. `typeof` `prototype` checks already
+distinguish ctor-vs-thunk at runtime (`resolveTargetEntity`). Recorded as tech debt; not planned.
+
+**Cross-package impact (empirically sized via `pnpm typecheck`):**
+- *Clean tightenings (no casts):* decorator params `() => Function`→`() => EntityCtor`
+  (`metadata`+`core` `Relationships.ts`); `loadCompiledModel` / `resolveClass` classMap →
+  `Record<string, EntityCtor>` (`compiled-model-hydrator.ts`); orm builder entity generics
+  constrained `<T extends object>` (`EntityTypeBuilder`, `ModelBuilder.entity`,
+  `IEntityTypeConfiguration`, navigation/owned/collection/discriminator builders);
+  `CompiledModelClassMap` (`orm`) and `DbContextOptions.compiledModelClassMap` (`core`) →
+  `Record<string, EntityCtor>`; **removed** the obsolete `as unknown as Function` in
+  `OwnedNavigationBuilder._buildMetadata`.
+- *Bridge casts deferred to `metadata/task-5`:* the `MetadataRegistry`/`EntityMetadataBuilder`
+  keep `Function`-typed keys, so 4 `as EntityCtor` narrowings remain at the
+  Function-key→EntityCtor-field boundary (`EntityMetadata.ts` ×2, `MetadataRegistry.ts` ×2),
+  each annotated `task-5`.
+- *Still deferred (valid widening casts, not required for green):* `core` `EntityLoader`/
+  `RelationshipLoader` `resolveTargetEntity` casts (`core/task-7`), `cli`
+  `CompiledModelEmitter` `as Function & { name?: string }` reads (`EntityCtor` intentionally
+  has no `.name`), `Map<Function, …>` registry/identity-map keys.
+
+**Changeset:** `major`. Narrowing the type of exported `EntityMetadata`/`RelationshipMetadata`
+fields is a breaking change per `packages/types/CLAUDE.md` (external consumers passing a
+non-constructor no longer compile). `@ts-linq/core`, `@ts-linq/metadata`, `@ts-linq/orm` also
+narrowed public signatures (decorators, builder generics, class-map options) and are bumped
+`major` in lockstep, though the changes are source-compatible for all conforming consumers.
+
+**Validation:** `typecheck` 32/32, `lint` 0 errors, `test:unit` 2964, `test:integration` 464,
+`test:e2e` 290, `build` 32/32, `arch:deps`/`arch:cycles`/`arch:dead` clean. No runtime change
+(the aliases erase at compile time). A few test fixtures that typed nav properties as `unknown`
+were corrected to `object` to satisfy the tightened builder generics.
 
 ## Refactor order
 After `types/task-1`; sequence before/with `metadata/task-5` and `core/task-7` so the casts are

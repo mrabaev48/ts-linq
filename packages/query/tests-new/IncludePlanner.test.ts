@@ -1,5 +1,6 @@
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityRef } from '@ts-linq/types';
 
 import { IncludeResolutionError } from '../src/errors';
 import { IncludePlanner } from '../src/IncludePlanner';
@@ -52,7 +53,7 @@ function makeLoader(onPopulate?: PopulateCallback): EntityLoader {
 // Metadata registration helpers
 // ---------------------------------------------------------------------------
 
-function registerBlogWithPosts(targetEntity: string | Function = Post): void {
+function registerBlogWithPosts(targetEntity: string | EntityRef = Post): void {
   MetadataStorage.addEntity(Blog, 'blogs');
   MetadataStorage.addRelationship(Blog, {
     propertyName: 'posts',
