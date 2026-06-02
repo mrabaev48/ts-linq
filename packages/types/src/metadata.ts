@@ -1,11 +1,16 @@
 // ORM metadata model — ColumnMetadata, EntityMetadata and the full entity description system
 
+import type {
+  DeleteBehavior,
+  InheritanceStrategy,
+  StorageStrategy,
+  ValueGeneratedPolicy
+} from './enums';
 import type { QueryFilterMetadata } from './query-filters';
 import type {
   ColumnType,
   ValueComparerLike,
   ValueConverterLike,
-  ValueGeneratedPolicy,
   ValueGeneratorClass
 } from './value-conversion';
 
@@ -76,16 +81,6 @@ export interface ColumnMetadata {
   accessor?: unknown;
 }
 
-export enum DeleteBehavior {
-  Cascade = 'Cascade',
-  Restrict = 'Restrict',
-  SetNull = 'SetNull',
-  ClientSetNull = 'ClientSetNull',
-  NoAction = 'NoAction',
-  ClientCascade = 'ClientCascade',
-  ClientNoAction = 'ClientNoAction'
-}
-
 export interface RelationshipMetadata {
   propertyName: string;
   type: 'one-to-many' | 'many-to-one' | 'one-to-one' | 'many-to-many';
@@ -139,18 +134,6 @@ export interface ValidationRule {
   phase?: 'onCreate' | 'onUpdate' | 'always';
   messageKey?: string;
   messageParams?: Record<string, unknown>;
-}
-
-export enum StorageStrategy {
-  TableSplit = 'TableSplit',
-  SeparateTable = 'SeparateTable',
-  Json = 'Json'
-}
-
-export enum InheritanceStrategy {
-  Tph = 'Tph',
-  Tpt = 'Tpt',
-  Tpc = 'Tpc'
 }
 
 export interface DiscriminatorEntry {

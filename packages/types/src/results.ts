@@ -1,4 +1,5 @@
-// Result type, runtime helpers and fallback policy
+// Result type and fallback policy.
+// The `ok`/`err` constructors live in ./runtime (the package's runtime module).
 
 import type { QueryOptions, SqlParameter } from './sql';
 
@@ -7,14 +8,6 @@ export interface Result<T, E = Error> {
   success: boolean;
   value?: T;
   error?: E;
-}
-
-export function ok<T>(value: T): Result<T> {
-  return { success: true, value };
-}
-
-export function err<E = Error>(error: E): Result<never, E> {
-  return { success: false, error };
 }
 
 // Fallback types

@@ -5,6 +5,7 @@ export * from './cache';
 export * from './config';
 export * from './diagnostics';
 export * from './dialect';
+export * from './enums';
 export {
   BatchConfigurationError,
   DatabaseError,
@@ -27,6 +28,7 @@ export * from './metadata';
 export * from './middleware';
 export * from './query-filters';
 export * from './results';
+export * from './runtime';
 export * from './scaffolding';
 export * from './spatial-hierarchy';
 export * from './sql';

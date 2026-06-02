@@ -9,8 +9,9 @@ base error hierarchy. Every package imports from here; this package imports from
 
 - **Zero dependencies.** Never add a `dependencies` or `peerDependencies` entry. If you are
   tempted to import another `@ts-linq/*` package here, the type belongs there, not here.
-- **No runtime code** beyond trivial, pure, dependency-free helpers (`ok`, `err`, `isTemplateSqlCache`).
-  No classes with behavior, no I/O, no side effects, no `console`.
+- **No runtime code** beyond trivial, pure, dependency-free helpers (`ok`, `err`, `isTemplateSqlCache`,
+  living in `runtime.ts`) and the value-emitting enums (`enums.ts`). No classes with behavior
+  (errors aside), no I/O, no side effects, no `console`.
 - This is the only place a contract should be declared once and re-exported elsewhere — avoid
   duplicating these shapes in downstream packages (`SoftDeleteOptions`, `GlobalFilter`, and the
   telemetry info objects have been duplicated before; don't).
@@ -27,15 +28,17 @@ base error hierarchy. Every package imports from here; this package imports from
 | `middleware.ts` | Middleware hooks & retry policy (depends on `logging.ts`, `metadata.ts`) |
 | `config.ts` | Provider & connection configuration (depends on `logging.ts`, `middleware.ts`) |
 | `query-filters.ts` | Global & named query filters (depends on `sql.ts`) |
-| `results.ts` | `Result<T,E>`, `ok()`, `err()`, fallback types (depends on `sql.ts`) |
-| `cache.ts` | Cache interfaces & performance options (depends on `results.ts`) |
+| `results.ts` | `Result<T,E>` & fallback types (depends on `sql.ts`) |
+| `cache.ts` | Cache interfaces & performance options (depends on `results.ts`, `enums.ts`) |
 | `value-conversion.ts` | Value converters, generators & sequences (no deps) |
-| `metadata.ts` | ORM metadata model — central module (depends on `value-conversion.ts`, `query-filters.ts`) |
+| `metadata.ts` | ORM metadata model — central module (depends on `enums.ts`, `value-conversion.ts`, `query-filters.ts`) |
 | `stored-procedure.ts` | SP mapping types (depends on `sql.ts`) |
-| `tracking.ts` | Change tracking primitives (no deps) |
+| `tracking.ts` | Change tracking primitives (depends on `enums.ts`) |
 | `spatial-hierarchy.ts` | Translator interfaces (no deps) |
 | `diagnostics.ts` | Diagnostic config types (no deps) |
 | `scaffolding.ts` | DB-First scaffolding types (no deps) |
+| `enums.ts` | Runtime enums — the package's value-emitting `enum`s, regular (non-`const`) string enums (no deps) |
+| `runtime.ts` | Runtime helpers — the only behaviour-carrying module: `ok()`, `err()`, `isTemplateSqlCache()` (type-only deps on `results.ts`, `cache.ts`) |
 | `errors.ts` | Base error hierarchy: `OrmError` abstract root, `OrmErrorCode`, `OrmErrorOptions`, and all concrete error classes (no deps) |
 
 The internal dependency graph is a strict DAG — no cycles.
@@ -58,7 +61,10 @@ See `project-documents/tasks/refactor/phase-x/types/`:
   (`UnsupportedOperationError`, `MetadataError`, `DecoratorUsageError`, `BatchConfigurationError`,
   `InvalidIncludeError`, `OperationAbortedError`). `@ts-linq/ast`'s `AstSqlGenerationError` now
   extends `OrmError`. Requires `ES2022.Error` in `lib` for native `Error` `cause`.
-- `task-3` — enforce a public/internal boundary (not yet started).
+- `task-3` ✅ **completed** — isolate the runtime surface: `ok`/`err`/`isTemplateSqlCache` moved to
+  `runtime.ts`, the seven value-emitting enums moved to `enums.ts`. Both re-exported from the barrel;
+  the public surface is byte-for-byte unchanged. Enums kept as regular (non-`const`) string enums —
+  cross-package `const enum` inlining is unsafe under separate per-package builds.
 - `task-4` — additional type-level test coverage (partially addressed by `src/__tests__/exports.check.ts`).
 
 ## Tech debt deferred from task-1

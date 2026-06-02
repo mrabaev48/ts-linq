@@ -50,13 +50,6 @@ export interface SequenceMetadata {
 // Value generators (P1-30)
 // ---------------------------------------------------------------------------
 
-export enum ValueGeneratedPolicy {
-  Never = 'Never',
-  OnAdd = 'OnAdd',
-  OnUpdate = 'OnUpdate',
-  OnAddOrUpdate = 'OnAddOrUpdate'
-}
-
 export interface ValueGeneratorContext {
   entityClass: Function;
   propertyName: string;
