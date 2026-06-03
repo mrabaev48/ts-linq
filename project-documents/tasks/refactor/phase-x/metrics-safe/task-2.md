@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: metrics-safe
 priority: P2
@@ -88,11 +88,51 @@ This applies **OCP** (extend by calling, not editing), **DIP** (typed against th
 
 ## Acceptance criteria
 
-- [ ] A generic `safeInvoke` (and/or `SafeSqlLogger` decorator) exists, typed
+- [x] A generic `safeInvoke` (and/or `SafeSqlLogger` decorator) exists, typed
       against `SqlLogger`.
-- [ ] Existing `safeCache*` wrappers preserved and re-expressed via the primitive.
-- [ ] Adding a new safe event requires no edit to a closed union.
-- [ ] `pnpm typecheck` + unit tests pass.
+- [x] Existing `safeCache*` wrappers preserved and re-expressed via the primitive.
+- [x] Adding a new safe event requires no edit to a closed union.
+- [x] `pnpm typecheck` + unit tests pass.
+
+## Outcome
+
+**Implemented** (additive, fully backward compatible):
+
+- **Internal primitive** — the hard-wired `tryInvoke` (closed `'cache' | 'cacheSize'
+  | 'cacheEvicted'` union) was generalized into `invokeSafely(logger: unknown,
+  method: string, args: readonly unknown[])`. Widening `method` to `string` removes
+  the closed union entirely (OCP). Behaviour is byte-for-byte identical: optional-method
+  guard (Null-Object), throw-swallowing, and the `TSL_METRICS_DEBUG`-gated `console.warn`.
+- **`safeInvoke<M extends keyof SqlLogger>(logger, method, ...args:
+  Parameters<NonNullable<SqlLogger[M]>>)`** — the new public, type-safe primitive (DIP).
+  Adding a new safely-invoked event is done by *calling* it with another `SqlLogger`
+  method name — no edit to any union.
+- **`SafeSqlLogger implements SqlLogger`** — Decorator wrapping any logger so every
+  method is guarded once and can never propagate a throw (Decorator + Null-Object).
+- **`safeCache` / `safeCacheSize` / `safeCacheEvicted`** — re-expressed as thin wrappers
+  over `invokeSafely`; public signatures unchanged (`logger: unknown`), so `@ts-linq/cache`,
+  `core`, `orm`, `query` keep working. `safeCacheEvicted` routes through the string-based
+  core (note: `cacheEvicted` is not part of the `SqlLogger` interface, so it intentionally
+  does *not* go through the `keyof SqlLogger`-typed `safeInvoke`).
+
+**Boundary decision** — typed against `SqlLogger` via a **type-only** `import type` from
+`@ts-linq/types`, declared in **`dependencies`** (`workspace:*`). `import type` is fully erased,
+so the emitted JS contains no `require('@ts-linq/types')` — the package's **runtime
+zero-dependency** invariant is preserved (verified by grepping the emitted JS). It must be a real
+`dependency` (not `devDependency`) because `SqlLogger` appears in the package's public `.d.ts`
+(`safeInvoke` signature + `SafeSqlLogger implements SqlLogger`), so consumers need it resolvable at
+compile time; `devDependencies` are not installed transitively. This mirrors the existing
+`@ts-linq/composite-sql-logger`, which type-only-imports `SqlLogger` and keeps `@ts-linq/types` in
+`dependencies`. `@ts-linq/types` is the monorepo foundation (not a higher-level package);
+`arch:deps`/`arch:cycles`/`arch:phantom` are clean.
+
+**Validation** — `pnpm typecheck` (32/32), `pnpm lint` (0 errors), `pnpm test:unit`
+(2975/2975, incl. 39 metrics-safe), `pnpm test-d` (33/33), clean `pnpm build`,
+`pnpm arch:deps`/`arch:cycles`/`arch:dead`/`arch:phantom` all clean. `minor` changeset added.
+
+**Follow-up (out of scope)** — migrate cache adapters' ad-hoc try/catch and the loggers'
+internal guards to `safeInvoke`/`SafeSqlLogger` (cache-redis/task-4, telemetry/task-1);
+optionally promote `cacheEvicted` into the `SqlLogger` interface.
 
 ## Refactor order
 

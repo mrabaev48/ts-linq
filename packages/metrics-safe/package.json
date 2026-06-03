@@ -27,6 +27,9 @@
     "lint": "eslint . --fix"
   },
   "peerDependencies": {},
+  "dependencies": {
+    "@ts-linq/types": "workspace:*"
+  },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",
     "@ts-linq/eslint-config": "workspace:*",
