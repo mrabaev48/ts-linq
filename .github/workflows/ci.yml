@@ -44,6 +44,9 @@ jobs:
       - name: Type-check
         run: pnpm typecheck
 
+      - name: Type tests (tsd)
+        run: pnpm test-d
+
       - name: Lint
         run: pnpm lint
 

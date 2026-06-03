@@ -1,98 +1,97 @@
-import { expectType } from 'tsd';
-import { type EntityId, brandId, unbrandId, type PrimaryKeyOf, DbSet } from '..';
-import type { Queryable } from '..';
-import { TypedQueryable } from '..';
+/**
+ * Type-level tests for the public surface of `@ts-linq/metrics-safe`.
+ *
+ * Run with `tsd` (the package must be built first so its `.d.ts` exists):
+ *   `pnpm -F @ts-linq/metrics-safe test-d`
+ * or repo-wide via `pnpm test-d`.
+ *
+ * These are not part of the Jest suite; they are a permanent compile-time
+ * regression guard for the package's public signatures. Negative assertions
+ * use `tsd`'s `expectError` — no `any`, casts, or suppression comments.
+ */
+import { expectAssignable, expectError, expectNotAssignable, expectType } from 'tsd';
 
-// Define branded id aliases
-type UserId = EntityId<number, 'User'>;
-type OrderId = EntityId<number, 'Order'>;
+import {
+  MemoryProfiler,
+  type MemoryProfilerOptions,
+  type MemorySample,
+  safeCache,
+  safeCacheEvicted,
+  safeCacheSize,
+  warnIfLoggerDebug,
+} from '..';
 
-type User = { id: UserId; name: string };
+// The logger is intentionally untyped at the call site (Null-Object pattern).
+const logger: unknown = {};
 
-type Order = { id: OrderId; userId: UserId; total: number };
+// ── safeCache ───────────────────────────────────────────────────────────────
+expectType<void>(safeCache(logger, { cache: 'sqlGen', hit: true }));
+expectType<void>(safeCache(logger, { cache: 'entityL2', hit: false, provider: 'pg', ttl: true }));
+// `cache` must be one of the known literals.
+expectError(safeCache(logger, { cache: 'unknown', hit: true }));
+// `hit` is required.
+expectError(safeCache(logger, { cache: 'count' }));
+// `provider` must be a string when present.
+expectError(safeCache(logger, { cache: 'count', hit: true, provider: 123 }));
 
-// brandId produces the correct branded type
-const uid = brandId<number, 'User'>(123);
-expectType<UserId>(uid);
+// ── safeCacheSize ─────────────────────────────────────────────────────────────
+expectType<void>(safeCacheSize(logger, { cache: 'count', size: 10 }));
+expectType<void>(safeCacheSize(logger, { cache: 'sqlGen', size: 1, provider: 'mysql' }));
+// `size` is required and numeric.
+expectError(safeCacheSize(logger, { cache: 'count' }));
+expectError(safeCacheSize(logger, { cache: 'count', size: 'big' }));
 
-// unbrandId removes the brand and yields the primitive
-const rawUid = unbrandId(uid);
-expectType<number>(rawUid);
+// ── safeCacheEvicted ──────────────────────────────────────────────────────────
+expectType<void>(safeCacheEvicted(logger, { cache: 'entityL2' }));
+expectType<void>(safeCacheEvicted(logger, { cache: 'entityL2', provider: 'pg' }));
+// `cache` is required and constrained to the known literals.
+expectError(safeCacheEvicted(logger, {}));
+expectError(safeCacheEvicted(logger, { cache: 'nope' }));
 
-// Different branded IDs are not assignable to each other
-const oid = brandId<number, 'Order'>(1);
-expectType<OrderId>(oid);
-// @ts-expect-error - different brands are incompatible
-const badUserId: UserId = oid;
-// @ts-expect-error - different brands are incompatible
-const badOrderId: OrderId = uid;
+// ── warnIfLoggerDebug ─────────────────────────────────────────────────────────
+expectType<void>(warnIfLoggerDebug('saveChanges', new Error('boom')));
+expectType<void>(warnIfLoggerDebug('detectChanges', 'any unknown reason'));
+// `method` must be a string.
+expectError(warnIfLoggerDebug(123, new Error('boom')));
 
-// Function signatures should enforce correct branded ids
-function getUserById(id: UserId): User | null {
-  return null;
-}
-function getOrderById(id: OrderId): Order | null {
-  return null;
-}
+// ── MemoryProfiler ────────────────────────────────────────────────────────────
+expectType<MemoryProfiler>(new MemoryProfiler());
+expectType<MemoryProfiler>(new MemoryProfiler({ enableGC: true, sampleIntervalMs: 1000 }));
+// Options are validated: wrong field type and unknown fields are rejected.
+expectError(new MemoryProfiler({ enableGC: 'yes' }));
+expectError(new MemoryProfiler({ unknownOption: true }));
 
-getUserById(uid);
-getOrderById(oid);
-// @ts-expect-error
-getUserById(oid);
-// @ts-expect-error
-getOrderById(uid);
+const profiler = new MemoryProfiler();
+// `sample()` resolves a `MemorySample`; `allowGc` is an optional boolean.
+expectType<Promise<MemorySample>>(profiler.sample());
+expectType<Promise<MemorySample>>(profiler.sample(true));
+// `onSample` returns an unsubscribe function and hands a `MemorySample` to the listener.
+expectType<() => void>(profiler.onSample((sample) => expectType<MemorySample>(sample)));
+// The listener must be a function.
+expectError(profiler.onSample(123));
 
-// Branded ids remain compatible with primitive constraints in generics
-function identity<T extends string | number>(x: T): T {
-  return x;
-}
-const uid2 = identity(uid);
-expectType<UserId>(uid2);
+// ── MemorySample shape ────────────────────────────────────────────────────────
+expectAssignable<MemorySample>({
+  timestampMs: 0,
+  rssBytes: 0,
+  heapTotalBytes: 0,
+  heapUsedBytes: 0,
+  externalBytes: 0,
+  arrayBuffersBytes: 0,
+  heapPressure: 0,
+});
+// Every field is required.
+expectNotAssignable<MemorySample>({ timestampMs: 0 });
 
-// PrimaryKeyOf infers branded id type by convention `id`
-type UserPk = PrimaryKeyOf<User>;
-expectType<UserId>({} as UserPk);
-// @ts-expect-error - OrderId is not assignable to UserPk
-const wrongPk: UserPk = {} as OrderId;
-
-// DbSet exposes query methods directly — no .query() needed
-declare const users: DbSet<User>;
-expectType<Queryable<User>>(users.orderBy('name'));
-expectType<Queryable<User>>(users.whereIn('name', ['Alice']));
-
-// Chaining starts from DbSet directly (EF Core style)
-const usersQuery = users.orderBy('name');
-expectType<Queryable<User>>(usersQuery);
-
-// TypedQueryable: orderBy/thenBy only accept entity keys
-type U_Order = { id: number; name: string; age: number; createdAt: Date };
-declare const qOrder: Queryable<U_Order>;
-const tqOrder = new TypedQueryable(qOrder);
-// valid
-tqOrder.orderBy('name');
-tqOrder.orderBy('age', 'DESC');
-tqOrder.thenBy('createdAt');
-tqOrder.thenByDescending('id');
-// invalid: non-existent key
-// @ts-expect-error
-tqOrder.orderBy('nonExistent');
-
-// TypedQueryable: include only allows relationship properties
-type Order_Rel = { id: number; userId: number };
-type UserEx_Rel = { id: number; name: string; orders: Order_Rel[]; manager?: UserEx_Rel | null };
-declare const qRel: Queryable<UserEx_Rel>;
-const tqRel = new TypedQueryable(qRel);
-// valid relationship
-tqRel.include('orders');
-// invalid: 'name' is a primitive, not a relationship
-// @ts-expect-error
-tqRel.include('name');
-
-
-// TypedQueryable: select() throws at runtime (transformer required), type still inferred
-type U_Select = { id: number; name: string; age: number };
-declare const qSel: Queryable<U_Select>;
-const tqSel = new TypedQueryable(qSel);
-const selected = tqSel.select((u) => ({ id: u.id, name: u.name }));
-// Chaining to ensure it remains typed
-const _x2 = selected.take(1);
+// ── MemoryProfilerOptions shape ───────────────────────────────────────────────
+expectAssignable<MemoryProfilerOptions>({});
+expectAssignable<MemoryProfilerOptions>({
+  enableGC: true,
+  sampleIntervalMs: 1,
+  trackAllocations: false,
+  heapDumpThreshold: 0.9,
+  heapDumpDir: '/tmp',
+  maxSamples: 10,
+});
+// Wrong field types are rejected.
+expectNotAssignable<MemoryProfilerOptions>({ enableGC: 'true' });
