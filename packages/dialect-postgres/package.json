@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/dialect-postgres",
-  "version": "2.6.6",
+  "version": "2.6.7",
   "private": true,
   "description": "POSTGRES SQL dialect for ts-linq ORM",
   "main": "./dist/index.js",
