@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/metadata",
-  "version": "2.7.3",
+  "version": "3.0.0",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
