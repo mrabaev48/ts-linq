@@ -3,6 +3,7 @@ import type {
   CheckConstraintMetadata,
   ColumnMetadata,
   ComplexTypePropertyMetadata,
+  EntityCtor,
   EntityMetadata,
   HierarchyMetadata,
   IndexMetadata,
@@ -227,7 +228,8 @@ export class MetadataRegistry {
       }
       const meta = this.entities.get(key);
       if (!meta) return undefined;
-      return original !== target ? { ...meta, target } : meta;
+      // task-5: registry keys remain `Function`; an entity target is a constructor.
+      return original !== target ? { ...meta, target: target as EntityCtor } : meta;
     } catch {
       const key = this.normalizeTarget(target);
       if (this.builders.has(key)) {
@@ -424,7 +426,8 @@ export class MetadataRegistry {
     const key = this.normalizeTarget(subtype);
     const finalized = this.entities.get(key);
     if (finalized) {
-      finalized.hierarchyRoot = root;
+      // task-5: registry keys remain `Function`; the hierarchy root is a constructor.
+      finalized.hierarchyRoot = root as EntityCtor;
       return;
     }
     this.getOrCreateBuilder(subtype).setHierarchyRoot(root);

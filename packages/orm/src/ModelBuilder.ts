@@ -30,7 +30,7 @@ export type EntityQueryFilterMap = Map<Function, ReadonlyArray<QueryFilterMetada
  *   }
  */
 export class ModelBuilder {
-  private readonly _builders: Map<Function, EntityTypeBuilder<unknown>> = new Map();
+  private readonly _builders: Map<Function, EntityTypeBuilder<object>> = new Map();
   private readonly _dbFunctions: DbFunctionBuilder[] = [];
   private readonly _globalConverterRules: Map<Function, GlobalConverterRule> = new Map();
   private readonly _sequences: Map<string, SequenceBuilder> = new Map();
@@ -39,19 +39,19 @@ export class ModelBuilder {
 
   constructor(private readonly _registry: MetadataRegistry) {}
 
-  entity<T>(
+  entity<T extends object>(
     ctor: new () => T,
     configure?: (b: EntityTypeBuilder<T>) => void
   ): EntityTypeBuilder<T> {
     if (!this._builders.has(ctor)) {
-      this._builders.set(ctor, new EntityTypeBuilder<T>(ctor) as EntityTypeBuilder<unknown>);
+      this._builders.set(ctor, new EntityTypeBuilder<T>(ctor) as EntityTypeBuilder<object>);
     }
     const builder = this._builders.get(ctor) as EntityTypeBuilder<T>;
     if (configure) configure(builder);
     return builder;
   }
 
-  applyConfiguration<T>(config: IEntityTypeConfiguration<T>): this {
+  applyConfiguration<T extends object>(config: IEntityTypeConfiguration<T>): this {
     const builder = this.entity(config.entityType);
     config.configure(builder);
     return this;
@@ -68,7 +68,7 @@ export class ModelBuilder {
         if (typeof exported !== 'function') continue;
         const proto = (exported as { prototype?: unknown }).prototype;
         if (typeof (proto as Record<string, unknown>)?.configure !== 'function') continue;
-        const instance = new (exported as new () => IEntityTypeConfiguration<unknown>)();
+        const instance = new (exported as new () => IEntityTypeConfiguration<object>)();
         if (typeof instance.entityType !== 'function') continue;
         this.applyConfiguration(instance);
       }

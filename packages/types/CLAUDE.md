@@ -31,7 +31,7 @@ base error hierarchy. Every package imports from here; this package imports from
 | `results.ts` | `Result<T,E>` & fallback types (depends on `sql.ts`) |
 | `cache.ts` | Cache interfaces & performance options (depends on `results.ts`, `enums.ts`) |
 | `value-conversion.ts` | Value converters, generators & sequences (no deps) |
-| `metadata.ts` | ORM metadata model — central module (depends on `enums.ts`, `value-conversion.ts`, `query-filters.ts`) |
+| `metadata.ts` | ORM metadata model — central module (depends on `enums.ts`, `value-conversion.ts`, `query-filters.ts`); home of the `EntityCtor`/`EntityRef` entity-target aliases (task-4) |
 | `stored-procedure.ts` | SP mapping types (depends on `sql.ts`) |
 | `tracking.ts` | Change tracking primitives (depends on `enums.ts`) |
 | `spatial-hierarchy.ts` | Translator interfaces (no deps) |
@@ -65,7 +65,15 @@ See `project-documents/tasks/refactor/phase-x/types/`:
   `runtime.ts`, the seven value-emitting enums moved to `enums.ts`. Both re-exported from the barrel;
   the public surface is byte-for-byte unchanged. Enums kept as regular (non-`const`) string enums —
   cross-package `const enum` inlining is unsafe under separate per-package builds.
-- `task-4` — additional type-level test coverage (partially addressed by `src/__tests__/exports.check.ts`).
+- `task-4` ✅ **completed** — tightened the weak `Function`/broad-union entity-target fields in
+  `metadata.ts`: introduced `EntityCtor` (`abstract new (...args: unknown[]) => object`) and
+  `EntityRef` (`EntityCtor | (() => EntityCtor)`), replacing `Function` in `EntityMetadata.target`/
+  `hierarchyRoot`, `RelationshipMetadata.targetEntity`, `RelationshipOptions.targetEntity`,
+  `DiscriminatorEntry.ctor`, `HierarchyMetadata.rootEntity`/`subtypes`,
+  `OwnedEntityMetadata.ownedType`, and both `SkipNavigationMetadata` ctor fields. Type-only,
+  re-exported via the barrel (runtime `Object.keys` manifest unchanged); breaking field-type
+  narrowing → `major`. Unblocks the cast-removal sweeps in `metadata/task-5` and `core/task-7`.
+  Negative type-level coverage lives in `src/__tests__/exports.check.ts`.
 
 ## Tech debt deferred from task-1
 

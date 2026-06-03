@@ -1,9 +1,10 @@
 import type { CompiledModel } from '@ts-linq/metadata';
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import { loadCompiledModel } from '@ts-linq/metadata';
+import type { EntityCtor } from '@ts-linq/types';
 
-/** Maps entity class name strings to their constructor functions for compiled-model hydration. */
-export type CompiledModelClassMap = Record<string, Function>;
+/** Maps entity class name strings to their constructors for compiled-model hydration. */
+export type CompiledModelClassMap = Record<string, EntityCtor>;
 
 /**
  * Pre-populates a MetadataRegistry from an AOT-compiled model snapshot.

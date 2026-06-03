@@ -26,13 +26,13 @@ guards, enums) and the base error hierarchy. `package.json` declares no dependen
 | 1 | task-1 | P1 | Split the mega-barrel into modules (enables everything else) | ✅ done |
 | 2 | task-2 | P1 | Consolidate error hierarchy (prereq for core typed throws) | ✅ done |
 | 3 | task-3 | P2 | Isolate runtime values from pure types | ✅ done |
-| 4 | task-4 | P3 | Tighten `Function`/union metadata types (enabler) | not-started |
+| 4 | task-4 | P3 | Tighten `Function`/union metadata types (enabler) | ✅ done |
 
 ## Dependencies on other packages
 - None inbound (zero-dep). Outbound impact: every package consumes these types, so changes
-  must stay backward-compatible (preserve barrel names). Proposed home for `MetadataSource`
-  (`metadata/task-1`) and `EntityCtor`/`EntityRef` (`metadata/task-5`, `core/task-7`) to keep
-  dependency direction clean.
+  must stay backward-compatible (preserve barrel names). `MetadataSource`
+  (`metadata/task-1`) lands here too; `EntityCtor`/`EntityRef` now live in `metadata.ts`
+  (task-4) and unblock the cast-removal sweeps in `metadata/task-5` and `core/task-7`.
 
 ## Testing strategy
 - Build/type-level: every previously-exported symbol still resolves from `@ts-linq/types`

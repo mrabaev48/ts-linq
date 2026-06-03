@@ -23,7 +23,7 @@ class FluentUser {
   email!: string;
   name!: string;
   posts?: FluentPost[];
-  profile?: unknown;
+  profile?: object;
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────

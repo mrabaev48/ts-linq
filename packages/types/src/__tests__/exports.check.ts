@@ -45,7 +45,9 @@ import type {
   EntityAttacher,
   EntityCacheLike,
   EntityChangeContext,
+  EntityCtor,
   EntityMetadata,
+  EntityRef,
   EntityState,
   EntityStoredProcedureMapping,
   ExecutionStrategyOptions,
@@ -303,5 +305,34 @@ const _ormErrorCode = OrmErrorCode.DatabaseError;
 declare const _ormErrorOptions: OrmErrorOptions;
 // OrmError is abstract: reference the type, never instantiate it directly.
 declare const _ormError: OrmError;
+
+// ─── EntityCtor / EntityRef (types/task-4) ──────────────────────────────────
+// The aliases are type-only and must flow through the barrel without adding any
+// runtime export (guarded by tests/type-exports.test.ts Object.keys assertion).
+declare const _entityCtor: EntityCtor;
+declare const _entityRef: EntityRef;
+
+class _SampleEntity {}
+
+// Positive: a real class is a valid entity constructor / reference.
+const _validCtor: EntityCtor = _SampleEntity;
+const _validRefCtor: EntityRef = _SampleEntity;
+const _validRefThunk: EntityRef = () => _SampleEntity;
+void _validCtor;
+void _validRefCtor;
+void _validRefThunk;
+
+// Negative: a plain function is not constructable — assigning it must be a compile error.
+// @ts-expect-error plain function is not assignable to a construct signature
+const _badFnCtor: EntityCtor = function notAConstructor(): void {};
+// Negative: an arrow function is not constructable either.
+// @ts-expect-error arrow function is not assignable to a construct signature
+const _badArrowCtor: EntityCtor = (): void => {};
+// Negative: a thunk that does not return a constructor is not an EntityRef.
+// @ts-expect-error thunk must return an EntityCtor, not an arbitrary value
+const _badRefThunk: EntityRef = () => 42;
+void _badFnCtor;
+void _badArrowCtor;
+void _badRefThunk;
 
 export {};
