@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: metrics-safe
 priority: P3
@@ -8,6 +8,7 @@ risk: low
 category: package-boundary
 depends_on: []
 related: ["prometheus-sql-logger/README.md"]
+decision: "A — subpath export (@ts-linq/metrics-safe/memory), root re-export retained"
 ---
 
 # Refactor: Assess MemoryProfiler boundary / module separation
@@ -90,7 +91,70 @@ Options:
 2. Decide.
 3. Implement chosen option behind back-compat.
 
+## Decision (ADR)
+
+**Status:** Accepted — implemented. **Chosen option: (A) subpath export.**
+
+### Context
+
+`@ts-linq/metrics-safe` bundled two unrelated responsibilities: the lightweight
+safe-invoke helpers (`lib/MetricsSafe.ts`, ~68 LOC, no Node API beyond
+`process.env`) and the Node-coupled `MemoryProfiler` (`lib/MemoryProfiler.ts`,
+~228 LOC; `node:fs`/`node:path`/`node:inspector`, `process.memoryUsage`,
+`FinalizationRegistry`, `setInterval`). They never call each other — low package
+cohesion (SRP at package granularity).
+
+### Consumer inventory (evidence)
+
+- The concrete `MemoryProfiler` **class is imported nowhere outside this
+  package's own tests**. Every real consumer depends on the *structural shape*:
+  - `prometheus-sql-logger` (`PrometheusSqlLogger.ts`, `initMemoryMetrics`)
+    defines a **local** `MemoryProfilerLike` structural type and does **not**
+    depend on `@ts-linq/metrics-safe` at all.
+  - `@ts-linq/orm` `DbContext` consumes `MemoryProfilerLike` re-exported from
+    `@ts-linq/core` (`DiagnosticsOptions.memoryProfiler`).
+- The ISP seam is therefore already clean; a boundary move is low-risk.
+
+### Decision
+
+Implement **(A)**: expose `MemoryProfiler` on a dedicated subpath
+`@ts-linq/metrics-safe/memory` (via a thin `src/memory.ts` barrel + `exports`
+map), and **retain the root re-export** (`src/index.ts`) for backward
+compatibility. The dependency graph is unchanged.
+
+### Rationale (A over B)
+
+- Task default is (A) unless a broader observability reorg is planned; none is.
+- A subpath gives the cohesion/discoverability win (memory profiler on its own
+  entrypoint) at near-zero risk and without a new package, changeset graph, or
+  build wiring.
+- Repo precedent exists: `@ts-linq/migrations/scaffold`, `@ts-linq/query/internal`
+  (plain `tsc`, `dist/` mirrors `src/`).
+- `arch:deps` / `arch:cycles` stay clean (no new edges).
+
+### Consequences
+
+- New public entrypoint `@ts-linq/metrics-safe/memory` exposing `MemoryProfiler`,
+  `MemorySample`, `MemoryProfilerOptions`.
+- Back-compat: existing `import { MemoryProfiler } from '@ts-linq/metrics-safe'`
+  keeps working. Because the root still re-exports the profiler, the safe helpers
+  are not yet *fully* isolated — **Option B (full extraction to
+  `@ts-linq/memory-profiler`) is deferred** and recorded as tech debt; revisit
+  during a broader observability reorg.
+- In-repo TS consumers using `moduleResolution: node` would need a `paths`
+  mapping to the built `dist/memory` to import the subpath in source (same
+  pattern as `orm/tsconfig.json` for `@ts-linq/query/internal`); the `exports`
+  map resolves natively under `bundler`/`node16`.
+
+### Validation
+
+`typecheck`, `lint`, `tests:unit` (2975), `test:integration` (464),
+`tests:e2e` (290), `build` (32/32), `test-d` (33/33, root + `/memory`),
+`arch:deps`, `arch:cycles`, `arch:dead` — all green. `prometheus-sql-logger`
+builds and still accepts the profiler via `MemoryProfilerLike`.
+
 ## Notes
 
-P3 — cohesion polish, not a defect. Listed because the package name and contents
-diverge; safe to defer until a broader observability reorg.
+P3 — cohesion polish, not a defect. Implemented as (A); package name and contents
+still diverge at the root for back-compat. Full extraction (B) deferred to a
+broader observability reorg.
