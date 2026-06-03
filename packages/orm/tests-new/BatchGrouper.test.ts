@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { describe, expect, it } from '@jest/globals';
+import type { EntityCtor } from '@ts-linq/types';
 
 import { chunkGroup, groupChanges } from '../src/save-changes/batch-grouper';
 import type { NormalizedChange } from '../src/types';
@@ -31,7 +32,7 @@ function makeMetadata(entityClass: Function, cols = 3, pks = ['id']) {
     tableName: entityClass.name.toLowerCase() + 's',
     columns,
     primaryKeys: pks,
-    target: entityClass,
+    target: entityClass as EntityCtor,
     relationships: [],
     indexes: []
   };
