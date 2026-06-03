@@ -1,5 +1,15 @@
 # @ts-linq/testkits
 
+## 6.0.7
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-linq/core@2.0.3
+  - @ts-linq/provider-mssql@2.4.7
+  - @ts-linq/provider-mysql@2.3.7
+  - @ts-linq/provider-postgres@2.4.7
+
 ## 6.0.6
 
 ### Patch Changes
