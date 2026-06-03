@@ -1,5 +1,13 @@
 # @ts-linq/query
 
+## 2.4.12
+
+### Patch Changes
+
+- Updated dependencies [[`70a5949`](https://github.com/mrabaev48/ts-linq/commit/70a5949c4d9640aab4855506e4c0540cf6344cd6)]:
+  - @ts-linq/metrics-safe@1.1.0
+  - @ts-linq/core@2.0.2
+
 ## 2.4.11
 
 ### Patch Changes
