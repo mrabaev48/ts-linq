@@ -9,20 +9,26 @@
  * regression guard for the package's public signatures. Negative assertions
  * use `tsd`'s `expectError` — no `any`, casts, or suppression comments.
  */
+import type { SqlLogger } from '@ts-linq/types';
 import { expectAssignable, expectError, expectNotAssignable, expectType } from 'tsd';
 
 import {
   MemoryProfiler,
   type MemoryProfilerOptions,
   type MemorySample,
+  SafeSqlLogger,
   safeCache,
   safeCacheEvicted,
   safeCacheSize,
+  safeInvoke,
   warnIfLoggerDebug,
 } from '..';
 
 // The logger is intentionally untyped at the call site (Null-Object pattern).
 const logger: unknown = {};
+
+// A real, fully-typed SqlLogger for the generic safe-invoke assertions.
+declare const sql: SqlLogger;
 
 // ── safeCache ───────────────────────────────────────────────────────────────
 expectType<void>(safeCache(logger, { cache: 'sqlGen', hit: true }));
@@ -47,6 +53,30 @@ expectType<void>(safeCacheEvicted(logger, { cache: 'entityL2', provider: 'pg' })
 // `cache` is required and constrained to the known literals.
 expectError(safeCacheEvicted(logger, {}));
 expectError(safeCacheEvicted(logger, { cache: 'nope' }));
+
+// ── safeInvoke (generic, typed against SqlLogger) ─────────────────────────────
+// Method name + argument types are checked against the `SqlLogger` contract.
+expectType<void>(safeInvoke(sql, 'fallback', { fallback: 'redis', attempted: true }));
+expectType<void>(safeInvoke(sql, 'cacheSize', { cache: 'count', size: 1 }));
+expectType<void>(safeInvoke(sql, 'debug', 'message'));
+expectType<void>(safeInvoke(sql, 'debug', 'message', { traceId: 'abc' }));
+// An undefined logger is accepted (Null-Object).
+expectType<void>(safeInvoke(undefined, 'fallback', { fallback: 'redis', attempted: true }));
+// A non-existent method name is rejected.
+expectError(safeInvoke(sql, 'nope', {}));
+// Wrong argument shape is rejected (`fallback` is required on FallbackInfo).
+expectError(safeInvoke(sql, 'fallback', { attempted: true }));
+// Wrong argument type is rejected (`size` must be numeric).
+expectError(safeInvoke(sql, 'cacheSize', { cache: 'count', size: 'big' }));
+
+// ── SafeSqlLogger (Decorator) ─────────────────────────────────────────────────
+// The decorator is itself a SqlLogger and wraps one.
+expectAssignable<SqlLogger>(new SafeSqlLogger(sql));
+expectType<SafeSqlLogger>(new SafeSqlLogger(sql));
+// The constructor requires a logger argument.
+expectError(new SafeSqlLogger());
+// A plain non-logger object is not a valid wrap target (missing required methods).
+expectError(new SafeSqlLogger({}));
 
 // ── warnIfLoggerDebug ─────────────────────────────────────────────────────────
 expectType<void>(warnIfLoggerDebug('saveChanges', new Error('boom')));
