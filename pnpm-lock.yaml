@@ -618,6 +618,9 @@ importers:
       '@ts-linq/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
