@@ -25,7 +25,7 @@ import { ReferenceNavigationBuilder } from './ReferenceNavigationBuilder';
 import { TableSplitConfigBuilder } from './TableSplitConfigBuilder';
 import { extractPropertyName, extractPropertyNames } from './utils';
 
-function resolveOwnedArgs<TOwned, TOwner>(
+function resolveOwnedArgs<TOwned extends object, TOwner>(
   ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<TOwner, TOwned>) => void),
   configure?: (b: OwnedNavigationBuilder<TOwner, TOwned>) => void
 ): [new () => TOwned, ((b: OwnedNavigationBuilder<TOwner, TOwned>) => void) | undefined] {
@@ -47,7 +47,7 @@ function resolveOwnedArgs<TOwned, TOwner>(
  * in a single batch when ModelBuilder._finalize() calls _applyToRegistry().
  * This ensures decorator metadata is fully settled before fluent overrides run.
  */
-export class EntityTypeBuilder<T> {
+export class EntityTypeBuilder<T extends object> {
   /** Brand used by the compile-time transformer to identify EntityTypeBuilder receivers. */
   declare readonly __tsLinqEntityTypeBuilderBrand: true;
 
@@ -168,7 +168,7 @@ export class EntityTypeBuilder<T> {
     return new PropertyBuilder<T[K]>(propName, this._columns);
   }
 
-  hasOne<TRel>(
+  hasOne<TRel extends object>(
     selector: (e: T) => TRel | null | undefined,
     relClass?: new () => TRel
   ): ReferenceNavigationBuilder<T, TRel> {
@@ -181,7 +181,7 @@ export class EntityTypeBuilder<T> {
     );
   }
 
-  hasMany<TRel>(
+  hasMany<TRel extends object>(
     selector: (e: T) => TRel[],
     relClass?: new () => TRel
   ): CollectionNavigationBuilder<T, TRel> {
@@ -230,7 +230,7 @@ export class EntityTypeBuilder<T> {
     return this;
   }
 
-  ownsOne<TOwned>(
+  ownsOne<TOwned extends object>(
     selector: (e: T) => TOwned | undefined,
     ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<T, TOwned>) => void),
     configure?: (b: OwnedNavigationBuilder<T, TOwned>) => void
@@ -248,7 +248,7 @@ export class EntityTypeBuilder<T> {
     return builder;
   }
 
-  ownsMany<TOwned>(
+  ownsMany<TOwned extends object>(
     selector: (e: T) => TOwned[],
     ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<T, TOwned>) => void),
     configure?: (b: OwnedNavigationBuilder<T, TOwned>) => void

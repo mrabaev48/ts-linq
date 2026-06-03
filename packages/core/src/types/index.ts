@@ -2,7 +2,7 @@
 // Domain contracts (EntityState, TrackedEntity) and logger event types live in @ts-linq/types.
 // Consumers should import those directly from @ts-linq/types.
 
-import type { CircuitState } from '@ts-linq/types';
+import type { CircuitState, EntityCtor } from '@ts-linq/types';
 
 /**
  * Structural contract for a database provider.
@@ -89,7 +89,7 @@ export interface DbContextOptions {
    * Maps entity class name strings → constructors for compiled-model hydration.
    * Export `AppContextModelClassMap` from the generated file alongside `compiledModel`.
    */
-  compiledModelClassMap?: Record<string, Function>;
+  compiledModelClassMap?: Record<string, EntityCtor>;
   performance?: import('@ts-linq/types').PerformanceOptions;
   loading?: import('@ts-linq/types').LoadingDefaults;
   softDelete?: import('@ts-linq/types').SoftDeleteOptions;

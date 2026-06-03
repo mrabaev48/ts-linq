@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { RelationshipMetadata } from '@ts-linq/types';
+import type { EntityCtor, RelationshipMetadata } from '@ts-linq/types';
 
 /**
  * Options for configuring relationships between entities.
@@ -21,7 +21,7 @@ export interface RelationshipOptions {
 
 function defineRelationship(
   kind: RelationshipMetadata['type'],
-  targetEntity: () => Function,
+  targetEntity: () => EntityCtor,
   options: RelationshipOptions,
   target: object,
   propertyKey: string | symbol
@@ -47,7 +47,7 @@ function defineRelationship(
  * Declares a one-to-many relationship on a collection navigation property.
  */
 export function OneToMany(
-  targetEntity: () => Function,
+  targetEntity: () => EntityCtor,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
@@ -59,7 +59,7 @@ export function OneToMany(
  * Declares a many-to-one relationship on a reference navigation property.
  */
 export function ManyToOne(
-  targetEntity: () => Function,
+  targetEntity: () => EntityCtor,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
@@ -71,7 +71,7 @@ export function ManyToOne(
  * Declares a one-to-one relationship on a reference navigation property.
  */
 export function OneToOne(
-  targetEntity: () => Function,
+  targetEntity: () => EntityCtor,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
@@ -83,7 +83,7 @@ export function OneToOne(
  * Declares a many-to-many relationship on a collection navigation property.
  */
 export function ManyToMany(
-  targetEntity: () => Function,
+  targetEntity: () => EntityCtor,
   options: RelationshipOptions = {}
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
