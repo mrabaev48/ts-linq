@@ -1,9 +1,24 @@
+import type { SqlLogger } from '@ts-linq/types';
+
 import {
   safeCache,
   safeCacheEvicted,
   safeCacheSize,
+  safeInvoke,
+  SafeSqlLogger,
   warnIfLoggerDebug
 } from '../src/lib/MetricsSafe';
+
+/** Build a valid `SqlLogger` (required base methods present) with optional overrides. */
+function makeLogger(overrides: Partial<SqlLogger> = {}): SqlLogger {
+  return {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    ...overrides
+  };
+}
 
 describe('MetricsSafe', () => {
   const originalEnv = process.env;
@@ -340,6 +355,126 @@ describe('MetricsSafe', () => {
       expect(mockLogger.cache).toHaveBeenCalled();
       expect(mockLogger.cacheSize).toHaveBeenCalled();
       expect(mockLogger.cacheEvicted).toHaveBeenCalled();
+    });
+  });
+
+  describe('safeInvoke', () => {
+    it('should invoke the named method with the spread arguments', () => {
+      const fallback = jest.fn();
+      const logger = makeLogger({ fallback });
+      const info = { fallback: 'redis', attempted: true } as const;
+
+      safeInvoke(logger, 'fallback', info);
+
+      expect(fallback).toHaveBeenCalledWith(info);
+      expect(fallback).toHaveBeenCalledTimes(1);
+    });
+
+    it('should forward multi-argument methods', () => {
+      const debug = jest.fn();
+      const logger = makeLogger({ debug });
+      const meta = { traceId: 'abc' };
+
+      safeInvoke(logger, 'debug', 'hello', meta);
+
+      expect(debug).toHaveBeenCalledWith('hello', meta);
+    });
+
+    it('should be a no-op for an undefined logger', () => {
+      expect(() => safeInvoke(undefined, 'cache', { cache: 'sqlGen', hit: true })).not.toThrow();
+    });
+
+    it('should be a no-op when the method is absent (Null-Object)', () => {
+      const logger = makeLogger();
+
+      expect(() =>
+        safeInvoke(logger, 'fallback', { fallback: 'redis', attempted: true })
+      ).not.toThrow();
+    });
+
+    it('should swallow a throwing method', () => {
+      const fallback = jest.fn(() => {
+        throw new Error('boom');
+      });
+      const logger = makeLogger({ fallback });
+
+      expect(() =>
+        safeInvoke(logger, 'fallback', { fallback: 'redis', attempted: true })
+      ).not.toThrow();
+    });
+
+    it('should warn on throw only when TSL_METRICS_DEBUG is enabled', () => {
+      process.env.TSL_METRICS_DEBUG = '1';
+      const fallback = jest.fn(() => {
+        throw new Error('boom');
+      });
+      const logger = makeLogger({ fallback });
+
+      safeInvoke(logger, 'fallback', { fallback: 'redis', attempted: true });
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[ts-linq metrics]',
+        'fallback',
+        expect.any(Error)
+      );
+    });
+
+    it('should not warn on throw when TSL_METRICS_DEBUG is unset', () => {
+      delete process.env.TSL_METRICS_DEBUG;
+      const fallback = jest.fn(() => {
+        throw new Error('boom');
+      });
+      const logger = makeLogger({ fallback });
+
+      safeInvoke(logger, 'fallback', { fallback: 'redis', attempted: true });
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('SafeSqlLogger', () => {
+    it('should forward optional event methods to the inner logger', () => {
+      const cache = jest.fn();
+      const inner = makeLogger({ cache });
+      const safe = new SafeSqlLogger(inner);
+      const info = { cache: 'sqlGen' as const, hit: true };
+
+      safe.cache(info);
+
+      expect(cache).toHaveBeenCalledWith(info);
+    });
+
+    it('should forward required base methods to the inner logger', () => {
+      const inner = makeLogger();
+      const safe = new SafeSqlLogger(inner);
+
+      safe.debug('d');
+      safe.info('i');
+      safe.warn('w');
+      safe.error('e');
+
+      expect(inner.debug).toHaveBeenCalledWith('d', undefined);
+      expect(inner.info).toHaveBeenCalledWith('i', undefined);
+      expect(inner.warn).toHaveBeenCalledWith('w', undefined);
+      expect(inner.error).toHaveBeenCalledWith('e', undefined);
+    });
+
+    it('should never propagate a throw from an inner method', () => {
+      const inner = makeLogger({
+        fallback: jest.fn(() => {
+          throw new Error('boom');
+        })
+      });
+      const safe = new SafeSqlLogger(inner);
+
+      expect(() => safe.fallback({ fallback: 'redis', attempted: true })).not.toThrow();
+    });
+
+    it('should be no-op-safe when the inner optional method is absent', () => {
+      const inner = makeLogger();
+      const safe = new SafeSqlLogger(inner);
+
+      expect(() => safe.fallback({ fallback: 'redis', attempted: true })).not.toThrow();
     });
   });
 });

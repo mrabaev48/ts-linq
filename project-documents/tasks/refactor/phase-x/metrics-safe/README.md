@@ -46,7 +46,7 @@ samples process/heap memory and can take heap snapshots.
 | Order | Task | Priority | Reason |
 |---:|---|---|---|
 | 1 | task-1.md — Replace stale/wrong test-d file with real metrics-safe type tests ✅ **completed** | P1 | The file tests a different package; it is dead/invalid |
-| 2 | task-2.md — Generalize tryInvoke into an extensible safe-invoke abstraction (OCP) | P2 | Hard-coded 3-method whitelist blocks new safe events |
+| 2 | task-2.md — Generalize tryInvoke into an extensible safe-invoke abstraction (OCP) ✅ **completed** | P2 | Hard-coded 3-method whitelist blocks new safe events |
 | 3 | task-3.md — Assess MemoryProfiler boundary / module separation | P3 | Two unrelated responsibilities share one package |
 
 ## Dependencies on other packages

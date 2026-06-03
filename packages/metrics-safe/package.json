@@ -28,6 +28,7 @@
   },
   "peerDependencies": {},
   "devDependencies": {
+    "@ts-linq/types": "workspace:*",
     "@ts-linq/typescript-config": "workspace:*",
     "@ts-linq/eslint-config": "workspace:*",
     "@types/node": "^24.3.0",
