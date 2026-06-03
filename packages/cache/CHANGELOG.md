@@ -1,5 +1,13 @@
 # @ts-linq/cache
 
+## 7.0.2
+
+### Patch Changes
+
+- Updated dependencies [[`70a5949`](https://github.com/mrabaev48/ts-linq/commit/70a5949c4d9640aab4855506e4c0540cf6344cd6)]:
+  - @ts-linq/metrics-safe@1.1.0
+  - @ts-linq/core@2.0.2
+
 ## 7.0.1
 
 ### Patch Changes
