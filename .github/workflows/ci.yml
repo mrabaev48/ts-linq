@@ -26,12 +26,20 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      # Key the Turbo cache by a hash of the whole source tree (not the commit
+      # SHA with a broad prefix fallback). The packages use composite/incremental
+      # `tsc`, whose `.tsbuildinfo` state is not hermetic across the cache: a
+      # `restore-keys: turbo-<os>-` fallback restores an older commit's cached
+      # `dist/**` onto a changed tree, and incremental `tsc` then skips re-emitting
+      # declarations — producing an incomplete `dist` (e.g. `@ts-linq/types`
+      # missing exports) and breaking downstream builds. Restoring a cache only
+      # when the entire source tree is identical guarantees the cached outputs
+      # match the inputs; any source change falls through to a clean build.
       - name: Cache Turbo
         uses: actions/cache@v4
         with:
           path: .turbo
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: turbo-${{ runner.os }}-
+          key: turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'packages/**/src/**/*.ts', 'packages/**/tsconfig*.json', 'packages/**/package.json') }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
