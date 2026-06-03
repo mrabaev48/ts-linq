@@ -18,7 +18,11 @@ dependency on a metrics backend. The defining property: if nothing is wired up, 
 
 ## Public API surface & stability
 
-- Public via `src/index.ts` (`MetricsSafe`, `MemoryProfiler`).
+- Public via `src/index.ts`, which re-exports `lib/MetricsSafe.ts` and `lib/MemoryProfiler.ts`:
+  - Functions: `safeCache`, `safeCacheSize`, `safeCacheEvicted`, `warnIfLoggerDebug`.
+  - Class: `MemoryProfiler`; types: `MemorySample`, `MemoryProfilerOptions`.
+- Signatures are guarded by `test-d/index.test-d.ts` (run via `pnpm -F @ts-linq/metrics-safe test-d`
+  or repo-wide `pnpm test-d`); update those assertions when the public surface changes.
 
 ## Known issues / refactor tasks
 

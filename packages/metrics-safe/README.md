@@ -14,17 +14,25 @@ pnpm add @ts-linq/metrics-safe
 
 ## What lives here
 
-- **`MetricsSafe`** (`lib/MetricsSafe.ts`) — guarded entry points for recording metrics that
-  silently no-op when no backend is configured.
-- **`MemoryProfiler`** (`lib/MemoryProfiler.ts`) — lightweight memory sampling helpers.
+- **Cache metric helpers** (`lib/MetricsSafe.ts`) — guarded functions that record cache telemetry
+  on an optional logger and silently no-op when no backend is configured:
+  `safeCache`, `safeCacheSize`, `safeCacheEvicted`, plus `warnIfLoggerDebug` for opt-in debug
+  diagnostics.
+- **`MemoryProfiler`** (`lib/MemoryProfiler.ts`) — a lightweight memory sampler. Exposes the
+  `MemoryProfiler` class together with the `MemorySample` and `MemoryProfilerOptions` types.
 
 ## Usage
 
 ```ts
-import { MetricsSafe } from '@ts-linq/metrics-safe';
+import { safeCache, MemoryProfiler } from '@ts-linq/metrics-safe';
 
-// Safe even when no metrics backend is registered.
-MetricsSafe.record('query.duration', durationMs);
+// Safe even when `logger` is undefined or has no cache handler — never throws.
+safeCache(logger, { cache: 'sqlGen', hit: true });
+
+// Sample process memory on demand.
+const profiler = new MemoryProfiler({ sampleIntervalMs: 5_000 });
+const sample = await profiler.sample();
+console.log(sample.heapPressure);
 ```
 
 ## Package structure
