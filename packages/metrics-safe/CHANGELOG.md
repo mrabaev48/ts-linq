@@ -1,5 +1,24 @@
 # @ts-linq/metrics-safe
 
+## 1.2.0
+
+### Minor Changes
+
+- [#158](https://github.com/mrabaev48/ts-linq/pull/158) [`941ad27`](https://github.com/mrabaev48/ts-linq/commit/941ad273c224d8968a7c49c385052c0504284e17) Thanks [@mrabaev48](https://github.com/mrabaev48)! - feat(metrics-safe): expose MemoryProfiler on a dedicated `./memory` subpath
+
+  `MemoryProfiler` (the Node-coupled process/heap memory sampler) is now available
+  on its own entrypoint, `@ts-linq/metrics-safe/memory`, separating it from the
+  lightweight safe-invoke helpers on the package root and improving package
+  cohesion (SRP at package granularity).
+
+  Backward compatible: `MemoryProfiler`, `MemorySample`, and `MemoryProfilerOptions`
+  remain re-exported from the root `@ts-linq/metrics-safe`, so existing imports keep
+  working unchanged. New code can prefer the `/memory` subpath.
+
+  Refactor task-3 (Option A). Full extraction into a standalone
+  `@ts-linq/memory-profiler` package (Option B) is deferred to a future broader
+  observability reorganization.
+
 ## 1.1.0
 
 ### Minor Changes

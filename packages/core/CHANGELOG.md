@@ -1,5 +1,12 @@
 # @ts-linq/core
 
+## 2.0.3
+
+### Patch Changes
+
+- Updated dependencies [[`941ad27`](https://github.com/mrabaev48/ts-linq/commit/941ad273c224d8968a7c49c385052c0504284e17)]:
+  - @ts-linq/metrics-safe@1.2.0
+
 ## 2.0.2
 
 ### Patch Changes
