@@ -23,17 +23,28 @@ dependency on a metrics backend. The defining property: if nothing is wired up, 
 
 ## Public API surface & stability
 
-- Public via `src/index.ts`, which re-exports `lib/MetricsSafe.ts` and `lib/MemoryProfiler.ts`:
-  - Functions: `safeInvoke` (generic safe-invoke primitive, typed against `SqlLogger`),
+- Two entrypoints:
+  - **Root `.`** (`src/index.ts`) — re-exports `lib/MetricsSafe.ts` **and**
+    `lib/MemoryProfiler.ts` (the latter for backward compatibility).
+  - **Subpath `./memory`** (`@ts-linq/metrics-safe/memory`, via `src/memory.ts`) — the
+    dedicated entrypoint for the Node-coupled `MemoryProfiler` so the safe helpers stay on a
+    light root. See refactor `task-3` (Option A) for the boundary decision; full extraction to
+    `@ts-linq/memory-profiler` (Option B) is deferred tech debt.
+- Symbols:
+  - Functions (root): `safeInvoke` (generic safe-invoke primitive, typed against `SqlLogger`),
     `safeCache`, `safeCacheSize`, `safeCacheEvicted`, `warnIfLoggerDebug`.
-  - Classes: `SafeSqlLogger` (Decorator wrapping any `SqlLogger` so every method is guarded),
-    `MemoryProfiler`; types: `MemorySample`, `MemoryProfilerOptions`.
+  - Classes/types: `SafeSqlLogger` (Decorator wrapping any `SqlLogger` so every method is
+    guarded) on the root; `MemoryProfiler` + `MemorySample`, `MemoryProfilerOptions` on **both**
+    the root (back-compat) and `./memory`.
   - Internally, `safeInvoke` and all three `safeCache*` wrappers funnel through one private
     `invokeSafely(logger, method, args)` core (no closed method union — OCP). `safeCacheEvicted`
     invokes `cacheEvicted`, which is **not** part of `SqlLogger`, so it routes through the
     string-based core rather than the `keyof SqlLogger`-typed `safeInvoke`.
-- Signatures are guarded by `test-d/index.test-d.ts` (run via `pnpm -F @ts-linq/metrics-safe test-d`
-  or repo-wide `pnpm test-d`); update those assertions when the public surface changes.
+- Signatures are guarded by `test-d/index.test-d.ts` (root surface) and `test-d/memory.test-d.ts`
+  (the `./memory` subpath); run via `pnpm -F @ts-linq/metrics-safe test-d` or repo-wide
+  `pnpm test-d`. Update those assertions when the public surface changes. The `tsd` block in
+  `package.json` maps the `./memory` specifier to the built `dist/memory.d.ts` (mirroring how
+  `orm/tsconfig.json` maps `@ts-linq/query/internal`) since `tsd` resolves under `node`.
 
 ## Known issues / refactor tasks
 
