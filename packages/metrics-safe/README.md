@@ -60,10 +60,12 @@ src/
 
 ## Dependencies
 
-None at runtime (zero runtime dependencies by design). `safeInvoke`/`SafeSqlLogger` are typed
-against `SqlLogger` via a **type-only** `import type` from `@ts-linq/types` (declared as a
-devDependency); `import type` is fully erased at build time, so the emitted JavaScript imports
-nothing and the runtime stays dependency-free.
+A single dependency on `@ts-linq/types`, the monorepo's foundation types package. It is consumed
+**type-only**: `safeInvoke`/`SafeSqlLogger` are typed against `SqlLogger` via `import type`, which is
+fully erased at build time — the emitted JavaScript imports nothing, so there is **no runtime
+dependency** (no metrics backend is pulled in transitively). It is declared in `dependencies` (not
+`devDependencies`) because `SqlLogger` appears in this package's public `.d.ts`, so consumers need it
+available at compile time.
 
 ## License
 

@@ -1,6 +1,6 @@
 # metrics-safe/task-2 — safeInvoke / SafeSqlLogger (OCP), completed
 
-Branch `refactor-metrics-safe-safe-invoke` (off origin/main). Generalized the hard-wired
+Branch `refactor-metrics-safe-safe-invoke` (off origin/main). PR #156. Generalized the hard-wired
 `tryInvoke` in `packages/metrics-safe/src/lib/MetricsSafe.ts`.
 
 ## New architecture
@@ -22,11 +22,13 @@ Did NOT add `cacheEvicted` to SqlLogger (out of scope; noted as follow-up).
 
 ## Boundary decision (zero-dependency invariant)
 Typed via `import type { SqlLogger, CacheInfo, ... } from '@ts-linq/types'`. Declared `@ts-linq/types`
-as a **devDependency** (`workspace:*`) + added tsconfig `references: [{ "path": "../types" }]`.
-`import type` is fully erased → emitted JS has no `require('@ts-linq/types')`, `dependencies` stays `{}`,
-runtime zero-dep preserved (verified by grepping dist JS). `arch:phantom` only flags undeclared tsconfig
-**path aliases** (none added) → clean. metrics-safe → types is allowed by `.dependency-cruiser.cjs`
-(types is the foundation, not a forbidden target).
+in **`dependencies`** (`workspace:*`) — NOT devDependencies — plus tsconfig `references: [{path:'../types'}]`.
+KEY RULE: `SqlLogger` appears in the public `.d.ts` (safeInvoke signature + `SafeSqlLogger implements
+SqlLogger`), so it is a public type contract → must be a real `dependency` (devDeps are not installed
+transitively; consumers would hit TS2307). Mirrors `composite-sql-logger` (same type-only SqlLogger
+import, types in dependencies). `import type` is fully erased → emitted JS has no `require('@ts-linq/types')`
+→ runtime zero-dep preserved (verified by grepping dist JS). `arch:phantom` only flags undeclared tsconfig
+**path aliases** (none added) → clean. metrics-safe → types allowed by `.dependency-cruiser.cjs`.
 
 ## Tests
 - `tests/MetricsSafe.test.ts` extended with `safeInvoke` + `SafeSqlLogger` blocks (39 tests total).
@@ -35,8 +37,9 @@ runtime zero-dep preserved (verified by grepping dist JS). `arch:phantom` only f
   negatives `expectError` for bad method name + wrong arg types; `expectAssignable<SqlLogger>(new SafeSqlLogger(sql))`.
 
 ## Validation (all green)
-typecheck 32/32, lint 0 err, test:unit 2975, test-d 33/33, build (clean rebuild verified),
-arch:deps/cycles/dead/phantom clean. `minor` changeset `.changeset/metrics-safe-safe-invoke.md`.
+typecheck 32/32, lint 0 err, test:unit 2975 (39 metrics-safe), test-d 33/33, build (clean rebuild verified),
+arch:deps/cycles/dead/phantom clean, test:all (unit+integration+e2e, 290 e2e) green.
+`minor` changeset `.changeset/metrics-safe-safe-invoke.md`.
 
 ## Follow-up tech debt
 Migrate cache adapters' ad-hoc try/catch + loggers' internal guards to safeInvoke/SafeSqlLogger
