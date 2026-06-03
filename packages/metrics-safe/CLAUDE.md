@@ -8,11 +8,12 @@ dependency on a metrics backend. The defining property: if nothing is wired up, 
 ## Hard boundaries
 
 - **Zero runtime dependencies** — keep it that way. The whole point is that depending on this
-  package adds no transitive metrics dependency. The *only* declared dep is a **type-only**
-  devDependency on `@ts-linq/types` (the monorepo foundation) used to type `safeInvoke`/`SafeSqlLogger`
-  against `SqlLogger`; it is imported with `import type` and fully erased, so `dependencies` stays
-  empty and the emitted JS imports nothing. Do not add any other dependency, and never import a
-  higher-level package.
+  package adds no transitive metrics dependency. The *only* declared dep is `@ts-linq/types` (the
+  monorepo foundation), consumed **type-only** (`import type`) to type `safeInvoke`/`SafeSqlLogger`
+  against `SqlLogger`; the import is fully erased, so the emitted JS imports nothing and no runtime
+  dependency is added. It lives in `dependencies` (not `devDependencies`) because `SqlLogger` is part
+  of this package's public `.d.ts` and consumers need it at compile time. Do not add any other
+  dependency, and never import a higher-level package.
 - Consumed by `core`, `query`, `cache`. Must not depend on any of them.
 
 ## Critical invariants

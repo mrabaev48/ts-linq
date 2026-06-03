@@ -116,11 +116,15 @@ This applies **OCP** (extend by calling, not editing), **DIP** (typed against th
   does *not* go through the `keyof SqlLogger`-typed `safeInvoke`).
 
 **Boundary decision** — typed against `SqlLogger` via a **type-only** `import type` from
-`@ts-linq/types`, declared as a **devDependency** (`workspace:*`). `import type` is fully
-erased, so the emitted JS contains no `require('@ts-linq/types')` and `dependencies` stays
-empty — the package's **runtime zero-dependency** invariant is literally preserved (verified
-by grepping the emitted JS). `@ts-linq/types` is the monorepo foundation (not a higher-level
-package); `arch:deps`/`arch:cycles`/`arch:phantom` are clean.
+`@ts-linq/types`, declared in **`dependencies`** (`workspace:*`). `import type` is fully erased,
+so the emitted JS contains no `require('@ts-linq/types')` — the package's **runtime
+zero-dependency** invariant is preserved (verified by grepping the emitted JS). It must be a real
+`dependency` (not `devDependency`) because `SqlLogger` appears in the package's public `.d.ts`
+(`safeInvoke` signature + `SafeSqlLogger implements SqlLogger`), so consumers need it resolvable at
+compile time; `devDependencies` are not installed transitively. This mirrors the existing
+`@ts-linq/composite-sql-logger`, which type-only-imports `SqlLogger` and keeps `@ts-linq/types` in
+`dependencies`. `@ts-linq/types` is the monorepo foundation (not a higher-level package);
+`arch:deps`/`arch:cycles`/`arch:phantom` are clean.
 
 **Validation** — `pnpm typecheck` (32/32), `pnpm lint` (0 errors), `pnpm test:unit`
 (2975/2975, incl. 39 metrics-safe), `pnpm test-d` (33/33), clean `pnpm build`,
