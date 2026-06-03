@@ -220,7 +220,7 @@ Each package only depends on packages already completed above it.
 | integration-tests | 4 | 0 | 2 | 1 | 1 | not-started |
 | jest-config | 2 | 0 | 2 | 0 | 0 | not-started |
 | metadata | 5 | 1 | 2 | 2 | 0 | not-started |
-| metrics-safe | 3 | 0 | 1 | 1 | 1 | not-started |
+| metrics-safe | 3 | 0 | 1 | 1 | 1 |  ✅ done |
 | migrations | 7 | 3 | 3 | 1 | 0 | not-started |
 | open-telemetry-sql-logger | 4 | 0 | 3 | 1 | 0 | not-started |
 | orm | 8 | 2 | 4 | 2 | 0 | not-started |
