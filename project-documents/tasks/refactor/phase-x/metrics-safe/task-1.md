@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: metrics-safe
 priority: P1
@@ -70,12 +70,38 @@ coverage (Clean Code: tests describe the unit under test).
 
 ## Acceptance criteria
 
-- [ ] `test-d/index.test-d.ts` references only symbols actually exported by
+- [x] `test-d/index.test-d.ts` references only symbols actually exported by
       `@ts-linq/metrics-safe`.
-- [ ] It asserts the real signatures of `safeCache`/`safeCacheSize`/
+- [x] It asserts the real signatures of `safeCache`/`safeCacheSize`/
       `safeCacheEvicted`/`MemoryProfiler`.
-- [ ] The type test is actually executed in the package's test/CI flow.
-- [ ] `pnpm typecheck` passes.
+- [x] The type test is actually executed in the package's test/CI flow.
+- [x] `pnpm typecheck` passes.
+
+## Outcome
+
+- Rewrote `test-d/index.test-d.ts` to import **only** the real exports
+  (`safeCache`, `safeCacheSize`, `safeCacheEvicted`, `warnIfLoggerDebug`,
+  `MemoryProfiler`, `MemorySample`, `MemoryProfilerOptions`) from `'..'` and
+  assert their exact signatures with `tsd` (`expectType`/`expectError`/
+  `expectAssignable`/`expectNotAssignable`). No `any`/casts/suppression comments;
+  negatives use `expectError`. Sensitivity verified by temporarily breaking the
+  `sample()` assertion (tsd failed, then reverted).
+- **CI wiring (repo-wide `tsd` via Turbo):** added `"test-d": "tsd"` +
+  `tsd` devDependency to `packages/metrics-safe/package.json`; a cacheable
+  `test-d` Turbo task (`dependsOn: ["build", "^build"]`); a root `test-d`
+  script (`turbo run test-d`); and a `Type tests (tsd)` step in
+  `.github/workflows/ci.yml`. Any package opts in by adding a `test-d` script.
+- The package's `tsconfig.json` (`include: ["src/**/*.ts"]`) excludes `test-d/`,
+  so the negative assertions do not affect `pnpm typecheck`.
+- Fixed the package docs that described a non-existent `MetricsSafe.record(...)`
+  API (`README.md`, `CLAUDE.md`).
+- **Tech debt found (not in scope here):** `packages/core/test-d/index.test-d.ts`
+  is the same stale branded-id copy, and `packages/orm/test-d/index.test-d.ts`
+  does not compile under `tsd` (composite-project file-list). They were therefore
+  **not** opted into the new `test-d` wiring; recorded as follow-up.
+- Validation: `pnpm -F @ts-linq/metrics-safe test-d`, `pnpm test-d`,
+  `pnpm typecheck`, `pnpm lint`, `pnpm test:unit`, `pnpm build`, `pnpm arch:*`,
+  and `pnpm run test:all` — all green.
 
 ## Refactor order
 
