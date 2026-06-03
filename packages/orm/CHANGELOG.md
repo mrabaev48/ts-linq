@@ -1,5 +1,15 @@
 # @ts-linq/orm
 
+## 3.0.1
+
+### Patch Changes
+
+- Updated dependencies [[`8e79681`](https://github.com/mrabaev48/ts-linq/commit/8e79681455dca1c1f60a616cb9b8882ca9cafef6)]:
+  - @ts-linq/metrics-safe@1.0.1
+  - @ts-linq/core@2.0.1
+  - @ts-linq/query@2.4.11
+  - @ts-linq/migrations@2.6.5
+
 ## 3.0.0
 
 ### Major Changes
