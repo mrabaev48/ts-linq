@@ -37,6 +37,12 @@
       "outputs": [],
       "cache": true
     },
+    "test-d": {
+      "dependsOn": ["build", "^build"],
+      "inputs": ["src/**/*.ts", "test-d/**/*.ts", "tsconfig*.json", "package.json"],
+      "outputs": [],
+      "cache": true
+    },
     "lint": {
       "outputs": [],
       "cache": true

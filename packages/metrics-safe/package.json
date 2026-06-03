@@ -23,6 +23,7 @@
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
     "clean": "rm -rf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
+    "test-d": "tsd",
     "lint": "eslint . --fix"
   },
   "peerDependencies": {},
@@ -30,6 +31,7 @@
     "@ts-linq/typescript-config": "workspace:*",
     "@ts-linq/eslint-config": "workspace:*",
     "@types/node": "^24.3.0",
+    "tsd": "^0.30.7",
     "typescript": "^5.4.5"
   }
 }

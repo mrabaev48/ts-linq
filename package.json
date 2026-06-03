@@ -56,6 +56,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:all": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
+    "test-d": "turbo run test-d",
     "lint": "turbo run lint",
     "ts-patch:install": "ts-patch install",
     "ts-patch:compile:examples": "tspc -p packages/examples/tsconfig.json",
