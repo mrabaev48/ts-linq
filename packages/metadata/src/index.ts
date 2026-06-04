@@ -41,6 +41,8 @@ export {
   type DiscriminatorMetadata,
   type HierarchyMetadata,
   InheritanceStrategy,
+  type MetadataSink,
+  type MetadataSource,
   type OwnedEntityMetadata,
   type SkipNavigationMetadata,
   StorageStrategy,

@@ -31,7 +31,7 @@ base error hierarchy. Every package imports from here; this package imports from
 | `results.ts` | `Result<T,E>` & fallback types (depends on `sql.ts`) |
 | `cache.ts` | Cache interfaces & performance options (depends on `results.ts`, `enums.ts`) |
 | `value-conversion.ts` | Value converters, generators & sequences (no deps) |
-| `metadata.ts` | ORM metadata model — central module (depends on `enums.ts`, `value-conversion.ts`, `query-filters.ts`); home of the `EntityCtor`/`EntityRef` entity-target aliases (task-4) |
+| `metadata.ts` | ORM metadata model — central module (depends on `enums.ts`, `value-conversion.ts`, `query-filters.ts`, `stored-procedure.ts`); home of the `EntityCtor`/`EntityRef` entity-target aliases (task-4) and the `MetadataSource`/`MetadataSink` read/write ports (metadata/task-1) |
 | `stored-procedure.ts` | SP mapping types (depends on `sql.ts`) |
 | `tracking.ts` | Change tracking primitives (depends on `enums.ts`) |
 | `spatial-hierarchy.ts` | Translator interfaces (no deps) |
