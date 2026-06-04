@@ -1,5 +1,17 @@
 # @ts-linq/testkits
 
+## 6.0.8
+
+### Patch Changes
+
+- Updated dependencies [[`40a71ed`](https://github.com/mrabaev48/ts-linq/commit/40a71ed3079bdf86492e9f27a226470a3985f39e)]:
+  - @ts-linq/types@3.1.0
+  - @ts-linq/metadata@3.1.0
+  - @ts-linq/core@2.0.4
+  - @ts-linq/provider-mssql@2.4.8
+  - @ts-linq/provider-mysql@2.3.8
+  - @ts-linq/provider-postgres@2.4.8
+
 ## 6.0.7
 
 ### Patch Changes
