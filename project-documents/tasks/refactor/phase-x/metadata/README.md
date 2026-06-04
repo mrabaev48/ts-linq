@@ -9,7 +9,7 @@ stored-procedure mapping. It depends only on `@ts-linq/types`.
 
 ## Current architectural problems
 - **God class `MetadataRegistry`** (~575 LOC) with the identical "finalized-vs-builder" branch duplicated across ~25 mutators and index validation duplicated within one method (task-2).
-- **Singleton without a port**: `MetadataStorage` global is consumed directly across packages; no `MetadataSource` abstraction to depend on (task-1).
+- ~~**Singleton without a port**: `MetadataStorage` global is consumed directly across packages; no `MetadataSource` abstraction to depend on (task-1).~~ ✅ **resolved (task-1)** — `MetadataSource`/`MetadataSink` ports added in `@ts-linq/types`; `MetadataRegistry implements` both. Core loader DI follow-up tracked under `core/task-2`.
 - ~~**24 committed build artifacts** (`.d.ts`/`.map`) interleaved in `src` — stale-file trap (task-3).~~ ✅ **resolved (task-3)** — removed; build emits to `dist` only.
 - **Silent-swallow control flow** in `getEntity`'s try/catch fallback that diverges metadata shape (task-4).
 - **`Function`-typed keys + `as unknown as` casts** weaken type safety across the model (task-5).
@@ -25,7 +25,7 @@ stored-procedure mapping. It depends only on `@ts-linq/types`.
 | Order | Task | Priority | Reason |
 |---:|---|---|---|
 | 1 | task-3 ✅ **completed** | P0 | Remove stale build artifacts first — clears the stale-file trap |
-| 2 | task-1 | P1 | Introduce `MetadataSource` port (unblocks core DI) |
+| 2 | task-1 ✅ **completed** | P1 | Introduce `MetadataSource` port (unblocks core DI) |
 | 3 | task-2 | P1 | Split god class; dedupe mutate-branch + index validation |
 | 4 | task-4 | P2 | Fix silent-swallow fallback in `getEntity` |
 | 5 | task-5 | P2 | Constructor type + remove `as unknown as` |

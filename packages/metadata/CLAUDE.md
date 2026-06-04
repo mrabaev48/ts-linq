@@ -35,8 +35,12 @@ stored-procedure mapping.
 ## Known issues / refactor tasks
 
 See `project-documents/tasks/refactor/phase-x/metadata/`:
-- `task-3` (P0) — remove committed build artifacts from `src`.
-- `task-1` / `task-2` — introduce a read-port and tame the `MetadataRegistry` god class (575 LOC).
+- `task-3` ✅ **completed** — removed committed build artifacts from `src`.
+- `task-1` ✅ **completed** — `MetadataSource` (read) and `MetadataSink` (write) ports live in
+  `@ts-linq/types/metadata.ts`; `MetadataRegistry implements MetadataSource, MetadataSink` and
+  both are re-exported from this package's entrypoint. `MetadataStorage` is now documented as the
+  *default-source provider only*. Core loader DI is the follow-up (`core/task-2`).
+- `task-2` — tame the `MetadataRegistry` god class (575 LOC).
 
 ## Validation
 

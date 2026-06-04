@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: metadata
 priority: P1
@@ -57,13 +57,37 @@ library internals.
 - Regression: decorator registration through `MetadataStorage` static API unchanged.
 
 ## Acceptance criteria
-- [ ] `MetadataSource` (and `MetadataSink`) interfaces exist and are exported.
-- [ ] `MetadataRegistry implements MetadataSource`.
-- [ ] No new circular dependency introduced (verify `arch:cycles`).
-- [ ] Cluster validations pass.
+- [x] `MetadataSource` (and `MetadataSink`) interfaces exist and are exported.
+- [x] `MetadataRegistry implements MetadataSource` (and `MetadataSink`).
+- [x] No new circular dependency introduced (verify `arch:cycles`).
+- [x] Cluster validations pass.
 
 ## Refactor order
 Do first in metadata; it is the prerequisite for `core/task-2` (loader DI).
 
 ## Notes
 Placing `MetadataSource` in `@ts-linq/types` (which has zero deps) avoids forcing core to import metadata just for the type. Confirm the dependency direction with `arch:deps`.
+
+## Outcome (completed)
+- **Placement decision:** both ports live in `@ts-linq/types` (`src/metadata.ts`), exported
+  via the existing barrel. Confirmed via `pnpm arch:deps` (832 modules, 0 violations) and
+  `pnpm arch:cycles` (clean). `@ts-linq/types` is zero-dep, so no `core → metadata` type
+  dependency is forced; `@ts-linq/metadata` re-exports both ports from its entrypoint for
+  ergonomics.
+- **`MetadataSource`** (read, 5 methods): `getEntity`, `getEntities`, `getValidationRules`,
+  `getOwnedEntities`, `getStoredProcedureMapping`. **`MetadataSink`** (write): the full
+  public registration surface of `MetadataRegistry` (add*/mergeFluent*/setFluent*/set*).
+  Signatures mirror `MetadataRegistry` exactly (`target: Function`) — zero behaviour change.
+- **`MetadataRegistry implements MetadataSource, MetadataSink`** — no method body changes.
+- **`MetadataStorage`** static API and decorator registration unchanged; its class TSDoc now
+  documents it as the **default-source provider only** (never referenced inside internals).
+- **New DAG edge** inside `@ts-linq/types`: `metadata.ts → stored-procedure.ts` (acyclic —
+  `stored-procedure.ts` depends only on `sql.ts`).
+- **Tests:** `packages/metadata/tests/MetadataSource.test.ts` — type-level conformance
+  (`satisfies`), unit (identical reads through the port), contract (fake `MetadataSource`
+  substitutes the registry), regression (decorator/static registration unchanged).
+- **Validation:** typecheck, lint, build, unit (2982), integration (464), e2e (290),
+  `arch:deps`, `arch:cycles`, `arch:dead` all green.
+- **Follow-up:** core loader DI is tracked under `core/task-2` (inject `MetadataSource` into
+  `EntityLoader`/`RelationshipLoader`/`LazyLoadingProxy`); the port shape here matches its
+  needs (`getEntity`, `getEntities`).
