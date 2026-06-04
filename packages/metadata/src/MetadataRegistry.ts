@@ -7,6 +7,8 @@ import type {
   EntityMetadata,
   HierarchyMetadata,
   IndexMetadata,
+  MetadataSink,
+  MetadataSource,
   OwnedEntityMetadata,
   QueryFilterMetadata,
   RelationshipMetadata,
@@ -33,7 +35,7 @@ import { reflectGetOwnMetadata } from './reflectUtils';
  * the process-wide default via `MetadataStorage`, which is always available as
  * a fallback when no registry is supplied.
  */
-export class MetadataRegistry {
+export class MetadataRegistry implements MetadataSource, MetadataSink {
   private entities: Map<Function, EntityMetadata> = new Map();
   private builders: Map<Function, EntityMetadataBuilder> = new Map();
   private readonly spMappings = new Map<Function, EntityStoredProcedureMapping>();

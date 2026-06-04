@@ -7,6 +7,7 @@ import type {
   ValueGeneratedPolicy
 } from './enums';
 import type { QueryFilterMetadata } from './query-filters';
+import type { EntityStoredProcedureMapping } from './stored-procedure';
 import type {
   ColumnType,
   ValueComparerLike,
@@ -318,4 +319,78 @@ export interface ShadowPropertyMetadata {
 /** Minimal interface for attaching entities to a change tracker. Used by Queryable to avoid circular deps. */
 export interface EntityAttacher {
   attach(entity: object, entityClass: Function): void;
+}
+
+/**
+ * Read-only port for retrieving entity metadata (Ports-and-Adapters / ISP).
+ *
+ * This is the abstraction consumers depend on instead of the process-wide
+ * `MetadataStorage` singleton or the concrete `MetadataRegistry`. The default
+ * registry implements it; a tenant-specific registry, a compiled model, or an
+ * in-memory fake can be substituted without touching consumer code.
+ *
+ * Method signatures intentionally mirror `MetadataRegistry` exactly (including
+ * the `Function` entity-target parameter) to keep behaviour and call-site
+ * compatibility unchanged.
+ *
+ * @see MetadataSink for the corresponding write port.
+ */
+export interface MetadataSource {
+  /** Resolve finalized metadata for an entity class, or `undefined` if unknown. */
+  getEntity(target: Function): EntityMetadata | undefined;
+  /** Return all registered entities, finalizing any pending builders. */
+  getEntities(): EntityMetadata[];
+  /** Return the validation rules declared on an entity (empty if none). */
+  getValidationRules(target: Function): ValidationRule[];
+  /** Return the owned-entity relationships declared on an owner (empty if none). */
+  getOwnedEntities(owner: Function): OwnedEntityMetadata[];
+  /** Return the stored-procedure CUD mapping for an entity, if configured. */
+  getStoredProcedureMapping(target: Function): EntityStoredProcedureMapping | undefined;
+}
+
+/**
+ * Write port for registering entity metadata (Ports-and-Adapters / ISP).
+ *
+ * Segregated from {@link MetadataSource} so read-only consumers (e.g. the
+ * loading layer) never gain access to mutation. Implemented by
+ * `MetadataRegistry`; the surface mirrors the decorator/fluent registration API
+ * driven through the `MetadataStorage` facade at module load.
+ *
+ * Method signatures intentionally mirror `MetadataRegistry` exactly.
+ */
+export interface MetadataSink {
+  addEntity(target: Function, tableName?: string): void;
+  addColumn(target: Function, column: ColumnMetadata): void;
+  addPrimaryKey(target: Function, propertyName: string): void;
+  addRelationship(target: Function, relationship: RelationshipMetadata): void;
+  addIndex(target: Function, index: IndexMetadata): void;
+  addValidationRule(target: Function, rule: ValidationRule): void;
+
+  mergeFluentColumn(target: Function, column: ColumnMetadata): void;
+  setFluentPrimaryKeys(target: Function, keys: string[]): void;
+  mergeFluentRelationship(target: Function, relationship: RelationshipMetadata): void;
+  mergeFluentIndex(target: Function, index: IndexMetadata): void;
+  mergeFluentAlternateKey(target: Function, ak: AlternateKeyMetadata): void;
+  mergeFluentSchema(target: Function, schema: string): void;
+  mergeFluentTemporal(target: Function, isTemporal: boolean, historyTableName?: string): void;
+  mergeFluentSkipNavigation(target: Function, nav: SkipNavigationMetadata): void;
+  mergeFluentQueryFilter(target: Function, filter: QueryFilterMetadata): void;
+  mergeFluentTableFragments(target: Function, fragments: TableFragmentMetadata[]): void;
+  setFluentKeyless(target: Function, value: boolean): void;
+  setFluentViewName(target: Function, name: string): void;
+  setFluentViewSql(target: Function, sql: string): void;
+
+  addComplexProperty(owner: Function, complex: ComplexTypePropertyMetadata): void;
+  addOwnedEntity(owner: Function, owned: OwnedEntityMetadata): void;
+  addShadowProperty(target: Function, prop: ShadowPropertyMetadata): void;
+
+  setHierarchyMetadata(target: Function, h: HierarchyMetadata): void;
+  setHierarchyRoot(subtype: Function, root: Function): void;
+  setSeedData(target: Function, rows: Record<string, unknown>[]): void;
+  setCheckConstraints(target: Function, constraints: CheckConstraintMetadata[]): void;
+  setEntityComment(target: Function, comment: string): void;
+  setStoredProcedureMapping(target: Function, mapping: EntityStoredProcedureMapping): void;
+
+  /** Clear all stored metadata and pending builders. */
+  clear(): void;
 }
