@@ -1,5 +1,15 @@
 # @ts-linq/core
 
+## 2.0.4
+
+### Patch Changes
+
+- Updated dependencies [[`40a71ed`](https://github.com/mrabaev48/ts-linq/commit/40a71ed3079bdf86492e9f27a226470a3985f39e)]:
+  - @ts-linq/types@3.1.0
+  - @ts-linq/metadata@3.1.0
+  - @ts-linq/ast@2.4.7
+  - @ts-linq/metrics-safe@1.2.1
+
 ## 2.0.3
 
 ### Patch Changes
