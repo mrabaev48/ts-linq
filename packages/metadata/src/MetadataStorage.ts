@@ -46,6 +46,15 @@ import { MetadataRegistry } from './MetadataRegistry';
  *
  * A `DbContext` initialized with an explicit registry uses **only** that registry —
  * it does not inherit entities from the singleton.
+ *
+ * ## Architectural role: default-source provider only
+ * This façade exists so module-load-time decorators have a process-wide registry to
+ * write to. It is **not** an abstraction to depend on: library internals (e.g. the
+ * loading layer) must accept a {@link MetadataSource} port instead, and composition
+ * roots supply `options.registry ?? MetadataStorage.getInstance()`. The returned
+ * `MetadataRegistry` implements both {@link MetadataSource} (read) and
+ * {@link MetadataSink} (write); prefer those ports — never reference this singleton
+ * from inside runtime data paths.
  */
 export class MetadataStorage {
   private static _defaultRegistry: MetadataRegistry | undefined;
