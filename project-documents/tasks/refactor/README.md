@@ -120,11 +120,11 @@ This expands every multi-package row into a single, dependency-safe sequence. Do
 bottom; finish (refactor + all validations green + changeset) one step before starting the next.
 Each package only depends on packages already completed above it.
 
-| # | Package | Tier | Why here |
-|---:|---|---|---|
-| 1 | `types` | foundation | Root of the graph; canonical error hierarchy + split barrel unblock everything. |
-| 2 | `metrics-safe` | foundation | Zero-dep Null-Object helpers; needed by `core`/`cache`; tiny. |
-| 3 | `metadata` | foundation | Remove committed artifacts, read-port, tame registry. Depends on `types`. |
+| # | Package | Tier | Why here | Status |
+|---:|---|---|---|---|
+| 1 | `types` | foundation | Root of the graph; canonical error hierarchy + split barrel unblock everything. | ✅ done |
+| 2 | `metrics-safe` | foundation | Zero-dep Null-Object helpers; needed by `core`/`cache`; tiny. | ✅ done |
+| 3 | `metadata` | foundation | Remove committed artifacts, read-port, tame registry. Depends on `types`. | 🔄 In Progress |
 | 4 | `ast` | foundation | De-dupe jsonPath node; small. Depends on `types`. |
 | 5 | `sql-visitor` | foundation | Visitor/dispatch + param-state. Depends on `ast`, `types`. |
 | 6 | `concurrency` | foundation | Make retry policies canonical **before** `core` so its duplicate can be deleted. |
