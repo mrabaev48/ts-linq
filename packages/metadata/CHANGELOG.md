@@ -1,5 +1,15 @@
 # @ts-linq/metadata
 
+## 3.1.1
+
+### Patch Changes
+
+- [#164](https://github.com/mrabaev48/ts-linq/pull/164) [`32cda43`](https://github.com/mrabaev48/ts-linq/commit/32cda43913c6a701add02b0171c4a399147b3d26) Thanks [@mrabaev48](https://github.com/mrabaev48)! - Internal restructure of `MetadataRegistry` (behaviour-preserving, no public API change). The
+  duplicated "finalized-vs-builder" branch across ~27 mutators is collapsed into a single
+  `EntityMetadataState.mutate` Template Method, index dedup/unknown-column validation is unified into
+  one `validateIndex` helper used by both states, and the mutators are grouped into cohesive internal
+  facet stores composed behind the unchanged `MetadataRegistry` facade.
+
 ## 3.1.0
 
 ### Minor Changes

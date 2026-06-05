@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/prometheus-sql-logger",
-  "version": "7.0.4",
+  "version": "7.0.5",
   "private": true,
   "description": "Prometheus SqlLogger implementation for ts-linq (optional package)",
   "main": "./dist/index.js",
