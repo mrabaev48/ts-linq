@@ -8,7 +8,7 @@ property-access abstractions, compiled-model hydration, sequence registry, and
 stored-procedure mapping. It depends only on `@ts-linq/types`.
 
 ## Current architectural problems
-- **God class `MetadataRegistry`** (~575 LOC) with the identical "finalized-vs-builder" branch duplicated across ~25 mutators and index validation duplicated within one method (task-2).
+- ~~**God class `MetadataRegistry`** (~575 LOC) with the identical "finalized-vs-builder" branch duplicated across ~25 mutators and index validation duplicated within one method (task-2).~~ ✅ **resolved (task-2)** — the branch now lives once in `EntityMetadataState.mutate` (Template Method); index validation is a single `validateIndex` helper used by both states; the ~27 mutators are grouped into seven facet stores composed behind the unchanged `MetadataRegistry` facade (~580 → ~290 LOC). `EntityMetadataBuilder` facet alignment deferred (see Notes).
 - ~~**Singleton without a port**: `MetadataStorage` global is consumed directly across packages; no `MetadataSource` abstraction to depend on (task-1).~~ ✅ **resolved (task-1)** — `MetadataSource`/`MetadataSink` ports added in `@ts-linq/types`; `MetadataRegistry implements` both. Core loader DI follow-up tracked under `core/task-2`.
 - ~~**24 committed build artifacts** (`.d.ts`/`.map`) interleaved in `src` — stale-file trap (task-3).~~ ✅ **resolved (task-3)** — removed; build emits to `dist` only.
 - **Silent-swallow control flow** in `getEntity`'s try/catch fallback that diverges metadata shape (task-4).
@@ -26,7 +26,7 @@ stored-procedure mapping. It depends only on `@ts-linq/types`.
 |---:|---|---|---|
 | 1 | task-3 ✅ **completed** | P0 | Remove stale build artifacts first — clears the stale-file trap |
 | 2 | task-1 ✅ **completed** | P1 | Introduce `MetadataSource` port (unblocks core DI) |
-| 3 | task-2 | P1 | Split god class; dedupe mutate-branch + index validation |
+| 3 | task-2 ✅ **completed** | P1 | Split god class; dedupe mutate-branch + index validation |
 | 4 | task-4 | P2 | Fix silent-swallow fallback in `getEntity` |
 | 5 | task-5 | P2 | Constructor type + remove `as unknown as` |
 
@@ -40,6 +40,15 @@ stored-procedure mapping. It depends only on `@ts-linq/types`.
 - Capability test for the no-`reflect-metadata` environment.
 - Type-level tests for `EntityCtor` rejecting non-constructors.
 - Regression: full decorator + fluent registration suite unchanged; `pnpm build`/`arch:dead` clean after artifact removal.
+
+## Follow-up (deferred from task-2)
+- **`EntityMetadataBuilder` facet alignment** (`EntityMetadata.ts`, ~342 LOC): the pre-finalize
+  accumulator still carries the parallel facet sprawl (24 optional fields) and a 30+-line
+  conditional spread in `build()` (lines ~289–344). task-2 left it untouched to keep the PR
+  focused on the registry seam. Follow-up: mirror the registry's facet grouping onto the builder
+  (e.g. a `ColumnSection`/`IndexSection`/… decomposition) and replace the `build()` spread with a
+  per-facet `applyTo(metadata)` contribution, so adding a new metadata concern touches one place
+  on both sides. Behaviour-preserving; medium effort.
 
 ## Notes
 `MetadataStorage.getInstance()` is correct to keep as the *default* source for decorator
