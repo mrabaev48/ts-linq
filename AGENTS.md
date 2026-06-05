@@ -333,3 +333,96 @@ The Serena memory should reflect the latest repository architecture and implemen
 * Keep APIs cohesive.
 * Minimize technical debt introduction.
 * Do not perform unrelated cleanup during feature implementation.
+
+---
+
+## 14. Available Skills
+
+The environment exposes reusable **skills** — packaged domain expertise and standard
+workflows. Invoke a skill as `/<name>` (or via the Skill tool). Use them deliberately:
+**match the skills to the task type; do not invoke all of them on every task.**
+
+### Planning & architecture
+
+| Skill | Use it for |
+|---|---|
+| `/engineering:architecture` | ADRs; choosing between technologies; documenting a design decision with trade-offs and consequences. |
+| `/engineering:system-design` | Designing services/APIs, data models, and module/package boundaries before coding. |
+| `/clean-architecture` | Enforcing layering, inward dependency direction, package boundaries, and SOLID. |
+
+### TypeScript implementation
+
+| Skill | Use it for |
+|---|---|
+| `/typescript-expert` | Type-level programming, monorepo management, migrations, tooling, performance. Primary TS skill. |
+| `/typescript-best-practices` | Type-first design, making illegal states unrepresentable, exhaustive handling, runtime validation. |
+| `/typescript-advanced-types-v2` | Generics, conditional/mapped/template-literal types, utility types for builders & fluent APIs. |
+| `/typescript` | `tsc` performance, `tsconfig` configuration, resolving TS errors, module organization. |
+| `/ts-library` | Library authoring: package `exports`, build tooling, public API design, type-inference preservation. |
+| `/turborepo` | `turbo.json`, task pipelines, caching, `--filter`/`--affected`, cross-package wiring. |
+| `/error-handling-patterns` | Designing exception hierarchies, Result/Either types, retry/circuit-breaker, error boundaries. |
+| `/code-refactoring-refactor-clean-v2` | Clean-code + SOLID refactoring (Extract Class, Template Method, guard clauses, DRY). |
+| `/sql-optimization-patterns` | Query optimization, indexing, EXPLAIN — for query-generation / DDL / DML tasks only. |
+
+### Testing, review & verification
+
+| Skill | Use it for |
+|---|---|
+| `/engineering:testing-strategy` | Designing the test plan & coverage (unit / integration / e2e / type-level). |
+| `/code-review` | Reviewing the diff for correctness bugs, type-inference regressions, API/boundary breaks. |
+| `/engineering:code-review` | Reviewing architectural consistency, SOLID adherence, design-pattern correctness. |
+| `/simplify` | Removing over-engineering and duplication; reuse/efficiency cleanups (quality, not bug-hunting). |
+| `/security-review` | Auditing changes for injection, unsafe coercions / `any` leaks, input-validation gaps. |
+| `/verify` | Running the app/feature end-to-end to confirm behaviour — not just type/unit pass. |
+| `/engineering:debug` | Structured reproduce → isolate → diagnose → fix when behaviour diverges from expected. |
+
+### Process, docs & release
+
+| Skill | Use it for |
+|---|---|
+| `/engineering:tech-debt` | Identifying, categorizing, and documenting tech debt / follow-ups. |
+| `/engineering:documentation` | Writing/maintaining READMEs, task docs, runbooks, API docs. |
+| `/engineering:deploy-checklist` | Pre-PR / pre-deploy verification checklist. |
+
+> **Rule of thumb — match skills to the task.** Hygiene/tooling tasks need few (review +
+> docs); architecture tasks pull in the planning + `/clean-architecture` + TS-design skills;
+> refactors lead with `/code-refactoring-refactor-clean-v2`; anything emitting SQL/DDL adds
+> `/sql-optimization-patterns` and `/security-review`.
+
+---
+
+## 15. Error Handling Rules
+
+All errors thrown by production/library code **must** inherit from the project's base error
+hierarchy. Never throw `new Error(...)` or ad-hoc / plain `Error` subclasses in shipped code.
+
+### Base hierarchy
+
+- The root is the abstract class **`OrmError`** in `@ts-linq/types`
+  (`packages/types/src/errors.ts`).
+- Every concrete failure extends `OrmError` (or a fitting intermediate such as
+  `DatabaseError`) and carries:
+  - a stable, machine-readable `code` (a literal from `OrmErrorCode`);
+  - an optional structured `details` payload (safe-to-log keys only — never secrets / PII);
+  - a preserved `cause` chain (native ES2022 `Error` cause; requires `ES2022.Error` in `lib`).
+- Reuse the existing concrete classes before inventing new ones: `DatabaseError`,
+  `OptimisticConcurrencyError`, `UniqueConstraintError`, `ForeignKeyConstraintError`,
+  `ValidationError`, `TemporalNotSupportedError`, `UnsupportedOperationError`,
+  `MetadataError`, `DecoratorUsageError`, `BatchConfigurationError`, `InvalidIncludeError`,
+  `OperationAbortedError`.
+
+### Rules
+
+1. **Inherit, don't reinvent.** Reuse the closest existing `OrmError` subclass. If none fits,
+   add a new subclass **in `@ts-linq/types/errors.ts`** with a new stable `OrmErrorCode`
+   entry. Do **not** create parallel / competing error hierarchies in downstream packages.
+2. **Always chain the cause.** When wrapping a lower-level failure, pass it via `{ cause }`
+   so the original error is preserved.
+3. **No silent swallows.** Never use a bare / empty `catch` to drop an error on a
+   correctness-critical path. Either handle it explicitly or wrap-and-rethrow as a typed
+   `OrmError`. A legitimate capability probe must be a single, documented check — not an
+   ad-hoc swallow.
+4. **Discriminate by type / code, not strings.** Consumers use `e instanceof OrmError` and
+   `e.code`; never string-match messages. Keep messages user-safe.
+5. **Changeset impact.** Adding a new error class / code is a `minor` change to
+   `@ts-linq/types`; changing or removing one is `major`.
