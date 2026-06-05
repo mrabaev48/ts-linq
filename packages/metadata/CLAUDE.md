@@ -40,7 +40,14 @@ See `project-documents/tasks/refactor/phase-x/metadata/`:
   `@ts-linq/types/metadata.ts`; `MetadataRegistry implements MetadataSource, MetadataSink` and
   both are re-exported from this package's entrypoint. `MetadataStorage` is now documented as the
   *default-source provider only*. Core loader DI is the follow-up (`core/task-2`).
-- `task-2` — tame the `MetadataRegistry` god class (575 LOC).
+- `task-2` ✅ **completed** — tamed the `MetadataRegistry` god class: the finalized-vs-builder
+  branch now lives once in `registry/EntityMetadataState.mutate` (Template Method); index dedup /
+  unknown-column validation is the single `registry/validateIndex` helper used by both states; the
+  ~27 mutators are grouped into seven facet stores under `src/registry/` (`ColumnMetadataStore`,
+  `RelationshipStore`, `IndexStore`, `ConstraintStore`, `TableConfigStore`, `AdvancedMappingStore`,
+  `StoredProcedureStore`) composed behind the **unchanged** `MetadataRegistry` facade. Facets are
+  internal (not exported from the barrel). `EntityMetadataBuilder` facet alignment is the follow-up
+  (see `project-documents/tasks/refactor/phase-x/metadata/README.md`).
 
 ## Validation
 
