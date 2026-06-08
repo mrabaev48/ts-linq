@@ -1,5 +1,17 @@
 # @ts-linq/metadata
 
+## 3.1.2
+
+### Patch Changes
+
+- [#167](https://github.com/mrabaev48/ts-linq/pull/167) [`ccd7235`](https://github.com/mrabaev48/ts-linq/commit/ccd72359ce15f46cca059afba1a2c39d5ea823f2) Thanks [@mrabaev48](https://github.com/mrabaev48)! - Harden `MetadataRegistry.getEntity`: remove the silent `try/catch` control-flow fallback that
+  could return un-rebased metadata on an unexpected error. Resolution now runs through a single
+  documented reflect-metadata capability probe and a single guarded path that always applies
+  `target` rebasing, so both wrapper and original targets yield the same metadata shape. The
+  happy path is behaviour-preserving; the observable change is that a previously-swallowed
+  unexpected resolution error now surfaces as a typed `MetadataError` (with its original `cause`
+  chained) instead of vanishing.
+
 ## 3.1.1
 
 ### Patch Changes
