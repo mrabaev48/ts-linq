@@ -11,7 +11,7 @@ stored-procedure mapping. It depends only on `@ts-linq/types`.
 - ~~**God class `MetadataRegistry`** (~575 LOC) with the identical "finalized-vs-builder" branch duplicated across ~25 mutators and index validation duplicated within one method (task-2).~~ ✅ **resolved (task-2)** — the branch now lives once in `EntityMetadataState.mutate` (Template Method); index validation is a single `validateIndex` helper used by both states; the ~27 mutators are grouped into seven facet stores composed behind the unchanged `MetadataRegistry` facade (~580 → ~290 LOC). `EntityMetadataBuilder` facet alignment deferred (see Notes).
 - ~~**Singleton without a port**: `MetadataStorage` global is consumed directly across packages; no `MetadataSource` abstraction to depend on (task-1).~~ ✅ **resolved (task-1)** — `MetadataSource`/`MetadataSink` ports added in `@ts-linq/types`; `MetadataRegistry implements` both. Core loader DI follow-up tracked under `core/task-2`.
 - ~~**24 committed build artifacts** (`.d.ts`/`.map`) interleaved in `src` — stale-file trap (task-3).~~ ✅ **resolved (task-3)** — removed; build emits to `dist` only.
-- **Silent-swallow control flow** in `getEntity`'s try/catch fallback that diverges metadata shape (task-4).
+- ~~**Silent-swallow control flow** in `getEntity`'s try/catch fallback that diverges metadata shape (task-4).~~ ✅ **resolved (task-4)** — the control-flow `try/catch` is gone; `getEntity` is a single guarded path that always applies `target`-rebasing. Wrapper→original resolution goes through one capability probe (`reflectGetOwnMetadata`, where `undefined` = "no reflect-metadata / no entry"), extracted as `protected resolveOriginal`; an *unexpected* resolution failure now surfaces typed (`MetadataError` with `cause`) via the translation-only `resolveTarget` seam instead of vanishing into a divergent fallback.
 - **`Function`-typed keys + `as unknown as` casts** weaken type safety across the model (task-5).
 
 ## Refactor goals
@@ -27,7 +27,7 @@ stored-procedure mapping. It depends only on `@ts-linq/types`.
 | 1 | task-3 ✅ **completed** | P0 | Remove stale build artifacts first — clears the stale-file trap |
 | 2 | task-1 ✅ **completed** | P1 | Introduce `MetadataSource` port (unblocks core DI) |
 | 3 | task-2 ✅ **completed** | P1 | Split god class; dedupe mutate-branch + index validation |
-| 4 | task-4 | P2 | Fix silent-swallow fallback in `getEntity` |
+| 4 | task-4 ✅ **completed** | P2 | Fix silent-swallow fallback in `getEntity` |
 | 5 | task-5 | P2 | Constructor type + remove `as unknown as` |
 
 ## Dependencies on other packages
