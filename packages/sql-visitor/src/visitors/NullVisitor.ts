@@ -1,6 +1,6 @@
 import type { IsNotNullNode, IsNullNode } from '@ts-linq/ast';
-import type { ConditionFragment } from '@ts-linq/ast';
 
+import type { ConditionFragment } from '../types';
 import { type ColumnResolver, renderPropertyName } from './BinaryVisitor';
 
 export class NullVisitor {
