@@ -1,9 +1,11 @@
+import type { JsonPathExpression } from '../src/ast/JsonPathExpression';
 import type {
   BinaryNode,
   ExpressionNode,
   InNode,
   IsNotNullNode,
   IsNullNode,
+  JsonPathNode,
   LiteralNode,
   LogicalNode,
   MethodNode,
@@ -230,6 +232,32 @@ describe('AST Nodes', () => {
         args: [{ type: 'literal', value: 'foo' }]
       };
       expect(node.method).toBe('includes');
+    });
+  });
+
+  describe('JsonPathExpression', () => {
+    it('is the canonical jsonPath node assignable to ExpressionNode', () => {
+      const node: JsonPathExpression = {
+        type: 'jsonPath',
+        column: 'preferences',
+        path: ['display', 'theme'],
+        cast: 'text'
+      };
+      const expr: ExpressionNode = node;
+      expect(expr.type).toBe('jsonPath');
+    });
+
+    it('accepts a bare jsonPath literal in the ExpressionNode union', () => {
+      const expr: ExpressionNode = { type: 'jsonPath', column: 'prefs', path: ['theme'] };
+      expect(expr.type).toBe('jsonPath');
+    });
+
+    it('keeps the deprecated JsonPathNode alias structurally identical (back-compat)', () => {
+      const canonical: JsonPathExpression = { type: 'jsonPath', column: 'c', path: ['a', 'b'] };
+      // Mutual assignability proves the alias is the same type, not a divergent copy.
+      const asAlias: JsonPathNode = canonical;
+      const backToCanonical: JsonPathExpression = asAlias;
+      expect(backToCanonical).toBe(canonical);
     });
   });
 

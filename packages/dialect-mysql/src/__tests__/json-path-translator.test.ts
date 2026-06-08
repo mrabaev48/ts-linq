@@ -1,9 +1,9 @@
-import type { JsonPathNode } from '@ts-linq/sql-visitor';
+import type { JsonPathExpression } from '@ts-linq/sql-visitor';
 import { ParameterState, ParameterStyle } from '@ts-linq/sql-visitor';
 
 import { MySqlJsonPathTranslator } from '../json/JsonPathTranslator';
 
-function makeNode(column: string, path: string[]): JsonPathNode {
+function makeNode(column: string, path: string[]): JsonPathExpression {
   return { type: 'jsonPath', column, path };
 }
 
