@@ -1,13 +1,13 @@
-import type { ExpressionNode, JsonPathNode } from '@ts-linq/ast';
+import type { ExpressionNode, JsonPathExpression } from '@ts-linq/ast';
 import type { JsonShape } from '@ts-linq/types';
 
 /**
- * Pre-pass visitor that rewrites multi-segment PropertyNode paths into JsonPathNode
+ * Pre-pass visitor that rewrites multi-segment PropertyNode paths into JsonPathExpression
  * when the first path segment maps to a Json-strategy owned property.
  *
  * Example:
  *   PropertyNode { path: ['preferences', 'display', 'theme'] }
- *   → JsonPathNode { column: 'preferences', path: ['display', 'theme'] }
+ *   → JsonPathExpression { column: 'preferences', path: ['display', 'theme'] }
  *
  * Single-segment properties (regular columns) are passed through unchanged.
  */
@@ -25,7 +25,7 @@ export class JsonAccessRewriter {
         const rootProp = segments[0];
         const shape = this.jsonOwnedProps.get(rootProp);
         if (!shape) return node;
-        const jsonPath: JsonPathNode = {
+        const jsonPath: JsonPathExpression = {
           type: 'jsonPath',
           column: shape.columnName,
           path: segments.slice(1)
