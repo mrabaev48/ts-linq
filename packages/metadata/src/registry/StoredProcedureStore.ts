@@ -1,4 +1,4 @@
-import type { EntityStoredProcedureMapping } from '@ts-linq/types';
+import type { EntityCtor, EntityStoredProcedureMapping } from '@ts-linq/types';
 
 import type { EntityMetadataState } from './EntityMetadataState';
 
@@ -10,18 +10,21 @@ import type { EntityMetadataState } from './EntityMetadataState';
  * kernel only for target normalization.
  */
 export class StoredProcedureStore {
-  private readonly spMappings = new Map<Function, EntityStoredProcedureMapping>();
+  private readonly spMappings = new Map<EntityCtor, EntityStoredProcedureMapping>();
 
   public constructor(private readonly state: EntityMetadataState) {}
 
   /** Set (replace) the stored procedure CUD mapping for an entity. */
-  public setStoredProcedureMapping(target: Function, mapping: EntityStoredProcedureMapping): void {
+  public setStoredProcedureMapping(
+    target: EntityCtor,
+    mapping: EntityStoredProcedureMapping
+  ): void {
     const key = this.state.normalizeTarget(target);
     this.spMappings.set(key, mapping);
   }
 
   /** Get the stored procedure CUD mapping for an entity, if configured. */
-  public getStoredProcedureMapping(target: Function): EntityStoredProcedureMapping | undefined {
+  public getStoredProcedureMapping(target: EntityCtor): EntityStoredProcedureMapping | undefined {
     const key = this.state.normalizeTarget(target);
     return this.spMappings.get(key);
   }

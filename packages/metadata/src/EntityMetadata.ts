@@ -22,33 +22,18 @@ import type {
  * primary keys, relationships, and indexes for an entity class.
  */
 export class EntityMetadataBuilder {
-  private metadata: Partial<EntityMetadata> & {
-    ownedEntities?: OwnedEntityMetadata[];
-    hierarchy?: HierarchyMetadata;
-    hierarchyRoot?: EntityCtor;
-    skipNavigations?: SkipNavigationMetadata[];
-    queryFilters?: QueryFilterMetadata[];
-    seedData?: Record<string, unknown>[];
-    checkConstraints?: CheckConstraintMetadata[];
-    comment?: string;
-    shadowProperties?: Map<string, ShadowPropertyMetadata>;
-    tableFragments?: TableFragmentMetadata[];
-    isKeyless?: boolean;
-    viewName?: string;
-    viewSql?: string;
-    alternateKeys?: AlternateKeyMetadata[];
-    complexProperties?: ComplexTypePropertyMetadata[];
-  };
+  // Accumulation state while decorators/fluent calls are applied. Every field is
+  // declared optional on `EntityMetadata`, so a single `Partial` is sufficient —
+  // no field-by-field re-declaration is needed.
+  private metadata: Partial<EntityMetadata>;
 
   /**
    * Create a metadata builder for a specific entity constructor.
    * @param target Entity constructor function.
    */
-  constructor(target: Function) {
+  constructor(target: EntityCtor) {
     this.metadata = {
-      // Registry keys are still typed `Function` (tightened to EntityCtor in metadata/task-5);
-      // an entity target is always a constructor, so bridge to EntityCtor here.
-      target: target as EntityCtor,
+      target,
       tableName: target.name, // Default to class name, can be overridden by setTableName
       columns: [],
       primaryKeys: [],
@@ -207,9 +192,8 @@ export class EntityMetadataBuilder {
     return this;
   }
 
-  public setHierarchyRoot(root: Function): this {
-    // task-5: registry keys remain `Function`; the hierarchy root is a constructor.
-    this.metadata.hierarchyRoot = root as EntityCtor;
+  public setHierarchyRoot(root: EntityCtor): this {
+    this.metadata.hierarchyRoot = root;
     return this;
   }
 

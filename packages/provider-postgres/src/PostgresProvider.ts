@@ -1,7 +1,13 @@
 import { DatabaseProvider } from '@ts-linq/core';
 import { PostgresDdlStrategy, PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { EntityMetadata, PostgresConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
+import type {
+  EntityCtorRef,
+  EntityMetadata,
+  PostgresConfig,
+  SqlDialect,
+  SqlParameter
+} from '@ts-linq/types';
 import {
   DatabaseError,
   ForeignKeyConstraintError,
@@ -201,7 +207,7 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Insert an entity row and return the populated entity (RETURNING *). */
-  public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async insert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
@@ -220,7 +226,7 @@ export class PostgresProvider extends DatabaseProvider {
   /** Update a row by primary key; supports optimistic concurrency via version column. */
   public async update<T extends object>(
     entity: T,
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     originalValues?: object
   ): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass);
@@ -255,7 +261,7 @@ export class PostgresProvider extends DatabaseProvider {
   }
 
   /** Upsert using INSERT ... ON CONFLICT (pk...) DO UPDATE SET ... RETURNING *. */
-  public async upsert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async upsert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass);
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     if (!meta.primaryKeys || meta.primaryKeys.length === 0) {
@@ -293,7 +299,7 @@ export class PostgresProvider extends DatabaseProvider {
   /** Delete a row by primary key. */
   public async delete<T extends object>(
     entity: T,
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     originalValues?: object
   ): Promise<void> {
     const meta = MetadataStorage.getEntity(entityClass);

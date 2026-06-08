@@ -1,4 +1,4 @@
-import type { RelationshipMetadata } from '@ts-linq/types';
+import type { EntityCtor, RelationshipMetadata } from '@ts-linq/types';
 
 import type { EntityMetadataState } from './EntityMetadataState';
 
@@ -11,7 +11,7 @@ export class RelationshipStore {
   public constructor(private readonly state: EntityMetadataState) {}
 
   /** Decorator-driven relationship registration (append-only). */
-  public addRelationship(target: Function, relationship: RelationshipMetadata): void {
+  public addRelationship(target: EntityCtor, relationship: RelationshipMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {
@@ -22,7 +22,7 @@ export class RelationshipStore {
   }
 
   /** Fluent relationship override (fluent wins on conflict via shallow merge). */
-  public mergeFluentRelationship(target: Function, relationship: RelationshipMetadata): void {
+  public mergeFluentRelationship(target: EntityCtor, relationship: RelationshipMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {

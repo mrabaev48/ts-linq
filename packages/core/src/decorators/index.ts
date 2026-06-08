@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { IndexMetadata } from '@ts-linq/types';
+import type { EntityCtor, IndexMetadata } from '@ts-linq/types';
 
 import { IndexOptionsBuilder } from '../utils/IndexOptionsBuilder';
 
@@ -65,12 +65,11 @@ export function normalizeIndexOptions(input: IndexInput): IndexMetadata {
  * Legacy class decorator that registers an index on the entity.
  * Uses reflect-metadata for metadata storage.
  */
-export function Index(options: IndexInput): ClassDecorator {
-  return function <TFunction extends Function>(target: TFunction): TFunction | void {
-    const ctor = target as Function;
+export function Index(options: IndexInput) {
+  return function <T extends EntityCtor>(target: T): T | void {
     const meta: IndexMetadata = normalizeIndexOptions(options);
 
-    MetadataStorage.addIndex(ctor, meta);
+    MetadataStorage.addIndex(target, meta);
 
     return target;
   };

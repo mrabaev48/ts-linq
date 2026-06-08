@@ -1,5 +1,6 @@
 import { reflectGetOwnMetadata } from '@ts-linq/metadata';
 import { QueryBuilder } from '@ts-linq/query';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { CountCache, EntityCacheLike } from '@ts-linq/types';
 
 import type { NormalizedChange } from '../types';
@@ -9,12 +10,12 @@ type CountCacheLike = CountCache;
 
 interface MutationChange {
   entity: Record<string, unknown>;
-  entityClass: Function;
+  entityClass: EntityCtorRef;
   state: string;
 }
 
 interface RegistryLike {
-  getEntities(): ReadonlyArray<{ target?: Function }>;
+  getEntities(): ReadonlyArray<{ target?: EntityCtorRef }>;
 }
 
 /** @internal */
@@ -26,7 +27,7 @@ export class CacheCoordinator {
     private readonly providerLabel: string | undefined,
     private readonly cacheNamespace: string | undefined,
     private readonly registry: RegistryLike,
-    private readonly getPrimaryKey: (entityClass: Function) => string | undefined
+    private readonly getPrimaryKey: (entityClass: EntityCtorRef) => string | undefined
   ) {}
 
   updateEntry(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): void {

@@ -10,6 +10,7 @@ import { type MetadataRegistry, MetadataStorage, reflectGetOwnMetadata } from '@
 import { safeCacheSize } from '@ts-linq/metrics-safe';
 import { EnhancedSqlCache, InMemoryCountCache } from '@ts-linq/query/internal';
 import { DiagnosticEmitter } from '@ts-linq/telemetry';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { GlobalFilter, PerformanceOptions, Result, SoftDeleteOptions } from '@ts-linq/types';
 import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
@@ -39,7 +40,7 @@ import type { NormalizedChange } from './types';
 import { HiLoValueGenerator } from './valueGenerators/HiLoValueGenerator';
 // import { logInternalError } from '@ts-linq/core'; // REMOVED
 
-function getOriginal<T extends Function>(target: T): T {
+function getOriginal<T extends EntityCtorRef>(target: T): T {
   const maybe = reflectGetOwnMetadata('orm:original', target);
   return (maybe as T | undefined) ?? target;
 }
@@ -61,8 +62,8 @@ export abstract class DbContext {
   private _registry: MetadataRegistry;
   private _changeTracker: ChangeTrackerFacade;
   private _entityLoader: EntityLoader;
-  private _dbSets: Map<Function, DbSet<object>> = new Map();
-  private _decoratedDbSets: Map<Function, DbSet<object>> = new Map();
+  private _dbSets: Map<EntityCtorRef, DbSet<object>> = new Map();
+  private _decoratedDbSets: Map<EntityCtorRef, DbSet<object>> = new Map();
   private _defaultLoadingStrategy: LoadingStrategy = LoadingStrategy.Eager;
   private _entityCache?: EntityCacheLike;
   private _performanceOptions?: PerformanceOptions;
@@ -271,7 +272,8 @@ export abstract class DbContext {
    */
   public set<T extends object>(entityClass: new () => T): DbSet<T> {
     const maybe = reflectGetOwnMetadata('orm:original', entityClass);
-    const normalized = typeof maybe === 'function' ? maybe : entityClass;
+    const normalized: EntityCtorRef =
+      typeof maybe === 'function' ? (maybe as EntityCtorRef) : entityClass;
     if (!this._dbSets.has(normalized)) {
       throw new Error(`DbSet for ${entityClass.name} is not configured`);
     }
@@ -316,7 +318,7 @@ export abstract class DbContext {
     }
     // Entity not yet in the registry (dynamic registration after construction).
     const dbSet = new DbSet<T>(entityClass, this.buildDbSetContext());
-    this._dbSets.set(original as unknown as Function, dbSet as unknown as DbSet<object>);
+    this._dbSets.set(original as unknown as EntityCtorRef, dbSet as unknown as DbSet<object>);
     return dbSet;
   }
 
@@ -475,7 +477,7 @@ export abstract class DbContext {
   public entry<T extends object>(entity: T): EntityEntry<T> {
     return new EntityEntry<T>(
       entity,
-      entity.constructor as Function,
+      entity.constructor as EntityCtorRef,
       this._provider,
       this._changeTracker
     );
@@ -851,7 +853,7 @@ export abstract class DbContext {
    * declares a sequence with a block size. Reserves blocks in batches per sequence.
    */
   private async prefillHiLoIds(
-    changes: Array<{ entity: object; entityClass: Function; state: string }>
+    changes: Array<{ entity: object; entityClass: EntityCtorRef; state: string }>
   ): Promise<void> {
     for (const change of changes) {
       if (change.state !== 'added') continue;
@@ -885,7 +887,7 @@ export abstract class DbContext {
   }
 
   private prefillDefaults(
-    changes: Array<{ entity: object; entityClass: Function; state: string }>
+    changes: Array<{ entity: object; entityClass: EntityCtorRef; state: string }>
   ): void {
     for (const change of changes) {
       const { state } = change;
@@ -944,13 +946,13 @@ export abstract class DbContext {
   private normalizeForValidation(
     changes: Array<{
       entity: object;
-      entityClass: Function;
+      entityClass: EntityCtorRef;
       state: string;
       originalValues?: object;
     }>
   ): Array<{
     entity: Record<string, unknown>;
-    entityClass: Function;
+    entityClass: EntityCtorRef;
     state: string;
     originalValues?: object;
   }> {
@@ -964,12 +966,12 @@ export abstract class DbContext {
 
   private normalizeChange(change: {
     entity: object;
-    entityClass: Function;
+    entityClass: EntityCtorRef;
     state: string;
     originalValues?: object;
   }): {
     entity: Record<string, unknown>;
-    entityClass: Function;
+    entityClass: EntityCtorRef;
     state: string;
     originalValues?: object;
   } {
@@ -1087,7 +1089,7 @@ export abstract class DbContext {
     return await this._deleteCmd.execute({ ...change, state: 'deleted' });
   }
 
-  private getPrimaryKey(entityClass: Function): string | undefined {
+  private getPrimaryKey(entityClass: EntityCtorRef): string | undefined {
     const meta = this._registry.getEntity(entityClass);
     return meta?.primaryKeys?.[0];
   }

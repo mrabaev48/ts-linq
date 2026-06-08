@@ -124,8 +124,8 @@ Each package only depends on packages already completed above it.
 |---:|---|---|---|---|
 | 1 | `types` | foundation | Root of the graph; canonical error hierarchy + split barrel unblock everything. | ✅ done |
 | 2 | `metrics-safe` | foundation | Zero-dep Null-Object helpers; needed by `core`/`cache`; tiny. | ✅ done |
-| 3 | `metadata` | foundation | Remove committed artifacts, read-port, tame registry. Depends on `types`. | 🔄 In Progress |
-| 4 | `ast` | foundation | De-dupe jsonPath node; small. Depends on `types`. |
+| 3 | `metadata` | foundation | Remove committed artifacts, read-port, tame registry. Depends on `types`. | ✅ done |
+| 4 | `ast` | foundation | De-dupe jsonPath node; small. Depends on `types`. | 🔄 In Progress |
 | 5 | `sql-visitor` | foundation | Visitor/dispatch + param-state. Depends on `ast`, `types`. |
 | 6 | `concurrency` | foundation | Make retry policies canonical **before** `core` so its duplicate can be deleted. |
 | 7 | `core` | runtime | Decompose provider/loader; kill SQL injection + singleton coupling + silent catches. |
@@ -219,7 +219,7 @@ Each package only depends on packages already completed above it.
 | integration-nestjs | 2 | 0 | 0 | 1 | 1 | not-started |
 | integration-tests | 4 | 0 | 2 | 1 | 1 | not-started |
 | jest-config | 2 | 0 | 2 | 0 | 0 | not-started |
-| metadata | 5 | 1 | 2 | 2 | 0 | 🔄 In Progress (task-1/2/3/4 done, task-5 pending) |
+| metadata | 5 | 1 | 2 | 2 | 0 | ✅ done (task-1/2/3/4/5 ✅) |
 | metrics-safe | 3 | 0 | 1 | 1 | 1 |  ✅ done |
 | migrations | 7 | 3 | 3 | 1 | 0 | not-started |
 | open-telemetry-sql-logger | 4 | 0 | 3 | 1 | 0 | not-started |

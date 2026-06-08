@@ -1,8 +1,9 @@
 import type { DatabaseProvider } from '@ts-linq/core';
+import type { EntityCtorRef } from '@ts-linq/types';
 
 export type TrackedChange = {
   entity: Record<string, unknown>;
-  entityClass: Function;
+  entityClass: EntityCtorRef;
   state: string;
   originalValues?: object;
 };

@@ -1,10 +1,11 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 
 import type { EntityEntryGraphNode } from './EntityEntryGraphNode';
 
 interface QueueItem {
   entity: object;
-  entityClass: Function;
+  entityClass: EntityCtorRef;
   inboundNavigation: string | undefined;
 }
 
@@ -19,14 +20,14 @@ export class GraphIterator {
     private readonly registry: MetadataRegistry,
     private readonly nodeFactory: (
       entity: object,
-      entityClass: Function,
+      entityClass: EntityCtorRef,
       inboundNavigation: string | undefined
     ) => EntityEntryGraphNode
   ) {}
 
   traverse(
     root: object,
-    rootEntityClass: Function,
+    rootEntityClass: EntityCtorRef,
     callback: (node: EntityEntryGraphNode) => void
   ): void {
     const visited = new Set<object>();
@@ -88,17 +89,17 @@ export class GraphIterator {
   }
 
   private resolveTargetCtor(
-    targetEntity: string | Function | (() => Function) | undefined
-  ): Function | undefined {
+    targetEntity: string | EntityCtorRef | (() => EntityCtorRef) | undefined
+  ): EntityCtorRef | undefined {
     if (!targetEntity) return undefined;
     if (typeof targetEntity === 'function') {
       try {
-        const result = (targetEntity as () => Function)();
+        const result = (targetEntity as () => EntityCtorRef)();
         if (typeof result === 'function') return result;
       } catch {
         // Not a thunk — it's a direct constructor
       }
-      return targetEntity as Function;
+      return targetEntity as EntityCtorRef;
     }
     return undefined;
   }

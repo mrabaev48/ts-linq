@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { CountCache, EntityCacheLike } from '@ts-linq/types';
 
 import { CacheCoordinator } from '../src/services/CacheCoordinator';
@@ -67,7 +68,7 @@ function makeCountCache(): CountCache & { cleared: boolean } {
   };
 }
 
-function makeRegistry(entities: Array<{ target?: Function }> = []) {
+function makeRegistry(entities: Array<{ target?: EntityCtorRef }> = []) {
   return { getEntities: () => entities };
 }
 
@@ -79,7 +80,7 @@ function makeCoordinator(
   entityCache: EntityCacheLike | undefined,
   sqlCache: ReturnType<typeof makeSqlCache> | undefined,
   countCache: (CountCache & { cleared: boolean }) | undefined,
-  pkFn: (ec: Function) => string | undefined = (ec) => (ec === User ? 'id' : undefined)
+  pkFn: (ec: EntityCtorRef) => string | undefined = (ec) => (ec === User ? 'id' : undefined)
 ) {
   return new CacheCoordinator(entityCache, sqlCache, countCache, 'pg', 'ns', makeRegistry(), pkFn);
 }

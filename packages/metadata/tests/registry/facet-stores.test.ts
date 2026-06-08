@@ -1,3 +1,4 @@
+import type { EntityCtor } from '@ts-linq/types';
 import type {
   CheckConstraintMetadata,
   EntityStoredProcedureMapping,
@@ -17,7 +18,7 @@ import { TableConfigStore } from '../../src/registry/TableConfigStore';
 class Foo {}
 class Bar {}
 
-function finalize(state: EntityMetadataState, target: Function, tableName: string): void {
+function finalize(state: EntityMetadataState, target: EntityCtor, tableName: string): void {
   state.getOrCreateBuilder(target).setTableName(tableName);
   state.finalizeEntity(target);
 }

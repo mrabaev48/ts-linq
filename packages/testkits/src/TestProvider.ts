@@ -8,6 +8,7 @@ import type {
   BulkUpdateContext,
   ConnectionHealthCheckOptions,
   ConnectionPoolOptions,
+  EntityCtor,
   EntityMetadata,
   OrmMiddleware,
   QueryOptions,
@@ -196,7 +197,7 @@ export class TestProvider extends DatabaseProvider {
     return this.dialect;
   }
 
-  public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async insert<T extends object>(entity: T, entityClass: EntityCtor): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     const sql = `INSERT INTO ${meta.tableName}`;
     const startedAt = Date.now();
@@ -246,7 +247,7 @@ export class TestProvider extends DatabaseProvider {
     return entity;
   }
 
-  public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async update<T extends object>(entity: T, entityClass: EntityCtor): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     const sql = `UPDATE ${meta.tableName}`;
     const startedAt = Date.now();
@@ -286,7 +287,7 @@ export class TestProvider extends DatabaseProvider {
     return entity;
   }
 
-  public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
+  public async delete<T extends object>(entity: T, entityClass: EntityCtor): Promise<void> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     const sql = `DELETE FROM ${meta.tableName}`;
     const startedAt = Date.now();
@@ -371,7 +372,7 @@ export class TestProvider extends DatabaseProvider {
     });
   }
 
-  public async count(entityClass: Function): Promise<number> {
+  public async count(entityClass: EntityCtor): Promise<number> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`SELECT COUNT(*) FROM ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];

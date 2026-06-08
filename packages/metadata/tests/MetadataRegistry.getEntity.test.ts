@@ -1,12 +1,13 @@
 import 'reflect-metadata';
 
+import type { EntityCtor, EntityCtorRef } from '@ts-linq/types';
 import type { ColumnMetadata } from '@ts-linq/types';
 import { MetadataError, OrmError, ValidationError } from '@ts-linq/types';
 
 import { MetadataRegistry } from '../src/MetadataRegistry';
 
 // Helper: add a minimal entity with one PK column to the given registry.
-function seedEntity(registry: MetadataRegistry, target: Function, tableName: string): void {
+function seedEntity(registry: MetadataRegistry, target: EntityCtor, tableName: string): void {
   registry.addEntity(target, tableName);
   registry.addColumn(target, {
     propertyName: 'id',
@@ -23,7 +24,7 @@ function seedEntity(registry: MetadataRegistry, target: Function, tableName: str
 // removing the capability probe's backing function for the duration of `fn`.
 function withoutReflectMetadata<T>(fn: () => T): T {
   const reflectHolder = Reflect as unknown as {
-    getOwnMetadata?: (key: string, target: Function) => unknown;
+    getOwnMetadata?: (key: string, target: EntityCtor) => unknown;
   };
   const saved = reflectHolder.getOwnMetadata;
   delete reflectHolder.getOwnMetadata;
@@ -40,8 +41,8 @@ describe('MetadataRegistry.getEntity — capability probe + typed error path', (
   describe('invalid targets', () => {
     it('returns undefined for non-function / falsy targets', () => {
       const registry = new MetadataRegistry();
-      expect(registry.getEntity(undefined as unknown as Function)).toBeUndefined();
-      expect(registry.getEntity({} as unknown as Function)).toBeUndefined();
+      expect(registry.getEntity(undefined as unknown as EntityCtorRef)).toBeUndefined();
+      expect(registry.getEntity({} as unknown as EntityCtorRef)).toBeUndefined();
     });
 
     it('returns undefined for an unregistered entity', () => {
@@ -106,7 +107,7 @@ describe('MetadataRegistry.getEntity — capability probe + typed error path', (
       const boom = new Error('boom');
 
       class ThrowingRegistry extends MetadataRegistry {
-        protected override resolveOriginal(): Function {
+        protected override resolveOriginal(): EntityCtor {
           throw boom;
         }
       }
@@ -132,7 +133,7 @@ describe('MetadataRegistry.getEntity — capability probe + typed error path', (
       const typed = new ValidationError('already typed');
 
       class TypedThrowingRegistry extends MetadataRegistry {
-        protected override resolveOriginal(): Function {
+        protected override resolveOriginal(): EntityCtor {
           throw typed;
         }
       }

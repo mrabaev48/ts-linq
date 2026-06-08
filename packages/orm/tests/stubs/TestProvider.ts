@@ -1,5 +1,6 @@
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { EntityMetadata, QueryOptions, SqlDialect, SqlParameter } from '@ts-linq/types';
 
 class TestDialect implements SqlDialect {
@@ -74,7 +75,7 @@ export class TestProvider extends DatabaseProvider {
     return this.dialect;
   }
 
-  public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async insert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`INSERT INTO ${meta.tableName}`, []);
     await this.ensureTable(meta);
@@ -106,7 +107,7 @@ export class TestProvider extends DatabaseProvider {
     return entity;
   }
 
-  public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async update<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`UPDATE ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];
@@ -127,7 +128,7 @@ export class TestProvider extends DatabaseProvider {
     return entity;
   }
 
-  public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
+  public async delete<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<void> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`DELETE FROM ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];
@@ -303,7 +304,7 @@ export class TestProvider extends DatabaseProvider {
   public async queryEntities<T extends object>(
     sql: string,
     params: any[],
-    entityClass: Function
+    entityClass: EntityCtorRef
   ): Promise<T[]> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     let table = this.data.get(meta.tableName) || [];
@@ -339,7 +340,7 @@ export class TestProvider extends DatabaseProvider {
     });
   }
 
-  public async count(entityClass: Function): Promise<number> {
+  public async count(entityClass: EntityCtorRef): Promise<number> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     const table = this.data.get(meta.tableName) || [];
     return table.length;

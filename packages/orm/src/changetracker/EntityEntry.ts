@@ -1,5 +1,6 @@
 import { EntityState } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 
 import type { ChangeTracker } from '../ChangeTracker';
 import { PropertyEntry } from './PropertyEntry';
@@ -7,7 +8,7 @@ import { PropertyEntry } from './PropertyEntry';
 export class EntityEntry<T = unknown> {
   constructor(
     public readonly entity: T,
-    public readonly entityClass: Function,
+    public readonly entityClass: EntityCtorRef,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private readonly provider: any,
     private readonly changeTracker?: ChangeTracker

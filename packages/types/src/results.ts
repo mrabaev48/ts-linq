@@ -1,6 +1,7 @@
 // Result type and fallback policy.
 // The `ok`/`err` constructors live in ./runtime (the package's runtime module).
 
+import type { EntityCtorRef } from './metadata';
 import type { QueryOptions, SqlParameter } from './sql';
 
 // Result type
@@ -24,8 +25,8 @@ export type FallbackOperation =
 
 export interface FallbackRequest<T = unknown> {
   operation: FallbackOperation;
-  entityClass: Function;
-  entity?: Function;
+  entityClass: EntityCtorRef;
+  entity?: EntityCtorRef;
   query?: QueryOptions;
   sql?: string;
   params?: readonly SqlParameter[];
