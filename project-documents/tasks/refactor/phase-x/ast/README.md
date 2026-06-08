@@ -1,6 +1,6 @@
 # Refactor Audit: ast
 
-**Status: 🔄 In Progress** — task-1 ✅ completed; task-2 pending.
+**Status: ✅ Done** — task-1 ✅ completed; task-2 ✅ completed.
 
 ## Package responsibility
 `@ts-linq/ast` defines the query expression AST: the `ExpressionNode` union and its member
@@ -27,7 +27,7 @@ generation, *no* provider/dialect logic, and a well-structured typed error (`cod
 | Order | Task | Priority | Status | Reason |
 |---:|---|---|---|---|
 | 1 | task-1 | P1 | ✅ completed | De-duplicate `jsonPath` node before any node edits |
-| 2 | task-2 | P2 | ⬜ pending | Investigate/relocate SQL-fragment DTOs (boundary hygiene) |
+| 2 | task-2 | P2 | ✅ completed | Relocated SQL-fragment DTOs (`ConditionFragment`/`SqlFragment`) to `@ts-linq/sql-visitor`; `@ts-linq/ast` now SQL-generation-free |
 
 ## Dependencies on other packages
 - Inbound: `@ts-linq/types` (for `SqlParameter`).

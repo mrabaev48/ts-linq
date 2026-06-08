@@ -1,8 +1,8 @@
 import type { LiteralNode, MethodNode, ParameterRefNode } from '@ts-linq/ast';
-import type { ConditionFragment } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
+import type { ConditionFragment } from '../types';
 import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
 import { type HierarchyMethodVisitor, isHierarchyMethod } from './HierarchyMethodVisitor';
 import { isSpatialMethod, type SpatialMethodVisitor } from './SpatialMethodVisitor';

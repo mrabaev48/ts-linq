@@ -31,8 +31,10 @@ The query **intermediate representation (IR)**. Produced by `@ts-linq/transforme
 ## Known issues / refactor tasks
 
 See `project-documents/tasks/refactor/phase-x/ast/`:
-- `task-1` — de-duplicate the `jsonPath` node definition shared with `sql-visitor`.
-- `task-2` — relocate SQL-fragment DTOs that leaked in but belong closer to the SQL layer.
+- `task-1` — ✅ done: de-duplicated the `jsonPath` node definition shared with `sql-visitor`.
+- `task-2` — ✅ done: relocated the SQL-fragment DTOs (`ConditionFragment`/`SqlFragment`) to
+  `@ts-linq/sql-visitor`. This package no longer exports rendered-SQL carrier shapes; the
+  pure-AST boundary (nodes + typed errors, zero SQL generation) is now fully enforced.
 
 ## Validation
 
