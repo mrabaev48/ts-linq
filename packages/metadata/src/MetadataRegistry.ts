@@ -18,6 +18,7 @@ import type {
   ValidationRule
 } from '@ts-linq/types';
 import type { EntityStoredProcedureMapping } from '@ts-linq/types';
+import { MetadataError, OrmError } from '@ts-linq/types';
 
 import { PendingMetadataCollector } from './PendingMetadataCollector';
 import { reflectGetOwnMetadata } from './reflectUtils';
@@ -93,25 +94,52 @@ export class MetadataRegistry implements MetadataSource, MetadataSink {
 
   public getEntity(target: Function): EntityMetadata | undefined {
     if (!target || typeof target !== 'function') return undefined;
+
+    const { original, key } = this.resolveTarget(target);
+    if (this.state.hasBuilder(key)) {
+      this.collectPendingMetadata(key);
+      this.state.finalizeEntity(key);
+    }
+    const meta = this.state.getFinalized(key);
+    if (!meta) return undefined;
+    // task-5: registry keys remain `Function`; an entity target is a constructor.
+    return original !== target ? { ...meta, target: target as EntityCtor } : meta;
+  }
+
+  /**
+   * Resolve a possibly-wrapped decorator target back to its declared constructor
+   * via the single reflect-metadata capability probe ({@link reflectGetOwnMetadata}).
+   *
+   * Never throws for control flow: when reflect-metadata is absent the probe
+   * returns `undefined` (Null Object) and the original target is used as-is.
+   * `protected` so tests can inject a throwing resolver to exercise the
+   * typed-error path.
+   */
+  protected resolveOriginal(target: Function): Function {
+    const maybe = reflectGetOwnMetadata('orm:original', target);
+    return typeof maybe === 'function' ? maybe : target;
+  }
+
+  /**
+   * Resolve the wrapper→original target and its normalized store key.
+   *
+   * Translation-only seam (never a control-flow fallback): the reflect probe
+   * does not throw for absence, but an *unexpected* failure during resolution
+   * must surface typed rather than vanish into a silent fallback. Already-typed
+   * {@link OrmError}s propagate unchanged; anything else is wrapped in a
+   * {@link MetadataError} preserving the original `cause`.
+   */
+  private resolveTarget(target: Function): { original: Function; key: Function } {
     try {
-      const maybe = reflectGetOwnMetadata('orm:original', target);
-      const original = typeof maybe === 'function' ? maybe : target;
+      const original = this.resolveOriginal(target);
       const key = this.state.normalizeTarget(original);
-      if (this.state.hasBuilder(key)) {
-        this.collectPendingMetadata(key);
-        this.state.finalizeEntity(key);
-      }
-      const meta = this.state.getFinalized(key);
-      if (!meta) return undefined;
-      // task-5: registry keys remain `Function`; an entity target is a constructor.
-      return original !== target ? { ...meta, target: target as EntityCtor } : meta;
-    } catch {
-      const key = this.state.normalizeTarget(target);
-      if (this.state.hasBuilder(key)) {
-        this.collectPendingMetadata(key);
-        this.state.finalizeEntity(key);
-      }
-      return this.state.getFinalized(key);
+      return { original, key };
+    } catch (cause) {
+      if (cause instanceof OrmError) throw cause;
+      throw new MetadataError(
+        `Failed to resolve entity metadata for "${target.name || '<anonymous>'}".`,
+        { cause, details: { target: target.name } }
+      );
     }
   }
 
