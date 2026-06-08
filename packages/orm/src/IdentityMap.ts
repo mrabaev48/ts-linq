@@ -1,11 +1,12 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 
 /**
  * Lightweight per-query identity map for NoTrackingWithIdentityResolution mode.
  * Deduplicates entity instances by primary key without attaching them to the ChangeTracker.
  */
 export class IdentityMap {
-  private readonly _map = new Map<Function, Map<unknown, object>>();
+  private readonly _map = new Map<EntityCtorRef, Map<unknown, object>>();
 
   resolve<T extends object>(entity: T, entityClass: new () => T): T {
     const metadata = MetadataStorage.getEntity(entityClass);

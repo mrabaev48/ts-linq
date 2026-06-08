@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from '@jest/globals';
 import { EntityState } from '@ts-linq/core';
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import { createMetadataRegistry, MetadataStorage } from '@ts-linq/metadata';
+import type { EntityCtor } from '@ts-linq/types';
 import type { ColumnMetadata } from '@ts-linq/types';
 
 import { ChangeTracker } from '../src/ChangeTracker';
@@ -11,7 +12,7 @@ import { ChangeTracker } from '../src/ChangeTracker';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeRegistry(
-  ...entities: Array<{ target: Function; tableName: string }>
+  ...entities: Array<{ target: EntityCtor; tableName: string }>
 ): MetadataRegistry {
   const registry = createMetadataRegistry();
   for (const { target, tableName } of entities) {

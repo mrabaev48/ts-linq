@@ -14,7 +14,7 @@ export function createEnumToNumberConverter<T extends number>(
 ): ValueConverter<T, number> {
   return new ValueConverter<T, number>(
     (v) => Number(v),
-    (v) => v as unknown as T
+    (v) => v as T
   );
 }
 

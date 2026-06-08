@@ -1,3 +1,4 @@
+import type { EntityCtor } from '@ts-linq/types';
 import type { ColumnMetadata } from '@ts-linq/types';
 
 import { createMetadataRegistry } from '../src/index';
@@ -5,7 +6,7 @@ import { MetadataRegistry } from '../src/MetadataRegistry';
 import { MetadataStorage } from '../src/MetadataStorage';
 
 // Helper: add a minimal entity with one column to the given registry
-function seedEntity(registry: MetadataRegistry, target: Function, tableName: string): void {
+function seedEntity(registry: MetadataRegistry, target: EntityCtor, tableName: string): void {
   registry.addEntity(target, tableName);
   registry.addColumn(target, {
     propertyName: 'id',

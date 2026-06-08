@@ -1,4 +1,4 @@
-import type { ColumnMetadata, ShadowPropertyMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, EntityCtor, ShadowPropertyMetadata } from '@ts-linq/types';
 import { ValidationError } from '@ts-linq/types';
 
 import type { EntityMetadataState } from './EntityMetadataState';
@@ -12,7 +12,7 @@ export class ColumnMetadataStore {
   public constructor(private readonly state: EntityMetadataState) {}
 
   /** Decorator-driven column registration (append-only; ignores duplicates). */
-  public addColumn(target: Function, column: ColumnMetadata): void {
+  public addColumn(target: EntityCtor, column: ColumnMetadata): void {
     this.validateColumn(column);
     this.state.mutate(
       target,
@@ -26,7 +26,7 @@ export class ColumnMetadataStore {
   }
 
   /** Fluent column override (fluent wins on conflict via shallow merge). */
-  public mergeFluentColumn(target: Function, column: ColumnMetadata): void {
+  public mergeFluentColumn(target: EntityCtor, column: ColumnMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {
@@ -42,7 +42,7 @@ export class ColumnMetadataStore {
   }
 
   /** Decorator-driven primary key registration (append-only; ignores duplicates). */
-  public addPrimaryKey(target: Function, propertyName: string): void {
+  public addPrimaryKey(target: EntityCtor, propertyName: string): void {
     this.state.mutate(
       target,
       (finalized) => {
@@ -55,7 +55,7 @@ export class ColumnMetadataStore {
   }
 
   /** Fluent primary key override (replaces the whole key set). */
-  public setFluentPrimaryKeys(target: Function, keys: string[]): void {
+  public setFluentPrimaryKeys(target: EntityCtor, keys: string[]): void {
     this.state.mutate(
       target,
       (finalized) => {
@@ -66,7 +66,7 @@ export class ColumnMetadataStore {
   }
 
   /** Add or replace a shadow property (P1-16). */
-  public addShadowProperty(target: Function, prop: ShadowPropertyMetadata): void {
+  public addShadowProperty(target: EntityCtor, prop: ShadowPropertyMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {

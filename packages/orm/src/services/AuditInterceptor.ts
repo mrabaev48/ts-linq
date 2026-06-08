@@ -3,6 +3,7 @@ import type {
   ISaveChangesInterceptor,
   SaveChangesEventData
 } from '@ts-linq/core';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { AuditOptions } from '@ts-linq/types';
 
 import type { AuditColumnNames } from '../types';
@@ -15,7 +16,7 @@ interface EntityMeta {
   columns: ReadonlyArray<ColumnMeta>;
 }
 
-type GetMeta = (entityClass: Function) => EntityMeta | undefined;
+type GetMeta = (entityClass: EntityCtorRef) => EntityMeta | undefined;
 
 /** @internal */
 export class AuditInterceptor implements ISaveChangesInterceptor {
@@ -24,7 +25,11 @@ export class AuditInterceptor implements ISaveChangesInterceptor {
     private readonly getMeta: GetMeta
   ) {}
 
-  apply(change: { entity: Record<string, unknown>; entityClass: Function; state: string }): void {
+  apply(change: {
+    entity: Record<string, unknown>;
+    entityClass: EntityCtorRef;
+    state: string;
+  }): void {
     if (!this.audit?.enabled) return;
     const meta = this.getMeta(change.entityClass);
     if (!meta) return;
@@ -94,7 +99,7 @@ export class AuditInterceptor implements ISaveChangesInterceptor {
     for (const entry of ev.entries ?? []) {
       this.apply({
         entity: entry.entity as Record<string, unknown>,
-        entityClass: entry.entityClass,
+        entityClass: entry.entityClass as EntityCtorRef,
         state: entry.state
       });
     }

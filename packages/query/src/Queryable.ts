@@ -9,6 +9,7 @@ import type {
   CteDefinition,
   EntityAttacher,
   EntityCacheLike,
+  EntityCtorRef,
   FallbackPolicy,
   GlobalFilter,
   OrderByClause,
@@ -1123,7 +1124,7 @@ export class Queryable<T> {
 
     // Walk the metadata chain from the root entity class to validate nestedKey
     // against the leaf entity in the current include chain.
-    let currentClass: Function = this._entityClass;
+    let currentClass: EntityCtorRef = this._entityClass;
     for (const segment of this._lastIncludePath.split('.')) {
       const meta = MetadataStorage.getEntity(currentClass);
       if (!meta) break;

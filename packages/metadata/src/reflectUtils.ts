@@ -1,5 +1,5 @@
 type ReflectWithGetOwnMetadata = {
-  getOwnMetadata?: (key: string, target: Function) => unknown;
+  getOwnMetadata?: (key: string, target: object) => unknown;
 };
 
 /**
@@ -14,7 +14,7 @@ type ReflectWithGetOwnMetadata = {
  * the probe failure; callers must treat `undefined` as the Null Object and must
  * not introduce ad-hoc `try/catch` around reflect access elsewhere.
  */
-export function reflectGetOwnMetadata(key: string, target: Function): unknown {
+export function reflectGetOwnMetadata(key: string, target: object): unknown {
   try {
     const gm = (Reflect as unknown as ReflectWithGetOwnMetadata).getOwnMetadata;
     return gm?.(key, target);

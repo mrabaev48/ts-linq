@@ -1,7 +1,7 @@
 // Middleware hooks, entity change context and retry policy
 
 import type { QueryAnalysisInfo } from './logging';
-import type { EntityMetadata } from './metadata';
+import type { EntityCtorRef, EntityMetadata } from './metadata';
 import type { SqlParameter } from './sql';
 
 // Middleware hook parameter types
@@ -22,7 +22,7 @@ export interface AfterExecuteInfo {
 // Middleware context types
 export interface EntityChangeContext {
   entity: Record<string, unknown>;
-  entityClass: Function;
+  entityClass: EntityCtorRef;
   state: 'added' | 'modified' | 'deleted';
   originalValues?: Record<string, unknown>;
 }

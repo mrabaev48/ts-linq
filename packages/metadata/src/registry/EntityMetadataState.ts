@@ -1,4 +1,4 @@
-import type { EntityMetadata } from '@ts-linq/types';
+import type { EntityCtor, EntityMetadata } from '@ts-linq/types';
 
 import { EntityMetadataBuilder } from '../EntityMetadata';
 import { reflectGetOwnMetadata } from '../reflectUtils';
@@ -16,8 +16,8 @@ import { reflectGetOwnMetadata } from '../reflectUtils';
  * dependency graph acyclic (facade → facets → state → builder).
  */
 export class EntityMetadataState {
-  private readonly entities = new Map<Function, EntityMetadata>();
-  private readonly builders = new Map<Function, EntityMetadataBuilder>();
+  private readonly entities = new Map<EntityCtor, EntityMetadata>();
+  private readonly builders = new Map<EntityCtor, EntityMetadataBuilder>();
 
   // ─── Normalization ──────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ export class EntityMetadataState {
    * metadata points at the underlying constructor; all store keys use the
    * normalized form so wrapper and original resolve to the same entry.
    */
-  public normalizeTarget<T extends Function>(target: T): T {
+  public normalizeTarget<T extends EntityCtor>(target: T): T {
     if (!target || typeof target !== 'function') return target;
     const maybe = reflectGetOwnMetadata('orm:original', target);
     const original = typeof maybe === 'function' ? (maybe as T) : undefined;
@@ -38,7 +38,7 @@ export class EntityMetadataState {
   // ─── Builder helpers ──────────────────────────────────────────────────────────
 
   /** Lazily create (or return) the pre-finalize accumulator for `target`. */
-  public getOrCreateBuilder(target: Function): EntityMetadataBuilder {
+  public getOrCreateBuilder(target: EntityCtor): EntityMetadataBuilder {
     const key = this.normalizeTarget(target);
     if (!this.builders.has(key)) {
       this.builders.set(key, new EntityMetadataBuilder(key));
@@ -47,7 +47,7 @@ export class EntityMetadataState {
   }
 
   /** Promote a pending builder into the finalized `entities` map, if present. */
-  public finalizeEntity(target: Function): void {
+  public finalizeEntity(target: EntityCtor): void {
     const key = this.normalizeTarget(target);
     if (this.builders.has(key)) {
       const metadata = this.builders.get(key)!.build();
@@ -66,12 +66,12 @@ export class EntityMetadataState {
   // ─── Read helpers ─────────────────────────────────────────────────────────────
 
   /** True if a pending builder exists for the normalized `key`. */
-  public hasBuilder(key: Function): boolean {
+  public hasBuilder(key: EntityCtor): boolean {
     return this.builders.has(key);
   }
 
   /** Finalized descriptor for the normalized `key`, or `undefined`. */
-  public getFinalized(key: Function): EntityMetadata | undefined {
+  public getFinalized(key: EntityCtor): EntityMetadata | undefined {
     return this.entities.get(key);
   }
 
@@ -90,7 +90,7 @@ export class EntityMetadataState {
    * builder. Both registration styles (decorator and fluent) flow through here.
    */
   public mutate(
-    target: Function,
+    target: EntityCtor,
     onFinalized: (metadata: EntityMetadata) => void,
     onBuilder: (builder: EntityMetadataBuilder) => void
   ): void {

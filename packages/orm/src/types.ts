@@ -1,3 +1,4 @@
+import type { EntityCtorRef } from '@ts-linq/types';
 export interface AuditColumnNames {
   createdAt: string;
   updatedAt: string;
@@ -7,7 +8,7 @@ export interface AuditColumnNames {
 
 export interface NormalizedChange {
   entity: Record<string, unknown>;
-  entityClass: Function;
+  entityClass: EntityCtorRef;
   state: string;
   originalValues?: object;
 }

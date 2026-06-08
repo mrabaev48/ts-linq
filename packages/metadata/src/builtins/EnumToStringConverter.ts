@@ -14,11 +14,11 @@ export function createEnumToStringConverter<T extends string>(
 ): ValueConverter<T, string> {
   const reverseMap: Record<string, T> = {};
   for (const key of Object.keys(enumObj)) {
-    reverseMap[enumObj[key]] = enumObj[key] as T;
+    reverseMap[enumObj[key]] = enumObj[key];
   }
   return new ValueConverter<T, string>(
     (v) => String(v),
-    (v) => reverseMap[v] ?? (v as unknown as T)
+    (v) => reverseMap[v] ?? (v as T)
   );
 }
 

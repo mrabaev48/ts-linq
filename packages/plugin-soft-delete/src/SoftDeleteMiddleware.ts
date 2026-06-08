@@ -1,4 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityCtor } from '@ts-linq/types';
 
 import type { SoftDeleteContext, SoftDeleteOptions } from './types';
 
@@ -27,7 +28,9 @@ export class SoftDeleteMiddleware {
       return false;
     }
 
-    const meta = MetadataStorage.getEntity(context.entityClass);
+    // The middleware contract types `entityClass` as the broad `Function`;
+    // narrow it to the entity constructor type for the metadata lookup.
+    const meta = MetadataStorage.getEntity(context.entityClass as EntityCtor);
     if (!meta) {
       return false;
     }

@@ -2,6 +2,7 @@ import type {
   CircuitState,
   ConnectionHealthCheckOptions,
   ConnectionPoolOptions,
+  EntityCtorRef,
   EntityMetadata,
   OrmMiddleware,
   QueryAnalysisInfo,
@@ -139,17 +140,17 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   /** Return SQL dialect used by this provider (Strategy per provider). */
   public abstract getDialect(): SqlDialect;
   /** Insert an entity instance into its table and return the inserted entity. */
-  public abstract insert<T extends object>(entity: T, entityClass: Function): Promise<T>;
+  public abstract insert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T>;
   /** Update an existing entity row and return the updated entity. */
   public abstract update<T extends object>(
     entity: T,
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     originalValues?: object
   ): Promise<T>;
   /** Delete an entity row. */
   public abstract delete<T extends object>(
     entity: T,
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     originalValues?: object
   ): Promise<void>;
   /** Find an entity by primary key value. */
@@ -172,7 +173,10 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   ): Promise<T[]>;
 
   /** Insert many entities in a single transaction (default implementation). */
-  public async insertMany<T extends object>(entities: T[], entityClass: Function): Promise<T[]> {
+  public async insertMany<T extends object>(
+    entities: T[],
+    entityClass: EntityCtorRef
+  ): Promise<T[]> {
     if (entities.length === 0) return entities;
     await this.beginTransaction();
     try {
@@ -188,7 +192,10 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   }
 
   /** Update many entities in a single transaction (default implementation). */
-  public async updateMany<T extends object>(entities: T[], entityClass: Function): Promise<T[]> {
+  public async updateMany<T extends object>(
+    entities: T[],
+    entityClass: EntityCtorRef
+  ): Promise<T[]> {
     if (entities.length === 0) return entities;
     await this.beginTransaction();
     try {
@@ -204,7 +211,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   }
 
   /** Upsert single entity: try update, fallback to insert when no rows updated. */
-  public async upsert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async upsert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     try {
       return await this.update(entity, entityClass);
     } catch {
@@ -213,7 +220,10 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   }
 
   /** Upsert many entities within a transaction. */
-  public async upsertMany<T extends object>(entities: T[], entityClass: Function): Promise<T[]> {
+  public async upsertMany<T extends object>(
+    entities: T[],
+    entityClass: EntityCtorRef
+  ): Promise<T[]> {
     if (entities.length === 0) return entities;
     await this.beginTransaction();
     try {

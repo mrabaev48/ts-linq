@@ -6,6 +6,7 @@ import {
   MetadataStorage,
   type PropertyAccessor
 } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { EntityAttacher } from '@ts-linq/types';
 
 import { CascadeWalker } from './changetracker/CascadeWalker';
@@ -32,14 +33,14 @@ import { LocalView } from './LocalView';
  */
 export interface JoinRowChange {
   joinRow: Record<string, unknown>;
-  joinEntityCtor: Function;
+  joinEntityCtor: EntityCtorRef;
   operation: 'insert' | 'delete';
 }
 
 export class ChangeTracker implements EntityAttacher {
   private _trackedEntities: Map<object, TrackedEntity> = new Map();
   /** Identity map: entityClass → (pkTuple → TrackedEntity) */
-  private _trackedByPk: Map<Function, Map<string, TrackedEntity>> = new Map();
+  private _trackedByPk: Map<EntityCtorRef, Map<string, TrackedEntity>> = new Map();
   private readonly _registry: MetadataRegistry;
   /** Snapshots of skip-navigation collection PKs at attach time: entity → (propName → Set<pk>) */
   private _collectionSnapshots: Map<object, Map<string, Set<unknown>>> = new Map();
@@ -47,7 +48,7 @@ export class ChangeTracker implements EntityAttacher {
   private readonly _shadowValues: WeakMap<object, Map<string, unknown>> = new WeakMap();
   /** Observable LocalView instances: entityClass → LocalView. Created lazily on first access. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly _localViews: Map<Function, LocalView<any>> = new Map();
+  private readonly _localViews: Map<EntityCtorRef, LocalView<any>> = new Map();
 
   /** Default tracking behavior applied to all queries originating from this context. */
   public queryTrackingBehavior: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -80,7 +81,7 @@ export class ChangeTracker implements EntityAttacher {
    * Keys are sorted alphabetically so the result is independent of property
    * enumeration order.  Returns `undefined` when any PK column is missing.
    */
-  private getPkTuple(entity: object, entityClass: Function): string | undefined {
+  private getPkTuple(entity: object, entityClass: EntityCtorRef): string | undefined {
     const meta = this._registry.getEntity(entityClass);
     const pks = meta?.primaryKeys;
     if (!pks?.length) return undefined;
@@ -91,7 +92,7 @@ export class ChangeTracker implements EntityAttacher {
     return JSON.stringify(values);
   }
 
-  private getPkMap(entityClass: Function): Map<string, TrackedEntity> {
+  private getPkMap(entityClass: EntityCtorRef): Map<string, TrackedEntity> {
     let map = this._trackedByPk.get(entityClass);
     if (!map) {
       map = new Map();
@@ -101,7 +102,7 @@ export class ChangeTracker implements EntityAttacher {
   }
 
   /** Return existing TrackedEntity if the same PK is already tracked. */
-  private findByPk(entity: object, entityClass: Function): TrackedEntity | undefined {
+  private findByPk(entity: object, entityClass: EntityCtorRef): TrackedEntity | undefined {
     const key = this.getPkTuple(entity, entityClass);
     if (key === undefined) return undefined;
     return this.getPkMap(entityClass).get(key);
@@ -138,7 +139,7 @@ export class ChangeTracker implements EntityAttacher {
    * Deduplicates by object reference only — two different objects with the same
    * PK are both tracked (the database will enforce uniqueness at persist time).
    */
-  public add<T extends object>(entity: T, entityClass: Function): void {
+  public add<T extends object>(entity: T, entityClass: EntityCtorRef): void {
     const existing = this._trackedEntities.get(entity);
     if (existing) {
       existing.state = EntityState.Added;
@@ -155,7 +156,7 @@ export class ChangeTracker implements EntityAttacher {
    * Track an entity as Modified.
    * If an entity with the same PK is already tracked, updates its state in place.
    */
-  public update<T extends object>(entity: T, entityClass: Function): void {
+  public update<T extends object>(entity: T, entityClass: EntityCtorRef): void {
     const existing = this._trackedEntities.get(entity) ?? this.findByPk(entity, entityClass);
     if (existing) {
       existing.state = EntityState.Modified;
@@ -177,7 +178,7 @@ export class ChangeTracker implements EntityAttacher {
    * Track an entity as Deleted.
    * If an entity with the same PK is already tracked, updates its state in place.
    */
-  public remove<T extends object>(entity: T, entityClass: Function): void {
+  public remove<T extends object>(entity: T, entityClass: EntityCtorRef): void {
     const existing = this._trackedEntities.get(entity) ?? this.findByPk(entity, entityClass);
     if (existing) {
       existing.state = EntityState.Deleted;
@@ -195,7 +196,7 @@ export class ChangeTracker implements EntityAttacher {
    * If an entity with the same PK is already tracked, the existing instance is reused
    * (Identity Map guarantee: one reference per PK per context).
    */
-  public attach<T extends object>(entity: T, entityClass: Function): void {
+  public attach<T extends object>(entity: T, entityClass: EntityCtorRef): void {
     const existing = this.findByPk(entity, entityClass);
     if (existing) {
       existing.state = EntityState.Unchanged;
@@ -278,7 +279,7 @@ export class ChangeTracker implements EntityAttacher {
    * The view is an observable snapshot of all non-Deleted tracked entities of
    * that type.  Mirrors `DbSet<T>.Local` in EF Core.
    */
-  public getLocalView<T extends object>(entityClass: Function): LocalView<T> {
+  public getLocalView<T extends object>(entityClass: EntityCtorRef): LocalView<T> {
     let view = this._localViews.get(entityClass) as LocalView<T> | undefined;
     if (!view) {
       view = new LocalView<T>();
@@ -303,7 +304,10 @@ export class ChangeTracker implements EntityAttacher {
    * `context.changeTracker.findEntry(...)` which wraps the result in an
    * {@link EntityEntry} with full state/property access.
    */
-  public findTrackedByPk(entityClass: Function, ...pkValues: unknown[]): TrackedEntity | undefined {
+  public findTrackedByPk(
+    entityClass: EntityCtorRef,
+    ...pkValues: unknown[]
+  ): TrackedEntity | undefined {
     const meta = this._registry.getEntity(entityClass);
     const pks = meta?.primaryKeys;
     if (!pks?.length || pkValues.length === 0) return undefined;
@@ -319,7 +323,7 @@ export class ChangeTracker implements EntityAttacher {
    * This is the low-level API. Consumers should call
    * `context.changeTracker.entries(...)` which wraps results in {@link EntityEntry}.
    */
-  public getTrackedForType(entityClass: Function): TrackedEntity[] {
+  public getTrackedForType(entityClass: EntityCtorRef): TrackedEntity[] {
     const result: TrackedEntity[] = [];
     for (const tracked of this._trackedEntities.values()) {
       if (tracked.entityClass === entityClass) result.push(tracked);
@@ -345,12 +349,12 @@ export class ChangeTracker implements EntityAttacher {
    */
   public trackGraph(
     root: object,
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     callback: (node: EntityEntryGraphNode) => void
   ): void {
     const nodeFactory = (
       entity: object,
-      cls: Function,
+      cls: EntityCtorRef,
       inboundNavigation: string | undefined
     ): EntityEntryGraphNode => {
       // Capture methods as closures so getters/setters don't need 'this' inside object literal.
@@ -386,7 +390,7 @@ export class ChangeTracker implements EntityAttacher {
    * Directly set the tracking state of an already-tracked entity.
    * Used by `EntityEntry.state` setter and by `trackGraph` callbacks.
    */
-  public setState(entity: object, entityClass: Function, state: EntityState): void {
+  public setState(entity: object, entityClass: EntityCtorRef, state: EntityState): void {
     let tracked = this._trackedEntities.get(entity) ?? this.findByPk(entity, entityClass);
     if (tracked) {
       tracked.state = state;
@@ -452,7 +456,7 @@ export class ChangeTracker implements EntityAttacher {
     }
   }
 
-  private hasShadowChanged(entity: object, entityClass: Function): boolean {
+  private hasShadowChanged(entity: object, entityClass: EntityCtorRef): boolean {
     const meta = this._registry.getEntity(entityClass);
     if (!meta?.shadowProperties) return false;
     const shadowValues = this._shadowValues.get(entity);
@@ -461,7 +465,7 @@ export class ChangeTracker implements EntityAttacher {
     return shadowValues.size > 0;
   }
 
-  private hasChanged(entity: object, original: object, entityClass: Function): boolean {
+  private hasChanged(entity: object, original: object, entityClass: EntityCtorRef): boolean {
     const meta = this._registry.getEntity(entityClass);
     if (!meta) return !this.areObjectsEqual(entity, original);
 
@@ -490,7 +494,10 @@ export class ChangeTracker implements EntityAttacher {
 
   // ─── Skip navigation (many-to-many) collection tracking ─────────────────
 
-  private _snapshotCollections(entity: object, entityClass: Function): Map<string, Set<unknown>> {
+  private _snapshotCollections(
+    entity: object,
+    entityClass: EntityCtorRef
+  ): Map<string, Set<unknown>> {
     const result = new Map<string, Set<unknown>>();
     const meta = this._registry.getEntity(entityClass);
     if (!meta?.skipNavigations?.length) return result;
@@ -581,7 +588,7 @@ export class ChangeTracker implements EntityAttacher {
 
   // ─── Cloning & equality ───────────────────────────────────────────────────
 
-  private cloneObject<T>(obj: T, entityClass?: Function): T {
+  private cloneObject<T>(obj: T, entityClass?: EntityCtorRef): T {
     const meta = entityClass ? this._registry.getEntity(entityClass) : undefined;
     if (meta) {
       // structuredClone copies all enumerable own properties, including _underscored backing fields.
