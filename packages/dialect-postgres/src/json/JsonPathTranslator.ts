@@ -1,4 +1,4 @@
-import type { JsonPathNode, JsonPathTranslator, ParameterState } from '@ts-linq/sql-visitor';
+import type { JsonPathExpression, JsonPathTranslator, ParameterState } from '@ts-linq/sql-visitor';
 
 /**
  * PostgreSQL JSON path translator.
@@ -9,7 +9,7 @@ import type { JsonPathNode, JsonPathTranslator, ParameterState } from '@ts-linq/
  *   - Cast variants: (col->>'seg')::integer etc.
  */
 export class PostgresJsonPathTranslator implements JsonPathTranslator {
-  translate(node: JsonPathNode, _state: ParameterState) {
+  translate(node: JsonPathExpression, _state: ParameterState) {
     const col = `"${node.column}"`;
     const segments = node.path;
 
@@ -32,7 +32,7 @@ export class PostgresJsonPathTranslator implements JsonPathTranslator {
     return { fragment: expr, params: [] as never[] };
   }
 
-  private toPgType(cast: NonNullable<JsonPathNode['cast']>): string {
+  private toPgType(cast: NonNullable<JsonPathExpression['cast']>): string {
     switch (cast) {
       case 'int':
         return 'integer';

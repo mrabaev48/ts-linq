@@ -1,5 +1,7 @@
 # Refactor Audit: ast
 
+**Status: 🔄 In Progress** — task-1 ✅ completed; task-2 pending.
+
 ## Package responsibility
 `@ts-linq/ast` defines the query expression AST: the `ExpressionNode` union and its member
 node interfaces (property, literal, binary, logical, IN, method, EF-function, json-path,
@@ -22,10 +24,10 @@ generation, *no* provider/dialect logic, and a well-structured typed error (`cod
 - Keep the package free of any SQL/provider/dialect logic (it already is).
 
 ## Recommended task order
-| Order | Task | Priority | Reason |
-|---:|---|---|---|
-| 1 | task-1 | P1 | De-duplicate `jsonPath` node before any node edits |
-| 2 | task-2 | P2 | Investigate/relocate SQL-fragment DTOs (boundary hygiene) |
+| Order | Task | Priority | Status | Reason |
+|---:|---|---|---|---|
+| 1 | task-1 | P1 | ✅ completed | De-duplicate `jsonPath` node before any node edits |
+| 2 | task-2 | P2 | ⬜ pending | Investigate/relocate SQL-fragment DTOs (boundary hygiene) |
 
 ## Dependencies on other packages
 - Inbound: `@ts-linq/types` (for `SqlParameter`).

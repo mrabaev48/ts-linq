@@ -1,4 +1,4 @@
-import type { BinaryNode, ExpressionNode, JsonPathNode, PropertyNode } from '@ts-linq/ast';
+import type { BinaryNode, ExpressionNode, JsonPathExpression, PropertyNode } from '@ts-linq/ast';
 import type { JsonShape } from '@ts-linq/types';
 
 import { JsonAccessRewriter } from '../src/JsonAccessRewriter';
@@ -29,7 +29,7 @@ describe('JsonAccessRewriter', () => {
       new Map([['preferences', makeJsonShape('preferences')]])
     );
     const node: PropertyNode = { type: 'property', path: ['preferences', 'display', 'theme'] };
-    const result = rewriter.rewrite(node) as JsonPathNode;
+    const result = rewriter.rewrite(node) as JsonPathExpression;
     expect(result.type).toBe('jsonPath');
     expect(result.column).toBe('preferences');
     expect(result.path).toEqual(['display', 'theme']);
@@ -38,7 +38,7 @@ describe('JsonAccessRewriter', () => {
   it('uses the jsonShape columnName (not property name) as column', () => {
     const rewriter = new JsonAccessRewriter(new Map([['prefs', makeJsonShape('user_prefs_json')]]));
     const node: PropertyNode = { type: 'property', path: ['prefs', 'theme'] };
-    const result = rewriter.rewrite(node) as JsonPathNode;
+    const result = rewriter.rewrite(node) as JsonPathExpression;
     expect(result.column).toBe('user_prefs_json');
     expect(result.path).toEqual(['theme']);
   });
@@ -54,8 +54,8 @@ describe('JsonAccessRewriter', () => {
       right: { type: 'literal', value: 'dark' }
     };
     const result = rewriter.rewrite(binary) as BinaryNode;
-    expect((result.left as JsonPathNode).type).toBe('jsonPath');
-    expect((result.left as JsonPathNode).path).toEqual(['theme']);
+    expect((result.left as JsonPathExpression).type).toBe('jsonPath');
+    expect((result.left as JsonPathExpression).path).toEqual(['theme']);
     expect(result.right).toStrictEqual({ type: 'literal', value: 'dark' });
   });
 
@@ -80,7 +80,7 @@ describe('JsonAccessRewriter', () => {
       }
     };
     const result = rewriter.rewrite(node);
-    const left = (result as any).left.left as JsonPathNode;
+    const left = (result as any).left.left as JsonPathExpression;
     const right = (result as any).right.left as PropertyNode;
     expect(left.type).toBe('jsonPath');
     expect(right.type).toBe('property');

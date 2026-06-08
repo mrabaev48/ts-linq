@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: ast
 priority: P1
@@ -53,11 +53,21 @@ so this is about restoring single-source-of-truth for one node.
 - Regression: JSON-path translation tests pass.
 
 ## Acceptance criteria
-- [ ] Only one `jsonPath` interface definition exists.
-- [ ] `ExpressionNode` references the canonical type.
-- [ ] Misleading comment removed/corrected.
-- [ ] Backward-compatible export (alias) if the old name was public.
-- [ ] Validations pass.
+- [x] Only one `jsonPath` interface definition exists.
+- [x] `ExpressionNode` references the canonical type.
+- [x] Misleading comment removed/corrected.
+- [x] Backward-compatible export (alias) if the old name was public.
+- [x] Validations pass.
+
+## Resolution
+Single source of truth restored. `Nodes.ts` now imports `JsonPathExpression` and the
+`ExpressionNode` union references it directly; the inline duplicate interface and the false
+"re-export" comment were removed. `JsonPathNode` is retained as a `@deprecated` type alias
+(`export type JsonPathNode = JsonPathExpression`) for backward compatibility, since it was a
+public export consumed by `sql-visitor` and all three dialects. All internal consumers were
+migrated to the canonical `JsonPathExpression` (re-exported from `@ts-linq/sql-visitor`); the
+deprecated alias now exists only for external consumers and is slated for removal in a future
+major. Changeset: `@ts-linq/ast` minor, `@ts-linq/sql-visitor` minor, dialects patch.
 
 ## Refactor order
 Standalone; do first in the ast package (smallest, unblocks confusion before other edits).
