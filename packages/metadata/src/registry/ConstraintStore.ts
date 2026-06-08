@@ -1,4 +1,4 @@
-import type { CheckConstraintMetadata, ValidationRule } from '@ts-linq/types';
+import type { CheckConstraintMetadata, EntityCtor, ValidationRule } from '@ts-linq/types';
 
 import type { EntityMetadataState } from './EntityMetadataState';
 
@@ -11,7 +11,7 @@ export class ConstraintStore {
   public constructor(private readonly state: EntityMetadataState) {}
 
   /** Decorator-driven validation rule registration (append-only). */
-  public addValidationRule(target: Function, rule: ValidationRule): void {
+  public addValidationRule(target: EntityCtor, rule: ValidationRule): void {
     this.state.mutate(
       target,
       (finalized) => {
@@ -22,7 +22,7 @@ export class ConstraintStore {
   }
 
   /** Set (replace) CHECK constraints for an entity (P0-14). */
-  public setCheckConstraints(target: Function, constraints: CheckConstraintMetadata[]): void {
+  public setCheckConstraints(target: EntityCtor, constraints: CheckConstraintMetadata[]): void {
     this.state.mutate(
       target,
       (finalized) => {

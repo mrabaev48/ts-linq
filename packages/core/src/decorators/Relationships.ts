@@ -26,8 +26,10 @@ function defineRelationship(
   target: object,
   propertyKey: string | symbol
 ): void {
-  const ctor =
-    typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+  const ctor: EntityCtor =
+    typeof target === 'function'
+      ? (target as EntityCtor)
+      : (target as { constructor: EntityCtor }).constructor;
   const propertyName = String(propertyKey);
 
   const relationship: RelationshipMetadata = {

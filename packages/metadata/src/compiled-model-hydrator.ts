@@ -78,7 +78,7 @@ function hydrateEntity(
       shadowMap.set(sp.propertyName, {
         propertyName: sp.propertyName,
         columnName: sp.columnName,
-        type: sp.type as import('@ts-linq/types').ColumnType,
+        type: sp.type,
         nullable: sp.nullable,
         defaultValue: sp.defaultValue,
         defaultExpression: sp.defaultExpression,
@@ -165,7 +165,7 @@ export function loadCompiledModel(
   registry: MetadataRegistry
 ): void {
   if (model.version !== 1) {
-    throw new CompiledModelVersionError(model.version as number);
+    throw new CompiledModelVersionError(model.version);
   }
 
   for (const em of model.entities) {

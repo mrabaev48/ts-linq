@@ -1,4 +1,4 @@
-import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
+import type { ColumnMetadata, ColumnType, EntityCtor } from '@ts-linq/types';
 
 import { MetadataStorage } from './MetadataStorage';
 
@@ -25,8 +25,10 @@ export interface ColumnOptions {
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     // Ensure entity metadata exists (property decorators run before class decorator)
     if (!MetadataStorage.getEntity(ctor)) {

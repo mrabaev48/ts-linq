@@ -31,8 +31,10 @@ export function OneToMany(
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     // Resolve targetEntity thunk
     // Start of fix: defer resolution to avoid circular dependency TDZ issues
@@ -62,8 +64,10 @@ export function ManyToOne(
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     let resolved;
     try {
@@ -95,8 +99,10 @@ export function OneToOne(
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     const resolved = targetEntity();
 
@@ -123,8 +129,10 @@ export function ManyToMany(
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     const resolved = targetEntity();
 

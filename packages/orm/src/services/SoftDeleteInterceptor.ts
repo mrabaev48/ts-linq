@@ -3,6 +3,7 @@ import type {
   ISaveChangesInterceptor,
   SaveChangesEventData
 } from '@ts-linq/core';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { SoftDeleteOptions } from '@ts-linq/types';
 
 interface ColumnMeta {
@@ -14,9 +15,12 @@ interface EntityMeta {
   columns: ReadonlyArray<ColumnMeta>;
 }
 
-type GetMeta = (entityClass: Function) => EntityMeta | undefined;
-type ExecuteUpdate = (entity: Record<string, unknown>, entityClass: Function) => Promise<void>;
-type OnCacheUpdate = (change: { entity: Record<string, unknown>; entityClass: Function }) => void;
+type GetMeta = (entityClass: EntityCtorRef) => EntityMeta | undefined;
+type ExecuteUpdate = (entity: Record<string, unknown>, entityClass: EntityCtorRef) => Promise<void>;
+type OnCacheUpdate = (change: {
+  entity: Record<string, unknown>;
+  entityClass: EntityCtorRef;
+}) => void;
 
 /** @internal */
 export class SoftDeleteInterceptor implements ISaveChangesInterceptor {
@@ -29,7 +33,7 @@ export class SoftDeleteInterceptor implements ISaveChangesInterceptor {
 
   async apply(change: {
     entity: Record<string, unknown>;
-    entityClass: Function;
+    entityClass: EntityCtorRef;
   }): Promise<boolean> {
     if (!this.softDelete?.enabled) return false;
     const meta = this.getMeta(change.entityClass);

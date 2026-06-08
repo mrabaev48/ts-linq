@@ -4,6 +4,7 @@ import type {
   ColumnMetadata,
   ComplexTypePropertyMetadata,
   EntityCtor,
+  EntityCtorRef,
   EntityMetadata,
   HierarchyMetadata,
   IndexMetadata,
@@ -62,7 +63,7 @@ export class MetadataRegistry implements MetadataSource, MetadataSink {
 
   // ─── Pending decorator flush ──────────────────────────────────────────────
 
-  private collectPendingMetadata(target: Function): void {
+  private collectPendingMetadata(target: EntityCtor): void {
     const pendingColumns = PendingMetadataCollector.getColumns(target);
     const pendingPrimaryKeys = PendingMetadataCollector.getPrimaryKeys(target);
     const pendingIndexes = PendingMetadataCollector.getIndexes(target);
@@ -92,18 +93,22 @@ export class MetadataRegistry implements MetadataSource, MetadataSink {
 
   // ─── Read API (MetadataSource) ────────────────────────────────────────────
 
-  public getEntity(target: Function): EntityMetadata | undefined {
+  public getEntity(target: EntityCtorRef): EntityMetadata | undefined {
     if (!target || typeof target !== 'function') return undefined;
 
-    const { original, key } = this.resolveTarget(target);
+    // Reads accept any constructor reference (EntityCtorRef); an entity target is
+    // a constructor, so narrow to the EntityCtor type the internal stores key on.
+    const ctor = target as EntityCtor;
+    const { original, key } = this.resolveTarget(ctor);
     if (this.state.hasBuilder(key)) {
       this.collectPendingMetadata(key);
       this.state.finalizeEntity(key);
     }
     const meta = this.state.getFinalized(key);
     if (!meta) return undefined;
-    // task-5: registry keys remain `Function`; an entity target is a constructor.
-    return original !== target ? { ...meta, target: target as EntityCtor } : meta;
+    // Re-base the descriptor's `target` to the queried constructor when the
+    // caller passed a wrapper that resolved to a different original.
+    return original !== ctor ? { ...meta, target: ctor } : meta;
   }
 
   /**
@@ -115,9 +120,11 @@ export class MetadataRegistry implements MetadataSource, MetadataSink {
    * `protected` so tests can inject a throwing resolver to exercise the
    * typed-error path.
    */
-  protected resolveOriginal(target: Function): Function {
+  protected resolveOriginal(target: EntityCtor): EntityCtor {
     const maybe = reflectGetOwnMetadata('orm:original', target);
-    return typeof maybe === 'function' ? maybe : target;
+    // The reflect probe returns `unknown`; a resolved `orm:original` is the
+    // declared entity constructor. Narrow the callable to `EntityCtor`.
+    return typeof maybe === 'function' ? (maybe as EntityCtor) : target;
   }
 
   /**
@@ -129,7 +136,7 @@ export class MetadataRegistry implements MetadataSource, MetadataSink {
    * {@link OrmError}s propagate unchanged; anything else is wrapped in a
    * {@link MetadataError} preserving the original `cause`.
    */
-  private resolveTarget(target: Function): { original: Function; key: Function } {
+  private resolveTarget(target: EntityCtor): { original: EntityCtor; key: EntityCtor } {
     try {
       const original = this.resolveOriginal(target);
       const key = this.state.normalizeTarget(original);
@@ -148,81 +155,83 @@ export class MetadataRegistry implements MetadataSource, MetadataSink {
     return this.state.getAllEntities();
   }
 
-  public getValidationRules(target: Function): ValidationRule[] {
+  public getValidationRules(target: EntityCtorRef): ValidationRule[] {
     return this.getEntity(target)?.validations ?? [];
   }
 
   /** Get all owned entity relationships for the given owner entity. */
-  public getOwnedEntities(owner: Function): OwnedEntityMetadata[] {
+  public getOwnedEntities(owner: EntityCtorRef): OwnedEntityMetadata[] {
     return this.getEntity(owner)?.ownedEntities ?? [];
   }
 
   /** Get stored procedure CUD mapping for an entity (P2-33). */
-  public getStoredProcedureMapping(target: Function): EntityStoredProcedureMapping | undefined {
-    return this.storedProcedures.getStoredProcedureMapping(target);
+  public getStoredProcedureMapping(
+    target: EntityCtorRef
+  ): EntityStoredProcedureMapping | undefined {
+    return this.storedProcedures.getStoredProcedureMapping(target as EntityCtor);
   }
 
   // ─── Write API (MetadataSink) ─────────────────────────────────────────────
 
-  public addEntity(target: Function, tableName?: string): void {
+  public addEntity(target: EntityCtor, tableName?: string): void {
     this.tableConfig.registerEntity(target, tableName);
   }
 
-  public addColumn(target: Function, column: ColumnMetadata): void {
+  public addColumn(target: EntityCtor, column: ColumnMetadata): void {
     this.columns.addColumn(target, column);
   }
 
-  public addPrimaryKey(target: Function, propertyName: string): void {
+  public addPrimaryKey(target: EntityCtor, propertyName: string): void {
     this.columns.addPrimaryKey(target, propertyName);
   }
 
-  public addRelationship(target: Function, relationship: RelationshipMetadata): void {
+  public addRelationship(target: EntityCtor, relationship: RelationshipMetadata): void {
     this.relationships.addRelationship(target, relationship);
   }
 
-  public addIndex(target: Function, index: IndexMetadata): void {
+  public addIndex(target: EntityCtor, index: IndexMetadata): void {
     this.indexes.addIndex(target, index);
   }
 
-  public addValidationRule(target: Function, rule: ValidationRule): void {
+  public addValidationRule(target: EntityCtor, rule: ValidationRule): void {
     this.constraints.addValidationRule(target, rule);
   }
 
   // ─── Fluent override API ──────────────────────────────────────────────────
 
   /** Merge a fluent column definition (fluent wins on conflict). */
-  public mergeFluentColumn(target: Function, column: ColumnMetadata): void {
+  public mergeFluentColumn(target: EntityCtor, column: ColumnMetadata): void {
     this.columns.mergeFluentColumn(target, column);
   }
 
   /** Replace all primary keys with fluent-specified ones (fluent wins). */
-  public setFluentPrimaryKeys(target: Function, keys: string[]): void {
+  public setFluentPrimaryKeys(target: EntityCtor, keys: string[]): void {
     this.columns.setFluentPrimaryKeys(target, keys);
   }
 
   /** Merge a fluent relationship definition (fluent wins on conflict). */
-  public mergeFluentRelationship(target: Function, relationship: RelationshipMetadata): void {
+  public mergeFluentRelationship(target: EntityCtor, relationship: RelationshipMetadata): void {
     this.relationships.mergeFluentRelationship(target, relationship);
   }
 
   /** Merge a fluent index definition (fluent wins on conflict). */
-  public mergeFluentIndex(target: Function, index: IndexMetadata): void {
+  public mergeFluentIndex(target: EntityCtor, index: IndexMetadata): void {
     this.indexes.mergeFluentIndex(target, index);
   }
 
   /** Merge an alternate key definition (fluent wins on conflict). */
-  public mergeFluentAlternateKey(target: Function, ak: AlternateKeyMetadata): void {
+  public mergeFluentAlternateKey(target: EntityCtor, ak: AlternateKeyMetadata): void {
     this.indexes.mergeFluentAlternateKey(target, ak);
   }
 
   /** Set the schema for an entity (fluent override). */
-  public mergeFluentSchema(target: Function, schema: string): void {
+  public mergeFluentSchema(target: EntityCtor, schema: string): void {
     this.tableConfig.mergeFluentSchema(target, schema);
   }
 
   /** Mark the entity as a SQL Server system-versioned (temporal) table (fluent override). */
   public mergeFluentTemporal(
-    target: Function,
+    target: EntityCtor,
     isTemporal: boolean,
     historyTableName?: string
   ): void {
@@ -230,75 +239,78 @@ export class MetadataRegistry implements MetadataSource, MetadataSink {
   }
 
   /** Register a complex (value-object) property for the given owner entity. */
-  public addComplexProperty(owner: Function, complex: ComplexTypePropertyMetadata): void {
+  public addComplexProperty(owner: EntityCtor, complex: ComplexTypePropertyMetadata): void {
     this.advanced.addComplexProperty(owner, complex);
   }
 
-  public addOwnedEntity(owner: Function, owned: OwnedEntityMetadata): void {
+  public addOwnedEntity(owner: EntityCtor, owned: OwnedEntityMetadata): void {
     this.advanced.addOwnedEntity(owner, owned);
   }
 
   /** Set hierarchy metadata on the root entity. */
-  public setHierarchyMetadata(target: Function, h: HierarchyMetadata): void {
+  public setHierarchyMetadata(target: EntityCtor, h: HierarchyMetadata): void {
     this.advanced.setHierarchyMetadata(target, h);
   }
 
   /** Mark a subtype entity as belonging to a hierarchy rooted at `root`. */
-  public setHierarchyRoot(subtype: Function, root: Function): void {
+  public setHierarchyRoot(subtype: EntityCtor, root: EntityCtor): void {
     this.advanced.setHierarchyRoot(subtype, root);
   }
 
   /** Register or replace a skip navigation on an entity. */
-  public mergeFluentSkipNavigation(target: Function, nav: SkipNavigationMetadata): void {
+  public mergeFluentSkipNavigation(target: EntityCtor, nav: SkipNavigationMetadata): void {
     this.advanced.mergeFluentSkipNavigation(target, nav);
   }
 
-  public mergeFluentQueryFilter(target: Function, filter: QueryFilterMetadata): void {
+  public mergeFluentQueryFilter(target: EntityCtor, filter: QueryFilterMetadata): void {
     this.advanced.mergeFluentQueryFilter(target, filter);
   }
 
   /** Set (replace) seed data rows for an entity (P0-13). */
-  public setSeedData(target: Function, rows: Record<string, unknown>[]): void {
+  public setSeedData(target: EntityCtor, rows: Record<string, unknown>[]): void {
     this.tableConfig.setSeedData(target, rows);
   }
 
   /** Set CHECK constraints for an entity (P0-14). */
-  public setCheckConstraints(target: Function, constraints: CheckConstraintMetadata[]): void {
+  public setCheckConstraints(target: EntityCtor, constraints: CheckConstraintMetadata[]): void {
     this.constraints.setCheckConstraints(target, constraints);
   }
 
   /** Set table-level comment for an entity (P0-14). */
-  public setEntityComment(target: Function, comment: string): void {
+  public setEntityComment(target: EntityCtor, comment: string): void {
     this.tableConfig.setEntityComment(target, comment);
   }
 
   /** Set (replace) table fragment metadata for entity splitting (P1-25). */
-  public mergeFluentTableFragments(target: Function, fragments: TableFragmentMetadata[]): void {
+  public mergeFluentTableFragments(target: EntityCtor, fragments: TableFragmentMetadata[]): void {
     this.tableConfig.mergeFluentTableFragments(target, fragments);
   }
 
   /** Add or replace a shadow property for an entity (P1-16). */
-  public addShadowProperty(target: Function, prop: ShadowPropertyMetadata): void {
+  public addShadowProperty(target: EntityCtor, prop: ShadowPropertyMetadata): void {
     this.columns.addShadowProperty(target, prop);
   }
 
   /** Mark an entity as keyless — no PK, never tracked (P1-26). */
-  public setFluentKeyless(target: Function, value: boolean): void {
+  public setFluentKeyless(target: EntityCtor, value: boolean): void {
     this.tableConfig.setFluentKeyless(target, value);
   }
 
   /** Set the database view name for an entity (P1-26). */
-  public setFluentViewName(target: Function, name: string): void {
+  public setFluentViewName(target: EntityCtor, name: string): void {
     this.tableConfig.setFluentViewName(target, name);
   }
 
   /** Set optional CREATE VIEW DDL for migration emission (P1-26). */
-  public setFluentViewSql(target: Function, sql: string): void {
+  public setFluentViewSql(target: EntityCtor, sql: string): void {
     this.tableConfig.setFluentViewSql(target, sql);
   }
 
   /** Set (replace) stored procedure CUD mapping for an entity (P2-33). */
-  public setStoredProcedureMapping(target: Function, mapping: EntityStoredProcedureMapping): void {
+  public setStoredProcedureMapping(
+    target: EntityCtor,
+    mapping: EntityStoredProcedureMapping
+  ): void {
     this.storedProcedures.setStoredProcedureMapping(target, mapping);
   }
 

@@ -18,7 +18,7 @@ export class AdvancedMappingStore {
   public constructor(private readonly state: EntityMetadataState) {}
 
   /** Register a complex (value-object) property on the owner entity (P1-17). */
-  public addComplexProperty(owner: Function, complex: ComplexTypePropertyMetadata): void {
+  public addComplexProperty(owner: EntityCtor, complex: ComplexTypePropertyMetadata): void {
     this.state.mutate(
       owner,
       (finalized) => {
@@ -29,7 +29,7 @@ export class AdvancedMappingStore {
   }
 
   /** Register an owned entity relationship for the given owner entity (P0-06). */
-  public addOwnedEntity(owner: Function, owned: OwnedEntityMetadata): void {
+  public addOwnedEntity(owner: EntityCtor, owned: OwnedEntityMetadata): void {
     this.state.mutate(
       owner,
       (finalized) => {
@@ -40,7 +40,7 @@ export class AdvancedMappingStore {
   }
 
   /** Set hierarchy metadata on the root entity. */
-  public setHierarchyMetadata(target: Function, h: HierarchyMetadata): void {
+  public setHierarchyMetadata(target: EntityCtor, h: HierarchyMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {
@@ -51,19 +51,18 @@ export class AdvancedMappingStore {
   }
 
   /** Mark a subtype entity as belonging to a hierarchy rooted at `root`. */
-  public setHierarchyRoot(subtype: Function, root: Function): void {
+  public setHierarchyRoot(subtype: EntityCtor, root: EntityCtor): void {
     this.state.mutate(
       subtype,
       (finalized) => {
-        // task-5: registry keys remain `Function`; the hierarchy root is a constructor.
-        finalized.hierarchyRoot = root as EntityCtor;
+        finalized.hierarchyRoot = root;
       },
       (builder) => builder.setHierarchyRoot(root)
     );
   }
 
   /** Register or replace a skip navigation on an entity. */
-  public mergeFluentSkipNavigation(target: Function, nav: SkipNavigationMetadata): void {
+  public mergeFluentSkipNavigation(target: EntityCtor, nav: SkipNavigationMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {
@@ -82,7 +81,7 @@ export class AdvancedMappingStore {
   }
 
   /** Register or replace a named query filter on an entity (P0-11). */
-  public mergeFluentQueryFilter(target: Function, filter: QueryFilterMetadata): void {
+  public mergeFluentQueryFilter(target: EntityCtor, filter: QueryFilterMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {

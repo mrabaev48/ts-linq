@@ -1,5 +1,6 @@
 /* eslint-disable complexity */
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { EntityMetadata, QueryOptions, SqlDialect, SqlParameter } from '@ts-linq/types';
 
 import { DatabaseProvider } from '../../src/DatabaseProvider';
@@ -80,7 +81,7 @@ export class ProviderStub extends DatabaseProvider {
     return this.dialect;
   }
 
-  public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async insert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`INSERT INTO ${meta.tableName}`, []);
     await this.ensureTable(meta);
@@ -113,7 +114,7 @@ export class ProviderStub extends DatabaseProvider {
     return entity;
   }
 
-  public async update<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async update<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`UPDATE ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];
@@ -145,7 +146,7 @@ export class ProviderStub extends DatabaseProvider {
     throw new Error('No rows were updated.');
   }
 
-  public async delete<T extends object>(entity: T, entityClass: Function): Promise<void> {
+  public async delete<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<void> {
     const meta = MetadataStorage.getEntity(entityClass)!;
     await this.beforeExecute(`DELETE FROM ${meta.tableName}`, []);
     const table = this.data.get(meta.tableName) || [];

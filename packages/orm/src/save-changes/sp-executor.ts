@@ -1,5 +1,6 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { MetadataRegistry } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { StoredProcedureConfig } from '@ts-linq/types';
 
 export class SpExecutor {
@@ -8,13 +9,13 @@ export class SpExecutor {
     private readonly registry: MetadataRegistry
   ) {}
 
-  hasSp(entityClass: Function, operation: 'insert' | 'update' | 'delete'): boolean {
+  hasSp(entityClass: EntityCtorRef, operation: 'insert' | 'update' | 'delete'): boolean {
     const mapping = this.registry.getStoredProcedureMapping(entityClass);
     if (!mapping) return false;
     return mapping[operation] !== undefined;
   }
 
-  async executeInsert(entity: Record<string, unknown>, entityClass: Function): Promise<void> {
+  async executeInsert(entity: Record<string, unknown>, entityClass: EntityCtorRef): Promise<void> {
     const config = this.registry.getStoredProcedureMapping(entityClass)?.insert;
     if (!config) return;
 
@@ -25,7 +26,7 @@ export class SpExecutor {
   async executeUpdate(
     entity: Record<string, unknown>,
     originalValues: Record<string, unknown> | undefined,
-    entityClass: Function
+    entityClass: EntityCtorRef
   ): Promise<number> {
     const config = this.registry.getStoredProcedureMapping(entityClass)?.update;
     if (!config) return 0;
@@ -37,7 +38,7 @@ export class SpExecutor {
   async executeDelete(
     entity: Record<string, unknown>,
     originalValues: Record<string, unknown> | undefined,
-    entityClass: Function
+    entityClass: EntityCtorRef
   ): Promise<number> {
     const config = this.registry.getStoredProcedureMapping(entityClass)?.delete;
     if (!config) return 0;

@@ -1,3 +1,5 @@
+import type { EntityCtor } from '@ts-linq/types';
+
 import { EntityRefResolutionError, resolveEntityRef } from '../src/resolveEntityRef';
 
 describe('resolveEntityRef', () => {
@@ -17,11 +19,11 @@ describe('resolveEntityRef', () => {
     });
   });
 
-  describe('thunk (() => Function)', () => {
+  describe('thunk (() => EntityCtor)', () => {
     it('resolves and returns the constructor from a thunk', () => {
       class Comment {}
       const thunk = () => Comment;
-      const result = resolveEntityRef(thunk as unknown as () => Function);
+      const result = resolveEntityRef(thunk as unknown as () => EntityCtor);
       expect(result).toBe(Comment);
     });
 
@@ -29,20 +31,20 @@ describe('resolveEntityRef', () => {
       const thunk = () => {
         throw new ReferenceError('Cannot access before initialization');
       };
-      const result = resolveEntityRef(thunk as unknown as () => Function);
+      const result = resolveEntityRef(thunk as unknown as () => EntityCtor);
       expect(result).toBeNull();
     });
 
     it('throws EntityRefResolutionError when thunk returns an arrow function (non-newable)', () => {
       const thunk = () => () => 'not a class';
-      expect(() => resolveEntityRef(thunk as unknown as () => Function)).toThrow(
+      expect(() => resolveEntityRef(thunk as unknown as () => EntityCtor)).toThrow(
         EntityRefResolutionError
       );
     });
 
     it('throws EntityRefResolutionError when thunk returns a primitive', () => {
       const thunk = () => null;
-      expect(() => resolveEntityRef(thunk as unknown as () => Function)).toThrow(
+      expect(() => resolveEntityRef(thunk as unknown as () => EntityCtor)).toThrow(
         EntityRefResolutionError
       );
     });
@@ -54,7 +56,7 @@ describe('resolveEntityRef', () => {
       };
       let thrown: unknown;
       try {
-        resolveEntityRef(thunk as unknown as () => Function);
+        resolveEntityRef(thunk as unknown as () => EntityCtor);
       } catch (e) {
         thrown = e;
       }
@@ -67,7 +69,7 @@ describe('resolveEntityRef', () => {
       const thunk = () => {
         throw original;
       };
-      expect(() => resolveEntityRef(thunk as unknown as () => Function)).toThrow(original);
+      expect(() => resolveEntityRef(thunk as unknown as () => EntityCtor)).toThrow(original);
     });
   });
 

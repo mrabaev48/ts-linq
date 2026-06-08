@@ -1,3 +1,4 @@
+import type { EntityCtor } from '@ts-linq/types';
 import type {
   ColumnMetadata,
   EntityMetadata,
@@ -13,7 +14,7 @@ import { MetadataRegistry } from '../src/MetadataRegistry';
 import { MetadataStorage } from '../src/MetadataStorage';
 
 // Helper: add a minimal entity with one column to the given registry.
-function seedEntity(sink: MetadataSink, target: Function, tableName: string): void {
+function seedEntity(sink: MetadataSink, target: EntityCtor, tableName: string): void {
   sink.addEntity(target, tableName);
   sink.addColumn(target, {
     propertyName: 'id',
@@ -115,7 +116,7 @@ describe('MetadataSource / MetadataSink ports', () => {
 
   describe('a fake MetadataSource substitutes the registry in consumer-style code', () => {
     // A consumer that depends only on the read port.
-    function resolveTableName(source: MetadataSource, target: Function): string | undefined {
+    function resolveTableName(source: MetadataSource, target: EntityCtor): string | undefined {
       return source.getEntity(target)?.tableName;
     }
 
@@ -124,17 +125,17 @@ describe('MetadataSource / MetadataSink ports', () => {
     class FakeMetadataSource implements MetadataSource {
       private readonly entities = new Map<Function, EntityMetadata>();
 
-      public define(target: Function, meta: EntityMetadata): void {
+      public define(target: EntityCtor, meta: EntityMetadata): void {
         this.entities.set(target, meta);
       }
 
-      public getEntity(target: Function): EntityMetadata | undefined {
+      public getEntity(target: EntityCtor): EntityMetadata | undefined {
         return this.entities.get(target);
       }
       public getEntities(): EntityMetadata[] {
         return [...this.entities.values()];
       }
-      public getValidationRules(target: Function): ValidationRule[] {
+      public getValidationRules(target: EntityCtor): ValidationRule[] {
         return this.entities.get(target)?.validations ?? [];
       }
       public getOwnedEntities(owner: Function): OwnedEntityMetadata[] {

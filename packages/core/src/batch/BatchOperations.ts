@@ -1,5 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { EntityMetadata } from '@ts-linq/types';
+import type { EntityCtor, EntityMetadata } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { BatchDeleteOperation } from './BatchDeleteOperation';
@@ -192,7 +192,7 @@ export class BatchOperations {
     return { entities: successful, failedCount: failed.length, durationMs };
   }
 
-  private getEntityMetadata(entityClass: Function): EntityMetadata {
+  private getEntityMetadata(entityClass: EntityCtor): EntityMetadata {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`No metadata found for entity ${entityClass.name}`);
     return metadata;

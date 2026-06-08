@@ -1,5 +1,7 @@
 import type {
   ColumnMetadata,
+  EntityCtor,
+  EntityCtorRef,
   EntityMetadata,
   HierarchyMetadata,
   IndexMetadata,
@@ -95,51 +97,51 @@ export class MetadataStorage {
     return MetadataStorage.getInstance().getEntities();
   }
 
-  public static getEntity(target: Function): EntityMetadata | undefined {
+  public static getEntity(target: EntityCtorRef): EntityMetadata | undefined {
     return MetadataStorage.getInstance().getEntity(target);
   }
 
-  public static addEntity(target: Function, tableName?: string): void {
+  public static addEntity(target: EntityCtor, tableName?: string): void {
     MetadataStorage.getInstance().addEntity(target, tableName);
   }
 
-  public static addColumn(target: Function, column: ColumnMetadata): void {
+  public static addColumn(target: EntityCtor, column: ColumnMetadata): void {
     MetadataStorage.getInstance().addColumn(target, column);
   }
 
-  public static addPrimaryKey(target: Function, propertyName: string): void {
+  public static addPrimaryKey(target: EntityCtor, propertyName: string): void {
     MetadataStorage.getInstance().addPrimaryKey(target, propertyName);
   }
 
-  public static addRelationship(target: Function, relationship: RelationshipMetadata): void {
+  public static addRelationship(target: EntityCtor, relationship: RelationshipMetadata): void {
     MetadataStorage.getInstance().addRelationship(target, relationship);
   }
 
-  public static addIndex(target: Function, index: IndexMetadata): void {
+  public static addIndex(target: EntityCtor, index: IndexMetadata): void {
     MetadataStorage.getInstance().addIndex(target, index);
   }
 
-  public static addValidationRule(target: Function, rule: ValidationRule): void {
+  public static addValidationRule(target: EntityCtor, rule: ValidationRule): void {
     MetadataStorage.getInstance().addValidationRule(target, rule);
   }
 
-  public static getValidationRules(target: Function): ValidationRule[] {
+  public static getValidationRules(target: EntityCtorRef): ValidationRule[] {
     return MetadataStorage.getInstance().getValidationRules(target);
   }
 
-  public static setHierarchyMetadata(target: Function, h: HierarchyMetadata): void {
+  public static setHierarchyMetadata(target: EntityCtor, h: HierarchyMetadata): void {
     MetadataStorage.getInstance().setHierarchyMetadata(target, h);
   }
 
-  public static setHierarchyRoot(subtype: Function, root: Function): void {
+  public static setHierarchyRoot(subtype: EntityCtor, root: EntityCtor): void {
     MetadataStorage.getInstance().setHierarchyRoot(subtype, root);
   }
 
-  public static mergeFluentSkipNavigation(target: Function, nav: SkipNavigationMetadata): void {
+  public static mergeFluentSkipNavigation(target: EntityCtor, nav: SkipNavigationMetadata): void {
     MetadataStorage.getInstance().mergeFluentSkipNavigation(target, nav);
   }
 
-  public static setSeedData(target: Function, rows: Record<string, unknown>[]): void {
+  public static setSeedData(target: EntityCtor, rows: Record<string, unknown>[]): void {
     MetadataStorage.getInstance().setSeedData(target, rows);
   }
 

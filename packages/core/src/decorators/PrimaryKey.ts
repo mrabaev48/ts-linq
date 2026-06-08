@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, EntityCtor } from '@ts-linq/types';
 
 export interface PrimaryKeyOptions {
   name?: string;
@@ -18,8 +18,10 @@ export interface PrimaryKeyOptions {
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     // For legacy decorators, target is the prototype, target.constructor is the class
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
     const propertyName = String(propertyKey);
 
     const columnMeta: ColumnMetadata = {

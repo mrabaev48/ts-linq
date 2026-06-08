@@ -1,4 +1,4 @@
-import type { ColumnMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, EntityCtor } from '@ts-linq/types';
 
 import { MetadataStorage } from './MetadataStorage';
 
@@ -14,8 +14,10 @@ export interface ComputedColumnOptions {
 export function ComputedColumn(options: ComputedColumnOptions): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     const columnMetadata: ColumnMetadata = {
       propertyName: name,

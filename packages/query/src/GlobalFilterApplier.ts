@@ -3,6 +3,7 @@ import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnResolver } from '@ts-linq/sql-visitor';
 import { SqlVisitor } from '@ts-linq/sql-visitor';
 import type {
+  EntityCtorRef,
   GlobalFilter,
   QueryFilterMetadata,
   SoftDeleteOptions,
@@ -11,7 +12,7 @@ import type {
 
 export class GlobalFilterApplier {
   public apply(
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     model: { where?: WhereClause[] },
     softDeleteOptions: SoftDeleteOptions | undefined,
     globalFilters?: GlobalFilter[],
@@ -38,7 +39,9 @@ export class GlobalFilterApplier {
     if (globalFilters && globalFilters.length > 0) {
       for (const globalFilter of globalFilters) {
         if (globalFilter.entity && globalFilter.where) {
-          const filterMeta = MetadataStorage.getEntity(globalFilter.entity as unknown as Function);
+          const filterMeta = MetadataStorage.getEntity(
+            globalFilter.entity as unknown as EntityCtorRef
+          );
           if (filterMeta && selfMeta.tableName === filterMeta.tableName) {
             model.where.push({
               condition: globalFilter.where.condition,

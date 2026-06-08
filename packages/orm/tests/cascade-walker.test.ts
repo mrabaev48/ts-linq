@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { createMetadataRegistry } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { TrackedEntity } from '@ts-linq/types';
 import { DeleteBehavior, EntityState } from '@ts-linq/types';
 
@@ -113,7 +114,7 @@ function buildRegistry(postDeleteBehavior: DeleteBehavior, commentDeleteBehavior
 
 function makeTracked<T extends object>(
   entity: T,
-  entityClass: Function,
+  entityClass: EntityCtorRef,
   state: EntityState
 ): TrackedEntity {
   return { entity, entityClass, state };

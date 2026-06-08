@@ -1,7 +1,13 @@
 import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { buildMysqlNextBlockSql, MySqlDdlStrategy, MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { EntityMetadata, MySqlConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
+import type {
+  EntityCtorRef,
+  EntityMetadata,
+  MySqlConfig,
+  SqlDialect,
+  SqlParameter
+} from '@ts-linq/types';
 import {
   DatabaseError,
   ForeignKeyConstraintError,
@@ -148,7 +154,7 @@ export class MySqlProvider extends DatabaseProvider {
     }
   }
 
-  public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async insert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const dialect = this.getDialect();
@@ -189,7 +195,7 @@ export class MySqlProvider extends DatabaseProvider {
 
   public async update<T extends object>(
     entity: T,
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     originalValues?: object
   ): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
@@ -221,7 +227,7 @@ export class MySqlProvider extends DatabaseProvider {
   }
 
   /** Upsert using INSERT ... ON DUPLICATE KEY UPDATE ... */
-  public async upsert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async upsert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
@@ -247,7 +253,7 @@ export class MySqlProvider extends DatabaseProvider {
 
   public async delete<T extends object>(
     entity: T,
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     originalValues?: object
   ): Promise<void> {
     const metadata = MetadataStorage.getEntity(entityClass);

@@ -1,3 +1,5 @@
+import type { EntityCtor } from '@ts-linq/types';
+
 import { MetadataStorage } from './MetadataStorage';
 
 export function ValidIf(
@@ -11,8 +13,10 @@ export function ValidIf(
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     MetadataStorage.addValidationRule(ctor, {
       propertyName: name,
@@ -31,7 +35,7 @@ export type EntityPredicate<T> = (entity: Readonly<T>) => boolean;
 
 /** Type-safe form: requires explicit entity type. */
 export function ValidIfOf<T>(predicate: EntityPredicate<T>, message?: string): PropertyDecorator {
-  return ValidIf(predicate as unknown as (e: unknown) => boolean, message);
+  return ValidIf(predicate as (e: unknown) => boolean, message);
 }
 
 /** Requires non-empty property value when condition holds. */
@@ -41,12 +45,14 @@ export function RequiredIfOf<T>(
 ): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     const predicate = (entity: unknown): boolean => {
       const e = entity as Record<string, unknown>;
-      if (!condition(e as unknown as T)) return true;
+      if (!condition(entity as Readonly<T>)) return true;
       const v = e[propName];
       if (v === null || v === undefined) return false;
       if (typeof v === 'string') return v.trim().length > 0;
@@ -66,8 +72,10 @@ export function RequiredIfOf<T>(
 export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
@@ -88,8 +96,10 @@ export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator
 export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
@@ -110,8 +120,10 @@ export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator
 export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];
@@ -132,8 +144,10 @@ export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator
 export function RangeOf<T>(min?: number, max?: number, message?: string): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const propName = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     const predicate = (entity: unknown): boolean => {
       const v = (entity as Record<string, unknown>)[propName];

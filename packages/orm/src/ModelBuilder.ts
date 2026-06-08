@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import { SequenceRegistry } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { QueryFilterMetadata, SequenceMetadata } from '@ts-linq/types';
 
 import { DbFunctionBuilder } from './builders/DbFunctionBuilder';
@@ -14,7 +15,7 @@ import {
 import { SequenceBuilder } from './builders/SequenceBuilder';
 
 /** Per-DbContext query filter map: entityClass → named filters. */
-export type EntityQueryFilterMap = Map<Function, ReadonlyArray<QueryFilterMetadata>>;
+export type EntityQueryFilterMap = Map<EntityCtorRef, ReadonlyArray<QueryFilterMetadata>>;
 
 /**
  * Central fluent configuration surface for the ORM model.
@@ -30,9 +31,9 @@ export type EntityQueryFilterMap = Map<Function, ReadonlyArray<QueryFilterMetada
  *   }
  */
 export class ModelBuilder {
-  private readonly _builders: Map<Function, EntityTypeBuilder<object>> = new Map();
+  private readonly _builders: Map<EntityCtorRef, EntityTypeBuilder<object>> = new Map();
   private readonly _dbFunctions: DbFunctionBuilder[] = [];
-  private readonly _globalConverterRules: Map<Function, GlobalConverterRule> = new Map();
+  private readonly _globalConverterRules: Map<EntityCtorRef, GlobalConverterRule> = new Map();
   private readonly _sequences: Map<string, SequenceBuilder> = new Map();
   /** Collected after _finalize(). Keys are entity constructors. */
   private _queryFilterMap?: EntityQueryFilterMap;
@@ -179,7 +180,7 @@ export class ModelBuilder {
         if (col.converter) continue; // explicit converter takes priority
         const reflectedType = this.safeGetDesignType(proto, col.propertyName);
         if (!reflectedType) continue;
-        const rule = this._globalConverterRules.get(reflectedType);
+        const rule = this._globalConverterRules.get(reflectedType as unknown as EntityCtorRef);
         if (rule) {
           col.converter = rule.converter;
           if (rule.comparer && !col.comparer) col.comparer = rule.comparer;
