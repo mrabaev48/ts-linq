@@ -1,5 +1,13 @@
 # @ts-linq/sql-visitor
 
+## 2.7.7
+
+### Patch Changes
+
+- Updated dependencies [[`6c1d403`](https://github.com/mrabaev48/ts-linq/commit/6c1d403078729a825c39af05bf4dc6ea8c9df644)]:
+  - @ts-linq/types@4.0.0
+  - @ts-linq/ast@2.4.8
+
 ## 2.7.6
 
 ### Patch Changes
