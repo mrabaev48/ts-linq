@@ -1,3 +1,4 @@
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { ValueComparerLike, ValueConverterLike } from '@ts-linq/types';
 
 export interface GlobalConverterRule {
@@ -15,7 +16,7 @@ export interface GlobalConverterRule {
 export class PropertiesConfigBuilder<T> {
   constructor(
     private readonly _ctor: abstract new (...args: unknown[]) => T,
-    private readonly _globalRules: Map<Function, GlobalConverterRule>
+    private readonly _globalRules: Map<EntityCtorRef, GlobalConverterRule>
   ) {}
 
   /**
@@ -39,7 +40,7 @@ export class PropertiesConfigBuilder<T> {
     } else {
       converter = converterOrToProvider as ValueConverterLike;
     }
-    this._globalRules.set(this._ctor as unknown as Function, {
+    this._globalRules.set(this._ctor, {
       converter,
       comparer: comparer as ValueComparerLike | undefined
     });

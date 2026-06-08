@@ -1,4 +1,5 @@
 import type { EntityState } from '@ts-linq/core';
+import type { EntityCtorRef } from '@ts-linq/types';
 
 /**
  * Minimal entry interface exposed within a `trackGraph` callback.
@@ -7,7 +8,7 @@ import type { EntityState } from '@ts-linq/core';
  */
 export interface ITrackGraphEntry {
   readonly entity: unknown;
-  readonly entityClass: Function;
+  readonly entityClass: EntityCtorRef;
   /** Current tracking state — read or set per-node inside the callback. */
   get state(): EntityState;
   set state(value: EntityState);

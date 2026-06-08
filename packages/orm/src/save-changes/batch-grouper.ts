@@ -1,11 +1,12 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import { calcChunkSize, chunkArray } from '@ts-linq/sql-visitor';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { EntityMetadata } from '@ts-linq/types';
 
 import type { NormalizedChange } from '../types';
 
 export interface ChangeGroup {
-  entityClass: Function;
+  entityClass: EntityCtorRef;
   metadata: EntityMetadata;
   operation: 'insert' | 'update' | 'delete';
   entities: Record<string, unknown>[];

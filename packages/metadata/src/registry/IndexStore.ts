@@ -1,4 +1,4 @@
-import type { AlternateKeyMetadata, IndexMetadata } from '@ts-linq/types';
+import type { AlternateKeyMetadata, EntityCtor, IndexMetadata } from '@ts-linq/types';
 
 import type { EntityMetadataState } from './EntityMetadataState';
 import { validateIndex } from './validateIndex';
@@ -12,7 +12,7 @@ export class IndexStore {
   public constructor(private readonly state: EntityMetadataState) {}
 
   /** Decorator-driven index registration; validated against current columns. */
-  public addIndex(target: Function, index: IndexMetadata): void {
+  public addIndex(target: EntityCtor, index: IndexMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {
@@ -28,7 +28,7 @@ export class IndexStore {
   }
 
   /** Fluent index override (fluent wins on conflict via shallow merge). */
-  public mergeFluentIndex(target: Function, index: IndexMetadata): void {
+  public mergeFluentIndex(target: EntityCtor, index: IndexMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {
@@ -44,7 +44,7 @@ export class IndexStore {
   }
 
   /** Merge an alternate key definition (fluent wins on conflict). */
-  public mergeFluentAlternateKey(target: Function, ak: AlternateKeyMetadata): void {
+  public mergeFluentAlternateKey(target: EntityCtor, ak: AlternateKeyMetadata): void {
     this.state.mutate(
       target,
       (finalized) => {

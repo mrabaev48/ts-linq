@@ -1,10 +1,11 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { AuditOptions, ValidationRule } from '@ts-linq/types';
 import { ValidationError } from '@ts-linq/types';
 
 type ChangeForValidation = {
   entity: Record<string, unknown>;
-  entityClass: Function;
+  entityClass: EntityCtorRef;
   state: string;
   originalValues?: object;
 };
@@ -13,7 +14,7 @@ type ChangeForValidation = {
 export class ChangeValidationService {
   private readonly translate?: (key: string, params?: Record<string, unknown>) => string;
   private readonly audit?: AuditOptions;
-  private readonly rulesCache: WeakMap<Function, ValidationRule[]> = new WeakMap();
+  private readonly rulesCache: WeakMap<EntityCtorRef, ValidationRule[]> = new WeakMap();
 
   constructor(
     translate?: (key: string, params?: Record<string, unknown>) => string,
@@ -59,7 +60,7 @@ export class ChangeValidationService {
     }
   }
 
-  private getValidationRules(entityClass: Function): ValidationRule[] {
+  private getValidationRules(entityClass: EntityCtorRef): ValidationRule[] {
     const cached = this.rulesCache.get(entityClass);
     if (cached) return cached;
     // Stage-3: Use MetadataStorage instead of Reflect API
@@ -196,7 +197,7 @@ export class ChangeValidationService {
   }
 
   private runConditionalValidations(
-    change: { entity: Record<string, unknown>; entityClass: Function; state: string },
+    change: { entity: Record<string, unknown>; entityClass: EntityCtorRef; state: string },
     meta: ReturnType<typeof MetadataStorage.getEntity>,
     errors: Array<{ entity: string; property: string; message: string; fullMessage?: string }>
   ): void {

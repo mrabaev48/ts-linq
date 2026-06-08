@@ -1,6 +1,7 @@
 // Cache interfaces, performance options and loading defaults
 
 import type { LoadingStrategy } from './enums';
+import type { EntityCtorRef } from './metadata';
 import type { FallbackPolicy } from './results';
 import type { SqlParameter } from './sql';
 
@@ -58,9 +59,9 @@ export interface TemplateSqlCache extends SqlCache {
 
 // Entity cache interface
 export interface EntityCacheLike {
-  get<T>(entityClass: Function, id: unknown): T | undefined;
-  set<T>(entityClass: Function, id: unknown, entity: T): void;
-  remove(entityClass: Function, id: unknown): void;
+  get<T>(entityClass: EntityCtorRef, id: unknown): T | undefined;
+  set<T>(entityClass: EntityCtorRef, id: unknown, entity: T): void;
+  remove(entityClass: EntityCtorRef, id: unknown): void;
   clear(): void;
   size?(): number;
 }

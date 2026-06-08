@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnMetadata, ColumnType } from '@ts-linq/types';
+import type { ColumnMetadata, ColumnType, EntityCtor } from '@ts-linq/types';
 
 /**
  * Options for configuring a column mapping on an entity property.
@@ -26,8 +26,10 @@ export interface ColumnOptions {
 export function Column(options: ColumnOptions = {}): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     // For legacy decorators, target is the prototype, target.constructor is the class
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
     const propertyName = String(propertyKey);
 
     const columnMetadata: ColumnMetadata = {

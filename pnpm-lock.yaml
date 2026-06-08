@@ -609,6 +609,9 @@ importers:
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      tsd:
+        specifier: ^0.30.7
+        version: 0.30.7
       typescript:
         specifier: ^5.4.5
         version: 5.9.3

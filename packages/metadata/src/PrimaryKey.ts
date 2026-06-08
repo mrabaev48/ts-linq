@@ -1,3 +1,5 @@
+import type { EntityCtor } from '@ts-linq/types';
+
 import type { ColumnOptions } from './Column';
 import { MetadataStorage } from './MetadataStorage';
 
@@ -12,8 +14,10 @@ export interface PrimaryKeyOptions extends ColumnOptions {
 export function PrimaryKey(options: PrimaryKeyOptions = {}): PropertyDecorator {
   return function (target: object, propertyKey: string | symbol): void {
     const name = propertyKey.toString();
-    const ctor =
-      typeof target === 'function' ? target : (target as { constructor: Function }).constructor;
+    const ctor: EntityCtor =
+      typeof target === 'function'
+        ? (target as EntityCtor)
+        : (target as { constructor: EntityCtor }).constructor;
 
     // Ensure entity metadata exists (property decorators run before class decorator)
     let meta = MetadataStorage.getEntity(ctor);

@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityCtor } from '@ts-linq/types';
 
 /**
  * Options for configuring an entity/table.
@@ -16,8 +17,8 @@ export interface EntityOptions {
  * Legacy decorator that marks a class as a database entity (table).
  * Uses reflect-metadata for metadata storage.
  */
-export function Entity(options: EntityOptions = {}): ClassDecorator {
-  return function <TFunction extends Function>(target: TFunction): TFunction | void {
+export function Entity(options: EntityOptions = {}) {
+  return function <T extends EntityCtor>(target: T): T | void {
     const tableName = options?.name || target.name;
 
     // Register entity with MetadataStorage

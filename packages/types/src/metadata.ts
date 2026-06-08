@@ -26,6 +26,18 @@ import type {
 export type EntityCtor = abstract new (...args: unknown[]) => object;
 
 /**
+ * A constructor reference accepted by metadata **read/lookup** APIs.
+ *
+ * Broader than {@link EntityCtor}: its instance type is `unknown`, so it also
+ * accepts projection element constructors whose instance is not an `object`
+ * (e.g. the `new () => string` fiction produced by `Queryable.select(x => x.name)`).
+ * It still rejects plain (non-constructor) functions, since a `function` has no
+ * construct signature. Registration/write APIs use the stricter {@link EntityCtor};
+ * lookups (`getEntity`, …) key on identity and accept this wider reference.
+ */
+export type EntityCtorRef = abstract new (...args: unknown[]) => unknown;
+
+/**
  * A reference to an entity class: either the constructor itself, or a lazy thunk
  * returning it. The thunk form (`() => Target`) resolves declaration-order cycles
  * in relationship decorators (e.g. `@ManyToOne(() => Post)`).
@@ -318,7 +330,7 @@ export interface ShadowPropertyMetadata {
 
 /** Minimal interface for attaching entities to a change tracker. Used by Queryable to avoid circular deps. */
 export interface EntityAttacher {
-  attach(entity: object, entityClass: Function): void;
+  attach(entity: object, entityClass: EntityCtorRef): void;
 }
 
 /**
@@ -329,23 +341,24 @@ export interface EntityAttacher {
  * registry implements it; a tenant-specific registry, a compiled model, or an
  * in-memory fake can be substituted without touching consumer code.
  *
- * Method signatures intentionally mirror `MetadataRegistry` exactly (including
- * the `Function` entity-target parameter) to keep behaviour and call-site
- * compatibility unchanged.
+ * Lookups key on constructor identity, so the read methods accept the wider
+ * {@link EntityCtorRef} (any constructor reference, rejecting plain functions)
+ * rather than the registration-only {@link EntityCtor} — this keeps projection
+ * element constructors (`Queryable.select`) assignable at the call site.
  *
  * @see MetadataSink for the corresponding write port.
  */
 export interface MetadataSource {
   /** Resolve finalized metadata for an entity class, or `undefined` if unknown. */
-  getEntity(target: Function): EntityMetadata | undefined;
+  getEntity(target: EntityCtorRef): EntityMetadata | undefined;
   /** Return all registered entities, finalizing any pending builders. */
   getEntities(): EntityMetadata[];
   /** Return the validation rules declared on an entity (empty if none). */
-  getValidationRules(target: Function): ValidationRule[];
+  getValidationRules(target: EntityCtorRef): ValidationRule[];
   /** Return the owned-entity relationships declared on an owner (empty if none). */
-  getOwnedEntities(owner: Function): OwnedEntityMetadata[];
+  getOwnedEntities(owner: EntityCtorRef): OwnedEntityMetadata[];
   /** Return the stored-procedure CUD mapping for an entity, if configured. */
-  getStoredProcedureMapping(target: Function): EntityStoredProcedureMapping | undefined;
+  getStoredProcedureMapping(target: EntityCtorRef): EntityStoredProcedureMapping | undefined;
 }
 
 /**
@@ -359,37 +372,37 @@ export interface MetadataSource {
  * Method signatures intentionally mirror `MetadataRegistry` exactly.
  */
 export interface MetadataSink {
-  addEntity(target: Function, tableName?: string): void;
-  addColumn(target: Function, column: ColumnMetadata): void;
-  addPrimaryKey(target: Function, propertyName: string): void;
-  addRelationship(target: Function, relationship: RelationshipMetadata): void;
-  addIndex(target: Function, index: IndexMetadata): void;
-  addValidationRule(target: Function, rule: ValidationRule): void;
+  addEntity(target: EntityCtor, tableName?: string): void;
+  addColumn(target: EntityCtor, column: ColumnMetadata): void;
+  addPrimaryKey(target: EntityCtor, propertyName: string): void;
+  addRelationship(target: EntityCtor, relationship: RelationshipMetadata): void;
+  addIndex(target: EntityCtor, index: IndexMetadata): void;
+  addValidationRule(target: EntityCtor, rule: ValidationRule): void;
 
-  mergeFluentColumn(target: Function, column: ColumnMetadata): void;
-  setFluentPrimaryKeys(target: Function, keys: string[]): void;
-  mergeFluentRelationship(target: Function, relationship: RelationshipMetadata): void;
-  mergeFluentIndex(target: Function, index: IndexMetadata): void;
-  mergeFluentAlternateKey(target: Function, ak: AlternateKeyMetadata): void;
-  mergeFluentSchema(target: Function, schema: string): void;
-  mergeFluentTemporal(target: Function, isTemporal: boolean, historyTableName?: string): void;
-  mergeFluentSkipNavigation(target: Function, nav: SkipNavigationMetadata): void;
-  mergeFluentQueryFilter(target: Function, filter: QueryFilterMetadata): void;
-  mergeFluentTableFragments(target: Function, fragments: TableFragmentMetadata[]): void;
-  setFluentKeyless(target: Function, value: boolean): void;
-  setFluentViewName(target: Function, name: string): void;
-  setFluentViewSql(target: Function, sql: string): void;
+  mergeFluentColumn(target: EntityCtor, column: ColumnMetadata): void;
+  setFluentPrimaryKeys(target: EntityCtor, keys: string[]): void;
+  mergeFluentRelationship(target: EntityCtor, relationship: RelationshipMetadata): void;
+  mergeFluentIndex(target: EntityCtor, index: IndexMetadata): void;
+  mergeFluentAlternateKey(target: EntityCtor, ak: AlternateKeyMetadata): void;
+  mergeFluentSchema(target: EntityCtor, schema: string): void;
+  mergeFluentTemporal(target: EntityCtor, isTemporal: boolean, historyTableName?: string): void;
+  mergeFluentSkipNavigation(target: EntityCtor, nav: SkipNavigationMetadata): void;
+  mergeFluentQueryFilter(target: EntityCtor, filter: QueryFilterMetadata): void;
+  mergeFluentTableFragments(target: EntityCtor, fragments: TableFragmentMetadata[]): void;
+  setFluentKeyless(target: EntityCtor, value: boolean): void;
+  setFluentViewName(target: EntityCtor, name: string): void;
+  setFluentViewSql(target: EntityCtor, sql: string): void;
 
-  addComplexProperty(owner: Function, complex: ComplexTypePropertyMetadata): void;
-  addOwnedEntity(owner: Function, owned: OwnedEntityMetadata): void;
-  addShadowProperty(target: Function, prop: ShadowPropertyMetadata): void;
+  addComplexProperty(owner: EntityCtor, complex: ComplexTypePropertyMetadata): void;
+  addOwnedEntity(owner: EntityCtor, owned: OwnedEntityMetadata): void;
+  addShadowProperty(target: EntityCtor, prop: ShadowPropertyMetadata): void;
 
-  setHierarchyMetadata(target: Function, h: HierarchyMetadata): void;
-  setHierarchyRoot(subtype: Function, root: Function): void;
-  setSeedData(target: Function, rows: Record<string, unknown>[]): void;
-  setCheckConstraints(target: Function, constraints: CheckConstraintMetadata[]): void;
-  setEntityComment(target: Function, comment: string): void;
-  setStoredProcedureMapping(target: Function, mapping: EntityStoredProcedureMapping): void;
+  setHierarchyMetadata(target: EntityCtor, h: HierarchyMetadata): void;
+  setHierarchyRoot(subtype: EntityCtor, root: EntityCtor): void;
+  setSeedData(target: EntityCtor, rows: Record<string, unknown>[]): void;
+  setCheckConstraints(target: EntityCtor, constraints: CheckConstraintMetadata[]): void;
+  setEntityComment(target: EntityCtor, comment: string): void;
+  setStoredProcedureMapping(target: EntityCtor, mapping: EntityStoredProcedureMapping): void;
 
   /** Clear all stored metadata and pending builders. */
   clear(): void;

@@ -1,4 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityCtor } from '@ts-linq/types';
 
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
@@ -24,7 +25,7 @@ export function ValidIf(
     const ctx = propOrContext;
     const name = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
+      const ctor = (this as { constructor?: EntityCtor })?.constructor;
       if (!ctor) return;
       MetadataStorage.addValidationRule(ctor, {
         propertyName: name,
@@ -60,7 +61,7 @@ export function RequiredIfOf<T>(
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
+      const ctor = (this as { constructor?: EntityCtor })?.constructor;
       if (!ctor) return;
       const predicate = (entity: unknown): boolean => {
         const e = entity as Record<string, unknown>;
@@ -88,7 +89,7 @@ export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
+      const ctor = (this as { constructor?: EntityCtor })?.constructor;
       if (!ctor) return;
       const predicate = (entity: unknown): boolean => {
         const v = (entity as Record<string, unknown>)[propName];
@@ -113,7 +114,7 @@ export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
+      const ctor = (this as { constructor?: EntityCtor })?.constructor;
       if (!ctor) return;
       const predicate = (entity: unknown): boolean => {
         const v = (entity as Record<string, unknown>)[propName];
@@ -138,7 +139,7 @@ export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
+      const ctor = (this as { constructor?: EntityCtor })?.constructor;
       if (!ctor) return;
       const predicate = (entity: unknown): boolean => {
         const v = (entity as Record<string, unknown>)[propName];
@@ -163,7 +164,7 @@ export function RangeOf<T>(min?: number, max?: number, message?: string): Proper
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
-      const ctor = (this as { constructor?: Function })?.constructor;
+      const ctor = (this as { constructor?: EntityCtor })?.constructor;
       if (!ctor) return;
       const predicate = (entity: unknown): boolean => {
         const v = (entity as Record<string, unknown>)[propName];

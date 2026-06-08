@@ -2,7 +2,13 @@ import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { EntityMetadata, MssqlConfig, SqlDialect, SqlParameter } from '@ts-linq/types';
+import type {
+  EntityCtorRef,
+  EntityMetadata,
+  MssqlConfig,
+  SqlDialect,
+  SqlParameter
+} from '@ts-linq/types';
 import {
   DatabaseError,
   ForeignKeyConstraintError,
@@ -197,7 +203,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   /** Insert entity row; when PK is IDENTITY, sets generated value via SCOPE_IDENTITY(). */
-  public async insert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async insert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
@@ -223,7 +229,7 @@ export class MssqlProvider extends DatabaseProvider {
   /** Update entity row by primary key. Throws if no rows affected. */
   public async update<T extends object>(
     entity: T,
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     originalValues?: object
   ): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
@@ -258,7 +264,7 @@ export class MssqlProvider extends DatabaseProvider {
   /** Delete entity row by primary key. Throws if no rows affected. */
   public async delete<T extends object>(
     entity: T,
-    entityClass: Function,
+    entityClass: EntityCtorRef,
     originalValues?: object
   ): Promise<void> {
     const metadata = MetadataStorage.getEntity(entityClass);
@@ -282,7 +288,7 @@ export class MssqlProvider extends DatabaseProvider {
   }
 
   /** Upsert using MERGE statement (simplified). */
-  public async upsert<T extends object>(entity: T, entityClass: Function): Promise<T> {
+  public async upsert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {

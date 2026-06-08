@@ -12,7 +12,7 @@ stored-procedure mapping. It depends only on `@ts-linq/types`.
 - ~~**Singleton without a port**: `MetadataStorage` global is consumed directly across packages; no `MetadataSource` abstraction to depend on (task-1).~~ ✅ **resolved (task-1)** — `MetadataSource`/`MetadataSink` ports added in `@ts-linq/types`; `MetadataRegistry implements` both. Core loader DI follow-up tracked under `core/task-2`.
 - ~~**24 committed build artifacts** (`.d.ts`/`.map`) interleaved in `src` — stale-file trap (task-3).~~ ✅ **resolved (task-3)** — removed; build emits to `dist` only.
 - ~~**Silent-swallow control flow** in `getEntity`'s try/catch fallback that diverges metadata shape (task-4).~~ ✅ **resolved (task-4)** — the control-flow `try/catch` is gone; `getEntity` is a single guarded path that always applies `target`-rebasing. Wrapper→original resolution goes through one capability probe (`reflectGetOwnMetadata`, where `undefined` = "no reflect-metadata / no entry"), extracted as `protected resolveOriginal`; an *unexpected* resolution failure now surfaces typed (`MetadataError` with `cause`) via the translation-only `resolveTarget` seam instead of vanishing into a divergent fallback.
-- **`Function`-typed keys + `as unknown as` casts** weaken type safety across the model (task-5).
+- ~~**`Function`-typed keys + `as unknown as` casts** weaken type safety across the model (task-5).~~ ✅ **resolved (task-5)** — the metadata API is now keyed on real constructor types: registration/write methods use `EntityCtor` (rejects non-constructors at compile time), lookups use the wider `EntityCtorRef` (accepts any constructor reference incl. `Queryable.select` scalar-projection ctors, still rejects plain functions). `Function` is eliminated from `packages/metadata/src` (enforced by per-package `no-unsafe-function-type` + `no-unnecessary-type-assertion` lint rules); the only remaining `as unknown as` is the single audited `reflectUtils` capability probe. `EntityMetadataBuilder`'s internal state collapsed to a single `Partial<EntityMetadata>`. Both new aliases live in `@ts-linq/types`.
 
 ## Refactor goals
 - Provide a `MetadataSource`/`MetadataSink` port so consumers depend on abstractions, not the singleton.
@@ -28,7 +28,9 @@ stored-procedure mapping. It depends only on `@ts-linq/types`.
 | 2 | task-1 ✅ **completed** | P1 | Introduce `MetadataSource` port (unblocks core DI) |
 | 3 | task-2 ✅ **completed** | P1 | Split god class; dedupe mutate-branch + index validation |
 | 4 | task-4 ✅ **completed** | P2 | Fix silent-swallow fallback in `getEntity` |
-| 5 | task-5 | P2 | Constructor type + remove `as unknown as` |
+| 5 | task-5 ✅ **completed** | P2 | Constructor type + remove `as unknown as` |
+
+> ✅ **Package complete** — all metadata refactor tasks (task-1 … task-5) are done.
 
 ## Dependencies on other packages
 - `@ts-linq/types` — proposed home for `MetadataSource`/`EntityCtor` (zero-dep package keeps direction clean).

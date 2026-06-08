@@ -1,5 +1,5 @@
 import type { MetadataRegistry } from '@ts-linq/metadata';
-import type { TrackedEntity } from '@ts-linq/types';
+import type { EntityCtorRef, TrackedEntity } from '@ts-linq/types';
 import { DeleteBehavior, EntityState } from '@ts-linq/types';
 
 /**
@@ -112,8 +112,8 @@ export class CascadeWalker {
   }
 
   private _resolveTarget(
-    targetEntity: string | Function | (() => Function) | undefined
-  ): { target?: Function } | undefined {
+    targetEntity: string | EntityCtorRef | (() => EntityCtorRef) | undefined
+  ): { target?: EntityCtorRef } | undefined {
     if (!targetEntity) return undefined;
     if (typeof targetEntity === 'string') {
       // Look up by class name across all registered entities.
@@ -121,11 +121,11 @@ export class CascadeWalker {
       return all.find((e) => e.className === targetEntity || e.target?.name === targetEntity);
     }
     if (typeof targetEntity === 'function') {
-      const meta = this.registry.getEntity(targetEntity);
+      const meta = this.registry.getEntity(targetEntity as EntityCtorRef);
       if (meta) return meta;
       // Try as lazy factory.
       try {
-        const resolved = (targetEntity as () => Function)();
+        const resolved = (targetEntity as () => EntityCtorRef)();
         return resolved ? (this.registry.getEntity(resolved) ?? undefined) : undefined;
       } catch {
         return undefined;

@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { describe, expect, it } from '@jest/globals';
+import type { EntityCtorRef } from '@ts-linq/types';
 import type { EntityCtor } from '@ts-linq/types';
 
 import { chunkGroup, groupChanges } from '../src/save-changes/batch-grouper';
@@ -11,7 +12,7 @@ import type { NormalizedChange } from '../src/types';
 class User {}
 class Post {}
 
-function makeMetadata(entityClass: Function, cols = 3, pks = ['id']) {
+function makeMetadata(entityClass: EntityCtorRef, cols = 3, pks = ['id']) {
   const columns = [
     {
       propertyName: 'id',
@@ -38,9 +39,9 @@ function makeMetadata(entityClass: Function, cols = 3, pks = ['id']) {
   };
 }
 
-function makeRegistry(classes: Function[]) {
+function makeRegistry(classes: EntityCtorRef[]) {
   return {
-    getEntity: (ec: Function) => {
+    getEntity: (ec: EntityCtorRef) => {
       const found = classes.find((c) => c === ec);
       return found ? makeMetadata(found) : null;
     }
@@ -48,7 +49,7 @@ function makeRegistry(classes: Function[]) {
 }
 
 function makeChange(
-  entityClass: Function,
+  entityClass: EntityCtorRef,
   state: string,
   entity: Record<string, unknown> = {}
 ): NormalizedChange {
