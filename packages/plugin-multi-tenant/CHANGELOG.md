@@ -1,5 +1,12 @@
 # @ts-linq/plugin-multi-tenant
 
+## 2.0.19
+
+### Patch Changes
+
+- Updated dependencies [[`ccd7235`](https://github.com/mrabaev48/ts-linq/commit/ccd72359ce15f46cca059afba1a2c39d5ea823f2)]:
+  - @ts-linq/metadata@3.1.2
+
 ## 2.0.18
 
 ### Patch Changes
