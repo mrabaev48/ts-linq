@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/ast",
-  "version": "2.4.7",
+  "version": "2.4.8",
   "private": true,
   "description": "Query AST, parser and specifications for ts-linq ORM",
   "main": "./dist/esm/index.js",
