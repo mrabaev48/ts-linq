@@ -18,4 +18,6 @@ export { MethodVisitor } from './visitors/MethodVisitor';
 export { NullVisitor } from './visitors/NullVisitor';
 export { isSpatialMethod, SpatialMethodVisitor } from './visitors/SpatialMethodVisitor';
 export { UnaryVisitor } from './visitors/UnaryVisitor';
+export type { JsonPathExpression } from '@ts-linq/ast';
+/** @deprecated Use {@link JsonPathExpression} instead. */
 export type { JsonPathNode } from '@ts-linq/ast';

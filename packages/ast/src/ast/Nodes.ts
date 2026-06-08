@@ -1,5 +1,7 @@
 import type { SqlParameter } from '@ts-linq/types';
 
+import type { JsonPathExpression } from './JsonPathExpression';
+
 /**
  * A single property access on the predicate parameter, e.g. `u.age` or `u.profile.city`.
  * Single-segment paths use `name`; multi-segment paths use `path`.
@@ -154,15 +156,10 @@ export type ExpressionNode =
   | MethodNode
   | EfFunctionNode
   | UnsupportedNode
-  | JsonPathNode;
+  | JsonPathExpression;
 
 /**
- * Re-export from JsonPathExpression for use in ExpressionNode union.
- * Imported inline to avoid a separate module for a simple type alias.
+ * @deprecated Use {@link JsonPathExpression} from '@ts-linq/ast' instead.
+ * Kept as a structural alias for backward compatibility; will be removed in a future major.
  */
-export interface JsonPathNode {
-  type: 'jsonPath';
-  column: string;
-  path: string[];
-  cast?: 'text' | 'int' | 'bool' | 'float';
-}
+export type JsonPathNode = JsonPathExpression;
