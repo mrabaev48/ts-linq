@@ -1,5 +1,14 @@
 # @ts-linq/provider-mssql
 
+## 2.4.10
+
+### Patch Changes
+
+- Updated dependencies [[`ccd7235`](https://github.com/mrabaev48/ts-linq/commit/ccd72359ce15f46cca059afba1a2c39d5ea823f2)]:
+  - @ts-linq/metadata@3.1.2
+  - @ts-linq/core@2.0.6
+  - @ts-linq/dialect-mssql@2.6.12
+
 ## 2.4.9
 
 ### Patch Changes
