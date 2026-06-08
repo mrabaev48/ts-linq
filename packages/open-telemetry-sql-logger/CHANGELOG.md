@@ -1,5 +1,12 @@
 # @ts-linq/open-telemetry-sql-logger
 
+## 8.0.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-linq/core@3.0.1
+
 ## 8.0.0
 
 ### Patch Changes
