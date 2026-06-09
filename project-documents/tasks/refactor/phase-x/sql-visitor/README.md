@@ -1,7 +1,7 @@
 # Refactor Audit: sql-visitor
 
-**Package status: ✅ Done** — tasks 1, 2, 3, 4, 5 ✅ completed. (task-6 is a newly-filed,
-optional follow-up feature — full JSON-path support in `isNull`/`method` — not a blocker.)
+**Package status: ✅ Done** — tasks 1, 2, 3, 4, 5, 6 ✅ completed. (task-6 delivered the
+optional follow-up feature — full JSON-path support in `isNull`/`isNotNull`/`method`.)
 
 ## Package responsibility
 `@ts-linq/sql-visitor` converts a compiled `ExpressionNode` AST (from `@ts-linq/transformer`)
@@ -44,7 +44,7 @@ which is the package's core safety property.
 | 3 | task-4 | P2 | ✅ Completed | Hide internal visitors so 1 & 2 aren't breaking changes. |
 | 4 | task-3 | P2 | ✅ Completed | Correctness: EF function property-as-value binding bug. |
 | 5 | task-5 | P2 | ✅ Completed | Correctness/fail-loud: JSON rewrite gap in isNull/method. |
-| 6 | task-6 | P2 | ⏳ Pending (follow-up) | Feature: full JSON-path support in isNull/method (deferred Option B). |
+| 6 | task-6 | P2 | ✅ Completed | Feature: full JSON-path support in isNull/method (Option B). |
 
 > **task-1 outcome:** introduced `VisitContext` + `NodeVisitor<N>` (`src/visitContext.ts`),
 > migrated all sub-visitors to the uniform `visit(node, ctx)` contract, replaced
@@ -96,6 +96,28 @@ which is the package's core safety property.
 > isNull/isNotNull/method, plus scalar-property pass-through guards). Full multi-package JSON
 > support (AST widening + visitor + 3 dialect translators) is **deferred** → `task-6`.
 > Changeset: `@ts-linq/ast` **minor** + `@ts-linq/sql-visitor` **patch** (correctness fix).
+
+> **task-6 outcome:** **Option B / positive rendering** (replaces task-5's fail-loud). Widened
+> `IsNullNode.property`, `IsNotNullNode.property` and `MethodNode.object` in `@ts-linq/ast` to
+> `PropertyNode | JsonPathExpression` (**minor**, additive union). `JsonAccessRewriter` now
+> *propagates* the rewritten `JsonPathExpression` into those (now type-safe) fields instead of
+> throwing — the `unsupportedJsonPosition()` helper and the `UNSUPPORTED_JSON_POSITION` throw
+> sites are removed. `NullVisitor`/`MethodVisitor` render a JSON-path field via
+> `ctx.recurse(jsonPath)` → `JsonPathVisitor` → the dialect's `JsonPathTranslator` port (the
+> exact delegation `BinaryVisitor.renderOperand` already uses), then wrap the scalar fragment in
+> `IS NULL`/`IS NOT NULL`/`LIKE ?`. **Decision: the existing `translate()` is reused** — the
+> scalar form composes correctly for all three dialects, so *no dialect source changes / no new
+> `translateForNullCheck` port method* were needed (avoids a `/simplify` finding). Spatial/
+> Hierarchy method visitors gained a guard that fails loud on a JSON-path object (those methods
+> are unsupported over JSON). Translators yield zero params, so the null-check adds none and LIKE
+> binds exactly one. Tests: rewriter throw-cases replaced by **propagation** cases
+> (`json-access-rewriter.test.ts`); stub-translator IS NULL / IS NOT NULL / LIKE rendering
+> (`sql-visitor-json.test.ts`); per-dialect end-to-end SQL via `SqlVisitor` + the real translator
+> in each dialect's `json-path-translator.test.ts`; AST type-level widening assertions in
+> `ast/tests/Nodes.test.ts`. Changeset: `@ts-linq/ast` **minor** + `@ts-linq/sql-visitor`
+> **minor**; the three dialect packages only gained tests → **no dialect changeset**. Tech debt:
+> MySQL `->>` returns the string `'null'` (not SQL NULL) for a stored JSON `null`, so `IS NULL`
+> catches absent/SQL-null but not JSON-null; `InNode` has the same JSON gap; both deferred.
 
 > **task-3 outcome:** fixed `EfFunctionVisitor.resolveParam`'s `PropertyNode`-in-value-position
 > branch, which previously emitted a placeholder and bound the **column name string** as a

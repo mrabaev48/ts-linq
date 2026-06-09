@@ -197,6 +197,14 @@ describe('AST Nodes', () => {
       };
       expect(node.type).toBe('isNotNull');
     });
+
+    it('property accepts a JsonPathExpression (task-6 widening)', () => {
+      const json: JsonPathExpression = { type: 'jsonPath', column: 'preferences', path: ['theme'] };
+      const isNull: IsNullNode = { type: 'isNull', property: json };
+      const isNotNull: IsNotNullNode = { type: 'isNotNull', property: json };
+      expect(isNull.property.type).toBe('jsonPath');
+      expect(isNotNull.property.type).toBe('jsonPath');
+    });
   });
 
   describe('InNode', () => {
@@ -232,6 +240,17 @@ describe('AST Nodes', () => {
         args: [{ type: 'literal', value: 'foo' }]
       };
       expect(node.method).toBe('includes');
+    });
+
+    it('object accepts a JsonPathExpression (task-6 widening)', () => {
+      const json: JsonPathExpression = { type: 'jsonPath', column: 'preferences', path: ['theme'] };
+      const node: MethodNode = {
+        type: 'method',
+        method: 'startsWith',
+        object: json,
+        args: [{ type: 'literal', value: 'd' }]
+      };
+      expect(node.object.type).toBe('jsonPath');
     });
   });
 

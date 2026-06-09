@@ -1,5 +1,10 @@
 import type { JsonPathExpression } from '@ts-linq/sql-visitor';
-import { ParameterState, ParameterStyle } from '@ts-linq/sql-visitor';
+import {
+  JsonAccessRewriter,
+  ParameterState,
+  ParameterStyle,
+  SqlVisitor
+} from '@ts-linq/sql-visitor';
 
 import { PostgresJsonPathTranslator } from '../json/JsonPathTranslator';
 
@@ -49,5 +54,47 @@ describe('PostgresJsonPathTranslator', () => {
   it('returns no params', () => {
     const result = translator.translate(makeNode('prefs', ['a', 'b', 'c']), state);
     expect(result.params).toEqual([]);
+  });
+});
+
+describe('PostgresJsonPathTranslator — JSON path in isNull / method positions (task-6)', () => {
+  const makeVisitor = () =>
+    new SqlVisitor(ParameterStyle.Positional, {
+      jsonPathTranslator: new PostgresJsonPathTranslator(),
+      jsonAccessRewriter: new JsonAccessRewriter(
+        new Map([['preferences', { columnName: 'preferences', properties: new Map() }]])
+      )
+    });
+
+  it('emits (col->>key) IS NULL with zero parameters', () => {
+    const node = {
+      type: 'isNull' as const,
+      property: { type: 'property' as const, path: ['preferences', 'theme'] }
+    };
+    const { condition, parameters } = makeVisitor().toSql(node);
+    expect(condition).toBe(`(("preferences"->>'theme') IS NULL)`);
+    expect(parameters).toEqual([]);
+  });
+
+  it('emits (col->>key) IS NOT NULL with zero parameters', () => {
+    const node = {
+      type: 'isNotNull' as const,
+      property: { type: 'property' as const, path: ['preferences', 'theme'] }
+    };
+    const { condition, parameters } = makeVisitor().toSql(node);
+    expect(condition).toBe(`(("preferences"->>'theme') IS NOT NULL)`);
+    expect(parameters).toEqual([]);
+  });
+
+  it('emits (col->>key) LIKE $1 with the wildcard pattern as the only parameter', () => {
+    const node = {
+      type: 'method' as const,
+      method: 'startsWith' as const,
+      object: { type: 'property' as const, path: ['preferences', 'theme'] },
+      args: [{ type: 'literal' as const, value: 'd' }]
+    };
+    const { condition, parameters } = makeVisitor().toSql(node);
+    expect(condition).toBe(`(("preferences"->>'theme') LIKE $1)`);
+    expect(parameters).toEqual(['d%']);
   });
 });

@@ -53,16 +53,22 @@ export interface NotNode {
   operand: ExpressionNode;
 }
 
-/** `u.field === null` — renders as `col IS NULL`. */
+/**
+ * `u.field === null` — renders as `col IS NULL`.
+ *
+ * `property` accepts a {@link JsonPathExpression} so a JSON-owned nested property
+ * (e.g. `a.preferences.theme`) can be null-checked; the dialect renders the path via its
+ * `JsonPathTranslator` and the visitor wraps it in `IS NULL`.
+ */
 export interface IsNullNode {
   type: 'isNull';
-  property: PropertyNode;
+  property: PropertyNode | JsonPathExpression;
 }
 
-/** `u.field !== null` — renders as `col IS NOT NULL`. */
+/** `u.field !== null` — renders as `col IS NOT NULL`. See {@link IsNullNode}. */
 export interface IsNotNullNode {
   type: 'isNotNull';
-  property: PropertyNode;
+  property: PropertyNode | JsonPathExpression;
 }
 
 /**
@@ -101,7 +107,12 @@ export type StringMethod = 'includes' | 'startsWith' | 'endsWith';
 export interface MethodNode {
   type: 'method';
   method: StringMethod | SpatialMethod | HierarchyMethod;
-  object: PropertyNode;
+  /**
+   * `object` accepts a {@link JsonPathExpression} so string methods (`startsWith`/`endsWith`/
+   * `includes`) can target a JSON-owned nested property. Spatial/hierarchy methods are not
+   * supported over JSON paths and fail loud in their visitors.
+   */
+  object: PropertyNode | JsonPathExpression;
   args: (LiteralNode | ParameterRefNode)[];
 }
 

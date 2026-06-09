@@ -1,5 +1,6 @@
 import type { LiteralNode, MethodNode, ParameterRefNode } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
+import type { SqlParameter } from '@ts-linq/types';
 
 import type { ConditionFragment } from '../types';
 import type { NodeVisitor, VisitContext } from '../visitContext';
@@ -37,7 +38,18 @@ export class MethodVisitor implements NodeVisitor<MethodNode> {
       return this.hierarchyVisitor.visit(node, ctx);
     }
 
-    const col = renderPropertyName(node.object, resolver);
+    // A JSON-owned nested property arrives as a JsonPathExpression. Render it through the
+    // dialect's JsonPathTranslator via ctx.recurse (the same port BinaryVisitor uses), then wrap
+    // the resulting scalar fragment in `LIKE ?`. The translator yields zero parameters.
+    const objectParams: SqlParameter[] = [];
+    let col: string;
+    if (node.object.type === 'jsonPath') {
+      const inner = ctx.recurse(node.object);
+      col = inner.condition;
+      objectParams.push(...inner.parameters);
+    } else {
+      col = renderPropertyName(node.object, resolver);
+    }
     const arg0 = node.args[0];
 
     if (arg0 === undefined) {
@@ -76,7 +88,7 @@ export class MethodVisitor implements NodeVisitor<MethodNode> {
         );
     }
 
-    return { condition: `(${col} LIKE ${state.next()})`, parameters: [pattern] };
+    return { condition: `(${col} LIKE ${state.next()})`, parameters: [...objectParams, pattern] };
   }
 }
 
