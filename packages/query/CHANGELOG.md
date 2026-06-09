@@ -1,5 +1,14 @@
 # @ts-linq/query
 
+## 2.4.23
+
+### Patch Changes
+
+- Updated dependencies [[`a2f36d3`](https://github.com/mrabaev48/ts-linq/commit/a2f36d3383af169a996f6069d907da58ea6a7783)]:
+  - @ts-linq/ast@3.1.0
+  - @ts-linq/sql-visitor@4.0.2
+  - @ts-linq/core@3.0.3
+
 ## 2.4.22
 
 ### Patch Changes
