@@ -1,5 +1,13 @@
 # @ts-linq/sql-visitor
 
+## 4.1.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.2.0
+  - @ts-linq/ast@3.2.2
+
 ## 4.1.1
 
 ### Patch Changes

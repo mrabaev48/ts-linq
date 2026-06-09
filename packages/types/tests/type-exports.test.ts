@@ -16,6 +16,9 @@ describe('Type Exports', () => {
     expect(types.BatchConfigurationError).toBeDefined();
     expect(types.InvalidIncludeError).toBeDefined();
     expect(types.OperationAbortedError).toBeDefined();
+    expect(types.EntityNotFoundError).toBeDefined();
+    expect(types.OwnedEntityHydrationError).toBeDefined();
+    expect(types.RelationshipLoadError).toBeDefined();
   });
 
   it('should export Result helper functions', () => {
@@ -64,6 +67,9 @@ describe('Type Exports', () => {
       'InvalidIncludeError',
       'InvalidIdentifierError',
       'OperationAbortedError',
+      'EntityNotFoundError',
+      'OwnedEntityHydrationError',
+      'RelationshipLoadError',
       'ok',
       'err',
       'LoadingStrategy',
