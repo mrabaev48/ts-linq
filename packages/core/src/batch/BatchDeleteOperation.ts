@@ -1,13 +1,14 @@
 import type { EntityMetadata, SqlParameter } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
+import { noPrimaryKey, noPrimaryKeys } from './batchErrors';
 
 export class BatchDeleteOperation {
   constructor(private readonly provider: DatabaseProvider) {}
 
   async execute<T extends object>(entities: T[], metadata: EntityMetadata): Promise<number> {
     if (!metadata.primaryKeys) {
-      throw new Error(`No primary keys defined for entity ${metadata.target?.name ?? 'Unknown'}`);
+      throw noPrimaryKeys(metadata.target?.name ?? 'Unknown');
     }
 
     const primaryKeyColumn = metadata.columns.find((col) =>
@@ -15,7 +16,7 @@ export class BatchDeleteOperation {
     );
 
     if (!primaryKeyColumn) {
-      throw new Error(`No primary key found for entity ${metadata.target?.name ?? 'Unknown'}`);
+      throw noPrimaryKey(metadata.target?.name ?? 'Unknown');
     }
 
     const primaryKeyValues = entities

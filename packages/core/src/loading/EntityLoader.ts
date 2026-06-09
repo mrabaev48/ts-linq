@@ -1,4 +1,5 @@
 import type { FilteredIncludeSpec, MetadataSource } from '@ts-linq/types';
+import { InvalidIncludeError } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { getDefaultMetadataSource } from '../defaultMetadataSource';
@@ -328,7 +329,10 @@ export class EntityLoader {
     if (!includes) return;
     for (const inc of includes) {
       const exists = metadata.relationships.some((r) => r.propertyName === inc);
-      if (!exists) throw new Error(`Invalid include '${inc}' for ${metadata.target.name}`);
+      if (!exists)
+        throw new InvalidIncludeError(`Invalid include '${inc}' for ${metadata.target.name}`, {
+          details: { include: inc, entity: metadata.target.name }
+        });
     }
   }
 

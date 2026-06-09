@@ -32,7 +32,7 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 |---:|---|---|---|---|
 | 1 | task-4 | P0 | ✅ Completed | Self-contained SQL-injection/dialect-leak fix; ship first |
 | 2 | task-2 | P0 | ✅ Completed | Inject `MetadataSource`; unblocks honest loader testing |
-| 3 | task-6 | P1 | ⏳ Pending | Typed errors (after types/task-2) before further refactor |
+| 3 | task-6 | P1 | ✅ Completed | Typed errors (after types/task-2) before further refactor |
 | 4 | task-5 | P0 | ⏳ Pending | Silent-swallow/unsafe-fallback fixes on hot path |
 | 5 | task-1 | P0 | ⏳ Pending | Decompose `DatabaseProvider` god class (anchor) |
 | 6 | task-3 | P1 | ⏳ Pending | Split `EntityLoader`; remove loader duplication |
@@ -55,7 +55,20 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 > preserved via a `@deprecated` default param resolved by `core/src/defaultMetadataSource.ts`
 > (the only loading-related reference to the singleton, kept out of `loading/*` — that directory
 > has **zero** `MetadataStorage` imports). A new `EmptyMetadataSource` Null Object ships from
-> `@ts-linq/metadata` for tests. Package remains 🔄 in progress (tasks 6, 5, 1, 3, 7, 8, 9 pending).
+> `@ts-linq/metadata` for tests. Package remains 🔄 in progress (tasks 5, 1, 3, 7, 8, 9 pending).
+>
+> **task-6 (✅ Completed)** — all 22 bare `throw new Error(...)` sites in `packages/core/src`
+> now raise the consolidated `@ts-linq/types` `OrmError` subclasses with a stable `code` and a
+> safe-to-log `details` payload. No new error class/`OrmErrorCode` was needed (the `types/task-2`
+> hierarchy already covered every case). Mapping: provider-sequence guard → `UnsupportedOperationError`;
+> stream abort → `OperationAbortedError`; unknown include → `InvalidIncludeError`; index-builder
+> validation → `ValidationError`; batch precondition guards → `MetadataError` / `BatchConfigurationError`.
+> The seven duplicated "requires TS5 Stage-3 decorators" throws collapse into one
+> `stage3DecoratorError(name)` factory (`core/src/decorators/decoratorErrors.ts`); the repeated batch
+> metadata guards collapse into `core/src/batch/batchErrors.ts`. No parallel hierarchy was added to
+> core; `@ts-linq/types` was not modified. Contract covered by `core/tests-new/TypedErrors.test.ts`
+> (asserts `instanceof` + `code` + `details`, never message text). Package remains 🔄 in progress
+> (tasks 5, 1, 3, 7, 8, 9 pending).
 
 ## Dependencies on other packages
 - `@ts-linq/types` — error hierarchy (`types/task-2`), `SqlDialect`/identifier quoting (task-4), metadata interfaces.

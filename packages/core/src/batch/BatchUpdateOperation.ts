@@ -1,6 +1,7 @@
 import type { EntityMetadata } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
+import { noPrimaryKey, noPrimaryKeys, noTargetEntity } from './batchErrors';
 
 export class BatchUpdateOperation {
   constructor(private readonly provider: DatabaseProvider) {}
@@ -11,7 +12,7 @@ export class BatchUpdateOperation {
     }
 
     if (!metadata.primaryKeys) {
-      throw new Error(`No primary keys defined for entity ${metadata.target?.name ?? 'Unknown'}`);
+      throw noPrimaryKeys(metadata.target?.name ?? 'Unknown');
     }
 
     const primaryKeyColumn = metadata.columns.find((col) =>
@@ -19,7 +20,7 @@ export class BatchUpdateOperation {
     );
 
     if (!primaryKeyColumn) {
-      throw new Error(`No primary key found for entity ${metadata.target?.name ?? 'Unknown'}`);
+      throw noPrimaryKey(metadata.target?.name ?? 'Unknown');
     }
 
     const updateColumns = metadata.columns.filter(
@@ -29,7 +30,7 @@ export class BatchUpdateOperation {
     if (updateColumns.length === 0) return entities;
 
     if (!metadata.target) {
-      throw new Error('No target entity defined in metadata');
+      throw noTargetEntity();
     }
 
     for (const entity of entities) {

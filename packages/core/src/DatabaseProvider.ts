@@ -13,7 +13,11 @@ import type {
   SqlLogger,
   SqlParameter
 } from '@ts-linq/types';
-import { InvalidIdentifierError } from '@ts-linq/types';
+import {
+  InvalidIdentifierError,
+  OperationAbortedError,
+  UnsupportedOperationError
+} from '@ts-linq/types';
 
 /**
  * Whitelist for SQL identifiers passed through {@link DatabaseProvider.queryJunction}.
@@ -332,14 +336,14 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     let remaining: number = maxRows ?? Infinity;
 
     while (remaining > 0) {
-      if (signal?.aborted) throw new Error('Operation aborted');
+      if (signal?.aborted) throw new OperationAbortedError('Operation aborted');
       const chunkLimit = Math.min(CHUNK_SIZE, remaining === Infinity ? CHUNK_SIZE : remaining);
       const chunkSql = this.buildChunkSql(baseSql, chunkLimit, offset);
       if (!this.isConnected) await this.connect();
       const rows = await this.doExecuteQuery<Record<string, unknown>>(chunkSql, params);
       if (rows.length === 0) break;
       for (const row of rows) {
-        if (signal?.aborted) throw new Error('Operation aborted');
+        if (signal?.aborted) throw new OperationAbortedError('Operation aborted');
         yield row;
       }
       offset += rows.length;
@@ -878,9 +882,10 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     _schema: string | undefined,
     _blockSize: number
   ): Promise<number> {
-    throw new Error(
+    throw new UnsupportedOperationError(
       `Provider "${this.providerName}" does not support database sequences. ` +
-        'Override nextSequenceValue() in the provider implementation.'
+        'Override nextSequenceValue() in the provider implementation.',
+      { details: { provider: this.providerName, operation: 'nextSequenceValue' } }
     );
   }
 

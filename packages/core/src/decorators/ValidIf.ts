@@ -1,6 +1,8 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityCtor } from '@ts-linq/types';
 
+import { stage3DecoratorError } from './decoratorErrors';
+
 function isStage3FieldContext(x: unknown): x is {
   kind: 'field';
   name: string | symbol;
@@ -20,7 +22,7 @@ export function ValidIf(
 ): PropertyDecorator {
   return function ValidIfDecorator(_targetOrValue: unknown, propOrContext: unknown) {
     if (!isStage3FieldContext(propOrContext)) {
-      throw new Error('@ValidIf requires TS5 Stage-3 decorators');
+      throw stage3DecoratorError('@ValidIf');
     }
     const ctx = propOrContext;
     const name = ctx.name.toString();
@@ -56,7 +58,7 @@ export function RequiredIfOf<T>(
 ): PropertyDecorator {
   return function RequiredIfDecorator(_targetOrValue: unknown, propOrContext: unknown) {
     if (!isStage3FieldContext(propOrContext)) {
-      throw new Error('@RequiredIfOf requires TS5 Stage-3 decorators');
+      throw stage3DecoratorError('@RequiredIfOf');
     }
     const ctx = propOrContext;
     const propName = ctx.name.toString();
@@ -84,8 +86,7 @@ export function RequiredIfOf<T>(
 /** Minimum string length constraint for a property. */
 export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator {
   return function MinLengthDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext))
-      throw new Error('@MinLengthOf requires TS5 Stage-3 decorators');
+    if (!isStage3FieldContext(propOrContext)) throw stage3DecoratorError('@MinLengthOf');
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
@@ -109,8 +110,7 @@ export function MinLengthOf<T>(min: number, message?: string): PropertyDecorator
 /** Maximum string length constraint for a property. */
 export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator {
   return function MaxLengthDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext))
-      throw new Error('@MaxLengthOf requires TS5 Stage-3 decorators');
+    if (!isStage3FieldContext(propOrContext)) throw stage3DecoratorError('@MaxLengthOf');
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
@@ -134,8 +134,7 @@ export function MaxLengthOf<T>(max: number, message?: string): PropertyDecorator
 /** Regex pattern match for a string property. */
 export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator {
   return function PatternDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext))
-      throw new Error('@PatternOf requires TS5 Stage-3 decorators');
+    if (!isStage3FieldContext(propOrContext)) throw stage3DecoratorError('@PatternOf');
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
@@ -159,8 +158,7 @@ export function PatternOf<T>(regex: RegExp, message?: string): PropertyDecorator
 /** Numeric range constraint for a property (when value is a number). */
 export function RangeOf<T>(min?: number, max?: number, message?: string): PropertyDecorator {
   return function RangeDecorator(_targetOrValue: unknown, propOrContext: unknown) {
-    if (!isStage3FieldContext(propOrContext))
-      throw new Error('@RangeOf requires TS5 Stage-3 decorators');
+    if (!isStage3FieldContext(propOrContext)) throw stage3DecoratorError('@RangeOf');
     const ctx = propOrContext;
     const propName = ctx.name.toString();
     ctx.addInitializer?.(function (this: unknown) {
