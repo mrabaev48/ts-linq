@@ -462,6 +462,9 @@ importers:
       '@ts-linq/query':
         specifier: workspace:*
         version: link:../query
+      '@ts-linq/sql-visitor':
+        specifier: workspace:*
+        version: link:../sql-visitor
       '@ts-linq/testkits':
         specifier: workspace:*
         version: link:../testkits
