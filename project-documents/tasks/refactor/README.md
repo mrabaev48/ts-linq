@@ -233,7 +233,7 @@ Each package only depends on packages already completed above it.
 | provider-mysql | 8 | 2 | 5 | 1 | 0 | not-started |
 | provider-postgres | 8 | 2 | 4 | 2 | 0 | not-started |
 | query | 10 | 4 | 4 | 2 | 0 | not-started |
-| sql-visitor | 5 | 0 | 2 | 3 | 0 | 🔄 In Progress (task-1, task-2, task-4 ✅) |
+| sql-visitor | 5 | 0 | 2 | 3 | 0 | 🔄 In Progress (task-1, task-2, task-3, task-4 ✅) |
 | telemetry | 3 | 0 | 2 | 1 | 0 | not-started |
 | testkits | 6 | 0 | 3 | 3 | 0 | not-started |
 | transformer | 4 | 0 | 2 | 2 | 0 | not-started |
