@@ -34,7 +34,7 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 | 2 | task-2 | P0 | ✅ Completed | Inject `MetadataSource`; unblocks honest loader testing |
 | 3 | task-6 | P1 | ✅ Completed | Typed errors (after types/task-2) before further refactor |
 | 4 | task-5 | P0 | ✅ Completed | Silent-swallow/unsafe-fallback fixes on hot path |
-| 5 | task-1 | P0 | ⏳ Pending | Decompose `DatabaseProvider` god class (anchor) |
+| 5 | task-1 | P0 | ✅ Completed | Decompose `DatabaseProvider` god class (anchor) |
 | 6 | task-3 | P1 | ⏳ Pending | Split `EntityLoader`; remove loader duplication |
 | 7 | task-7 | P1 | ⏳ Pending | Remove `as unknown as` casts (do with task-3) |
 | 8 | task-8 | P2 | ⏳ Pending | Logger injection / no console |
@@ -89,6 +89,35 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 > zero-rows throw in `update` is a separate `@ts-linq/types` §16 follow-up (tech debt). Error-path
 > coverage: `DatabaseProvider.upsert.test.ts`, updated `OwnedEntityHydrator*` and
 > `EntityLoader.test.ts`. Package remains 🔄 in progress (tasks 1, 3, 7, 8, 9 pending).
+>
+> **task-1 (✅ Completed)** — the `DatabaseProvider` god class (~1056 LOC) is decomposed into
+> eight injected, independently unit-tested collaborators; the base is now a thin facade
+> (~674 LOC, ~432 non-comment) that declares the `do*` contract + public surface and **delegates**.
+> Public `IDatabaseProvider` method signatures are byte-identical and the three provider packages
+> compile with only the constructor/strategy-injection edits the user approved. Collaborators:
+> `CompositeSqlLogger` (Composite — replaces the ~80-line static `mergeLoggers`),
+> `ProviderConfig` (Parameter Object — collapses the 8-arg constructor and makes `providerName`
+> required up front), `InterceptorDispatcher` (Observer/Mediator — the 4 interceptor arrays +
+> ~14 `notify*` fan-out helpers), `QueryAnalyzer` (Strategy/Policy — `maybeAnalyzeQuery` sampling/
+> rate-limit/EXPLAIN-timeout with injectable `now`/`random`/`sleep`), `QueryExecutionPipeline`
+> (Template Method — `executeWithRetry` orchestration), `MiddlewareDispatcher` (Observer — the
+> middleware fan-out), `BatchTransactionRunner` (the `insertMany`/`updateMany`/`upsertMany`
+> transaction loop), and `SavepointStrategy`/`SequenceStrategy` (Strategy — ANSI default +
+> per-dialect impls injected via `ProviderConfig`; the three providers stop overriding the
+> savepoint/sequence methods, MySQL keeps one `runSavepointStatement` hook for its `pool.query`
+> routing). The **`providerName='unknown'` latent bug is fixed**: providers pass the real name to
+> `ProviderConfig`, so `ResilienceManager`/`HealthMonitor` are labelled correctly from
+> construction. A `@deprecated` positional-arg constructor overload is kept for external
+> back-compat. All collaborators adopt the typed `OrmError` hierarchy + `logInternalError`.
+> Coverage: new unit tests for every collaborator
+> (`CompositeSqlLogger`/`ProviderConfig`/`InterceptorDispatcher`/`QueryAnalyzer`/
+> `QueryExecutionPipeline`/`MiddlewareDispatcher`/`BatchTransactionRunner`/strategy) plus
+> per-dialect strategy tests in the provider packages; existing interceptor/savepoint/circuit
+> contract tests pass unchanged. The literal `< 350 LOC` target was not fully reached — the
+> residual ~432 lines are the irreducible provider contract (abstract CRUD/dialect declarations,
+> public state accessors, streaming generator, junction read) plus the dual constructor; driving
+> below 350 would fragment the contract itself and is noted as optional follow-up. Package remains
+> 🔄 in progress (tasks 3, 7, 8, 9 pending).
 
 ## Dependencies on other packages
 - `@ts-linq/types` — error hierarchy (`types/task-2`), `SqlDialect`/identifier quoting (task-4), metadata interfaces.
