@@ -1,9 +1,10 @@
 import type { FilteredIncludeSpec, MetadataSource } from '@ts-linq/types';
-import { InvalidIncludeError } from '@ts-linq/types';
+import { InvalidIncludeError, RelationshipLoadError } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { getDefaultMetadataSource } from '../defaultMetadataSource';
 import { ctorName } from '../utils/ctorName';
+import { logInternalError } from '../utils/InternalLogger';
 import type { LoadingOptions } from './LoadingStrategy';
 import { LoadingStrategy } from './LoadingStrategy';
 
@@ -314,11 +315,19 @@ export class EntityLoader {
 
   // ===== Helper methods extracted to reduce complexity =====
 
+  /**
+   * Construct a throwaway instance to trigger stage-3 field-decorator
+   * initializers (e.g. `@ValidIf`/`@RequiredIfOf`) that register metadata on
+   * first construction. Entities whose constructor legitimately requires
+   * arguments will throw here; that is expected and non-fatal, but the failure
+   * is surfaced through the single internal-error channel rather than dropped
+   * silently.
+   */
   private ensureStage3Init<T>(entityClass: new () => T): void {
     try {
       void new entityClass();
-    } catch {
-      /* ignore */
+    } catch (e) {
+      logInternalError('EntityLoader.ensureStage3Init', e);
     }
   }
 
@@ -415,7 +424,18 @@ export class EntityLoader {
         await this.loadToOne(entity, relationship, targetCtor, { ...options, depth: depth - 1 });
       }
     } catch (error) {
+      // A failed relationship load must be observable: keep the warn telemetry,
+      // route through the internal-error channel, and surface a typed error so
+      // callers never receive a silently half-populated entity.
       this._logger?.warn(`Failed to load relationship ${relationship.propertyName}:`, error);
+      logInternalError('EntityLoader.loadRelationshipByType', error);
+      throw new RelationshipLoadError(
+        `Failed to load relationship '${relationship.propertyName}' for ${entityClass.name}`,
+        {
+          cause: error,
+          details: { relationship: relationship.propertyName, entity: entityClass.name }
+        }
+      );
     }
   }
 
@@ -506,8 +526,8 @@ export class EntityLoader {
           column: targetPkColumn,
           provider: this._provider.providerLabel
         });
-      } catch {
-        /* ignore */
+      } catch (e) {
+        logInternalError('EntityLoader.crossQuery', e);
       }
     }
     const byId = new Map<unknown, unknown>();
@@ -580,8 +600,8 @@ export class EntityLoader {
           column: foreignKeyName,
           provider: this._provider.providerLabel
         });
-      } catch {
-        /* ignore */
+      } catch (e) {
+        logInternalError('EntityLoader.crossQuery', e);
       }
     }
     const grouped = new Map<unknown, unknown[]>();

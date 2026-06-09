@@ -40,7 +40,10 @@ export const OrmErrorCode = {
   BatchConfigurationError: 'BATCH_CONFIGURATION_ERROR',
   InvalidInclude: 'INVALID_INCLUDE',
   OperationAborted: 'OPERATION_ABORTED',
-  InvalidIdentifier: 'INVALID_IDENTIFIER'
+  InvalidIdentifier: 'INVALID_IDENTIFIER',
+  EntityNotFound: 'ENTITY_NOT_FOUND',
+  OwnedEntityHydrationError: 'OWNED_ENTITY_HYDRATION_ERROR',
+  RelationshipLoadError: 'RELATIONSHIP_LOAD_ERROR'
 } as const;
 
 /** Union of every stable code declared in {@link OrmErrorCode}. */
@@ -206,6 +209,48 @@ export class OperationAbortedError extends OrmError {
  */
 export class InvalidIdentifierError extends OrmError {
   public readonly code = OrmErrorCode.InvalidIdentifier;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when an operation targeted a row by key that does not exist — e.g. an
+ * UPDATE that affected zero rows with no concurrency token. Acts as the typed
+ * "row absent" signal that the default `upsert` discriminates on to fall back
+ * to INSERT, instead of treating arbitrary errors as a missing row.
+ */
+export class EntityNotFoundError extends DatabaseError {
+  public override readonly code = OrmErrorCode.EntityNotFound;
+
+  constructor(message: string, cause?: Error) {
+    super(message, cause);
+  }
+}
+
+/**
+ * Thrown when an owned entity cannot be hydrated from its persisted form — e.g.
+ * a corrupt JSON column that fails `JSON.parse`. Surfaces the failure instead
+ * of silently dropping the owned entity. `details` carries safe-to-log context
+ * (column / owned type) and `cause` preserves the original parse error.
+ */
+export class OwnedEntityHydrationError extends OrmError {
+  public readonly code = OrmErrorCode.OwnedEntityHydrationError;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when loading a relationship for an entity fails. Makes a partial load
+ * observable to the caller rather than returning a silently half-populated
+ * entity. `details` carries the relationship/entity names and `cause` preserves
+ * the underlying load failure.
+ */
+export class RelationshipLoadError extends OrmError {
+  public readonly code = OrmErrorCode.RelationshipLoadError;
 
   constructor(message: string, opts?: OrmErrorOptions) {
     super(message, opts);

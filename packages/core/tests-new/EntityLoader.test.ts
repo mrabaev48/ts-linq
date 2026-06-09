@@ -1,4 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import { RelationshipLoadError } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../src/DatabaseProvider';
 import { Column } from '../src/decorators/Column';
@@ -42,7 +43,9 @@ function createTestEntities() {
 }
 
 describe('EntityLoader', () => {
-  let mockProvider: jest.Mocked<Pick<DatabaseProvider, 'findById' | 'findAll' | 'findWhereIn'>>;
+  let mockProvider: jest.Mocked<
+    Pick<DatabaseProvider, 'findById' | 'findAll' | 'findWhere' | 'findWhereIn'>
+  >;
   let loader: EntityLoader;
   let mockLogger: { warn: jest.Mock };
   let User: ReturnType<typeof createTestEntities>['User'];
@@ -58,6 +61,7 @@ describe('EntityLoader', () => {
     mockProvider = {
       findById: jest.fn(),
       findAll: jest.fn(),
+      findWhere: jest.fn().mockResolvedValue([]),
       findWhereIn: jest.fn()
     };
 
@@ -165,7 +169,9 @@ describe('EntityLoader', () => {
         strategy: LoadingStrategy.Eager
       });
 
-      expect(result).toEqual(user);
+      // Eager load succeeds; the OneToMany `posts` navigation is populated (empty here).
+      expect(result).toMatchObject(user);
+      expect((result as { posts?: unknown[] }).posts).toEqual([]);
     });
 
     it('should accept includes option', async () => {
@@ -176,7 +182,8 @@ describe('EntityLoader', () => {
         includes: ['posts']
       });
 
-      expect(result).toEqual(user);
+      expect(result).toMatchObject(user);
+      expect((result as { posts?: unknown[] }).posts).toEqual([]);
     });
 
     it('should accept depth option', async () => {
@@ -298,6 +305,36 @@ describe('EntityLoader', () => {
       mockProvider.findAll.mockRejectedValue(new Error('Database error'));
 
       await expect(loader.loadEntities(User)).rejects.toThrow('Database error');
+    });
+
+    it('surfaces a failed relationship load as a typed RelationshipLoadError (observable, not silent partial)', async () => {
+      // Post resolves; loading its ManyToOne `user` relationship fails.
+      mockProvider.findById.mockImplementation(async (_id: unknown, ctor: unknown) => {
+        if (ctor === Post) return { id: 1, title: 'Hello', userId: 5 } as never;
+        throw new Error('relationship db down');
+      });
+
+      await expect(
+        loader.loadEntity(Post, 1, { strategy: LoadingStrategy.Eager })
+      ).rejects.toBeInstanceOf(RelationshipLoadError);
+    });
+
+    it('preserves cause and context on the relationship load error', async () => {
+      const underlying = new Error('relationship db down');
+      mockProvider.findById.mockImplementation(async (_id: unknown, ctor: unknown) => {
+        if (ctor === Post) return { id: 1, title: 'Hello', userId: 5 } as never;
+        throw underlying;
+      });
+
+      try {
+        await loader.loadEntity(Post, 1, { strategy: LoadingStrategy.Eager });
+        throw new Error('expected RelationshipLoadError to be thrown');
+      } catch (e) {
+        expect(e).toBeInstanceOf(RelationshipLoadError);
+        const err = e as RelationshipLoadError;
+        expect(err.cause).toBe(underlying);
+        expect(err.details).toMatchObject({ relationship: 'user', entity: 'Post' });
+      }
     });
   });
 });

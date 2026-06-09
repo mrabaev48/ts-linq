@@ -1,5 +1,36 @@
 # @ts-linq/core
 
+## 3.0.10
+
+### Patch Changes
+
+- Surface previously-swallowed failures on the core execution and loading hot paths.
+  - **`@ts-linq/types`**: add three typed errors to the `OrmError` hierarchy —
+    `EntityNotFoundError` (`ENTITY_NOT_FOUND`), `OwnedEntityHydrationError`
+    (`OWNED_ENTITY_HYDRATION_ERROR`) and `RelationshipLoadError`
+    (`RELATIONSHIP_LOAD_ERROR`).
+  - **`@ts-linq/core`** (behavioural correctness fixes):
+    - `DatabaseProvider.upsert` no longer treats _any_ update error as "row absent".
+      It now falls back to INSERT only on the typed `EntityNotFoundError` signal;
+      deadlocks, optimistic-concurrency conflicts, validation and connection errors
+      propagate instead of spuriously inserting a duplicate row.
+    - `OwnedEntityHydrator.hydrateJson` throws a typed `OwnedEntityHydrationError`
+      (with `cause` + safe context) on a corrupt JSON column instead of silently
+      returning `undefined` and dropping the owned entity.
+    - `EntityLoader.loadRelationshipByType` now propagates a typed
+      `RelationshipLoadError` when a relationship load fails, so callers can no
+      longer receive a silently half-populated entity.
+    - Remaining intentional swallows (logger isolation, telemetry, stage-3 init)
+      are routed through the single `logInternalError` channel instead of being
+      dropped silently.
+
+- Updated dependencies
+  - @ts-linq/types@4.2.0
+  - @ts-linq/ast@3.2.2
+  - @ts-linq/concurrency@3.0.2
+  - @ts-linq/metadata@4.1.1
+  - @ts-linq/metrics-safe@1.2.4
+
 ## 3.0.9
 
 ### Patch Changes

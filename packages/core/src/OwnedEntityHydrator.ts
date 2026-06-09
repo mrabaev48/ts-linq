@@ -1,5 +1,5 @@
 import type { JsonShape, JsonShapeNode, OwnedEntityMetadata } from '@ts-linq/types';
-import { StorageStrategy } from '@ts-linq/types';
+import { OwnedEntityHydrationError, StorageStrategy } from '@ts-linq/types';
 
 /**
  * Reconstructs owned entity instances from a flat database row.
@@ -52,8 +52,13 @@ export function hydrateJson<TOwned>(
   if (typeof raw === 'string') {
     try {
       data = JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      return undefined;
+    } catch (e) {
+      // A corrupt JSON column must not silently drop the owned entity: surface
+      // a typed error with safe context so the data-loss is observable.
+      throw new OwnedEntityHydrationError(
+        `Failed to parse JSON for owned entity column '${columnName}'`,
+        { cause: e, details: { column: columnName, ownedType: ownedCtor.name } }
+      );
     }
   } else if (typeof raw === 'object') {
     data = raw as Record<string, unknown>;

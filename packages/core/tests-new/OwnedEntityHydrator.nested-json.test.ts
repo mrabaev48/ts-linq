@@ -1,4 +1,5 @@
 import type { JsonShape, JsonShapeNode } from '@ts-linq/types';
+import { OwnedEntityHydrationError } from '@ts-linq/types';
 
 import { hydrateJson } from '../src/OwnedEntityHydrator';
 
@@ -58,9 +59,11 @@ describe('hydrateJson — nested aggregates', () => {
     expect(hydrateJson(row, Preferences, 'preferences', shape)).toBeUndefined();
   });
 
-  it('returns undefined for invalid JSON', () => {
+  it('throws a typed OwnedEntityHydrationError for invalid JSON (no silent undefined)', () => {
     const row = { preferences: 'not-json' };
-    expect(hydrateJson(row, Preferences, 'preferences', shape)).toBeUndefined();
+    expect(() => hydrateJson(row, Preferences, 'preferences', shape)).toThrow(
+      OwnedEntityHydrationError
+    );
   });
 
   it('accepts already-parsed object', () => {
