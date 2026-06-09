@@ -126,8 +126,8 @@ Each package only depends on packages already completed above it.
 | 2 | `metrics-safe` | foundation | Zero-dep Null-Object helpers; needed by `core`/`cache`; tiny. | ✅ done |
 | 3 | `metadata` | foundation | Remove committed artifacts, read-port, tame registry. Depends on `types`. | ✅ done |
 | 4 | `ast` | foundation | De-dupe jsonPath node; small. Depends on `types`. | ✅ done |
-| 5 | `sql-visitor` | foundation | Visitor/dispatch + param-state. Depends on `ast`, `types`. | 🔄 In Progress |
-| 6 | `concurrency` | foundation | Make retry policies canonical **before** `core` so its duplicate can be deleted. |
+| 5 | `sql-visitor` | foundation | Visitor/dispatch + param-state. Depends on `ast`, `types`. | ✅ done |
+| 6 | `concurrency` | foundation | Make retry policies canonical **before** `core` so its duplicate can be deleted. | 🔄 In Progress |
 | 7 | `core` | runtime | Decompose provider/loader; kill SQL injection + singleton coupling + silent catches. |
 | 8 | `query` | runtime | Decompose `Queryable`; immutability; wire `SqlVisitorOptions`; move SQL out. |
 | 9 | `transformer` | runtime | De-dupe entrypoints; stop swallowing TypeChecker failures. Depends on `ast`. |
@@ -233,13 +233,13 @@ Each package only depends on packages already completed above it.
 | provider-mysql | 8 | 2 | 5 | 1 | 0 | not-started |
 | provider-postgres | 8 | 2 | 4 | 2 | 0 | not-started |
 | query | 10 | 4 | 4 | 2 | 0 | not-started |
-| sql-visitor | 5 | 0 | 2 | 3 | 0 | 🔄 In Progress (task-1, task-2, task-3, task-4 ✅) |
+| sql-visitor | 6 | 0 | 2 | 4 | 0 | ✅ done (task-1/2/3/4/5 ✅; task-6 = optional follow-up, pending) |
 | telemetry | 3 | 0 | 2 | 1 | 0 | not-started |
 | testkits | 6 | 0 | 3 | 3 | 0 | not-started |
 | transformer | 4 | 0 | 2 | 2 | 0 | not-started |
 | types | 4 | 0 | 2 | 1 | 1 | ✅ done (task-1, task-2, task-3, task-4 ✅) |
 | typescript-config | 2 | 0 | 1 | 1 | 0 | not-started |
-| **Total** | **178** | **30** | **92** | **51** | **5** | not-started |
+| **Total** | **179** | **30** | **92** | **52** | **5** | not-started |
 
 ## Notes
 
