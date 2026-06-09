@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/core",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
@@ -16,7 +16,8 @@
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metadata": "workspace:*",
     "@ts-linq/metrics-safe": "workspace:*",
-    "@ts-linq/ast": "workspace:*"
+    "@ts-linq/ast": "workspace:*",
+    "@ts-linq/concurrency": "workspace:*"
   },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",

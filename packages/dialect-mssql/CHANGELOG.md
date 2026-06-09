@@ -1,5 +1,12 @@
 # @ts-linq/dialect-mssql
 
+## 2.6.21
+
+### Patch Changes
+
+- Updated dependencies [5aa6196]
+  - @ts-linq/core@3.0.5
+
 ## 2.6.20
 
 ### Patch Changes

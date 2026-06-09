@@ -317,6 +317,9 @@ importers:
       '@ts-linq/ast':
         specifier: workspace:*
         version: link:../ast
+      '@ts-linq/concurrency':
+        specifier: workspace:*
+        version: link:../concurrency
       '@ts-linq/metadata':
         specifier: workspace:*
         version: link:../metadata
