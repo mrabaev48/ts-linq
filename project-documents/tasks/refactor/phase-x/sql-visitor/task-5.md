@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: sql-visitor
 priority: P2
@@ -7,7 +7,7 @@ effort: S
 risk: medium
 category: sql
 depends_on: []
-related: []
+related: [task-6]
 ---
 
 # Refactor: `JsonAccessRewriter` silently drops JSON rewrites in `isNull`/`method` positions
@@ -87,3 +87,23 @@ cluster and the dialect JSON translators.
 ## Notes
 Correctness fix → `patch` (fail-loud) or `minor` (new JSON support). Cross-package if the AST
 is widened.
+
+## Resolution (completed)
+**Policy: Option (b) — fail-loud.** Confirmed via Serena exploration that **no** dialect
+JSON-path translator (postgres / mssql / mysql) supports a `JsonPathExpression` in an
+`IS NULL` / `IS NOT NULL` or `LIKE`/method position — they emit scalar extraction only
+(`->>`, `JSON_VALUE`, `JSON_EXTRACT`). `NullVisitor`/`MethodVisitor` call
+`renderPropertyName(PropertyNode)` with zero JSON handling. AST widening (Option a) would be a
+large multi-package feature with no current demand, so it is **deferred** → see `task-6`.
+
+Implemented:
+- Added `'UNSUPPORTED_JSON_POSITION'` to `AstSqlGenerationErrorCode` in `@ts-linq/ast`
+  (`packages/ast/src/errors.ts`) — **minor**.
+- Replaced both `return node;` silent-drops in `JsonAccessRewriter`
+  (`packages/sql-visitor/src/JsonAccessRewriter.ts`) with a thrown
+  `AstSqlGenerationError('UNSUPPORTED_JSON_POSITION', …)` via a single shared
+  `unsupportedJsonPosition()` helper; removed the misleading comment — **patch**.
+- Tests added in `json-access-rewriter.test.ts` for `isNull` / `isNotNull` / `method` JSON
+  paths (throw + code + details) plus positive guards for scalar properties.
+
+Future full-support work (Option a) is tracked in `task-6`.
