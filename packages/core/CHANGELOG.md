@@ -1,5 +1,12 @@
 # @ts-linq/core
 
+## 3.0.2
+
+### Patch Changes
+
+- Updated dependencies [[`75a9436`](https://github.com/mrabaev48/ts-linq/commit/75a94365e4112b46e74bfaa6fce6dd3c8e86fbb3)]:
+  - @ts-linq/ast@3.0.0
+
 ## 3.0.1
 
 ### Patch Changes
