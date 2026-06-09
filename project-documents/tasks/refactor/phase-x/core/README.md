@@ -31,7 +31,7 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 | Order | Task | Priority | Status | Reason |
 |---:|---|---|---|---|
 | 1 | task-4 | P0 | ✅ Completed | Self-contained SQL-injection/dialect-leak fix; ship first |
-| 2 | task-2 | P0 | ⏳ Pending | Inject `MetadataSource`; unblocks honest loader testing |
+| 2 | task-2 | P0 | ✅ Completed | Inject `MetadataSource`; unblocks honest loader testing |
 | 3 | task-6 | P1 | ⏳ Pending | Typed errors (after types/task-2) before further refactor |
 | 4 | task-5 | P0 | ⏳ Pending | Silent-swallow/unsafe-fallback fixes on hot path |
 | 5 | task-1 | P0 | ⏳ Pending | Decompose `DatabaseProvider` god class (anchor) |
@@ -44,7 +44,18 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 > `DatabaseProvider.queryJunction(spec: JunctionQuerySpec)`: every identifier is validated
 > (`^[A-Za-z_][A-Za-z0-9_]*$`, fails closed with `InvalidIdentifierError`) and quoted via the
 > dialect's `quoteIdentifier`; all values are bound as parameters. `packages/core/src/loading`
-> now emits **zero** SQL text. Package remains 🔄 in progress (tasks 2, 6, 5, 1, 3, 7, 8, 9 pending).
+> now emits **zero** SQL text.
+>
+> **task-2 (✅ Completed)** — the loading layer no longer reaches into the global
+> `MetadataStorage` singleton. `EntityLoader`, `RelationshipLoader`, and the
+> `LazyLoadingProxy.create`/`createMany`/`preloadRelationships` entry points now take an injected
+> `MetadataSource` port (reused from `@ts-linq/types`, implemented by `MetadataRegistry`).
+> `DbContext` wires `options.registry ?? MetadataStorage.getInstance()` into the loaders, so
+> per-context/multi-tenant isolation now extends to relationship loading. Backward compatibility is
+> preserved via a `@deprecated` default param resolved by `core/src/defaultMetadataSource.ts`
+> (the only loading-related reference to the singleton, kept out of `loading/*` — that directory
+> has **zero** `MetadataStorage` imports). A new `EmptyMetadataSource` Null Object ships from
+> `@ts-linq/metadata` for tests. Package remains 🔄 in progress (tasks 6, 5, 1, 3, 7, 8, 9 pending).
 
 ## Dependencies on other packages
 - `@ts-linq/types` — error hierarchy (`types/task-2`), `SqlDialect`/identifier quoting (task-4), metadata interfaces.

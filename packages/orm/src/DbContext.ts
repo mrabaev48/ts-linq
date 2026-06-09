@@ -128,7 +128,7 @@ export abstract class DbContext {
     this._registry = options.registry ?? MetadataStorage.getInstance();
     this._changeTracker = new ChangeTrackerFacade(this._registry);
     this._changeTracker.setProvider(this._provider);
-    this._entityLoader = new EntityLoader(this._provider);
+    this._entityLoader = new EntityLoader(this._provider, undefined, this._registry);
     this._querySplittingBehavior = options.querySplittingBehavior;
     this._maxBatchSize = options.maxBatchSize ?? 0;
     this._insertCmd = new InsertCommand(this._provider, (c) =>
@@ -770,7 +770,8 @@ export abstract class DbContext {
         [entity],
         entityClass,
         propertyNames,
-        this._provider
+        this._provider,
+        this._registry
       );
     } else {
       // Use entity loader for regular entities

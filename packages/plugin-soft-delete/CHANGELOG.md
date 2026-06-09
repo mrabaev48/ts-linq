@@ -1,5 +1,12 @@
 # @ts-linq/plugin-soft-delete
 
+## 2.0.22
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/metadata@4.1.0
+
 ## 2.0.21
 
 ### Patch Changes
