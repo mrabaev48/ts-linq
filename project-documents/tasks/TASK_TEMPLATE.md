@@ -15,6 +15,12 @@ You are a Senior/Principal TypeScript Software Architect working inside the ts-l
 
 ---
 
+## Step 0 - Serena setup
+
+1. Activate Serena project
+
+---
+
 ## Step 1 — Branch Setup
 
 1. Pull the latest `main` from the remote repository.
