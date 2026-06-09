@@ -1,5 +1,12 @@
 # @ts-linq/migrations
 
+## 2.6.14
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-linq/core@3.0.3
+
 ## 2.6.13
 
 ### Patch Changes
