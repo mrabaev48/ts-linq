@@ -1,17 +1,13 @@
-import type { ExpressionNode, NotNode } from '@ts-linq/ast';
+import type { NotNode } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 
-import { ParameterState, ParameterStyle } from '../ParameterStyle';
 import type { ConditionFragment } from '../types';
-import { type ColumnResolver, renderPropertyName } from './BinaryVisitor';
+import type { NodeVisitor, VisitContext } from '../visitContext';
+import { renderPropertyName } from './BinaryVisitor';
 
-export class UnaryVisitor {
-  public visit(
-    node: NotNode,
-    recurse: (n: ExpressionNode) => ConditionFragment,
-    resolver?: ColumnResolver,
-    state: ParameterState = new ParameterState(ParameterStyle.Question)
-  ): ConditionFragment {
+export class UnaryVisitor implements NodeVisitor<NotNode> {
+  public visit(node: NotNode, ctx: VisitContext): ConditionFragment {
+    const { resolver, state } = ctx;
     const operand = node.operand;
 
     // `!u.boolField` → `(col = false)`
@@ -32,7 +28,7 @@ export class UnaryVisitor {
       operand.type === 'in' ||
       operand.type === 'method'
     ) {
-      const inner = recurse(operand);
+      const inner = ctx.recurse(operand);
       return { condition: `(NOT ${inner.condition})`, parameters: inner.parameters };
     }
 

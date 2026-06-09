@@ -3,6 +3,7 @@ import { ValueConverter } from '@ts-linq/metadata';
 
 import { ParameterState, ParameterStyle } from '../src/ParameterStyle';
 import { BinaryVisitor } from '../src/visitors/BinaryVisitor';
+import { makeCtx } from './helpers/makeCtx';
 
 describe('BinaryVisitor converter lifting', () => {
   const visitor = new BinaryVisitor();
@@ -24,7 +25,7 @@ describe('BinaryVisitor converter lifting', () => {
 
     const state = new ParameterState(ParameterStyle.Question);
     const recurse = () => ({ condition: '', parameters: [] });
-    const result = visitor.visit(node, [], recurse, undefined, state, converterResolver);
+    const result = visitor.visit(node, makeCtx({ state, converterResolver, recurse }));
 
     // The parameter value should be 'ADMIN' (converted) not 'admin' (raw)
     expect(result.parameters).toEqual(['ADMIN']);
@@ -47,7 +48,7 @@ describe('BinaryVisitor converter lifting', () => {
 
     const state = new ParameterState(ParameterStyle.Question);
     const recurse = () => ({ condition: '', parameters: [] });
-    const result = visitor.visit(node, [], recurse, undefined, state, converterResolver);
+    const result = visitor.visit(node, makeCtx({ state, converterResolver, recurse }));
 
     expect(result.parameters).toEqual([1]);
   });
@@ -64,7 +65,7 @@ describe('BinaryVisitor converter lifting', () => {
 
     const state = new ParameterState(ParameterStyle.Question);
     const recurse = () => ({ condition: '', parameters: [] });
-    const result = visitor.visit(node, [], recurse, undefined, state, converterResolver);
+    const result = visitor.visit(node, makeCtx({ state, converterResolver, recurse }));
 
     expect(result.parameters).toEqual(['alice']);
   });

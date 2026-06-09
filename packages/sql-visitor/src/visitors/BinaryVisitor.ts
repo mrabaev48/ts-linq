@@ -1,39 +1,25 @@
 import type { BinaryNode, ExpressionNode, ParameterRefNode, PropertyNode } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
-import type { SqlParameter, ValueConverterLike } from '@ts-linq/types';
+import type { SqlParameter } from '@ts-linq/types';
 
-import { ParameterState, ParameterStyle } from '../ParameterStyle';
+import type { ParameterState } from '../ParameterStyle';
 import type { ConditionFragment, SqlFragment } from '../types';
+import type { ColumnResolver, ConverterResolver, NodeVisitor, VisitContext } from '../visitContext';
 
-/**
- * Maps a PropertyNode to its SQL column name.
- * If no resolver is supplied, the TypeScript property name is used as-is.
- */
-export type ColumnResolver = (property: PropertyNode) => string;
+// Re-exported for import-path stability; the canonical definitions live in `../visitContext`.
+export type { ColumnResolver, ConverterResolver } from '../visitContext';
 
-/**
- * Maps a property name to its ValueConverter (if any).
- * Used for converter lifting in WHERE predicates.
- */
-export type ConverterResolver = (propertyName: string) => ValueConverterLike | undefined;
-
-export class BinaryVisitor {
-  public visit(
-    node: BinaryNode,
-    inputParameters: readonly unknown[],
-    recurse: (n: ExpressionNode) => ConditionFragment,
-    resolver?: ColumnResolver,
-    state: ParameterState = new ParameterState(ParameterStyle.Question),
-    converterResolver?: ConverterResolver
-  ): ConditionFragment {
+export class BinaryVisitor implements NodeVisitor<BinaryNode> {
+  public visit(node: BinaryNode, ctx: VisitContext): ConditionFragment {
+    const { inputParameters, resolver, state, converterResolver } = ctx;
     const sqlOp = this.mapOperator(node.operator);
 
     // Converter lifting: if one side is a property with a converter, transform the literal/paramRef on the other side
     const leftNode = this.liftNode(node.left, node.right, converterResolver);
     const rightNode = this.liftNode(node.right, node.left, converterResolver);
 
-    const leftSql = this.renderOperand(leftNode, inputParameters, recurse, resolver, state);
-    const rightSql = this.renderOperand(rightNode, inputParameters, recurse, resolver, state);
+    const leftSql = this.renderOperand(leftNode, inputParameters, ctx.recurse, resolver, state);
+    const rightSql = this.renderOperand(rightNode, inputParameters, ctx.recurse, resolver, state);
     return {
       condition: `(${leftSql.fragment} ${sqlOp} ${rightSql.fragment})`,
       parameters: [...leftSql.params, ...rightSql.params]

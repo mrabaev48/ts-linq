@@ -1,24 +1,20 @@
 import type { LiteralNode, MethodNode, ParameterRefNode } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 
-import { ParameterState, ParameterStyle } from '../ParameterStyle';
 import type { ConditionFragment } from '../types';
-import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
+import type { NodeVisitor, VisitContext } from '../visitContext';
+import { renderPropertyName, resolveParameterRef } from './BinaryVisitor';
 import { type HierarchyMethodVisitor, isHierarchyMethod } from './HierarchyMethodVisitor';
 import { isSpatialMethod, type SpatialMethodVisitor } from './SpatialMethodVisitor';
 
-export class MethodVisitor {
+export class MethodVisitor implements NodeVisitor<MethodNode> {
   constructor(
     private readonly spatialVisitor?: SpatialMethodVisitor,
     private readonly hierarchyVisitor?: HierarchyMethodVisitor
   ) {}
 
-  public visit(
-    node: MethodNode,
-    inputParameters: readonly unknown[],
-    resolver?: ColumnResolver,
-    state: ParameterState = new ParameterState(ParameterStyle.Question)
-  ): ConditionFragment {
+  public visit(node: MethodNode, ctx: VisitContext): ConditionFragment {
+    const { inputParameters, resolver, state } = ctx;
     if (isSpatialMethod(node.method)) {
       if (!this.spatialVisitor) {
         throw new AstSqlGenerationError(
@@ -27,7 +23,7 @@ export class MethodVisitor {
           { nodeType: 'method', method: node.method }
         );
       }
-      return this.spatialVisitor.visit(node, inputParameters, resolver, state);
+      return this.spatialVisitor.visit(node, ctx);
     }
 
     if (isHierarchyMethod(node.method)) {
@@ -38,7 +34,7 @@ export class MethodVisitor {
           { nodeType: 'method', method: node.method }
         );
       }
-      return this.hierarchyVisitor.visit(node, inputParameters, resolver, state);
+      return this.hierarchyVisitor.visit(node, ctx);
     }
 
     const col = renderPropertyName(node.object, resolver);
