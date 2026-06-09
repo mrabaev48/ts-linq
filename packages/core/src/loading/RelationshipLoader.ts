@@ -1,7 +1,12 @@
-import { MetadataStorage } from '@ts-linq/metadata';
-import type { RelationshipMetadata, SqlParameter } from '@ts-linq/types';
+import type {
+  EntityMetadata,
+  MetadataSource,
+  RelationshipMetadata,
+  SqlParameter
+} from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
+import { getDefaultMetadataSource } from '../defaultMetadataSource';
 import { type LazyLoadingState, markLoaded } from './LazyLoadingState';
 import { LAZY_LOADING_STATE, LAZY_LOADING_TARGET } from './LazyLoadingSymbols';
 
@@ -18,10 +23,19 @@ export type ProxyWrapMany = <T extends object>(
 ) => T[];
 
 export class RelationshipLoader {
+  /**
+   * @param metadata Metadata source the loader resolves entity metadata from.
+   *   Defaults to the global singleton for backward compatibility; callers
+   *   should inject the per-context registry to preserve multi-tenant isolation.
+   *
+   * @deprecated Relying on the implicit global-singleton default defeats
+   *   per-context isolation — always inject an explicit `MetadataSource`.
+   */
   constructor(
     private readonly provider: DatabaseProvider,
     private readonly wrapOne: ProxyWrapOne,
-    private readonly wrapMany: ProxyWrapMany
+    private readonly wrapMany: ProxyWrapMany,
+    private readonly _metadata: MetadataSource = getDefaultMetadataSource()
   ) {}
 
   async loadSingle<T>(
@@ -29,7 +43,7 @@ export class RelationshipLoader {
     entityClass: new () => T,
     relationship: RelationshipMetadata
   ): Promise<unknown> {
-    const metadata = MetadataStorage.getEntity(entityClass);
+    const metadata = this._metadata.getEntity(entityClass);
     if (!metadata) return null;
     if (typeof relationship.targetEntity === 'string') return null;
     if (relationship.targetEntity == null) return null;
@@ -70,7 +84,7 @@ export class RelationshipLoader {
     relationship: RelationshipMetadata
   ): Promise<void> {
     if (entities.length === 0) return;
-    const metadata = MetadataStorage.getEntity(entityClass);
+    const metadata = this._metadata.getEntity(entityClass);
     if (!metadata) return;
     if (typeof relationship.targetEntity === 'string') return;
     if (relationship.targetEntity == null) return;
@@ -94,12 +108,12 @@ export class RelationshipLoader {
   private async loadManyToMany<T>(
     entity: T,
     entityClass: new () => T,
-    metadata: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
+    metadata: EntityMetadata,
     relationship: RelationshipMetadata,
     targetCtor: new () => object
   ): Promise<unknown> {
     const sourcePk = metadata.primaryKeys?.[0];
-    const targetPk = (MetadataStorage.getEntity(targetCtor)?.primaryKeys ?? [])[0];
+    const targetPk = (this._metadata.getEntity(targetCtor)?.primaryKeys ?? [])[0];
     const through = relationship as RelationshipMetadata & {
       through?: { table: string; sourceFk?: string; targetFk?: string };
     };
@@ -122,7 +136,7 @@ export class RelationshipLoader {
   private async batchLoadToOne<T>(
     entities: T[],
     relationship: RelationshipMetadata,
-    meta: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
+    meta: EntityMetadata,
     targetCtor: new () => object
   ): Promise<void> {
     const fk = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
@@ -139,7 +153,7 @@ export class RelationshipLoader {
     const related = await this.provider.findWhereIn(targetCtor, targetPkCol, uniqueFkValues);
     const relatedProxies = this.wrapMany(related, targetCtor, this.provider);
 
-    const targetMeta = MetadataStorage.getEntity(targetCtor);
+    const targetMeta = this._metadata.getEntity(targetCtor);
     const targetPk = targetMeta?.primaryKeys?.[0];
     if (!targetPk) return;
 
@@ -163,7 +177,7 @@ export class RelationshipLoader {
     entities: T[],
     entityClass: new () => T,
     relationship: RelationshipMetadata,
-    meta: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
+    meta: EntityMetadata,
     targetCtor: new () => object
   ): Promise<void> {
     const parentPk = meta.primaryKeys?.[0];
@@ -200,7 +214,7 @@ export class RelationshipLoader {
     entities: T[],
     entityClass: new () => T,
     relationship: RelationshipMetadata,
-    meta: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
+    meta: EntityMetadata,
     targetCtor: new () => object
   ): Promise<void> {
     const sourcePk = meta.primaryKeys?.[0];
@@ -209,7 +223,7 @@ export class RelationshipLoader {
       through?: { table: string; sourceFk?: string; targetFk?: string };
     };
     if (!through.through?.table) return;
-    const targetPk = (MetadataStorage.getEntity(targetCtor)?.primaryKeys || [])[0];
+    const targetPk = (this._metadata.getEntity(targetCtor)?.primaryKeys || [])[0];
     if (!targetPk) return;
 
     const jt = through.through.table;
@@ -328,9 +342,8 @@ export class RelationshipLoader {
 
   private getColumnNameForPk(targetCtor: new () => object, targetPk: string): string {
     return (
-      (MetadataStorage.getEntity(targetCtor)?.columns || []).find(
-        (c) => c.propertyName === targetPk
-      )?.columnName || targetPk
+      (this._metadata.getEntity(targetCtor)?.columns || []).find((c) => c.propertyName === targetPk)
+        ?.columnName || targetPk
     );
   }
 
