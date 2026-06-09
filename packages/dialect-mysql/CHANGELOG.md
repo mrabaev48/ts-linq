@@ -1,5 +1,12 @@
 # @ts-linq/dialect-mysql
 
+## 2.6.15
+
+### Patch Changes
+
+- Updated dependencies [[`c305564`](https://github.com/mrabaev48/ts-linq/commit/c305564e8c155a50d9e3414fb8499b9e3a50f092)]:
+  - @ts-linq/sql-visitor@4.0.0
+
 ## 2.6.14
 
 ### Patch Changes

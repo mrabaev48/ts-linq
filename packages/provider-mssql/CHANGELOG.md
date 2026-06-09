@@ -1,5 +1,12 @@
 # @ts-linq/provider-mssql
 
+## 3.0.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-linq/dialect-mssql@2.6.17
+
 ## 3.0.3
 
 ### Patch Changes
