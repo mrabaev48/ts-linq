@@ -27,6 +27,13 @@ export class SpatialMethodVisitor implements NodeVisitor<MethodNode> {
 
   public visit(node: MethodNode, ctx: VisitContext): ConditionFragment {
     const { inputParameters, resolver, state } = ctx;
+    if (node.object.type !== 'property') {
+      throw new AstSqlGenerationError(
+        'UNSUPPORTED_METHOD',
+        `Spatial method "${node.method}" is not supported over a JSON path.`,
+        { nodeType: 'method', method: node.method }
+      );
+    }
     const col = renderPropertyName(node.object, resolver);
 
     switch (node.method) {
