@@ -1,5 +1,12 @@
 # @ts-linq/core
 
+## 3.0.6
+
+### Patch Changes
+
+- Updated dependencies [6bd1cef]
+  - @ts-linq/concurrency@3.0.0
+
 ## 3.0.5
 
 ### Patch Changes
