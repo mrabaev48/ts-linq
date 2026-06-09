@@ -5,6 +5,7 @@ export { JsonAccessRewriter } from './JsonAccessRewriter';
 export { ParameterState, ParameterStyle } from './ParameterStyle';
 export { CallSyntaxEmitter, ExecSyntaxEmitter } from './sp-call-emitter';
 export { SqlVisitor, type SqlVisitorOptions } from './SqlVisitor';
+export type { ConditionFragment, SqlFragment } from './types';
 export type { ColumnResolver, ConverterResolver } from './visitors/BinaryVisitor';
 export { BinaryVisitor, renderPropertyName, resolveParameterRef } from './visitors/BinaryVisitor';
 export { EfFunctionVisitor } from './visitors/EfFunctionVisitor';

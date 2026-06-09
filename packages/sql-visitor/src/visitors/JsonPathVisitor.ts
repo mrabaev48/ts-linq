@@ -1,7 +1,7 @@
 import type { JsonPathExpression } from '@ts-linq/ast';
-import type { ConditionFragment, SqlFragment } from '@ts-linq/ast';
 
 import type { ParameterState } from '../ParameterStyle';
+import type { ConditionFragment, SqlFragment } from '../types';
 
 /**
  * Dialect-specific translator for JsonPathExpression → SQL fragment.
