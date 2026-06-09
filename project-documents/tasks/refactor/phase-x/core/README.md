@@ -33,7 +33,7 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 | 1 | task-4 | P0 | ✅ Completed | Self-contained SQL-injection/dialect-leak fix; ship first |
 | 2 | task-2 | P0 | ✅ Completed | Inject `MetadataSource`; unblocks honest loader testing |
 | 3 | task-6 | P1 | ✅ Completed | Typed errors (after types/task-2) before further refactor |
-| 4 | task-5 | P0 | ⏳ Pending | Silent-swallow/unsafe-fallback fixes on hot path |
+| 4 | task-5 | P0 | ✅ Completed | Silent-swallow/unsafe-fallback fixes on hot path |
 | 5 | task-1 | P0 | ⏳ Pending | Decompose `DatabaseProvider` god class (anchor) |
 | 6 | task-3 | P1 | ⏳ Pending | Split `EntityLoader`; remove loader duplication |
 | 7 | task-7 | P1 | ⏳ Pending | Remove `as unknown as` casts (do with task-3) |
@@ -69,6 +69,26 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 > core; `@ts-linq/types` was not modified. Contract covered by `core/tests-new/TypedErrors.test.ts`
 > (asserts `instanceof` + `code` + `details`, never message text). Package remains 🔄 in progress
 > (tasks 5, 1, 3, 7, 8, 9 pending).
+>
+> **task-5 (✅ Completed)** — the invalid silent-swallow / unsafe-fallback catches on the hot
+> CRUD and loading paths now surface typed failures. `DatabaseProvider.upsert` discriminates on
+> the new typed `EntityNotFoundError` signal (update affecting zero rows) instead of catching
+> *any* error to fall back to INSERT, so deadlocks / optimistic-concurrency / validation /
+> connection errors propagate rather than spuriously inserting a duplicate. `OwnedEntityHydrator.
+> hydrateJson` throws `OwnedEntityHydrationError` (with `cause` + safe context) on a corrupt JSON
+> column instead of silently returning `undefined`. `EntityLoader.loadRelationshipByType`
+> propagates a typed `RelationshipLoadError` so a failed relationship load is observable rather
+> than a silently half-populated entity. Every remaining intentional swallow (logger isolation in
+> `mergeLoggers`, `crossQuery` telemetry, stage-3 init) is routed through the single
+> `logInternalError(context, error)` channel. The two valid recovery sites are preserved
+> unchanged: the plan-stringify size-guard (`DatabaseProvider.maybeAnalyzeQuery`) and
+> `logInternalError`'s own last-resort catch. Three new error classes/codes were added to
+> `@ts-linq/types` (`EntityNotFoundError`, `OwnedEntityHydrationError`, `RelationshipLoadError`).
+> The real providers override `upsert` with native MERGE/ON CONFLICT/ON DUPLICATE KEY and do not
+> depend on the base catch-all, so no provider changes were required; their bare-`Error`
+> zero-rows throw in `update` is a separate `@ts-linq/types` §16 follow-up (tech debt). Error-path
+> coverage: `DatabaseProvider.upsert.test.ts`, updated `OwnedEntityHydrator*` and
+> `EntityLoader.test.ts`. Package remains 🔄 in progress (tasks 1, 3, 7, 8, 9 pending).
 
 ## Dependencies on other packages
 - `@ts-linq/types` — error hierarchy (`types/task-2`), `SqlDialect`/identifier quoting (task-4), metadata interfaces.
