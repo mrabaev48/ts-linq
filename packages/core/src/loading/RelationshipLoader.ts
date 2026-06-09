@@ -1,5 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { RelationshipMetadata } from '@ts-linq/types';
+import type { RelationshipMetadata, SqlParameter } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { type LazyLoadingState, markLoaded } from './LazyLoadingState';
@@ -258,19 +258,21 @@ export class RelationshipLoader {
     targetFk: string,
     sourceIds: unknown[]
   ): Promise<{ bySource: Map<unknown, unknown[]>; targetIds: Set<unknown> }> {
-    const rows = await this.provider.executeQuery<{ s: unknown; t: unknown }>(
-      `SELECT ${sourceFk} as s, ${targetFk} as t FROM ${junctionTable} WHERE ${sourceFk} IN (${sourceIds
-        .map(() => '?')
-        .join(',')})`,
-      sourceIds as Array<string | number | boolean | Date | null>
-    );
+    const rows = await this.provider.queryJunction({
+      table: junctionTable,
+      selectColumns: [sourceFk, targetFk],
+      whereColumn: sourceFk,
+      whereValues: sourceIds as SqlParameter[]
+    });
     const bySource = new Map<unknown, unknown[]>();
     const targetIds = new Set<unknown>();
     for (const r of rows) {
-      targetIds.add(r.t);
-      const arr = bySource.get(r.s) || [];
-      arr.push(r.t);
-      bySource.set(r.s, arr);
+      const s = r[sourceFk];
+      const t = r[targetFk];
+      targetIds.add(t);
+      const arr = bySource.get(s) || [];
+      arr.push(t);
+      bySource.set(s, arr);
     }
     return { bySource, targetIds };
   }
@@ -281,11 +283,13 @@ export class RelationshipLoader {
     targetFk: string,
     sourceId: unknown
   ): Promise<unknown[]> {
-    const rows = await this.provider.executeQuery<{ id: unknown }>(
-      `SELECT ${targetFk} as id FROM ${junctionTable} WHERE ${sourceFk} = ?`,
-      [sourceId as string | number | boolean | Date | null]
-    );
-    return rows.map((r) => r.id).filter((v) => v !== undefined && v !== null);
+    const rows = await this.provider.queryJunction({
+      table: junctionTable,
+      selectColumns: [targetFk],
+      whereColumn: sourceFk,
+      whereValues: [sourceId as SqlParameter]
+    });
+    return rows.map((r) => r[targetFk]).filter((v) => v !== undefined && v !== null);
   }
 
   private async fetchAndMapTargets(

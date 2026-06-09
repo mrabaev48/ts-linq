@@ -73,8 +73,8 @@ jobs:
       - name: Architecture — phantom dependencies
         run: pnpm arch:phantom
 
-  changeset-check:
-    name: Changeset present
+  version-bump-check:
+    name: Version bump present
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
 
@@ -83,16 +83,45 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - name: Verify version bumped for changed packages
+        run: |
+          # Packages excluded from versioning (mirrors .changeset/config.json ignore list)
+          EXCLUDED="e2e-tests|integration-tests|examples|eslint-config|jest-config|typescript-config"
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
+          # Find versioned packages whose src/ changed in this PR
+          CHANGED=$(git diff origin/${{ github.base_ref }}...HEAD --name-only \
+            | grep -E '^packages/[^/]+/src/' \
+            | grep -vE "^packages/(${EXCLUDED})/" \
+            | sed 's|packages/\([^/]*\)/.*|\1|' \
+            | sort -u)
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          if [ -z "$CHANGED" ]; then
+            echo "No versioned package sources changed — no version bump required."
+            exit 0
+          fi
 
-      - name: Check for changeset
-        if: "!startsWith(github.event.pull_request.title, 'chore: version packages')"
-        run: pnpm changeset status --since=origin/main
+          echo "Changed versioned packages: $(echo "$CHANGED" | tr '\n' ' ')"
+
+          # Verify at least one package.json version was bumped
+          BUMPS=$(git diff origin/${{ github.base_ref }}...HEAD -- packages/*/package.json \
+            | grep '^\+.*"version"' | wc -l)
+
+          if [ "$BUMPS" -eq 0 ]; then
+            echo ""
+            echo "ERROR: Source files changed in versioned packages but no package.json versions were bumped."
+            echo "Run 'pnpm changeset && pnpm changeset version' before pushing."
+            exit 1
+          fi
+
+          echo "Version bump detected (${BUMPS} package(s)) — OK."
+
+      - name: Verify no unconsumed changeset files remain
+        run: |
+          COUNT=$(find .changeset -name "*.md" ! -name "README.md" | wc -l | tr -d ' ')
+          if [ "$COUNT" -gt 0 ]; then
+            echo "ERROR: Found ${COUNT} unconsumed changeset file(s)."
+            echo "Run 'pnpm changeset version' to consume them before opening the PR."
+            find .changeset -name "*.md" ! -name "README.md"
+            exit 1
+          fi
+          echo "No unconsumed changesets — OK."
