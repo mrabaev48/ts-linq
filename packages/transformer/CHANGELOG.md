@@ -1,5 +1,12 @@
 # @ts-linq/transformer
 
+## 2.1.15
+
+### Patch Changes
+
+- Updated dependencies [[`75a9436`](https://github.com/mrabaev48/ts-linq/commit/75a94365e4112b46e74bfaa6fce6dd3c8e86fbb3)]:
+  - @ts-linq/ast@3.0.0
+
 ## 2.1.14
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @ts-linq/cache-memcached
 
+## 1.0.26
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-linq/core@3.0.2
+
 ## 1.0.25
 
 ### Patch Changes
