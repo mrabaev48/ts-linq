@@ -208,7 +208,7 @@ Each package only depends on packages already completed above it.
 | cache-redis | 7 | 0 | 5 | 2 | 0 | not-started |
 | cli | 7 | 2 | 3 | 1 | 1 | not-started |
 | composite-sql-logger | 3 | 0 | 2 | 1 | 0 | not-started |
-| concurrency | 2 | 0 | 2 | 0 | 0 | not-started |
+| concurrency | 2 | 0 | 2 | 0 | 0 | 🔄 in progress (task-1 ✅) |
 | core | 9 | 4 | 3 | 2 | 0 | not-started |
 | dialect-mssql | 4 | 1 | 2 | 1 | 0 | not-started |
 | dialect-mysql | 2 | 0 | 2 | 0 | 0 | not-started |

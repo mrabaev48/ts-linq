@@ -16,7 +16,8 @@
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metadata": "workspace:*",
     "@ts-linq/metrics-safe": "workspace:*",
-    "@ts-linq/ast": "workspace:*"
+    "@ts-linq/ast": "workspace:*",
+    "@ts-linq/concurrency": "workspace:*"
   },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",

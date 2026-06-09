@@ -19,6 +19,7 @@
     { "path": "../types" },
     { "path": "../metadata" },
     { "path": "../metrics-safe" },
-    { "path": "../ast" }
+    { "path": "../ast" },
+    { "path": "../concurrency" }
   ]
 }
