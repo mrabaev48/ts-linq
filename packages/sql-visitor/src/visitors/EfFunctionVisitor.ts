@@ -3,22 +3,19 @@ import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { SqlParameter } from '@ts-linq/types';
 
 import type { EfFunctionTranslator } from '../functions/FunctionTranslator';
-import { ParameterState, ParameterStyle } from '../ParameterStyle';
+import type { ParameterState } from '../ParameterStyle';
 import type { ConditionFragment } from '../types';
-import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
+import type { ColumnResolver, NodeVisitor, VisitContext } from '../visitContext';
+import { renderPropertyName, resolveParameterRef } from './BinaryVisitor';
 
-export class EfFunctionVisitor {
+export class EfFunctionVisitor implements NodeVisitor<EfFunctionNode> {
   constructor(
     private readonly translator: EfFunctionTranslator,
     private readonly userFunctions: ReadonlyMap<string, string> = new Map()
   ) {}
 
-  public visit(
-    node: EfFunctionNode,
-    inputParameters: readonly unknown[],
-    resolver?: ColumnResolver,
-    state: ParameterState = new ParameterState(ParameterStyle.Question)
-  ): ConditionFragment {
+  public visit(node: EfFunctionNode, ctx: VisitContext): ConditionFragment {
+    const { inputParameters, resolver, state } = ctx;
     const { fn, args } = node;
 
     switch (fn) {

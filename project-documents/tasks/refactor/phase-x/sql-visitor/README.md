@@ -1,5 +1,7 @@
 # Refactor Audit: sql-visitor
 
+**Package status: 🔄 In Progress** — task-1 ✅ completed; tasks 2–5 pending.
+
 ## Package responsibility
 `@ts-linq/sql-visitor` converts a compiled `ExpressionNode` AST (from `@ts-linq/transformer`)
 into a parameterized SQL `ConditionFragment` (`{ condition, parameters }`). It owns the
@@ -34,13 +36,21 @@ which is the package's core safety property.
 5. Curate the public API; hide internal visitors.
 
 ## Recommended task order
-| Order | Task | Priority | Reason |
-|---:|---|---|---|
-| 1 | task-1 | P1 | Uniform visitor contract + registry; foundation for the rest. |
-| 2 | task-2 | P1 | Remove placeholder-numbering hazard (folds into VisitContext). |
-| 3 | task-4 | P2 | Hide internal visitors so 1 & 2 aren't breaking changes. |
-| 4 | task-3 | P2 | Correctness: EF function property-as-value binding bug. |
-| 5 | task-5 | P2 | Correctness/fail-loud: JSON rewrite gap in isNull/method. |
+| Order | Task | Priority | Status | Reason |
+|---:|---|---|---|---|
+| 1 | task-1 | P1 | ✅ Completed | Uniform visitor contract + registry; foundation for the rest. |
+| 2 | task-2 | P1 | ⏳ Pending | Remove placeholder-numbering hazard (folds into VisitContext). |
+| 3 | task-4 | P2 | ⏳ Pending | Hide internal visitors so 1 & 2 aren't breaking changes. |
+| 4 | task-3 | P2 | ⏳ Pending | Correctness: EF function property-as-value binding bug. |
+| 5 | task-5 | P2 | ⏳ Pending | Correctness/fail-loud: JSON rewrite gap in isNull/method. |
+
+> **task-1 outcome:** introduced `VisitContext` + `NodeVisitor<N>` (`src/visitContext.ts`),
+> migrated all sub-visitors to the uniform `visit(node, ctx)` contract, replaced
+> `SqlVisitor._visit`'s switch with a `Map<ExpressionNode['type'], NodeVisitor>` registry,
+> unified `NullVisitor` into a single `visit` (registered under both `isNull`/`isNotNull`), and
+> made optional visitors (`efFunction`/`jsonPath`) register their real impl when configured or a
+> throwing stub otherwise. SQL output is byte-identical (golden corpus test). Migrating the
+> exported sub-visitor signatures is a **breaking change → `major`** for `@ts-linq/sql-visitor`.
 
 ## Dependencies on other packages
 - `@ts-linq/ast` — consumes `ExpressionNode` and all node subtypes; throws

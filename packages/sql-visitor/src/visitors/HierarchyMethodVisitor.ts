@@ -2,9 +2,9 @@ import type { MethodNode } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { HierarchyIdTranslator } from '@ts-linq/types';
 
-import { ParameterState, ParameterStyle } from '../ParameterStyle';
 import type { ConditionFragment } from '../types';
-import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
+import type { NodeVisitor, VisitContext } from '../visitContext';
+import { renderPropertyName, resolveParameterRef } from './BinaryVisitor';
 
 export type { HierarchyIdTranslator };
 
@@ -14,15 +14,11 @@ export function isHierarchyMethod(method: string): boolean {
   return HIERARCHY_METHODS.has(method);
 }
 
-export class HierarchyMethodVisitor {
+export class HierarchyMethodVisitor implements NodeVisitor<MethodNode> {
   constructor(private readonly translator: HierarchyIdTranslator) {}
 
-  public visit(
-    node: MethodNode,
-    inputParameters: readonly unknown[],
-    resolver?: ColumnResolver,
-    state: ParameterState = new ParameterState(ParameterStyle.Question)
-  ): ConditionFragment {
+  public visit(node: MethodNode, ctx: VisitContext): ConditionFragment {
+    const { inputParameters, resolver, state } = ctx;
     const col = renderPropertyName(node.object, resolver);
 
     switch (node.method) {

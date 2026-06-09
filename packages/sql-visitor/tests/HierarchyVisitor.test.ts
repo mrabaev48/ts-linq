@@ -5,6 +5,7 @@ import type { HierarchyIdTranslator } from '@ts-linq/types';
 import { ParameterStyle } from '../src/ParameterStyle';
 import { SqlVisitor } from '../src/SqlVisitor';
 import { HierarchyMethodVisitor, isHierarchyMethod } from '../src/visitors/HierarchyMethodVisitor';
+import { makeCtx } from './helpers/makeCtx';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ describe('HierarchyMethodVisitor', () => {
       object: prop('path'),
       args: []
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('path.GetLevel()');
     expect(result.parameters).toHaveLength(0);
   });
@@ -60,7 +61,7 @@ describe('HierarchyMethodVisitor', () => {
       object: prop('path'),
       args: [{ type: 'literal', value: '/1/' as unknown as null }]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('path.IsDescendantOf(hierarchyid::Parse(?)) = 1');
     expect(result.parameters).toEqual(['/1/']);
   });
@@ -72,7 +73,7 @@ describe('HierarchyMethodVisitor', () => {
       object: prop('path'),
       args: [{ type: 'parameterRef', index: 0 }]
     };
-    const result = visitor.visit(node, ['/2/']);
+    const result = visitor.visit(node, makeCtx({ inputParameters: ['/2/'] }));
     expect(result.condition).toBe('path.IsDescendantOf(hierarchyid::Parse(?)) = 1');
     expect(result.parameters).toEqual(['/2/']);
   });
@@ -84,7 +85,7 @@ describe('HierarchyMethodVisitor', () => {
       object: prop('path'),
       args: [{ type: 'literal', value: 2 as unknown as null }]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('path.GetAncestor(?)');
     expect(result.parameters).toEqual([2]);
   });
@@ -96,7 +97,7 @@ describe('HierarchyMethodVisitor', () => {
       object: prop('path'),
       args: []
     };
-    expect(() => visitor.visit(node, [])).toThrow(AstSqlGenerationError);
+    expect(() => visitor.visit(node, makeCtx())).toThrow(AstSqlGenerationError);
   });
 
   it('throws for unknown hierarchy method', () => {
@@ -106,7 +107,7 @@ describe('HierarchyMethodVisitor', () => {
       object: prop('path'),
       args: []
     } as unknown as MethodNode;
-    expect(() => visitor.visit(node, [])).toThrow(AstSqlGenerationError);
+    expect(() => visitor.visit(node, makeCtx())).toThrow(AstSqlGenerationError);
   });
 
   it('uses positional placeholders when state is positional', () => {
@@ -121,7 +122,7 @@ describe('HierarchyMethodVisitor', () => {
       getLevel: (col) => `nlevel(${col})`,
       getAncestor: (col, p) => `subpath(${col}, 0, nlevel(${col}) - ${p})`
     });
-    const result = visitor2.visit(node, [], undefined, undefined);
+    const result = visitor2.visit(node, makeCtx());
     expect(result.condition).toContain('?');
   });
 });

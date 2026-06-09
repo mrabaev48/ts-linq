@@ -2,17 +2,13 @@ import type { InNode } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { SqlParameter } from '@ts-linq/types';
 
-import { ParameterState, ParameterStyle } from '../ParameterStyle';
 import type { ConditionFragment } from '../types';
-import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
+import type { NodeVisitor, VisitContext } from '../visitContext';
+import { renderPropertyName, resolveParameterRef } from './BinaryVisitor';
 
-export class InVisitor {
-  public visit(
-    node: InNode,
-    inputParameters: readonly unknown[],
-    resolver?: ColumnResolver,
-    state: ParameterState = new ParameterState(ParameterStyle.Question)
-  ): ConditionFragment {
+export class InVisitor implements NodeVisitor<InNode> {
+  public visit(node: InNode, ctx: VisitContext): ConditionFragment {
+    const { inputParameters, resolver, state } = ctx;
     const col = renderPropertyName(node.property, resolver);
 
     if (node.values !== undefined) {

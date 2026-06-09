@@ -6,7 +6,7 @@ export { ParameterState, ParameterStyle } from './ParameterStyle';
 export { CallSyntaxEmitter, ExecSyntaxEmitter } from './sp-call-emitter';
 export { SqlVisitor, type SqlVisitorOptions } from './SqlVisitor';
 export type { ConditionFragment, SqlFragment } from './types';
-export type { ColumnResolver, ConverterResolver } from './visitors/BinaryVisitor';
+export type { ColumnResolver, ConverterResolver, NodeVisitor, VisitContext } from './visitContext';
 export { BinaryVisitor, renderPropertyName, resolveParameterRef } from './visitors/BinaryVisitor';
 export { EfFunctionVisitor } from './visitors/EfFunctionVisitor';
 export { FragmentJoinPlanner } from './visitors/FragmentJoinPlanner';
