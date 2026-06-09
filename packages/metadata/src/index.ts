@@ -17,6 +17,7 @@ export type {
   CompiledShadowPropertyModel,
   CompiledSkipNavigationModel
 } from './CompiledModel';
+export * from './EmptyMetadataSource';
 export * from './Entity';
 export * from './EntityMetadata';
 export * from './MetadataRegistry';

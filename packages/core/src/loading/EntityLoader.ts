@@ -1,7 +1,7 @@
-import { MetadataStorage } from '@ts-linq/metadata';
-import type { FilteredIncludeSpec } from '@ts-linq/types';
+import type { FilteredIncludeSpec, MetadataSource } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
+import { getDefaultMetadataSource } from '../defaultMetadataSource';
 import { ctorName } from '../utils/ctorName';
 import type { LoadingOptions } from './LoadingStrategy';
 import { LoadingStrategy } from './LoadingStrategy';
@@ -14,17 +14,28 @@ export class EntityLoader {
   private _provider: DatabaseProvider;
   private _defaultStrategy: LoadingStrategy = LoadingStrategy.Lazy;
   private readonly _logger?: { warn(message: string, error?: unknown): void };
+  private readonly _metadata: MetadataSource;
   private _inChunkSize: number = 1000;
 
   /**
    * @param provider Database provider used for underlying queries.
+   * @param logger   Optional warning logger.
+   * @param metadata Metadata source the loader resolves entity metadata from.
+   *   Defaults to the global singleton for backward compatibility; the
+   *   composition root ({@link DbContext}) injects the per-context registry to
+   *   preserve multi-tenant isolation.
+   *
+   * @deprecated Relying on the implicit global-singleton default defeats
+   *   per-context isolation — always inject an explicit `MetadataSource`.
    */
   constructor(
     provider: DatabaseProvider,
-    logger?: { warn(message: string, error?: unknown): void }
+    logger?: { warn(message: string, error?: unknown): void },
+    metadata: MetadataSource = getDefaultMetadataSource()
   ) {
     this._provider = provider;
     this._logger = logger;
+    this._metadata = metadata;
   }
 
   /** Configure IN() chunk size from PerformanceOptions. */
@@ -100,7 +111,7 @@ export class EntityLoader {
     options: LoadingOptions
   ): Promise<void> {
     this.ensureStage3Init(entityClass);
-    const metadata = MetadataStorage.getEntity(entityClass);
+    const metadata = this._metadata.getEntity(entityClass);
     if (!metadata) return;
 
     const depth = options.depth ?? 1;
@@ -139,7 +150,7 @@ export class EntityLoader {
   ): Promise<void> {
     if (entities.length === 0) return;
     this.ensureStage3Init(entityClass);
-    const metadata = MetadataStorage.getEntity(entityClass);
+    const metadata = this._metadata.getEntity(entityClass);
     if (!metadata) return;
     const depth = options.depth ?? 1;
     if (depth <= 0) return;
@@ -214,7 +225,7 @@ export class EntityLoader {
   ): Promise<void> {
     if (entities.length === 0 || specs.size === 0) return;
     this.ensureStage3Init(entityClass);
-    const metadata = MetadataStorage.getEntity(entityClass);
+    const metadata = this._metadata.getEntity(entityClass);
     if (!metadata) return;
 
     const parentPkProperty = metadata.primaryKeys?.[0];
@@ -496,7 +507,7 @@ export class EntityLoader {
       }
     }
     const byId = new Map<unknown, unknown>();
-    const targetMeta = MetadataStorage.getEntity(targetCtor);
+    const targetMeta = this._metadata.getEntity(targetCtor);
     const targetPk = targetMeta?.primaryKeys?.[0];
     if (!targetPk) return;
     for (const relatedEntity of related)
