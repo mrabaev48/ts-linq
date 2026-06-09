@@ -1,5 +1,14 @@
 # @ts-linq/orm
 
+## 4.0.4
+
+### Patch Changes
+
+- Updated dependencies [[`c305564`](https://github.com/mrabaev48/ts-linq/commit/c305564e8c155a50d9e3414fb8499b9e3a50f092)]:
+  - @ts-linq/sql-visitor@4.0.0
+  - @ts-linq/query@2.4.21
+  - @ts-linq/migrations@2.6.13
+
 ## 4.0.3
 
 ### Patch Changes

@@ -1,5 +1,33 @@
 # @ts-linq/sql-visitor
 
+## 4.0.0
+
+### Major Changes
+
+- [#178](https://github.com/mrabaev48/ts-linq/pull/178) [`c305564`](https://github.com/mrabaev48/ts-linq/commit/c305564e8c155a50d9e3414fb8499b9e3a50f092) Thanks [@mrabaev48](https://github.com/mrabaev48)! - Curate the public barrel of `@ts-linq/sql-visitor` to the intended published contract.
+
+  The package now exports only `SqlVisitor`/`SqlVisitorOptions`, `ParameterState`/`ParameterStyle`,
+  the rewriters (`JsonAccessRewriter`, `ComplexAccessRewriter`), the emitters (`CallSyntaxEmitter`,
+  `ExecSyntaxEmitter`, `emitTagComments`, and the batch helpers `buildQuestionMarkRows`,
+  `calcChunkSize`, `chunkArray`), and the translator / fragment / port _types_.
+
+  **Breaking:** the sub-visitors (`BinaryVisitor`, `EfFunctionVisitor`, `FragmentJoinPlanner`,
+  `HierarchyMethodVisitor`, `InVisitor`, `JsonPathVisitor`, `LogicalVisitor`, `MethodVisitor`,
+  `NullVisitor`, `SpatialMethodVisitor`, `UnaryVisitor`) and the free helpers (`renderPropertyName`,
+  `resolveParameterRef`, `isHierarchyMethod`, `isSpatialMethod`) are no longer exported from
+  `@ts-linq/sql-visitor`. They are implementation collaborators of `SqlVisitor` and now live behind
+  the new `@ts-linq/sql-visitor/internal` subpath.
+
+  **Migration:** prefer `SqlVisitor` for all SQL generation. If you must reach into a sub-visitor,
+  import it from `@ts-linq/sql-visitor/internal` (unstable — may change without notice). Example:
+
+  ```ts
+  // before
+  import { FragmentJoinPlanner } from '@ts-linq/sql-visitor';
+  // after
+  import { FragmentJoinPlanner } from '@ts-linq/sql-visitor/internal';
+  ```
+
 ## 3.0.0
 
 ### Major Changes
