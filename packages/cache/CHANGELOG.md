@@ -1,5 +1,12 @@
 # @ts-linq/cache
 
+## 8.0.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-linq/core@3.0.4
+
 ## 8.0.3
 
 ### Patch Changes
