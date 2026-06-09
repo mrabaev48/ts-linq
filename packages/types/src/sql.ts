@@ -13,6 +13,24 @@ export interface WhereClause {
   parameters: readonly SqlParameter[];
 }
 
+/**
+ * Declarative specification for a dialect-aware junction (many-to-many) read.
+ *
+ * Describes the read without committing to any SQL text: the provider's
+ * capability quotes every identifier through its dialect and binds
+ * `whereValues` as parameters, keeping `@ts-linq/core` provider-agnostic.
+ */
+export interface JunctionQuerySpec {
+  /** Junction (through) table name — an unquoted identifier. */
+  table: string;
+  /** Columns to project — unquoted identifiers; result keys are these names. */
+  selectColumns: string[];
+  /** Column used in the `WHERE … IN (…)` filter — an unquoted identifier. */
+  whereColumn: string;
+  /** Parameter values bound to the filter (never interpolated). */
+  whereValues: SqlParameter[];
+}
+
 export interface JoinClause {
   type: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
   table: string;
