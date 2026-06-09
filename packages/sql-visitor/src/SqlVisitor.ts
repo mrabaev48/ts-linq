@@ -1,5 +1,4 @@
 import type { ExpressionNode } from '@ts-linq/ast';
-import type { ConditionFragment } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { HierarchyIdTranslator, SpatialTranslator } from '@ts-linq/types';
 
@@ -7,6 +6,7 @@ import type { ComplexAccessRewriter } from './ComplexAccessRewriter';
 import type { EfFunctionTranslator } from './functions/FunctionTranslator';
 import type { JsonAccessRewriter } from './JsonAccessRewriter';
 import { ParameterState, ParameterStyle } from './ParameterStyle';
+import type { ConditionFragment } from './types';
 import {
   BinaryVisitor,
   type ColumnResolver,

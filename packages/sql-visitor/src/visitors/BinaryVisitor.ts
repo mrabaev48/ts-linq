@@ -1,9 +1,9 @@
 import type { BinaryNode, ExpressionNode, ParameterRefNode, PropertyNode } from '@ts-linq/ast';
-import type { ConditionFragment, SqlFragment } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { SqlParameter, ValueConverterLike } from '@ts-linq/types';
 
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
+import type { ConditionFragment, SqlFragment } from '../types';
 
 /**
  * Maps a PropertyNode to its SQL column name.

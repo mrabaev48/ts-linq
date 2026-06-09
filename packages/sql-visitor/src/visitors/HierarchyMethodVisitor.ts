@@ -1,9 +1,9 @@
 import type { MethodNode } from '@ts-linq/ast';
-import type { ConditionFragment } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { HierarchyIdTranslator } from '@ts-linq/types';
 
 import { ParameterState, ParameterStyle } from '../ParameterStyle';
+import type { ConditionFragment } from '../types';
 import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
 
 export type { HierarchyIdTranslator };
