@@ -1,5 +1,4 @@
-import type { MetadataStorage } from '@ts-linq/metadata';
-import type { RelationshipMetadata } from '@ts-linq/types';
+import type { EntityMetadata, RelationshipMetadata } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
 import {
@@ -21,7 +20,7 @@ import type { RelationshipLoader } from './RelationshipLoader';
 export function buildProxyTraps(
   provider: DatabaseProvider,
   entityClass: new () => object,
-  metadata: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
+  metadata: EntityMetadata,
   state: LazyLoadingState,
   loader: RelationshipLoader,
   logWarn: (message: string, error?: unknown) => void
@@ -43,7 +42,7 @@ function proxyGet(
   receiver: unknown,
   provider: DatabaseProvider,
   entityClass: new () => object,
-  metadata: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
+  metadata: EntityMetadata,
   state: LazyLoadingState,
   loader: RelationshipLoader,
   logWarn: (message: string, error?: unknown) => void
@@ -87,7 +86,7 @@ function proxySet(
   prop: PropertyKey,
   value: unknown,
   receiver: unknown,
-  metadata: NonNullable<ReturnType<typeof MetadataStorage.getEntity>>,
+  metadata: EntityMetadata,
   state: LazyLoadingState
 ): boolean {
   const propName = String(prop);

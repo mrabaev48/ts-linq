@@ -1,6 +1,7 @@
-import { MetadataStorage } from '@ts-linq/metadata';
+import type { MetadataSource } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
+import { getDefaultMetadataSource } from '../defaultMetadataSource';
 import { type LazyLoadingState } from './LazyLoadingState';
 import { LAZY_LOADING_PROXY, LAZY_LOADING_STATE, LAZY_LOADING_TARGET } from './LazyLoadingSymbols';
 import { buildProxyTraps } from './LazyProxyTraps';
@@ -29,18 +30,27 @@ export class LazyLoadingProxy {
     );
   }
 
+  /**
+   * @param metadata Metadata source used to resolve relationship metadata.
+   *   Defaults to the global singleton for backward compatibility; the
+   *   composition root injects the per-context registry to preserve isolation.
+   *
+   * @deprecated Relying on the implicit global-singleton default defeats
+   *   per-context isolation — pass an explicit `MetadataSource`.
+   */
   static create<T extends object>(
     entity: T,
     entityClass: new () => T,
-    provider: DatabaseProvider
+    provider: DatabaseProvider,
+    metadata: MetadataSource = getDefaultMetadataSource()
   ): T {
     if (this.isLazyProxy(entity)) return entity;
 
-    const metadata = MetadataStorage.getEntity(entityClass);
-    if (!metadata || metadata.relationships.length === 0) return entity;
+    const entityMetadata = metadata.getEntity(entityClass);
+    if (!entityMetadata || entityMetadata.relationships.length === 0) return entity;
 
     const state: LazyLoadingState = {};
-    for (const rel of metadata.relationships) {
+    for (const rel of entityMetadata.relationships) {
       state[rel.propertyName] = { isLoaded: false, isLoading: false };
       const currentValue = (entity as Record<string, unknown>)[rel.propertyName];
       if (currentValue !== undefined && currentValue !== null) {
@@ -50,22 +60,25 @@ export class LazyLoadingProxy {
 
     const loader = new RelationshipLoader(
       provider,
-      LazyLoadingProxy.create.bind(LazyLoadingProxy) as <U extends object>(
+      (<U extends object>(e: U, ctor: new () => U, p: DatabaseProvider): U =>
+        LazyLoadingProxy.create(e, ctor, p, metadata)) as <U extends object>(
         e: U,
         ctor: new () => U,
         p: DatabaseProvider
       ) => U,
-      LazyLoadingProxy.createMany.bind(LazyLoadingProxy) as <U extends object>(
+      (<U extends object>(entities: U[], ctor: new () => U, p: DatabaseProvider): U[] =>
+        LazyLoadingProxy.createMany(entities, ctor, p, metadata)) as <U extends object>(
         entities: U[],
         ctor: new () => U,
         p: DatabaseProvider
-      ) => U[]
+      ) => U[],
+      metadata
     );
 
     const traps = buildProxyTraps(
       provider,
       entityClass as unknown as new () => object,
-      metadata,
+      entityMetadata,
       state,
       loader,
       (msg, err) => LazyLoadingProxy.getLogger().warn(msg, err)
@@ -74,12 +87,17 @@ export class LazyLoadingProxy {
     return new Proxy(entity, traps as ProxyHandler<T>);
   }
 
+  /**
+   * @deprecated Relying on the implicit global-singleton default defeats
+   *   per-context isolation — pass an explicit `MetadataSource`.
+   */
   static createMany<T extends object>(
     entities: T[],
     entityClass: new () => T,
-    provider: DatabaseProvider
+    provider: DatabaseProvider,
+    metadata: MetadataSource = getDefaultMetadataSource()
   ): T[] {
-    return entities.map((entity) => this.create(entity, entityClass, provider));
+    return entities.map((entity) => this.create(entity, entityClass, provider, metadata));
   }
 
   static isLazyProxy(entity: unknown): boolean {
@@ -104,35 +122,45 @@ export class LazyLoadingProxy {
     return this.getLoadingState(entity)?.[propertyName]?.isLoaded ?? false;
   }
 
+  /**
+   * @deprecated Relying on the implicit global-singleton default defeats
+   *   per-context isolation — pass an explicit `MetadataSource`.
+   */
   static async preloadRelationships<T extends object>(
     entities: T[],
     entityClass: new () => T,
     propertyNames: string[],
-    provider: DatabaseProvider
+    provider: DatabaseProvider,
+    metadata: MetadataSource = getDefaultMetadataSource()
   ): Promise<void> {
     if (entities.length === 0) return;
-    const metadata = MetadataStorage.getEntity(entityClass);
-    if (!metadata) return;
+    const entityMetadata = metadata.getEntity(entityClass);
+    if (!entityMetadata) return;
 
     const loader = new RelationshipLoader(
       provider,
-      LazyLoadingProxy.create.bind(LazyLoadingProxy) as <U extends object>(
+      (<U extends object>(e: U, ctor: new () => U, p: DatabaseProvider): U =>
+        LazyLoadingProxy.create(e, ctor, p, metadata)) as <U extends object>(
         e: U,
         ctor: new () => U,
         p: DatabaseProvider
       ) => U,
-      LazyLoadingProxy.createMany.bind(LazyLoadingProxy) as <U extends object>(
+      (<U extends object>(entities: U[], ctor: new () => U, p: DatabaseProvider): U[] =>
+        LazyLoadingProxy.createMany(entities, ctor, p, metadata)) as <U extends object>(
         entities: U[],
         ctor: new () => U,
         p: DatabaseProvider
-      ) => U[]
+      ) => U[],
+      metadata
     );
 
     const proxiedEntities = entities.filter((e) => this.isLazyProxy(e));
     const nonProxiedEntities = entities.filter((e) => !this.isLazyProxy(e));
 
     for (const propertyName of propertyNames) {
-      const relationship = metadata.relationships.find((r) => r.propertyName === propertyName);
+      const relationship = entityMetadata.relationships.find(
+        (r) => r.propertyName === propertyName
+      );
       if (!relationship) continue;
 
       const entitiesToLoad = proxiedEntities.filter((entity) => {

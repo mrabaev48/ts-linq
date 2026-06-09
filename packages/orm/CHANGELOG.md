@@ -1,5 +1,28 @@
 # @ts-linq/orm
 
+## 4.0.11
+
+### Patch Changes
+
+- Inject `MetadataSource` into the loading layer (break the hidden `MetadataStorage` singleton coupling).
+
+  `EntityLoader`, `RelationshipLoader`, and the `LazyLoadingProxy.create` / `createMany` /
+  `preloadRelationships` entry points now resolve entity metadata from an injected `MetadataSource`
+  port (reused from `@ts-linq/types`, implemented by `MetadataRegistry`) instead of reaching into the
+  process-wide `MetadataStorage` global. `DbContext` wires `options.registry ?? MetadataStorage.getInstance()`
+  into the loaders, so per-context / multi-tenant isolation now extends to relationship loading.
+
+  Backward compatible: the new metadata parameter defaults to the global singleton (via the new
+  `@deprecated` `getDefaultMetadataSource()` composition helper), so existing callers compile unchanged.
+  A new `EmptyMetadataSource` Null Object is exported from `@ts-linq/metadata` for tests that need a
+  guaranteed-empty source.
+
+- Updated dependencies
+  - @ts-linq/metadata@4.1.0
+  - @ts-linq/core@3.0.8
+  - @ts-linq/migrations@2.6.19
+  - @ts-linq/query@2.4.28
+
 ## 4.0.10
 
 ### Patch Changes
