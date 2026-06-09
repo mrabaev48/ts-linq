@@ -62,6 +62,25 @@ describe('EfFunctionVisitor — PostgreSQL', () => {
     expect(result.parameters).toHaveLength(1);
   });
 
+  it('dateDiffDay(start, end) — two columns inline with zero bound parameters', () => {
+    const resolver = (node: PropertyNode): string => `"a"."${node.name ?? ''}"`;
+    const node = efNode('dateDiffDay', prop('start'), prop('end'));
+    const result = visitor.visit(node, makeCtx({ resolver }));
+    // Property used as a value must be inlined as a resolved column reference, not a parameter.
+    expect(result.parameters).toEqual([]);
+    expect(result.condition).toContain('"a"."start"');
+    expect(result.condition).toContain('"a"."end"');
+    expect(result.condition).not.toContain('?');
+    expect(result.condition).not.toContain('$1');
+  });
+
+  it('like(name, literal) — literal still binds as a parameter (regression)', () => {
+    const node = efNode('like', prop('name'), { type: 'literal', value: '%x%' });
+    const result = visitor.visit(node, makeCtx());
+    expect(result.condition).toBe('name LIKE ?');
+    expect(result.parameters).toEqual(['%x%']);
+  });
+
   it('greatest — GREATEST(...)', () => {
     const node = efNode('greatest', prop('a'), prop('b'), { type: 'literal', value: 100 });
     const result = visitor.visit(node, makeCtx());

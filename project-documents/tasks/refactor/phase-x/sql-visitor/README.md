@@ -1,6 +1,6 @@
 # Refactor Audit: sql-visitor
 
-**Package status: 🔄 In Progress** — tasks 1, 2, 4 ✅ completed; tasks 3, 5 pending.
+**Package status: 🔄 In Progress** — tasks 1, 2, 3, 4 ✅ completed; task 5 pending.
 
 ## Package responsibility
 `@ts-linq/sql-visitor` converts a compiled `ExpressionNode` AST (from `@ts-linq/transformer`)
@@ -41,7 +41,7 @@ which is the package's core safety property.
 | 1 | task-1 | P1 | ✅ Completed | Uniform visitor contract + registry; foundation for the rest. |
 | 2 | task-2 | P1 | ✅ Completed | Remove placeholder-numbering hazard (folds into VisitContext). |
 | 3 | task-4 | P2 | ✅ Completed | Hide internal visitors so 1 & 2 aren't breaking changes. |
-| 4 | task-3 | P2 | ⏳ Pending | Correctness: EF function property-as-value binding bug. |
+| 4 | task-3 | P2 | ✅ Completed | Correctness: EF function property-as-value binding bug. |
 | 5 | task-5 | P2 | ⏳ Pending | Correctness/fail-loud: JSON rewrite gap in isNull/method. |
 
 > **task-1 outcome:** introduced `VisitContext` + `NodeVisitor<N>` (`src/visitContext.ts`),
@@ -80,6 +80,22 @@ which is the package's core safety property.
 > `sql-visitor` `tsd` block. Because a sub-visitor was used externally and migrated to
 > `/internal`, this is **`major`** for `@ts-linq/sql-visitor`. Knock-on: with visitors now
 > internal, the task-1/task-2 signature changes are **no longer a public breaking change**.
+
+> **task-3 outcome:** fixed `EfFunctionVisitor.resolveParam`'s `PropertyNode`-in-value-position
+> branch, which previously emitted a placeholder and bound the **column name string** as a
+> parameter (with `resolver = undefined`, dropping `@Column({ name })` mapping). The property
+> path now inlines a resolved column reference (`renderPropertyName(arg, resolver)`, no
+> placeholder/parameter), matching the already-correct `resolveVariadicArgs`. DRY: extracted a
+> shared private `renderArg(arg, inputParameters, resolver, state)` helper that is the single
+> source of truth for the property/literal/parameterRef branches; both `resolveParam` (single
+> value arg, keeps the `undefined`-arg guard) and `resolveVariadicArgs` now delegate to it.
+> `resolver` is threaded through all four single-value callers (`like`, `iLike`, `dateDiffDay`,
+> `dateDiffMonth`) — never passed as `undefined` where available. Added two unit tests
+> (`tests/EfFunctionVisitor.test.ts`): a two-column `dateDiffDay(start, end)` emitting zero bound
+> parameters with resolver-mapped names, and a literal-path regression. The bug is currently
+> **unreachable in production** (the EF visitor is not yet wired into `.where()` — see
+> `query/task-4.md`); the fix is a pre-emptive guard. Correctness fix, no public API change →
+> **`patch`** for `@ts-linq/sql-visitor`.
 
 ## Dependencies on other packages
 - `@ts-linq/ast` — consumes `ExpressionNode` and all node subtypes; throws

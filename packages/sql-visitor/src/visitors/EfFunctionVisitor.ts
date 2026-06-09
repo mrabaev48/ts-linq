@@ -21,8 +21,8 @@ export class EfFunctionVisitor implements NodeVisitor<EfFunctionNode> {
     switch (fn) {
       case 'like': {
         const col = this.resolveCol(args[0], resolver);
-        const [param, value] = this.resolveParam(args[1], inputParameters, state);
-        return { condition: this.translator.like(col, param), parameters: [value] };
+        const { sql, parameters } = this.resolveParam(args[1], inputParameters, resolver, state);
+        return { condition: this.translator.like(col, sql), parameters };
       }
 
       case 'iLike': {
@@ -35,8 +35,8 @@ export class EfFunctionVisitor implements NodeVisitor<EfFunctionNode> {
           );
         }
         const col = this.resolveCol(args[0], resolver);
-        const [param, value] = this.resolveParam(args[1], inputParameters, state);
-        return { condition: this.translator.iLike(col, param), parameters: [value] };
+        const { sql, parameters } = this.resolveParam(args[1], inputParameters, resolver, state);
+        return { condition: this.translator.iLike(col, sql), parameters };
       }
 
       case 'random':
@@ -44,14 +44,14 @@ export class EfFunctionVisitor implements NodeVisitor<EfFunctionNode> {
 
       case 'dateDiffDay': {
         const col = this.resolveCol(args[0], resolver);
-        const [param, value] = this.resolveParam(args[1], inputParameters, state);
-        return { condition: this.translator.dateDiffDay(col, param), parameters: [value] };
+        const { sql, parameters } = this.resolveParam(args[1], inputParameters, resolver, state);
+        return { condition: this.translator.dateDiffDay(col, sql), parameters };
       }
 
       case 'dateDiffMonth': {
         const col = this.resolveCol(args[0], resolver);
-        const [param, value] = this.resolveParam(args[1], inputParameters, state);
-        return { condition: this.translator.dateDiffMonth(col, param), parameters: [value] };
+        const { sql, parameters } = this.resolveParam(args[1], inputParameters, resolver, state);
+        return { condition: this.translator.dateDiffMonth(col, sql), parameters };
       }
 
       case 'greatest': {
@@ -129,8 +129,9 @@ export class EfFunctionVisitor implements NodeVisitor<EfFunctionNode> {
   private resolveParam(
     arg: PropertyNode | LiteralNode | ParameterRefNode | undefined,
     inputParameters: readonly unknown[],
+    resolver: ColumnResolver | undefined,
     state: ParameterState
-  ): [placeholder: string, value: SqlParameter] {
+  ): { sql: string; parameters: SqlParameter[] } {
     if (arg === undefined) {
       throw new AstSqlGenerationError(
         'INVALID_FUNCTION_NODE',
@@ -138,12 +139,7 @@ export class EfFunctionVisitor implements NodeVisitor<EfFunctionNode> {
         { nodeType: 'efFunction' }
       );
     }
-    const placeholder = state.next();
-    if (arg.type === 'literal') return [placeholder, arg.value];
-    if (arg.type === 'parameterRef')
-      return [placeholder, resolveParameterRef(arg, inputParameters) as SqlParameter];
-    // Property node used as a value (rare but allowed)
-    return [placeholder, renderPropertyName(arg, undefined)];
+    return this.renderArg(arg, inputParameters, resolver, state);
   }
 
   private resolveVariadicArgs(
@@ -156,19 +152,36 @@ export class EfFunctionVisitor implements NodeVisitor<EfFunctionNode> {
     const parameters: SqlParameter[] = [];
 
     for (const arg of args) {
-      if (arg.type === 'property') {
-        parts.push(renderPropertyName(arg, resolver));
-      } else if (arg.type === 'literal') {
-        const placeholder = state.next();
-        parts.push(placeholder);
-        parameters.push(arg.value);
-      } else {
-        const placeholder = state.next();
-        parts.push(placeholder);
-        parameters.push(resolveParameterRef(arg, inputParameters) as SqlParameter);
-      }
+      const { sql, parameters: argParams } = this.renderArg(arg, inputParameters, resolver, state);
+      parts.push(sql);
+      parameters.push(...argParams);
     }
 
     return { parts, parameters };
+  }
+
+  /**
+   * Renders a single EF function argument to a SQL fragment.
+   *
+   * A property used in a value position is inlined as a resolved column reference
+   * (no placeholder, no bound parameter); literals and parameter refs are emitted as
+   * placeholders with their value bound. Shared by both the single-value
+   * ({@link resolveParam}) and variadic ({@link resolveVariadicArgs}) paths.
+   */
+  private renderArg(
+    arg: PropertyNode | LiteralNode | ParameterRefNode,
+    inputParameters: readonly unknown[],
+    resolver: ColumnResolver | undefined,
+    state: ParameterState
+  ): { sql: string; parameters: SqlParameter[] } {
+    if (arg.type === 'property') {
+      return { sql: renderPropertyName(arg, resolver), parameters: [] };
+    }
+    const placeholder = state.next();
+    if (arg.type === 'literal') return { sql: placeholder, parameters: [arg.value] };
+    return {
+      sql: placeholder,
+      parameters: [resolveParameterRef(arg, inputParameters) as SqlParameter]
+    };
   }
 }
