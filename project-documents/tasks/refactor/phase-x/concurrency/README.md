@@ -51,10 +51,19 @@ The package is small (50 + 61 LOC) and depends only on `@ts-linq/types`.
 
 ## Recommended task order
 
-| Order | Task | Priority | Reason |
-|---:|---|---|---|
-| 1 | task-1.md — De-duplicate RetryPolicies across concurrency/core | P1 | Two copies of the same public classes; boundary confusion |
-| 2 | task-2.md — Make `ExecutionStrategy` testable + policy-driven | P1 | Hard-coded delays; ignores `RetryPolicy`; not unit-testable |
+| Order | Task | Priority | Status | Reason |
+|---:|---|---|---|---|
+| 1 | task-1.md — De-duplicate RetryPolicies across concurrency/core | P1 | ✅ Completed | Two copies of the same public classes; boundary confusion |
+| 2 | task-2.md — Make `ExecutionStrategy` testable + policy-driven | P1 | ⬜ Not started | Hard-coded delays; ignores `RetryPolicy`; not unit-testable |
+
+> **task-1 outcome (completed).** Canonical home is `@ts-linq/concurrency`
+> (`src/RetryPolicies.ts`). `@ts-linq/core` now re-exports the three policy classes
+> and `ExponentialBackoffOptions` from `core/src/utils/RetryPolicies.ts` via a pure
+> named facade — all existing import paths stay intact and cross-package
+> `instanceof` holds (one class object monorepo-wide). Direction `core → concurrency`
+> introduces no cycle (`concurrency` depends only on `@ts-linq/types`) and is
+> permitted by `.dependency-cruiser.cjs`. Package stays **🔄 In Progress** until
+> task-2 lands.
 
 ## Dependencies on other packages
 
