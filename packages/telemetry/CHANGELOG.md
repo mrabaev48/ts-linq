@@ -1,5 +1,12 @@
 # @ts-linq/telemetry
 
+## 2.1.16
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.2.0
+
 ## 2.1.15
 
 ### Patch Changes

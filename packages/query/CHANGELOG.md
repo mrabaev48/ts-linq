@@ -1,5 +1,17 @@
 # @ts-linq/query
 
+## 2.4.30
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.2.0
+  - @ts-linq/core@3.0.10
+  - @ts-linq/ast@3.2.2
+  - @ts-linq/metadata@4.1.1
+  - @ts-linq/metrics-safe@1.2.4
+  - @ts-linq/sql-visitor@4.1.2
+
 ## 2.4.29
 
 ### Patch Changes

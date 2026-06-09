@@ -14,6 +14,7 @@ import type {
   SqlParameter
 } from '@ts-linq/types';
 import {
+  EntityNotFoundError,
   InvalidIdentifierError,
   OperationAbortedError,
   UnsupportedOperationError
@@ -223,12 +224,24 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     }
   }
 
-  /** Upsert single entity: try update, fallback to insert when no rows updated. */
+  /**
+   * Upsert single entity: update first, falling back to insert only when the
+   * update reports the row is absent.
+   *
+   * The fallback is gated on the typed {@link EntityNotFoundError} signal (an
+   * update that affected zero rows). Any other failure — deadlock, optimistic
+   * concurrency conflict, validation, connection error — propagates instead of
+   * being misread as "row absent", which would otherwise spuriously insert a
+   * duplicate.
+   */
   public async upsert<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<T> {
     try {
       return await this.update(entity, entityClass);
-    } catch {
-      return await this.insert(entity, entityClass);
+    } catch (e) {
+      if (e instanceof EntityNotFoundError) {
+        return await this.insert(entity, entityClass);
+      }
+      throw e;
     }
   }
 
@@ -595,54 +608,33 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   }
 
   private static mergeLoggers(a: SqlLogger, b: SqlLogger): SqlLogger {
+    // Isolate the two delegate loggers: a throw in one must not prevent the
+    // other from receiving the event, and never propagates to the caller.
+    // Failures are surfaced (not silently dropped) via the single
+    // `logInternalError` telemetry boundary.
+    const safe = (method: string, call: () => void): void => {
+      try {
+        call();
+      } catch (e) {
+        logInternalError(`DatabaseProvider.mergeLoggers.${method}`, e);
+      }
+    };
     return {
       debug: (m, meta) => {
-        try {
-          a.debug(m, meta);
-        } catch {
-          /* ignore */
-        }
-        try {
-          b.debug(m, meta);
-        } catch {
-          /* ignore */
-        }
+        safe('debug', () => a.debug(m, meta));
+        safe('debug', () => b.debug(m, meta));
       },
       info: (m, meta) => {
-        try {
-          a.info(m, meta);
-        } catch {
-          /* ignore */
-        }
-        try {
-          b.info(m, meta);
-        } catch {
-          /* ignore */
-        }
+        safe('info', () => a.info(m, meta));
+        safe('info', () => b.info(m, meta));
       },
       warn: (m, meta) => {
-        try {
-          a.warn(m, meta);
-        } catch {
-          /* ignore */
-        }
-        try {
-          b.warn(m, meta);
-        } catch {
-          /* ignore */
-        }
+        safe('warn', () => a.warn(m, meta));
+        safe('warn', () => b.warn(m, meta));
       },
       error: (m, meta) => {
-        try {
-          a.error(m, meta);
-        } catch {
-          /* ignore */
-        }
-        try {
-          b.error(m, meta);
-        } catch {
-          /* ignore */
-        }
+        safe('error', () => a.error(m, meta));
+        safe('error', () => b.error(m, meta));
       },
       queryStart: (i) => {
         a.queryStart?.(i);

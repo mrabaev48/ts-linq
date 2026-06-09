@@ -2,6 +2,7 @@
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityCtorRef } from '@ts-linq/types';
 import type { EntityMetadata, QueryOptions, SqlDialect, SqlParameter } from '@ts-linq/types';
+import { EntityNotFoundError } from '@ts-linq/types';
 
 import { DatabaseProvider } from '../../src/DatabaseProvider';
 
@@ -143,7 +144,7 @@ export class ProviderStub extends DatabaseProvider {
       return entity;
     }
     await this.afterExecute(`UPDATE ${meta.tableName}`, [], 0);
-    throw new Error('No rows were updated.');
+    throw new EntityNotFoundError('No rows were updated.');
   }
 
   public async delete<T extends object>(entity: T, entityClass: EntityCtorRef): Promise<void> {

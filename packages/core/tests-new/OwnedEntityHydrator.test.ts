@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { StorageStrategy } from '@ts-linq/types';
+import { OrmErrorCode, OwnedEntityHydrationError, StorageStrategy } from '@ts-linq/types';
 
 import { hydrateJson, hydrateOwnedEntities, hydrateTableSplit } from '../src/OwnedEntityHydrator';
 
@@ -83,10 +83,23 @@ describe('hydrateJson', () => {
     expect(result).toBeUndefined();
   });
 
-  it('returns undefined when JSON is invalid', () => {
+  it('throws a typed OwnedEntityHydrationError when JSON is corrupt (no silent undefined)', () => {
     const row = { id: 1, prefs: 'not valid json {{{' };
-    const result = hydrateJson(row, Preferences, 'prefs');
-    expect(result).toBeUndefined();
+    expect(() => hydrateJson(row, Preferences, 'prefs')).toThrow(OwnedEntityHydrationError);
+  });
+
+  it('preserves the parse cause and safe context on the hydration error', () => {
+    const row = { id: 1, prefs: 'not valid json {{{' };
+    try {
+      hydrateJson(row, Preferences, 'prefs');
+      throw new Error('expected OwnedEntityHydrationError to be thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(OwnedEntityHydrationError);
+      const err = e as OwnedEntityHydrationError;
+      expect(err.code).toBe(OrmErrorCode.OwnedEntityHydrationError);
+      expect(err.cause).toBeInstanceOf(Error);
+      expect(err.details).toMatchObject({ column: 'prefs', ownedType: 'Preferences' });
+    }
   });
 });
 
