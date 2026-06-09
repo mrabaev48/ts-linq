@@ -1,4 +1,13 @@
-import type { BinaryNode, ExpressionNode, JsonPathExpression, PropertyNode } from '@ts-linq/ast';
+import type {
+  BinaryNode,
+  ExpressionNode,
+  IsNotNullNode,
+  IsNullNode,
+  JsonPathExpression,
+  MethodNode,
+  PropertyNode
+} from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { JsonShape } from '@ts-linq/types';
 
 import { JsonAccessRewriter } from '../src/JsonAccessRewriter';
@@ -84,5 +93,89 @@ describe('JsonAccessRewriter', () => {
     const right = (result as any).right.left as PropertyNode;
     expect(left.type).toBe('jsonPath');
     expect(right.type).toBe('property');
+  });
+
+  describe('fail-loud on JSON path in unsupported positions', () => {
+    const rewriter = () =>
+      new JsonAccessRewriter(new Map([['preferences', makeJsonShape('preferences')]]));
+
+    it('throws on a JSON path in isNull position', () => {
+      const node: IsNullNode = {
+        type: 'isNull',
+        property: { type: 'property', path: ['preferences', 'theme'] }
+      };
+      expect(() => rewriter().rewrite(node)).toThrow(AstSqlGenerationError);
+      try {
+        rewriter().rewrite(node);
+        throw new Error('expected to throw');
+      } catch (e) {
+        const err = e as AstSqlGenerationError;
+        expect(err).toBeInstanceOf(AstSqlGenerationError);
+        expect(err.code).toBe('UNSUPPORTED_JSON_POSITION');
+        expect(err.details).toMatchObject({
+          nodeType: 'isNull',
+          column: 'preferences',
+          path: ['theme']
+        });
+      }
+    });
+
+    it('throws on a JSON path in isNotNull position', () => {
+      const node: IsNotNullNode = {
+        type: 'isNotNull',
+        property: { type: 'property', path: ['preferences', 'theme'] }
+      };
+      try {
+        rewriter().rewrite(node);
+        throw new Error('expected to throw');
+      } catch (e) {
+        const err = e as AstSqlGenerationError;
+        expect(err).toBeInstanceOf(AstSqlGenerationError);
+        expect(err.code).toBe('UNSUPPORTED_JSON_POSITION');
+        expect(err.details).toMatchObject({ nodeType: 'isNotNull', column: 'preferences' });
+      }
+    });
+
+    it('throws on a JSON path object in method position', () => {
+      const node: MethodNode = {
+        type: 'method',
+        method: 'startsWith',
+        object: { type: 'property', path: ['preferences', 'theme'] },
+        args: [{ type: 'literal', value: 'x' }]
+      };
+      try {
+        rewriter().rewrite(node);
+        throw new Error('expected to throw');
+      } catch (e) {
+        const err = e as AstSqlGenerationError;
+        expect(err).toBeInstanceOf(AstSqlGenerationError);
+        expect(err.code).toBe('UNSUPPORTED_JSON_POSITION');
+        expect(err.details).toMatchObject({
+          nodeType: 'method',
+          column: 'preferences',
+          path: ['theme']
+        });
+      }
+    });
+  });
+
+  describe('non-JSON properties still pass through these positions unchanged', () => {
+    const rewriter = () =>
+      new JsonAccessRewriter(new Map([['preferences', makeJsonShape('preferences')]]));
+
+    it('isNull over a scalar property is untouched', () => {
+      const node: IsNullNode = { type: 'isNull', property: { type: 'property', name: 'id' } };
+      expect(rewriter().rewrite(node)).toStrictEqual(node);
+    });
+
+    it('method over a scalar property is untouched', () => {
+      const node: MethodNode = {
+        type: 'method',
+        method: 'startsWith',
+        object: { type: 'property', name: 'name' },
+        args: [{ type: 'literal', value: 'x' }]
+      };
+      expect(rewriter().rewrite(node)).toStrictEqual(node);
+    });
   });
 });

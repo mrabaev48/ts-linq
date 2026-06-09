@@ -1,6 +1,7 @@
 # Refactor Audit: sql-visitor
 
-**Package status: 🔄 In Progress** — tasks 1, 2, 3, 4 ✅ completed; task 5 pending.
+**Package status: ✅ Done** — tasks 1, 2, 3, 4, 5 ✅ completed. (task-6 is a newly-filed,
+optional follow-up feature — full JSON-path support in `isNull`/`method` — not a blocker.)
 
 ## Package responsibility
 `@ts-linq/sql-visitor` converts a compiled `ExpressionNode` AST (from `@ts-linq/transformer`)
@@ -42,7 +43,8 @@ which is the package's core safety property.
 | 2 | task-2 | P1 | ✅ Completed | Remove placeholder-numbering hazard (folds into VisitContext). |
 | 3 | task-4 | P2 | ✅ Completed | Hide internal visitors so 1 & 2 aren't breaking changes. |
 | 4 | task-3 | P2 | ✅ Completed | Correctness: EF function property-as-value binding bug. |
-| 5 | task-5 | P2 | ⏳ Pending | Correctness/fail-loud: JSON rewrite gap in isNull/method. |
+| 5 | task-5 | P2 | ✅ Completed | Correctness/fail-loud: JSON rewrite gap in isNull/method. |
+| 6 | task-6 | P2 | ⏳ Pending (follow-up) | Feature: full JSON-path support in isNull/method (deferred Option B). |
 
 > **task-1 outcome:** introduced `VisitContext` + `NodeVisitor<N>` (`src/visitContext.ts`),
 > migrated all sub-visitors to the uniform `visit(node, ctx)` contract, replaced
@@ -80,6 +82,20 @@ which is the package's core safety property.
 > `sql-visitor` `tsd` block. Because a sub-visitor was used externally and migrated to
 > `/internal`, this is **`major`** for `@ts-linq/sql-visitor`. Knock-on: with visitors now
 > internal, the task-1/task-2 signature changes are **no longer a public breaking change**.
+
+> **task-5 outcome:** **Policy = Option B / fail-loud.** Serena exploration confirmed *no*
+> dialect JSON-path translator (postgres / mssql / mysql) supports a `JsonPathExpression` in an
+> `IS NULL`/`IS NOT NULL` or `LIKE`/method position (all emit scalar extraction only), and
+> `NullVisitor`/`MethodVisitor` use `renderPropertyName(PropertyNode)` with zero JSON handling.
+> The two `return node;` silent-drops in `JsonAccessRewriter.rewrite` (isNull/isNotNull + method)
+> now throw a typed `AstSqlGenerationError('UNSUPPORTED_JSON_POSITION', …)` via a single shared
+> `unsupportedJsonPosition()` helper (details carry `nodeType`/`column`/`path`); the misleading
+> "dialects handle IS NULL on JSON paths" comment is removed. Added a new
+> `'UNSUPPORTED_JSON_POSITION'` member to `AstSqlGenerationErrorCode` in `@ts-linq/ast`
+> (**minor**) and unit coverage in `json-access-rewriter.test.ts` (throw + code + details for
+> isNull/isNotNull/method, plus scalar-property pass-through guards). Full multi-package JSON
+> support (AST widening + visitor + 3 dialect translators) is **deferred** → `task-6`.
+> Changeset: `@ts-linq/ast` **minor** + `@ts-linq/sql-visitor` **patch** (correctness fix).
 
 > **task-3 outcome:** fixed `EfFunctionVisitor.resolveParam`'s `PropertyNode`-in-value-position
 > branch, which previously emitted a placeholder and bound the **column name string** as a
