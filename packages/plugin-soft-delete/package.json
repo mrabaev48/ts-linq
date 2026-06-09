@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/plugin-soft-delete",
-  "version": "2.0.20",
+  "version": "2.0.21",
   "private": true,
   "description": "Soft delete plugin",
   "main": "./dist/index.js",
