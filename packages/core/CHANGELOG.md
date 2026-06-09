@@ -1,5 +1,23 @@
 # @ts-linq/core
 
+## 3.0.9
+
+### Patch Changes
+
+- Replace bare `throw new Error(...)` with the typed `@ts-linq/types` `OrmError` hierarchy.
+
+  All 22 generic-`Error` throw sites in `@ts-linq/core` now raise a stable typed error with a
+  machine-readable `code` and a safe-to-log `details` payload, so consumers can discriminate
+  failures via `e instanceof OrmError` and `e.code` instead of matching message text. Messages are
+  unchanged. No new error class or `OrmErrorCode` was introduced — the existing hierarchy already
+  covered every case.
+
+  Mapping: provider-sequence guard → `UnsupportedOperationError`; stream abort → `OperationAbortedError`;
+  unknown include → `InvalidIncludeError`; index-builder validation → `ValidationError`; batch
+  precondition guards → `MetadataError` / `BatchConfigurationError`. The seven duplicated
+  "requires TS5 Stage-3 decorators" throws are consolidated behind a single `DecoratorUsageError`
+  factory carrying the decorator name in `details`.
+
 ## 3.0.8
 
 ### Patch Changes

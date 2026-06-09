@@ -1,6 +1,7 @@
 import type { EntityMetadata, SqlParameter } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
+import { noInsertableColumns } from './batchErrors';
 
 export class BatchInsertOperation {
   constructor(private readonly provider: DatabaseProvider) {}
@@ -21,7 +22,7 @@ export class BatchInsertOperation {
     );
 
     if (columns.length === 0) {
-      throw new Error('No insertable columns found');
+      throw noInsertableColumns();
     }
 
     const columnNames = columns.map((col) => col.columnName || col.propertyName);

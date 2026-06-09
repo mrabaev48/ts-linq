@@ -1,3 +1,5 @@
+import { stage3DecoratorError } from './decoratorErrors';
+
 export interface CachePolicyOptions {
   /** Time-to-live hint in seconds for external caches (adapters may ignore). */
   ttl?: number;
@@ -33,7 +35,7 @@ export function CachePolicy(options: CachePolicyOptions): ClassDecorator {
       return;
     }
     // Fail if not Stage-3
-    throw new Error('@CachePolicy requires TS5 Stage-3 decorators');
+    throw stage3DecoratorError('@CachePolicy');
   };
 }
 
