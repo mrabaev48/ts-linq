@@ -1,6 +1,6 @@
 # Refactor Audit: sql-visitor
 
-**Package status: 🔄 In Progress** — task-1 ✅ completed; tasks 2–5 pending.
+**Package status: 🔄 In Progress** — tasks 1–2 ✅ completed; tasks 3–5 pending.
 
 ## Package responsibility
 `@ts-linq/sql-visitor` converts a compiled `ExpressionNode` AST (from `@ts-linq/transformer`)
@@ -39,7 +39,7 @@ which is the package's core safety property.
 | Order | Task | Priority | Status | Reason |
 |---:|---|---|---|---|
 | 1 | task-1 | P1 | ✅ Completed | Uniform visitor contract + registry; foundation for the rest. |
-| 2 | task-2 | P1 | ⏳ Pending | Remove placeholder-numbering hazard (folds into VisitContext). |
+| 2 | task-2 | P1 | ✅ Completed | Remove placeholder-numbering hazard (folds into VisitContext). |
 | 3 | task-4 | P2 | ⏳ Pending | Hide internal visitors so 1 & 2 aren't breaking changes. |
 | 4 | task-3 | P2 | ⏳ Pending | Correctness: EF function property-as-value binding bug. |
 | 5 | task-5 | P2 | ⏳ Pending | Correctness/fail-loud: JSON rewrite gap in isNull/method. |
@@ -51,6 +51,18 @@ which is the package's core safety property.
 > made optional visitors (`efFunction`/`jsonPath`) register their real impl when configured or a
 > throwing stub otherwise. SQL output is byte-identical (golden corpus test). Migrating the
 > exported sub-visitor signatures is a **breaking change → `major`** for `@ts-linq/sql-visitor`.
+
+> **task-2 outcome:** the placeholder-numbering hazard was already eliminated by task-1 —
+> `VisitContext.state` is a *required* field, so no visitor defaults a fresh
+> `ParameterState` (the only `new ParameterState` in `src/` is the single shared instance in
+> `SqlVisitor.toSql`). task-2 therefore added the permanent **regression guards** rather than
+> production changes: a named positional-numbering unit test
+> (`shared ParameterState across visitor calls › numbers placeholders continuously ($1, $2
+> not $1, $1)` in `tests/Visitors.test.ts`) and a **type-level guard** (`tsd`) asserting that
+> omitting `state` from a `VisitContext` / visitor call is a compile error
+> (`test-d/index.test-d.ts`, wired via a new `test-d` script). No `src/` change → **no
+> changeset** (CLAUDE.md §14: a changeset is required only when `src/` of a versioned package
+> changes; tests + test tooling + docs do not qualify).
 
 ## Dependencies on other packages
 - `@ts-linq/ast` — consumes `ExpressionNode` and all node subtypes; throws
