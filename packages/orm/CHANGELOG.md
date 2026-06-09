@@ -1,5 +1,14 @@
 # @ts-linq/orm
 
+## 4.0.8
+
+### Patch Changes
+
+- Updated dependencies [5aa6196]
+  - @ts-linq/core@3.0.5
+  - @ts-linq/migrations@2.6.16
+  - @ts-linq/query@2.4.25
+
 ## 4.0.7
 
 ### Patch Changes

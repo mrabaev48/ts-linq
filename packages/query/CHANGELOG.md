@@ -1,5 +1,12 @@
 # @ts-linq/query
 
+## 2.4.25
+
+### Patch Changes
+
+- Updated dependencies [5aa6196]
+  - @ts-linq/core@3.0.5
+
 ## 2.4.24
 
 ### Patch Changes
