@@ -1,5 +1,12 @@
 # @ts-linq/provider-mysql
 
+## 3.0.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-linq/dialect-mysql@2.6.15
+
 ## 3.0.3
 
 ### Patch Changes
