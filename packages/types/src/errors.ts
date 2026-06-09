@@ -39,7 +39,8 @@ export const OrmErrorCode = {
   DecoratorUsageError: 'DECORATOR_USAGE_ERROR',
   BatchConfigurationError: 'BATCH_CONFIGURATION_ERROR',
   InvalidInclude: 'INVALID_INCLUDE',
-  OperationAborted: 'OPERATION_ABORTED'
+  OperationAborted: 'OPERATION_ABORTED',
+  InvalidIdentifier: 'INVALID_IDENTIFIER'
 } as const;
 
 /** Union of every stable code declared in {@link OrmErrorCode}. */
@@ -191,6 +192,20 @@ export class InvalidIncludeError extends OrmError {
 /** Thrown when an operation is aborted via an `AbortSignal`. */
 export class OperationAbortedError extends OrmError {
   public readonly code = OrmErrorCode.OperationAborted;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when a SQL identifier (table/column name) fails validation before
+ * being quoted into a query. Acts as a defense-in-depth guard against SQL
+ * injection through the identifier position: an invalid identifier fails
+ * closed (throws) rather than being interpolated into SQL text.
+ */
+export class InvalidIdentifierError extends OrmError {
+  public readonly code = OrmErrorCode.InvalidIdentifier;
 
   constructor(message: string, opts?: OrmErrorOptions) {
     super(message, opts);

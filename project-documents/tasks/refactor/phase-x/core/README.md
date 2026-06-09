@@ -28,17 +28,23 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 - Curate the public API surface.
 
 ## Recommended task order
-| Order | Task | Priority | Reason |
-|---:|---|---|---|
-| 1 | task-4 | P0 | Self-contained SQL-injection/dialect-leak fix; ship first |
-| 2 | task-2 | P0 | Inject `MetadataSource`; unblocks honest loader testing |
-| 3 | task-6 | P1 | Typed errors (after types/task-2) before further refactor |
-| 4 | task-5 | P0 | Silent-swallow/unsafe-fallback fixes on hot path |
-| 5 | task-1 | P0 | Decompose `DatabaseProvider` god class (anchor) |
-| 6 | task-3 | P1 | Split `EntityLoader`; remove loader duplication |
-| 7 | task-7 | P1 | Remove `as unknown as` casts (do with task-3) |
-| 8 | task-8 | P2 | Logger injection / no console |
-| 9 | task-9 | P2 | Curate barrel after structure settles |
+| Order | Task | Priority | Status | Reason |
+|---:|---|---|---|---|
+| 1 | task-4 | P0 | ✅ Completed | Self-contained SQL-injection/dialect-leak fix; ship first |
+| 2 | task-2 | P0 | ⏳ Pending | Inject `MetadataSource`; unblocks honest loader testing |
+| 3 | task-6 | P1 | ⏳ Pending | Typed errors (after types/task-2) before further refactor |
+| 4 | task-5 | P0 | ⏳ Pending | Silent-swallow/unsafe-fallback fixes on hot path |
+| 5 | task-1 | P0 | ⏳ Pending | Decompose `DatabaseProvider` god class (anchor) |
+| 6 | task-3 | P1 | ⏳ Pending | Split `EntityLoader`; remove loader duplication |
+| 7 | task-7 | P1 | ⏳ Pending | Remove `as unknown as` casts (do with task-3) |
+| 8 | task-8 | P2 | ⏳ Pending | Logger injection / no console |
+| 9 | task-9 | P2 | ⏳ Pending | Curate barrel after structure settles |
+
+> **task-4 (✅ Completed)** — junction reads now go through the provider capability
+> `DatabaseProvider.queryJunction(spec: JunctionQuerySpec)`: every identifier is validated
+> (`^[A-Za-z_][A-Za-z0-9_]*$`, fails closed with `InvalidIdentifierError`) and quoted via the
+> dialect's `quoteIdentifier`; all values are bound as parameters. `packages/core/src/loading`
+> now emits **zero** SQL text. Package remains 🔄 in progress (tasks 2, 6, 5, 1, 3, 7, 8, 9 pending).
 
 ## Dependencies on other packages
 - `@ts-linq/types` — error hierarchy (`types/task-2`), `SqlDialect`/identifier quoting (task-4), metadata interfaces.

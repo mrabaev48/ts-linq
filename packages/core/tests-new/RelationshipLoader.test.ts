@@ -14,15 +14,26 @@ function makeProvider(overrides: Partial<any> = {}): any {
     findWhere: jest.fn(),
     findWhereIn: jest.fn(),
     executeQuery: jest.fn(),
+    queryJunction: jest.fn(),
     ...overrides
   };
 }
 
 class Author {}
 class Post {}
+class Tag {}
 
 function registerEntities() {
   MetadataStorage.reset();
+
+  MetadataStorage.addEntity(Tag, 'tags');
+  MetadataStorage.addColumn(Tag, { propertyName: 'id', columnName: 'id', type: 'int' } as any);
+  MetadataStorage.addColumn(Tag, {
+    propertyName: 'name',
+    columnName: 'name',
+    type: 'varchar'
+  } as any);
+  MetadataStorage.addPrimaryKey(Tag, 'id');
 
   MetadataStorage.addEntity(Author, 'authors');
   MetadataStorage.addColumn(Author, { propertyName: 'id', columnName: 'id', type: 'int' } as any);
@@ -167,6 +178,78 @@ describe('RelationshipLoader', () => {
       expect(provider.findWhereIn).toHaveBeenCalledWith(Post, 'authorId', [10, 20]);
       expect(authors[0].posts).toEqual([allPosts[0]]);
       expect(authors[1].posts).toEqual([allPosts[1]]);
+    });
+  });
+
+  describe('loadSingle – many-to-many', () => {
+    it('reads the junction via queryJunction and resolves target entities', async () => {
+      const tags = [
+        { id: 100, name: 'ts' },
+        { id: 200, name: 'sql' }
+      ];
+      const provider = makeProvider({
+        queryJunction: jest.fn().mockResolvedValue([{ tag_id: 100 }, { tag_id: 200 }]),
+        findWhereIn: jest.fn().mockResolvedValue(tags)
+      });
+      const loader = new RelationshipLoader(provider, wrapOne as any, wrapMany as any);
+
+      const post = { id: 1, title: 'Hello' };
+      const relationship = {
+        propertyName: 'tags',
+        type: 'many-to-many',
+        targetEntity: Tag,
+        through: { table: 'post_tags', sourceFk: 'post_id', targetFk: 'tag_id' }
+      };
+
+      const result = await loader.loadSingle(post, Post as any, relationship as any);
+
+      expect(provider.queryJunction).toHaveBeenCalledWith({
+        table: 'post_tags',
+        selectColumns: ['tag_id'],
+        whereColumn: 'post_id',
+        whereValues: [1]
+      });
+      expect(provider.findWhereIn).toHaveBeenCalledWith(Tag, 'id', [100, 200]);
+      expect(result).toEqual(tags);
+    });
+  });
+
+  describe('loadBatch – many-to-many', () => {
+    it('batch-reads the junction via queryJunction and groups by source', async () => {
+      const tags = [
+        { id: 100, name: 'ts' },
+        { id: 200, name: 'sql' }
+      ];
+      const provider = makeProvider({
+        queryJunction: jest.fn().mockResolvedValue([
+          { post_id: 1, tag_id: 100 },
+          { post_id: 2, tag_id: 200 }
+        ]),
+        findWhereIn: jest.fn().mockResolvedValue(tags)
+      });
+      const loader = new RelationshipLoader(provider, wrapOne as any, wrapMany as any);
+
+      const posts = [
+        { id: 1, title: 'A' },
+        { id: 2, title: 'B' }
+      ] as any[];
+      const relationship = {
+        propertyName: 'tags',
+        type: 'many-to-many',
+        targetEntity: Tag,
+        through: { table: 'post_tags', sourceFk: 'post_id', targetFk: 'tag_id' }
+      };
+
+      await loader.loadBatch(posts, Post as any, relationship as any);
+
+      expect(provider.queryJunction).toHaveBeenCalledWith({
+        table: 'post_tags',
+        selectColumns: ['post_id', 'tag_id'],
+        whereColumn: 'post_id',
+        whereValues: [1, 2]
+      });
+      expect(posts[0].tags).toEqual([tags[0]]);
+      expect(posts[1].tags).toEqual([tags[1]]);
     });
   });
 

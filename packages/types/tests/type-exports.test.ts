@@ -62,6 +62,7 @@ describe('Type Exports', () => {
       'DecoratorUsageError',
       'BatchConfigurationError',
       'InvalidIncludeError',
+      'InvalidIdentifierError',
       'OperationAbortedError',
       'ok',
       'err',
