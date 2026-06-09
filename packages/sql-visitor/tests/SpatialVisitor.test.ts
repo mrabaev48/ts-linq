@@ -5,6 +5,7 @@ import type { SpatialTranslator } from '@ts-linq/types';
 import { ParameterStyle } from '../src/ParameterStyle';
 import { SqlVisitor } from '../src/SqlVisitor';
 import { isSpatialMethod, SpatialMethodVisitor } from '../src/visitors/SpatialMethodVisitor';
+import { makeCtx } from './helpers/makeCtx';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ describe('SpatialMethodVisitor', () => {
       object: prop('location'),
       args: [{ type: 'literal', value: 'POINT(0 0)' as unknown as null }]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('ST_Distance(location, ?)');
     expect(result.parameters).toEqual(['POINT(0 0)']);
   });
@@ -69,7 +70,7 @@ describe('SpatialMethodVisitor', () => {
       object: prop('geom'),
       args: [{ type: 'parameterRef', index: 0 }]
     };
-    const result = visitor.visit(node, ['POLYGON(...)']);
+    const result = visitor.visit(node, makeCtx({ inputParameters: ['POLYGON(...)'] }));
     expect(result.condition).toBe('ST_Intersects(geom, ?)');
     expect(result.parameters).toEqual(['POLYGON(...)']);
   });
@@ -81,7 +82,7 @@ describe('SpatialMethodVisitor', () => {
       object: prop('location'),
       args: [{ type: 'literal', value: null }]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('ST_Within(location, ?)');
   });
 
@@ -92,7 +93,7 @@ describe('SpatialMethodVisitor', () => {
       object: prop('location'),
       args: [{ type: 'literal', value: 1000 }]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('ST_Buffer(location, ?)');
     expect(result.parameters).toEqual([1000]);
   });
@@ -104,7 +105,7 @@ describe('SpatialMethodVisitor', () => {
       object: prop('geom'),
       args: []
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('ST_Area(geom)');
     expect(result.parameters).toHaveLength(0);
   });
@@ -116,7 +117,7 @@ describe('SpatialMethodVisitor', () => {
       object: prop('path'),
       args: []
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('ST_Length(path)');
     expect(result.parameters).toHaveLength(0);
   });
@@ -128,7 +129,7 @@ describe('SpatialMethodVisitor', () => {
       object: prop('zone'),
       args: [{ type: 'literal', value: null }]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('ST_Contains(zone, ?)');
   });
 
@@ -139,7 +140,7 @@ describe('SpatialMethodVisitor', () => {
       object: prop('location'),
       args: []
     };
-    expect(() => visitor.visit(node, [])).toThrow(AstSqlGenerationError);
+    expect(() => visitor.visit(node, makeCtx())).toThrow(AstSqlGenerationError);
   });
 });
 

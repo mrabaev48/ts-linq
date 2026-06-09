@@ -1,15 +1,13 @@
-import type { ExpressionNode, LogicalNode } from '@ts-linq/ast';
+import type { LogicalNode } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 
 import type { ConditionFragment } from '../types';
+import type { NodeVisitor, VisitContext } from '../visitContext';
 
-export class LogicalVisitor {
-  public visit(
-    node: LogicalNode,
-    recurse: (n: ExpressionNode) => ConditionFragment
-  ): ConditionFragment {
-    const left = recurse(node.left);
-    const right = recurse(node.right);
+export class LogicalVisitor implements NodeVisitor<LogicalNode> {
+  public visit(node: LogicalNode, ctx: VisitContext): ConditionFragment {
+    const left = ctx.recurse(node.left);
+    const right = ctx.recurse(node.right);
 
     if (left.condition === '' || right.condition === '') {
       throw new AstSqlGenerationError(
