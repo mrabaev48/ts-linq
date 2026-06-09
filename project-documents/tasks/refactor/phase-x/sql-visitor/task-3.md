@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: sql-visitor
 priority: P2
@@ -72,10 +72,10 @@ nodes, and a placeholder+value pair only for literals/parameterRefs — matching
 - **Regression**: `EfFunctionVisitor.test.ts` green.
 
 ## Acceptance criteria
-- [ ] Property-as-value arguments are inlined as resolved column references, not parameters.
-- [ ] `resolver` is threaded (no `undefined`).
-- [ ] Two-column EF function test added and passing.
-- [ ] Existing EF function tests green.
+- [x] Property-as-value arguments are inlined as resolved column references, not parameters.
+- [x] `resolver` is threaded (no `undefined`).
+- [x] Two-column EF function test added and passing.
+- [x] Existing EF function tests green.
 
 ## Refactor order
 Independent; small correctness fix. Verify whether this path is reachable today (it requires
