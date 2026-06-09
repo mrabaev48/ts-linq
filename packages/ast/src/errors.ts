@@ -14,7 +14,8 @@ export type AstSqlGenerationErrorCode =
   | 'INVALID_METHOD_ARG'
   | 'UNSUPPORTED_METHOD'
   | 'UNSUPPORTED_FUNCTION'
-  | 'INVALID_FUNCTION_NODE';
+  | 'INVALID_FUNCTION_NODE'
+  | 'UNSUPPORTED_JSON_POSITION';
 
 // Declared as a `type` (not `interface`) so it carries an implicit index
 // signature and is assignable to `OrmError`'s `Readonly<Record<string, unknown>>`

@@ -1,4 +1,5 @@
 import type { ExpressionNode, JsonPathExpression } from '@ts-linq/ast';
+import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { JsonShape } from '@ts-linq/types';
 
 /**
@@ -50,16 +51,36 @@ export class JsonAccessRewriter {
       case 'isNotNull': {
         const rewritten = this.rewrite(node.property);
         if (rewritten.type === 'property') return { ...node, property: rewritten };
-        // If property resolved to a jsonPath, wrap back — dialects handle IS NULL on JSON paths
-        return node;
+        // A JSON path cannot legally sit in an isNull/isNotNull position: the AST types it as
+        // PropertyNode and no dialect translator emits JSON-path IS NULL. Fail loud instead of
+        // silently dropping the rewrite and emitting SQL against a non-existent column.
+        throw this.unsupportedJsonPosition(node.type, rewritten);
       }
       case 'method': {
         const rewrittenObj = this.rewrite(node.object);
         if (rewrittenObj.type === 'property') return { ...node, object: rewrittenObj };
-        return node;
+        // Same as above for method (e.g. startsWith → LIKE): no dialect supports a JSON path here.
+        throw this.unsupportedJsonPosition(node.type, rewrittenObj);
       }
       default:
         return node;
     }
+  }
+
+  /**
+   * Builds a typed error for a JSON path that resolved into a node position no dialect
+   * supports (isNull/isNotNull/method). Converges both fail-loud branches onto one shape.
+   */
+  private unsupportedJsonPosition(
+    position: 'isNull' | 'isNotNull' | 'method',
+    rewritten: ExpressionNode
+  ): AstSqlGenerationError {
+    const json = rewritten.type === 'jsonPath' ? rewritten : undefined;
+    return new AstSqlGenerationError(
+      'UNSUPPORTED_JSON_POSITION',
+      `JSON path in '${position}' position is not supported by any dialect. ` +
+        'Use a scalar property, or compare the JSON value directly (=== / !== null).',
+      { nodeType: position, column: json?.column, path: json?.path }
+    );
   }
 }
