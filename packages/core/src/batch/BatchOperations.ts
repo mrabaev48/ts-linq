@@ -3,6 +3,7 @@ import type { EntityCtor, EntityMetadata } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { BatchDeleteOperation } from './BatchDeleteOperation';
+import { invalidBatchSize, metadataNotFound } from './batchErrors';
 import { BatchExecutor } from './BatchExecutor';
 import { BatchInsertOperation } from './BatchInsertOperation';
 import { BatchPlan } from './BatchPlan';
@@ -132,7 +133,7 @@ export class BatchOperations {
   }
 
   setDefaultBatchSize(size: number): void {
-    if (size <= 0) throw new Error('Batch size must be greater than 0');
+    if (size <= 0) throw invalidBatchSize(size);
     this.defaultBatchSize = size;
   }
 
@@ -194,7 +195,7 @@ export class BatchOperations {
 
   private getEntityMetadata(entityClass: EntityCtor): EntityMetadata {
     const metadata = MetadataStorage.getEntity(entityClass);
-    if (!metadata) throw new Error(`No metadata found for entity ${entityClass.name}`);
+    if (!metadata) throw metadataNotFound(entityClass.name);
     return metadata;
   }
 

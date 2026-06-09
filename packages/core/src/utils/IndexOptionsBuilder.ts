@@ -1,4 +1,5 @@
 import type { IndexMetadata } from '@ts-linq/types';
+import { ValidationError } from '@ts-linq/types';
 
 export class IndexOptionsBuilder {
   private current: IndexMetadata;
@@ -69,10 +70,10 @@ export class IndexOptionsBuilder {
 
   public build(): IndexMetadata {
     if (!this.current.name || this.current.name.trim().length === 0) {
-      throw new Error('Index name must be provided');
+      throw new ValidationError('Index name must be provided');
     }
     if (!this.current.columns || this.current.columns.length === 0) {
-      throw new Error('Index must reference at least one column');
+      throw new ValidationError('Index must reference at least one column');
     }
     return { ...this.current };
   }
