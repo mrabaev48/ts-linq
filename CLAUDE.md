@@ -339,8 +339,8 @@ The Serena memory should reflect the latest repository architecture and implemen
 ## 14. Versioning and Changesets Rules
 
 This project uses [Changesets](https://github.com/changesets/changesets) for versioning and
-changelog generation. Package versions are never bumped manually in `package.json` or via git
-tags. All bumps are driven by changeset files.
+changelog generation. **Versions are bumped locally before opening a PR** — there is no
+"Version Packages" automation PR.
 
 ### When to Create a Changeset
 
@@ -369,22 +369,28 @@ Do **not** create a changeset for:
 
 When in doubt, choose `patch`.
 
-### How to Create a Changeset
+### Local versioning workflow (mandatory)
+
+**Before opening a PR**, for every PR that touches versioned package source:
 
 ```bash
+# 1. Create a changeset describing the change
 pnpm changeset
+
+# 2. Consume the changeset: bumps package.json versions + writes CHANGELOG entries
+pnpm changeset version
+
+# 3. Commit the version bumps together with the source changes
+git add packages/*/package.json packages/*/CHANGELOG.md .changeset
+git commit -m "chore: version packages"
 ```
 
-The interactive wizard asks which packages are affected, the bump type, and a summary line.
-It generates `.changeset/<random-name>.md`. Commit this file as part of your PR branch.
+The PR branch must contain the bumped `package.json` files and updated `CHANGELOG.md` entries.
+No unconsumed `.changeset/*.md` files should remain in the branch.
 
-### Mandatory Rule
-
-Any PR that modifies source in a versioned package MUST include a changeset file.
-
-This is enforced by the `Changeset present` CI check. The PR cannot merge until it passes.
-
-The "Version Packages" PR created by the Changesets Action is automatically exempted.
+These two invariants are enforced by the `Version bump present` CI check:
+- If versioned package sources changed → at least one `package.json` version must be bumped.
+- Unconsumed changeset files (`.changeset/*.md` other than `README.md`) are not allowed.
 
 ### Packages Excluded from Changesets
 
@@ -394,10 +400,9 @@ Never create changesets targeting:
 
 ### Release Flow
 
-1. PR with source changes + `.changeset/*.md` merges to `main`
-2. Release workflow creates "Version Packages" PR (bumps versions, writes CHANGELOG.md)
-3. Maintainer reviews and merges the "Version Packages" PR
-4. Release workflow publishes `@ts-linq/cache-redis`, `@ts-linq/cache-memcached`, `@ts-linq/cli`
+1. Developer runs `pnpm changeset && pnpm changeset version` locally
+2. PR with source changes + bumped versions merges to `main`
+3. Release workflow publishes packages whose `package.json` version > npm registry version
 
 ### References
 
