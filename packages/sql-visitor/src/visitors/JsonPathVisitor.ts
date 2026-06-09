@@ -2,6 +2,7 @@ import type { JsonPathExpression } from '@ts-linq/ast';
 
 import type { ParameterState } from '../ParameterStyle';
 import type { ConditionFragment, SqlFragment } from '../types';
+import type { NodeVisitor, VisitContext } from '../visitContext';
 
 /**
  * Dialect-specific translator for JsonPathExpression → SQL fragment.
@@ -16,11 +17,11 @@ export interface JsonPathTranslator {
  * The fragment is the raw SQL expression — the caller is responsible for wrapping
  * it in a comparison (e.g. `= ?`).
  */
-export class JsonPathVisitor {
+export class JsonPathVisitor implements NodeVisitor<JsonPathExpression> {
   constructor(private readonly translator: JsonPathTranslator) {}
 
-  visit(node: JsonPathExpression, state: ParameterState): ConditionFragment {
-    const { fragment, params } = this.translator.translate(node, state);
+  public visit(node: JsonPathExpression, ctx: VisitContext): ConditionFragment {
+    const { fragment, params } = this.translator.translate(node, ctx.state);
     return { condition: fragment, parameters: params };
   }
 }

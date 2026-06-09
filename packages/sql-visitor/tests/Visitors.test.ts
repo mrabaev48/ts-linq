@@ -14,15 +14,13 @@ import { AstSqlGenerationError } from '@ts-linq/ast';
 
 import { ParameterStyle } from '../src/ParameterStyle';
 import { SqlVisitor } from '../src/SqlVisitor';
-import {
-  BinaryVisitor,
-  type ColumnResolver,
-  renderPropertyName
-} from '../src/visitors/BinaryVisitor';
+import type { ColumnResolver } from '../src/visitContext';
+import { BinaryVisitor, renderPropertyName } from '../src/visitors/BinaryVisitor';
 import { InVisitor } from '../src/visitors/InVisitor';
 import { LogicalVisitor } from '../src/visitors/LogicalVisitor';
 import { MethodVisitor } from '../src/visitors/MethodVisitor';
 import { NullVisitor } from '../src/visitors/NullVisitor';
+import { makeCtx } from './helpers/makeCtx';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -30,20 +28,13 @@ const prop = (name: string): PropertyNode => ({ type: 'property', name });
 const propPath = (...segs: string[]): PropertyNode => ({ type: 'property', path: segs });
 const lit = (value: number | string | boolean | null): LiteralNode => ({ type: 'literal', value });
 
-const makeRecurse =
-  (visitor: SqlVisitor, inputParameters: readonly unknown[] = []) =>
-  (n: ExpressionNode) =>
-    visitor.toSql(n, inputParameters);
-
 // ─── BinaryVisitor ────────────────────────────────────────────────────────────
 
 describe('BinaryVisitor', () => {
   let visitor: BinaryVisitor;
-  let sqlVisitor: SqlVisitor;
 
   beforeEach(() => {
     visitor = new BinaryVisitor();
-    sqlVisitor = new SqlVisitor();
   });
 
   it('equality comparison (===)', () => {
@@ -53,7 +44,7 @@ describe('BinaryVisitor', () => {
       left: prop('id'),
       right: lit(1)
     };
-    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(id = ?)');
     expect(result.parameters).toEqual([1]);
   });
@@ -65,7 +56,7 @@ describe('BinaryVisitor', () => {
       left: prop('age'),
       right: lit(18)
     };
-    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(age > ?)');
     expect(result.parameters).toEqual([18]);
   });
@@ -77,7 +68,7 @@ describe('BinaryVisitor', () => {
       left: prop('salary'),
       right: lit(50000)
     };
-    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(salary >= ?)');
     expect(result.parameters).toEqual([50000]);
   });
@@ -89,7 +80,7 @@ describe('BinaryVisitor', () => {
       left: prop('price'),
       right: lit(100)
     };
-    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(price < ?)');
     expect(result.parameters).toEqual([100]);
   });
@@ -101,7 +92,7 @@ describe('BinaryVisitor', () => {
       left: prop('quantity'),
       right: lit(10)
     };
-    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(quantity <= ?)');
     expect(result.parameters).toEqual([10]);
   });
@@ -113,7 +104,7 @@ describe('BinaryVisitor', () => {
       left: prop('name'),
       right: lit('Alice')
     };
-    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(name = ?)');
     expect(result.parameters).toEqual(['Alice']);
   });
@@ -125,7 +116,7 @@ describe('BinaryVisitor', () => {
       left: prop('active'),
       right: lit(true)
     };
-    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(active = ?)');
     expect(result.parameters).toEqual([true]);
   });
@@ -137,7 +128,7 @@ describe('BinaryVisitor', () => {
       left: prop('deletedAt'),
       right: lit(null)
     };
-    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(deletedAt = ?)');
     expect(result.parameters).toEqual([null]);
   });
@@ -149,7 +140,7 @@ describe('BinaryVisitor', () => {
       left: prop('age'),
       right: { type: 'parameterRef', index: 0 }
     };
-    const result = visitor.visit(node, [21], makeRecurse(sqlVisitor, [21]));
+    const result = visitor.visit(node, makeCtx({ inputParameters: [21] }));
     expect(result.condition).toBe('(age >= ?)');
     expect(result.parameters).toEqual([21]);
   });
@@ -161,7 +152,7 @@ describe('BinaryVisitor', () => {
       left: prop('age'),
       right: { type: 'parameterRef', index: 5 }
     };
-    expect(() => visitor.visit(node, [21], makeRecurse(sqlVisitor, [21]))).toThrow(
+    expect(() => visitor.visit(node, makeCtx({ inputParameters: [21] }))).toThrow(
       AstSqlGenerationError
     );
   });
@@ -173,7 +164,7 @@ describe('BinaryVisitor', () => {
       left: propPath('profile', 'age'),
       right: lit(18)
     };
-    const result = visitor.visit(node, [], makeRecurse(sqlVisitor));
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(profile.age >= ?)');
     expect(result.parameters).toEqual([18]);
   });
@@ -199,10 +190,15 @@ describe('LogicalVisitor', () => {
       left: {} as ExpressionNode,
       right: {} as ExpressionNode
     };
-    const result = visitor.visit(node, (n) => {
-      if (n === node.left) return { condition: '(age > ?)', parameters: [18] };
-      return { condition: '(active = ?)', parameters: [true] };
-    });
+    const result = visitor.visit(
+      node,
+      makeCtx({
+        recurse: (n) => {
+          if (n === node.left) return { condition: '(age > ?)', parameters: [18] };
+          return { condition: '(active = ?)', parameters: [true] };
+        }
+      })
+    );
     expect(result.condition).toBe('((age > ?) AND (active = ?))');
     expect(result.parameters).toEqual([18, true]);
   });
@@ -214,10 +210,15 @@ describe('LogicalVisitor', () => {
       left: {} as ExpressionNode,
       right: {} as ExpressionNode
     };
-    const result = visitor.visit(node, (n) => {
-      if (n === node.left) return { condition: '(role = ?)', parameters: ['admin'] };
-      return { condition: '(role = ?)', parameters: ['mod'] };
-    });
+    const result = visitor.visit(
+      node,
+      makeCtx({
+        recurse: (n) => {
+          if (n === node.left) return { condition: '(role = ?)', parameters: ['admin'] };
+          return { condition: '(role = ?)', parameters: ['mod'] };
+        }
+      })
+    );
     expect(result.condition).toBe('((role = ?) OR (role = ?))');
     expect(result.parameters).toEqual(['admin', 'mod']);
   });
@@ -234,14 +235,14 @@ describe('NullVisitor', () => {
 
   it('IS NULL', () => {
     const node: IsNullNode = { type: 'isNull', property: prop('deletedAt') };
-    const result = visitor.visitIsNull(node);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(deletedAt IS NULL)');
     expect(result.parameters).toEqual([]);
   });
 
   it('IS NOT NULL', () => {
     const node: IsNotNullNode = { type: 'isNotNull', property: prop('deletedAt') };
-    const result = visitor.visitIsNotNull(node);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(deletedAt IS NOT NULL)');
     expect(result.parameters).toEqual([]);
   });
@@ -262,28 +263,30 @@ describe('InVisitor', () => {
       property: prop('role'),
       values: [lit('admin'), lit('mod')] as LiteralNode[]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(role IN (?, ?))');
     expect(result.parameters).toEqual(['admin', 'mod']);
   });
 
   it('IN with empty values → (1 = 0)', () => {
     const node: InNode = { type: 'in', property: prop('role'), values: [] };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(1 = 0)');
   });
 
   it('IN with external array via valuesRef', () => {
     const roles = ['admin', 'mod'];
     const node: InNode = { type: 'in', property: prop('role'), valuesRef: 0 };
-    const result = visitor.visit(node, [roles]);
+    const result = visitor.visit(node, makeCtx({ inputParameters: [roles] }));
     expect(result.condition).toBe('(role IN (?, ?))');
     expect(result.parameters).toEqual(['admin', 'mod']);
   });
 
   it('throws when valuesRef resolves to non-array', () => {
     const node: InNode = { type: 'in', property: prop('x'), valuesRef: 0 };
-    expect(() => visitor.visit(node, ['not-an-array'])).toThrow(AstSqlGenerationError);
+    expect(() => visitor.visit(node, makeCtx({ inputParameters: ['not-an-array'] }))).toThrow(
+      AstSqlGenerationError
+    );
   });
 });
 
@@ -303,7 +306,7 @@ describe('MethodVisitor', () => {
       object: prop('name'),
       args: [lit('foo')] as LiteralNode[]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(name LIKE ?)');
     expect(result.parameters).toEqual(['%foo%']);
   });
@@ -315,7 +318,7 @@ describe('MethodVisitor', () => {
       object: prop('name'),
       args: [lit('Al')] as LiteralNode[]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(name LIKE ?)');
     expect(result.parameters).toEqual(['Al%']);
   });
@@ -327,7 +330,7 @@ describe('MethodVisitor', () => {
       object: prop('name'),
       args: [lit('.ts')] as LiteralNode[]
     };
-    const result = visitor.visit(node, []);
+    const result = visitor.visit(node, makeCtx());
     expect(result.condition).toBe('(name LIKE ?)');
     expect(result.parameters).toEqual(['%.ts']);
   });

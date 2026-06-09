@@ -2,9 +2,9 @@ import type { MethodNode } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { SpatialTranslator } from '@ts-linq/types';
 
-import { ParameterState, ParameterStyle } from '../ParameterStyle';
 import type { ConditionFragment } from '../types';
-import { type ColumnResolver, renderPropertyName, resolveParameterRef } from './BinaryVisitor';
+import type { NodeVisitor, VisitContext } from '../visitContext';
+import { renderPropertyName, resolveParameterRef } from './BinaryVisitor';
 
 export type { SpatialTranslator };
 
@@ -22,15 +22,11 @@ export function isSpatialMethod(method: string): boolean {
   return SPATIAL_METHODS.has(method);
 }
 
-export class SpatialMethodVisitor {
+export class SpatialMethodVisitor implements NodeVisitor<MethodNode> {
   constructor(private readonly translator: SpatialTranslator) {}
 
-  public visit(
-    node: MethodNode,
-    inputParameters: readonly unknown[],
-    resolver?: ColumnResolver,
-    state: ParameterState = new ParameterState(ParameterStyle.Question)
-  ): ConditionFragment {
+  public visit(node: MethodNode, ctx: VisitContext): ConditionFragment {
+    const { inputParameters, resolver, state } = ctx;
     const col = renderPropertyName(node.object, resolver);
 
     switch (node.method) {

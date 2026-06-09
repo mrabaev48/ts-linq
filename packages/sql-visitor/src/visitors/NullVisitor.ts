@@ -1,19 +1,18 @@
 import type { IsNotNullNode, IsNullNode } from '@ts-linq/ast';
 
 import type { ConditionFragment } from '../types';
-import { type ColumnResolver, renderPropertyName } from './BinaryVisitor';
+import type { NodeVisitor, VisitContext } from '../visitContext';
+import { renderPropertyName } from './BinaryVisitor';
 
-export class NullVisitor {
-  public visitIsNull(node: IsNullNode, resolver?: ColumnResolver): ConditionFragment {
+/**
+ * Handles both `IS NULL` and `IS NOT NULL` checks. A single `visit` method branches on the
+ * node type so one visitor instance can be registered under both `'isNull'` and `'isNotNull'`.
+ */
+export class NullVisitor implements NodeVisitor<IsNullNode | IsNotNullNode> {
+  public visit(node: IsNullNode | IsNotNullNode, ctx: VisitContext): ConditionFragment {
+    const operator = node.type === 'isNull' ? 'IS NULL' : 'IS NOT NULL';
     return {
-      condition: `(${renderPropertyName(node.property, resolver)} IS NULL)`,
-      parameters: []
-    };
-  }
-
-  public visitIsNotNull(node: IsNotNullNode, resolver?: ColumnResolver): ConditionFragment {
-    return {
-      condition: `(${renderPropertyName(node.property, resolver)} IS NOT NULL)`,
+      condition: `(${renderPropertyName(node.property, ctx.resolver)} ${operator})`,
       parameters: []
     };
   }

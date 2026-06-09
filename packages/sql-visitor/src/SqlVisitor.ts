@@ -1,4 +1,9 @@
-import type { ExpressionNode } from '@ts-linq/ast';
+import type {
+  EfFunctionNode,
+  ExpressionNode,
+  JsonPathExpression,
+  UnsupportedNode
+} from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { HierarchyIdTranslator, SpatialTranslator } from '@ts-linq/types';
 
@@ -7,11 +12,8 @@ import type { EfFunctionTranslator } from './functions/FunctionTranslator';
 import type { JsonAccessRewriter } from './JsonAccessRewriter';
 import { ParameterState, ParameterStyle } from './ParameterStyle';
 import type { ConditionFragment } from './types';
-import {
-  BinaryVisitor,
-  type ColumnResolver,
-  type ConverterResolver
-} from './visitors/BinaryVisitor';
+import type { ColumnResolver, ConverterResolver, NodeVisitor, VisitContext } from './visitContext';
+import { BinaryVisitor } from './visitors/BinaryVisitor';
 import { EfFunctionVisitor } from './visitors/EfFunctionVisitor';
 import { HierarchyMethodVisitor } from './visitors/HierarchyMethodVisitor';
 import { InVisitor } from './visitors/InVisitor';
@@ -45,6 +47,48 @@ export interface SqlVisitorOptions {
 }
 
 /**
+ * Registered for `unsupported` nodes (sentinels emitted by the transformer for expressions
+ * it could not compile). Always present so the failure surfaces a stable, descriptive error.
+ */
+const UNSUPPORTED_VISITOR: NodeVisitor<UnsupportedNode> = {
+  visit(node) {
+    throw new AstSqlGenerationError(
+      'UNSUPPORTED_NODE_TYPE',
+      `Unsupported expression in WHERE clause: ${node.description}`,
+      { nodeType: node.type, syntaxKind: node.syntaxKind }
+    );
+  }
+};
+
+/**
+ * Registered for `efFunction` nodes when no `efFunctionTranslator` was configured.
+ * Centralises the former inline "throw if not configured" guard.
+ */
+const EF_FUNCTION_NOT_CONFIGURED: NodeVisitor<EfFunctionNode> = {
+  visit(node) {
+    throw new AstSqlGenerationError(
+      'UNSUPPORTED_FUNCTION',
+      `EF.functions.${node.fn}() requires an efFunctionTranslator. Pass one via SqlVisitor options.`,
+      { nodeType: 'efFunction', fn: node.fn }
+    );
+  }
+};
+
+/**
+ * Registered for `jsonPath` nodes when no `jsonPathTranslator` was configured.
+ * Centralises the former inline "throw if not configured" guard.
+ */
+const JSON_PATH_NOT_CONFIGURED: NodeVisitor<JsonPathExpression> = {
+  visit(node) {
+    throw new AstSqlGenerationError(
+      'UNSUPPORTED_NODE_TYPE',
+      `JSON path expression requires a jsonPathTranslator. Pass one via SqlVisitor options.`,
+      { nodeType: 'jsonPath', column: node.column, path: node.path }
+    );
+  }
+};
+
+/**
  * Converts a compiled ExpressionNode tree into a SQL WHERE fragment with parameters.
  *
  * Column name resolution: by default identifiers are emitted as-is (TypeScript property names).
@@ -75,6 +119,13 @@ export class SqlVisitor {
   private readonly jsonRewriter?: JsonAccessRewriter;
   private readonly complexRewriter?: ComplexAccessRewriter;
 
+  /**
+   * Node-type → visitor dispatch table. Replaces the former hand-written switch and mirrors
+   * the transformer package's `DISPATCH_MAP`. Adding a node type means adding a visitor and
+   * one registry entry — no edits to {@link _visit}.
+   */
+  private readonly registry = new Map<ExpressionNode['type'], NodeVisitor>();
+
   constructor(
     private readonly parameterStyle: ParameterStyle = ParameterStyle.Question,
     options?: SqlVisitorOptions
@@ -95,6 +146,30 @@ export class SqlVisitor {
       : undefined;
     this.jsonRewriter = options?.jsonAccessRewriter;
     this.complexRewriter = options?.complexAccessRewriter;
+
+    // Always-available node visitors.
+    this.register('binary', this.binary);
+    this.register('logical', this.logical);
+    this.register('not', this.unary);
+    this.register('isNull', this.nullV);
+    this.register('isNotNull', this.nullV);
+    this.register('in', this.inV);
+    this.register('method', this.method);
+    this.register('unsupported', UNSUPPORTED_VISITOR);
+
+    // Optional visitors register their real implementation when a translator is configured,
+    // otherwise a stub that throws the same "not configured" error as before.
+    this.register('efFunction', this.efFunction ?? EF_FUNCTION_NOT_CONFIGURED);
+    this.register('jsonPath', this.jsonPath ?? JSON_PATH_NOT_CONFIGURED);
+  }
+
+  /**
+   * Type-safe registry insertion: the literal `type` must match the visitor's node type `N`.
+   * The stored value is widened to `NodeVisitor` for the heterogeneous map (visitor `visit`
+   * methods are bivariant), mirroring the transformer's `as VisitorFn` registration.
+   */
+  private register<N extends ExpressionNode>(type: N['type'], visitor: NodeVisitor<N>): void {
+    this.registry.set(type, visitor as NodeVisitor);
   }
 
   public toSql(
@@ -107,69 +182,25 @@ export class SqlVisitor {
     // operates on the already-flattened column names.
     const afterComplex = this.complexRewriter ? this.complexRewriter.rewrite(node) : node;
     const rewritten = this.jsonRewriter ? this.jsonRewriter.rewrite(afterComplex) : afterComplex;
-    return this._visit(rewritten, inputParameters, resolver, state);
+    const ctx: VisitContext = {
+      inputParameters,
+      resolver,
+      converterResolver: this.converterResolver,
+      state,
+      recurse: (n) => this._visit(n, ctx)
+    };
+    return this._visit(rewritten, ctx);
   }
 
-  private _visit(
-    node: ExpressionNode,
-    inputParameters: readonly unknown[],
-    resolver: ColumnResolver | undefined,
-    state: ParameterState
-  ): ConditionFragment {
-    const recurse = (n: ExpressionNode) => this._visit(n, inputParameters, resolver, state);
-
-    switch (node.type) {
-      case 'binary':
-        return this.binary.visit(
-          node,
-          inputParameters,
-          recurse,
-          resolver,
-          state,
-          this.converterResolver
-        );
-      case 'logical':
-        return this.logical.visit(node, recurse);
-      case 'not':
-        return this.unary.visit(node, recurse, resolver, state);
-      case 'isNull':
-        return this.nullV.visitIsNull(node, resolver);
-      case 'isNotNull':
-        return this.nullV.visitIsNotNull(node, resolver);
-      case 'in':
-        return this.inV.visit(node, inputParameters, resolver, state);
-      case 'method':
-        return this.method.visit(node, inputParameters, resolver, state);
-      case 'efFunction':
-        if (!this.efFunction) {
-          throw new AstSqlGenerationError(
-            'UNSUPPORTED_FUNCTION',
-            `EF.functions.${node.fn}() requires an efFunctionTranslator. Pass one via SqlVisitor options.`,
-            { nodeType: 'efFunction', fn: node.fn }
-          );
-        }
-        return this.efFunction.visit(node, inputParameters, resolver, state);
-      case 'jsonPath':
-        if (!this.jsonPath) {
-          throw new AstSqlGenerationError(
-            'UNSUPPORTED_NODE_TYPE',
-            `JSON path expression requires a jsonPathTranslator. Pass one via SqlVisitor options.`,
-            { nodeType: 'jsonPath', column: node.column, path: node.path }
-          );
-        }
-        return this.jsonPath.visit(node, state);
-      case 'unsupported':
-        throw new AstSqlGenerationError(
-          'UNSUPPORTED_NODE_TYPE',
-          `Unsupported expression in WHERE clause: ${node.description}`,
-          { nodeType: node.type, syntaxKind: node.syntaxKind }
-        );
-      default:
-        throw new AstSqlGenerationError(
-          'UNSUPPORTED_NODE_TYPE',
-          `Unsupported root node type: '${(node as ExpressionNode).type}'.`,
-          { nodeType: (node as ExpressionNode).type }
-        );
+  private _visit(node: ExpressionNode, ctx: VisitContext): ConditionFragment {
+    const visitor = this.registry.get(node.type);
+    if (visitor === undefined) {
+      throw new AstSqlGenerationError(
+        'UNSUPPORTED_NODE_TYPE',
+        `Unsupported root node type: '${node.type}'.`,
+        { nodeType: node.type }
+      );
     }
+    return visitor.visit(node, ctx);
   }
 }
