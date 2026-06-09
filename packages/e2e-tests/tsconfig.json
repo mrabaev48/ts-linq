@@ -13,6 +13,7 @@
     "baseUrl": ".",
     "paths": {
       "@ts-linq/query/internal": ["../query/src/internal"],
+      "@ts-linq/sql-visitor/internal": ["../sql-visitor/src/internal"],
       "@ts-linq/core": ["../core/src"],
       "@ts-linq/orm": ["../orm/src"],
       "@ts-linq/query": ["../query/src"],

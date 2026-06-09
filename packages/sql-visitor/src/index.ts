@@ -1,4 +1,8 @@
+// Public contract of `@ts-linq/sql-visitor`: the `SqlVisitor` engine plus the ports, rewriters,
+// emitters and translator/fragment types that dialects and `query` depend on. Sub-visitors and
+// free helpers are implementation collaborators and live behind `@ts-linq/sql-visitor/internal`.
 export { buildQuestionMarkRows, calcChunkSize, chunkArray } from './batch-emitter';
+export { ComplexAccessRewriter } from './ComplexAccessRewriter';
 export { emitTagComments } from './emit-tags';
 export type { EfFunctionTranslator } from './functions/FunctionTranslator';
 export { JsonAccessRewriter } from './JsonAccessRewriter';
@@ -7,18 +11,7 @@ export { CallSyntaxEmitter, ExecSyntaxEmitter } from './sp-call-emitter';
 export { SqlVisitor, type SqlVisitorOptions } from './SqlVisitor';
 export type { ConditionFragment, SqlFragment } from './types';
 export type { ColumnResolver, ConverterResolver, NodeVisitor, VisitContext } from './visitContext';
-export { BinaryVisitor, renderPropertyName, resolveParameterRef } from './visitors/BinaryVisitor';
-export { EfFunctionVisitor } from './visitors/EfFunctionVisitor';
-export { FragmentJoinPlanner } from './visitors/FragmentJoinPlanner';
-export { HierarchyMethodVisitor, isHierarchyMethod } from './visitors/HierarchyMethodVisitor';
-export { InVisitor } from './visitors/InVisitor';
 export type { JsonPathTranslator } from './visitors/JsonPathVisitor';
-export { JsonPathVisitor } from './visitors/JsonPathVisitor';
-export { LogicalVisitor } from './visitors/LogicalVisitor';
-export { MethodVisitor } from './visitors/MethodVisitor';
-export { NullVisitor } from './visitors/NullVisitor';
-export { isSpatialMethod, SpatialMethodVisitor } from './visitors/SpatialMethodVisitor';
-export { UnaryVisitor } from './visitors/UnaryVisitor';
 export type { JsonPathExpression } from '@ts-linq/ast';
 /** @deprecated Use {@link JsonPathExpression} instead. */
 export type { JsonPathNode } from '@ts-linq/ast';

@@ -11,6 +11,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/index.js"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.ts",
+      "import": "./dist/esm/internal.js",
+      "require": "./dist/internal.js"
     }
   },
   "scripts": {
@@ -33,5 +38,15 @@
     "@types/node": "^24.3.0",
     "tsd": "^0.30.7",
     "typescript": "^5.4.5"
+  },
+  "tsd": {
+    "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "@ts-linq/sql-visitor/internal": [
+          "./dist/internal.d.ts"
+        ]
+      }
+    }
   }
 }

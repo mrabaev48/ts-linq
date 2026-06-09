@@ -1,6 +1,8 @@
 import type { BinaryNode } from '@ts-linq/ast';
 
+import * as publicApi from '../src/index';
 import { ParameterState, ParameterStyle, SqlVisitor } from '../src/index';
+import * as internalApi from '../src/internal';
 
 describe('@ts-linq/sql-visitor exports', () => {
   it('exports SqlVisitor', () => {
@@ -55,5 +57,41 @@ describe('@ts-linq/sql-visitor exports', () => {
     const result = visitor.toSql(node);
     expect(result.condition).toBe('(id = @p1)');
     expect(result.parameters).toEqual([42]);
+  });
+});
+
+describe('@ts-linq/sql-visitor public barrel snapshot', () => {
+  // Runtime (value) exports of the curated public barrel. Type-only exports are erased and do not
+  // appear here. This snapshot fails if a sub-visitor or free helper is accidentally re-added to
+  // the public surface — those collaborators must stay behind `@ts-linq/sql-visitor/internal`.
+  const EXPECTED_PUBLIC_EXPORTS = [
+    'CallSyntaxEmitter',
+    'ComplexAccessRewriter',
+    'ExecSyntaxEmitter',
+    'JsonAccessRewriter',
+    'ParameterState',
+    'ParameterStyle',
+    'SqlVisitor',
+    'buildQuestionMarkRows',
+    'calcChunkSize',
+    'chunkArray',
+    'emitTagComments'
+  ];
+
+  it('exposes exactly the curated public value exports', () => {
+    expect(Object.keys(publicApi).sort()).toEqual([...EXPECTED_PUBLIC_EXPORTS].sort());
+  });
+
+  it('does not leak sub-visitors through the public barrel', () => {
+    const leaked = Object.keys(publicApi).filter(
+      (name) => name.endsWith('Visitor') && name !== 'SqlVisitor'
+    );
+    expect(leaked).toEqual([]);
+  });
+
+  it('keeps sub-visitors reachable via the internal subpath', () => {
+    expect(internalApi.FragmentJoinPlanner).toBeDefined();
+    expect(internalApi.BinaryVisitor).toBeDefined();
+    expect(internalApi.SpatialMethodVisitor).toBeDefined();
   });
 });

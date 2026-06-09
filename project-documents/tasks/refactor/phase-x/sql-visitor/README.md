@@ -1,6 +1,6 @@
 # Refactor Audit: sql-visitor
 
-**Package status: 🔄 In Progress** — tasks 1–2 ✅ completed; tasks 3–5 pending.
+**Package status: 🔄 In Progress** — tasks 1, 2, 4 ✅ completed; tasks 3, 5 pending.
 
 ## Package responsibility
 `@ts-linq/sql-visitor` converts a compiled `ExpressionNode` AST (from `@ts-linq/transformer`)
@@ -40,7 +40,7 @@ which is the package's core safety property.
 |---:|---|---|---|---|
 | 1 | task-1 | P1 | ✅ Completed | Uniform visitor contract + registry; foundation for the rest. |
 | 2 | task-2 | P1 | ✅ Completed | Remove placeholder-numbering hazard (folds into VisitContext). |
-| 3 | task-4 | P2 | ⏳ Pending | Hide internal visitors so 1 & 2 aren't breaking changes. |
+| 3 | task-4 | P2 | ✅ Completed | Hide internal visitors so 1 & 2 aren't breaking changes. |
 | 4 | task-3 | P2 | ⏳ Pending | Correctness: EF function property-as-value binding bug. |
 | 5 | task-5 | P2 | ⏳ Pending | Correctness/fail-loud: JSON rewrite gap in isNull/method. |
 
@@ -63,6 +63,23 @@ which is the package's core safety property.
 > (`test-d/index.test-d.ts`, wired via a new `test-d` script). No `src/` change → **no
 > changeset** (CLAUDE.md §14: a changeset is required only when `src/` of a versioned package
 > changes; tests + test tooling + docs do not qualify).
+
+> **task-4 outcome:** curated the public barrel (`src/index.ts`) down to the intended
+> published contract — `SqlVisitor`/`SqlVisitorOptions`, `ParameterState`/`ParameterStyle`,
+> rewriters (`JsonAccessRewriter`, `ComplexAccessRewriter`), emitters (`CallSyntaxEmitter`,
+> `ExecSyntaxEmitter`, `emitTagComments`, batch helpers) and translator/fragment/port *types*.
+> All 11 sub-visitors and the free helpers (`renderPropertyName`, `resolveParameterRef`,
+> `isHierarchyMethod`, `isSpatialMethod`) moved behind a new `@ts-linq/sql-visitor/internal`
+> subpath (`src/internal.ts`, `@internal`-tagged), added to `package.json` `exports` (mirroring
+> `@ts-linq/query`). A **grep** of the monorepo found exactly one external non-test consumer of a
+> moved symbol: `query/src/Queryable.ts` imports `FragmentJoinPlanner` — migrated to
+> `@ts-linq/sql-visitor/internal`. batch helpers (`calcChunkSize`/`chunkArray`) stay public
+> because dialects + `orm` import them. Added a public-barrel **export snapshot test**
+> (`tests/index.test.ts`). Resolution wiring for the new subpath was added to
+> `tsconfig.json`, `query/tsconfig.json`, `e2e-tests/tsconfig.json`, `jest-config` and the
+> `sql-visitor` `tsd` block. Because a sub-visitor was used externally and migrated to
+> `/internal`, this is **`major`** for `@ts-linq/sql-visitor`. Knock-on: with visitors now
+> internal, the task-1/task-2 signature changes are **no longer a public breaking change**.
 
 ## Dependencies on other packages
 - `@ts-linq/ast` — consumes `ExpressionNode` and all node subtypes; throws
