@@ -7,7 +7,6 @@ import type {
   MethodNode,
   PropertyNode
 } from '@ts-linq/ast';
-import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { JsonShape } from '@ts-linq/types';
 
 import { JsonAccessRewriter } from '../src/JsonAccessRewriter';
@@ -95,67 +94,51 @@ describe('JsonAccessRewriter', () => {
     expect(right.type).toBe('property');
   });
 
-  describe('fail-loud on JSON path in unsupported positions', () => {
+  describe('propagates JSON path into isNull / isNotNull / method positions (task-6)', () => {
     const rewriter = () =>
       new JsonAccessRewriter(new Map([['preferences', makeJsonShape('preferences')]]));
 
-    it('throws on a JSON path in isNull position', () => {
+    it('rewrites a JSON path in isNull position into the property field', () => {
       const node: IsNullNode = {
         type: 'isNull',
         property: { type: 'property', path: ['preferences', 'theme'] }
       };
-      expect(() => rewriter().rewrite(node)).toThrow(AstSqlGenerationError);
-      try {
-        rewriter().rewrite(node);
-        throw new Error('expected to throw');
-      } catch (e) {
-        const err = e as AstSqlGenerationError;
-        expect(err).toBeInstanceOf(AstSqlGenerationError);
-        expect(err.code).toBe('UNSUPPORTED_JSON_POSITION');
-        expect(err.details).toMatchObject({
-          nodeType: 'isNull',
-          column: 'preferences',
-          path: ['theme']
-        });
-      }
+      const result = rewriter().rewrite(node) as IsNullNode;
+      expect(result.type).toBe('isNull');
+      const json = result.property as JsonPathExpression;
+      expect(json.type).toBe('jsonPath');
+      expect(json.column).toBe('preferences');
+      expect(json.path).toEqual(['theme']);
     });
 
-    it('throws on a JSON path in isNotNull position', () => {
+    it('rewrites a JSON path in isNotNull position into the property field', () => {
       const node: IsNotNullNode = {
         type: 'isNotNull',
         property: { type: 'property', path: ['preferences', 'theme'] }
       };
-      try {
-        rewriter().rewrite(node);
-        throw new Error('expected to throw');
-      } catch (e) {
-        const err = e as AstSqlGenerationError;
-        expect(err).toBeInstanceOf(AstSqlGenerationError);
-        expect(err.code).toBe('UNSUPPORTED_JSON_POSITION');
-        expect(err.details).toMatchObject({ nodeType: 'isNotNull', column: 'preferences' });
-      }
+      const result = rewriter().rewrite(node) as IsNotNullNode;
+      expect(result.type).toBe('isNotNull');
+      const json = result.property as JsonPathExpression;
+      expect(json.type).toBe('jsonPath');
+      expect(json.column).toBe('preferences');
+      expect(json.path).toEqual(['theme']);
     });
 
-    it('throws on a JSON path object in method position', () => {
+    it('rewrites a JSON path object in method position into the object field', () => {
       const node: MethodNode = {
         type: 'method',
         method: 'startsWith',
         object: { type: 'property', path: ['preferences', 'theme'] },
         args: [{ type: 'literal', value: 'x' }]
       };
-      try {
-        rewriter().rewrite(node);
-        throw new Error('expected to throw');
-      } catch (e) {
-        const err = e as AstSqlGenerationError;
-        expect(err).toBeInstanceOf(AstSqlGenerationError);
-        expect(err.code).toBe('UNSUPPORTED_JSON_POSITION');
-        expect(err.details).toMatchObject({
-          nodeType: 'method',
-          column: 'preferences',
-          path: ['theme']
-        });
-      }
+      const result = rewriter().rewrite(node) as MethodNode;
+      expect(result.type).toBe('method');
+      expect(result.method).toBe('startsWith');
+      expect(result.args).toEqual([{ type: 'literal', value: 'x' }]);
+      const json = result.object as JsonPathExpression;
+      expect(json.type).toBe('jsonPath');
+      expect(json.column).toBe('preferences');
+      expect(json.path).toEqual(['theme']);
     });
   });
 
