@@ -12,7 +12,7 @@ import type {
 } from '@ts-linq/ast';
 import { AstSqlGenerationError } from '@ts-linq/ast';
 
-import { ParameterStyle } from '../src/ParameterStyle';
+import { ParameterState, ParameterStyle } from '../src/ParameterStyle';
 import { SqlVisitor } from '../src/SqlVisitor';
 import type { ColumnResolver } from '../src/visitContext';
 import { BinaryVisitor, renderPropertyName } from '../src/visitors/BinaryVisitor';
@@ -839,5 +839,33 @@ describe('ParameterStyle', () => {
       expect(result.condition).toBe('((age > ?) AND (active = ?))');
       expect(result.parameters).toEqual([18, true]);
     });
+  });
+});
+
+// ─── Shared ParameterState (Required Collaborator regression) ───────────────────
+
+describe('shared ParameterState across visitor calls', () => {
+  // Regression guard for the placeholder-numbering hazard: the parameter counter
+  // lives on the single `ParameterState` threaded through `VisitContext.state`.
+  // When the same shared state is reused across separately-visited fragments the
+  // positional placeholders must advance continuously ($1, then $2) — never reset
+  // to $1 per visit, which a per-visitor default state would have silently caused.
+  it('numbers placeholders continuously ($1, $2 not $1, $1)', () => {
+    const binary = new BinaryVisitor();
+    const ctx = makeCtx({ state: new ParameterState(ParameterStyle.Positional) });
+
+    const first = binary.visit(
+      { type: 'binary', operator: '>', left: prop('age'), right: lit(18) },
+      ctx
+    );
+    const second = binary.visit(
+      { type: 'binary', operator: '===', left: prop('active'), right: lit(true) },
+      ctx
+    );
+
+    expect(first.condition).toBe('(age > $1)');
+    expect(second.condition).toBe('(active = $2)');
+    // The whole point of the guard: the second fragment must NOT collide on $1.
+    expect(second.condition).not.toBe('(active = $1)');
   });
 });
