@@ -127,8 +127,8 @@ Each package only depends on packages already completed above it.
 | 3 | `metadata` | foundation | Remove committed artifacts, read-port, tame registry. Depends on `types`. | ✅ done |
 | 4 | `ast` | foundation | De-dupe jsonPath node; small. Depends on `types`. | ✅ done |
 | 5 | `sql-visitor` | foundation | Visitor/dispatch + param-state. Depends on `ast`, `types`. | ✅ done |
-| 6 | `concurrency` | foundation | Make retry policies canonical **before** `core` so its duplicate can be deleted. | 🔄 In Progress |
-| 7 | `core` | runtime | Decompose provider/loader; kill SQL injection + singleton coupling + silent catches. |
+| 6 | `concurrency` | foundation | Make retry policies canonical **before** `core` so its duplicate can be deleted. | ✅ done |
+| 7 | `core` | runtime | Decompose provider/loader; kill SQL injection + singleton coupling + silent catches. | 🔄 In Progress |
 | 8 | `query` | runtime | Decompose `Queryable`; immutability; wire `SqlVisitorOptions`; move SQL out. |
 | 9 | `transformer` | runtime | De-dupe entrypoints; stop swallowing TypeChecker failures. Depends on `ast`. |
 | 10 | `migrations` | runtime | Injection-safe quoting; decompose runner. Needed by `orm` + `cli`. |
@@ -208,7 +208,7 @@ Each package only depends on packages already completed above it.
 | cache-redis | 7 | 0 | 5 | 2 | 0 | not-started |
 | cli | 7 | 2 | 3 | 1 | 1 | not-started |
 | composite-sql-logger | 3 | 0 | 2 | 1 | 0 | not-started |
-| concurrency | 2 | 0 | 2 | 0 | 0 | 🔄 in progress (task-1 ✅) |
+| concurrency | 2 | 0 | 2 | 0 | 0 | ✅ done (task-1, task-2 ✅) |
 | core | 9 | 4 | 3 | 2 | 0 | not-started |
 | dialect-mssql | 4 | 1 | 2 | 1 | 0 | not-started |
 | dialect-mysql | 2 | 0 | 2 | 0 | 0 | not-started |
