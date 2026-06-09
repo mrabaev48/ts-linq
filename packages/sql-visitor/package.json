@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/sql-visitor",
-  "version": "4.0.2",
+  "version": "4.1.0",
   "private": true,
   "description": "SQL visitor for AST transformation",
   "main": "./dist/index.js",
