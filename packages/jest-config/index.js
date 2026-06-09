@@ -31,6 +31,7 @@ const tsLinqTsJestConfig = {
       '@ts-linq/plugin-multi-tenant': ['packages/plugin-multi-tenant/src'],
       '@ts-linq/plugin-soft-delete': ['packages/plugin-soft-delete/src'],
       '@ts-linq/sql-visitor': ['packages/sql-visitor/src'],
+      '@ts-linq/sql-visitor/internal': ['packages/sql-visitor/src/internal'],
       '@ts-linq/telemetry': ['packages/telemetry/src'],
       '@ts-linq/dialect-postgres': ['packages/dialect-postgres/src'],
       '@ts-linq/dialect-mysql': ['packages/dialect-mysql/src'],
@@ -66,6 +67,7 @@ const tsLinqModuleNameMapper = {
   '^@ts-linq/plugin-audit$': '<rootDir>/packages/plugin-audit/src',
   '^@ts-linq/plugin-multi-tenant$': '<rootDir>/packages/plugin-multi-tenant/src',
   '^@ts-linq/plugin-soft-delete$': '<rootDir>/packages/plugin-soft-delete/src',
+  '^@ts-linq/sql-visitor/internal$': '<rootDir>/packages/sql-visitor/src/internal',
   '^@ts-linq/sql-visitor$': '<rootDir>/packages/sql-visitor/src',
   '^@ts-linq/telemetry$': '<rootDir>/packages/telemetry/src',
   '^@ts-linq/provider-postgres$': '<rootDir>/packages/provider-postgres/src',
@@ -117,6 +119,7 @@ function createPackageJestConfig(overrides) {
     testMatch: ['**/*.test.ts'],
     moduleNameMapper: {
       '^@ts-linq/query/internal$': '<rootDir>/../query/src/internal',
+      '^@ts-linq/sql-visitor/internal$': '<rootDir>/../sql-visitor/src/internal',
       '^@ts-linq/(.*)$': '<rootDir>/../$1/src'
     },
     collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/index.ts'],

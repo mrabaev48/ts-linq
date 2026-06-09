@@ -3,7 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"]
+      "@src/*": ["src/*"],
+      "@ts-linq/sql-visitor/internal": ["../sql-visitor/dist/internal"]
     },
     "composite": true,
     "declaration": true,
