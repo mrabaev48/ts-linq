@@ -1,4 +1,4 @@
-import { DatabaseProvider } from '@ts-linq/core';
+import { DatabaseProvider, ProviderConfig } from '@ts-linq/core';
 import { PostgresDdlStrategy, PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
@@ -18,6 +18,7 @@ import {
 import { buildPostgresConnectionString } from './buildConnectionString';
 import { encodeLtree, isHierarchyId } from './ltree-codec';
 import { geometryToEwkbHex, isGeometryObject } from './spatial-codec';
+import { PostgresSequenceStrategy } from './strategies/PostgresSequenceStrategy';
 import { isPgTransientErrorCode } from './transientErrorCodes';
 
 // Lazy require to avoid hard dependency if not installed
@@ -93,16 +94,19 @@ export class PostgresProvider extends DatabaseProvider {
   constructor(config: PostgresConfig) {
     const connectionString = buildPostgresConnectionString(config);
     super(
-      connectionString,
-      config.logger,
-      config.middlewares,
-      config.softDelete,
-      config.retryPolicy,
-      config.poolOptions,
-      config.healthCheck
+      new ProviderConfig({
+        providerName: 'postgresql',
+        connectionString,
+        logger: config.logger,
+        middlewares: config.middlewares,
+        softDelete: config.softDelete,
+        retryPolicy: config.retryPolicy,
+        poolOptions: config.poolOptions,
+        healthCheck: config.healthCheck,
+        sequenceStrategy: new PostgresSequenceStrategy()
+      })
     );
     this.config = config;
-    this.providerName = 'postgresql';
   }
 
   public override formatSqlWithParams(
@@ -517,25 +521,6 @@ export class PostgresProvider extends DatabaseProvider {
   protected override isTransientError(error: unknown): boolean {
     if (isPgTransientErrorCode((error as { code?: string })?.code)) return true;
     return super.isTransientError(error);
-  }
-
-  /**
-   * Reserves the next Hi-Lo block by advancing the sequence by `blockSize`.
-   * The sequence must be declared with INCREMENT BY = blockSize.
-   * Returns the high-water mark of the reserved block.
-   */
-  public override async nextSequenceValue(
-    sequenceName: string,
-    schema: string | undefined,
-    _blockSize: number
-  ): Promise<number> {
-    const qualifiedName = schema ? `"${schema}"."${sequenceName}"` : `"${sequenceName}"`;
-    const rows = await this.executeQuery<{ nextval: string }>(`SELECT nextval(${qualifiedName})`);
-    const raw = rows[0]?.nextval;
-    if (raw === undefined) {
-      throw new Error(`Failed to fetch next value for sequence "${qualifiedName}"`);
-    }
-    return Number(raw);
   }
 }
 

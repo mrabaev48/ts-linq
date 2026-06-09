@@ -1,4 +1,4 @@
-import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
+import { DatabaseProvider, ProviderConfig, SqlHelper } from '@ts-linq/core';
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MssqlDdlStrategy } from '@ts-linq/dialect-mssql';
 import { MetadataStorage } from '@ts-linq/metadata';
@@ -19,6 +19,8 @@ import {
 import { buildMssqlConnectionString } from './buildConnectionString';
 import { encodeHierarchyId, isHierarchyId } from './hierarchy-codec';
 import { encodeWkt, isGeometryObject } from './spatial-codec';
+import { MssqlSavepointStrategy } from './strategies/MssqlSavepointStrategy';
+import { MssqlSequenceStrategy } from './strategies/MssqlSequenceStrategy';
 import { isMssqlTransientErrorNumber } from './transientErrorCodes';
 
 interface MssqlRequestLike {
@@ -86,16 +88,20 @@ export class MssqlProvider extends DatabaseProvider {
   constructor(config: MssqlConfig) {
     const connectionString = buildMssqlConnectionString(config);
     super(
-      connectionString,
-      config.logger,
-      config.middlewares,
-      config.softDelete,
-      config.retryPolicy,
-      config.poolOptions,
-      config.healthCheck
+      new ProviderConfig({
+        providerName: 'mssql',
+        connectionString,
+        logger: config.logger,
+        middlewares: config.middlewares,
+        softDelete: config.softDelete,
+        retryPolicy: config.retryPolicy,
+        poolOptions: config.poolOptions,
+        healthCheck: config.healthCheck,
+        savepointStrategy: new MssqlSavepointStrategy(),
+        sequenceStrategy: new MssqlSequenceStrategy()
+      })
     );
     this.config = config;
-    this.providerName = 'mssql';
   }
 
   public override formatSqlWithParams(
@@ -531,21 +537,6 @@ export class MssqlProvider extends DatabaseProvider {
     }
   }
 
-  /**
-   * MSSQL savepoint support uses `SAVE TRANSACTION / ROLLBACK TRANSACTION` syntax.
-   * MSSQL does not support `RELEASE SAVEPOINT`.
-   */
-  public override async createSavepoint(name: string): Promise<void> {
-    await this.executeNonQuery(`SAVE TRANSACTION ${name}`);
-  }
-
-  public override async rollbackToSavepoint(name: string): Promise<void> {
-    await this.executeNonQuery(`ROLLBACK TRANSACTION ${name}`);
-  }
-
-  // MSSQL has no RELEASE concept — this is intentionally a no-op
-  public override async releaseSavepoint(_name: string): Promise<void> {}
-
   /** Enhanced transient error detection using SQL Server-specific error numbers. */
   protected override isTransientError(error: unknown): boolean {
     if (isMssqlTransientErrorNumber((error as { number?: number })?.number)) return true;
@@ -555,27 +546,6 @@ export class MssqlProvider extends DatabaseProvider {
   /** Provide SQL dialect for this provider. */
   public getDialect(): SqlDialect {
     return new MssqlDialect();
-  }
-
-  /**
-   * Reserves the next Hi-Lo block via MSSQL native sequence.
-   * The sequence must be declared with INCREMENT BY = blockSize.
-   * Returns the high-water mark of the reserved block.
-   */
-  public override async nextSequenceValue(
-    sequenceName: string,
-    schema: string | undefined,
-    _blockSize: number
-  ): Promise<number> {
-    const qualifiedName = schema ? `[${schema}].[${sequenceName}]` : `[${sequenceName}]`;
-    const rows = await this.executeQuery<{ val: unknown }>(
-      `SELECT NEXT VALUE FOR ${qualifiedName} AS val`
-    );
-    const raw = rows[0]?.val;
-    if (raw === undefined) {
-      throw new Error(`Failed to fetch next value for sequence "${qualifiedName}"`);
-    }
-    return Number(raw);
   }
 
   private mapRowToEntity<T extends object>(row: unknown, entityClass: new () => T): T {

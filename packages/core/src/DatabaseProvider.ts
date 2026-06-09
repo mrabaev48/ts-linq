@@ -6,19 +6,13 @@ import type {
   EntityMetadata,
   JunctionQuerySpec,
   OrmMiddleware,
-  QueryAnalysisInfo,
   RetryPolicy,
   SoftDeleteOptions,
   SqlDialect,
   SqlLogger,
   SqlParameter
 } from '@ts-linq/types';
-import {
-  EntityNotFoundError,
-  InvalidIdentifierError,
-  OperationAbortedError,
-  UnsupportedOperationError
-} from '@ts-linq/types';
+import { EntityNotFoundError, InvalidIdentifierError, OperationAbortedError } from '@ts-linq/types';
 
 /**
  * Whitelist for SQL identifiers passed through {@link DatabaseProvider.queryJunction}.
@@ -27,25 +21,26 @@ import {
  */
 const JUNCTION_IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
+import { type QueryAnalysisContext, QueryAnalyzer } from './analysis/QueryAnalyzer';
+import { BatchTransactionRunner } from './batch/BatchTransactionRunner';
+import { QueryExecutionPipeline } from './execution/QueryExecutionPipeline';
 import { HealthMonitor } from './Health/HealthMonitor';
 import type { IDbCommandInterceptor } from './interceptors/IDbCommandInterceptor';
 import type { IDbConnectionInterceptor } from './interceptors/IDbConnectionInterceptor';
 import type { IDbTransactionInterceptor } from './interceptors/IDbTransactionInterceptor';
 import type { IMaterializationInterceptor } from './interceptors/IMaterializationInterceptor';
-import type {
-  CommandEventData,
-  ConnectionEventData,
-  DbCommand,
-  DbReader,
-  TransactionEventData
-} from './interceptors/types';
+import { InterceptorDispatcher } from './interceptors/InterceptorDispatcher';
+import { CompositeSqlLogger } from './logging/CompositeSqlLogger';
+import { MiddlewareDispatcher } from './middleware/MiddlewareDispatcher';
+import { ProviderConfig } from './ProviderConfig';
 import { ResilienceManager } from './Resilience/ResilienceManager';
+import { AnsiSavepointStrategy, type SavepointStrategy } from './strategies/SavepointStrategy';
+import { type SequenceStrategy, UnsupportedSequenceStrategy } from './strategies/SequenceStrategy';
 import type {
   CircuitBreakerOptions,
   IDatabaseProvider,
   QueryPerformanceAnalysisOptions
 } from './types';
-import { logInternalError } from './utils/InternalLogger';
 
 /**
  * Abstract base class for database providers. Concrete providers must
@@ -75,24 +70,35 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   protected resilienceManager: ResilienceManager;
   /** Health monitor handling connection checks */
   protected healthMonitor: HealthMonitor;
+  /** Template-method orchestration for query execution (resilience + logging + hooks + analysis). */
+  private readonly pipeline: QueryExecutionPipeline;
 
-  /** Optional query performance analysis configuration. */
-  protected analysis?: QueryPerformanceAnalysisOptions;
-  /** Internal accounting for analysis rate limiting. */
-  private analysisEventsWindowStartMs?: number;
-  private analysisEventsInWindow: number = 0;
+  /** Query-performance analysis policy (sampling / rate-limit / EXPLAIN). */
+  private readonly analyzer = new QueryAnalyzer();
 
-  /** EF-style command interceptors. */
-  protected _commandInterceptors: IDbCommandInterceptor[] = [];
-  /** EF-style connection interceptors. */
-  protected _connectionInterceptors: IDbConnectionInterceptor[] = [];
-  /** EF-style transaction interceptors. */
-  protected _transactionInterceptors: IDbTransactionInterceptor[] = [];
-  /** EF-style materialization interceptors. */
-  protected _materializationInterceptors: IMaterializationInterceptor[] = [];
+  /** Mediator for EF-style interceptor fan-out (connection/transaction/command/materialization). */
+  private readonly interceptors = new InterceptorDispatcher();
+
+  /** Dialect savepoint SQL strategy (ANSI by default). */
+  private readonly savepointStrategy: SavepointStrategy;
+  /** Dialect sequence strategy (unsupported by default). */
+  private readonly sequenceStrategy: SequenceStrategy;
+
+  /** Observer fan-out for the OrmMiddleware chain. */
+  private readonly mw = new MiddlewareDispatcher(() => this.middlewares);
+  /** Runs multi-entity write batches inside a single transaction. */
+  private readonly batchRunner = new BatchTransactionRunner(this);
 
   /**
-   * Create a provider with a given connection string.
+   * Create a provider from a {@link ProviderConfig} (preferred).
+   * @param config Parameter Object carrying connection + cross-cutting options.
+   */
+  constructor(config: ProviderConfig);
+  /**
+   * @deprecated Pass a {@link ProviderConfig} instead. The positional-argument
+   * form is retained for backward compatibility and will be removed in a future
+   * major release. It cannot set `providerName` up front, so resilience/health
+   * telemetry is labelled `'unknown'` until a subclass assigns `providerName`.
    * @param connectionString Provider-specific connection string.
    */
   constructor(
@@ -104,37 +110,70 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     poolOptions?: ConnectionPoolOptions,
     healthCheck?: ConnectionHealthCheckOptions,
     circuitOptions?: CircuitBreakerOptions
+  );
+  constructor(
+    configOrConnectionString: ProviderConfig | string,
+    logger?: SqlLogger,
+    middlewares?: OrmMiddleware[],
+    softDelete?: SoftDeleteOptions,
+    retryPolicy?: RetryPolicy,
+    poolOptions?: ConnectionPoolOptions,
+    healthCheck?: ConnectionHealthCheckOptions,
+    circuitOptions?: CircuitBreakerOptions
   ) {
-    this.connectionString = connectionString;
-    this.logger = logger;
-    this.middlewares = middlewares;
-    this.softDelete = softDelete;
-    this.retryPolicy = retryPolicy;
-    this.poolOptions = poolOptions;
-    this.healthCheck = healthCheck;
-    this.circuitOptions = circuitOptions;
+    const config =
+      configOrConnectionString instanceof ProviderConfig
+        ? configOrConnectionString
+        : new ProviderConfig({
+            providerName: 'unknown',
+            connectionString: configOrConnectionString,
+            logger,
+            middlewares,
+            softDelete,
+            retryPolicy,
+            poolOptions,
+            healthCheck,
+            circuitOptions
+          });
 
+    this.connectionString = config.connectionString;
+    this.logger = config.logger;
+    this.middlewares = config.middlewares;
+    this.softDelete = config.softDelete;
+    this.retryPolicy = config.retryPolicy;
+    this.poolOptions = config.poolOptions;
+    this.healthCheck = config.healthCheck;
+    this.circuitOptions = config.circuitOptions;
+    this.providerName = config.providerName;
+    this.analyzer.configure(config.analysis);
+    this.savepointStrategy = config.savepointStrategy ?? new AnsiSavepointStrategy();
+    this.sequenceStrategy = config.sequenceStrategy ?? new UnsupportedSequenceStrategy();
+
+    // providerName is now the real value (not 'unknown') for the ProviderConfig
+    // path, so resilience/health telemetry is labelled correctly from the start.
     this.resilienceManager = new ResilienceManager(
-      logger,
-      this.providerName, // Note: providerName is 'unknown' here until subclass sets it, might need update later?
-      circuitOptions,
-      retryPolicy,
+      config.logger,
+      this.providerName,
+      config.circuitOptions,
+      config.retryPolicy,
       (e) => this.isTransientError(e)
     );
 
     this.healthMonitor = new HealthMonitor(
-      logger,
+      config.logger,
       this.providerName,
-      healthCheck,
+      config.healthCheck,
       this.resilienceManager
     );
+
+    this.pipeline = new QueryExecutionPipeline(this.resilienceManager);
   }
 
   /** Connect to the database. */
   public async connect(): Promise<void> {
-    await this.notifyConnectionOpening();
+    await this.interceptors.connectionOpening();
     await this.doConnect();
-    await this.notifyConnectionOpened();
+    await this.interceptors.connectionOpened();
   }
 
   /** Provider-specific connection logic. */
@@ -142,9 +181,9 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
 
   /** Disconnect from the database and release resources. */
   public async disconnect(): Promise<void> {
-    await this.notifyConnectionClosing();
+    await this.interceptors.connectionClosing();
     await this.doDisconnect();
-    await this.notifyConnectionClosed();
+    await this.interceptors.connectionClosed();
   }
 
   /** Provider-specific disconnection logic. */
@@ -191,18 +230,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     entities: T[],
     entityClass: EntityCtorRef
   ): Promise<T[]> {
-    if (entities.length === 0) return entities;
-    await this.beginTransaction();
-    try {
-      for (const entity of entities) {
-        await this.insert(entity, entityClass);
-      }
-      await this.commitTransaction();
-      return entities;
-    } catch (error) {
-      await this.rollbackTransaction();
-      throw error;
-    }
+    return this.batchRunner.runAll(entities, async (entity) => this.insert(entity, entityClass));
   }
 
   /** Update many entities in a single transaction (default implementation). */
@@ -210,18 +238,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     entities: T[],
     entityClass: EntityCtorRef
   ): Promise<T[]> {
-    if (entities.length === 0) return entities;
-    await this.beginTransaction();
-    try {
-      for (const entity of entities) {
-        await this.update(entity, entityClass);
-      }
-      await this.commitTransaction();
-      return entities;
-    } catch (error) {
-      await this.rollbackTransaction();
-      throw error;
-    }
+    return this.batchRunner.runAll(entities, async (entity) => this.update(entity, entityClass));
   }
 
   /**
@@ -250,18 +267,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     entities: T[],
     entityClass: EntityCtorRef
   ): Promise<T[]> {
-    if (entities.length === 0) return entities;
-    await this.beginTransaction();
-    try {
-      for (const entity of entities) {
-        await this.upsert(entity, entityClass);
-      }
-      await this.commitTransaction();
-      return entities;
-    } catch (error) {
-      await this.rollbackTransaction();
-      throw error;
-    }
+    return this.batchRunner.runAll(entities, async (entity) => this.upsert(entity, entityClass));
   }
   /** Execute a SQL query and return rows mapped as generic objects. */
   public async executeQuery<T>(sql: string, params: readonly SqlParameter[] = []): Promise<T[]> {
@@ -375,73 +381,46 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   }
 
   /**
-   * Retry wrapper using ResilienceManager.
+   * Retry wrapper delegating the orchestration sequence to the
+   * {@link QueryExecutionPipeline} while supplying the provider's volatile state
+   * and lifecycle hooks.
    */
   private async executeWithRetry<T>(
     fn: () => Promise<T>,
     sql: string,
     params: readonly SqlParameter[]
   ): Promise<T> {
-    const context = {
+    return this.pipeline.execute(fn, {
       sql,
       params,
       traceId: this.currentTraceId,
-      inTransaction: this.inTransaction
-    };
-
-    return this.resilienceManager.execute(async () => {
-      const startedAt = Date.now();
-      this.lastExecuteStartedAt = startedAt;
-
-      this.logger?.queryStart?.({
-        sql,
-        params,
-        traceId: this.currentTraceId,
-        provider: this.providerName
-      });
-
-      await this.beforeExecute(sql, params);
-
-      try {
-        const result = await fn();
-        const durationMs = Date.now() - startedAt;
-
-        this.logger?.queryEnd?.({
-          sql,
-          params,
-          durationMs,
-          traceId: this.currentTraceId,
-          rows: Array.isArray(result)
-            ? (result as unknown[]).length
-            : typeof result === 'number'
-              ? result
-              : undefined,
-          provider: this.providerName
-        });
-
-        await this.maybeAnalyzeQuery({ sql, params, durationMs });
-        await this.afterExecute(sql, params, result);
-
-        return result;
-      } catch (error) {
-        const durationMs = Date.now() - startedAt;
-        this.logger?.queryEnd?.({
-          sql,
-          params,
-          durationMs,
-          traceId: this.currentTraceId,
-          error: error as Error,
-          provider: this.providerName
-        });
-        await this.maybeAnalyzeQuery({ sql, params, durationMs, error: error as Error });
-        throw error;
-      }
-    }, context);
+      inTransaction: this.inTransaction,
+      providerName: this.providerName,
+      logger: this.logger,
+      onStart: (startedAt) => {
+        this.lastExecuteStartedAt = startedAt;
+      },
+      beforeExecute: async () => this.beforeExecute(sql, params),
+      afterExecute: async (result) => this.afterExecute(sql, params, result),
+      analyze: async (durationMs, error) =>
+        this.analyzer.analyze({ sql, params, durationMs, error }, this.analysisContext())
+    });
   }
 
   /** Configure query performance analysis at runtime. */
   public configureQueryAnalysis(options?: QueryPerformanceAnalysisOptions): void {
-    this.analysis = { ...this.analysis, ...options };
+    this.analyzer.configure(options);
+  }
+
+  /** Snapshot the volatile state the analyzer needs for the current query. */
+  private analysisContext(): QueryAnalysisContext {
+    return {
+      inTransaction: this.inTransaction,
+      providerName: this.providerName,
+      logger: this.logger,
+      middlewares: this.middlewares,
+      getExplainPlan: async (sql, params) => this.getExplainPlan(sql, params)
+    };
   }
 
   /**
@@ -454,10 +433,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     transaction: IDbTransactionInterceptor[];
     materialization: IMaterializationInterceptor[];
   }): void {
-    this._commandInterceptors = opts.command;
-    this._connectionInterceptors = opts.connection;
-    this._transactionInterceptors = opts.transaction;
-    this._materializationInterceptors = opts.materialization;
+    this.interceptors.configure(opts);
   }
 
   /** Provider hook: obtain an EXPLAIN plan for a given SQL if supported. */
@@ -466,93 +442,6 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     _params: readonly SqlParameter[]
   ): Promise<unknown | undefined> {
     // Default: not supported in base class
-    return undefined;
-  }
-
-  /** Emit analysis event when thresholds are exceeded. */
-  private async maybeAnalyzeQuery(info: {
-    sql: string;
-    params: readonly SqlParameter[];
-    durationMs: number;
-    error?: Error;
-  }): Promise<void> {
-    const cfg = this.analysis;
-    if (!cfg?.enabled) return;
-    // only SELECT if configured
-    const onlySelect = cfg.onlySelect ?? true;
-    if (onlySelect && !/^\s*SELECT\b/i.test(info.sql)) return;
-    // sampling
-    const rate = Math.max(0, Math.min(1, cfg.sampleRate ?? 1));
-    if (rate < 1 && Math.random() > rate) return;
-    // rate limiting per minute
-    const now = Date.now();
-    const windowStart = this.analysisEventsWindowStartMs ?? now;
-    const perMinute = Math.max(1, cfg.rateLimitPerMinute ?? 120);
-    if (now - windowStart >= 60_000) {
-      this.analysisEventsWindowStartMs = now;
-      this.analysisEventsInWindow = 0;
-    }
-    if (this.analysisEventsInWindow >= perMinute) return;
-    this.analysisEventsInWindow += 1;
-    const explainT = cfg.explainThresholdMs ?? 500;
-    const slowT = cfg.slowQueryThresholdMs ?? 1000;
-    const needExplain = info.durationMs >= explainT && !info.error && !this.inTransaction;
-    let plan: unknown | undefined;
-    if (needExplain) {
-      try {
-        const timeoutMs = Math.max(1, cfg.explainTimeoutMs ?? 1000);
-        const timed = Promise.race([
-          this.getExplainPlan(info.sql, info.params),
-          new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), timeoutMs))
-        ]);
-        plan = await timed;
-      } catch (e) {
-        logInternalError('DatabaseProvider.maybeAnalyzeQuery.explain', e);
-      }
-    }
-    // size limit on plan (stringifiable only)
-    const maxChars = Math.max(1024, cfg.maxExplainChars ?? 65536);
-    const safePlan = (() => {
-      if (plan === undefined || plan === null) return plan;
-      try {
-        const s = typeof plan === 'string' ? plan : JSON.stringify(plan);
-        if (s.length <= maxChars) return plan;
-        return s.slice(0, maxChars);
-      } catch {
-        return plan;
-      }
-    })();
-    const payload: QueryAnalysisInfo = {
-      sql: info.sql,
-      params: info.params,
-      durationMs: info.durationMs,
-      provider: this.providerName,
-      slow: info.durationMs >= slowT,
-      explainPlan: safePlan,
-      recommendations: cfg.recommendations ? this.deriveRecommendations(plan) : undefined
-    };
-    try {
-      // Prefer dedicated hook if logger implements it; otherwise fallback to middleware afterExecute users
-      this.logger?.analysis?.(payload);
-      // Also notify middlewares if they expose analysis
-      if (this.middlewares && this.middlewares.length > 0) {
-        for (const mw of this.middlewares) {
-          try {
-            mw.analysis?.(payload);
-          } catch (e) {
-            logInternalError('DatabaseProvider.maybeAnalyzeQuery.middleware', e);
-          }
-        }
-      }
-    } catch (e) {
-      logInternalError('DatabaseProvider.maybeAnalyzeQuery.logger', e);
-    }
-  }
-
-  /** Heuristic recommendations from provider-agnostic plans. */
-
-  private deriveRecommendations(_plan: unknown | undefined): ReadonlyArray<string> | undefined {
-    // Minimal placeholder: concrete providers can override getExplainPlan with richer structures
     return undefined;
   }
 
@@ -604,87 +493,7 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
    * Used by DbContext to wire the DiagnosticEmitter from options.logging.
    */
   public attachLogger(extra: SqlLogger): void {
-    this.logger = this.logger ? DatabaseProvider.mergeLoggers(this.logger, extra) : extra;
-  }
-
-  private static mergeLoggers(a: SqlLogger, b: SqlLogger): SqlLogger {
-    // Isolate the two delegate loggers: a throw in one must not prevent the
-    // other from receiving the event, and never propagates to the caller.
-    // Failures are surfaced (not silently dropped) via the single
-    // `logInternalError` telemetry boundary.
-    const safe = (method: string, call: () => void): void => {
-      try {
-        call();
-      } catch (e) {
-        logInternalError(`DatabaseProvider.mergeLoggers.${method}`, e);
-      }
-    };
-    return {
-      debug: (m, meta) => {
-        safe('debug', () => a.debug(m, meta));
-        safe('debug', () => b.debug(m, meta));
-      },
-      info: (m, meta) => {
-        safe('info', () => a.info(m, meta));
-        safe('info', () => b.info(m, meta));
-      },
-      warn: (m, meta) => {
-        safe('warn', () => a.warn(m, meta));
-        safe('warn', () => b.warn(m, meta));
-      },
-      error: (m, meta) => {
-        safe('error', () => a.error(m, meta));
-        safe('error', () => b.error(m, meta));
-      },
-      queryStart: (i) => {
-        a.queryStart?.(i);
-        b.queryStart?.(i);
-      },
-      queryEnd: (i) => {
-        a.queryEnd?.(i);
-        b.queryEnd?.(i);
-      },
-      retry: (i) => {
-        a.retry?.(i);
-        b.retry?.(i);
-      },
-      transactionStart: (i) => {
-        a.transactionStart?.(i);
-        b.transactionStart?.(i);
-      },
-      transactionEnd: (i) => {
-        a.transactionEnd?.(i);
-        b.transactionEnd?.(i);
-      },
-      connectionHealth: (i) => {
-        a.connectionHealth?.(i);
-        b.connectionHealth?.(i);
-      },
-      circuit: (i) => {
-        a.circuit?.(i);
-        b.circuit?.(i);
-      },
-      fallback: (i) => {
-        a.fallback?.(i);
-        b.fallback?.(i);
-      },
-      hedgedWin: (i) => {
-        a.hedgedWin?.(i);
-        b.hedgedWin?.(i);
-      },
-      analysis: (i) => {
-        a.analysis?.(i);
-        b.analysis?.(i);
-      },
-      crossQuery: (i) => {
-        a.crossQuery?.(i);
-        b.crossQuery?.(i);
-      },
-      cacheSize: (i) => {
-        a.cacheSize?.(i);
-        b.cacheSize?.(i);
-      }
-    };
+    this.logger = this.logger ? new CompositeSqlLogger(this.logger, extra) : extra;
   }
 
   /** Configure connection pool and health-check options at runtime. */
@@ -732,24 +541,8 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   // Template Method hooks
   /** Called before each execute; invokes middlewares and command interceptors. */
   protected async beforeExecute(sql: string, params: readonly SqlParameter[]): Promise<void> {
-    if (this.middlewares && this.middlewares.length > 0) {
-      const info = { sql, params, traceId: this.currentTraceId };
-      for (const mw of this.middlewares) {
-        await mw.beforeExecute?.(info);
-      }
-    }
-    if (this._commandInterceptors.length > 0) {
-      const isReader = /^\s*SELECT\b/i.test(sql);
-      const cmd: DbCommand = { sql, params, traceId: this.currentTraceId };
-      const ev: CommandEventData = { commandText: sql, isReader };
-      for (const ic of this._commandInterceptors) {
-        if (isReader) {
-          await ic.readerExecuting?.(cmd, ev);
-        } else {
-          await ic.nonQueryExecuting?.(cmd, ev);
-        }
-      }
-    }
+    await this.mw.beforeExecute(sql, params, this.currentTraceId);
+    await this.interceptors.commandExecuting(sql, params, this.currentTraceId);
   }
 
   /** Called after each execute; invokes middlewares and command interceptors. */
@@ -759,39 +552,8 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     result: unknown
   ): Promise<void> {
     const durationMs = this.lastExecuteStartedAt ? Date.now() - this.lastExecuteStartedAt : 0;
-    if (this.middlewares && this.middlewares.length > 0) {
-      const rows = Array.isArray(result)
-        ? (result as unknown[]).length
-        : typeof result === 'number'
-          ? result
-          : undefined;
-      const info = { sql, params, durationMs, traceId: this.currentTraceId, rows } as const;
-      for (const mw of this.middlewares) {
-        try {
-          await mw.afterExecute?.(info);
-        } catch (e) {
-          logInternalError('DatabaseProvider.afterExecute.middleware', e);
-        }
-      }
-    }
-    if (this._commandInterceptors.length > 0) {
-      const isReader = /^\s*SELECT\b/i.test(sql);
-      const cmd: DbCommand = { sql, params, traceId: this.currentTraceId };
-      const ev: CommandEventData = { commandText: sql, durationMs, isReader };
-      for (const ic of this._commandInterceptors) {
-        try {
-          if (isReader) {
-            const dbReader: DbReader = { rows: Array.isArray(result) ? (result as unknown[]) : [] };
-            await ic.readerExecuted?.(cmd, ev, dbReader);
-          } else {
-            const affected = typeof result === 'number' ? result : 0;
-            await ic.nonQueryExecuted?.(cmd, ev, affected);
-          }
-        } catch (e) {
-          logInternalError('DatabaseProvider.afterExecute.commandInterceptor', e);
-        }
-      }
-    }
+    await this.mw.afterExecute(sql, params, result, durationMs, this.currentTraceId);
+    await this.interceptors.commandExecuted(sql, params, this.currentTraceId, durationMs, result);
   }
 
   /**
@@ -802,38 +564,15 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
     entity: T,
     metadata?: EntityMetadata
   ): Promise<T> {
-    if (this.middlewares && this.middlewares.length > 0) {
-      const info: { entity: object; metadata?: EntityMetadata } = { entity, metadata };
-      for (const mw of this.middlewares) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/await-thenable
-          await mw.entityMaterialized?.(info);
-        } catch (e) {
-          logInternalError('DatabaseProvider.notifyEntityMaterialized.middleware', e);
-        }
-      }
-    }
-    if (this._materializationInterceptors.length > 0) {
-      const ev = { entityType: entity.constructor };
-      let instance: object = entity;
-      for (const ic of this._materializationInterceptors) {
-        try {
-          const updated = await ic.initialized?.(ev, instance);
-          if (updated !== undefined) instance = updated;
-        } catch (e) {
-          logInternalError('DatabaseProvider.notifyEntityMaterialized.interceptor', e);
-        }
-      }
-      return instance as T;
-    }
-    return entity;
+    await this.mw.entityMaterialized(entity, metadata);
+    return this.interceptors.entityMaterialized(entity);
   }
 
   /** Begin a transaction. */
   public async beginTransaction(): Promise<void> {
-    await this.notifyTransactionStarting();
+    await this.interceptors.transactionStarting(this.currentTraceId);
     await this.doBeginTransaction();
-    await this.notifyTransactionStarted();
+    await this.interceptors.transactionStarted(this.currentTraceId);
   }
 
   /** Provider-specific begin-transaction logic. */
@@ -841,9 +580,9 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
 
   /** Commit the current transaction. */
   public async commitTransaction(): Promise<void> {
-    await this.notifyTransactionCommitting();
+    await this.interceptors.transactionCommitting(this.currentTraceId);
     await this.doCommitTransaction();
-    await this.notifyTransactionCommitted();
+    await this.interceptors.transactionCommitted(this.currentTraceId);
   }
 
   /** Provider-specific commit logic. */
@@ -851,9 +590,9 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
 
   /** Roll back the current transaction. */
   public async rollbackTransaction(): Promise<void> {
-    await this.notifyTransactionRollingBack();
+    await this.interceptors.transactionRollingBack(this.currentTraceId);
     await this.doRollbackTransaction();
-    await this.notifyTransactionRolledBack();
+    await this.interceptors.transactionRolledBack(this.currentTraceId);
   }
 
   /** Provider-specific rollback logic. */
@@ -870,41 +609,45 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
    * Override in dialect providers that support sequences. The base implementation throws.
    */
   public async nextSequenceValue(
-    _sequenceName: string,
-    _schema: string | undefined,
-    _blockSize: number
+    sequenceName: string,
+    schema: string | undefined,
+    blockSize: number
   ): Promise<number> {
-    throw new UnsupportedOperationError(
-      `Provider "${this.providerName}" does not support database sequences. ` +
-        'Override nextSequenceValue() in the provider implementation.',
-      { details: { provider: this.providerName, operation: 'nextSequenceValue' } }
-    );
+    return this.sequenceStrategy.nextValue(this, sequenceName, schema, blockSize);
   }
 
   /**
    * Create a named savepoint within the current transaction.
-   * Default implementation uses ANSI SQL syntax (`SAVEPOINT name`).
-   * Providers that use different syntax (e.g. MSSQL) must override.
+   * The SQL is produced by the injected {@link SavepointStrategy} (ANSI by
+   * default); a `null` statement is treated as a no-op.
    */
   public async createSavepoint(name: string): Promise<void> {
-    await this.executeNonQuery(`SAVEPOINT ${name}`);
+    const sql = this.savepointStrategy.createSql(name);
+    if (sql !== null) await this.runSavepointStatement(sql);
   }
 
-  /**
-   * Roll back to a named savepoint, undoing work done after it was created.
-   * Default implementation uses ANSI SQL syntax (`ROLLBACK TO SAVEPOINT name`).
-   */
+  /** Roll back to a named savepoint (SQL from the savepoint strategy). */
   public async rollbackToSavepoint(name: string): Promise<void> {
-    await this.executeNonQuery(`ROLLBACK TO SAVEPOINT ${name}`);
+    const sql = this.savepointStrategy.rollbackToSql(name);
+    if (sql !== null) await this.runSavepointStatement(sql);
   }
 
   /**
-   * Release (destroy) a named savepoint.
-   * Default implementation uses ANSI SQL syntax (`RELEASE SAVEPOINT name`).
-   * Providers that do not support RELEASE (e.g. MSSQL) must override as a no-op.
+   * Release (destroy) a named savepoint (SQL from the savepoint strategy).
+   * Dialects without a RELEASE concept return `null` (no-op).
    */
   public async releaseSavepoint(name: string): Promise<void> {
-    await this.executeNonQuery(`RELEASE SAVEPOINT ${name}`);
+    const sql = this.savepointStrategy.releaseSql(name);
+    if (sql !== null) await this.runSavepointStatement(sql);
+  }
+
+  /**
+   * Execute a transaction-control (savepoint) statement. Defaults to the normal
+   * non-query path; providers whose driver cannot run these through prepared
+   * statements (e.g. mysql2's `execute`) override this to route differently.
+   */
+  protected async runSavepointStatement(sql: string): Promise<void> {
+    await this.executeNonQuery(sql);
   }
 
   /**
@@ -927,129 +670,5 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
    */
   public get inTransactionState(): boolean {
     return this.inTransaction;
-  }
-
-  // ── Connection notification helpers ─────────────────────────────────────
-
-  private async notifyConnectionOpening(): Promise<void> {
-    if (this._connectionInterceptors.length === 0) return;
-    const ev: ConnectionEventData = {};
-    for (const ic of this._connectionInterceptors) {
-      try {
-        await ic.connectionOpening?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyConnectionOpening', e);
-      }
-    }
-  }
-
-  private async notifyConnectionOpened(): Promise<void> {
-    if (this._connectionInterceptors.length === 0) return;
-    const ev: ConnectionEventData = {};
-    for (const ic of this._connectionInterceptors) {
-      try {
-        await ic.connectionOpened?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyConnectionOpened', e);
-      }
-    }
-  }
-
-  private async notifyConnectionClosing(): Promise<void> {
-    if (this._connectionInterceptors.length === 0) return;
-    const ev: ConnectionEventData = {};
-    for (const ic of this._connectionInterceptors) {
-      try {
-        await ic.connectionClosing?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyConnectionClosing', e);
-      }
-    }
-  }
-
-  private async notifyConnectionClosed(): Promise<void> {
-    if (this._connectionInterceptors.length === 0) return;
-    const ev: ConnectionEventData = {};
-    for (const ic of this._connectionInterceptors) {
-      try {
-        await ic.connectionClosed?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyConnectionClosed', e);
-      }
-    }
-  }
-
-  // ── Transaction notification helpers ────────────────────────────────────
-
-  private async notifyTransactionStarting(): Promise<void> {
-    if (this._transactionInterceptors.length === 0) return;
-    const ev: TransactionEventData = { traceId: this.currentTraceId };
-    for (const ic of this._transactionInterceptors) {
-      try {
-        await ic.transactionStarting?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyTransactionStarting', e);
-      }
-    }
-  }
-
-  private async notifyTransactionStarted(): Promise<void> {
-    if (this._transactionInterceptors.length === 0) return;
-    const ev: TransactionEventData = { traceId: this.currentTraceId };
-    for (const ic of this._transactionInterceptors) {
-      try {
-        await ic.transactionStarted?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyTransactionStarted', e);
-      }
-    }
-  }
-
-  private async notifyTransactionCommitting(): Promise<void> {
-    if (this._transactionInterceptors.length === 0) return;
-    const ev: TransactionEventData = { traceId: this.currentTraceId };
-    for (const ic of this._transactionInterceptors) {
-      try {
-        await ic.transactionCommitting?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyTransactionCommitting', e);
-      }
-    }
-  }
-
-  private async notifyTransactionCommitted(): Promise<void> {
-    if (this._transactionInterceptors.length === 0) return;
-    const ev: TransactionEventData = { traceId: this.currentTraceId };
-    for (const ic of this._transactionInterceptors) {
-      try {
-        await ic.transactionCommitted?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyTransactionCommitted', e);
-      }
-    }
-  }
-
-  private async notifyTransactionRollingBack(): Promise<void> {
-    if (this._transactionInterceptors.length === 0) return;
-    const ev: TransactionEventData = { traceId: this.currentTraceId };
-    for (const ic of this._transactionInterceptors) {
-      try {
-        await ic.transactionRollingBack?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyTransactionRollingBack', e);
-      }
-    }
-  }
-
-  private async notifyTransactionRolledBack(): Promise<void> {
-    if (this._transactionInterceptors.length === 0) return;
-    const ev: TransactionEventData = { traceId: this.currentTraceId };
-    for (const ic of this._transactionInterceptors) {
-      try {
-        await ic.transactionRolledBack?.(ev);
-      } catch (e) {
-        logInternalError('DatabaseProvider.notifyTransactionRolledBack', e);
-      }
-    }
   }
 }
