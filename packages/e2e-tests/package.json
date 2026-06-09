@@ -23,6 +23,7 @@
     "@ts-linq/provider-mysql": "workspace:*",
     "@ts-linq/provider-postgres": "workspace:*",
     "@ts-linq/query": "workspace:*",
+    "@ts-linq/sql-visitor": "workspace:*",
     "@ts-linq/testkits": "workspace:*",
     "@ts-linq/types": "workspace:*",
     "@ts-linq/dialect-postgres": "workspace:*",

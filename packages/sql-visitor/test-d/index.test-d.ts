@@ -17,12 +17,13 @@ import type { BinaryNode } from '@ts-linq/ast';
 import { expectAssignable, expectError, expectNotAssignable } from 'tsd';
 
 import {
-  BinaryVisitor,
   type ConditionFragment,
   ParameterState,
   ParameterStyle,
   type VisitContext
 } from '..';
+// `BinaryVisitor` is an internal collaborator, exposed only via the `/internal` subpath.
+import { BinaryVisitor } from '@ts-linq/sql-visitor/internal';
 
 declare const node: BinaryNode;
 const recurse = (): ConditionFragment => ({ condition: '', parameters: [] });

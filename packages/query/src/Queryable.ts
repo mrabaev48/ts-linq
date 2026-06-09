@@ -3,7 +3,8 @@ import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
 import { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
-import { type ColumnResolver, FragmentJoinPlanner, SqlVisitor } from '@ts-linq/sql-visitor';
+import { type ColumnResolver, SqlVisitor } from '@ts-linq/sql-visitor';
+import { FragmentJoinPlanner } from '@ts-linq/sql-visitor/internal';
 import type {
   CountCache,
   CteDefinition,

@@ -18,6 +18,7 @@
       "@ts-linq/cache-redis":               ["packages/cache-redis/dist"],
       "@ts-linq/cache-memcached":           ["packages/cache-memcached/dist"],
       "@ts-linq/sql-visitor":               ["packages/sql-visitor/dist"],
+      "@ts-linq/sql-visitor/internal":      ["packages/sql-visitor/dist/internal"],
       "@ts-linq/telemetry":                 ["packages/telemetry/dist"],
       "@ts-linq/dialect-postgres":          ["packages/dialect-postgres/dist"],
       "@ts-linq/dialect-mysql":             ["packages/dialect-mysql/dist"],
