@@ -4,6 +4,7 @@ import type {
   ConnectionPoolOptions,
   EntityCtorRef,
   EntityMetadata,
+  JunctionQuerySpec,
   OrmMiddleware,
   QueryAnalysisInfo,
   RetryPolicy,
@@ -12,6 +13,14 @@ import type {
   SqlLogger,
   SqlParameter
 } from '@ts-linq/types';
+import { InvalidIdentifierError } from '@ts-linq/types';
+
+/**
+ * Whitelist for SQL identifiers passed through {@link DatabaseProvider.queryJunction}.
+ * A junction identifier must be a plain SQL identifier (letter/underscore start,
+ * then letters/digits/underscores). Anything else fails closed before quoting.
+ */
+const JUNCTION_IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 import { HealthMonitor } from './Health/HealthMonitor';
 import type { IDbCommandInterceptor } from './interceptors/IDbCommandInterceptor';
@@ -247,6 +256,40 @@ export abstract class DatabaseProvider implements IDatabaseProvider {
   }
   /** Provider-specific implementation of query execution. */
   protected abstract doExecuteQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]>;
+
+  /**
+   * Dialect-aware, parameterized junction (many-to-many) read.
+   *
+   * Capability port consumed by the relationship loader so that `@ts-linq/core`
+   * never builds raw SQL: every identifier is validated against
+   * {@link JUNCTION_IDENTIFIER_PATTERN} and quoted via the dialect's
+   * `quoteIdentifier`, while all filter values are bound as parameters. An
+   * invalid identifier throws {@link InvalidIdentifierError} (fails closed)
+   * rather than being interpolated. Providers inherit this safe default and
+   * only override it if a dialect needs a different junction strategy.
+   */
+  public async queryJunction(spec: JunctionQuerySpec): Promise<Record<string, unknown>[]> {
+    if (spec.whereValues.length === 0) return [];
+
+    const dialect = this.getDialect();
+    const quote = (identifier: string): string => {
+      if (!JUNCTION_IDENTIFIER_PATTERN.test(identifier)) {
+        throw new InvalidIdentifierError(
+          `Invalid SQL identifier in junction query: ${JSON.stringify(identifier)}`,
+          { details: { identifier } }
+        );
+      }
+      return dialect.quoteIdentifier(identifier);
+    };
+
+    const columns = spec.selectColumns.map(quote).join(', ');
+    const table = quote(spec.table);
+    const whereColumn = quote(spec.whereColumn);
+    const placeholders = spec.whereValues.map(() => '?').join(', ');
+    const sql = `SELECT ${columns} FROM ${table} WHERE ${whereColumn} IN (${placeholders})`;
+
+    return this.executeQuery<Record<string, unknown>>(sql, spec.whereValues);
+  }
 
   /**
    * Convert a SQL string that uses '?' positional placeholders into the dialect-specific

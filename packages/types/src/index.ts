@@ -11,6 +11,7 @@ export {
   DatabaseError,
   DecoratorUsageError,
   ForeignKeyConstraintError,
+  InvalidIdentifierError,
   InvalidIncludeError,
   MetadataError,
   OperationAbortedError,
