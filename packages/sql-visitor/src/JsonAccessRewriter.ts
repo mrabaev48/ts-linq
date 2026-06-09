@@ -1,5 +1,4 @@
 import type { ExpressionNode, JsonPathExpression } from '@ts-linq/ast';
-import { AstSqlGenerationError } from '@ts-linq/ast';
 import type { JsonShape } from '@ts-linq/types';
 
 /**
@@ -50,37 +49,25 @@ export class JsonAccessRewriter {
       case 'isNull':
       case 'isNotNull': {
         const rewritten = this.rewrite(node.property);
-        if (rewritten.type === 'property') return { ...node, property: rewritten };
-        // A JSON path cannot legally sit in an isNull/isNotNull position: the AST types it as
-        // PropertyNode and no dialect translator emits JSON-path IS NULL. Fail loud instead of
-        // silently dropping the rewrite and emitting SQL against a non-existent column.
-        throw this.unsupportedJsonPosition(node.type, rewritten);
+        // A rewritten JSON path is now legal here: the AST field accepts
+        // PropertyNode | JsonPathExpression, and NullVisitor renders the path via the dialect's
+        // JsonPathTranslator port wrapped in `IS NULL` / `IS NOT NULL`.
+        if (rewritten.type === 'property' || rewritten.type === 'jsonPath') {
+          return { ...node, property: rewritten };
+        }
+        return node;
       }
       case 'method': {
         const rewrittenObj = this.rewrite(node.object);
-        if (rewrittenObj.type === 'property') return { ...node, object: rewrittenObj };
-        // Same as above for method (e.g. startsWith → LIKE): no dialect supports a JSON path here.
-        throw this.unsupportedJsonPosition(node.type, rewrittenObj);
+        // Same as above for method (e.g. startsWith → LIKE): MethodVisitor renders a JSON-path
+        // object via the translator port wrapped in `LIKE ?`.
+        if (rewrittenObj.type === 'property' || rewrittenObj.type === 'jsonPath') {
+          return { ...node, object: rewrittenObj };
+        }
+        return node;
       }
       default:
         return node;
     }
-  }
-
-  /**
-   * Builds a typed error for a JSON path that resolved into a node position no dialect
-   * supports (isNull/isNotNull/method). Converges both fail-loud branches onto one shape.
-   */
-  private unsupportedJsonPosition(
-    position: 'isNull' | 'isNotNull' | 'method',
-    rewritten: ExpressionNode
-  ): AstSqlGenerationError {
-    const json = rewritten.type === 'jsonPath' ? rewritten : undefined;
-    return new AstSqlGenerationError(
-      'UNSUPPORTED_JSON_POSITION',
-      `JSON path in '${position}' position is not supported by any dialect. ` +
-        'Use a scalar property, or compare the JSON value directly (=== / !== null).',
-      { nodeType: position, column: json?.column, path: json?.path }
-    );
   }
 }

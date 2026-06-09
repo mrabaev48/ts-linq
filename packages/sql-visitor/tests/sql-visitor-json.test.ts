@@ -77,4 +77,48 @@ describe('SqlVisitor — JSON path integration', () => {
     expect(condition).toContain('id');
     expect(condition).not.toContain('JSON_PATH');
   });
+
+  describe('JSON path in isNull / isNotNull / method positions (task-6)', () => {
+    const makeVisitor = () => {
+      const rewriter = new JsonAccessRewriter(new Map([['preferences', makeShape('preferences')]]));
+      return new SqlVisitor(ParameterStyle.Question, {
+        jsonPathTranslator: stubTranslator,
+        jsonAccessRewriter: rewriter
+      });
+    };
+
+    it('wraps a JSON path in IS NULL with zero spurious parameters', () => {
+      // Simulates: where(u => u.preferences.theme == null)
+      const node: ExpressionNode = {
+        type: 'isNull',
+        property: { type: 'property', path: ['preferences', 'theme'] }
+      };
+      const { condition, parameters } = makeVisitor().toSql(node);
+      expect(condition).toBe('(JSON_PATH(preferences,theme) IS NULL)');
+      expect(parameters).toEqual([]);
+    });
+
+    it('wraps a JSON path in IS NOT NULL with zero spurious parameters', () => {
+      const node: ExpressionNode = {
+        type: 'isNotNull',
+        property: { type: 'property', path: ['preferences', 'theme'] }
+      };
+      const { condition, parameters } = makeVisitor().toSql(node);
+      expect(condition).toBe('(JSON_PATH(preferences,theme) IS NOT NULL)');
+      expect(parameters).toEqual([]);
+    });
+
+    it('wraps a JSON path object in LIKE with exactly one bound parameter', () => {
+      // Simulates: where(u => u.preferences.theme.startsWith('d'))
+      const node: ExpressionNode = {
+        type: 'method',
+        method: 'startsWith',
+        object: { type: 'property', path: ['preferences', 'theme'] },
+        args: [{ type: 'literal', value: 'd' }]
+      };
+      const { condition, parameters } = makeVisitor().toSql(node);
+      expect(condition).toBe('(JSON_PATH(preferences,theme) LIKE ?)');
+      expect(parameters).toEqual(['d%']);
+    });
+  });
 });
