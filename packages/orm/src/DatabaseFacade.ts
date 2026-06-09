@@ -176,7 +176,9 @@ export class DatabaseFacade {
       maxRetryCount: 3,
       maxRetryDelay: 30_000
     };
-    return new ExecutionStrategy(opts, (e: unknown) => this._provider.checkTransientError(e));
+    return ExecutionStrategy.fromOptions(opts, (e: unknown) =>
+      this._provider.checkTransientError(e)
+    );
   }
 
   // ---------------------------------------------------------------------------
