@@ -1,5 +1,11 @@
 # @ts-linq/migrations
 
+## 2.6.17
+
+### Patch Changes
+
+- @ts-linq/core@3.0.6
+
 ## 2.6.16
 
 ### Patch Changes
