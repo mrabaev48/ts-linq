@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/dialect-mssql",
-  "version": "2.6.19",
+  "version": "2.6.20",
   "private": true,
   "description": "MSSQL SQL dialect for ts-linq ORM",
   "main": "./dist/index.js",
