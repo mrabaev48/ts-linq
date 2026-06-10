@@ -35,8 +35,8 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 | 3 | task-6 | P1 | ✅ Completed | Typed errors (after types/task-2) before further refactor |
 | 4 | task-5 | P0 | ✅ Completed | Silent-swallow/unsafe-fallback fixes on hot path |
 | 5 | task-1 | P0 | ✅ Completed | Decompose `DatabaseProvider` god class (anchor) |
-| 6 | task-3 | P1 | ⏳ Pending | Split `EntityLoader`; remove loader duplication |
-| 7 | task-7 | P1 | ⏳ Pending | Remove `as unknown as` casts (do with task-3) |
+| 6 | task-3 | P1 | ✅ Completed | Split `EntityLoader`; remove loader duplication |
+| 7 | task-7 | P1 | ✅ Completed | Remove `as unknown as` casts + centralize `Record` punning in the loading layer |
 | 8 | task-8 | P2 | ⏳ Pending | Logger injection / no console |
 | 9 | task-9 | P2 | ⏳ Pending | Curate barrel after structure settles |
 
@@ -118,6 +118,48 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 > public state accessors, streaming generator, junction read) plus the dual constructor; driving
 > below 350 would fragment the contract itself and is noted as optional follow-up. Package remains
 > 🔄 in progress (tasks 3, 7, 8, 9 pending).
+>
+> **task-3 (✅ Completed)** — `EntityLoader` (~628 LOC) is split into a thin orchestrator plus
+> shared collaborators and a per-kind strategy registry. The genuinely-duplicated mechanics now
+> live once under `core/src/loading/support/`: `ForeignKeyConvention.defaultFor` (was
+> `defaultForeignKeyFor` in both loaders), `TargetEntityResolver.resolve` (was `resolveTargetEntity`
+> in both), `InClauseChunker` (the IN()-chunk loop that was copy-pasted 3× in `EntityLoader` and
+> absent in `RelationshipLoader`, routing `crossQuery` telemetry through the task-5
+> `logInternalError` channel), `EntityGrouper` (group-by / index-by-key), and `ColumnResolver`
+> (PK/column-name resolution). Per-kind loading moves behind a `RelationshipLoadStrategy` interface
+> (`ToOneStrategy` for one-to-one + many-to-one, `OneToManyStrategy`, `ManyToManyStrategy`) dispatched
+> by a `Map<relationship.type, …>` registry — **all `if (type === 'one-to-many')` / `switch` chains
+> are gone** from both loaders. The `as unknown as { … }` relationship casts (and the
+> `validateIncludes` metadata casts) are replaced by a typed `LoadableRelationship` view
+> (`asLoadable`) derived from `RelationshipMetadata` — the **task-7 cast-removal overlap for the
+> loading relationship view is done here** (the rest of task-7 was finished in the same PR — see
+> the task-7 note below). **Decision (split + shared mechanics):** the two orchestrators stay
+> separate — `EntityLoader` (eager, depth-recursive) and `RelationshipLoader` (lazy/proxy-aware:
+> `wrapOne`/`wrapMany`/`markLoaded`) — because their lifecycles genuinely differ; every behavioural
+> delta is captured in a lightweight per-call `RelationshipLoadContext` (proxy hooks, `markLoaded`,
+> depth recursion, missing-value policy), so a **single** shared strategy set serves both without a
+> merged class. Two improvements are folded in: `EntityLoader` now supports **many-to-many eager
+> loading** (previously silently dropped via the to-one fallback) and `RelationshipLoader` gains
+> **IN()-chunking** for free from the shared chunker → `@ts-linq/core` `minor`. N+1 batching and
+> `populateFilteredRelationshipsMany` filter behaviour are unchanged (existing tests pass as-is);
+> new coverage: `InClauseChunker`, `loaderSupport` (FK convention / target resolver / grouper /
+> `asLoadable` + a type-level non-widening guard), `EntityLoader.manyToMany`, and
+> `RelationshipLoader.chunking`. Package remains 🔄 in progress (tasks 8, 9 pending).
+>
+> **task-7 (✅ Completed)** — finished in the same PR as task-3 (both rewrite the same loader
+> methods). `packages/core/src/loading/*` now contains **zero** `as unknown as` casts: the
+> relationship-shape + `validateIncludes` casts were removed via the typed `LoadableRelationship`
+> view (task-3), `TargetEntityResolver.resolve` collapses the thunk/ctor double-casts into a single
+> `EntityCtor → new () => object` narrowing behind an `isThunk` type guard, and the unnecessary
+> `LazyLoadingProxy` `entityClass` cast is dropped (`new () => T` is already assignable to
+> `new () => object`). All scattered `(entity as Record<string, unknown>)[key]` punning across the
+> loaders, strategies, and proxy traps is routed through one audited accessor —
+> `loading/support/EntityRecord.ts` (`getProp`/`setProp`) — the single dynamic-access boundary.
+> A new ESLint override (`no-restricted-syntax` on `TSAsExpression[typeAnnotation.type=
+> 'TSUnknownKeyword']`, scoped to `packages/core/src/loading/**`) makes any reintroduced
+> `as unknown` a hard error. Coverage: `tests-new/support/EntityRecord.test.ts` (read/write parity)
+> plus the existing type-level non-widening guard. Internal type-safety only — no public API or
+> runtime behaviour change (folds under the task-3 `minor`).
 
 ## Dependencies on other packages
 - `@ts-linq/types` — error hierarchy (`types/task-2`), `SqlDialect`/identifier quoting (task-4), metadata interfaces.

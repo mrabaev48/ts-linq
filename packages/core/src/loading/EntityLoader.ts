@@ -1,16 +1,27 @@
-import type { FilteredIncludeSpec, MetadataSource } from '@ts-linq/types';
+import type { EntityMetadata, FilteredIncludeSpec, MetadataSource } from '@ts-linq/types';
 import { InvalidIncludeError, RelationshipLoadError } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { getDefaultMetadataSource } from '../defaultMetadataSource';
-import { ctorName } from '../utils/ctorName';
 import { logInternalError } from '../utils/InternalLogger';
 import type { LoadingOptions } from './LoadingStrategy';
 import { LoadingStrategy } from './LoadingStrategy';
+import type { RelationshipLoadContext } from './strategies/RelationshipLoadStrategy';
+import { strategyFor } from './strategies/relationshipStrategyRegistry';
+import { EntityGrouper } from './support/EntityGrouper';
+import { getProp, setProp } from './support/EntityRecord';
+import { ForeignKeyConvention } from './support/ForeignKeyConvention';
+import { InClauseChunker } from './support/InClauseChunker';
+import { asLoadable, type LoadableRelationship } from './support/LoadableRelationship';
+import { TargetEntityResolver } from './support/TargetEntityResolver';
 
 /**
- * Service responsible for loading entities with either lazy or eager strategy,
- * including recursive loading of relationships based on provided options.
+ * Orchestrates eager/lazy loading of entities and their relationships. Per-kind
+ * loading mechanics live in the shared {@link strategyFor strategy registry};
+ * the duplicated FK convention, target resolution, IN()-chunking and grouping
+ * live in the shared collaborators under `./support`. This class is now a thin
+ * orchestrator: it selects entities, builds the eager {@link RelationshipLoadContext},
+ * applies include filtering + depth recursion, and delegates the rest.
  */
 export class EntityLoader {
   private _provider: DatabaseProvider;
@@ -18,6 +29,11 @@ export class EntityLoader {
   private readonly _logger?: { warn(message: string, error?: unknown): void };
   private readonly _metadata: MetadataSource;
   private _inChunkSize: number = 1000;
+
+  private readonly _foreignKeys = new ForeignKeyConvention();
+  private readonly _targetResolver = new TargetEntityResolver();
+  private readonly _chunker = new InClauseChunker();
+  private readonly _grouper = new EntityGrouper();
 
   /**
    * @param provider Database provider used for underlying queries.
@@ -119,28 +135,13 @@ export class EntityLoader {
     const depth = options.depth ?? 1;
     if (depth <= 0) return;
 
-    if (metadata.target) {
-      this.validateIncludes(
-        metadata as { relationships: Array<{ propertyName: string }>; target: { name: string } },
-        options.includes
-      );
-    }
+    if (metadata.target) this.validateIncludes(metadata, options.includes);
 
     for (const relationship of metadata.relationships) {
       if (!this.shouldInclude(relationship.propertyName, options.includes)) continue;
-      await this.loadRelationshipByType(
-        entity,
-        entityClass,
-        metadata,
-        relationship as unknown as {
-          propertyName: string;
-          foreignKey?: string;
-          type: string;
-          targetEntity: Function | (() => Function);
-        },
-        options,
-        depth
-      );
+      const loadable = asLoadable(relationship);
+      if (!loadable) continue;
+      await this.loadRelationshipByType(entity, entityClass, metadata, loadable, options, depth);
     }
   }
 
@@ -158,28 +159,17 @@ export class EntityLoader {
     if (depth <= 0) return;
 
     // Validate provided includes against metadata to fail fast on typos/mistakes
-    if (metadata.target) {
-      this.validateIncludes(
-        metadata as unknown as {
-          relationships: Array<{ propertyName: string }>;
-          target: { name: string };
-        },
-        options.includes
-      );
-    }
+    if (metadata.target) this.validateIncludes(metadata, options.includes);
 
     for (const relationship of metadata.relationships) {
       if (!this.shouldInclude(relationship.propertyName, options.includes)) continue;
+      const loadable = asLoadable(relationship);
+      if (!loadable) continue;
       await this.loadRelationshipBatchedByType(
         entities,
         entityClass,
         metadata,
-        relationship as unknown as {
-          propertyName: string;
-          foreignKey?: string;
-          type: string;
-          targetEntity: Function | (() => Function);
-        },
+        loadable,
         options,
         depth
       );
@@ -236,84 +226,39 @@ export class EntityLoader {
     for (const [propName, spec] of specs) {
       const rel = metadata.relationships.find((r) => r.propertyName === propName);
       if (!rel || rel.type !== 'one-to-many') continue;
+      const loadable = asLoadable(rel);
+      if (!loadable) continue;
 
-      const targetCtor = this.resolveTargetEntity(rel.targetEntity as Function | (() => Function));
+      const targetCtor = this._targetResolver.resolve(loadable.targetEntity);
 
-      const parentIds = entities
-        .map((e) => (e as Record<string, unknown>)[parentPkProperty])
-        .filter((v) => v !== undefined && v !== null);
-      const uniqueParentIds = Array.from(new Set(parentIds));
-      if (uniqueParentIds.length === 0) continue;
+      const parentIds = this._grouper.uniqueDefined(
+        entities.map((e) => getProp(e, parentPkProperty))
+      );
+      if (parentIds.length === 0) continue;
 
-      const foreignKeyName =
-        (rel as { foreignKey?: string }).foreignKey || this.defaultForeignKeyFor(entityClass);
+      const foreignKeyName = loadable.foreignKey || this._foreignKeys.defaultFor(entityClass);
 
-      let related: unknown[] = [];
-      if (uniqueParentIds.length <= this._inChunkSize) {
-        related = await this._provider.findWhereIn(
-          targetCtor as new () => object,
-          foreignKeyName,
-          uniqueParentIds
-        );
-      } else {
-        for (let i = 0; i < uniqueParentIds.length; i += this._inChunkSize) {
-          const chunk = uniqueParentIds.slice(i, i + this._inChunkSize);
-          const part = await this._provider.findWhereIn(
-            targetCtor as new () => object,
-            foreignKeyName,
-            chunk
-          );
-          related.push(...part);
-        }
-      }
+      const related = await this._chunker.query(
+        this._provider,
+        targetCtor,
+        foreignKeyName,
+        parentIds,
+        this._inChunkSize
+      );
 
-      // Group all related rows by FK value
-      const grouped = new Map<unknown, unknown[]>();
-      for (const relatedEntity of related) {
-        const key = (relatedEntity as Record<string, unknown>)[foreignKeyName];
-        const arr = grouped.get(key) ?? [];
-        arr.push(relatedEntity);
-        grouped.set(key, arr);
-      }
+      const grouped = this._grouper.groupByKey(related, (r) => getProp(r, foreignKeyName));
 
       // Apply the captured filter/sort/take per parent and assign
       for (const entityItem of entities) {
-        const parentId = (entityItem as Record<string, unknown>)[parentPkProperty];
+        const parentId = getProp(entityItem, parentPkProperty);
         const allRelated = grouped.get(parentId) ?? [];
         const filtered = spec.applyFilter(allRelated);
-        (entityItem as Record<string, unknown>)[propName] = filtered;
+        setProp(entityItem, propName, filtered);
       }
     }
   }
 
-  /**
-   * Resolve a relationship target that may be provided either as a constructor
-   * or as a lazy callback returning the constructor.
-   * @param target Constructor or thunk returning a constructor
-   * @returns Concrete constructor function for the target entity
-   */
-  private resolveTargetEntity(target: Function | (() => Function)) {
-    const maybeCtor = target as { prototype?: unknown } | (() => Function);
-    if (typeof maybeCtor === 'function' && 'prototype' in maybeCtor && maybeCtor.prototype) {
-      return maybeCtor as unknown as new () => unknown;
-    }
-    const resolved = (target as () => Function)();
-    return resolved as unknown as new () => unknown;
-  }
-
-  /**
-   * Compute a default foreign key name for a given type using the convention
-   * camelCase(typeName) + 'Id', e.g., User -> userId.
-   * @param type Target constructor
-   * @returns Conventional foreign key column name
-   */
-  private defaultForeignKeyFor(type: Function): string {
-    const name = type.name || 'id';
-    const camel = name.charAt(0).toLowerCase() + name.slice(1);
-    return `${camel}Id`;
-  }
-
-  // ===== Helper methods extracted to reduce complexity =====
+  // ===== Helper methods =====
 
   /**
    * Construct a throwaway instance to trigger stage-3 field-decorator
@@ -331,16 +276,14 @@ export class EntityLoader {
     }
   }
 
-  private validateIncludes(
-    metadata: { relationships: Array<{ propertyName: string }>; target: { name: string } },
-    includes?: string[]
-  ): void {
+  private validateIncludes(metadata: EntityMetadata, includes?: string[]): void {
     if (!includes) return;
+    const targetName = metadata.target?.name ?? metadata.className ?? 'entity';
     for (const inc of includes) {
       const exists = metadata.relationships.some((r) => r.propertyName === inc);
       if (!exists)
-        throw new InvalidIncludeError(`Invalid include '${inc}' for ${metadata.target.name}`, {
-          details: { include: inc, entity: metadata.target.name }
+        throw new InvalidIncludeError(`Invalid include '${inc}' for ${targetName}`, {
+          details: { include: inc, entity: targetName }
         });
     }
   }
@@ -349,80 +292,24 @@ export class EntityLoader {
     return !includes || includes.includes(property);
   }
 
-  private async loadToOne(
-    entity: unknown,
-    relationship: {
-      propertyName: string;
-      foreignKey?: string;
-    },
-    targetCtor: new () => unknown,
-    nextOptions: LoadingOptions
-  ): Promise<void> {
-    const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
-    const foreignKeyValue = (entity as Record<string, unknown>)[foreignKeyName];
-    if (foreignKeyValue === undefined || foreignKeyValue === null) return;
-    const relatedEntity = await this.loadEntity(
-      targetCtor as new () => object,
-      foreignKeyValue,
-      nextOptions
-    );
-    if (relatedEntity)
-      (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntity;
-  }
-
-  private async loadOneToMany(
-    entity: unknown,
-    metadata: { primaryKeys: string[] },
-    relationship: { propertyName: string; foreignKey?: string },
-    entityClass: new () => unknown,
-    targetCtor: new () => unknown
-  ): Promise<void> {
-    const parentPkProperty = metadata.primaryKeys[0];
-    if (!parentPkProperty) return;
-    const parentPkValue = (entity as Record<string, unknown>)[parentPkProperty];
-    if (parentPkValue === undefined || parentPkValue === null) return;
-    const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
-    const relatedEntities = await this._provider.findWhere(targetCtor as new () => object, {
-      [foreignKeyName]: parentPkValue
-    });
-    (entity as Record<string, unknown>)[relationship.propertyName] = relatedEntities;
-  }
-
-  private getPrimaryKeyColumnName(meta: {
-    columns: Array<{ propertyName: string; columnName: string }>;
-    primaryKeys: string[];
-  }): string {
-    const pkProp = meta.primaryKeys?.[0];
-    if (!pkProp) return 'id';
-    return meta.columns.find((c) => c.propertyName === pkProp)?.columnName || pkProp;
-  }
-
   private async loadRelationshipByType(
     entity: unknown,
     entityClass: new () => unknown,
-    metadata: { primaryKeys?: string[] },
-    relationship: {
-      propertyName: string;
-      foreignKey?: string;
-      type: string;
-      targetEntity: Function | (() => Function);
-    },
+    metadata: EntityMetadata,
+    relationship: LoadableRelationship,
     options: LoadingOptions,
     depth: number
   ): Promise<void> {
     try {
-      const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
-      if (relationship.type === 'one-to-many') {
-        await this.loadOneToMany(
-          entity,
-          { primaryKeys: metadata.primaryKeys ?? [] },
-          relationship,
-          entityClass,
-          targetCtor
-        );
-      } else {
-        await this.loadToOne(entity, relationship, targetCtor, { ...options, depth: depth - 1 });
-      }
+      const strategy = strategyFor(relationship.type);
+      if (!strategy) return;
+      await strategy.loadSingle(
+        this.buildEagerContext(options, depth),
+        entity,
+        entityClass as new () => object,
+        metadata,
+        relationship
+      );
     } catch (error) {
       // A failed relationship load must be observable: keep the warn telemetry,
       // route through the internal-error channel, and surface a typed error so
@@ -442,185 +329,56 @@ export class EntityLoader {
   private async loadRelationshipBatchedByType(
     entities: unknown[],
     entityClass: new () => unknown,
-    metadata: {
-      columns?: Array<{ propertyName: string; columnName: string }>;
-      primaryKeys?: string[];
-    },
-    relationship: {
-      propertyName: string;
-      foreignKey?: string;
-      type: string;
-      targetEntity: Function | (() => Function);
-    },
+    metadata: EntityMetadata,
+    relationship: LoadableRelationship,
     options: LoadingOptions,
     depth: number
   ): Promise<void> {
-    const targetCtor = this.resolveTargetEntity(relationship.targetEntity);
-    if (relationship.type === 'one-to-many') {
-      await this.loadOneToManyBatched(
-        entities,
-        { primaryKeys: metadata.primaryKeys ?? [] },
-        relationship,
-        entityClass,
-        targetCtor,
-        options,
-        depth
-      );
-      return;
-    }
-    await this.loadToOneBatched(
+    const strategy = strategyFor(relationship.type);
+    if (!strategy) return;
+    await strategy.loadBatch(
+      this.buildEagerContext(options, depth),
       entities,
-      { columns: metadata.columns ?? [], primaryKeys: metadata.primaryKeys ?? [] },
-      relationship,
-      targetCtor,
-      options,
-      depth
+      entityClass as new () => object,
+      metadata,
+      relationship
     );
   }
 
-  private async loadToOneBatched(
-    entities: unknown[],
-    meta: { columns: Array<{ propertyName: string; columnName: string }>; primaryKeys: string[] },
-    relationship: { propertyName: string; foreignKey?: string },
-    targetCtor: new () => unknown,
-    options: LoadingOptions,
-    depth: number
-  ): Promise<void> {
-    const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
-    const fkValues = entities
-      .map((e) => (e as Record<string, unknown>)[foreignKeyName])
-      .filter((v) => v !== undefined && v !== null);
-    const uniqueFkValues = Array.from(new Set(fkValues));
-    if (uniqueFkValues.length === 0) return;
-
-    const targetPkColumn = this.getPrimaryKeyColumnName(meta);
-    // Chunk large IN lists to avoid parameter limits
-    const chunkSize = this._inChunkSize;
-    let related: unknown[] = [];
-    if (uniqueFkValues.length <= chunkSize) {
-      related = await this._provider.findWhereIn(
-        targetCtor as new () => object,
-        targetPkColumn,
-        uniqueFkValues
-      );
-    } else {
-      const acc: unknown[] = [];
-      let chunks = 0;
-      for (let i = 0; i < uniqueFkValues.length; i += chunkSize) {
-        const chunk = uniqueFkValues.slice(i, i + chunkSize);
-        const part = await this._provider.findWhereIn(
-          targetCtor as new () => object,
-          targetPkColumn,
-          chunk
-        );
-        acc.push(...part);
-        chunks++;
-      }
-      related = acc;
-      try {
-        this._provider.loggerRef?.crossQuery?.({
-          op: 'IN-chunk',
-          chunks,
-          size: uniqueFkValues.length,
-          entity: ctorName(targetCtor),
-          column: targetPkColumn,
-          provider: this._provider.providerLabel
-        });
-      } catch (e) {
-        logInternalError('EntityLoader.crossQuery', e);
-      }
-    }
-    const byId = new Map<unknown, unknown>();
-    const targetMeta = this._metadata.getEntity(targetCtor);
-    const targetPk = targetMeta?.primaryKeys?.[0];
-    if (!targetPk) return;
-    for (const relatedEntity of related)
-      byId.set((relatedEntity as Record<string, unknown>)[targetPk], relatedEntity);
-
-    for (const entityItem of entities) {
-      const fk = (entityItem as Record<string, unknown>)[foreignKeyName];
-      if (fk !== undefined && fk !== null)
-        (entityItem as Record<string, unknown>)[relationship.propertyName] = byId.get(fk);
-    }
-
-    if (depth - 1 > 0)
-      await this.loadRelationshipsBatched(Array.from(byId.values()), targetCtor, {
-        ...options,
-        depth: depth - 1
-      });
-  }
-
-  private async loadOneToManyBatched(
-    entities: unknown[],
-    meta: { primaryKeys: string[] },
-    relationship: { propertyName: string; foreignKey?: string },
-    entityClass: new () => unknown,
-    targetCtor: new () => unknown,
-    options: LoadingOptions,
-    depth: number
-  ): Promise<void> {
-    const parentPkProperty = meta.primaryKeys[0];
-    if (!parentPkProperty) return;
-    const parentIds = entities
-      .map((e) => (e as Record<string, unknown>)[parentPkProperty])
-      .filter((v) => v !== undefined && v !== null);
-    const uniqueParentIds = Array.from(new Set(parentIds));
-    if (uniqueParentIds.length === 0) return;
-
-    const foreignKeyName = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
-    // Chunk large IN lists to avoid parameter limits
-    const chunkSize2 = this._inChunkSize;
-    let related: unknown[] = [];
-    if (uniqueParentIds.length <= chunkSize2) {
-      related = await this._provider.findWhereIn(
-        targetCtor as new () => object,
-        foreignKeyName,
-        uniqueParentIds
-      );
-    } else {
-      const acc: unknown[] = [];
-      let chunks = 0;
-      for (let i = 0; i < uniqueParentIds.length; i += chunkSize2) {
-        const chunk = uniqueParentIds.slice(i, i + chunkSize2);
-        const part = await this._provider.findWhereIn(
-          targetCtor as new () => object,
-          foreignKeyName,
-          chunk
-        );
-        acc.push(...part);
-        chunks++;
-      }
-      related = acc;
-      try {
-        this._provider.loggerRef?.crossQuery?.({
-          op: 'IN-chunk',
-          chunks,
-          size: uniqueParentIds.length,
-          entity: ctorName(targetCtor),
-          column: foreignKeyName,
-          provider: this._provider.providerLabel
-        });
-      } catch (e) {
-        logInternalError('EntityLoader.crossQuery', e);
-      }
-    }
-    const grouped = new Map<unknown, unknown[]>();
-    for (const relatedEntity of related) {
-      const key = (relatedEntity as Record<string, unknown>)[foreignKeyName];
-      const arr = grouped.get(key) || [];
-      arr.push(relatedEntity);
-      grouped.set(key, arr);
-    }
-    for (const entityItem of entities) {
-      const parentId = (entityItem as Record<string, unknown>)[parentPkProperty];
-      (entityItem as Record<string, unknown>)[relationship.propertyName] =
-        grouped.get(parentId) || [];
-    }
-    if (depth - 1 > 0)
-      await this.loadRelationshipsBatched(related, targetCtor, {
-        ...options,
-        depth: depth - 1
-      });
+  /**
+   * Build the eager-loading context for the strategy registry: identity proxy
+   * hooks, no-op `markLoaded`, real `assignSingle`, recursive `fetchToOne`
+   * (depth-1) and `recurseBatched` (depth-gated), and an `undefined`
+   * `absentToMany` so absent single to-many sources leave the property
+   * untouched — preserving the historical `EntityLoader` behaviour exactly.
+   */
+  private buildEagerContext(options: LoadingOptions, depth: number): RelationshipLoadContext {
+    return {
+      provider: this._provider,
+      metadata: this._metadata,
+      foreignKeys: this._foreignKeys,
+      targetResolver: this._targetResolver,
+      chunker: this._chunker,
+      grouper: this._grouper,
+      chunkSize: this._inChunkSize,
+      wrapOne: (entity) => entity,
+      wrapMany: (entities) => entities,
+      rawTarget: (entity) => entity,
+      markLoaded: () => {},
+      assignSingle: (entity, propertyName, value) => {
+        setProp(entity, propertyName, value);
+      },
+      fetchToOne: async (ctor, id) => this.loadEntity(ctor, id, { ...options, depth: depth - 1 }),
+      absentToMany: undefined,
+      resolveBatchedToOne: (value) => value,
+      recurseBatched: async (related, ctor) =>
+        depth - 1 > 0
+          ? this.loadRelationshipsBatched(related as object[], ctor, {
+              ...options,
+              depth: depth - 1
+            })
+          : Promise.resolve()
+    };
   }
 }
 

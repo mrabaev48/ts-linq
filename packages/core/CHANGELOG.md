@@ -1,5 +1,24 @@
 # @ts-linq/core
 
+## 3.2.0
+
+### Minor Changes
+
+- Refactor the relationship loading layer: `EntityLoader` is split into a thin orchestrator plus
+  shared collaborators (`ForeignKeyConvention`, `TargetEntityResolver`, `InClauseChunker`,
+  `EntityGrouper`, `ColumnResolver`) and a per-kind `RelationshipLoadStrategy` registry, shared with
+  `RelationshipLoader`. This eliminates the duplicated FK convention, target resolution, IN()-chunking
+  and grouping across the two loaders, and replaces the `as unknown as` relationship casts with a typed
+  `LoadableRelationship` view.
+
+  Two additive improvements ship as part of the unification:
+  - Eager loading now supports **many-to-many** relationships (previously silently skipped).
+  - The proxy-based lazy loader now **chunks large `IN (...)` lists** to stay within driver parameter
+    limits.
+
+  Existing eager N+1 batching and filtered-include behaviour is unchanged. All public loading APIs
+  are stable; the new collaborators and strategies are internal.
+
 ## 3.1.0
 
 ### Minor Changes
