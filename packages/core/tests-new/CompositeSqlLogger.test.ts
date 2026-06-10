@@ -1,6 +1,7 @@
 import type { SqlLogger } from '@ts-linq/types';
 
 import { CompositeSqlLogger } from '../src/logging/CompositeSqlLogger';
+import { setInternalErrorHandler } from '../src/utils/InternalLogger';
 
 /** Build a fully-stubbed SqlLogger whose every method is a jest mock. */
 function makeLogger(): jest.Mocked<Required<SqlLogger>> {
@@ -26,14 +27,17 @@ function makeLogger(): jest.Mocked<Required<SqlLogger>> {
 }
 
 describe('CompositeSqlLogger', () => {
-  let consoleErrorSpy: jest.SpyInstance;
+  let internalErrors: jest.Mock<void, [string, unknown]>;
 
   beforeEach(() => {
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    // The internal telemetry channel is silent by default; install a spy
+    // handler so isolation tests can assert the swallowed error was surfaced.
+    internalErrors = jest.fn<void, [string, unknown]>();
+    setInternalErrorHandler(internalErrors);
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
+    setInternalErrorHandler(undefined);
   });
 
   it('forwards every event to all delegates', () => {
@@ -93,8 +97,8 @@ describe('CompositeSqlLogger', () => {
     expect(throwing.queryStart).toHaveBeenCalledTimes(1);
     expect(healthy.queryStart).toHaveBeenCalledTimes(1);
     // The swallowed failure is surfaced through the internal-error boundary.
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(consoleErrorSpy.mock.calls[0][0]).toContain('CompositeSqlLogger.queryStart');
+    expect(internalErrors).toHaveBeenCalled();
+    expect(internalErrors.mock.calls[0][0]).toContain('CompositeSqlLogger.queryStart');
   });
 
   it('tolerates delegates that omit optional methods', () => {
@@ -108,7 +112,7 @@ describe('CompositeSqlLogger', () => {
 
     expect(() => composite.queryStart({ sql: 's', params: [] })).not.toThrow();
     expect(() => composite.analysis({ sql: 's', params: [], durationMs: 1 })).not.toThrow();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    expect(internalErrors).not.toHaveBeenCalled();
   });
 
   it('skips nullish delegates and flattens nested composites', () => {
