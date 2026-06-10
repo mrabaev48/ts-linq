@@ -1,5 +1,20 @@
 # @ts-linq/orm
 
+## 4.0.19
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.3.0
+  - @ts-linq/query@2.4.36
+  - @ts-linq/concurrency@3.0.3
+  - @ts-linq/core@3.4.1
+  - @ts-linq/metadata@4.1.2
+  - @ts-linq/metrics-safe@1.2.5
+  - @ts-linq/migrations@2.6.26
+  - @ts-linq/sql-visitor@4.2.1
+  - @ts-linq/telemetry@2.1.17
+
 ## 4.0.18
 
 ### Patch Changes

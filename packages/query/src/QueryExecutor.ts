@@ -9,7 +9,7 @@ import type {
   QuerySplittingBehavior,
   SqlParameter
 } from '@ts-linq/types';
-import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
+import { FallbackExhaustedError, QuerySplittingBehavior as QSB } from '@ts-linq/types';
 
 import type { FallbackManager } from './FallbackManager';
 import type { IncludePlanner } from './IncludePlanner';
@@ -174,7 +174,10 @@ export class QueryExecutor<T> {
           splittingBehavior,
           filteredIncludes
         );
-      } catch {}
+      } catch (e) {
+        // Best-effort includes on stale fallback data — log but never break the fallback path.
+        logInternalError('fallback.populateIncludes', e);
+      }
     }
     this.provider.loggerRef?.fallback?.({
       provider: this.provider.providerLabel,
@@ -243,7 +246,9 @@ export class QueryExecutor<T> {
     | { source: 'primary'; rows: ReadonlyArray<Record<string, unknown>> }
     | { source: 'fallback'; rows: ReadonlyArray<unknown>; label: string }
   > {
-    let fallbackStarted = false;
+    // Collect per-source failures so an exhausted fallback set surfaces an aggregate cause
+    // instead of being silently indistinguishable from "no fallback configured".
+    const fallbackErrors: unknown[] = [];
     const req: FallbackRequest<T> = {
       operation: 'count',
       entityClass: this.entityClass,
@@ -251,21 +256,42 @@ export class QueryExecutor<T> {
       sql: sql.query,
       params: sql.parameters
     };
-    const startFallback = async (): Promise<{ rows: ReadonlyArray<unknown>; label: string }> => {
-      fallbackStarted = true;
+    type FallbackOutcome =
+      | { kind: 'data'; rows: ReadonlyArray<unknown>; label: string }
+      | { kind: 'exhausted' }
+      | { kind: 'none' };
+    const startFallback = async (): Promise<FallbackOutcome> => {
+      if (fallbacks.length === 0) return { kind: 'none' };
       for (const fb of fallbacks) {
         try {
           const data = await fb.fetch(req);
           if (data && data.length >= 0)
-            return { rows: data as unknown as ReadonlyArray<unknown>, label: fb.label };
-        } catch {
+            return {
+              kind: 'data',
+              rows: data as unknown as ReadonlyArray<unknown>,
+              label: fb.label
+            };
+        } catch (e) {
+          logInternalError('hedged.select.fallback', e);
+          fallbackErrors.push(e);
           continue;
         }
       }
-      return { rows: [] as unknown as ReadonlyArray<unknown>, label: 'none' };
+      return { kind: 'exhausted' };
+    };
+    const failExhausted = (primaryErr: unknown): never => {
+      // No fallback configured → surface the primary failure unchanged. All fallbacks failed →
+      // aggregate, preserving the primary error as `cause` and the per-source errors in details.
+      if (fallbacks.length === 0) throw primaryErr;
+      throw new FallbackExhaustedError('All hedged fallback sources failed for select', {
+        cause: primaryErr,
+        details: { errors: fallbackErrors }
+      });
     };
     const sleep = async (ms: number) => new Promise((r) => setTimeout(r, ms));
-    const fallbackPromise = (async () => {
+    // A single fallback attempt, shared by both the race and the primary-failure path, so the
+    // fallback sources are never hit twice.
+    const fallbackOutcomePromise: Promise<FallbackOutcome> = (async () => {
       await sleep(Math.max(0, delayMs));
       return startFallback();
     })();
@@ -273,7 +299,13 @@ export class QueryExecutor<T> {
       const primaryPromise = primary();
       const winner = await Promise.race([
         primaryPromise.then((rows) => ({ k: 'p', rows }) as const),
-        fallbackPromise.then((v) => ({ k: 'f', rows: v.rows, label: v.label }) as const)
+        // Fallback only competes in the race when it yields data; a non-data outcome must never
+        // beat a live primary, so it adopts a never-settling promise and lets primary decide.
+        fallbackOutcomePromise.then(async (o) =>
+          o.kind === 'data'
+            ? ({ k: 'f', rows: o.rows, label: o.label } as const)
+            : new Promise<{ k: 'f'; rows: ReadonlyArray<unknown>; label: string }>(() => {})
+        )
       ]);
       if (winner.k === 'p') {
         return { source: 'primary', rows: winner.rows };
@@ -295,12 +327,13 @@ export class QueryExecutor<T> {
         });
         return { source: 'fallback', rows: winner.rows, label: winner.label || 'unknown' };
       }
-    } catch {
-      if (!fallbackStarted) {
-        const v = await startFallback();
-        return { source: 'fallback', rows: v.rows, label: v.label };
-      }
-      throw new Error('hedged failed');
+    } catch (primaryErr) {
+      // Primary rejected. Await the single fallback attempt; an empty result is NEVER returned as
+      // success when every source failed — exhaustion surfaces as a typed aggregate.
+      const outcome = await fallbackOutcomePromise;
+      if (outcome.kind === 'data')
+        return { source: 'fallback', rows: outcome.rows, label: outcome.label };
+      return failExhausted(primaryErr);
     }
   }
 
@@ -477,7 +510,10 @@ export class QueryExecutor<T> {
         return winner.n;
       }
       return await primaryPromise;
-    } catch {
+    } catch (e) {
+      // Degradation, but fail-loud upstream: returning null falls through to executeCount's
+      // own primary+sequential path, which rethrows the real error. Log for observability.
+      logInternalError('hedged.count.race', e);
       return null;
     }
   }

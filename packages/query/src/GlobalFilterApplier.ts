@@ -8,6 +8,7 @@ import type {
   SoftDeleteOptions,
   WhereClause
 } from '@ts-linq/types';
+import { QueryFilterCompilationError } from '@ts-linq/types';
 
 export class GlobalFilterApplier {
   public apply(
@@ -63,6 +64,9 @@ export class GlobalFilterApplier {
     ) {
       for (const filter of entityQueryFilters) {
         if (ignoredFilters && ignoredFilters.has(filter.name)) continue;
+        // Fail-closed: a query filter that cannot be compiled MUST surface, never be
+        // silently dropped. A swallowed tenant-isolation / soft-delete filter would
+        // under-filter the query and leak rows it is meant to hide (security defect).
         try {
           const result = visitor.toSql(
             filter.ast as ExpressionNode,
@@ -70,8 +74,11 @@ export class GlobalFilterApplier {
             columnResolver
           );
           model.where.push({ condition: result.condition, parameters: result.parameters });
-        } catch {
-          // Silently skip filters that produce invalid SQL (e.g., unsupported AST nodes)
+        } catch (err) {
+          throw new QueryFilterCompilationError(`Failed to compile query filter '${filter.name}'`, {
+            cause: err,
+            details: { filterName: filter.name }
+          });
         }
       }
     }

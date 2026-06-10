@@ -43,7 +43,9 @@ export const OrmErrorCode = {
   InvalidIdentifier: 'INVALID_IDENTIFIER',
   EntityNotFound: 'ENTITY_NOT_FOUND',
   OwnedEntityHydrationError: 'OWNED_ENTITY_HYDRATION_ERROR',
-  RelationshipLoadError: 'RELATIONSHIP_LOAD_ERROR'
+  RelationshipLoadError: 'RELATIONSHIP_LOAD_ERROR',
+  QueryFilterCompilationError: 'QUERY_FILTER_COMPILATION_ERROR',
+  FallbackExhausted: 'FALLBACK_EXHAUSTED'
 } as const;
 
 /** Union of every stable code declared in {@link OrmErrorCode}. */
@@ -251,6 +253,35 @@ export class OwnedEntityHydrationError extends OrmError {
  */
 export class RelationshipLoadError extends OrmError {
   public readonly code = OrmErrorCode.RelationshipLoadError;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when a global/named query filter fails to compile to SQL. Surfacing
+ * (rather than silently dropping) the failure is a **fail-closed** security
+ * guarantee: a tenant-isolation or soft-delete filter that cannot be applied
+ * must never silently widen the result set. `details.filterName` identifies the
+ * offending filter; `cause` preserves the underlying compilation failure.
+ */
+export class QueryFilterCompilationError extends OrmError {
+  public readonly code = OrmErrorCode.QueryFilterCompilationError;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when every configured fallback source fails during a hedged/degraded
+ * execution. Distinguishes "all fallbacks failed" from "no fallback configured":
+ * the primary failure is preserved as `cause`, and `details.errors` carries the
+ * collected per-source failures for debuggability.
+ */
+export class FallbackExhaustedError extends OrmError {
+  public readonly code = OrmErrorCode.FallbackExhausted;
 
   constructor(message: string, opts?: OrmErrorOptions) {
     super(message, opts);
