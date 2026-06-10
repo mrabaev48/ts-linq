@@ -1,4 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
   BatchUpdateResult,
@@ -28,7 +29,11 @@ import { PgGroupEmitter } from './emitters/PgGroupEmitter';
 import { PgJoinEmitter } from './emitters/PgJoinEmitter';
 import { PgOrderEmitter } from './emitters/PgOrderEmitter';
 import { PgWhereEmitter } from './emitters/PgWhereEmitter';
+import { postgresEfFunctions } from './functions/index';
+import { PostgresJsonPathTranslator } from './json/JsonPathTranslator';
+import { postgresLtreeFunctions } from './ltree-functions';
 import { createPostgresSpCallSyntax } from './sp-syntax';
+import { postgisSpatialFunctions } from './spatial-functions';
 
 /**
  * PostgreSQL implementation of SqlDialect.
@@ -37,16 +42,30 @@ import { createPostgresSpCallSyntax } from './sp-syntax';
  * - Converts positional placeholders from '?' to PostgreSQL-style $1..$n
  * - Leaves identifier quoting to providers/metadata (table/column names are passed as-is)
  */
-export class PostgresDialect implements SqlDialect {
+export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
   private readonly whereEmitter = new PgWhereEmitter();
   private readonly joinEmitter = new PgJoinEmitter();
   private readonly orderEmitter = new PgOrderEmitter();
   private readonly groupEmitter = new PgGroupEmitter();
+  private readonly jsonPathTranslator = new PostgresJsonPathTranslator();
 
   readonly parameterLimit = PG_PARAM_LIMIT;
 
   public quoteIdentifier(identifier: string): string {
     return `"${identifier.replace(/"/g, '""')}"`;
+  }
+
+  /**
+   * Dialect-specific translators consumed by the `query` layer's SQL visitor factory so that
+   * spatial / hierarchy (ltree) / JSON-path / EF.functions predicates render to PostgreSQL SQL.
+   */
+  public getVisitorTranslators(): DialectVisitorTranslators {
+    return {
+      spatialTranslator: postgisSpatialFunctions,
+      hierarchyTranslator: postgresLtreeFunctions,
+      efFunctionTranslator: postgresEfFunctions,
+      jsonPathTranslator: this.jsonPathTranslator
+    };
   }
 
   public getSpCallSyntax() {

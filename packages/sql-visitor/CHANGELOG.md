@@ -1,5 +1,18 @@
 # @ts-linq/sql-visitor
 
+## 4.2.0
+
+### Minor Changes
+
+- Wire the full `SqlVisitorOptions` surface into the `.where()/.having()` runtime path (query/task-4).
+
+  Previously every production `SqlVisitor` in the query layer was constructed bare (`new SqlVisitor()`), silently dropping all options. As a result value converters were **ignored in WHERE/HAVING** (a `HasConversion` column compared against a literal produced wrong results with no error), and spatial / HierarchyId / JSON-path / EF.functions predicates **threw** even though the dialects ship those translators.
+  - `@ts-linq/sql-visitor`: new optional `DialectVisitorSupport` capability interface (`getVisitorTranslators()`), the `DialectVisitorTranslators` type, and the `hasVisitorSupport` type guard.
+  - `@ts-linq/dialect-postgres` / `@ts-linq/dialect-mysql` / `@ts-linq/dialect-mssql`: implement `DialectVisitorSupport`, exposing their spatial / hierarchy / EF / JSON-path translators (MySQL omits hierarchy, which it does not support).
+  - `@ts-linq/query`: a new internal `SqlVisitorFactory` assembles the complete `SqlVisitorOptions` from the dialect (translators) plus entity metadata (`converterResolver`, JSON/complex access rewriters). `whereCompiled`, `havingCompiled` and `GlobalFilterApplier` all obtain their visitor from this single factory.
+
+  **Behavioural change:** value converters are now honoured in `.where()/.having()` — converted literals are emitted instead of raw model values.
+
 ## 4.1.2
 
 ### Patch Changes
