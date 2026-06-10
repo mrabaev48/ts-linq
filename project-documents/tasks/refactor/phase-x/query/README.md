@@ -37,18 +37,20 @@ applies global query filters, tracking, caching and pagination. The public entry
 7. Curate the public API surface.
 
 ## Recommended task order
-| Order | Task | Priority | Reason |
-|---:|---|---|---|
-| 1 | task-4 | P0 | Correctness: converters silently ignored, features throw in `.where()`. |
-| 2 | task-8 | P0 | Security/correctness: silent global-filter drop can leak rows. |
-| 3 | task-6 | P0 | Cross-dialect SQL bug + boundary violation (hardcoded `"`). |
-| 4 | task-3 | P1 | QueryContext value object; also fixes `selectCompiled` config loss. |
-| 5 | task-2 | P0 | Uniform immutability; unblocks safe decomposition. |
-| 6 | task-1 | P0 | Decompose the god class (depends on 3 & 2). |
-| 7 | task-7 | P1 | Split compile/execute/cache (decorator). |
-| 8 | task-5 | P1 | Honest selector types + type-level tests. |
-| 9 | task-9 | P2 | Extract include proxy; fix double-invocation. |
-| 10 | task-10 | P2 | Public API/barrel hygiene (bundle with major bump). |
+| Order | Task | Priority | Status | Reason |
+|---:|---|---|---|---|
+| 1 | task-4 | P0 | ✅ Completed | Correctness: converters silently ignored, features throw in `.where()`. |
+| 2 | task-8 | P0 | ⬜ Pending | Security/correctness: silent global-filter drop can leak rows. |
+| 3 | task-6 | P0 | ⬜ Pending | Cross-dialect SQL bug + boundary violation (hardcoded `"`). |
+| 4 | task-3 | P1 | ⬜ Pending | QueryContext value object; also fixes `selectCompiled` config loss. |
+| 5 | task-2 | P0 | ⬜ Pending | Uniform immutability; unblocks safe decomposition. |
+| 6 | task-1 | P0 | ⬜ Pending | Decompose the god class (depends on 3 & 2). |
+| 7 | task-7 | P1 | ⬜ Pending | Split compile/execute/cache (decorator). |
+| 8 | task-5 | P1 | ⬜ Pending | Honest selector types + type-level tests. |
+| 9 | task-9 | P2 | ⬜ Pending | Extract include proxy; fix double-invocation. |
+| 10 | task-10 | P2 | ⬜ Pending | Public API/barrel hygiene (bundle with major bump). |
+
+> **Package status: 🔄 In Progress** — task-4 done; tasks 8, 6, 3, 2, 1, 7, 5, 9, 10 pending.
 
 ## Dependencies on other packages
 - `@ts-linq/sql-visitor` — predicate→SQL fragment generation (task-4 wiring, sql-visitor

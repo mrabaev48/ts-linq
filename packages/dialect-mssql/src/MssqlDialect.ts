@@ -1,4 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
   BatchUpdateResult,
@@ -25,7 +26,11 @@ import { MssqlGroupEmitter } from './emitters/MssqlGroupEmitter';
 import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
 import { MssqlOrderEmitter } from './emitters/MssqlOrderEmitter';
 import { MssqlWhereEmitter } from './emitters/MssqlWhereEmitter';
+import { mssqlEfFunctions } from './functions/index';
+import { mssqlHierarchyFunctions } from './hierarchy-functions';
+import { MssqlJsonPathTranslator } from './json/JsonPathTranslator';
 import { createMssqlSpCallSyntax } from './sp-syntax';
+import { mssqlSpatialFunctions } from './spatial-functions';
 
 /**
  * MSSQL dialect for SELECT generation.
@@ -34,16 +39,30 @@ import { createMssqlSpCallSyntax } from './sp-syntax';
  * - Uses OFFSET n ROWS FETCH NEXT m ROWS ONLY when offset is provided
  * - Converts '?' placeholders to @p1..@pn for MSSQL parameter style
  */
-export class MssqlDialect implements SqlDialect {
+export class MssqlDialect implements SqlDialect, DialectVisitorSupport {
   private readonly whereEmitter = new MssqlWhereEmitter();
   private readonly joinEmitter = new MssqlJoinEmitter();
   private readonly orderEmitter = new MssqlOrderEmitter();
   private readonly groupEmitter = new MssqlGroupEmitter();
+  private readonly jsonPathTranslator = new MssqlJsonPathTranslator();
 
   readonly parameterLimit = MSSQL_PARAM_LIMIT;
 
   public quoteIdentifier(identifier: string): string {
     return `[${identifier.replace(/]/g, ']]')}]`;
+  }
+
+  /**
+   * Dialect-specific translators consumed by the `query` layer's SQL visitor factory so that
+   * spatial / hierarchyid / JSON-path / EF.functions predicates render to T-SQL.
+   */
+  public getVisitorTranslators(): DialectVisitorTranslators {
+    return {
+      spatialTranslator: mssqlSpatialFunctions,
+      hierarchyTranslator: mssqlHierarchyFunctions,
+      efFunctionTranslator: mssqlEfFunctions,
+      jsonPathTranslator: this.jsonPathTranslator
+    };
   }
 
   public getSpCallSyntax() {
