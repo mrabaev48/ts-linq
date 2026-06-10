@@ -1,5 +1,4 @@
-import type { EntityState } from '@ts-linq/core';
-import type { EntityCtorRef } from '@ts-linq/types';
+import type { EntityCtorRef, EntityState } from '@ts-linq/types';
 
 /**
  * Minimal entry interface exposed within a `trackGraph` callback.
