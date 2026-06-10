@@ -2,16 +2,20 @@ import { describe, expect, it } from '@jest/globals';
 import type { OrmMiddleware } from '@ts-linq/types';
 
 import { MiddlewareDispatcher } from '../src/middleware/MiddlewareDispatcher';
+import { setInternalErrorHandler } from '../src/utils/InternalLogger';
 
 describe('MiddlewareDispatcher', () => {
-  let consoleErrorSpy: jest.SpyInstance;
+  let internalErrors: jest.Mock<void, [string, unknown]>;
 
   beforeEach(() => {
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    // The internal telemetry channel is silent by default; install a spy
+    // handler so isolation tests can assert the swallowed error was surfaced.
+    internalErrors = jest.fn<void, [string, unknown]>();
+    setInternalErrorHandler(internalErrors);
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
+    setInternalErrorHandler(undefined);
   });
 
   it('reads the middleware list lazily on each call', async () => {
@@ -51,7 +55,7 @@ describe('MiddlewareDispatcher', () => {
 
     await expect(d.afterExecute('SELECT 1', [], [{}, {}, {}], 5)).resolves.toBeUndefined();
     expect(rowsSeen).toEqual([3, 3]);
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(internalErrors).toHaveBeenCalled();
   });
 
   it('isolates a throwing entityMaterialized middleware', async () => {
@@ -63,6 +67,6 @@ describe('MiddlewareDispatcher', () => {
       }
     ]);
     await expect(d.entityMaterialized({})).resolves.toBeUndefined();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(internalErrors).toHaveBeenCalled();
   });
 });

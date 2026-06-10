@@ -1,5 +1,31 @@
 # @ts-linq/core
 
+## 3.3.0
+
+### Minor Changes
+
+- core: silent-by-default logging — remove console coupling and the static lazy-loading logger
+
+  `@ts-linq/core` no longer writes to the console by default. All internal logging now routes
+  through an injected sink with a silent Null Object default; hosts opt into output explicitly
+  at the composition root.
+  - `InternalLogger`: the unconditional `console.error` is gone. The unified
+    `logInternalError(context, error)` channel is preserved and now dispatches to a single
+    configurable global handler that defaults to no-op. Install one with
+    `setInternalErrorHandler(handler)` (and `setInternalErrorHandler(undefined)` to restore
+    silence). Core ships no console handler — the host owns any console dependency.
+  - `LazyLoadingProxy`: the static mutable `_logger` (and `setLogger`/`getLogger`) is removed.
+    The logger is now injected as an optional trailing `LazyLoadingLogger` parameter on
+    `create`/`createMany`/`preloadRelationships`, defaulting to a silent Null Object.
+  - `@ts-linq/orm` (`patch`): `DbContext.include` wires the context's configured `SqlLogger`
+    (from `options.logging`) into lazy loading, so lazy-load warnings reach the attached logger
+    when one is configured and stay silent otherwise.
+
+  Backward-compatibility note: the default behaviour is now silent. Applications that relied on
+  core writing lazy-load warnings / internal errors to the console must attach a logger
+  explicitly — configure `options.logging` on the `DbContext` (lazy warnings) and/or install a
+  handler via `setInternalErrorHandler` (internal telemetry).
+
 ## 3.2.0
 
 ### Minor Changes

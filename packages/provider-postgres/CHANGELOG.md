@@ -1,5 +1,13 @@
 # @ts-linq/provider-postgres
 
+## 3.0.16
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/core@3.3.0
+  - @ts-linq/dialect-postgres@2.6.29
+
 ## 3.0.15
 
 ### Patch Changes
