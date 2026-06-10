@@ -1052,10 +1052,11 @@ export class Queryable<T> {
       }) as unknown as T;
     try {
       proxyResult = (keyOrSelector as (entity: T) => unknown)(makeIncludeProxy());
-    } catch {
-      // Proxy call threw (e.g. forbidden operator) — re-run to surface the error
-      (keyOrSelector as (entity: T) => unknown)(makeIncludeProxy());
-      return this; // unreachable but satisfies TS
+    } catch (err) {
+      // Proxy call threw (e.g. forbidden operator). Surface the captured error directly —
+      // re-running the lambda would invoke user side effects a second time (task-9 extracts
+      // this proxy entirely).
+      throw err;
     }
 
     if (proxyResult instanceof IncludeSubquery) {

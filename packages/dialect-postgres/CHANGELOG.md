@@ -1,5 +1,15 @@
 # @ts-linq/dialect-postgres
 
+## 2.7.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.3.0
+  - @ts-linq/core@3.4.1
+  - @ts-linq/metadata@4.1.2
+  - @ts-linq/sql-visitor@4.2.1
+
 ## 2.7.0
 
 ### Minor Changes

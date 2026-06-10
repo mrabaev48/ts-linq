@@ -1,5 +1,13 @@
 # @ts-linq/prometheus-sql-logger
 
+## 12.0.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.3.0
+  - @ts-linq/core@3.4.1
+
 ## 12.0.0
 
 ### Patch Changes

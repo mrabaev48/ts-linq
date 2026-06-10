@@ -2,6 +2,8 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import { defaultPropertyAccessor, MetadataStorage, type PropertyAccessor } from '@ts-linq/metadata';
 import type { EntityCacheLike, PerformanceOptions } from '@ts-linq/types';
 
+import { logInternalError } from './InternalLogger';
+
 /** @internal */
 export class RowMaterializer<T> {
   constructor(
@@ -153,8 +155,9 @@ export class RowMaterializer<T> {
         size: this.entityCache.size?.() ?? -1,
         provider: this.provider.providerLabel
       });
-    } catch {
-      /* ignore */
+    } catch (e) {
+      // Telemetry-with-ignore: a cacheSize metric failure must never break materialization.
+      logInternalError('materializer.cacheSize', e);
     }
   }
 
@@ -164,8 +167,9 @@ export class RowMaterializer<T> {
         (
           this.provider as unknown as { notifyEntityMaterialized?: (e: T, m?: unknown) => void }
         ).notifyEntityMaterialized?.(entity, metadata);
-    } catch {
-      /* ignore */
+    } catch (e) {
+      // Telemetry-with-ignore: a materialization-notify failure must never break materialization.
+      logInternalError('materializer.notifyMaterialized', e);
     }
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/provider-mysql",
-  "version": "3.0.18",
+  "version": "3.0.19",
   "private": true,
   "description": "Mysql database provider for ts-linq ORM",
   "main": "./dist/index.js",
