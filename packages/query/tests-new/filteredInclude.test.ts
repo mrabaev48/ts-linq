@@ -417,6 +417,18 @@ describe('Queryable.include() overload', () => {
       q.include((b: unknown) => (b as Record<string, IncludeSubquery<Post>>).posts.select())
     ).toThrow("'select' is not allowed inside include()");
   });
+
+  it('throwing include lambda is invoked exactly once (no double side effects)', () => {
+    const q = makeQueryable();
+    let calls = 0;
+    const selector = (b: unknown) => {
+      calls += 1; // user-visible side effect: must run only once
+      return (b as Record<string, IncludeSubquery<Post>>).posts.select();
+    };
+    expect(() => q.include(selector)).toThrow("'select' is not allowed inside include()");
+    // The proxy no longer re-runs the lambda to "surface" the error (query/task-8).
+    expect(calls).toBe(1);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

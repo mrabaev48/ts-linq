@@ -1,5 +1,15 @@
 # @ts-linq/cli
 
+## 1.3.33
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.3.0
+  - @ts-linq/core@3.4.1
+  - @ts-linq/metadata@4.1.2
+  - @ts-linq/migrations@2.6.26
+
 ## 1.3.32
 
 ### Patch Changes

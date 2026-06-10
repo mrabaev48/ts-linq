@@ -11,6 +11,7 @@ import {
   BatchConfigurationError,
   DatabaseError,
   DecoratorUsageError,
+  FallbackExhaustedError,
   ForeignKeyConstraintError,
   InvalidIncludeError,
   MetadataError,
@@ -18,6 +19,7 @@ import {
   OptimisticConcurrencyError,
   OrmError,
   OrmErrorCode,
+  QueryFilterCompilationError,
   TemporalNotSupportedError,
   UniqueConstraintError,
   UnsupportedOperationError,
@@ -49,6 +51,10 @@ type _DecoratorCode = Expect<Equal<DecoratorUsageError['code'], 'DECORATOR_USAGE
 type _BatchCode = Expect<Equal<BatchConfigurationError['code'], 'BATCH_CONFIGURATION_ERROR'>>;
 type _IncludeCode = Expect<Equal<InvalidIncludeError['code'], 'INVALID_INCLUDE'>>;
 type _AbortedCode = Expect<Equal<OperationAbortedError['code'], 'OPERATION_ABORTED'>>;
+type _FilterCode = Expect<
+  Equal<QueryFilterCompilationError['code'], 'QUERY_FILTER_COMPILATION_ERROR'>
+>;
+type _FallbackCode = Expect<Equal<FallbackExhaustedError['code'], 'FALLBACK_EXHAUSTED'>>;
 
 // `details` is a readonly structured payload, never `any`.
 type _DetailsType = Expect<
@@ -74,7 +80,9 @@ describe('OrmError hierarchy', () => {
       new DecoratorUsageError('x'),
       new BatchConfigurationError('x'),
       new InvalidIncludeError('x'),
-      new OperationAbortedError('x')
+      new OperationAbortedError('x'),
+      new QueryFilterCompilationError('x'),
+      new FallbackExhaustedError('x')
     ];
     for (const e of errors) {
       expect(e).toBeInstanceOf(OrmError);
@@ -115,6 +123,10 @@ describe('OrmError hierarchy', () => {
     expect(new BatchConfigurationError('x').code).toBe(OrmErrorCode.BatchConfigurationError);
     expect(new InvalidIncludeError('x').code).toBe(OrmErrorCode.InvalidInclude);
     expect(new OperationAbortedError('x').code).toBe(OrmErrorCode.OperationAborted);
+    expect(new QueryFilterCompilationError('x').code).toBe(
+      OrmErrorCode.QueryFilterCompilationError
+    );
+    expect(new FallbackExhaustedError('x').code).toBe(OrmErrorCode.FallbackExhausted);
   });
 
   it('sets the constructor name on every error', () => {
@@ -152,6 +164,27 @@ describe('OrmError cause and details', () => {
       details: { entity: 'User', path: 'orders' }
     });
     expect(err.details).toEqual({ entity: 'User', path: 'orders' });
+  });
+
+  it('preserves the primary failure as cause and collected errors in details', () => {
+    const primary = new Error('primary down');
+    const fbErrors = [new Error('fb1'), new Error('fb2')];
+    const err = new FallbackExhaustedError('all fallbacks failed', {
+      cause: primary,
+      details: { errors: fbErrors }
+    });
+    expect(err.cause).toBe(primary);
+    expect(err.details).toEqual({ errors: fbErrors });
+  });
+
+  it('preserves the filter name and compilation cause on QueryFilterCompilationError', () => {
+    const root = new Error('unsupported AST node');
+    const err = new QueryFilterCompilationError("could not compile filter 'tenant'", {
+      cause: root,
+      details: { filterName: 'tenant' }
+    });
+    expect(err.cause).toBe(root);
+    expect(err.details).toEqual({ filterName: 'tenant' });
   });
 
   it('keeps the structured constraint fields', () => {

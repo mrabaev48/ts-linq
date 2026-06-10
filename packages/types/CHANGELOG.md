@@ -1,5 +1,35 @@
 # @ts-linq/types
 
+## 4.3.0
+
+### Minor Changes
+
+- Fix silent/over-broad catch blocks in the query execution path (security + correctness).
+
+  **Security fix (headline):** `GlobalFilterApplier` no longer silently drops a named query
+  filter that fails to compile. A swallowed tenant-isolation / soft-delete filter could
+  under-filter a query and **leak rows it was meant to hide**. Compilation failures now fail
+  closed, throwing the new typed `QueryFilterCompilationError` (with the original failure
+  preserved as `cause` and the filter name in `details`).
+
+  **Fallback exhaustion is now observable:** when the hedged select race loses the primary AND
+  every fallback source fails, the executor throws the new `FallbackExhaustedError` (primary
+  error preserved as `cause`, per-source failures in `details.errors`) instead of returning a
+  silently-empty result. "All fallbacks failed" is now distinguishable from "no fallback
+  configured", and the fallback sources are attempted at most once.
+
+  **Uniform telemetry logging:** all remaining "ignore" telemetry/degradation catches
+  (`RowMaterializer` cache-size / materialization notifications, fallback `populateIncludes`,
+  the count-race) are routed through the single `logInternalError` seam — they never break
+  materialization or execution.
+
+  **Include proxy no longer double-invokes:** a throwing `include()` lambda now surfaces its
+  error after a single invocation instead of re-running the user lambda (no duplicated side
+  effects).
+
+  New error types added to `@ts-linq/types`: `QueryFilterCompilationError`
+  (`QUERY_FILTER_COMPILATION_ERROR`) and `FallbackExhaustedError` (`FALLBACK_EXHAUSTED`).
+
 ## 4.2.0
 
 ### Minor Changes

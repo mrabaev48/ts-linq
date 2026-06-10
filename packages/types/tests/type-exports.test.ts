@@ -19,6 +19,8 @@ describe('Type Exports', () => {
     expect(types.EntityNotFoundError).toBeDefined();
     expect(types.OwnedEntityHydrationError).toBeDefined();
     expect(types.RelationshipLoadError).toBeDefined();
+    expect(types.QueryFilterCompilationError).toBeDefined();
+    expect(types.FallbackExhaustedError).toBeDefined();
   });
 
   it('should export Result helper functions', () => {
@@ -70,6 +72,8 @@ describe('Type Exports', () => {
       'EntityNotFoundError',
       'OwnedEntityHydrationError',
       'RelationshipLoadError',
+      'QueryFilterCompilationError',
+      'FallbackExhaustedError',
       'ok',
       'err',
       'LoadingStrategy',

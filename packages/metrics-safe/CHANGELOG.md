@@ -1,5 +1,12 @@
 # @ts-linq/metrics-safe
 
+## 1.2.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.3.0
+
 ## 1.2.4
 
 ### Patch Changes
