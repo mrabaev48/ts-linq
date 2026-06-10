@@ -1,5 +1,12 @@
 # @ts-linq/dialect-mysql
 
+## 2.6.26
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/core@3.2.0
+
 ## 2.6.25
 
 ### Patch Changes
