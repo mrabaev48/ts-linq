@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/telemetry",
-  "version": "2.1.16",
+  "version": "2.1.17",
   "private": true,
   "description": "OpenTelemetry integration and logging",
   "main": "./dist/index.js",

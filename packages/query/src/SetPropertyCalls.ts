@@ -40,15 +40,19 @@ function extractSingleProp<T>(selector: (e: T) => unknown): string {
       }
     }
   ) as T;
+  let caught: unknown;
   try {
     selector(proxy);
-  } catch {
-    // ignore — proxy may throw on certain runtime paths
+  } catch (err) {
+    // The proxy itself never throws; a throw here means the lambda failed before any
+    // property access. Preserve the original cause so the generic error below stays debuggable.
+    caught = err;
   }
   if (!accessed.length) {
     throw new Error(
       'setProperty: could not extract property name from selector lambda. ' +
-        'Use a simple single-property lambda, e.g. `e => e.name`.'
+        'Use a simple single-property lambda, e.g. `e => e.name`.',
+      caught !== undefined ? { cause: caught } : undefined
     );
   }
   return accessed[0];
