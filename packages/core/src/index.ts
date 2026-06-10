@@ -64,6 +64,13 @@ export * from './QueryTrackingBehavior';
 export * from './DatabaseProvider';
 export * from './DdlBuilder';
 export * from './DdlStrategy';
+export { ProviderConfig, type ProviderConfigOptions } from './ProviderConfig';
+export { AnsiSavepointStrategy, type SavepointStrategy } from './strategies/SavepointStrategy';
+export {
+  type SequenceExecutionPort,
+  type SequenceStrategy,
+  UnsupportedSequenceStrategy
+} from './strategies/SequenceStrategy';
 
 // Loading
 export * from './loading/EntityLoader';

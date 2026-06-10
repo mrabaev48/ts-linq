@@ -1,5 +1,5 @@
-import { DatabaseProvider, SqlHelper } from '@ts-linq/core';
-import { buildMysqlNextBlockSql, MySqlDdlStrategy, MysqlDialect } from '@ts-linq/dialect-mysql';
+import { DatabaseProvider, ProviderConfig, SqlHelper } from '@ts-linq/core';
+import { MySqlDdlStrategy, MysqlDialect } from '@ts-linq/dialect-mysql';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type {
   EntityCtorRef,
@@ -17,6 +17,7 @@ import {
 
 import { buildMysqlConnectionString } from './buildConnectionString';
 import { encodeWkb, isGeometryObject } from './spatial-codec';
+import { MySqlSequenceStrategy } from './strategies/MySqlSequenceStrategy';
 import { isMysqlTransientErrorCode } from './transientErrorCodes';
 
 /**
@@ -82,16 +83,19 @@ export class MySqlProvider extends DatabaseProvider {
   constructor(config: MySqlConfig) {
     const connectionString = buildMysqlConnectionString(config);
     super(
-      connectionString,
-      config.logger,
-      config.middlewares,
-      config.softDelete,
-      config.retryPolicy,
-      config.poolOptions,
-      config.healthCheck
+      new ProviderConfig({
+        providerName: 'mysql',
+        connectionString,
+        logger: config.logger,
+        middlewares: config.middlewares,
+        softDelete: config.softDelete,
+        retryPolicy: config.retryPolicy,
+        poolOptions: config.poolOptions,
+        healthCheck: config.healthCheck,
+        sequenceStrategy: new MySqlSequenceStrategy()
+      })
     );
     this.config = config;
-    this.providerName = 'mysql';
   }
 
   protected async doConnect(): Promise<void> {
@@ -440,23 +444,12 @@ export class MySqlProvider extends DatabaseProvider {
   }
 
   // mysql2 pool.execute() uses prepared statements which do not support SAVEPOINT syntax;
-  // transaction-control statements must go through pool.query() instead.
-  public override async createSavepoint(name: string): Promise<void> {
+  // transaction-control statements (ANSI SQL from the savepoint strategy) must go through
+  // pool.query() instead. Only the execution route differs — the SQL is the ANSI default.
+  protected override async runSavepointStatement(sql: string): Promise<void> {
     if (!this.isConnected) await this.connect();
     const pool = this.pool as MySqlPoolLike;
-    await pool.query(`SAVEPOINT ${name}`);
-  }
-
-  public override async rollbackToSavepoint(name: string): Promise<void> {
-    if (!this.isConnected) await this.connect();
-    const pool = this.pool as MySqlPoolLike;
-    await pool.query(`ROLLBACK TO SAVEPOINT ${name}`);
-  }
-
-  public override async releaseSavepoint(name: string): Promise<void> {
-    if (!this.isConnected) await this.connect();
-    const pool = this.pool as MySqlPoolLike;
-    await pool.query(`RELEASE SAVEPOINT ${name}`);
+    await pool.query(sql);
   }
 
   /** Enhanced transient error detection using MySQL-specific error codes. */
@@ -468,30 +461,6 @@ export class MySqlProvider extends DatabaseProvider {
   /** Provide SQL dialect for this provider. */
   public getDialect(): SqlDialect {
     return new MysqlDialect();
-  }
-
-  /**
-   * Reserves the next Hi-Lo block using the MySQL emulation counter table.
-   * The UPDATE + SELECT pair must run within the same connection.
-   */
-  public override async nextSequenceValue(
-    sequenceName: string,
-    schema: string | undefined,
-    blockSize: number
-  ): Promise<number> {
-    const { updateSql, selectSql, params } = buildMysqlNextBlockSql(sequenceName, blockSize);
-    await this.executeNonQuery(updateSql, params as import('@ts-linq/types').SqlParameter[]);
-    const rows = await this.executeQuery<{ val: unknown }>(selectSql, [
-      sequenceName
-    ] as import('@ts-linq/types').SqlParameter[]);
-    const raw = rows[0]?.val;
-    if (raw === undefined) {
-      throw new Error(
-        `MySQL sequence emulation: no row found for sequence "${sequenceName}". ` +
-          'Ensure the sequence was registered via ModelBuilder.hasSequence().'
-      );
-    }
-    return Number(raw);
   }
 
   /** Coerce arbitrary JS value into a valid SqlParameter for MySQL. */
