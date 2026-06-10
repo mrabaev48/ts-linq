@@ -16,6 +16,7 @@ import {
   LAZY_LOADING_TARGET
 } from './LazyLoadingSymbols';
 import type { RelationshipLoader } from './RelationshipLoader';
+import { setProp } from './support/EntityRecord';
 
 export function buildProxyTraps(
   provider: DatabaseProvider,
@@ -63,7 +64,7 @@ function proxyGet(
       const promise = loader
         .loadSingle(target, entityClass, relationship)
         .then((result) => {
-          (target as Record<string, unknown>)[propName] = result;
+          setProp(target, propName, result);
           markLoaded(state, propName);
           return result;
         })

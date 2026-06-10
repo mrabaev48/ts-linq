@@ -34,5 +34,22 @@ export default [
       '@typescript-eslint/no-unsafe-function-type': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error'
     }
+  },
+  // ─── @ts-linq/core loading layer: no `as unknown as` double-casts (core/task-7) ───
+  // The loaders must not defeat the type system with `as unknown` casts. Relationship
+  // shapes go through the typed `LoadableRelationship` view and dynamic property access
+  // through the single audited `EntityRecord` accessor (`support/EntityRecord.ts`).
+  {
+    files: ['packages/core/src/loading/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "TSAsExpression[typeAnnotation.type='TSUnknownKeyword']",
+          message:
+            'No `as unknown as` casts in the loading layer (core/task-7). Use the typed LoadableRelationship view and the EntityRecord accessor instead.'
+        }
+      ]
+    }
   }
 ];

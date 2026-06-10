@@ -1,4 +1,4 @@
-import type { EntityRef } from '@ts-linq/types';
+import type { EntityCtor, EntityRef } from '@ts-linq/types';
 
 /**
  * Single source of relationship-target resolution shared by every loader.
@@ -13,13 +13,17 @@ export class TargetEntityResolver {
    *
    * A class constructor exposes a truthy `prototype`; an arrow thunk does not,
    * so we call it to obtain the constructor. This mirrors the historical
-   * behaviour exactly.
+   * behaviour exactly. The single `as` narrows the abstract {@link EntityCtor}
+   * to the concrete `new () => object` the providers require — no `as unknown`
+   * double-cast (core/task-7).
    */
   public resolve(target: EntityRef): new () => object {
-    const maybeCtor = target as { prototype?: unknown };
-    if (typeof target === 'function' && 'prototype' in maybeCtor && maybeCtor.prototype) {
-      return target as unknown as new () => object;
-    }
-    return (target as () => unknown)() as unknown as new () => object;
+    const ctor = this.isThunk(target) ? target() : target;
+    return ctor as new () => object;
+  }
+
+  /** A thunk target is a function without a `prototype`; a class constructor has one. */
+  private isThunk(target: EntityRef): target is () => EntityCtor {
+    return typeof target === 'function' && !(target as { prototype?: unknown }).prototype;
   }
 }

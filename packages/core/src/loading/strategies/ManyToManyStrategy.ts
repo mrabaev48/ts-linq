@@ -2,10 +2,9 @@ import type { EntityMetadata, SqlParameter } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../../DatabaseProvider';
 import { columnNameForProperty } from '../support/ColumnResolver';
+import { getProp, setProp } from '../support/EntityRecord';
 import type { LoadableRelationship, ThroughMapping } from '../support/LoadableRelationship';
 import type { RelationshipLoadContext, RelationshipLoadStrategy } from './RelationshipLoadStrategy';
-
-const rec = (o: unknown): Record<string, unknown> => o as Record<string, unknown>;
 
 /**
  * Loads `many-to-many` relationships through a junction table. Junction reads
@@ -27,7 +26,7 @@ export class ManyToManyStrategy implements RelationshipLoadStrategy {
     if (!through?.table || !sourcePk || !targetPk) return ctx.absentToMany;
 
     const { sourceFk, targetFk } = this.resolveJunctionKeys(ctx, through, sourceCtor, targetCtor);
-    const sourceId = rec(entity)[sourcePk];
+    const sourceId = getProp(entity, sourcePk);
     if (sourceId === undefined || sourceId === null) return ctx.absentToMany;
 
     const targetIds = await this.fetchTargetIds(ctx.provider, through.table, sourceFk, targetFk, [
@@ -60,7 +59,7 @@ export class ManyToManyStrategy implements RelationshipLoadStrategy {
 
     const { sourceFk, targetFk } = this.resolveJunctionKeys(ctx, through, sourceCtor, targetCtor);
 
-    const sourceIds = ctx.grouper.uniqueDefined(entities.map((e) => rec(e)[sourcePk]));
+    const sourceIds = ctx.grouper.uniqueDefined(entities.map((e) => getProp(e, sourcePk)));
     if (sourceIds.length === 0) return;
 
     const { bySource, targetIds } = await this.fetchJunctionMappings(
@@ -74,7 +73,7 @@ export class ManyToManyStrategy implements RelationshipLoadStrategy {
     const propertyName = relationship.propertyName;
     if (targetIds.size === 0) {
       for (const entity of entities) {
-        rec(entity)[propertyName] = [];
+        setProp(entity, propertyName, []);
         ctx.markLoaded(entity, propertyName);
       }
       return;
@@ -83,13 +82,13 @@ export class ManyToManyStrategy implements RelationshipLoadStrategy {
     const relById = await this.fetchAndMapTargets(ctx, targetCtor, targetPk, Array.from(targetIds));
 
     for (const entity of entities) {
-      const sourceId = rec(entity)[sourcePk];
+      const sourceId = getProp(entity, sourcePk);
       const idList = bySource.get(sourceId) || [];
-      rec(entity)[propertyName] = idList.map((id) => relById.get(id)).filter(Boolean);
+      setProp(entity, propertyName, idList.map((id) => relById.get(id)).filter(Boolean));
       ctx.markLoaded(entity, propertyName);
     }
 
-    await ctx.recurseBatched(Array.from(relById.values()) as unknown[], targetCtor);
+    await ctx.recurseBatched(Array.from(relById.values()), targetCtor);
   }
 
   private resolveJunctionKeys(
@@ -155,6 +154,6 @@ export class ManyToManyStrategy implements RelationshipLoadStrategy {
     const targetCol = columnNameForProperty(ctx.metadata.getEntity(targetCtor), targetPk);
     const related = await ctx.provider.findWhereIn(targetCtor, targetCol, targetIds);
     const wrapped = ctx.wrapMany(related, targetCtor);
-    return ctx.grouper.indexByKey(wrapped, (rp) => rec(ctx.rawTarget(rp))[targetPk]);
+    return ctx.grouper.indexByKey(wrapped, (rp) => getProp(ctx.rawTarget(rp), targetPk));
   }
 }
