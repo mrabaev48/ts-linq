@@ -75,7 +75,8 @@ describe('@ts-linq/sql-visitor public barrel snapshot', () => {
     'buildQuestionMarkRows',
     'calcChunkSize',
     'chunkArray',
-    'emitTagComments'
+    'emitTagComments',
+    'hasVisitorSupport'
   ];
 
   it('exposes exactly the curated public value exports', () => {

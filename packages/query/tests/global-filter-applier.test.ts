@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { SqlVisitor } from '@ts-linq/sql-visitor';
 import type { WhereClause } from '@ts-linq/types';
 
 import { GlobalFilterApplier } from '../src/GlobalFilterApplier';
@@ -18,6 +19,8 @@ class GfaPost {
 
 describe('GlobalFilterApplier — model-level query filters', () => {
   const applier = new GlobalFilterApplier();
+  // The applier no longer constructs its own visitor — callers inject a configured one (task-4).
+  const visitor = new SqlVisitor();
 
   beforeAll(() => {
     MetadataStorage.getEntity(GfaPost);
@@ -65,7 +68,8 @@ describe('GlobalFilterApplier — model-level query filters', () => {
       undefined,
       new Set(['softDelete']),
       undefined,
-      filters
+      filters,
+      visitor
     );
     // tenant filter produces 1 WHERE condition
     expect(model.where!).toHaveLength(1);

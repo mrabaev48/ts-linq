@@ -3,7 +3,7 @@ import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
 import { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
-import { type ColumnResolver, SqlVisitor } from '@ts-linq/sql-visitor';
+import type { ColumnResolver, ConverterResolver, SqlVisitor } from '@ts-linq/sql-visitor';
 import { FragmentJoinPlanner } from '@ts-linq/sql-visitor/internal';
 import type {
   CountCache,
@@ -40,6 +40,7 @@ import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
 import { RowMaterializer } from './RowMaterializer';
 import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
+import { SqlVisitorFactory } from './SqlVisitorFactory';
 import { applyTagWith } from './tag-with';
 import { captureCallSiteTag } from './tag-with-call-site';
 
@@ -67,6 +68,8 @@ export class Queryable<T> {
   private _abortSignal?: AbortSignal;
   private _globalFilters?: GlobalFilter[];
   private _globalFilterApplier = new GlobalFilterApplier();
+  /** Single assembly point for configured SqlVisitor instances (translators + converters). */
+  private readonly _visitorFactory = new SqlVisitorFactory();
   /** Model-level filter names to skip. `'all'` disables every model-level filter. */
   private _ignoredFilters?: Set<string> | 'all';
   /** Per-context entity query filters from ModelBuilder.hasQueryFilter (P0-11). */
@@ -524,7 +527,8 @@ export class Queryable<T> {
       this._globalFilters,
       this._ignoredFilters,
       this.buildColumnResolver(),
-      this._entityQueryFilters
+      this._entityQueryFilters,
+      this.createSqlVisitor()
     );
   }
 
@@ -643,7 +647,7 @@ export class Queryable<T> {
     readonly ast: ExpressionNode;
     readonly parameters: readonly unknown[];
   }): Queryable<T> {
-    const visitor = new SqlVisitor();
+    const visitor = this.createSqlVisitor();
     const { condition, parameters } = visitor.toSql(
       input.ast,
       input.parameters,
@@ -947,7 +951,7 @@ export class Queryable<T> {
     if (!this._model.groupBy) {
       throw new Error('havingCompiled() requires a preceding groupBy()');
     }
-    const visitor = new SqlVisitor();
+    const visitor = this.createSqlVisitor();
     const { condition, parameters } = visitor.toSql(
       input.ast,
       input.parameters,
@@ -1510,6 +1514,34 @@ export class Queryable<T> {
       }
       return '';
     };
+  }
+
+  /**
+   * Builds a ConverterResolver that maps a TypeScript property name to its registered
+   * ValueConverter (via `HasConversion`), mirroring {@link buildColumnResolver}.
+   *
+   * Without this, value converters are silently ignored in WHERE/HAVING predicates: a literal
+   * compared against a converted column is emitted unconverted, producing wrong results. The
+   * resolver feeds {@link SqlVisitorFactory} so `BinaryVisitor` can lift literals to their
+   * provider representation. Returns `undefined` when the entity registers no converters.
+   */
+  private buildConverterResolver(): ConverterResolver | undefined {
+    const metadata = MetadataStorage.getEntity(this._entityClass);
+    if (!metadata || metadata.columns.length === 0) return undefined;
+    const hasConverter = metadata.columns.some((c) => c.converter !== undefined);
+    if (!hasConverter) return undefined;
+
+    return (propertyName: string) =>
+      metadata.columns.find((c) => c.propertyName === propertyName)?.converter;
+  }
+
+  /** Assembles a fully-configured SqlVisitor (dialect translators + metadata converters/rewriters). */
+  private createSqlVisitor(): SqlVisitor {
+    return this._visitorFactory.create({
+      metadata: MetadataStorage.getEntity(this._entityClass),
+      dialect: this._provider.getDialect(),
+      converterResolver: this.buildConverterResolver()
+    });
   }
 
   /** Attach an AbortSignal to cancel execution before hitting the provider. */

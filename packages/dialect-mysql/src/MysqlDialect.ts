@@ -1,4 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
   BatchUpdateResult,
@@ -25,7 +26,10 @@ import { MySqlGroupEmitter } from './emitters/MySqlGroupEmitter';
 import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
 import { MySqlOrderEmitter } from './emitters/MySqlOrderEmitter';
 import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
+import { mysqlEfFunctions } from './functions/index';
+import { MySqlJsonPathTranslator } from './json/JsonPathTranslator';
 import { createMysqlSpCallSyntax } from './sp-syntax';
+import { mysqlSpatialFunctions } from './spatial-functions';
 
 /**
  * MySQL dialect for SELECT generation.
@@ -33,16 +37,30 @@ import { createMysqlSpCallSyntax } from './sp-syntax';
  * - Uses LIMIT and OFFSET (LIMIT n OFFSET m)
  * - Leaves '?' placeholders as-is (mysql2 supports positional params)
  */
-export class MysqlDialect implements SqlDialect {
+export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
   private readonly whereEmitter = new MySqlWhereEmitter();
   private readonly joinEmitter = new MySqlJoinEmitter();
   private readonly orderEmitter = new MySqlOrderEmitter();
   private readonly groupEmitter = new MySqlGroupEmitter();
+  private readonly jsonPathTranslator = new MySqlJsonPathTranslator();
 
   readonly parameterLimit = MYSQL_PARAM_LIMIT;
 
   public quoteIdentifier(identifier: string): string {
     return `\`${identifier.replace(/`/g, '``')}\``;
+  }
+
+  /**
+   * Dialect-specific translators consumed by the `query` layer's SQL visitor factory so that
+   * spatial / JSON-path / EF.functions predicates render to MySQL SQL. MySQL has no native
+   * hierarchyid support, so `hierarchyTranslator` is intentionally omitted.
+   */
+  public getVisitorTranslators(): DialectVisitorTranslators {
+    return {
+      spatialTranslator: mysqlSpatialFunctions,
+      efFunctionTranslator: mysqlEfFunctions,
+      jsonPathTranslator: this.jsonPathTranslator
+    };
   }
 
   public getSpCallSyntax() {
