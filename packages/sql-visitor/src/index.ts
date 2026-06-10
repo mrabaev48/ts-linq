@@ -3,6 +3,11 @@
 // free helpers are implementation collaborators and live behind `@ts-linq/sql-visitor/internal`.
 export { buildQuestionMarkRows, calcChunkSize, chunkArray } from './batch-emitter';
 export { ComplexAccessRewriter } from './ComplexAccessRewriter';
+export {
+  type DialectVisitorSupport,
+  type DialectVisitorTranslators,
+  hasVisitorSupport
+} from './DialectVisitorSupport';
 export { emitTagComments } from './emit-tags';
 export type { EfFunctionTranslator } from './functions/FunctionTranslator';
 export { JsonAccessRewriter } from './JsonAccessRewriter';

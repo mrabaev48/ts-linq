@@ -1,7 +1,6 @@
 import type { ExpressionNode } from '@ts-linq/ast';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnResolver } from '@ts-linq/sql-visitor';
-import { SqlVisitor } from '@ts-linq/sql-visitor';
+import type { ColumnResolver, SqlVisitor } from '@ts-linq/sql-visitor';
 import type {
   EntityCtorRef,
   GlobalFilter,
@@ -18,7 +17,8 @@ export class GlobalFilterApplier {
     globalFilters?: GlobalFilter[],
     ignoredFilters?: Set<string> | 'all',
     columnResolver?: ColumnResolver,
-    entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>
+    entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>,
+    visitor?: SqlVisitor
   ): void {
     const selfMeta = MetadataStorage.getEntity(entityClass);
     if (!selfMeta) return;
@@ -52,9 +52,15 @@ export class GlobalFilterApplier {
       }
     }
 
-    // Per-context model-level named query filters (P0-11)
-    if (entityQueryFilters && entityQueryFilters.length > 0 && ignoredFilters !== 'all') {
-      const visitor = new SqlVisitor();
+    // Per-context model-level named query filters (P0-11).
+    // The visitor is built and injected by the caller (Queryable.createSqlVisitor) so named
+    // filters honour the same translators/converters as `.where()`/`.having()` — see task-4.
+    if (
+      entityQueryFilters &&
+      entityQueryFilters.length > 0 &&
+      ignoredFilters !== 'all' &&
+      visitor
+    ) {
       for (const filter of entityQueryFilters) {
         if (ignoredFilters && ignoredFilters.has(filter.name)) continue;
         try {
