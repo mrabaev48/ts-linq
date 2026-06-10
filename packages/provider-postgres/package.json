@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/provider-postgres",
-  "version": "3.0.13",
+  "version": "3.0.14",
   "private": true,
   "description": "Postgres database provider for ts-linq ORM",
   "main": "./dist/index.js",

@@ -1,5 +1,34 @@
 # @ts-linq/provider-mssql
 
+## 3.0.14
+
+### Patch Changes
+
+- Decompose the `DatabaseProvider` god class into injected, unit-testable collaborators.
+
+  `DatabaseProvider` is now a thin facade (~674 LOC, down from ~1056) that declares the `do*`
+  contract + public surface and delegates cross-cutting work to eight collaborators:
+  `CompositeSqlLogger` (replaces the static `mergeLoggers`), `ProviderConfig` (Parameter Object
+  replacing the 8-arg constructor), `InterceptorDispatcher`, `QueryAnalyzer`,
+  `QueryExecutionPipeline`, `MiddlewareDispatcher`, `BatchTransactionRunner`, and
+  `SavepointStrategy`/`SequenceStrategy`.
+  - **New public API (`@ts-linq/core`, minor):** `ProviderConfig` / `ProviderConfigOptions`,
+    `SavepointStrategy` / `AnsiSavepointStrategy`, `SequenceStrategy` / `SequenceExecutionPort` /
+    `UnsupportedSequenceStrategy`. The `DatabaseProvider` constructor now accepts a `ProviderConfig`
+    (preferred); the positional-argument form is retained but **deprecated**.
+  - **Latent bug fixed:** `ResilienceManager`/`HealthMonitor` are no longer constructed with
+    `providerName === 'unknown'` — providers pass the real name up front via `ProviderConfig`.
+  - **Providers (patch):** `provider-postgres`/`provider-mysql`/`provider-mssql` migrate their
+    constructors to `ProviderConfig` and inject dialect savepoint/sequence strategies instead of
+    overriding the methods. Public provider API is unchanged.
+
+  All existing `IDatabaseProvider` method signatures are byte-identical; behaviour (retry, circuit
+  breaker, logging, interceptors, analysis) is preserved.
+
+- Updated dependencies
+  - @ts-linq/core@3.1.0
+  - @ts-linq/dialect-mssql@2.6.27
+
 ## 3.0.13
 
 ### Patch Changes
