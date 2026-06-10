@@ -1,5 +1,32 @@
 # @ts-linq/orm
 
+## 4.0.17
+
+### Patch Changes
+
+- Curate the `@ts-linq/core` public barrel.
+
+  The package's public API (`src/index.ts`) is now exported via explicit named exports instead of
+  `export *`, so adding a symbol to a sub-module no longer silently widens the public surface. The
+  only remaining `export *` re-exports are the fully-public value-object sub-barrels `./spatial` and
+  `./hierarchy`. The dead `// export * from './utils/InternalLogger'; // Removed` line is removed and
+  the inline "moved to package X" comments are consolidated into a single module doc block.
+
+  The backward-compatible `@ts-linq/types` re-exports (`EntityState` plus the telemetry/tracking
+  types `CacheInfo`, `CircuitEventInfo`, `CircuitState`, `ConnectionHealthInfo`,
+  `ConnectionHealthStatus`, `FallbackInfo`, `QueryAnalysisInfo`, `QueryEndInfo`, `QueryStartInfo`,
+  `RetryInfo`, `TrackedEntity`, `TransactionInfo`) are now marked `@deprecated` — import them from
+  `@ts-linq/types` directly. They still compile, so this is non-breaking; they are a target for
+  hard removal in a future major.
+
+  No public symbol was removed. `@ts-linq/orm` only changes the import path of `EntityState` /
+  `TrackedEntity` from `@ts-linq/core` to the canonical `@ts-linq/types` (internal, no API change).
+
+- Updated dependencies
+  - @ts-linq/core@3.4.0
+  - @ts-linq/migrations@2.6.25
+  - @ts-linq/query@2.4.34
+
 ## 4.0.16
 
 ### Patch Changes

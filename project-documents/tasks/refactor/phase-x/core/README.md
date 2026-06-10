@@ -38,7 +38,9 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 | 6 | task-3 | P1 | ✅ Completed | Split `EntityLoader`; remove loader duplication |
 | 7 | task-7 | P1 | ✅ Completed | Remove `as unknown as` casts + centralize `Record` punning in the loading layer |
 | 8 | task-8 | P2 | ✅ Completed | Logger injection / no console |
-| 9 | task-9 | P2 | ⏳ Pending | Curate barrel after structure settles |
+| 9 | task-9 | P2 | ✅ Completed | Curate barrel after structure settles |
+
+> **✅ The `core` package refactor is fully complete — all tasks 1–9 are done.**
 
 > **task-4 (✅ Completed)** — junction reads now go through the provider capability
 > `DatabaseProvider.queryJunction(spec: JunctionQuerySpec)`: every identifier is validated
@@ -180,6 +182,25 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 > now assert the swallowed error reaches the installed handler instead of `console.error`.
 > `@ts-linq/core` `minor` (new public `LazyLoadingLogger` type), `@ts-linq/orm` `patch`
 > (lazy warnings now routed to the context logger). Package remains 🔄 in progress (task-9 pending).
+>
+> **task-9 (✅ Completed)** — the `@ts-linq/core` public barrel (`src/index.ts`) is curated: the
+> intended public API is exported via **explicit named exports** instead of `export *`, so a new
+> symbol added to a sub-module no longer silently becomes public API. The only surviving `export *`
+> re-exports are the fully-public value-object sub-barrels `./spatial` and `./hierarchy` (every
+> member is public; their own barrels are already curated — justified inline). The dead
+> `// export * from './utils/InternalLogger'; // Removed` line is gone, and the inline
+> "moved to package X" comments are consolidated into a single top-of-file module doc block.
+> The 13 backward-compat `@ts-linq/types` re-exports (`EntityState` + 12 telemetry/tracking types)
+> are now `@deprecated "import from @ts-linq/types"` so each type has one canonical path; the four
+> in-repo `orm/src` consumers of `EntityState`/`TrackedEntity` are migrated to import from
+> `@ts-linq/types` directly (orm tests left as-is — they exercise the back-compat path). No public
+> symbol was dropped — `arch:dead` is clean and a new `tests-new/PublicSurface.test.ts` snapshots
+> the exact runtime value surface (61 symbols) to fail on any future silent widening.
+> `@ts-linq/core` `minor` (curated surface + deprecations), `@ts-linq/orm` `patch` (internal
+> import-path move, no API change). **Follow-up (out of scope):** whether the `spatial`/`hierarchy`
+> value-object trees deserve their own packages, hard-removal of the `@deprecated` core→types
+> re-exports in a future major, and the `utils/RetryPolicies` → `@ts-linq/concurrency` facade
+> (same canonical-path theme). **The `core` package refactor is now fully complete (tasks 1–9).**
 
 ## Dependencies on other packages
 - `@ts-linq/types` — error hierarchy (`types/task-2`), `SqlDialect`/identifier quoting (task-4), metadata interfaces.
