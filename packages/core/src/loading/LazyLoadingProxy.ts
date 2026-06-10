@@ -16,21 +16,23 @@ export {
   LAZY_LOADING_TARGET
 } from './LazyLoadingSymbols';
 
+/**
+ * Sink for lazy-loading warnings. The host injects one at the composition root
+ * (see {@link DbContext}); by default the proxy stays silent via
+ * {@link NO_OP_LAZY_LOADING_LOGGER}.
+ */
+export interface LazyLoadingLogger {
+  warn(message: string, error?: unknown): void;
+}
+
+/** Null Object: silent default logger — no console output. */
+const NO_OP_LAZY_LOADING_LOGGER: LazyLoadingLogger = {
+  warn: () => {
+    /* silent by default — host attaches a logger at the composition root */
+  }
+};
+
 export class LazyLoadingProxy {
-  private static _logger?: { warn(message: string, error?: unknown): void };
-
-  static setLogger(logger?: { warn(message: string, error?: unknown): void }): void {
-    this._logger = logger;
-  }
-
-  private static getLogger(): { warn(message: string, error?: unknown): void } {
-    return (
-      this._logger ?? {
-        warn: (message: string, error?: unknown) => console.warn(message, error)
-      }
-    );
-  }
-
   /**
    * @param metadata Metadata source used to resolve relationship metadata.
    *   Defaults to the global singleton for backward compatibility; the
@@ -43,7 +45,8 @@ export class LazyLoadingProxy {
     entity: T,
     entityClass: new () => T,
     provider: DatabaseProvider,
-    metadata: MetadataSource = getDefaultMetadataSource()
+    metadata: MetadataSource = getDefaultMetadataSource(),
+    logger: LazyLoadingLogger = NO_OP_LAZY_LOADING_LOGGER
   ): T {
     if (this.isLazyProxy(entity)) return entity;
 
@@ -62,13 +65,13 @@ export class LazyLoadingProxy {
     const loader = new RelationshipLoader(
       provider,
       (<U extends object>(e: U, ctor: new () => U, p: DatabaseProvider): U =>
-        LazyLoadingProxy.create(e, ctor, p, metadata)) as <U extends object>(
+        LazyLoadingProxy.create(e, ctor, p, metadata, logger)) as <U extends object>(
         e: U,
         ctor: new () => U,
         p: DatabaseProvider
       ) => U,
       (<U extends object>(entities: U[], ctor: new () => U, p: DatabaseProvider): U[] =>
-        LazyLoadingProxy.createMany(entities, ctor, p, metadata)) as <U extends object>(
+        LazyLoadingProxy.createMany(entities, ctor, p, metadata, logger)) as <U extends object>(
         entities: U[],
         ctor: new () => U,
         p: DatabaseProvider
@@ -82,7 +85,7 @@ export class LazyLoadingProxy {
       entityMetadata,
       state,
       loader,
-      (msg, err) => LazyLoadingProxy.getLogger().warn(msg, err)
+      (msg, err) => logger.warn(msg, err)
     );
 
     return new Proxy(entity, traps as ProxyHandler<T>);
@@ -96,9 +99,10 @@ export class LazyLoadingProxy {
     entities: T[],
     entityClass: new () => T,
     provider: DatabaseProvider,
-    metadata: MetadataSource = getDefaultMetadataSource()
+    metadata: MetadataSource = getDefaultMetadataSource(),
+    logger: LazyLoadingLogger = NO_OP_LAZY_LOADING_LOGGER
   ): T[] {
-    return entities.map((entity) => this.create(entity, entityClass, provider, metadata));
+    return entities.map((entity) => this.create(entity, entityClass, provider, metadata, logger));
   }
 
   static isLazyProxy(entity: unknown): boolean {
@@ -132,7 +136,8 @@ export class LazyLoadingProxy {
     entityClass: new () => T,
     propertyNames: string[],
     provider: DatabaseProvider,
-    metadata: MetadataSource = getDefaultMetadataSource()
+    metadata: MetadataSource = getDefaultMetadataSource(),
+    logger: LazyLoadingLogger = NO_OP_LAZY_LOADING_LOGGER
   ): Promise<void> {
     if (entities.length === 0) return;
     const entityMetadata = metadata.getEntity(entityClass);
@@ -141,13 +146,13 @@ export class LazyLoadingProxy {
     const loader = new RelationshipLoader(
       provider,
       (<U extends object>(e: U, ctor: new () => U, p: DatabaseProvider): U =>
-        LazyLoadingProxy.create(e, ctor, p, metadata)) as <U extends object>(
+        LazyLoadingProxy.create(e, ctor, p, metadata, logger)) as <U extends object>(
         e: U,
         ctor: new () => U,
         p: DatabaseProvider
       ) => U,
       (<U extends object>(entities: U[], ctor: new () => U, p: DatabaseProvider): U[] =>
-        LazyLoadingProxy.createMany(entities, ctor, p, metadata)) as <U extends object>(
+        LazyLoadingProxy.createMany(entities, ctor, p, metadata, logger)) as <U extends object>(
         entities: U[],
         ctor: new () => U,
         p: DatabaseProvider

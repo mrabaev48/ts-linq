@@ -765,13 +765,20 @@ export abstract class DbContext {
     ...propertyNames: string[]
   ): Promise<void> {
     if (LazyLoadingProxy.isLazyProxy(entity)) {
-      // Preload relationships for lazy proxy
+      // Preload relationships for lazy proxy. Lazy-loading warnings stay silent
+      // unless the host attached a logger via `options.logging`; route them to
+      // that sink explicitly (composition-root opt-in).
+      const contextLogger = this._provider.loggerRef;
+      const lazyLogger = contextLogger
+        ? { warn: (message: string, error?: unknown) => contextLogger.warn(message, { error }) }
+        : undefined;
       await LazyLoadingProxy.preloadRelationships(
         [entity],
         entityClass,
         propertyNames,
         this._provider,
-        this._registry
+        this._registry,
+        lazyLogger
       );
     } else {
       // Use entity loader for regular entities
