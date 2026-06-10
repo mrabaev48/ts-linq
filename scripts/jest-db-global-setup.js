@@ -57,10 +57,13 @@ function runningContainerCount() {
   return r.stdout.trim().split('\n').filter(Boolean).length;
 }
 
-async function waitForHealthy(timeoutMs = 120_000) {
+async function waitForHealthy(timeoutMs = 180_000) {
   const deadline = Date.now() + timeoutMs;
-  // MSSQL healthcheck path differs across image versions — only require it to be "running"
-  const mustBeHealthy = ['postgres', 'mysql', 'redis', 'memcached'];
+  // Every service in docker-compose.test.yml defines a real healthcheck (the mssql
+  // one runs `sqlcmd … SELECT 1`, so "healthy" means SQL Server actually accepts
+  // connections). Gate on all DB services — never release tests before mssql is
+  // ready, otherwise the slow SQL Server start races the e2e/integration suites.
+  const mustBeHealthy = ['postgres', 'mysql', 'mssql', 'redis', 'memcached'];
 
   while (Date.now() < deadline) {
     const r = run('docker', ['compose', '-f', COMPOSE_FILE, 'ps', '--format', 'json']);
@@ -100,7 +103,11 @@ module.exports = async function globalSetup() {
   // CI job already wired up DB services via GitHub Actions `services:` block
   // (e2e.yml sets POSTGRES_URL / MYSQL_URL / MSSQL_URL in the step env).
   // In that case just enable DB tests and exit — no Docker needed.
-  if (process.env.POSTGRES_URL) {
+  //
+  // Gate this on CI explicitly: a stray `POSTGRES_URL` left in a local shell must
+  // NOT bypass the Docker startup+health-wait below (that path skips readiness
+  // entirely and makes the suite fast-fail against a DB that isn't running).
+  if (process.env.CI && process.env.POSTGRES_URL) {
     Object.assign(process.env, {
       ...DB_ENV,
       // Keep URLs provided by the CI environment
@@ -126,25 +133,47 @@ module.exports = async function globalSetup() {
 
   let started = false;
 
-  if (runningContainerCount() < 5) {
-    console.log('\n🐳  Starting Docker Compose test services...');
-
+  // Bring services up. A previous compose (e.g. the integration suite that ran
+  // just before in `pnpm test:all`) may still be tearing down and holding ports,
+  // so a failed `up` is retried once after a clean `down`.
+  function bringUp() {
     // Prefer --wait (compose ≥ 2.2) for atomic start + health check
     let r = run('docker', ['compose', '-f', COMPOSE_FILE, 'up', '-d', '--wait', '--timeout', '120'], { stdio: 'inherit' });
     if (r.status !== 0) {
       // Older compose version — start in background, poll manually
       r = run('docker', ['compose', '-f', COMPOSE_FILE, 'up', '-d'], { stdio: 'inherit' });
     }
-    if (r.status !== 0) {
-      console.error('Failed to start Docker Compose services.');
-      return;
+    return r.status === 0;
+  }
+
+  if (runningContainerCount() < 5) {
+    console.log('\n🐳  Starting Docker Compose test services...');
+    let ok = bringUp();
+    if (!ok) {
+      console.warn('First `docker compose up` failed — resetting and retrying once...');
+      run('docker', ['compose', '-f', COMPOSE_FILE, 'down', '--remove-orphans'], { stdio: 'inherit' });
+      ok = bringUp();
+    }
+    if (!ok) {
+      throw new Error(
+        'Failed to start Docker Compose test services after retry. ' +
+          'DB-backed tests cannot run; fix Docker and re-run.'
+      );
     }
     started = true;
   }
 
   console.log('⏳  Waiting for services to become healthy...');
   const ready = await waitForHealthy();
-  console.log(ready ? '✅  All services healthy.\n' : '⚠  Some services not yet healthy — tests will run anyway.\n');
+  if (!ready) {
+    // Never silently run the suite against a DB that is not ready — that turns a
+    // readiness race into a confusing flood of connection failures. Fail loud.
+    throw new Error(
+      'Docker Compose test services did not become healthy in time. ' +
+        'Run `docker compose -f docker-compose.test.yml ps` to inspect, then re-run.'
+    );
+  }
+  console.log('✅  All services healthy.\n');
 
   Object.assign(process.env, DB_ENV);
   global.__TS_LINQ_DOCKER_STARTED__ = started;
