@@ -7,20 +7,24 @@ import type { IMaterializationInterceptor } from '../src/interceptors/IMateriali
 import { InterceptionResult } from '../src/interceptors/InterceptionResult';
 import { InterceptorDispatcher } from '../src/interceptors/InterceptorDispatcher';
 import type { DbReader } from '../src/interceptors/types';
+import { setInternalErrorHandler } from '../src/utils/InternalLogger';
 
 function emptyConfig(): Parameters<InterceptorDispatcher['configure']>[0] {
   return { command: [], connection: [], transaction: [], materialization: [] };
 }
 
 describe('InterceptorDispatcher', () => {
-  let consoleErrorSpy: jest.SpyInstance;
+  let internalErrors: jest.Mock<void, [string, unknown]>;
 
   beforeEach(() => {
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    // The internal telemetry channel is silent by default; install a spy
+    // handler so isolation tests can assert the swallowed error was surfaced.
+    internalErrors = jest.fn<void, [string, unknown]>();
+    setInternalErrorHandler(internalErrors);
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
+    setInternalErrorHandler(undefined);
   });
 
   describe('connection lifecycle', () => {
@@ -56,7 +60,7 @@ describe('InterceptorDispatcher', () => {
 
       await expect(d.connectionClosed()).resolves.toBeUndefined();
       expect(healthy.connectionClosed).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(internalErrors).toHaveBeenCalled();
     });
   });
 
@@ -126,7 +130,7 @@ describe('InterceptorDispatcher', () => {
       await d.commandExecuted('DELETE FROM t', [], undefined, 1, 3);
 
       expect(seen).toEqual([2, 3]);
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(internalErrors).toHaveBeenCalled();
     });
   });
 
@@ -169,7 +173,7 @@ describe('InterceptorDispatcher', () => {
       const entity = {};
 
       await expect(d.entityMaterialized(entity)).resolves.toBe(entity);
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(internalErrors).toHaveBeenCalled();
     });
   });
 });

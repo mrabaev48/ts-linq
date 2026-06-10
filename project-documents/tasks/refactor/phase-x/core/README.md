@@ -37,7 +37,7 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 | 5 | task-1 | P0 | ✅ Completed | Decompose `DatabaseProvider` god class (anchor) |
 | 6 | task-3 | P1 | ✅ Completed | Split `EntityLoader`; remove loader duplication |
 | 7 | task-7 | P1 | ✅ Completed | Remove `as unknown as` casts + centralize `Record` punning in the loading layer |
-| 8 | task-8 | P2 | ⏳ Pending | Logger injection / no console |
+| 8 | task-8 | P2 | ✅ Completed | Logger injection / no console |
 | 9 | task-9 | P2 | ⏳ Pending | Curate barrel after structure settles |
 
 > **task-4 (✅ Completed)** — junction reads now go through the provider capability
@@ -160,6 +160,26 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 > `as unknown` a hard error. Coverage: `tests-new/support/EntityRecord.test.ts` (read/write parity)
 > plus the existing type-level non-widening guard. Internal type-safety only — no public API or
 > runtime behaviour change (folds under the task-3 `minor`).
+>
+> **task-8 (✅ Completed)** — core no longer writes to the console by default; all internal
+> logging routes through an injected sink with a silent **Null Object** default. `InternalLogger`
+> drops the unconditional `console.error`: the unified `logInternalError(context, error)` channel
+> (task-5) is preserved byte-for-byte and now dispatches to a single configurable global handler
+> that defaults to **no-op** (`setInternalErrorHandler(handler?)` opts in; the host owns any console
+> dependency — core ships no console handler). `LazyLoadingProxy`'s static mutable `_logger`
+> (and `setLogger`/`getLogger`) is removed; the logger is injected as an optional trailing
+> `LazyLoadingLogger` parameter on `create`/`createMany`/`preloadRelationships`
+> (default = silent `NO_OP_LAZY_LOADING_LOGGER`), consistent with the task-2 `MetadataSource`
+> injection direction — no hidden global logging state remains. The composition root opts in:
+> `DbContext.include` adapts `options.logging`'s `SqlLogger` (via `provider.loggerRef`) into the
+> lazy logger, so lazy-load warnings reach the attached logger when one is configured and stay
+> silent otherwise. `grep -rn "console\." packages/core/src` (non-test) is now **empty**. Coverage:
+> rewritten `InternalLogger.test.ts` (silent-by-default + injected-handler + never-throws),
+> new `LazyLoadingProxy.logger.test.ts` (default-silent + injected-sink on the failure path), and
+> updated isolation tests (`MiddlewareDispatcher`/`InterceptorDispatcher`/`CompositeSqlLogger`) that
+> now assert the swallowed error reaches the installed handler instead of `console.error`.
+> `@ts-linq/core` `minor` (new public `LazyLoadingLogger` type), `@ts-linq/orm` `patch`
+> (lazy warnings now routed to the context logger). Package remains 🔄 in progress (task-9 pending).
 
 ## Dependencies on other packages
 - `@ts-linq/types` — error hierarchy (`types/task-2`), `SqlDialect`/identifier quoting (task-4), metadata interfaces.
