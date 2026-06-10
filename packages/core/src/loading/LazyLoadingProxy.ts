@@ -6,6 +6,7 @@ import { type LazyLoadingState } from './LazyLoadingState';
 import { LAZY_LOADING_PROXY, LAZY_LOADING_STATE, LAZY_LOADING_TARGET } from './LazyLoadingSymbols';
 import { buildProxyTraps } from './LazyProxyTraps';
 import { RelationshipLoader } from './RelationshipLoader';
+import { getProp } from './support/EntityRecord';
 
 // Re-export symbols as part of the public API
 export {
@@ -52,7 +53,7 @@ export class LazyLoadingProxy {
     const state: LazyLoadingState = {};
     for (const rel of entityMetadata.relationships) {
       state[rel.propertyName] = { isLoaded: false, isLoading: false };
-      const currentValue = (entity as Record<string, unknown>)[rel.propertyName];
+      const currentValue = getProp(entity, rel.propertyName);
       if (currentValue !== undefined && currentValue !== null) {
         state[rel.propertyName].isLoaded = true;
       }
@@ -77,7 +78,7 @@ export class LazyLoadingProxy {
 
     const traps = buildProxyTraps(
       provider,
-      entityClass as unknown as new () => object,
+      entityClass,
       entityMetadata,
       state,
       loader,

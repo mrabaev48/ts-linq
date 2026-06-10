@@ -1,14 +1,16 @@
-import type {
-  EntityMetadata,
-  MetadataSource,
-  RelationshipMetadata,
-  SqlParameter
-} from '@ts-linq/types';
+import type { MetadataSource, RelationshipMetadata } from '@ts-linq/types';
 
 import type { DatabaseProvider } from '../DatabaseProvider';
 import { getDefaultMetadataSource } from '../defaultMetadataSource';
 import { type LazyLoadingState, markLoaded } from './LazyLoadingState';
 import { LAZY_LOADING_STATE, LAZY_LOADING_TARGET } from './LazyLoadingSymbols';
+import type { RelationshipLoadContext } from './strategies/RelationshipLoadStrategy';
+import { strategyFor } from './strategies/relationshipStrategyRegistry';
+import { EntityGrouper } from './support/EntityGrouper';
+import { ForeignKeyConvention } from './support/ForeignKeyConvention';
+import { DEFAULT_IN_CHUNK_SIZE, InClauseChunker } from './support/InClauseChunker';
+import { asLoadable } from './support/LoadableRelationship';
+import { TargetEntityResolver } from './support/TargetEntityResolver';
 
 export type ProxyWrapOne = <T extends object>(
   entity: T,
@@ -22,7 +24,21 @@ export type ProxyWrapMany = <T extends object>(
   provider: DatabaseProvider
 ) => T[];
 
+/**
+ * Proxy-aware relationship loader used by the lazy-loading proxies. It shares
+ * the per-kind loading mechanics with {@link EntityLoader} via the
+ * {@link strategyFor strategy registry}; the only differences — proxy wrapping,
+ * `markLoaded` state tracking, no depth recursion — are supplied through its
+ * {@link RelationshipLoadContext}. Junction reads gain IN()-chunking for free
+ * from the shared {@link InClauseChunker}.
+ */
 export class RelationshipLoader {
+  private readonly _foreignKeys = new ForeignKeyConvention();
+  private readonly _targetResolver = new TargetEntityResolver();
+  private readonly _chunker = new InClauseChunker();
+  private readonly _grouper = new EntityGrouper();
+  private _context?: RelationshipLoadContext;
+
   /**
    * @param metadata Metadata source the loader resolves entity metadata from.
    *   Defaults to the global singleton for backward compatibility; callers
@@ -45,37 +61,17 @@ export class RelationshipLoader {
   ): Promise<unknown> {
     const metadata = this._metadata.getEntity(entityClass);
     if (!metadata) return null;
-    if (typeof relationship.targetEntity === 'string') return null;
-    if (relationship.targetEntity == null) return null;
-
-    const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => object;
-
-    switch (relationship.type) {
-      case 'many-to-one':
-      case 'one-to-one': {
-        const fk = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
-        const fkValue = (entity as Record<string, unknown>)[fk];
-        if (fkValue === undefined || fkValue === null) return null;
-        const related = await this.provider.findById(fkValue, targetCtor);
-        return related ? this.wrapOne(related, targetCtor, this.provider) : null;
-      }
-
-      case 'one-to-many': {
-        const parentPk = metadata.primaryKeys?.[0];
-        if (!parentPk) return [];
-        const parentId = (entity as Record<string, unknown>)[parentPk];
-        if (parentId === undefined || parentId === null) return [];
-        const fk = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
-        const related = await this.provider.findWhere(targetCtor, { [fk]: parentId });
-        return this.wrapMany(related, targetCtor, this.provider);
-      }
-
-      case 'many-to-many':
-        return this.loadManyToMany(entity, entityClass, metadata, relationship, targetCtor);
-
-      default:
-        return null;
-    }
+    const loadable = asLoadable(relationship);
+    if (!loadable) return null;
+    const strategy = strategyFor(loadable.type);
+    if (!strategy) return null;
+    return strategy.loadSingle(
+      this.context(),
+      entity,
+      entityClass as new () => object,
+      metadata,
+      loadable
+    );
   }
 
   async loadBatch<T>(
@@ -86,279 +82,51 @@ export class RelationshipLoader {
     if (entities.length === 0) return;
     const metadata = this._metadata.getEntity(entityClass);
     if (!metadata) return;
-    if (typeof relationship.targetEntity === 'string') return;
-    if (relationship.targetEntity == null) return;
-
-    const targetCtor = this.resolveTargetEntity(relationship.targetEntity) as new () => object;
-
-    switch (relationship.type) {
-      case 'many-to-one':
-      case 'one-to-one':
-        await this.batchLoadToOne(entities, relationship, metadata, targetCtor);
-        break;
-      case 'one-to-many':
-        await this.batchLoadOneToMany(entities, entityClass, relationship, metadata, targetCtor);
-        break;
-      case 'many-to-many':
-        await this.batchLoadManyToMany(entities, entityClass, relationship, metadata, targetCtor);
-        break;
-    }
-  }
-
-  private async loadManyToMany<T>(
-    entity: T,
-    entityClass: new () => T,
-    metadata: EntityMetadata,
-    relationship: RelationshipMetadata,
-    targetCtor: new () => object
-  ): Promise<unknown> {
-    const sourcePk = metadata.primaryKeys?.[0];
-    const targetPk = (this._metadata.getEntity(targetCtor)?.primaryKeys ?? [])[0];
-    const through = relationship as RelationshipMetadata & {
-      through?: { table: string; sourceFk?: string; targetFk?: string };
-    };
-    if (!through.through?.table || !sourcePk || !targetPk) return [];
-
-    const jt = through.through.table;
-    const sourceFk = through.through.sourceFk || this.defaultForeignKeyFor(entityClass);
-    const targetFk = through.through.targetFk || this.defaultForeignKeyFor(targetCtor);
-    const sourceId = (entity as Record<string, unknown>)[sourcePk];
-    if (sourceId === undefined || sourceId === null) return [];
-
-    const targetIds = await this.fetchTargetIdsFromJunction(jt, sourceFk, targetFk, sourceId);
-    if (targetIds.length === 0) return [];
-
-    const targetCol = this.getColumnNameForPk(targetCtor, targetPk);
-    const related = await this.provider.findWhereIn(targetCtor, targetCol, targetIds);
-    return this.wrapMany(related, targetCtor, this.provider);
-  }
-
-  private async batchLoadToOne<T>(
-    entities: T[],
-    relationship: RelationshipMetadata,
-    meta: EntityMetadata,
-    targetCtor: new () => object
-  ): Promise<void> {
-    const fk = relationship.foreignKey || this.defaultForeignKeyFor(targetCtor);
-    const fkValues = entities
-      .map((e) => (e as Record<string, unknown>)[fk])
-      .filter((v) => v !== undefined && v !== null);
-    const uniqueFkValues = Array.from(new Set(fkValues));
-    if (uniqueFkValues.length === 0) return;
-
-    const targetPkCol =
-      meta.columns.find((c) => c.propertyName === meta.primaryKeys?.[0])?.columnName ||
-      meta.primaryKeys?.[0] ||
-      'id';
-    const related = await this.provider.findWhereIn(targetCtor, targetPkCol, uniqueFkValues);
-    const relatedProxies = this.wrapMany(related, targetCtor, this.provider);
-
-    const targetMeta = this._metadata.getEntity(targetCtor);
-    const targetPk = targetMeta?.primaryKeys?.[0];
-    if (!targetPk) return;
-
-    const byId = new Map<unknown, unknown>();
-    for (const rp of relatedProxies) {
-      const t = this.getRawTarget(rp);
-      byId.set((t as Record<string, unknown>)[targetPk], rp);
-    }
-
-    for (const entity of entities) {
-      const fkVal = (entity as Record<string, unknown>)[fk];
-      if (fkVal === undefined || fkVal === null) continue;
-      (entity as Record<string, unknown>)[relationship.propertyName] =
-        (byId.get(fkVal) as unknown) || null;
-      const state = this.getEntityState(entity);
-      if (state) markLoaded(state, relationship.propertyName);
-    }
-  }
-
-  private async batchLoadOneToMany<T>(
-    entities: T[],
-    entityClass: new () => T,
-    relationship: RelationshipMetadata,
-    meta: EntityMetadata,
-    targetCtor: new () => object
-  ): Promise<void> {
-    const parentPk = meta.primaryKeys?.[0];
-    if (!parentPk) return;
-
-    const parentIds = entities
-      .map((e) => (e as Record<string, unknown>)[parentPk])
-      .filter((v) => v !== undefined && v !== null);
-    const uniqueParentIds = Array.from(new Set(parentIds));
-    if (uniqueParentIds.length === 0) return;
-
-    const fk = relationship.foreignKey || this.defaultForeignKeyFor(entityClass);
-    const related = (await this.provider.findWhereIn(targetCtor, fk, uniqueParentIds)) || [];
-    const relatedProxies = this.wrapMany(related, targetCtor, this.provider);
-
-    const grouped = new Map<unknown, unknown[]>();
-    for (const rp of relatedProxies) {
-      const t = this.getRawTarget(rp);
-      const key = (t as Record<string, unknown>)[fk];
-      const arr = grouped.get(key) || [];
-      arr.push(rp);
-      grouped.set(key, arr);
-    }
-
-    for (const entity of entities) {
-      const pid = (entity as Record<string, unknown>)[parentPk];
-      (entity as Record<string, unknown>)[relationship.propertyName] = grouped.get(pid) || [];
-      const state = this.getEntityState(entity);
-      if (state) markLoaded(state, relationship.propertyName);
-    }
-  }
-
-  private async batchLoadManyToMany<T>(
-    entities: T[],
-    entityClass: new () => T,
-    relationship: RelationshipMetadata,
-    meta: EntityMetadata,
-    targetCtor: new () => object
-  ): Promise<void> {
-    const sourcePk = meta.primaryKeys?.[0];
-    if (!sourcePk) return;
-    const through = relationship as RelationshipMetadata & {
-      through?: { table: string; sourceFk?: string; targetFk?: string };
-    };
-    if (!through.through?.table) return;
-    const targetPk = (this._metadata.getEntity(targetCtor)?.primaryKeys || [])[0];
-    if (!targetPk) return;
-
-    const jt = through.through.table;
-    const sourceFk = through.through.sourceFk || this.defaultForeignKeyFor(entityClass);
-    const targetFk = through.through.targetFk || this.defaultForeignKeyFor(targetCtor);
-
-    const sourceIds = this.extractSourceIds(entities, sourcePk);
-    if (sourceIds.length === 0) return;
-
-    const { bySource, targetIds } = await this.fetchJunctionMappings(
-      jt,
-      sourceFk,
-      targetFk,
-      sourceIds
-    );
-
-    if (targetIds.size === 0) {
-      for (const entity of entities) {
-        (entity as Record<string, unknown>)[relationship.propertyName] = [];
-        const state = this.getEntityState(entity);
-        if (state) markLoaded(state, relationship.propertyName);
-      }
-      return;
-    }
-
-    const relById = await this.fetchAndMapTargets(targetCtor, targetPk, Array.from(targetIds));
-    this.assignManyToManyCollections(
+    const loadable = asLoadable(relationship);
+    if (!loadable) return;
+    const strategy = strategyFor(loadable.type);
+    if (!strategy) return;
+    await strategy.loadBatch(
+      this.context(),
       entities,
-      relationship.propertyName,
-      sourcePk,
-      bySource,
-      relById
+      entityClass as new () => object,
+      metadata,
+      loadable
     );
   }
 
-  private extractSourceIds<T>(entities: T[], sourcePk: string): unknown[] {
-    const ids = entities
-      .map((e) => (e as Record<string, unknown>)[sourcePk])
-      .filter((v) => v !== undefined && v !== null);
-    return Array.from(new Set(ids));
-  }
-
-  private async fetchJunctionMappings(
-    junctionTable: string,
-    sourceFk: string,
-    targetFk: string,
-    sourceIds: unknown[]
-  ): Promise<{ bySource: Map<unknown, unknown[]>; targetIds: Set<unknown> }> {
-    const rows = await this.provider.queryJunction({
-      table: junctionTable,
-      selectColumns: [sourceFk, targetFk],
-      whereColumn: sourceFk,
-      whereValues: sourceIds as SqlParameter[]
+  /**
+   * Build (once) the proxy-loading context for the strategy registry: real
+   * proxy wrapping, `markLoaded` state tracking, a `findById` + `wrapOne`
+   * `fetchToOne`, an `[]` `absentToMany`, a `?? null` batched to-one policy,
+   * and no depth recursion — preserving the historical proxy behaviour while
+   * inheriting IN()-chunking from the shared chunker.
+   */
+  private context(): RelationshipLoadContext {
+    return (this._context ??= {
+      provider: this.provider,
+      metadata: this._metadata,
+      foreignKeys: this._foreignKeys,
+      targetResolver: this._targetResolver,
+      chunker: this._chunker,
+      grouper: this._grouper,
+      chunkSize: DEFAULT_IN_CHUNK_SIZE,
+      wrapOne: (entity, ctor) => this.wrapOne(entity, ctor, this.provider),
+      wrapMany: (entities, ctor) => this.wrapMany(entities, ctor, this.provider),
+      rawTarget: (entity) => this.getRawTarget(entity),
+      markLoaded: (entity, propertyName) => {
+        const state = this.getEntityState(entity);
+        if (state) markLoaded(state, propertyName);
+      },
+      assignSingle: () => {},
+      fetchToOne: async (ctor, id) => {
+        const related = await this.provider.findById(id, ctor);
+        return related ? this.wrapOne(related, ctor, this.provider) : null;
+      },
+      absentToMany: [],
+      resolveBatchedToOne: (value) => value || null,
+      recurseBatched: async () => {}
     });
-    const bySource = new Map<unknown, unknown[]>();
-    const targetIds = new Set<unknown>();
-    for (const r of rows) {
-      const s = r[sourceFk];
-      const t = r[targetFk];
-      targetIds.add(t);
-      const arr = bySource.get(s) || [];
-      arr.push(t);
-      bySource.set(s, arr);
-    }
-    return { bySource, targetIds };
-  }
-
-  private async fetchTargetIdsFromJunction(
-    junctionTable: string,
-    sourceFk: string,
-    targetFk: string,
-    sourceId: unknown
-  ): Promise<unknown[]> {
-    const rows = await this.provider.queryJunction({
-      table: junctionTable,
-      selectColumns: [targetFk],
-      whereColumn: sourceFk,
-      whereValues: [sourceId as SqlParameter]
-    });
-    return rows.map((r) => r[targetFk]).filter((v) => v !== undefined && v !== null);
-  }
-
-  private async fetchAndMapTargets(
-    targetCtor: new () => object,
-    targetPk: string,
-    targetIds: unknown[]
-  ): Promise<Map<unknown, unknown>> {
-    const targetCol = this.getColumnNameForPk(targetCtor, targetPk);
-    const related = await this.provider.findWhereIn(targetCtor, targetCol, targetIds);
-    const relProxies = this.wrapMany(related, targetCtor, this.provider);
-    const relById = new Map<unknown, unknown>();
-    for (const rp of relProxies) {
-      const t = this.getRawTarget(rp);
-      relById.set((t as Record<string, unknown>)[targetPk], rp);
-    }
-    return relById;
-  }
-
-  private assignManyToManyCollections<T>(
-    entities: T[],
-    propName: string,
-    sourcePk: string,
-    bySource: Map<unknown, unknown[]>,
-    relById: Map<unknown, unknown>
-  ): void {
-    for (const entity of entities) {
-      const sid = (entity as Record<string, unknown>)[sourcePk];
-      const idList = (bySource.get(sid) as unknown[]) || [];
-      (entity as Record<string, unknown>)[propName] = idList
-        .map((id) => relById.get(id))
-        .filter(Boolean);
-      const state = this.getEntityState(entity);
-      if (state) markLoaded(state, propName);
-    }
-  }
-
-  private getColumnNameForPk(targetCtor: new () => object, targetPk: string): string {
-    return (
-      (this._metadata.getEntity(targetCtor)?.columns || []).find((c) => c.propertyName === targetPk)
-        ?.columnName || targetPk
-    );
-  }
-
-  private resolveTargetEntity(target: Function | (() => Function)): Function {
-    const maybeCtor = target as { prototype?: unknown } | (() => Function);
-    if (typeof maybeCtor === 'function' && 'prototype' in maybeCtor && maybeCtor.prototype) {
-      return maybeCtor as Function;
-    }
-    return (target as () => Function)();
-  }
-
-  private defaultForeignKeyFor(type: Function): string {
-    const name = type.name || 'id';
-    const camel = name.charAt(0).toLowerCase() + name.slice(1);
-    return `${camel}Id`;
   }
 
   private getEntityState(entity: unknown): LazyLoadingState | null {
