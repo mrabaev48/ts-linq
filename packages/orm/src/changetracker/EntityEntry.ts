@@ -1,6 +1,6 @@
-import { EntityState } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityCtorRef } from '@ts-linq/types';
+import { EntityState } from '@ts-linq/types';
 
 import type { ChangeTracker } from '../ChangeTracker';
 import { PropertyEntry } from './PropertyEntry';

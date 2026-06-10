@@ -128,8 +128,8 @@ Each package only depends on packages already completed above it.
 | 4 | `ast` | foundation | De-dupe jsonPath node; small. Depends on `types`. | ✅ done |
 | 5 | `sql-visitor` | foundation | Visitor/dispatch + param-state. Depends on `ast`, `types`. | ✅ done |
 | 6 | `concurrency` | foundation | Make retry policies canonical **before** `core` so its duplicate can be deleted. | ✅ done |
-| 7 | `core` | runtime | Decompose provider/loader; kill SQL injection + singleton coupling + silent catches. | 🔄 In Progress |
-| 8 | `query` | runtime | Decompose `Queryable`; immutability; wire `SqlVisitorOptions`; move SQL out. |
+| 7 | `core` | runtime | Decompose provider/loader; kill SQL injection + singleton coupling + silent catches. | ✅ done |
+| 8 | `query` | runtime | Decompose `Queryable`; immutability; wire `SqlVisitorOptions`; move SQL out. | 🔄 In Progress |
 | 9 | `transformer` | runtime | De-dupe entrypoints; stop swallowing TypeChecker failures. Depends on `ast`. |
 | 10 | `migrations` | runtime | Injection-safe quoting; decompose runner. Needed by `orm` + `cli`. |
 | 11 | `telemetry` | runtime | De-dupe span mapping; masking. Needed by `orm`; do before it. |
@@ -209,7 +209,7 @@ Each package only depends on packages already completed above it.
 | cli | 7 | 2 | 3 | 1 | 1 | not-started |
 | composite-sql-logger | 3 | 0 | 2 | 1 | 0 | not-started |
 | concurrency | 2 | 0 | 2 | 0 | 0 | ✅ done (task-1, task-2 ✅) |
-| core | 9 | 4 | 3 | 2 | 0 | 🔄 In Progress (task-4, task-2, task-6, task-5, task-1, task-3, task-7, task-8 ✅) |
+| core | 9 | 4 | 3 | 2 | 0 | ✅ done (task-1/2/3/4/5/6/7/8/9 ✅) |
 | dialect-mssql | 4 | 1 | 2 | 1 | 0 | not-started |
 | dialect-mysql | 2 | 0 | 2 | 0 | 0 | not-started |
 | dialect-postgres | 9 | 1 | 5 | 3 | 0 | not-started |
@@ -232,7 +232,7 @@ Each package only depends on packages already completed above it.
 | provider-mssql | 9 | 2 | 5 | 2 | 0 | not-started |
 | provider-mysql | 8 | 2 | 5 | 1 | 0 | not-started |
 | provider-postgres | 8 | 2 | 4 | 2 | 0 | not-started |
-| query | 10 | 4 | 4 | 2 | 0 | not-started |
+| query | 10 | 4 | 4 | 2 | 0 | 🔄 In Progress |
 | sql-visitor | 6 | 0 | 2 | 4 | 0 | ✅ done (task-1/2/3/4/5/6 ✅) |
 | telemetry | 3 | 0 | 2 | 1 | 0 | not-started |
 | testkits | 6 | 0 | 3 | 3 | 0 | not-started |

@@ -1,6 +1,5 @@
-import type { TrackedEntity } from '@ts-linq/core';
-import { EntityState } from '@ts-linq/core';
-import type { EntityCtorRef } from '@ts-linq/types';
+import type { EntityCtorRef, TrackedEntity } from '@ts-linq/types';
+import { EntityState } from '@ts-linq/types';
 
 /** The type of mutation that triggered a LocalView change notification. */
 export type LocalViewChangeType = 'added' | 'removed' | 'modified';

@@ -1,5 +1,13 @@
 # @ts-linq/cli
 
+## 1.3.31
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/core@3.4.0
+  - @ts-linq/migrations@2.6.25
+
 ## 1.3.30
 
 ### Patch Changes

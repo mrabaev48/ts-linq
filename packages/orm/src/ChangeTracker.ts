@@ -1,13 +1,12 @@
-import type { TrackedEntity } from '@ts-linq/core';
-import { EntityState, QueryTrackingBehavior } from '@ts-linq/core';
+import { QueryTrackingBehavior } from '@ts-linq/core';
 import {
   defaultPropertyAccessor,
   type MetadataRegistry,
   MetadataStorage,
   type PropertyAccessor
 } from '@ts-linq/metadata';
-import type { EntityCtorRef } from '@ts-linq/types';
-import type { EntityAttacher } from '@ts-linq/types';
+import type { EntityAttacher, EntityCtorRef, TrackedEntity } from '@ts-linq/types';
+import { EntityState } from '@ts-linq/types';
 
 import { CascadeWalker } from './changetracker/CascadeWalker';
 import { complexDeepEquals, complexSnapshot } from './changetracker/complexValueComparer';
