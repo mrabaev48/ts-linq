@@ -63,6 +63,16 @@ typecheck, lint (0 errors), unit 3182, integration 464 (+2 skipped), e2e 290, bu
 arch:deps, arch:cycles, arch:dead. New tests: InClauseChunker, loaderSupport,
 EntityLoader.manyToMany, RelationshipLoader.chunking.
 
+## task-7 (✅ DONE in same PR #193)
+Loading layer now has **zero** `as unknown as`. `TargetEntityResolver` collapses the thunk/ctor
+double-cast into one `EntityCtor→new()=>object` narrowing behind an `isThunk` type guard;
+`LazyLoadingProxy`'s `entityClass` cast dropped (`new()=>T` already assignable to `new()=>object`);
+all `(x as Record<string,unknown>)[k]` punning across loaders/strategies/proxy-traps → one audited
+accessor `support/EntityRecord.ts` (`getProp`/`setProp`). Root `eslint.config.mjs` gains a
+`no-restricted-syntax` override banning `TSAsExpression[typeAnnotation.type='TSUnknownKeyword']` in
+`packages/core/src/loading/**` (verified it errors). New test `tests-new/support/EntityRecord.test.ts`.
+Internal type-safety only — no public API/runtime change; folds under the task-3 minor.
+
 ## Follow-ups
-task-7 only partial (loader relationship view done; other core `as unknown as` sites remain);
-coordinate task-9 barrel curation (both touch loading dir). See [[refactor/core/task-4-relationship-loader-junction-injection]], [[refactor/core/task-1-databaseprovider-decompose]].
+core remaining: task-8 (logger injection / no console), task-9 (barrel curation — also touches
+loading dir). See [[refactor/core/task-4-relationship-loader-junction-injection]], [[refactor/core/task-1-databaseprovider-decompose]].

@@ -1,10 +1,9 @@
 import type { EntityMetadata } from '@ts-linq/types';
 
 import { primaryKeyColumnName } from '../support/ColumnResolver';
+import { getProp, setProp } from '../support/EntityRecord';
 import type { LoadableRelationship } from '../support/LoadableRelationship';
 import type { RelationshipLoadContext, RelationshipLoadStrategy } from './RelationshipLoadStrategy';
-
-const rec = (o: unknown): Record<string, unknown> => o as Record<string, unknown>;
 
 /**
  * Loads `one-to-one` and `many-to-one` relationships (both follow a foreign key
@@ -20,7 +19,7 @@ export class ToOneStrategy implements RelationshipLoadStrategy {
   ): Promise<unknown> {
     const targetCtor = ctx.targetResolver.resolve(relationship.targetEntity);
     const fkName = relationship.foreignKey || ctx.foreignKeys.defaultFor(targetCtor);
-    const fkValue = rec(entity)[fkName];
+    const fkValue = getProp(entity, fkName);
     if (fkValue === undefined || fkValue === null) return null;
 
     const related = await ctx.fetchToOne(targetCtor, fkValue);
@@ -38,7 +37,7 @@ export class ToOneStrategy implements RelationshipLoadStrategy {
     const targetCtor = ctx.targetResolver.resolve(relationship.targetEntity);
     const fkName = relationship.foreignKey || ctx.foreignKeys.defaultFor(targetCtor);
 
-    const fkValues = ctx.grouper.uniqueDefined(entities.map((e) => rec(e)[fkName]));
+    const fkValues = ctx.grouper.uniqueDefined(entities.map((e) => getProp(e, fkName)));
     if (fkValues.length === 0) return;
 
     const targetPkColumn = primaryKeyColumnName(sourceMeta);
@@ -54,12 +53,12 @@ export class ToOneStrategy implements RelationshipLoadStrategy {
     const targetPk = ctx.metadata.getEntity(targetCtor)?.primaryKeys?.[0];
     if (!targetPk) return;
 
-    const byId = ctx.grouper.indexByKey(wrapped, (rp) => rec(ctx.rawTarget(rp))[targetPk]);
+    const byId = ctx.grouper.indexByKey(wrapped, (rp) => getProp(ctx.rawTarget(rp), targetPk));
 
     for (const entity of entities) {
-      const fkValue = rec(entity)[fkName];
+      const fkValue = getProp(entity, fkName);
       if (fkValue === undefined || fkValue === null) continue;
-      rec(entity)[relationship.propertyName] = ctx.resolveBatchedToOne(byId.get(fkValue));
+      setProp(entity, relationship.propertyName, ctx.resolveBatchedToOne(byId.get(fkValue)));
       ctx.markLoaded(entity, relationship.propertyName);
     }
 

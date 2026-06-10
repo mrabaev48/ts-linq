@@ -9,6 +9,7 @@ import { LoadingStrategy } from './LoadingStrategy';
 import type { RelationshipLoadContext } from './strategies/RelationshipLoadStrategy';
 import { strategyFor } from './strategies/relationshipStrategyRegistry';
 import { EntityGrouper } from './support/EntityGrouper';
+import { getProp, setProp } from './support/EntityRecord';
 import { ForeignKeyConvention } from './support/ForeignKeyConvention';
 import { InClauseChunker } from './support/InClauseChunker';
 import { asLoadable, type LoadableRelationship } from './support/LoadableRelationship';
@@ -231,7 +232,7 @@ export class EntityLoader {
       const targetCtor = this._targetResolver.resolve(loadable.targetEntity);
 
       const parentIds = this._grouper.uniqueDefined(
-        entities.map((e) => (e as Record<string, unknown>)[parentPkProperty])
+        entities.map((e) => getProp(e, parentPkProperty))
       );
       if (parentIds.length === 0) continue;
 
@@ -245,17 +246,14 @@ export class EntityLoader {
         this._inChunkSize
       );
 
-      const grouped = this._grouper.groupByKey(
-        related,
-        (r) => (r as Record<string, unknown>)[foreignKeyName]
-      );
+      const grouped = this._grouper.groupByKey(related, (r) => getProp(r, foreignKeyName));
 
       // Apply the captured filter/sort/take per parent and assign
       for (const entityItem of entities) {
-        const parentId = (entityItem as Record<string, unknown>)[parentPkProperty];
+        const parentId = getProp(entityItem, parentPkProperty);
         const allRelated = grouped.get(parentId) ?? [];
         const filtered = spec.applyFilter(allRelated);
-        (entityItem as Record<string, unknown>)[propName] = filtered;
+        setProp(entityItem, propName, filtered);
       }
     }
   }
@@ -368,7 +366,7 @@ export class EntityLoader {
       rawTarget: (entity) => entity,
       markLoaded: () => {},
       assignSingle: (entity, propertyName, value) => {
-        (entity as Record<string, unknown>)[propertyName] = value;
+        setProp(entity, propertyName, value);
       },
       fetchToOne: async (ctor, id) => this.loadEntity(ctor, id, { ...options, depth: depth - 1 }),
       absentToMany: undefined,
