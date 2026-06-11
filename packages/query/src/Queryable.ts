@@ -8,7 +8,6 @@ import type {
   CteDefinition,
   EntityAttacher,
   EntityCacheLike,
-  EntityCtorRef,
   FallbackPolicy,
   GlobalFilter,
   PerformanceOptions,
@@ -25,14 +24,12 @@ import { AggregateOperations } from './AggregateOperations';
 import { type QueryTagList } from './ast/query-tags';
 import { BulkDmlExecutor } from './BulkDmlExecutor';
 import { CountCoordinator } from './CountCoordinator';
-import { IncludeResolutionError } from './errors';
 import { extractKey } from './extractKey';
 import { FallbackManager } from './FallbackManager';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
-import type { NavigationProxy } from './include/IncludeSubquery';
-import { IncludeSubquery } from './include/IncludeSubquery';
+import type { IncludeSubquery, NavigationProxy } from './include/IncludeSubquery';
+import { IncludeBuilder } from './IncludeBuilder';
 import { IncludePlanner } from './IncludePlanner';
-import { resolveTargetCtor } from './includeUtils';
 import { InheritanceQueryPlanner } from './InheritanceQueryPlanner';
 import { JoinBuilder } from './JoinBuilder';
 import { PaginationBuilder } from './PaginationBuilder';
@@ -109,6 +106,8 @@ export class Queryable<T> {
   private _bulkDml!: BulkDmlExecutor<T>;
   /** Predicate (where/having) clause builder + SQL-visitor/column plumbing. Re-created in ctor. */
   private _predicates!: PredicateBuilder<T>;
+  /** include/thenInclude proxy + validation + path-walk builder. Re-created per instance in ctor. */
+  private _includeBuilder!: IncludeBuilder<T>;
   /** Stateless tracking / identity-resolution coordinator. Shared by reference across all clones. */
   private _tracking: TrackingCoordinator = new TrackingCoordinator();
   /** Terminal-operation runner (toArray/first/any). Stateless; reuses the tracking coordinator. */
@@ -209,6 +208,7 @@ export class Queryable<T> {
       this._provider,
       this._context.visitorFactory
     );
+    this._includeBuilder = new IncludeBuilder<T>(this._entityClass);
   }
 
   /** Create a shallow clone sharing provider/loader but copying model. */
@@ -1025,75 +1025,15 @@ export class Queryable<T> {
   public include<K extends keyof T>(selector: (entity: T) => T[K]): Queryable<T>;
   public include<U>(selector: (entity: NavigationProxy<T>) => IncludeSubquery<U>): Queryable<T>;
   public include(keyOrSelector: unknown): Queryable<T> {
-    // ── String key ──────────────────────────────────────────────────────────
-    if (typeof keyOrSelector !== 'function') {
-      return this._addSimpleInclude(String(keyOrSelector));
-    }
-
-    // ── Lambda: try filtered-include proxy first ─────────────────────────────
-    // The proxy returns an IncludeSubquery for any property access.
-    // For a filtered lambda (b => b.posts.where(...).take(10)), the returned
-    // value will be an IncludeSubquery with filter specs captured.
-    // For a plain lambda (b => b.posts), the returned value will also be an
-    // IncludeSubquery but with isFiltered === false → treated as simple include.
-    let proxyResult: unknown;
-    const makeIncludeProxy = (): T =>
-      new Proxy({} as object, {
-        get(_target, prop) {
-          return new IncludeSubquery<unknown>(String(prop));
-        }
-      }) as unknown as T;
-    try {
-      proxyResult = (keyOrSelector as (entity: T) => unknown)(makeIncludeProxy());
-    } catch (err) {
-      // Proxy call threw (e.g. forbidden operator). Surface the captured error directly —
-      // re-running the lambda would invoke user side effects a second time (task-9 extracts
-      // this proxy entirely).
-      throw err;
-    }
-
-    if (proxyResult instanceof IncludeSubquery) {
-      const subquery = proxyResult as IncludeSubquery<unknown>;
-      const key = subquery.propertyName;
-      this._validateIncludeProperty(key);
-      return this.withModel((_model, draft) => {
-        draft._lastIncludePath = key;
-        if (subquery.isFiltered) {
-          draft._filteredIncludes.set(key, subquery);
-        } else if (!draft._includes.includes(key)) {
-          draft._includes.push(key);
-        }
-      });
-    }
-
-    // ── Fallback: plain key-extractor lambda (single property access) ────────
-    const key = extractKey(keyOrSelector as (entity: T) => T[keyof T]);
-    return this._addSimpleInclude(key);
-  }
-
-  private _addSimpleInclude(key: string): Queryable<T> {
-    this._validateIncludeProperty(key);
+    const decision = this._includeBuilder.resolveInclude(keyOrSelector);
     return this.withModel((_model, draft) => {
-      draft._lastIncludePath = key;
-      if (!draft._includes.includes(key)) draft._includes.push(key);
+      draft._lastIncludePath = decision.key;
+      if (decision.kind === 'filtered') {
+        draft._filteredIncludes.set(decision.key, decision.subquery);
+      } else if (!draft._includes.includes(decision.key)) {
+        draft._includes.push(decision.key);
+      }
     });
-  }
-
-  private _validateIncludeProperty(key: string): void {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    const valid = metadata?.relationships.some((r) => r.propertyName === key);
-    if (!valid) {
-      throw new IncludeResolutionError(
-        'UNKNOWN_PROPERTY',
-        `Property '${key}' does not exist on entity '${this._entityClass.name}'. ` +
-          `Define relationship '${key}' via decorators or fix the name.`,
-        {
-          entityName: this._entityClass.name,
-          propertyPath: key,
-          propertyName: key
-        }
-      );
-    }
   }
 
   /**
@@ -1121,40 +1061,7 @@ export class Queryable<T> {
     if (!this._lastIncludePath) {
       throw new Error('thenInclude() must be called after include()');
     }
-    const nestedKey = extractKey(selector as (entity: never) => never[keyof never]);
-
-    // Walk the metadata chain from the root entity class to validate nestedKey
-    // against the leaf entity in the current include chain.
-    let currentClass: EntityCtorRef = this._entityClass;
-    for (const segment of this._lastIncludePath.split('.')) {
-      const meta = MetadataStorage.getEntity(currentClass);
-      if (!meta) break;
-      const rel = meta.relationships.find((r) => r.propertyName === segment);
-      if (!rel) break;
-      const ctor = resolveTargetCtor(rel.targetEntity);
-      if (!ctor) break;
-      currentClass = ctor;
-    }
-
-    const leafMeta = MetadataStorage.getEntity(currentClass);
-    if (leafMeta) {
-      const valid = leafMeta.relationships.some((r) => r.propertyName === nestedKey);
-      if (!valid) {
-        const fullPath = `${this._lastIncludePath}.${nestedKey}`;
-        throw new IncludeResolutionError(
-          'UNKNOWN_PROPERTY',
-          `Property '${nestedKey}' does not exist on entity '${currentClass.name}'. ` +
-            `Check the include path '${fullPath}' for typos or missing relationship decorators.`,
-          {
-            entityName: currentClass.name,
-            propertyPath: fullPath,
-            propertyName: nestedKey
-          }
-        );
-      }
-    }
-
-    const path = `${this._lastIncludePath}.${nestedKey}`;
+    const path = this._includeBuilder.resolveThenInclude(this._lastIncludePath, selector);
     return this.withModel((_model, draft) => {
       draft._lastIncludePath = path;
       if (!draft._includes.includes(path)) draft._includes.push(path);
