@@ -527,16 +527,6 @@ describe('QueryBuilder', () => {
 
       expect(mockDialect.buildSelect).toHaveBeenCalledTimes(2);
     });
-
-    it('static clearCache() is a backward-compat no-op', () => {
-      // Should not throw
-      expect(() => QueryBuilder.clearCache()).not.toThrow();
-    });
-
-    it('static disposeCache() is a backward-compat no-op', () => {
-      // Should not throw
-      expect(() => QueryBuilder.disposeCache()).not.toThrow();
-    });
   });
 
   describe('getCacheMetrics()', () => {

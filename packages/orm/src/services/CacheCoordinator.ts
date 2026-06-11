@@ -1,5 +1,4 @@
 import { reflectGetOwnMetadata } from '@ts-linq/metadata';
-import { QueryBuilder } from '@ts-linq/query';
 import type { EntityCtorRef } from '@ts-linq/types';
 import type { CountCache, EntityCacheLike } from '@ts-linq/types';
 
@@ -145,8 +144,6 @@ export class CacheCoordinator {
           const prefix = `${ns}${providerPrefix}${name}|`;
           this.sqlCache.invalidateBy((key) => key.startsWith(prefix));
         }
-      } else {
-        for (const name of changedNames) QueryBuilder.invalidateForEntity(name);
       }
     } catch {
       /* ignore */
