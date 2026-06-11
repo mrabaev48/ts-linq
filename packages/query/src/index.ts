@@ -7,6 +7,7 @@ export { EF } from './EF';
 export type { EfFunctions } from './EF.functions';
 export type { IncludeResolutionErrorCode, IncludeResolutionErrorDetails } from './errors';
 export { IncludeResolutionError } from './errors';
+export type { KeySelector } from './extractKey';
 export type { NavigationProxy } from './include/IncludeSubquery';
 export { IncludeSubquery } from './include/IncludeSubquery';
 export type { LruCacheOptions } from './LruCache';

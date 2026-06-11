@@ -1,5 +1,42 @@
 # @ts-linq/orm
 
+## 4.1.0
+
+### Minor Changes
+
+- Make key-selector lambda types honest about the single-property runtime contract.
+
+  The fluent selector lambdas previously advertised `(entity: T) => T[keyof T]`, which the compiler
+  accepted for nested access (`u => u.profile.city`) even though the runtime `Proxy` throws on
+  anything beyond a single top-level property — a type lie whose failure was deferred to production.
+  - **`@ts-linq/query` / `@ts-linq/orm`**: `orderBy`, `orderByDescending`, `thenBy`,
+    `thenByDescending`, `innerJoinOn`, `leftJoinOn` now use a precise `KeySelector<T, K>` so the
+    inferred key `K` is the specific property and the return type is its real value type; nested-path
+    selectors whose leaf type matches no top-level property are now rejected at compile time.
+    `include(...)` returns a new `IncludableQueryable<T, TNav>` that threads the leaf navigation entity
+    type, so the subsequent `thenInclude(...)` selector is type-checked against the actual nested
+    entity (restoring IntelliSense) instead of the previous `(nav: never) => unknown`. New exports:
+    `KeySelector`, `NavElement`, `IncludableQueryable`.
+  - **`@ts-linq/types`**: new `SelectorExtractionError` (`OrmErrorCode.SelectorExtraction`). The two
+    Proxy-based selector extractors (`extractKey` and `SetPropertyCalls`) are unified into one helper
+    with a single, fail-closed, typed error model (message text unchanged).
+
+  These are more precise types over the prior looser signatures; the full monorepo (including
+  integration and e2e suites) compiles unchanged, so no migration is required for valid existing code.
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.5.0
+  - @ts-linq/query@3.1.0
+  - @ts-linq/concurrency@3.0.5
+  - @ts-linq/core@3.4.3
+  - @ts-linq/metadata@4.1.4
+  - @ts-linq/metrics-safe@1.2.7
+  - @ts-linq/migrations@2.6.28
+  - @ts-linq/sql-visitor@4.3.1
+  - @ts-linq/telemetry@2.1.19
+
 ## 4.0.24
 
 ### Patch Changes

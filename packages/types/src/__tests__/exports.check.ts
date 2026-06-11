@@ -150,6 +150,7 @@ import {
   OperationAbortedError,
   OptimisticConcurrencyError,
   OrmErrorCode,
+  SelectorExtractionError,
   TemporalNotSupportedError,
   UniqueConstraintError,
   UnsupportedOperationError,
@@ -300,6 +301,7 @@ const _metadataError = new MetadataError('test');
 const _decoratorError = new DecoratorUsageError('test');
 const _batchError = new BatchConfigurationError('test');
 const _includeError = new InvalidIncludeError('test');
+const _selectorError = new SelectorExtractionError('test');
 const _abortedError = new OperationAbortedError('test');
 const _ormErrorCode = OrmErrorCode.DatabaseError;
 declare const _ormErrorOptions: OrmErrorOptions;
