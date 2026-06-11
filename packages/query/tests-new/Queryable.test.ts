@@ -257,9 +257,9 @@ describe('Queryable (tests-new)', () => {
     it('innerJoinOn() adds INNER JOIN with correct ON clause using column name mapping', () => {
       const provider = new TestProvider();
       const q = new Queryable(User, QueryContext.fromProvider(provider));
-      q.innerJoinOn(Post, 'id', 'userId');
+      const joined = q.innerJoinOn(Post, 'id', 'userId');
       const model = (
-        q as unknown as {
+        joined as unknown as {
           _model: {
             joins: Array<{ type: string; table: string; onColumns: unknown; alias?: string }>;
           };
@@ -277,9 +277,9 @@ describe('Queryable (tests-new)', () => {
     it('leftJoinOn() adds LEFT JOIN with correct ON clause using column name mapping', () => {
       const provider = new TestProvider();
       const q = new Queryable(User, QueryContext.fromProvider(provider));
-      q.leftJoinOn(Post, 'id', 'userId');
+      const joined = q.leftJoinOn(Post, 'id', 'userId');
       const model = (
-        q as unknown as {
+        joined as unknown as {
           _model: {
             joins: Array<{ type: string; table: string; onColumns: unknown; alias?: string }>;
           };
@@ -296,9 +296,9 @@ describe('Queryable (tests-new)', () => {
     it('innerJoinOn() respects optional alias', () => {
       const provider = new TestProvider();
       const q = new Queryable(User, QueryContext.fromProvider(provider));
-      q.innerJoinOn(Post, 'id', 'userId', 'p');
+      const joined = q.innerJoinOn(Post, 'id', 'userId', 'p');
       const model = (
-        q as unknown as {
+        joined as unknown as {
           _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> };
         }
       )._model;
@@ -321,8 +321,9 @@ describe('Queryable (tests-new)', () => {
 
       const provider = new TestProvider();
       const q = new Queryable(User, QueryContext.fromProvider(provider));
-      q.innerJoinOn(Post, 'id', 'userId');
-      const model = (q as unknown as { _model: { joins: Array<{ onColumns: unknown }> } })._model;
+      const joined = q.innerJoinOn(Post, 'id', 'userId');
+      const model = (joined as unknown as { _model: { joins: Array<{ onColumns: unknown }> } })
+        ._model;
       expect(model.joins[0].onColumns).toEqual([
         { left: { table: 'users', column: 'id' }, right: { table: 'posts', column: 'userId' } }
       ]);
@@ -331,8 +332,8 @@ describe('Queryable (tests-new)', () => {
     it('multiple joinOn() calls accumulate joins', () => {
       const provider = new TestProvider();
       const q = new Queryable(User, QueryContext.fromProvider(provider));
-      q.innerJoinOn(Post, 'id', 'userId').leftJoinOn(Post, 'id', 'userId', 'p2');
-      const model = (q as unknown as { _model: { joins: Array<unknown> } })._model;
+      const joined = q.innerJoinOn(Post, 'id', 'userId').leftJoinOn(Post, 'id', 'userId', 'p2');
+      const model = (joined as unknown as { _model: { joins: Array<unknown> } })._model;
       expect(model.joins).toHaveLength(2);
     });
 
@@ -409,6 +410,114 @@ describe('Queryable (tests-new)', () => {
       expect((projected as unknown as { _trackingMode: QueryTrackingBehavior })._trackingMode).toBe(
         QueryTrackingBehavior.NoTracking
       );
+    });
+  });
+
+  describe('fork safety / uniform immutability (task-2)', () => {
+    const makeQ = (): Queryable<User> =>
+      new Queryable(User, QueryContext.fromProvider(new TestProvider()));
+
+    type ModelView = {
+      _model: {
+        limit?: number;
+        offset?: number;
+        orderBy?: Array<{ column: string; direction: string }>;
+        where?: Array<{ condition: string }>;
+        groupBy?: { columns: string[] };
+        unions?: Array<unknown>;
+      };
+    };
+    const model = (q: unknown): ModelView['_model'] => (q as unknown as ModelView)._model;
+
+    it('every chainable operator returns a new reference (never `this`)', () => {
+      const q = makeQ();
+      expect(q.take(1)).not.toBe(q);
+      expect(q.skip(1)).not.toBe(q);
+      expect(q.distinct()).not.toBe(q);
+      expect(q.whereIn('id', [1, 2])).not.toBe(q);
+      expect(q.groupBy('id')).not.toBe(q);
+      expect(q.union(makeQ())).not.toBe(q);
+      expect(q.unionAll(makeQ())).not.toBe(q);
+      expect(q.orderBy('id')).not.toBe(q);
+      expect(q.orderByDescending('id')).not.toBe(q);
+      expect(q.ignoreQueryFilters()).not.toBe(q);
+      expect(q.withAbort(new AbortController().signal)).not.toBe(q);
+    });
+
+    it('take(): forking a base does not corrupt either branch (canonical hazard)', () => {
+      const base = makeQ().orderBy('id');
+      const a = base.take(10);
+      const b = base.take(20);
+      expect(model(a).limit).toBe(10);
+      expect(model(b).limit).toBe(20);
+      expect(model(base).limit).toBeUndefined();
+    });
+
+    it('skip(): forks keep independent offsets', () => {
+      const base = makeQ();
+      const a = base.skip(5);
+      const b = base.skip(15);
+      expect(model(a).offset).toBe(5);
+      expect(model(b).offset).toBe(15);
+      expect(model(base).offset).toBeUndefined();
+    });
+
+    it('whereIn(): predicates do not leak between forks', () => {
+      const base = makeQ();
+      const a = base.whereIn('id', [1]);
+      const b = base.whereIn('id', [2, 3]);
+      expect(model(a).where).toHaveLength(1);
+      expect(model(b).where).toHaveLength(1);
+      expect(model(base).where).toBeUndefined();
+    });
+
+    it('groupBy(): grouping does not leak onto the base', () => {
+      const base = makeQ();
+      const a = base.groupBy('id');
+      expect(model(a).groupBy).toEqual({ columns: ['id'] });
+      expect(model(base).groupBy).toBeUndefined();
+    });
+
+    it('orderBy(): sort keys do not leak between forks', () => {
+      const base = makeQ();
+      const a = base.orderBy('id');
+      const b = base.orderBy('name');
+      expect(model(a).orderBy).toEqual([{ column: 'id', direction: 'ASC' }]);
+      expect(model(b).orderBy).toEqual([{ column: 'name', direction: 'ASC' }]);
+      expect(model(base).orderBy).toBeUndefined();
+    });
+
+    it('union(): set operations do not leak onto the base', () => {
+      const base = makeQ();
+      const a = base.union(makeQ());
+      expect(model(a).unions).toHaveLength(1);
+      expect(model(base).unions).toBeUndefined();
+    });
+
+    it('orderBy().thenBy() chains on a fresh instance without mutating the base', () => {
+      const base = makeQ().orderBy('id');
+      const chained = base.thenBy('name');
+      expect(model(chained).orderBy).toEqual([
+        { column: 'id', direction: 'ASC' },
+        { column: 'name', direction: 'ASC' }
+      ]);
+      // base kept only its single sort key — thenBy did not mutate it
+      expect(model(base).orderBy).toEqual([{ column: 'id', direction: 'ASC' }]);
+      // chained instance is still an OrderedQueryable (thenByDescending available)
+      expect(typeof (chained as { thenByDescending?: unknown }).thenByDescending).toBe('function');
+    });
+
+    it('withAbort(): immutable, and the signal propagates through later operators', () => {
+      const controller = new AbortController();
+      const base = makeQ();
+      const aborted = base.withAbort(controller.signal);
+      expect(aborted).not.toBe(base);
+      // clone() must carry _abortSignal forward through a subsequent operator
+      const next = aborted.take(5);
+      expect((next as unknown as { _abortSignal?: AbortSignal })._abortSignal).toBe(
+        controller.signal
+      );
+      expect((base as unknown as { _abortSignal?: AbortSignal })._abortSignal).toBeUndefined();
     });
   });
 });
