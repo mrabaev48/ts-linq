@@ -2,7 +2,6 @@ import type { ExpressionNode, PropertyNode } from '@ts-linq/ast';
 import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
 import { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
 import type { ColumnResolver, ConverterResolver, SqlVisitor } from '@ts-linq/sql-visitor';
 import { FragmentJoinPlanner } from '@ts-linq/sql-visitor/internal';
 import type {
@@ -26,6 +25,7 @@ import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
 
 import { AggregateOperations } from './AggregateOperations';
 import { type QueryTagList } from './ast/query-tags';
+import { CountCoordinator } from './CountCoordinator';
 import { IncludeResolutionError } from './errors';
 import { extractKey } from './extractKey';
 import { FallbackManager } from './FallbackManager';
@@ -100,6 +100,8 @@ export class Queryable<T> {
   private _aggregates!: AggregateOperations<T>;
   /** Stateless tracking / identity-resolution coordinator. Shared by reference across all clones. */
   private _tracking: TrackingCoordinator = new TrackingCoordinator();
+  /** Stateless count-cache / single-flight coordinator. Shared by reference across all clones. */
+  private _countCoordinator: CountCoordinator = new CountCoordinator();
 
   /** Per-query tracking mode. Defaults to TrackAll (mirrors EF Core semantics). */
   private _trackingMode: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -1455,61 +1457,17 @@ export class Queryable<T> {
   public async count(): Promise<number> {
     const metadata = MetadataStorage.getEntity(this._entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
-    if (this._performance?.enableCountCache) {
-      const key = this.buildCountCacheKey(metadata.tableName);
-      const inflight = this._inflightCounts.get(key);
-      if (inflight) return inflight;
-      const ttl = this._performance.countCacheTtlMs ?? 0;
-      const hit = this._externalCountCache?.get(key);
-      if (hit !== undefined) {
-        safeCache(this._provider.loggerRef, {
-          cache: 'count',
-          hit: true,
-          provider: this._provider.providerLabel,
-          ttl: ttl > 0
-        });
-        this._provider.loggerRef?.cache?.({
-          cache: 'count',
-          hit: true,
-          provider: this._provider.providerLabel
-        });
-        return hit;
-      }
-      const queryModel = this.prepareQueryModel();
-      const pending = this._executor.executeCount(metadata.tableName, queryModel);
-      this._inflightCounts.set(key, pending);
-      let value: number;
-      try {
-        value = await pending;
-      } finally {
-        this._inflightCounts.delete(key);
-      }
-      if (this._externalCountCache) this._externalCountCache.set(key, value);
-      safeCacheSize(this._provider.loggerRef, {
-        cache: 'count',
-        size: -1,
-        provider: this._provider.providerLabel
-      });
-      safeCache(this._provider.loggerRef, {
-        cache: 'count',
-        hit: false,
-        provider: this._provider.providerLabel
-      });
-      this._provider.loggerRef?.cache?.({
-        cache: 'count',
-        hit: false,
-        provider: this._provider.providerLabel
-      });
-      return value;
-    }
-    const queryModel = this.prepareQueryModel();
-    return this._executor.executeCount(metadata.tableName, queryModel);
-  }
-
-  private buildCountCacheKey(table: string): string {
-    const provider = this._provider?.providerLabel ? `${this._provider.providerLabel}|` : '';
-    const ns = this._performance?.cacheNamespace ? `${this._performance.cacheNamespace}|` : '';
-    return `${ns}${provider}${this._entityClass.name}|count|${table}|${this._whereSignature}`;
+    return this._countCoordinator.count({
+      entityName: this._entityClass.name,
+      tableName: metadata.tableName,
+      whereSignature: this._whereSignature,
+      performance: this._performance,
+      provider: this._provider,
+      executor: this._executor,
+      inflightCounts: this._inflightCounts,
+      externalCountCache: this._externalCountCache,
+      prepareModel: () => this.prepareQueryModel()
+    });
   }
 
   /** Resolve a TypeScript property name to its database column name via entity metadata. */
