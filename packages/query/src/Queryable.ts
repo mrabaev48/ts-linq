@@ -20,7 +20,6 @@ import type {
   TemporalClause,
   WhereClause
 } from '@ts-linq/types';
-import { InheritanceStrategy } from '@ts-linq/types';
 import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
 
 import { AggregateOperations } from './AggregateOperations';
@@ -35,6 +34,7 @@ import type { NavigationProxy } from './include/IncludeSubquery';
 import { IncludeSubquery } from './include/IncludeSubquery';
 import { IncludePlanner } from './IncludePlanner';
 import { resolveTargetCtor } from './includeUtils';
+import { InheritanceQueryPlanner } from './InheritanceQueryPlanner';
 import { JoinBuilder } from './JoinBuilder';
 import { PaginationBuilder } from './PaginationBuilder';
 import { QueryBuilder } from './QueryBuilder';
@@ -117,6 +117,8 @@ export class Queryable<T> {
   private _setOps: SetOperationBuilder = new SetOperationBuilder();
   /** Stateless join-clause builder. Shared by reference across clones. */
   private _joinBuilder: JoinBuilder = new JoinBuilder();
+  /** Stateless ofType (TPH/TPT/TPC) strategy planner. Shared by reference across clones. */
+  private _inheritancePlanner: InheritanceQueryPlanner = new InheritanceQueryPlanner();
 
   /** Per-query tracking mode. Defaults to TrackAll (mirrors EF Core semantics). */
   private _trackingMode: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -950,48 +952,9 @@ export class Queryable<T> {
       })
     );
     sub._model = this._model.clone();
-
-    const subtypeMeta = MetadataStorage.getEntity(ctor);
-    if (!subtypeMeta?.hierarchyRoot) return sub;
-
-    const rootMeta = MetadataStorage.getEntity(subtypeMeta.hierarchyRoot as unknown as new () => T);
-    if (!rootMeta?.hierarchy) return sub;
-
-    const { strategy, discriminator } = rootMeta.hierarchy;
-
-    if (strategy === InheritanceStrategy.Tph) {
-      const entry = discriminator?.entries.find((e) => e.ctor === ctor);
-      if (entry && discriminator) {
-        // Quote the discriminator column through the dialect — no hardcoded ANSI `"`.
-        const quotedDiscriminator = this._provider
-          .getDialect()
-          .quoteIdentifier(discriminator.columnName);
-        sub._model.where = sub._model.where ?? [];
-        sub._model.where.push({
-          condition: `${quotedDiscriminator} = ?`,
-          parameters: [entry.value as SqlParameter]
-        });
-      }
-    } else if (strategy === InheritanceStrategy.Tpt) {
-      const pk = rootMeta.primaryKeys?.[0] ?? 'id';
-      const baseTable = rootMeta.tableName;
-      const subTable = subtypeMeta.tableName;
-      sub._model.joins = sub._model.joins ?? [];
-      // Emit a structured equi-join on the shared PK; the dialect renders + quotes it.
-      sub._model.joins.push({
-        type: 'INNER',
-        table: subTable,
-        onColumns: [
-          {
-            left: { table: baseTable, column: pk },
-            right: { table: subTable, column: pk }
-          }
-        ]
-      });
-    } else if (strategy === InheritanceStrategy.Tpc) {
-      sub._model.from = subtypeMeta.tableName;
-    }
-
+    this._inheritancePlanner.plan(ctor, sub._model, (id) =>
+      this._provider.getDialect().quoteIdentifier(id)
+    );
     return sub;
   }
 
