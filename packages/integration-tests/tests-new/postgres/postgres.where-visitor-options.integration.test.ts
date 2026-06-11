@@ -3,6 +3,7 @@ import { DatabaseProvider } from '@ts-linq/core';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '@ts-linq/query';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
 
 /**
@@ -96,7 +97,10 @@ function registerSpatialCity(): void {
 
 async function compiledSql(ast: ExpressionNode, parameters: SqlParameter[] = []): Promise<string> {
   const provider = new PgSqlCaptureProvider();
-  const q = new Queryable(SpatialCity, provider).whereCompiled({ ast, parameters });
+  const q = new Queryable(SpatialCity, QueryContext.fromProvider(provider)).whereCompiled({
+    ast,
+    parameters
+  });
   await q.toArray();
   return provider.lastSql;
 }

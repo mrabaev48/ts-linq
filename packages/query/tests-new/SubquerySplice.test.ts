@@ -1,5 +1,6 @@
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { QueryOptions, SqlDialect, SqlParameter } from '@ts-linq/types';
 
 import { Queryable } from '../src/Queryable';
@@ -133,8 +134,11 @@ describe('Queryable subquery splice (task-6)', () => {
 
   it('whereInSubquery resolves the property key to its mapped column and quotes it', () => {
     const provider = new TestProvider();
-    const sub = new Queryable(Post, provider).whereIn('id', [1]);
-    const q = new Queryable(Post, provider).whereInSubquery('userId', sub);
+    const sub = new Queryable(Post, QueryContext.fromProvider(provider)).whereIn('id', [1]);
+    const q = new Queryable(Post, QueryContext.fromProvider(provider)).whereInSubquery(
+      'userId',
+      sub
+    );
 
     const clause = (q as unknown as { _model: { where: Array<{ condition: string }> } })._model
       .where[0];
@@ -145,8 +149,10 @@ describe('Queryable subquery splice (task-6)', () => {
 
   it('aligns outer + subquery parameters after global ?→$N renumbering (whereInSubquery)', () => {
     const provider = new TestProvider();
-    const sub = new Queryable(Post, provider).whereIn('id', [777]);
-    const q = new Queryable(User, provider).whereIn('id', [111]).whereInSubquery('id', sub);
+    const sub = new Queryable(Post, QueryContext.fromProvider(provider)).whereIn('id', [777]);
+    const q = new Queryable(User, QueryContext.fromProvider(provider))
+      .whereIn('id', [111])
+      .whereInSubquery('id', sub);
 
     const { query, parameters } = renderModel(q);
 
@@ -158,8 +164,10 @@ describe('Queryable subquery splice (task-6)', () => {
 
   it('aligns outer + subquery parameters for whereExists', () => {
     const provider = new TestProvider();
-    const sub = new Queryable(Post, provider).whereIn('id', [555]);
-    const q = new Queryable(User, provider).whereIn('id', [222]).whereExists(sub);
+    const sub = new Queryable(Post, QueryContext.fromProvider(provider)).whereIn('id', [555]);
+    const q = new Queryable(User, QueryContext.fromProvider(provider))
+      .whereIn('id', [222])
+      .whereExists(sub);
 
     const { query, parameters } = renderModel(q);
 

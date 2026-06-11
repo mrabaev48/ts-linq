@@ -3,6 +3,7 @@ import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
 import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import type { QueryFallback, FallbackRequest } from '@ts-linq/types';
+import { QueryContext } from '@ts-linq/query/internal';
 
 @Entity()
 class U {
@@ -32,7 +33,7 @@ describe('Graceful Degradation - staleness logging', () => {
       }
     };
 
-    const q = new Queryable(U, provider).fallbackTo(fb);
+    const q = new Queryable(U, QueryContext.fromProvider(provider)).fallbackTo(fb);
     const rows = await q.toArray();
     expect(rows.length).toBe(1);
     const last = events[events.length - 1];

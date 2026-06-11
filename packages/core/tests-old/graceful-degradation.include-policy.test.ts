@@ -3,6 +3,7 @@ import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { QueryFallback, FallbackRequest } from '@ts-linq/types';
+import { QueryContext } from '@ts-linq/query/internal';
 
 function defineEntities() {
   @Entity()
@@ -43,7 +44,7 @@ describe('Graceful Degradation - include policy', () => {
     await provider.createTable(MetadataStorage.getEntity(User)!);
     await provider.createTable(MetadataStorage.getEntity(Post)!);
 
-    const q = new Queryable(User, provider)
+    const q = new Queryable(User, QueryContext.fromProvider(provider))
       .fallbackTo(fb)
       .withFallbackPolicy({ allowIncludesOnFallback: 'none' });
 
@@ -71,7 +72,7 @@ describe('Graceful Degradation - include policy', () => {
     await provider.createTable(MetadataStorage.getEntity(User)!);
     await provider.createTable(MetadataStorage.getEntity(Post)!);
 
-    const q = new Queryable(User, provider)
+    const q = new Queryable(User, QueryContext.fromProvider(provider))
       .fallbackTo(fb)
       .withFallbackPolicy({ allowIncludesOnFallback: 'attempt' });
 

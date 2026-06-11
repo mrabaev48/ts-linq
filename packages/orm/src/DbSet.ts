@@ -5,6 +5,7 @@ import type { NavigationProxy, OrderedQueryable, QueryTagList } from '@ts-linq/q
 import type { ISetPropertyCalls } from '@ts-linq/query';
 import type { IncludeSubquery } from '@ts-linq/query';
 import { Queryable } from '@ts-linq/query';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { EntityCacheLike } from '@ts-linq/types';
 import type {
   FallbackPolicy,
@@ -182,19 +183,19 @@ export class DbSet<T extends object> {
           `Declare it inside a DbContext subclass: \`${this._entityClass.name.toLowerCase()}s = this.defineSet(${this._entityClass.name})\``
       );
     }
-    return new Queryable<T>(
-      this._entityClass,
-      this._provider,
-      this._entityLoader,
-      this._entityCache,
-      this._performance,
-      this._globalFilters,
-      this._softDeleteOptions,
-      this._changeTracker,
-      this._changeTracker?.queryTrackingBehavior,
-      this._querySplittingBehavior,
-      this._entityQueryFilters
-    );
+    const context = new QueryContext({
+      provider: this._provider,
+      entityLoader: this._entityLoader,
+      entityCache: this._entityCache,
+      performance: this._performance,
+      globalFilters: this._globalFilters,
+      softDeleteOptions: this._softDeleteOptions,
+      entityAttacher: this._changeTracker,
+      trackingMode: this._changeTracker?.queryTrackingBehavior,
+      globalSplittingBehavior: this._querySplittingBehavior,
+      entityQueryFilters: this._entityQueryFilters
+    });
+    return new Queryable<T>(this._entityClass, context);
   }
 
   // ─── Global filter API (P0-11) ────────────────────────────────────────────

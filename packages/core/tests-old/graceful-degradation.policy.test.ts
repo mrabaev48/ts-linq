@@ -3,6 +3,7 @@ import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { Queryable } from '../src/query/Queryable';
 import { MemoryFallback } from '../src/query/fallbacks/MemoryFallback';
 import { ProviderStub } from './_stubs/ProviderStub';
+import { QueryContext } from '@ts-linq/query/internal';
 
 function defineEntity() {
   @Entity()
@@ -33,7 +34,7 @@ describe('Graceful Degradation Policy', () => {
       Object.assign(new E(), { id: 2, name: 'B' })
     ];
 
-    const q = new Queryable(E, provider)
+    const q = new Queryable(E, QueryContext.fromProvider(provider))
       .fallbackTo(new MemoryFallback(() => memory))
       .withFallbackPolicy({ allowOps: ['count'] });
 
@@ -49,7 +50,7 @@ describe('Graceful Degradation Policy', () => {
       Object.assign(new E(), { id: 3, name: 'C' })
     ];
 
-    const q = new Queryable(E, provider)
+    const q = new Queryable(E, QueryContext.fromProvider(provider))
       .fallbackTo(new MemoryFallback(() => memory))
       .withFallbackPolicy({ allowOps: ['count'] });
 
@@ -60,7 +61,7 @@ describe('Graceful Degradation Policy', () => {
   it('throws when no fallback sources configured', async () => {
     const E = defineEntity();
     const provider = new FailingProvider(':memory:');
-    const q = new Queryable(E, provider).withFallbackPolicy({ allowOps: ['select', 'count'] });
+    const q = new Queryable(E, QueryContext.fromProvider(provider)).withFallbackPolicy({ allowOps: ['select', 'count'] });
     await expect(q.toArray()).rejects.toThrow(/connection/i);
   });
 });

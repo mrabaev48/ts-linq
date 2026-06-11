@@ -4,6 +4,7 @@ import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { QueryFallback, FallbackRequest } from '@ts-linq/types';
+import { QueryContext } from '@ts-linq/query/internal';
 
 function defineEntity() {
   @Entity()
@@ -55,7 +56,7 @@ describe('Graceful Degradation - hedged select', () => {
       }
     };
 
-    const q = new Queryable(E, provider)
+    const q = new Queryable(E, QueryContext.fromProvider(provider))
       .fallbackTo(fastFallback)
       .withFallbackPolicy({ hedged: { enabled: true, delayMs: 1, sources: ['replica'] } });
 
@@ -82,7 +83,7 @@ describe('Graceful Degradation - hedged select', () => {
       }
     };
 
-    const q = new Queryable(E, provider)
+    const q = new Queryable(E, QueryContext.fromProvider(provider))
       .fallbackTo(slowFallback)
       .withFallbackPolicy({ hedged: { enabled: true, delayMs: 10, sources: ['replica'] } });
 

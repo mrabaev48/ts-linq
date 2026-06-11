@@ -4,6 +4,7 @@ import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { QueryFallback, FallbackRequest } from '@ts-linq/types';
+import { QueryContext } from '@ts-linq/query/internal';
 
 function defineA() {
   @Entity()
@@ -47,7 +48,7 @@ describe('Hedged sources filtering', () => {
     await provider.connect();
     const meta = MetadataStorage.getEntity(A)!;
     await provider.createTable(meta);
-    const q = new Queryable(A, provider)
+    const q = new Queryable(A, QueryContext.fromProvider(provider))
       .fallbackTo(fastReplica)
       .fallbackTo(slowMemory)
       .withFallbackPolicy({ hedged: { enabled: true, delayMs: 1, sources: ['replica'] } });

@@ -1,5 +1,23 @@
 # @ts-linq/query
 
+## 2.4.38
+
+### Patch Changes
+
+- Replace the 11-positional-argument `Queryable` constructor with an immutable `QueryContext`
+  value object (`@internal`, exposed via `@ts-linq/query/internal`). The constructor is now
+  `(entityClass, context, model?)`, and `clone()` / `selectCompiled()` / `ofType()` copy a single
+  context reference instead of reproducing the exact positional ordering. A `with()` wither provides
+  explicit per-chain overrides (e.g. `ofType` clearing entity query filters) in place of positional
+  `undefined` placeholders, and the `SqlVisitorFactory` (from the `where`/`having` wiring work) now
+  lives on the context as a shared assembly point.
+
+  Fixes a latent bug: `selectCompiled` (the transformer-emitted projection behind `select(...)`)
+  silently dropped its global filters, soft-delete options, change-tracker attacher, tracking mode,
+  splitting behaviour and entity query filters, so a projected query lost its tracking/filter
+  configuration. Projections now carry the full context plus any per-chain
+  `asNoTracking()` / `asSplitQuery()` / `ignoreQueryFilters()` override applied before the projection.
+
 ## 2.4.37
 
 ### Patch Changes

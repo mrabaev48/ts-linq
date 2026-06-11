@@ -1,6 +1,7 @@
 import { ExecutionStrategy } from '@ts-linq/concurrency';
 import type { DatabaseProvider } from '@ts-linq/core';
 import { Queryable } from '@ts-linq/query';
+import { QueryContext } from '@ts-linq/query/internal';
 
 import type { MigrateOptions } from './database/has-pending-model-changes';
 import { PendingModelChangesChecker } from './database/has-pending-model-changes';
@@ -100,8 +101,7 @@ export class DatabaseFacade {
     const { sql, params } = interpolatedToRaw(query);
     return new Queryable<T>(
       entityClass,
-      this._provider,
-      this._context.entityLoader
+      new QueryContext({ provider: this._provider, entityLoader: this._context.entityLoader })
     )._withRawSqlSource({ sql, params });
   }
 
@@ -122,8 +122,7 @@ export class DatabaseFacade {
     const params = values.map(toSqlParam);
     return new Queryable<T>(
       entityClass,
-      this._provider,
-      this._context.entityLoader
+      new QueryContext({ provider: this._provider, entityLoader: this._context.entityLoader })
     )._withRawSqlSource({ sql: rawSql, params });
   }
 
