@@ -20,6 +20,7 @@ import {
   OrmError,
   OrmErrorCode,
   QueryFilterCompilationError,
+  SelectorExtractionError,
   TemporalNotSupportedError,
   UniqueConstraintError,
   UnsupportedOperationError,
@@ -55,6 +56,7 @@ type _FilterCode = Expect<
   Equal<QueryFilterCompilationError['code'], 'QUERY_FILTER_COMPILATION_ERROR'>
 >;
 type _FallbackCode = Expect<Equal<FallbackExhaustedError['code'], 'FALLBACK_EXHAUSTED'>>;
+type _SelectorCode = Expect<Equal<SelectorExtractionError['code'], 'SELECTOR_EXTRACTION_ERROR'>>;
 
 // `details` is a readonly structured payload, never `any`.
 type _DetailsType = Expect<
@@ -82,7 +84,8 @@ describe('OrmError hierarchy', () => {
       new InvalidIncludeError('x'),
       new OperationAbortedError('x'),
       new QueryFilterCompilationError('x'),
-      new FallbackExhaustedError('x')
+      new FallbackExhaustedError('x'),
+      new SelectorExtractionError('x')
     ];
     for (const e of errors) {
       expect(e).toBeInstanceOf(OrmError);
@@ -127,6 +130,7 @@ describe('OrmError hierarchy', () => {
       OrmErrorCode.QueryFilterCompilationError
     );
     expect(new FallbackExhaustedError('x').code).toBe(OrmErrorCode.FallbackExhausted);
+    expect(new SelectorExtractionError('x').code).toBe(OrmErrorCode.SelectorExtraction);
   });
 
   it('sets the constructor name on every error', () => {
