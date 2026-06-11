@@ -41,6 +41,7 @@ import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
 import { RowMaterializer } from './RowMaterializer';
 import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
+import { StreamingExecutor } from './StreamingExecutor';
 import { applyTagWith } from './tag-with';
 import { captureCallSiteTag } from './tag-with-call-site';
 import { TrackingCoordinator } from './TrackingCoordinator';
@@ -98,6 +99,8 @@ export class Queryable<T> {
   private _executor!: QueryExecutor<T>;
   /** Stateless aggregate operations. Shared by reference across all clones. */
   private _aggregates!: AggregateOperations<T>;
+  /** Streaming executor (asAsyncEnumerable / toDictionary). Re-created per instance in ctor. */
+  private _streaming!: StreamingExecutor<T>;
   /** Stateless tracking / identity-resolution coordinator. Shared by reference across all clones. */
   private _tracking: TrackingCoordinator = new TrackingCoordinator();
   /** Stateless count-cache / single-flight coordinator. Shared by reference across all clones. */
@@ -177,6 +180,12 @@ export class Queryable<T> {
       this._entityClass,
       this._provider,
       this._sqlBuilder
+    );
+    this._streaming = new StreamingExecutor<T>(
+      this._entityClass,
+      this._provider,
+      this._sqlBuilder,
+      this._materializer
     );
   }
 
@@ -1248,40 +1257,12 @@ export class Queryable<T> {
    * }
    */
   public asAsyncEnumerable(signal?: AbortSignal): AsyncIterable<T> {
-    const queryModel = this.prepareQueryModel();
-    const startOffset = queryModel.offset ?? 0;
-    const maxRows = queryModel.limit;
-    queryModel.offset = undefined;
-    queryModel.limit = undefined;
-
-    const { query: baseSql, parameters } = this._sqlBuilder.generateFromModel(
-      this._entityClass,
-      queryModel
+    return this._streaming.stream(
+      this.prepareQueryModel(),
+      this._trackingMode,
+      this._entityAttacher,
+      signal
     );
-
-    const provider = this._provider;
-    const materializer = this._materializer;
-    const trackingMode = this._trackingMode;
-    const entityAttacher = this._entityAttacher;
-    const entityClass = this._entityClass;
-
-    return {
-      [Symbol.asyncIterator]: async function* (): AsyncIterator<T> {
-        for await (const row of provider.streamRows(
-          baseSql,
-          parameters,
-          startOffset,
-          maxRows,
-          signal
-        )) {
-          const entity = materializer.mapRowToEntity(row);
-          if (trackingMode === QueryTrackingBehavior.TrackAll && entityAttacher) {
-            entityAttacher.attach(entity as object, entityClass);
-          }
-          yield entity;
-        }
-      }
-    };
   }
 
   /**
@@ -1359,15 +1340,11 @@ export class Queryable<T> {
       resolvedSignal = elementSelectorOrSignal ?? signal;
     }
 
-    const map = new Map<K, V>();
-    for await (const entity of this.asAsyncEnumerable(resolvedSignal)) {
-      const key = keySelector(entity);
-      if (map.has(key)) {
-        throw new Error(`An item with the same key has already been added. Key: ${String(key)}`);
-      }
-      map.set(key, elementSelector ? elementSelector(entity) : (entity as unknown as V));
-    }
-    return map;
+    return this._streaming.collectDictionary(
+      this.asAsyncEnumerable(resolvedSignal),
+      keySelector,
+      elementSelector
+    );
   }
 
   /** Executes the query and returns materialized entities.
