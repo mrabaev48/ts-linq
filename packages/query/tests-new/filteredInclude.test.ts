@@ -352,8 +352,7 @@ describe('Queryable.include() overload', () => {
   }
 
   it('string key: simple include added to _includes', () => {
-    const q = makeQueryable();
-    q.include('posts');
+    const q = makeQueryable().include('posts');
     expect((q as unknown as { _includes: string[] })._includes).toContain('posts');
     expect(
       (q as unknown as { _filteredIncludes: Map<string, unknown> })._filteredIncludes.size
@@ -361,8 +360,7 @@ describe('Queryable.include() overload', () => {
   });
 
   it('plain lambda: simple include added to _includes', () => {
-    const q = makeQueryable();
-    q.include((b: Blog) => b.posts as unknown as Blog['posts']);
+    const q = makeQueryable().include((b: Blog) => b.posts as unknown as Blog['posts']);
     expect((q as unknown as { _includes: string[] })._includes).toContain('posts');
     expect(
       (q as unknown as { _filteredIncludes: Map<string, unknown> })._filteredIncludes.size
@@ -370,9 +368,8 @@ describe('Queryable.include() overload', () => {
   });
 
   it('filtered lambda: stored in _filteredIncludes', () => {
-    const q = makeQueryable();
     // Use a type-safe filtered lambda via any casting (as the NavigationProxy types need it at runtime)
-    q.include((b: unknown) =>
+    const q = makeQueryable().include((b: unknown) =>
       (b as Record<string, IncludeSubquery<Post>>).posts.where((p: Post) => p.isPublished)
     );
     const fi = (q as unknown as { _filteredIncludes: Map<string, IncludeSubquery<unknown>> })
@@ -383,8 +380,9 @@ describe('Queryable.include() overload', () => {
   });
 
   it('take-only filtered lambda: stored in _filteredIncludes', () => {
-    const q = makeQueryable();
-    q.include((b: unknown) => (b as Record<string, IncludeSubquery<Post>>).posts.take(5));
+    const q = makeQueryable().include((b: unknown) =>
+      (b as Record<string, IncludeSubquery<Post>>).posts.take(5)
+    );
     const fi = (q as unknown as { _filteredIncludes: Map<string, IncludeSubquery<unknown>> })
       ._filteredIncludes;
     expect(fi.has('posts')).toBe(true);
@@ -392,8 +390,9 @@ describe('Queryable.include() overload', () => {
   });
 
   it('clone() propagates _filteredIncludes', () => {
-    const q = makeQueryable();
-    q.include((b: unknown) => (b as Record<string, IncludeSubquery<Post>>).posts.take(5));
+    const q = makeQueryable().include((b: unknown) =>
+      (b as Record<string, IncludeSubquery<Post>>).posts.take(5)
+    );
     const cloned = q.clone();
     const fi = (cloned as unknown as { _filteredIncludes: Map<string, IncludeSubquery<unknown>> })
       ._filteredIncludes;
@@ -536,11 +535,11 @@ describe('thenInclude after filtered include', () => {
   afterEach(() => MetadataStorage.reset());
 
   it('thenInclude correctly builds nested path posts.tags', () => {
-    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(makeProvider()));
-    q.include((b: unknown) =>
-      (b as Record<string, IncludeSubquery<Post>>).posts.where((p: Post) => p.isPublished)
-    );
-    q.thenInclude((p: unknown) => (p as Post).tags);
+    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(makeProvider()))
+      .include((b: unknown) =>
+        (b as Record<string, IncludeSubquery<Post>>).posts.where((p: Post) => p.isPublished)
+      )
+      .thenInclude((p: unknown) => (p as Post).tags);
 
     expect((q as unknown as { _includes: string[] })._includes).toContain('posts.tags');
     expect(

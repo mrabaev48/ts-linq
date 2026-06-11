@@ -13,7 +13,6 @@ import type {
   EntityCtorRef,
   FallbackPolicy,
   GlobalFilter,
-  OrderByClause,
   PerformanceOptions,
   QueryFallback,
   QueryFilterMetadata,
@@ -177,7 +176,15 @@ export class Queryable<T> {
 
   /** Create a shallow clone sharing provider/loader but copying model. */
   public clone(): Queryable<T> {
-    const clonedQueryable = new Queryable<T>(this._entityClass, this._context);
+    // Build via `this.constructor` so the runtime subtype is preserved (e.g. cloning an
+    // `OrderedQueryable` yields an `OrderedQueryable`, keeping `thenBy` available and
+    // honoring `ignoreQueryFilters(): this`). The subclass shares Queryable's constructor.
+    const Ctor = this.constructor as new (
+      entityClass: new () => T,
+      context: QueryContext,
+      model?: QueryModel
+    ) => Queryable<T>;
+    const clonedQueryable = new Ctor(this._entityClass, this._context);
     clonedQueryable._model = this._model.clone();
     // preserve where signature for accurate count cache keys
     clonedQueryable._whereSignature = this._whereSignature;
@@ -206,7 +213,29 @@ export class Queryable<T> {
     clonedQueryable._splittingBehavior = this._splittingBehavior;
     // Carry ignored filter set
     clonedQueryable._ignoredFilters = this._ignoredFilters;
+    // Carry chain-level instance state not re-derived from the context. Under uniform
+    // immutability every operator clones, so these must propagate or they'd be silently
+    // dropped by the next operator after `withCte`/`withAbort`/`withFallbackPolicy`.
+    clonedQueryable._cte = this._cte;
+    clonedQueryable._abortSignal = this._abortSignal;
+    clonedQueryable._performance = this._performance;
     return clonedQueryable;
+  }
+
+  /**
+   * The single derive path (Template Method). Clones this instance, applies `mutate` to the
+   * *clone's* model — and, when the operator touches instance-level state, the clone itself —
+   * then returns the fresh instance. Every chainable operator routes through here so that no
+   * method ever mutates `this`, making the builder uniformly immutable and safe to fork/share.
+   *
+   * `protected` so `OrderedQueryable` (`thenBy`/`thenByDescending`) reuses the same path.
+   * The mutator also receives `draft` because some chain state (`_whereSignature`, `_includes`,
+   * `_abortSignal`, `_ignoredFilters`, …) lives on the instance, not in {@link QueryModel}.
+   */
+  protected withModel(mutate: (model: QueryModel, draft: Queryable<T>) => void): Queryable<T> {
+    const draft = this.clone();
+    mutate(draft._model, draft);
+    return draft;
   }
 
   // ─── Tracking API ────────────────────────────────────────────────────────
@@ -473,12 +502,12 @@ export class Queryable<T> {
    */
   public whereIn<K extends keyof T & string>(column: K, values: ReadonlyArray<T[K]>): Queryable<T> {
     if (!values || values.length === 0) {
-      // IN (empty) matches nothing; ensure we return empty set.
-      // We add a condition "1 = 0"
-      this._model.where = this._model.where || [];
-      this._model.where.push({ condition: '1 = 0', parameters: [] });
-      this._whereSignature += '|1=0:[]';
-      return this;
+      // IN (empty) matches nothing; ensure we return empty set via condition "1 = 0".
+      return this.withModel((model, draft) => {
+        model.where = model.where || [];
+        model.where.push({ condition: '1 = 0', parameters: [] });
+        draft._whereSignature += '|1=0:[]';
+      });
     }
 
     // Resolve column name from metadata (if available) or use property name
@@ -495,12 +524,12 @@ export class Queryable<T> {
       parameters: values as unknown as SqlParameter[]
     };
 
-    this._model.where = this._model.where || [];
-    this._model.where.push(whereClause);
     const sigParams = values.length > 5 ? `[${values.length} values]` : JSON.stringify(values);
-    this._whereSignature += `|${column}IN:${sigParams}`;
-
-    return this;
+    return this.withModel((model, draft) => {
+      model.where = model.where || [];
+      model.where.push(whereClause);
+      draft._whereSignature += `|${column}IN:${sigParams}`;
+    });
   }
 
   /** Apply configured global filters to the provided query model. */
@@ -555,8 +584,9 @@ export class Queryable<T> {
     rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
-    this._addJoinOn('INNER', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
-    return this;
+    return this.withModel((_model, draft) => {
+      draft._addJoinOn('INNER', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
+    });
   }
 
   /**
@@ -581,8 +611,9 @@ export class Queryable<T> {
     rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
-    this._addJoinOn('LEFT', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
-    return this;
+    return this.withModel((_model, draft) => {
+      draft._addJoinOn('LEFT', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
+    });
   }
 
   /**
@@ -598,12 +629,10 @@ export class Queryable<T> {
   public ignoreQueryFilters(): this;
   public ignoreQueryFilters(...names: string[]): this;
   public ignoreQueryFilters(...names: string[]): this {
-    if (names.length === 0) {
-      this._ignoredFilters = 'all';
-    } else {
-      this._ignoredFilters = new Set(names);
-    }
-    return this;
+    // Subtype-preserving clone keeps `: this` truthful (e.g. on an OrderedQueryable).
+    return this.withModel((_model, draft) => {
+      draft._ignoredFilters = names.length === 0 ? 'all' : new Set(names);
+    }) as this;
   }
 
   /**
@@ -639,10 +668,11 @@ export class Queryable<T> {
       this.buildColumnResolver()
     );
     const whereClause: WhereClause = { condition, parameters };
-    this._model.where = this._model.where || [];
-    this._model.where.push(whereClause);
-    this._whereSignature += `|${whereClause.condition}:${JSON.stringify(whereClause.parameters)}`;
-    return this;
+    return this.withModel((model, draft) => {
+      model.where = model.where || [];
+      model.where.push(whereClause);
+      draft._whereSignature += `|${whereClause.condition}:${JSON.stringify(whereClause.parameters)}`;
+    });
   }
 
   /**
@@ -650,8 +680,10 @@ export class Queryable<T> {
    * Fallbacks are tried in the order they are registered until one succeeds.
    */
   public fallbackTo(source: QueryFallback<T>): Queryable<T> {
-    this._fallbackManager.add(source);
-    return this;
+    // clone() deep-copies the FallbackManager, so adding to the draft's manager is isolated.
+    return this.withModel((_model, draft) => {
+      draft._fallbackManager.add(source);
+    });
   }
 
   /** Configure per-query fallback policy overrides. */
@@ -671,14 +703,15 @@ export class Queryable<T> {
     const subqueryModel = subquery._model;
     const subqueryEntity = subquery._entityClass as unknown as new () => unknown;
     const { query, parameters } = subqueryBuilder.generateFromModel(subqueryEntity, subqueryModel);
-    this._model.where = this._model.where || [];
     const clause: WhereClause = {
       condition: `EXISTS (${this.normalizeSplicedSubquerySql(query)})`,
       parameters
     };
-    this._model.where.push(clause);
-    this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
-    return this;
+    return this.withModel((model, draft) => {
+      model.where = model.where || [];
+      model.where.push(clause);
+      draft._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
+    });
   }
 
   /** Add IN (subquery) predicate for a column. */
@@ -695,14 +728,15 @@ export class Queryable<T> {
     const quotedColumn = this._provider
       .getDialect()
       .quoteIdentifier(this.resolveColumnName(column));
-    this._model.where = this._model.where || [];
     const clause: WhereClause = {
       condition: `${quotedColumn} IN (${this.normalizeSplicedSubquerySql(query)})`,
       parameters
     };
-    this._model.where.push(clause);
-    this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
-    return this;
+    return this.withModel((model, draft) => {
+      model.where = model.where || [];
+      model.where.push(clause);
+      draft._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
+    });
   }
 
   /**
@@ -792,10 +826,11 @@ export class Queryable<T> {
     keyOrSelector: K | ((entity: T) => T[keyof T])
   ): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
-    const orderByClause: OrderByClause = { column, direction: 'ASC' };
-    this._model.orderBy = this._model.orderBy || [];
-    this._model.orderBy.push(orderByClause);
-    return OrderedQueryable._fromQueryable(this);
+    const draft = this.withModel((model) => {
+      model.orderBy = model.orderBy || [];
+      model.orderBy.push({ column, direction: 'ASC' });
+    });
+    return OrderedQueryable._fromQueryable(draft);
   }
 
   /**
@@ -815,10 +850,11 @@ export class Queryable<T> {
     keyOrSelector: K | ((entity: T) => T[keyof T])
   ): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
-    const orderByClause: OrderByClause = { column, direction: 'DESC' };
-    this._model.orderBy = this._model.orderBy || [];
-    this._model.orderBy.push(orderByClause);
-    return OrderedQueryable._fromQueryable(this);
+    const draft = this.withModel((model) => {
+      model.orderBy = model.orderBy || [];
+      model.orderBy.push({ column, direction: 'DESC' });
+    });
+    return OrderedQueryable._fromQueryable(draft);
   }
 
   /** Limits the number of returned rows.
@@ -826,45 +862,50 @@ export class Queryable<T> {
    * const top10 = await context.products.take(10).toArray();
    */
   public take(count: number): Queryable<T> {
-    this._model.limit = count;
-    return this;
+    return this.withModel((model) => {
+      model.limit = count;
+    });
   }
   /** Skips given number of rows.
    * @example
    * const page2 = await context.products.orderBy('id').skip(10).take(10).toArray();
    */
   public skip(count: number): Queryable<T> {
-    this._model.offset = count;
-    return this;
+    return this.withModel((model) => {
+      model.offset = count;
+    });
   }
   /** Ensures distinct rows.
    * @example
    * const titles = await context.books.select(b => b.title).distinct().toArray();
    */
   public distinct(): Queryable<T> {
-    this._model.distinct = true;
-    return this;
+    return this.withModel((model) => {
+      model.distinct = true;
+    });
   }
 
   /** UNION with another queryable of the same entity. */
   public union(other: Queryable<T>): Queryable<T> {
-    this._model.unions = this._model.unions || [];
-    this._model.unions.push({
-      all: false,
-      other: other._model.clone(),
-      entity: other._entityClass
+    return this.withModel((model) => {
+      model.unions = model.unions || [];
+      model.unions.push({
+        all: false,
+        other: other._model.clone(),
+        entity: other._entityClass
+      });
     });
-    return this;
   }
   /** UNION ALL with another queryable of the same entity. */
   public unionAll(other: Queryable<T>): Queryable<T> {
-    this._model.unions = this._model.unions || [];
-    this._model.unions.push({
-      all: true,
-      other: other._model.clone(),
-      entity: other._entityClass
+    return this.withModel((model) => {
+      model.unions = model.unions || [];
+      model.unions.push({
+        all: true,
+        other: other._model.clone(),
+        entity: other._entityClass
+      });
     });
-    return this;
   }
 
   /**
@@ -943,8 +984,9 @@ export class Queryable<T> {
    */
   public groupBy<K extends keyof T>(key: K): Queryable<T> {
     const column = this.resolveColumnName(key as string);
-    this._model.groupBy = { columns: [column] };
-    return this;
+    return this.withModel((model) => {
+      model.groupBy = { columns: [column] };
+    });
   }
 
   /**
@@ -984,8 +1026,10 @@ export class Queryable<T> {
       input.parameters,
       this.buildColumnResolver()
     );
-    this._model.groupBy.having = { condition, parameters };
-    return this;
+    return this.withModel((model) => {
+      // groupBy is guaranteed present (checked above; the cloned model carries it).
+      model.groupBy!.having = { condition, parameters };
+    });
   }
 
   /**
@@ -1090,13 +1134,14 @@ export class Queryable<T> {
       const subquery = proxyResult as IncludeSubquery<unknown>;
       const key = subquery.propertyName;
       this._validateIncludeProperty(key);
-      this._lastIncludePath = key;
-      if (subquery.isFiltered) {
-        this._filteredIncludes.set(key, subquery);
-      } else {
-        if (!this._includes.includes(key)) this._includes.push(key);
-      }
-      return this;
+      return this.withModel((_model, draft) => {
+        draft._lastIncludePath = key;
+        if (subquery.isFiltered) {
+          draft._filteredIncludes.set(key, subquery);
+        } else if (!draft._includes.includes(key)) {
+          draft._includes.push(key);
+        }
+      });
     }
 
     // ── Fallback: plain key-extractor lambda (single property access) ────────
@@ -1106,9 +1151,10 @@ export class Queryable<T> {
 
   private _addSimpleInclude(key: string): Queryable<T> {
     this._validateIncludeProperty(key);
-    this._lastIncludePath = key;
-    if (!this._includes.includes(key)) this._includes.push(key);
-    return this;
+    return this.withModel((_model, draft) => {
+      draft._lastIncludePath = key;
+      if (!draft._includes.includes(key)) draft._includes.push(key);
+    });
   }
 
   private _validateIncludeProperty(key: string): void {
@@ -1187,9 +1233,10 @@ export class Queryable<T> {
     }
 
     const path = `${this._lastIncludePath}.${nestedKey}`;
-    this._lastIncludePath = path;
-    if (!this._includes.includes(path)) this._includes.push(path);
-    return this;
+    return this.withModel((_model, draft) => {
+      draft._lastIncludePath = path;
+      if (!draft._includes.includes(path)) draft._includes.push(path);
+    });
   }
 
   /**
@@ -1574,8 +1621,9 @@ export class Queryable<T> {
 
   /** Attach an AbortSignal to cancel execution before hitting the provider. */
   public withAbort(signal: AbortSignal): Queryable<T> {
-    this._abortSignal = signal;
-    return this;
+    return this.withModel((_model, draft) => {
+      draft._abortSignal = signal;
+    });
   }
 
   /** Calculate average of a numeric property */
@@ -1857,10 +1905,11 @@ export class OrderedQueryable<T> extends Queryable<T> {
     keyOrSelector: K | ((entity: T) => T[keyof T])
   ): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
-    const orderByClause: OrderByClause = { column, direction: 'ASC' };
-    this._model.orderBy = this._model.orderBy || [];
-    this._model.orderBy.push(orderByClause);
-    return this;
+    const draft = this.withModel((model) => {
+      model.orderBy = model.orderBy || [];
+      model.orderBy.push({ column, direction: 'ASC' });
+    });
+    return OrderedQueryable._fromQueryable(draft);
   }
 
   /**
@@ -1872,9 +1921,10 @@ export class OrderedQueryable<T> extends Queryable<T> {
     keyOrSelector: K | ((entity: T) => T[keyof T])
   ): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
-    const orderByClause: OrderByClause = { column, direction: 'DESC' };
-    this._model.orderBy = this._model.orderBy || [];
-    this._model.orderBy.push(orderByClause);
-    return this;
+    const draft = this.withModel((model) => {
+      model.orderBy = model.orderBy || [];
+      model.orderBy.push({ column, direction: 'DESC' });
+    });
+    return OrderedQueryable._fromQueryable(draft);
   }
 }
