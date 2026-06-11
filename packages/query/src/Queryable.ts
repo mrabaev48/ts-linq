@@ -40,6 +40,7 @@ import type { QueryContext } from './QueryContext';
 import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
 import { RowMaterializer } from './RowMaterializer';
+import { SetOperationBuilder } from './SetOperationBuilder';
 import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
 import { StreamingExecutor } from './StreamingExecutor';
 import { applyTagWith } from './tag-with';
@@ -105,6 +106,8 @@ export class Queryable<T> {
   private _tracking: TrackingCoordinator = new TrackingCoordinator();
   /** Stateless count-cache / single-flight coordinator. Shared by reference across all clones. */
   private _countCoordinator: CountCoordinator = new CountCoordinator();
+  /** Stateless set-operation (union/except/…) clause builder. Shared by reference across clones. */
+  private _setOps: SetOperationBuilder = new SetOperationBuilder();
 
   /** Per-query tracking mode. Defaults to TrackAll (mirrors EF Core semantics). */
   private _trackingMode: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -876,22 +879,14 @@ export class Queryable<T> {
   public union(other: Queryable<T>): Queryable<T> {
     return this.withModel((model) => {
       model.unions = model.unions || [];
-      model.unions.push({
-        all: false,
-        other: other._model.clone(),
-        entity: other._entityClass
-      });
+      model.unions.push(this._setOps.build('union', other._model, other._entityClass));
     });
   }
   /** UNION ALL with another queryable of the same entity. */
   public unionAll(other: Queryable<T>): Queryable<T> {
     return this.withModel((model) => {
       model.unions = model.unions || [];
-      model.unions.push({
-        all: true,
-        other: other._model.clone(),
-        entity: other._entityClass
-      });
+      model.unions.push(this._setOps.build('unionAll', other._model, other._entityClass));
     });
   }
 
@@ -1578,40 +1573,26 @@ export class Queryable<T> {
 
   /** Get elements that are in this sequence but not in the other (SQL EXCEPT). */
   public except(other: Queryable<T>): Queryable<T> {
-    const cloned = this.clone();
-    cloned._model.unions = cloned._model.unions ?? [];
-    cloned._model.unions.push({
-      all: false,
-      setOp: 'EXCEPT',
-      other: other._model.clone(),
-      entity: other._entityClass
+    return this.withModel((model) => {
+      model.unions = model.unions ?? [];
+      model.unions.push(this._setOps.build('except', other._model, other._entityClass));
     });
-    return cloned;
   }
 
   /** Get elements that are in both sequences (SQL INTERSECT). */
   public intersect(other: Queryable<T>): Queryable<T> {
-    const cloned = this.clone();
-    cloned._model.unions = cloned._model.unions ?? [];
-    cloned._model.unions.push({
-      all: false,
-      setOp: 'INTERSECT',
-      other: other._model.clone(),
-      entity: other._entityClass
+    return this.withModel((model) => {
+      model.unions = model.unions ?? [];
+      model.unions.push(this._setOps.build('intersect', other._model, other._entityClass));
     });
-    return cloned;
   }
 
   /** Concatenate with another sequence, preserving order (SQL UNION ALL). */
   public concat(other: Queryable<T>): Queryable<T> {
-    const cloned = this.clone();
-    cloned._model.unions = cloned._model.unions ?? [];
-    cloned._model.unions.push({
-      all: true,
-      other: other._model.clone(),
-      entity: other._entityClass
+    return this.withModel((model) => {
+      model.unions = model.unions ?? [];
+      model.unions.push(this._setOps.build('concat', other._model, other._entityClass));
     });
-    return cloned;
   }
 
   /**
