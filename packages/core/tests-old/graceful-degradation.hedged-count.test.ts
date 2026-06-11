@@ -3,6 +3,7 @@ import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { QueryFallback, FallbackRequest } from '@ts-linq/types';
+import { QueryContext } from '@ts-linq/query/internal';
 
 function defineEntity() {
   @Entity()
@@ -57,7 +58,7 @@ describe('Graceful Degradation - hedged count', () => {
       }
     };
 
-    const q = new Queryable(E, provider)
+    const q = new Queryable(E, QueryContext.fromProvider(provider))
       .fallbackTo(fakeFallback)
       .withFallbackPolicy({ hedged: { enabled: true, delayMs: 1 }, allowOps: ['count'] });
 

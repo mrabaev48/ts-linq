@@ -15,6 +15,7 @@
  */
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
 
 import { Queryable } from '../src/Queryable';
@@ -108,7 +109,7 @@ function makeQueryable(): Queryable<User> {
   MetadataStorage.addPrimaryKey(User, 'id');
   MetadataStorage.addColumn(User, { propertyName: 'name', columnName: 'name', type: 'TEXT' });
   MetadataStorage.addColumn(User, { propertyName: 'age', columnName: 'age', type: 'INTEGER' });
-  return new Queryable(User, new TestProvider());
+  return new Queryable(User, QueryContext.fromProvider(new TestProvider()));
 }
 
 function makeJoinQueryable(): Queryable<User> {
@@ -136,7 +137,7 @@ function makeJoinQueryable(): Queryable<User> {
     columnName: 'user_id',
     type: 'INTEGER'
   });
-  return new Queryable(User, new TestProvider());
+  return new Queryable(User, QueryContext.fromProvider(new TestProvider()));
 }
 
 // Helper: build a "nested path" lambda that accesses two properties at runtime.

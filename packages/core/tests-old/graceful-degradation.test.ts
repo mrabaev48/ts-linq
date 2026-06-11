@@ -4,6 +4,7 @@ import { MetadataStorage } from '@ts-linq/metadata';
 import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { QueryFallback } from '@ts-linq/types';
+import { QueryContext } from '@ts-linq/query/internal';
 
 function createEntity() {
   @Entity()
@@ -35,7 +36,7 @@ describe('Graceful Degradation - fallbackTo', () => {
       memory.push(u);
     }
 
-    const q = new Queryable(E, provider).fallbackTo(
+    const q = new Queryable(E, QueryContext.fromProvider(provider)).fallbackTo(
       new MemoryFallback<InstanceType<typeof E>>(() => memory)
     );
     const res = await q.toArray();

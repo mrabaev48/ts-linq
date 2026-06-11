@@ -1,5 +1,6 @@
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
 
 import { Queryable } from '../src/Queryable';
@@ -121,7 +122,7 @@ describe('TypedQueryable (tests-new)', () => {
       { id: 2, name: 'B' },
       { id: 1, name: 'A' }
     ]);
-    const typed = TypedQueryable.from(new Queryable(User, provider))
+    const typed = TypedQueryable.from(new Queryable(User, QueryContext.fromProvider(provider)))
       .whereCompiled({
         ast: {
           type: 'binary',
@@ -141,7 +142,7 @@ describe('TypedQueryable (tests-new)', () => {
     const provider = new TestProvider();
     provider.setRows([{ id: 5, name: 'Z' }]);
     provider.setCount(1);
-    const typed = TypedQueryable.from(new Queryable(User, provider));
+    const typed = TypedQueryable.from(new Queryable(User, QueryContext.fromProvider(provider)));
     expect(await typed.count()).toBe(1);
     expect(await typed.any()).toBe(true);
     expect((await typed.first()).id).toBe(5);
@@ -151,7 +152,9 @@ describe('TypedQueryable (tests-new)', () => {
     const provider = new TestProvider();
     provider.setRows(Array.from({ length: 3 }, (_, i) => ({ id: i + 1, name: `U${i + 1}` })));
     provider.setCount(3);
-    const typed = TypedQueryable.from(new Queryable(User, provider).orderBy('id'));
+    const typed = TypedQueryable.from(
+      new Queryable(User, QueryContext.fromProvider(provider)).orderBy('id')
+    );
     const page = await typed.paginate(1, 2);
     expect(page.items.length).toBe(2);
     expect(page.total).toBe(3);

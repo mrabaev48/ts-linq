@@ -15,6 +15,7 @@
 import type { EntityLoader } from '@ts-linq/core';
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
 import { QuerySplittingBehavior } from '@ts-linq/types';
 
@@ -216,31 +217,31 @@ describe('Queryable.asSplitQuery() / asSingleQuery()', () => {
   });
 
   it('asSplitQuery() returns a new Queryable (immutable chain)', () => {
-    const q = new Queryable<Blog>(Blog, provider);
+    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(provider));
     const split = q.asSplitQuery();
     expect(split).not.toBe(q);
     expect(split).toBeInstanceOf(Queryable);
   });
 
   it('asSingleQuery() returns a new Queryable (immutable chain)', () => {
-    const q = new Queryable<Blog>(Blog, provider);
+    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(provider));
     const single = q.asSingleQuery();
     expect(single).not.toBe(q);
     expect(single).toBeInstanceOf(Queryable);
   });
 
   it('effectiveSplittingBehavior defaults to SplitQuery when neither override nor global is set', () => {
-    const q = new Queryable<Blog>(Blog, provider);
+    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(provider));
     expect((q as any).effectiveSplittingBehavior).toBe(QuerySplittingBehavior.SplitQuery);
   });
 
   it('effectiveSplittingBehavior is SplitQuery after asSplitQuery()', () => {
-    const q = new Queryable<Blog>(Blog, provider).asSplitQuery();
+    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(provider)).asSplitQuery();
     expect((q as any).effectiveSplittingBehavior).toBe(QuerySplittingBehavior.SplitQuery);
   });
 
   it('effectiveSplittingBehavior is SingleQuery after asSingleQuery()', () => {
-    const q = new Queryable<Blog>(Blog, provider).asSingleQuery();
+    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(provider)).asSingleQuery();
     expect((q as any).effectiveSplittingBehavior).toBe(QuerySplittingBehavior.SingleQuery);
   });
 
@@ -248,15 +249,9 @@ describe('Queryable.asSplitQuery() / asSingleQuery()', () => {
     // global = SplitQuery, per-query = SingleQuery
     const q = new Queryable<Blog>(
       Blog,
-      provider,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      QuerySplittingBehavior.SplitQuery
+      QueryContext.fromProvider(provider, {
+        globalSplittingBehavior: QuerySplittingBehavior.SplitQuery
+      })
     );
     const single = q.asSingleQuery();
     expect((single as any).effectiveSplittingBehavior).toBe(QuerySplittingBehavior.SingleQuery);
@@ -265,21 +260,15 @@ describe('Queryable.asSplitQuery() / asSingleQuery()', () => {
   it('global default is used when no per-query override', () => {
     const q = new Queryable<Blog>(
       Blog,
-      provider,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      QuerySplittingBehavior.SingleQuery
+      QueryContext.fromProvider(provider, {
+        globalSplittingBehavior: QuerySplittingBehavior.SingleQuery
+      })
     );
     expect((q as any).effectiveSplittingBehavior).toBe(QuerySplittingBehavior.SingleQuery);
   });
 
   it('clone() preserves per-query splitting behavior override', () => {
-    const q = new Queryable<Blog>(Blog, provider).asSplitQuery();
+    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(provider)).asSplitQuery();
     const cloned = q.clone();
     expect((cloned as any).effectiveSplittingBehavior).toBe(QuerySplittingBehavior.SplitQuery);
   });
@@ -287,15 +276,9 @@ describe('Queryable.asSplitQuery() / asSingleQuery()', () => {
   it('clone() preserves global splitting behavior', () => {
     const q = new Queryable<Blog>(
       Blog,
-      provider,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      QuerySplittingBehavior.SingleQuery
+      QueryContext.fromProvider(provider, {
+        globalSplittingBehavior: QuerySplittingBehavior.SingleQuery
+      })
     );
     const cloned = q.clone();
     expect((cloned as any).effectiveSplittingBehavior).toBe(QuerySplittingBehavior.SingleQuery);
@@ -304,7 +287,7 @@ describe('Queryable.asSplitQuery() / asSingleQuery()', () => {
   it('toListAsync() is an alias for toArray() — same result', async () => {
     registerBlog();
     provider.setRows([{ id: 1, name: 'ts-linq blog' }]);
-    const q = new Queryable<Blog>(Blog, provider);
+    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(provider));
     const fromArray = await q.toArray();
     provider.setRows([{ id: 1, name: 'ts-linq blog' }]);
     const fromList = await q.toListAsync();
@@ -333,7 +316,10 @@ describe('2-level include in SplitQuery mode', () => {
 
   it('passes SplitQuery behavior to IncludePlanner when asSplitQuery() is used', async () => {
     const spyLoader = makeLoader(calls);
-    const q = new Queryable<Blog>(Blog, provider, spyLoader as EntityLoader);
+    const q = new Queryable<Blog>(
+      Blog,
+      QueryContext.fromProvider(provider, { entityLoader: spyLoader as EntityLoader })
+    );
     await q
       .include('posts')
       .thenInclude((p: any) => p.tags)
@@ -344,7 +330,10 @@ describe('2-level include in SplitQuery mode', () => {
 
   it('passes SingleQuery behavior to IncludePlanner when asSingleQuery() is used', async () => {
     const spyLoader = makeLoader(calls);
-    const q = new Queryable<Blog>(Blog, provider, spyLoader as EntityLoader);
+    const q = new Queryable<Blog>(
+      Blog,
+      QueryContext.fromProvider(provider, { entityLoader: spyLoader as EntityLoader })
+    );
     await q
       .include('posts')
       .thenInclude((p: any) => p.tags)
@@ -371,7 +360,10 @@ describe('2-level include in SplitQuery mode', () => {
       }
     } as unknown as EntityLoader;
 
-    const q = new Queryable<Blog>(Blog, provider, loader);
+    const q = new Queryable<Blog>(
+      Blog,
+      QueryContext.fromProvider(provider, { entityLoader: loader })
+    );
     const result = await q.include('posts').asSplitQuery().toArray();
 
     // Should get exactly 2 blogs — no cartesian multiplication
@@ -420,7 +412,10 @@ describe('Mixed reference + collection include in SplitQuery mode', () => {
       }
     } as unknown as EntityLoader;
 
-    const q = new Queryable<Blog>(Blog, provider, loader);
+    const q = new Queryable<Blog>(
+      Blog,
+      QueryContext.fromProvider(provider, { entityLoader: loader })
+    );
     const result = await q.include('posts').include('owner').asSplitQuery().toArray();
 
     expect(result).toHaveLength(1);
@@ -442,15 +437,9 @@ describe('Global default override via globalSplittingBehavior constructor param'
   it('per-query asSingleQuery() overrides global SplitQuery default', async () => {
     const q = new Queryable<Blog>(
       Blog,
-      provider,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      QuerySplittingBehavior.SplitQuery // global
+      QueryContext.fromProvider(provider, {
+        globalSplittingBehavior: QuerySplittingBehavior.SplitQuery
+      })
     );
     const single = q.asSingleQuery();
     expect((single as any).effectiveSplittingBehavior).toBe(QuerySplittingBehavior.SingleQuery);
@@ -459,15 +448,9 @@ describe('Global default override via globalSplittingBehavior constructor param'
   it('per-query asSplitQuery() overrides global SingleQuery default', async () => {
     const q = new Queryable<Blog>(
       Blog,
-      provider,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      QuerySplittingBehavior.SingleQuery // global
+      QueryContext.fromProvider(provider, {
+        globalSplittingBehavior: QuerySplittingBehavior.SingleQuery
+      })
     );
     const split = q.asSplitQuery();
     expect((split as any).effectiveSplittingBehavior).toBe(QuerySplittingBehavior.SplitQuery);

@@ -1,5 +1,6 @@
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { EntityAttacher, SqlDialect, SqlParameter } from '@ts-linq/types';
 
 import { Queryable } from '../../src/Queryable';
@@ -130,7 +131,7 @@ function makeRows(count: number): Record<string, unknown>[] {
 }
 
 function makeQueryable(provider: StreamTestProvider): Queryable<StreamUser> {
-  return new Queryable<StreamUser>(StreamUser, provider);
+  return new Queryable<StreamUser>(StreamUser, QueryContext.fromProvider(provider));
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -298,13 +299,7 @@ describe('asAsyncEnumerable / forEachAsync / toDictionaryAsync', () => {
 
       const queryable = new Queryable<StreamUser>(
         StreamUser,
-        provider,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        mockAttacher
+        QueryContext.fromProvider(provider, { entityAttacher: mockAttacher })
       );
 
       for await (const _ of queryable.asAsyncEnumerable()) {

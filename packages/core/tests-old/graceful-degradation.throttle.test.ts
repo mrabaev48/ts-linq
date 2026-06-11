@@ -3,6 +3,7 @@ import { Entity, Column, PrimaryKey } from '@ts-linq/core';
 import { Queryable } from '../src/query/Queryable';
 import { MemoryFallback } from '../src/query/fallbacks/MemoryFallback';
 import { ProviderStub } from './_stubs/ProviderStub';
+import { QueryContext } from '@ts-linq/query/internal';
 
 function defineEntity() {
   @Entity()
@@ -28,7 +29,7 @@ describe('Graceful Degradation Throttle', () => {
     const E = defineEntity();
     const provider = new FailingProvider(':memory:');
     const memory = [Object.assign(new E(), { id: 1, name: 'A' })];
-    const base = new Queryable(E, provider)
+    const base = new Queryable(E, QueryContext.fromProvider(provider))
       .fallbackTo(new MemoryFallback(() => memory))
       .withFallbackPolicy({ throttle: { minIntervalMs: 10 }, allowOps: ['select'] });
 
@@ -49,7 +50,7 @@ describe('Graceful Degradation Throttle', () => {
     const E = defineEntity();
     const provider = new FailingProvider(':memory:');
     const memory = [Object.assign(new E(), { id: 1, name: 'A' })];
-    const base = new Queryable(E, provider)
+    const base = new Queryable(E, QueryContext.fromProvider(provider))
       .fallbackTo(new MemoryFallback(() => memory))
       .withFallbackPolicy({ throttle: { maxPerMinute: 1 }, allowOps: ['select'] });
 

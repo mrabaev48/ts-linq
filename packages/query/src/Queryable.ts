@@ -36,11 +36,11 @@ import { IncludePlanner } from './IncludePlanner';
 import { resolveTargetCtor } from './includeUtils';
 import { PaginationBuilder } from './PaginationBuilder';
 import { QueryBuilder } from './QueryBuilder';
+import type { QueryContext } from './QueryContext';
 import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
 import { RowMaterializer } from './RowMaterializer';
 import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
-import { SqlVisitorFactory } from './SqlVisitorFactory';
 import { applyTagWith } from './tag-with';
 import { captureCallSiteTag } from './tag-with-call-site';
 
@@ -68,8 +68,12 @@ export class Queryable<T> {
   private _abortSignal?: AbortSignal;
   private _globalFilters?: GlobalFilter[];
   private _globalFilterApplier = new GlobalFilterApplier();
-  /** Single assembly point for configured SqlVisitor instances (translators + converters). */
-  private readonly _visitorFactory = new SqlVisitorFactory();
+  /**
+   * Immutable bundle of cross-cutting, chain-invariant configuration (provider, loader, cache,
+   * performance, filters, soft-delete, attacher, tracking, splitting, visitor factory). Copied by
+   * reference at every construction site instead of reproducing 11 positional arguments.
+   */
+  private readonly _context: QueryContext;
   /** Model-level filter names to skip. `'all'` disables every model-level filter. */
   private _ignoredFilters?: Set<string> | 'all';
   /** Per-context entity query filters from ModelBuilder.hasQueryFilter (P0-11). */
@@ -107,36 +111,29 @@ export class Queryable<T> {
   private _globalSplittingBehavior?: QuerySplittingBehavior;
 
   /**
-   * Create a new Queryable bound to an entity type and provider.
+   * Create a new Queryable bound to an entity type and a {@link QueryContext}.
    * @param entityClass Entity constructor.
-   * @param provider Database provider used for execution.
-   * @param entityLoader Optional entity loader for eager includes.
+   * @param context Immutable bundle of cross-cutting query configuration (provider, loader, …).
+   * @param model Optional pre-built query model (used by `clone`/`selectCompiled`/`ofType`).
    */
-  constructor(
-    entityClass: new () => T,
-    provider: DatabaseProvider,
-    entityLoader?: EntityLoader,
-    entityCache?: EntityCacheLike,
-    performance?: PerformanceOptions,
-    globalFilters?: GlobalFilter[],
-    softDeleteOptions?: import('@ts-linq/types').SoftDeleteOptions,
-    entityAttacher?: EntityAttacher,
-    trackingMode?: QueryTrackingBehavior,
-    globalSplittingBehavior?: QuerySplittingBehavior,
-    entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>
-  ) {
+  constructor(entityClass: new () => T, context: QueryContext, model?: QueryModel) {
     this._entityClass = entityClass;
+    this._context = context;
+    const provider = context.provider;
+    const performance = context.performance;
     this._provider = provider;
-    this._entityLoader = entityLoader;
-    this._entityCache = entityCache;
+    this._entityLoader = context.entityLoader;
+    this._entityCache = context.entityCache;
     this._performance = performance;
-    this._globalFilters = globalFilters;
-    this._softDeleteOptions = softDeleteOptions;
-    if (entityAttacher !== undefined) this._entityAttacher = entityAttacher;
-    if (trackingMode !== undefined) this._trackingMode = trackingMode;
-    if (globalSplittingBehavior !== undefined)
-      this._globalSplittingBehavior = globalSplittingBehavior;
-    if (entityQueryFilters !== undefined) this._entityQueryFilters = entityQueryFilters;
+    this._globalFilters = context.globalFilters;
+    this._softDeleteOptions = context.softDeleteOptions;
+    if (context.entityAttacher !== undefined) this._entityAttacher = context.entityAttacher;
+    if (context.trackingMode !== undefined) this._trackingMode = context.trackingMode;
+    if (context.globalSplittingBehavior !== undefined)
+      this._globalSplittingBehavior = context.globalSplittingBehavior;
+    if (context.entityQueryFilters !== undefined)
+      this._entityQueryFilters = context.entityQueryFilters;
+    if (model !== undefined) this._model = model;
     this._externalCountCache = performance?.countCache;
     this._sqlBuilder = new QueryBuilder(
       provider.getDialect(),
@@ -180,19 +177,7 @@ export class Queryable<T> {
 
   /** Create a shallow clone sharing provider/loader but copying model. */
   public clone(): Queryable<T> {
-    const clonedQueryable = new Queryable<T>(
-      this._entityClass,
-      this._provider,
-      this._entityLoader,
-      this._entityCache,
-      this._performance,
-      this._globalFilters,
-      this._softDeleteOptions,
-      undefined,
-      undefined,
-      this._globalSplittingBehavior,
-      this._entityQueryFilters
-    );
+    const clonedQueryable = new Queryable<T>(this._entityClass, this._context);
     clonedQueryable._model = this._model.clone();
     // preserve where signature for accurate count cache keys
     clonedQueryable._whereSignature = this._whereSignature;
@@ -768,17 +753,24 @@ export class Queryable<T> {
   public selectCompiled<TResult>(input: {
     readonly fields: readonly string[];
   }): Queryable<TResult> {
+    // Carry the FULL context (provider, loader, cache, performance, global filters, soft-delete,
+    // attacher, splitting default, entity query filters) into the projection. The former
+    // 5-positional construction silently dropped six config fields, so a projected query lost its
+    // tracking/filter configuration — a real latent bug, not just a smell.
     const next = new Queryable<TResult>(
       this._entityClass as unknown as new () => TResult,
-      this._provider,
-      this._entityLoader,
-      this._entityCache,
-      this._performance
+      this._context
     );
     next._model = this._model.clone();
     next._model.select = [...input.fields];
     (next as unknown as { _fallbackManager: FallbackManager<TResult> })._fallbackManager =
       this._fallbackManager;
+    // Carry per-chain state set after construction (mirrors clone()): an `asNoTracking()` /
+    // `asSplitQuery()` / `ignoreQueryFilters()` applied before the projection must survive it.
+    next._trackingMode = this._trackingMode;
+    next._entityAttacher = this._entityAttacher;
+    next._splittingBehavior = this._splittingBehavior;
+    next._ignoredFilters = this._ignoredFilters;
     return next;
   }
 
@@ -887,17 +879,16 @@ export class Queryable<T> {
    * const emails = ctx.notifications.ofType(EmailNotification);
    */
   public ofType<TSub extends T>(ctor: new () => TSub): Queryable<TSub> {
+    // Subtype query: carry the current per-chain attacher/tracking mode, but intentionally drop
+    // entity query filters (they target the base entity) — now an explicit wither override instead
+    // of a positional omission.
     const sub = new Queryable<TSub>(
       ctor,
-      this._provider,
-      this._entityLoader,
-      this._entityCache,
-      this._performance,
-      this._globalFilters,
-      this._softDeleteOptions,
-      this._entityAttacher,
-      this._trackingMode,
-      this._globalSplittingBehavior
+      this._context.with({
+        entityAttacher: this._entityAttacher,
+        trackingMode: this._trackingMode,
+        entityQueryFilters: undefined
+      })
     );
     sub._model = this._model.clone();
 
@@ -1574,7 +1565,7 @@ export class Queryable<T> {
 
   /** Assembles a fully-configured SqlVisitor (dialect translators + metadata converters/rewriters). */
   private createSqlVisitor(): SqlVisitor {
-    return this._visitorFactory.create({
+    return this._context.visitorFactory.create({
       metadata: MetadataStorage.getEntity(this._entityClass),
       dialect: this._provider.getDialect(),
       converterResolver: this.buildConverterResolver()
