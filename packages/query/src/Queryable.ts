@@ -1,8 +1,7 @@
-import type { ExpressionNode, PropertyNode } from '@ts-linq/ast';
+import type { ExpressionNode } from '@ts-linq/ast';
 import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
 import { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { ColumnResolver, ConverterResolver, SqlVisitor } from '@ts-linq/sql-visitor';
 import { FragmentJoinPlanner } from '@ts-linq/sql-visitor/internal';
 import type {
   CountCache,
@@ -37,6 +36,7 @@ import { resolveTargetCtor } from './includeUtils';
 import { InheritanceQueryPlanner } from './InheritanceQueryPlanner';
 import { JoinBuilder } from './JoinBuilder';
 import { PaginationBuilder } from './PaginationBuilder';
+import { type BuiltPredicate, PredicateBuilder } from './PredicateBuilder';
 import { QueryBuilder } from './QueryBuilder';
 import type { QueryContext } from './QueryContext';
 import { QueryExecutor } from './QueryExecutor';
@@ -107,6 +107,8 @@ export class Queryable<T> {
   private _streaming!: StreamingExecutor<T>;
   /** Bulk DML (executeUpdate / executeDelete) executor. Re-created per instance in ctor. */
   private _bulkDml!: BulkDmlExecutor<T>;
+  /** Predicate (where/having) clause builder + SQL-visitor/column plumbing. Re-created in ctor. */
+  private _predicates!: PredicateBuilder<T>;
   /** Stateless tracking / identity-resolution coordinator. Shared by reference across all clones. */
   private _tracking: TrackingCoordinator = new TrackingCoordinator();
   /** Terminal-operation runner (toArray/first/any). Stateless; reuses the tracking coordinator. */
@@ -202,6 +204,11 @@ export class Queryable<T> {
       this._materializer
     );
     this._bulkDml = new BulkDmlExecutor<T>(this._entityClass, this._provider);
+    this._predicates = new PredicateBuilder<T>(
+      this._entityClass,
+      this._provider,
+      this._context.visitorFactory
+    );
   }
 
   /** Create a shallow clone sharing provider/loader but copying model. */
@@ -509,35 +516,7 @@ export class Queryable<T> {
    * filter: column IN (v1, v2, ...)
    */
   public whereIn<K extends keyof T & string>(column: K, values: ReadonlyArray<T[K]>): Queryable<T> {
-    if (!values || values.length === 0) {
-      // IN (empty) matches nothing; ensure we return empty set via condition "1 = 0".
-      return this.withModel((model, draft) => {
-        model.where = model.where || [];
-        model.where.push({ condition: '1 = 0', parameters: [] });
-        draft._whereSignature += '|1=0:[]';
-      });
-    }
-
-    // Resolve column name from metadata (if available) or use property name
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    const dbColumn = metadata
-      ? metadata.columns.find((c) => c.propertyName === column || c.columnName === column)
-          ?.columnName || column
-      : column;
-
-    const quotedCol = this._provider.getDialect().quoteIdentifier(dbColumn);
-
-    const whereClause: WhereClause = {
-      condition: `${quotedCol} IN (${values.map(() => '?').join(', ')})`,
-      parameters: values as unknown as SqlParameter[]
-    };
-
-    const sigParams = values.length > 5 ? `[${values.length} values]` : JSON.stringify(values);
-    return this.withModel((model, draft) => {
-      model.where = model.where || [];
-      model.where.push(whereClause);
-      draft._whereSignature += `|${column}IN:${sigParams}`;
-    });
+    return this.applyPredicate(this._predicates.whereIn(column, values));
   }
 
   /** Apply configured global filters to the provided query model. */
@@ -548,9 +527,9 @@ export class Queryable<T> {
       this._softDeleteOptions ?? this._provider.softDeleteOptions,
       this._globalFilters,
       this._ignoredFilters,
-      this.buildColumnResolver(),
+      this._predicates.buildColumnResolver(),
       this._entityQueryFilters,
-      this.createSqlVisitor()
+      this._predicates.createSqlVisitor()
     );
   }
 
@@ -689,18 +668,7 @@ export class Queryable<T> {
     readonly ast: ExpressionNode;
     readonly parameters: readonly unknown[];
   }): Queryable<T> {
-    const visitor = this.createSqlVisitor();
-    const { condition, parameters } = visitor.toSql(
-      input.ast,
-      input.parameters,
-      this.buildColumnResolver()
-    );
-    const whereClause: WhereClause = { condition, parameters };
-    return this.withModel((model, draft) => {
-      model.where = model.where || [];
-      model.where.push(whereClause);
-      draft._whereSignature += `|${whereClause.condition}:${JSON.stringify(whereClause.parameters)}`;
-    });
+    return this.applyPredicate(this._predicates.whereCompiled(input));
   }
 
   /**
@@ -727,19 +695,13 @@ export class Queryable<T> {
 
   /** Add EXISTS (subquery) predicate. */
   public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
-    const subqueryBuilder = subquery._sqlBuilder;
-    const subqueryModel = subquery._model;
-    const subqueryEntity = subquery._entityClass as unknown as new () => unknown;
-    const { query, parameters } = subqueryBuilder.generateFromModel(subqueryEntity, subqueryModel);
-    const clause: WhereClause = {
-      condition: `EXISTS (${this.normalizeSplicedSubquerySql(query)})`,
-      parameters
-    };
-    return this.withModel((model, draft) => {
-      model.where = model.where || [];
-      model.where.push(clause);
-      draft._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
-    });
+    return this.applyPredicate(
+      this._predicates.whereExists(
+        subquery._sqlBuilder,
+        subquery._model,
+        subquery._entityClass as unknown as new () => unknown
+      )
+    );
   }
 
   /** Add IN (subquery) predicate for a column. */
@@ -747,39 +709,23 @@ export class Queryable<T> {
     column: keyof T & string,
     subquery: Queryable<TOther>
   ): Queryable<T> {
-    const subqueryBuilder = subquery._sqlBuilder;
-    const subqueryModel = subquery._model;
-    const subqueryEntity = subquery._entityClass as unknown as new () => unknown;
-    const { query, parameters } = subqueryBuilder.generateFromModel(subqueryEntity, subqueryModel);
-    // Resolve the property key to its mapped column name and quote it via the dialect so the
-    // predicate is correct under `@Column({ name })` and portable across dialects (no raw key).
-    const quotedColumn = this._provider
-      .getDialect()
-      .quoteIdentifier(this.resolveColumnName(column));
-    const clause: WhereClause = {
-      condition: `${quotedColumn} IN (${this.normalizeSplicedSubquerySql(query)})`,
-      parameters
-    };
-    return this.withModel((model, draft) => {
-      model.where = model.where || [];
-      model.where.push(clause);
-      draft._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
-    });
+    return this.applyPredicate(
+      this._predicates.whereInSubquery(
+        column,
+        subquery._sqlBuilder,
+        subquery._model,
+        subquery._entityClass as unknown as new () => unknown
+      )
+    );
   }
 
-  /**
-   * Reset a spliced subquery's placeholders back to positional `?`.
-   *
-   * The subquery is rendered by its own dialect pass, which may have already numbered its
-   * placeholders (`$1` for Postgres, `@p1` for SQL Server). Once spliced into the outer
-   * statement, the dialect renumbers placeholders globally in document order; pre-numbered
-   * subquery placeholders would survive that pass and collide with the outer parameters. By
-   * normalizing them to `?`, the single global renumber assigns consistent indices across the
-   * outer clause and the subquery, keeping every parameter aligned. Values are always
-   * parameterized (never interpolated), so no literal can contain a `$N`/`@pN` token.
-   */
-  private normalizeSplicedSubquerySql(sql: string): string {
-    return sql.replace(/@p\d+|\$\d+/g, '?');
+  /** Push a built predicate's clause onto the model and extend the count-cache signature. */
+  private applyPredicate(built: BuiltPredicate): Queryable<T> {
+    return this.withModel((model, draft) => {
+      model.where = model.where || [];
+      model.where.push(built.clause);
+      draft._whereSignature += built.signature;
+    });
   }
 
   /** With CTE support: define a named subquery and return a Queryable bound to that CTE. */
@@ -1001,15 +947,10 @@ export class Queryable<T> {
     if (!this._model.groupBy) {
       throw new Error('havingCompiled() requires a preceding groupBy()');
     }
-    const visitor = this.createSqlVisitor();
-    const { condition, parameters } = visitor.toSql(
-      input.ast,
-      input.parameters,
-      this.buildColumnResolver()
-    );
+    const having = this._predicates.compileHaving(input);
     return this.withModel((model) => {
       // groupBy is guaranteed present (checked above; the cloned model carries it).
-      model.groupBy!.having = { condition, parameters };
+      model.groupBy!.having = having;
     });
   }
 
@@ -1415,8 +1356,7 @@ export class Queryable<T> {
 
   /** Resolve a TypeScript property name to its database column name via entity metadata. */
   protected resolveColumnName(propName: string): string {
-    const meta = MetadataStorage.getEntity(this._entityClass);
-    return meta?.columns.find((c) => c.propertyName === propName)?.columnName ?? propName;
+    return this._predicates.resolveColumnName(propName);
   }
 
   /** Returns true if at least one row matches the query.
@@ -1428,64 +1368,6 @@ export class Queryable<T> {
     queryModel.limit = 1;
     const entities = await this._runner.materialize(this.buildRunSpec(queryModel));
     return entities.length > 0;
-  }
-
-  /**
-   * Builds a ColumnResolver that maps TypeScript property names to SQL column names
-   * using entity metadata. Falls back to the property name when no mapping is found.
-   *
-   * For multi-segment paths (u.profile.city), only the last segment is resolved
-   * against the entity's own columns; prefix segments are left as-is.
-   */
-  private buildColumnResolver(): ColumnResolver | undefined {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata || metadata.columns.length === 0) return undefined;
-
-    return (node: PropertyNode): string => {
-      const lastSegment = node.name ?? node.path?.[node.path.length - 1];
-      const col =
-        lastSegment !== undefined
-          ? metadata.columns.find((c) => c.propertyName === lastSegment)
-          : undefined;
-      const resolvedName = col?.columnName ?? lastSegment;
-
-      if (node.name !== undefined) {
-        return resolvedName ?? node.name;
-      }
-      if (node.path !== undefined && node.path.length > 0) {
-        if (resolvedName === undefined) return node.path.join('.');
-        return [...node.path.slice(0, -1), resolvedName].join('.');
-      }
-      return '';
-    };
-  }
-
-  /**
-   * Builds a ConverterResolver that maps a TypeScript property name to its registered
-   * ValueConverter (via `HasConversion`), mirroring {@link buildColumnResolver}.
-   *
-   * Without this, value converters are silently ignored in WHERE/HAVING predicates: a literal
-   * compared against a converted column is emitted unconverted, producing wrong results. The
-   * resolver feeds {@link SqlVisitorFactory} so `BinaryVisitor` can lift literals to their
-   * provider representation. Returns `undefined` when the entity registers no converters.
-   */
-  private buildConverterResolver(): ConverterResolver | undefined {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata || metadata.columns.length === 0) return undefined;
-    const hasConverter = metadata.columns.some((c) => c.converter !== undefined);
-    if (!hasConverter) return undefined;
-
-    return (propertyName: string) =>
-      metadata.columns.find((c) => c.propertyName === propertyName)?.converter;
-  }
-
-  /** Assembles a fully-configured SqlVisitor (dialect translators + metadata converters/rewriters). */
-  private createSqlVisitor(): SqlVisitor {
-    return this._context.visitorFactory.create({
-      metadata: MetadataStorage.getEntity(this._entityClass),
-      dialect: this._provider.getDialect(),
-      converterResolver: this.buildConverterResolver()
-    });
   }
 
   /** Attach an AbortSignal to cancel execution before hitting the provider. */
