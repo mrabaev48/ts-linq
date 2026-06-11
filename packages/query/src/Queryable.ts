@@ -40,6 +40,7 @@ import { QueryBuilder } from './QueryBuilder';
 import type { QueryContext } from './QueryContext';
 import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
+import { QueryRunner, type RunSpec } from './QueryRunner';
 import { RowMaterializer } from './RowMaterializer';
 import { SetOperationBuilder } from './SetOperationBuilder';
 import { type ISetPropertyCalls } from './SetPropertyCalls';
@@ -107,6 +108,8 @@ export class Queryable<T> {
   private _bulkDml!: BulkDmlExecutor<T>;
   /** Stateless tracking / identity-resolution coordinator. Shared by reference across all clones. */
   private _tracking: TrackingCoordinator = new TrackingCoordinator();
+  /** Terminal-operation runner (toArray/first/any). Stateless; reuses the tracking coordinator. */
+  private _runner: QueryRunner = new QueryRunner(this._tracking);
   /** Stateless count-cache / single-flight coordinator. Shared by reference across all clones. */
   private _countCoordinator: CountCoordinator = new CountCoordinator();
   /** Stateless set-operation (union/except/…) clause builder. Shared by reference across clones. */
@@ -479,14 +482,20 @@ export class Queryable<T> {
     return cloned;
   }
 
-  /** Apply tracking / identity-resolution logic to a freshly materialized entity list. */
-  private _applyTracking(entities: T[]): T[] {
-    return this._tracking.apply(
-      entities,
-      this._entityClass,
-      this._trackingMode,
-      this._entityAttacher
-    );
+  /** Assemble the terminal-run spec from the current chain state for {@link QueryRunner}. */
+  private buildRunSpec(model: QueryModel): RunSpec<T> {
+    return {
+      model,
+      executor: this._executor,
+      entityClass: this._entityClass,
+      includes: this._includes,
+      cte: this._cte,
+      splitting: this.effectiveSplittingBehavior,
+      filteredIncludes: this._filteredIncludes.size ? this._filteredIncludes : undefined,
+      abortSignal: this._abortSignal,
+      trackingMode: this._trackingMode,
+      attacher: this._entityAttacher
+    };
   }
 
   /**
@@ -1351,17 +1360,7 @@ export class Queryable<T> {
    * const items = await context.products.where(p => p.stock > 0).toArray();
    */
   public async toArray(): Promise<T[]> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const queryModel = this.prepareQueryModel();
-    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
-    const entities = await this._executor.executeAndMaterialize(
-      queryModel,
-      this._includes,
-      this._cte,
-      this.effectiveSplittingBehavior,
-      filteredIncludes
-    );
-    return this._applyTracking(entities);
+    return this._runner.toList(this.buildRunSpec(this.prepareQueryModel()));
   }
 
   /** Returns the first entity or throws if none.
@@ -1369,18 +1368,9 @@ export class Queryable<T> {
    * const first = await context.books.orderBy('id').first();
    */
   public async first(): Promise<T> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
-    const entities = await this._executor.executeAndMaterialize(
-      queryModel,
-      this._includes,
-      this._cte,
-      this.effectiveSplittingBehavior,
-      filteredIncludes
-    );
-    const tracked = this._applyTracking(entities);
+    const tracked = await this._runner.toList(this.buildRunSpec(queryModel));
     if (!tracked.length) throw new Error('Sequence contains no elements');
     return tracked[0];
   }
@@ -1390,18 +1380,9 @@ export class Queryable<T> {
    * const maybe = await context.books.where(b => b.id > 10000).firstOrDefault();
    */
   public async firstOrDefault(): Promise<T | null> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
-    const entities = await this._executor.executeAndMaterialize(
-      queryModel,
-      this._includes,
-      this._cte,
-      this.effectiveSplittingBehavior,
-      filteredIncludes
-    );
-    const tracked = this._applyTracking(entities);
+    const tracked = await this._runner.toList(this.buildRunSpec(queryModel));
     return tracked[0] ?? null;
   }
 
@@ -1457,17 +1438,9 @@ export class Queryable<T> {
    * const exists = await context.products.where(p => p.name === 'Laptop').any();
    */
   public async any(): Promise<boolean> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
-    const entities = await this._executor.executeAndMaterialize(
-      queryModel,
-      this._includes,
-      this._cte,
-      this.effectiveSplittingBehavior,
-      filteredIncludes
-    );
+    const entities = await this._runner.materialize(this.buildRunSpec(queryModel));
     return entities.length > 0;
   }
 
