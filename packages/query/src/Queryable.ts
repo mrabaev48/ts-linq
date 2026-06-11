@@ -25,6 +25,7 @@ import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
 
 import { AggregateOperations } from './AggregateOperations';
 import { type QueryTagList } from './ast/query-tags';
+import { BulkDmlExecutor } from './BulkDmlExecutor';
 import { CountCoordinator } from './CountCoordinator';
 import { IncludeResolutionError } from './errors';
 import { extractKey } from './extractKey';
@@ -41,7 +42,7 @@ import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
 import { RowMaterializer } from './RowMaterializer';
 import { SetOperationBuilder } from './SetOperationBuilder';
-import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
+import { type ISetPropertyCalls } from './SetPropertyCalls';
 import { StreamingExecutor } from './StreamingExecutor';
 import { applyTagWith } from './tag-with';
 import { captureCallSiteTag } from './tag-with-call-site';
@@ -102,6 +103,8 @@ export class Queryable<T> {
   private _aggregates!: AggregateOperations<T>;
   /** Streaming executor (asAsyncEnumerable / toDictionary). Re-created per instance in ctor. */
   private _streaming!: StreamingExecutor<T>;
+  /** Bulk DML (executeUpdate / executeDelete) executor. Re-created per instance in ctor. */
+  private _bulkDml!: BulkDmlExecutor<T>;
   /** Stateless tracking / identity-resolution coordinator. Shared by reference across all clones. */
   private _tracking: TrackingCoordinator = new TrackingCoordinator();
   /** Stateless count-cache / single-flight coordinator. Shared by reference across all clones. */
@@ -190,6 +193,7 @@ export class Queryable<T> {
       this._sqlBuilder,
       this._materializer
     );
+    this._bulkDml = new BulkDmlExecutor<T>(this._entityClass, this._provider);
   }
 
   /** Create a shallow clone sharing provider/loader but copying model. */
@@ -1609,46 +1613,11 @@ export class Queryable<T> {
   public async executeUpdate(
     setters: (s: ISetPropertyCalls<T>) => ISetPropertyCalls<T>
   ): Promise<number> {
-    if (this._includes.length > 0 || this._filteredIncludes.size > 0) {
-      throw new Error(
-        'Cannot call executeUpdate() after include(). ' +
-          'Bulk DML does not support eager loading. Remove the include() call.'
-      );
-    }
-
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata) {
-      throw new Error(
-        `ts-linq: entity metadata not found for ${this._entityClass.name}. ` +
-          'Ensure the class is decorated with @Entity().'
-      );
-    }
-
-    const collector = new SetPropertyCalls<T>();
-    setters(collector);
-    const setterSpecs = collector.toSetterSpecs(metadata.columns);
-
-    if (setterSpecs.length === 0) {
-      throw new Error('executeUpdate() requires at least one setProperty() call.');
-    }
-
-    const queryModel = this.prepareQueryModel();
-    const dialect = this._provider.getDialect();
-
-    if (!dialect.buildBulkUpdate) {
-      throw new Error(
-        `The current dialect (${this._provider.providerLabel ?? 'unknown'}) does not support buildBulkUpdate. ` +
-          'Implement buildBulkUpdate() on the dialect class.'
-      );
-    }
-
-    const { sql, parameters } = dialect.buildBulkUpdate({
-      tableName: metadata.tableName,
-      setters: setterSpecs,
-      where: queryModel.where ?? []
-    });
-
-    return this._provider.executeNonQuery(sql, parameters);
+    return this._bulkDml.update(
+      setters,
+      this._includes.length > 0 || this._filteredIncludes.size > 0,
+      () => this.prepareQueryModel()
+    );
   }
 
   /**
@@ -1663,37 +1632,9 @@ export class Queryable<T> {
    *   .executeDelete();
    */
   public async executeDelete(): Promise<number> {
-    if (this._includes.length > 0 || this._filteredIncludes.size > 0) {
-      throw new Error(
-        'Cannot call executeDelete() after include(). ' +
-          'Bulk DML does not support eager loading. Remove the include() call.'
-      );
-    }
-
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata) {
-      throw new Error(
-        `ts-linq: entity metadata not found for ${this._entityClass.name}. ` +
-          'Ensure the class is decorated with @Entity().'
-      );
-    }
-
-    const queryModel = this.prepareQueryModel();
-    const dialect = this._provider.getDialect();
-
-    if (!dialect.buildBulkDelete) {
-      throw new Error(
-        `The current dialect (${this._provider.providerLabel ?? 'unknown'}) does not support buildBulkDelete. ` +
-          'Implement buildBulkDelete() on the dialect class.'
-      );
-    }
-
-    const { sql, parameters } = dialect.buildBulkDelete({
-      tableName: metadata.tableName,
-      where: queryModel.where ?? []
-    });
-
-    return this._provider.executeNonQuery(sql, parameters);
+    return this._bulkDml.delete(this._includes.length > 0 || this._filteredIncludes.size > 0, () =>
+      this.prepareQueryModel()
+    );
   }
 
   private _addJoinOn<TOther>(
