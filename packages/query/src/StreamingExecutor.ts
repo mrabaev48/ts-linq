@@ -1,6 +1,6 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import { QueryTrackingBehavior } from '@ts-linq/core';
-import type { EntityAttacher } from '@ts-linq/types';
+import { DuplicateKeyError, type EntityAttacher } from '@ts-linq/types';
 
 import type { QueryBuilder } from './QueryBuilder';
 import type { QueryModel } from './QueryModel';
@@ -79,7 +79,10 @@ export class StreamingExecutor<T> {
     for await (const entity of iterable) {
       const key = keySelector(entity);
       if (map.has(key)) {
-        throw new Error(`An item with the same key has already been added. Key: ${String(key)}`);
+        throw new DuplicateKeyError(
+          `An item with the same key has already been added. Key: ${String(key)}`,
+          { details: { key } }
+        );
       }
       map.set(key, elementSelector ? elementSelector(entity) : (entity as unknown as V));
     }

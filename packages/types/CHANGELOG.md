@@ -1,5 +1,30 @@
 # @ts-linq/types
 
+## 4.5.0
+
+### Minor Changes
+
+- Typed errors across the query layer (CLAUDE.md §16 compliance)
+
+  Every shipped failure in `@ts-linq/query` now throws an `OrmError` subclass instead of a bare
+  `Error`, so consumers can discriminate via `e instanceof OrmError` / `e.code` rather than
+  string-matching messages. Error messages are preserved byte-for-byte.
+
+  `@ts-linq/types` (minor) adds two new error classes + codes:
+  - `SequenceError` (`SEQUENCE_ERROR`) — cardinality violations from `first()`/`single()`
+    (`details.reason: 'empty' | 'multiple'`).
+  - `DuplicateKeyError` (`DUPLICATE_KEY`) — duplicate key while materializing a dictionary
+    (`toDictionaryAsync`); `details.key` carries the offending key.
+
+  `ValidationError`'s constructor now accepts an optional `OrmErrorOptions` (additive) so a `cause`
+  can be chained.
+
+  `@ts-linq/query` (patch) maps existing bare throws to the appropriate typed error
+  (`OperationAbortedError`, `MetadataError`, `UnsupportedOperationError`, `ValidationError`,
+  `InvalidIncludeError`, `SequenceError`, `DuplicateKeyError`) and re-roots `IncludeResolutionError`
+  under `OrmError` (it now satisfies `instanceof OrmError` while keeping its bespoke `code`/`details`).
+  No public API surface change.
+
 ## 4.4.0
 
 ### Minor Changes

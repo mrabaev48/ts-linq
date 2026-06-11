@@ -4,7 +4,7 @@
  */
 import type { DatabaseProvider } from '@ts-linq/core';
 import { QueryTrackingBehavior } from '@ts-linq/core';
-import type { EntityAttacher } from '@ts-linq/types';
+import { DuplicateKeyError, type EntityAttacher } from '@ts-linq/types';
 
 import type { QueryBuilder } from '../src/QueryBuilder';
 import { QueryModel } from '../src/QueryModel';
@@ -143,9 +143,12 @@ describe('StreamingExecutor.collectDictionary', () => {
     expect(map.get(7)).toBe('v7');
   });
 
-  it('throws on duplicate keys', async () => {
+  it('throws a typed DuplicateKeyError on duplicate keys', async () => {
     await expect(
       executor.collectDictionary(iter([{ id: 1 }, { id: 1 }]), (r) => r.id)
     ).rejects.toThrow('An item with the same key has already been added. Key: 1');
+    await expect(
+      executor.collectDictionary(iter([{ id: 1 }, { id: 1 }]), (r) => r.id)
+    ).rejects.toBeInstanceOf(DuplicateKeyError);
   });
 });

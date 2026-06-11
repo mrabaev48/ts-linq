@@ -5,6 +5,7 @@
  */
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { MetadataError, UnsupportedOperationError, ValidationError } from '@ts-linq/types';
 
 import { BulkDmlExecutor } from '../src/BulkDmlExecutor';
 import { QueryModel } from '../src/QueryModel';
@@ -52,20 +53,27 @@ describe('BulkDmlExecutor.update', () => {
     await expect(exec.update(setName('x'), true, noModel)).rejects.toThrow(
       'Cannot call executeUpdate() after include(). Bulk DML does not support eager loading. Remove the include() call.'
     );
+    await expect(exec.update(setName('x'), true, noModel)).rejects.toBeInstanceOf(
+      UnsupportedOperationError
+    );
   });
 
-  it('rejects when entity metadata is missing', async () => {
+  it('rejects with a typed MetadataError when entity metadata is missing', async () => {
     const exec = new BulkDmlExecutor<Unregistered>(Unregistered, makeProvider({}));
     await expect(exec.update(() => ({}) as never, false, noModel)).rejects.toThrow(
       'ts-linq: entity metadata not found for Unregistered. Ensure the class is decorated with @Entity().'
     );
+    await expect(exec.update(() => ({}) as never, false, noModel)).rejects.toBeInstanceOf(
+      MetadataError
+    );
   });
 
-  it('rejects when no setProperty() was called', async () => {
+  it('rejects with a typed ValidationError when no setProperty() was called', async () => {
     const exec = new BulkDmlExecutor<BulkUser>(BulkUser, makeProvider({}));
     await expect(exec.update((s) => s, false, noModel)).rejects.toThrow(
       'executeUpdate() requires at least one setProperty() call.'
     );
+    await expect(exec.update((s) => s, false, noModel)).rejects.toBeInstanceOf(ValidationError);
   });
 
   it('rejects when the dialect cannot build a bulk update', async () => {

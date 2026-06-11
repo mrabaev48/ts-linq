@@ -1,4 +1,4 @@
-import type { FilteredIncludeSpec } from '@ts-linq/types';
+import { type FilteredIncludeSpec, UnsupportedOperationError } from '@ts-linq/types';
 
 /**
  * Fluent builder returned when a navigation property is accessed inside a filtered
@@ -129,7 +129,7 @@ export class IncludeSubquery<T> implements FilteredIncludeSpec {
 
   /** @throws Always — select is forbidden inside include(). */
   select(): never {
-    throw new Error(
+    throw new UnsupportedOperationError(
       "ts-linq: 'select' is not allowed inside include(). " +
         'Allowed operators: where, orderBy, orderByDescending, thenBy, thenByDescending, skip, take.'
     );
@@ -137,7 +137,7 @@ export class IncludeSubquery<T> implements FilteredIncludeSpec {
 
   /** @throws Always — groupBy is forbidden inside include(). */
   groupBy(): never {
-    throw new Error(
+    throw new UnsupportedOperationError(
       "ts-linq: 'groupBy' is not allowed inside include(). " +
         'Allowed operators: where, orderBy, orderByDescending, thenBy, thenByDescending, skip, take.'
     );
@@ -145,7 +145,7 @@ export class IncludeSubquery<T> implements FilteredIncludeSpec {
 
   /** @throws Always — join is forbidden inside include(). */
   join(): never {
-    throw new Error(
+    throw new UnsupportedOperationError(
       "ts-linq: 'join' is not allowed inside include(). " +
         'Allowed operators: where, orderBy, orderByDescending, thenBy, thenByDescending, skip, take.'
     );

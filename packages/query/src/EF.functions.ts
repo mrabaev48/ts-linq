@@ -1,5 +1,7 @@
+import { UnsupportedOperationError } from '@ts-linq/types';
+
 function markerError(name: string): never {
-  throw new Error(
+  throw new UnsupportedOperationError(
     `EF.functions.${name}() can only be used inside a compiled LINQ expression ` +
       `(e.g. .where(...) or .orderBy(...)). It is a query-only marker and has no runtime value.`
   );

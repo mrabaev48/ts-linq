@@ -1,4 +1,8 @@
-import type { FallbackRequest, QueryFallback } from '@ts-linq/types';
+import {
+  type FallbackRequest,
+  type QueryFallback,
+  UnsupportedOperationError
+} from '@ts-linq/types';
 
 export interface MemoryFallbackOptions<T> {
   label?: string;
@@ -51,7 +55,7 @@ export class MemoryFallback<T> implements QueryFallback<T> {
       return this.fetch(request);
     }
 
-    throw new Error(
+    throw new UnsupportedOperationError(
       `MemoryFallback does not support operation '${operation}'. ` +
         `Only 'select', 'first', 'single', 'any', and 'count' are supported.`
     );

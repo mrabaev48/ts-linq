@@ -21,6 +21,8 @@ describe('Type Exports', () => {
     expect(types.RelationshipLoadError).toBeDefined();
     expect(types.QueryFilterCompilationError).toBeDefined();
     expect(types.FallbackExhaustedError).toBeDefined();
+    expect(types.SequenceError).toBeDefined();
+    expect(types.DuplicateKeyError).toBeDefined();
   });
 
   it('should export Result helper functions', () => {
@@ -74,6 +76,8 @@ describe('Type Exports', () => {
       'RelationshipLoadError',
       'QueryFilterCompilationError',
       'FallbackExhaustedError',
+      'SequenceError',
+      'DuplicateKeyError',
       'ok',
       'err',
       'LoadingStrategy',
