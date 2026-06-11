@@ -4,7 +4,7 @@
  */
 import { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { QuerySplittingBehavior } from '@ts-linq/types';
+import { OperationAbortedError, QuerySplittingBehavior } from '@ts-linq/types';
 
 import type { QueryExecutor } from '../src/QueryExecutor';
 import { QueryModel } from '../src/QueryModel';
@@ -55,6 +55,9 @@ describe('QueryRunner.materialize', () => {
     await expect(runner.materialize(spec({ abortSignal: controller.signal }))).rejects.toThrow(
       'Operation aborted'
     );
+    await expect(
+      runner.materialize(spec({ abortSignal: controller.signal }))
+    ).rejects.toBeInstanceOf(OperationAbortedError);
   });
 
   it('returns raw entities and forwards model/includes/cte/splitting/filtered to the executor', async () => {

@@ -45,7 +45,9 @@ export const OrmErrorCode = {
   OwnedEntityHydrationError: 'OWNED_ENTITY_HYDRATION_ERROR',
   RelationshipLoadError: 'RELATIONSHIP_LOAD_ERROR',
   QueryFilterCompilationError: 'QUERY_FILTER_COMPILATION_ERROR',
-  FallbackExhausted: 'FALLBACK_EXHAUSTED'
+  FallbackExhausted: 'FALLBACK_EXHAUSTED',
+  SequenceError: 'SEQUENCE_ERROR',
+  DuplicateKey: 'DUPLICATE_KEY'
 } as const;
 
 /** Union of every stable code declared in {@link OrmErrorCode}. */
@@ -130,8 +132,8 @@ export class ForeignKeyConstraintError extends DatabaseError {
 export class ValidationError extends OrmError {
   public readonly code = OrmErrorCode.ValidationError;
 
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
   }
 }
 
@@ -282,6 +284,33 @@ export class QueryFilterCompilationError extends OrmError {
  */
 export class FallbackExhaustedError extends OrmError {
   public readonly code = OrmErrorCode.FallbackExhausted;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when a sequence operator's cardinality expectation is violated — e.g.
+ * `first()`/`single()` on an empty sequence, or `single()` on a sequence with
+ * more than one element (mirrors LINQ's `InvalidOperationException`). The
+ * `details.reason` discriminates `'empty'` vs `'multiple'`.
+ */
+export class SequenceError extends OrmError {
+  public readonly code = OrmErrorCode.SequenceError;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when materializing a keyed collection (e.g. `toDictionaryAsync`)
+ * encounters two elements that produce the same key. `details.key` carries the
+ * offending key for debuggability (mirrors .NET's duplicate-key `ArgumentException`).
+ */
+export class DuplicateKeyError extends OrmError {
+  public readonly code = OrmErrorCode.DuplicateKey;
 
   constructor(message: string, opts?: OrmErrorOptions) {
     super(message, opts);

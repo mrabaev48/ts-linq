@@ -1,4 +1,4 @@
-import type { SetterSpec, SqlParameter } from '@ts-linq/types';
+import { type SetterSpec, type SqlParameter, ValidationError } from '@ts-linq/types';
 
 /**
  * Fluent builder for collecting SET assignments in executeUpdate().
@@ -49,7 +49,7 @@ function extractSingleProp<T>(selector: (e: T) => unknown): string {
     caught = err;
   }
   if (!accessed.length) {
-    throw new Error(
+    throw new ValidationError(
       'setProperty: could not extract property name from selector lambda. ' +
         'Use a simple single-property lambda, e.g. `e => e.name`.',
       caught !== undefined ? { cause: caught } : undefined
@@ -113,7 +113,7 @@ export class SetPropertyCalls<T> implements ISetPropertyCalls<T> {
     return this._setters.map((entry) => {
       const col = columns.find((c) => c.propertyName === entry.propertyName);
       if (!col) {
-        throw new Error(
+        throw new ValidationError(
           `executeUpdate: no column mapping found for property '${entry.propertyName}'. ` +
             `Ensure the property is decorated with @Column().`
         );
@@ -129,7 +129,7 @@ export class SetPropertyCalls<T> implements ISetPropertyCalls<T> {
 
       const refCol = columns.find((c) => c.propertyName === entryValue.refPropertyName);
       if (!refCol) {
-        throw new Error(
+        throw new ValidationError(
           `executeUpdate: no column mapping found for reference property '${entryValue.refPropertyName}'.`
         );
       }

@@ -4,6 +4,7 @@
  * (covered by extractKey.test.ts), so the builder always receives resolved string keys.
  */
 import { MetadataStorage } from '@ts-linq/metadata';
+import { MetadataError } from '@ts-linq/types';
 
 import { JoinBuilder } from '../src/JoinBuilder';
 
@@ -59,9 +60,12 @@ describe('JoinBuilder', () => {
     expect(clause.onColumns?.[0].left.column).toBe('missingProp');
   });
 
-  it('throws when entity metadata is missing', () => {
+  it('throws a typed MetadataError when entity metadata is missing', () => {
     expect(() => builder.build('INNER', JbUnregistered, JbAuthor, 'x', 'id')).toThrow(
       'ts-linq: entity metadata not found for join'
+    );
+    expect(() => builder.build('INNER', JbUnregistered, JbAuthor, 'x', 'id')).toThrow(
+      MetadataError
     );
   });
 });

@@ -3,6 +3,7 @@
  * logic extracted from `Queryable` (refactor query/task-1).
  */
 import { MetadataStorage } from '@ts-linq/metadata';
+import { OrmError } from '@ts-linq/types';
 
 import { IncludeResolutionError } from '../src/errors';
 import type { IncludeSubquery } from '../src/include/IncludeSubquery';
@@ -61,8 +62,15 @@ describe('IncludeBuilder.resolveInclude', () => {
     }
   });
 
-  it('throws IncludeResolutionError for an unknown relationship', () => {
+  it('throws IncludeResolutionError (an OrmError) for an unknown relationship', () => {
     expect(() => builder.resolveInclude('unknownRel')).toThrow(IncludeResolutionError);
+    let caught: unknown;
+    try {
+      builder.resolveInclude('unknownRel');
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(OrmError);
   });
 });
 

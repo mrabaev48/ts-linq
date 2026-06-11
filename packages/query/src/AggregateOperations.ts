@@ -1,6 +1,6 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { SqlParameter } from '@ts-linq/types';
+import { SequenceError, type SqlParameter } from '@ts-linq/types';
 
 import type { QueryBuilder } from './QueryBuilder';
 import type { QueryModel } from './QueryModel';
@@ -26,7 +26,8 @@ export class AggregateOperations<T> {
       aggSql,
       parameters
     );
-    if (Number(rows[0]?._count ?? 0) === 0) throw new Error('Sequence contains no elements');
+    if (Number(rows[0]?._count ?? 0) === 0)
+      throw new SequenceError('Sequence contains no elements', { details: { reason: 'empty' } });
     return Number(rows[0]._result ?? 0);
   }
 
@@ -46,7 +47,8 @@ export class AggregateOperations<T> {
       aggSql,
       parameters
     );
-    if (Number(rows[0]?._count ?? 0) === 0) throw new Error('Sequence contains no elements');
+    if (Number(rows[0]?._count ?? 0) === 0)
+      throw new SequenceError('Sequence contains no elements', { details: { reason: 'empty' } });
     return rows[0]._result as T[K];
   }
 
@@ -58,7 +60,8 @@ export class AggregateOperations<T> {
       aggSql,
       parameters
     );
-    if (Number(rows[0]?._count ?? 0) === 0) throw new Error('Sequence contains no elements');
+    if (Number(rows[0]?._count ?? 0) === 0)
+      throw new SequenceError('Sequence contains no elements', { details: { reason: 'empty' } });
     return rows[0]._result as T[K];
   }
 
