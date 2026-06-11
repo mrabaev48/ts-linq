@@ -31,10 +31,39 @@ export interface JunctionQuerySpec {
   whereValues: SqlParameter[];
 }
 
+/**
+ * An unquoted, table-qualified column reference used in a structured JOIN condition.
+ * Both `table` and `column` are raw identifiers; the dialect quotes them at render time.
+ */
+export interface JoinColumnRef {
+  readonly table: string;
+  readonly column: string;
+}
+
+/**
+ * A single equi-join condition (`left = right`). A JOIN with several conditions is rendered
+ * by the dialect as `left = right AND left = right …`, each identifier quoted per-dialect.
+ */
+export interface JoinOnCondition {
+  readonly left: JoinColumnRef;
+  readonly right: JoinColumnRef;
+}
+
 export interface JoinClause {
   type: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
   table: string;
-  on: string;
+  /**
+   * Pre-rendered `ON` condition as opaque SQL.
+   * @deprecated Carries dialect-specific quoting and is therefore not portable. Prefer
+   * `onColumns`, which lets the dialect quote identifiers. Retained as a backward-compatible
+   * fallback for callers that still build the string themselves.
+   */
+  on?: string;
+  /**
+   * Structured equi-join conditions. When present, the dialect renders the `ON` clause and
+   * quotes every identifier with its own `quoteIdentifier`; `on` is ignored.
+   */
+  onColumns?: readonly JoinOnCondition[];
   alias?: string;
 }
 

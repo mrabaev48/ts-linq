@@ -1,5 +1,13 @@
 # @ts-linq/composite-sql-logger
 
+## 12.0.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.4.0
+  - @ts-linq/core@3.4.2
+
 ## 12.0.1
 
 ### Patch Changes

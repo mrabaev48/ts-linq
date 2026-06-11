@@ -260,13 +260,17 @@ describe('Queryable (tests-new)', () => {
       q.innerJoinOn(Post, 'id', 'userId');
       const model = (
         q as unknown as {
-          _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> };
+          _model: {
+            joins: Array<{ type: string; table: string; onColumns: unknown; alias?: string }>;
+          };
         }
       )._model;
       expect(model.joins).toHaveLength(1);
       expect(model.joins[0].type).toBe('INNER');
       expect(model.joins[0].table).toBe('posts');
-      expect(model.joins[0].on).toBe('users.id = posts.user_id');
+      expect(model.joins[0].onColumns).toEqual([
+        { left: { table: 'users', column: 'id' }, right: { table: 'posts', column: 'user_id' } }
+      ]);
       expect(model.joins[0].alias).toBeUndefined();
     });
 
@@ -276,13 +280,17 @@ describe('Queryable (tests-new)', () => {
       q.leftJoinOn(Post, 'id', 'userId');
       const model = (
         q as unknown as {
-          _model: { joins: Array<{ type: string; table: string; on: string; alias?: string }> };
+          _model: {
+            joins: Array<{ type: string; table: string; onColumns: unknown; alias?: string }>;
+          };
         }
       )._model;
       expect(model.joins).toHaveLength(1);
       expect(model.joins[0].type).toBe('LEFT');
       expect(model.joins[0].table).toBe('posts');
-      expect(model.joins[0].on).toBe('users.id = posts.user_id');
+      expect(model.joins[0].onColumns).toEqual([
+        { left: { table: 'users', column: 'id' }, right: { table: 'posts', column: 'user_id' } }
+      ]);
     });
 
     it('innerJoinOn() respects optional alias', () => {
@@ -314,8 +322,10 @@ describe('Queryable (tests-new)', () => {
       const provider = new TestProvider();
       const q = new Queryable(User, provider);
       q.innerJoinOn(Post, 'id', 'userId');
-      const model = (q as unknown as { _model: { joins: Array<{ on: string }> } })._model;
-      expect(model.joins[0].on).toBe('users.id = posts.userId');
+      const model = (q as unknown as { _model: { joins: Array<{ onColumns: unknown }> } })._model;
+      expect(model.joins[0].onColumns).toEqual([
+        { left: { table: 'users', column: 'id' }, right: { table: 'posts', column: 'userId' } }
+      ]);
     });
 
     it('multiple joinOn() calls accumulate joins', () => {

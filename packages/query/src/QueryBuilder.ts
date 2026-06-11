@@ -242,7 +242,19 @@ export class QueryBuilder {
   }
 
   private static serializeJoins(options: QueryOptions): string {
-    return (options.joins ?? []).map((j) => `${j.type}:${j.table}:${j.on};`).join('');
+    return (options.joins ?? [])
+      .map((j) => {
+        // Serialize structured `onColumns` when present (the on string is now an optional
+        // fallback) so distinct joins never collide on the cache key.
+        const on =
+          j.onColumns && j.onColumns.length > 0
+            ? j.onColumns
+                .map((c) => `${c.left.table}.${c.left.column}=${c.right.table}.${c.right.column}`)
+                .join('&')
+            : (j.on ?? '');
+        return `${j.type}:${j.table}:${on};`;
+      })
+      .join('');
   }
 
   /**

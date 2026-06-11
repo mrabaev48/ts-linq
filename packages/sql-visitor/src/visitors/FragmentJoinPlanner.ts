@@ -26,13 +26,16 @@ export class FragmentJoinPlanner {
     );
 
     return fragments.map((fragment): JoinClause => {
-      const onParts = pkColumns.map(
-        (col) => `"${fragment.tableName}"."${col}" = "${primaryTable}"."${col}"`
-      );
+      // Emit structured equi-join conditions (one per PK column); the dialect renders + quotes
+      // them, so fragment joins stay portable (no hardcoded ANSI `"`).
+      const onColumns = pkColumns.map((col) => ({
+        left: { table: fragment.tableName, column: col },
+        right: { table: primaryTable, column: col }
+      }));
       return {
         type: 'INNER',
         table: fragment.tableName,
-        on: onParts.join(' AND ')
+        onColumns
       };
     });
   }

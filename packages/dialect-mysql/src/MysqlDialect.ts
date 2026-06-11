@@ -39,7 +39,7 @@ import { mysqlSpatialFunctions } from './spatial-functions';
  */
 export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
   private readonly whereEmitter = new MySqlWhereEmitter();
-  private readonly joinEmitter = new MySqlJoinEmitter();
+  private readonly joinEmitter = new MySqlJoinEmitter((id) => this.quoteIdentifier(id));
   private readonly orderEmitter = new MySqlOrderEmitter();
   private readonly groupEmitter = new MySqlGroupEmitter();
   private readonly jsonPathTranslator = new MySqlJsonPathTranslator();
