@@ -50,12 +50,16 @@ describe('FragmentJoinPlanner (P1-25)', () => {
     expect(joins[0]).toEqual({
       type: 'INNER',
       table: 'OrdersDetails',
-      on: '"OrdersDetails"."id" = "Orders"."id"'
+      onColumns: [
+        { left: { table: 'OrdersDetails', column: 'id' }, right: { table: 'Orders', column: 'id' } }
+      ]
     });
     expect(joins[1]).toEqual({
       type: 'INNER',
       table: 'OrdersExtra',
-      on: '"OrdersExtra"."id" = "Orders"."id"'
+      onColumns: [
+        { left: { table: 'OrdersExtra', column: 'id' }, right: { table: 'Orders', column: 'id' } }
+      ]
     });
   });
 
@@ -68,7 +72,12 @@ describe('FragmentJoinPlanner (P1-25)', () => {
     });
 
     const [join] = planner.plan(meta);
-    expect(join.on).toBe('"OrdersDetails"."order_id" = "Orders"."order_id"');
+    expect(join.onColumns).toEqual([
+      {
+        left: { table: 'OrdersDetails', column: 'order_id' },
+        right: { table: 'Orders', column: 'order_id' }
+      }
+    ]);
   });
 
   it('falls back to propertyName when column is not found', () => {
@@ -80,7 +89,9 @@ describe('FragmentJoinPlanner (P1-25)', () => {
     });
 
     const [join] = planner.plan(meta);
-    expect(join.on).toBe('"OrdersDetails"."id" = "Orders"."id"');
+    expect(join.onColumns).toEqual([
+      { left: { table: 'OrdersDetails', column: 'id' }, right: { table: 'Orders', column: 'id' } }
+    ]);
   });
 
   it('handles composite primary keys', () => {
@@ -95,8 +106,15 @@ describe('FragmentJoinPlanner (P1-25)', () => {
     });
 
     const [join] = planner.plan(meta);
-    expect(join.on).toBe(
-      '"OrderLinesDetail"."order_id" = "OrderLines"."order_id" AND "OrderLinesDetail"."line_id" = "OrderLines"."line_id"'
-    );
+    expect(join.onColumns).toEqual([
+      {
+        left: { table: 'OrderLinesDetail', column: 'order_id' },
+        right: { table: 'OrderLines', column: 'order_id' }
+      },
+      {
+        left: { table: 'OrderLinesDetail', column: 'line_id' },
+        right: { table: 'OrderLines', column: 'line_id' }
+      }
+    ]);
   });
 });

@@ -687,7 +687,10 @@ export class Queryable<T> {
     const subqueryEntity = subquery._entityClass as unknown as new () => unknown;
     const { query, parameters } = subqueryBuilder.generateFromModel(subqueryEntity, subqueryModel);
     this._model.where = this._model.where || [];
-    const clause: WhereClause = { condition: `EXISTS (${query})`, parameters };
+    const clause: WhereClause = {
+      condition: `EXISTS (${this.normalizeSplicedSubquerySql(query)})`,
+      parameters
+    };
     this._model.where.push(clause);
     this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
     return this;
@@ -702,11 +705,34 @@ export class Queryable<T> {
     const subqueryModel = subquery._model;
     const subqueryEntity = subquery._entityClass as unknown as new () => unknown;
     const { query, parameters } = subqueryBuilder.generateFromModel(subqueryEntity, subqueryModel);
+    // Resolve the property key to its mapped column name and quote it via the dialect so the
+    // predicate is correct under `@Column({ name })` and portable across dialects (no raw key).
+    const quotedColumn = this._provider
+      .getDialect()
+      .quoteIdentifier(this.resolveColumnName(column));
     this._model.where = this._model.where || [];
-    const clause: WhereClause = { condition: `${column} IN (${query})`, parameters };
+    const clause: WhereClause = {
+      condition: `${quotedColumn} IN (${this.normalizeSplicedSubquerySql(query)})`,
+      parameters
+    };
     this._model.where.push(clause);
     this._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
     return this;
+  }
+
+  /**
+   * Reset a spliced subquery's placeholders back to positional `?`.
+   *
+   * The subquery is rendered by its own dialect pass, which may have already numbered its
+   * placeholders (`$1` for Postgres, `@p1` for SQL Server). Once spliced into the outer
+   * statement, the dialect renumbers placeholders globally in document order; pre-numbered
+   * subquery placeholders would survive that pass and collide with the outer parameters. By
+   * normalizing them to `?`, the single global renumber assigns consistent indices across the
+   * outer clause and the subquery, keeping every parameter aligned. Values are always
+   * parameterized (never interpolated), so no literal can contain a `$N`/`@pN` token.
+   */
+  private normalizeSplicedSubquerySql(sql: string): string {
+    return sql.replace(/@p\d+|\$\d+/g, '?');
   }
 
   /** With CTE support: define a named subquery and return a Queryable bound to that CTE. */
@@ -886,9 +912,13 @@ export class Queryable<T> {
     if (strategy === InheritanceStrategy.Tph) {
       const entry = discriminator?.entries.find((e) => e.ctor === ctor);
       if (entry && discriminator) {
+        // Quote the discriminator column through the dialect — no hardcoded ANSI `"`.
+        const quotedDiscriminator = this._provider
+          .getDialect()
+          .quoteIdentifier(discriminator.columnName);
         sub._model.where = sub._model.where ?? [];
         sub._model.where.push({
-          condition: `"${discriminator.columnName}" = ?`,
+          condition: `${quotedDiscriminator} = ?`,
           parameters: [entry.value as SqlParameter]
         });
       }
@@ -897,10 +927,16 @@ export class Queryable<T> {
       const baseTable = rootMeta.tableName;
       const subTable = subtypeMeta.tableName;
       sub._model.joins = sub._model.joins ?? [];
+      // Emit a structured equi-join on the shared PK; the dialect renders + quotes it.
       sub._model.joins.push({
         type: 'INNER',
         table: subTable,
-        on: `"${baseTable}"."${pk}" = "${subTable}"."${pk}"`
+        onColumns: [
+          {
+            left: { table: baseTable, column: pk },
+            right: { table: subTable, column: pk }
+          }
+        ]
       });
     } else if (strategy === InheritanceStrategy.Tpc) {
       sub._model.from = subtypeMeta.tableName;
@@ -1743,10 +1779,16 @@ export class Queryable<T> {
     const rightCol =
       rightMeta.columns.find((c) => c.propertyName === rightKey)?.columnName ?? rightKey;
     this._model.joins = this._model.joins ?? [];
+    // Emit a structured equi-join; the dialect renders the ON clause and quotes each identifier.
     this._model.joins.push({
       type,
       table: rightMeta.tableName,
-      on: `${leftMeta.tableName}.${leftCol} = ${rightMeta.tableName}.${rightCol}`,
+      onColumns: [
+        {
+          left: { table: leftMeta.tableName, column: leftCol },
+          right: { table: rightMeta.tableName, column: rightCol }
+        }
+      ],
       alias
     });
   }

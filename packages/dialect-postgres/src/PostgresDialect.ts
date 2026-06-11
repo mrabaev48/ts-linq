@@ -44,7 +44,7 @@ import { postgisSpatialFunctions } from './spatial-functions';
  */
 export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
   private readonly whereEmitter = new PgWhereEmitter();
-  private readonly joinEmitter = new PgJoinEmitter();
+  private readonly joinEmitter = new PgJoinEmitter((id) => this.quoteIdentifier(id));
   private readonly orderEmitter = new PgOrderEmitter();
   private readonly groupEmitter = new PgGroupEmitter();
   private readonly jsonPathTranslator = new PostgresJsonPathTranslator();
