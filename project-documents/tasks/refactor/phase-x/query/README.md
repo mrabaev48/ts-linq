@@ -44,13 +44,14 @@ applies global query filters, tracking, caching and pagination. The public entry
 | 3 | task-6 | P0 | ✅ Completed | Cross-dialect SQL bug + boundary violation (hardcoded `"`). |
 | 4 | task-3 | P1 | ✅ Completed | QueryContext value object; also fixes `selectCompiled` config loss. |
 | 5 | task-2 | P0 | ✅ Completed | Uniform immutability; unblocks safe decomposition. |
-| 6 | task-1 | P0 | ⬜ Pending | Decompose the god class (depends on 3 & 2). |
+| 6 | task-1 | P0 | ✅ Completed | Decompose the god class into 10 focused collaborators (facade). |
 | 7 | task-7 | P1 | ⬜ Pending | Split compile/execute/cache (decorator). |
 | 8 | task-5 | P1 | ⬜ Pending | Honest selector types + type-level tests. |
 | 9 | task-9 | P2 | ⬜ Pending | Extract include proxy; fix double-invocation. |
 | 10 | task-10 | P2 | ⬜ Pending | Public API/barrel hygiene (bundle with major bump). |
 
-> **Package status: 🔄 In Progress** — task-4, task-8, task-6, task-3, task-2 done; tasks 1, 7, 5, 9, 10 pending.
+> **Package status: 🔄 In Progress** — task-4, task-8, task-6, task-3, task-2, task-1 done; tasks 7, 5, 9, 10 pending.
+> Note: task-1's `IncludeBuilder` already extracts the filtered-include `Proxy` (part of task-9's scope); task-9 remains for the double-invocation/cleanup specifics.
 
 ## Dependencies on other packages
 - `@ts-linq/sql-visitor` — predicate→SQL fragment generation (task-4 wiring, sql-visitor

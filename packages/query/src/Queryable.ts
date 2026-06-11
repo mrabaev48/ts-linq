@@ -1,16 +1,13 @@
-import type { ExpressionNode, PropertyNode } from '@ts-linq/ast';
+import type { ExpressionNode } from '@ts-linq/ast';
 import type { DatabaseProvider, EntityLoader } from '@ts-linq/core';
 import { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { safeCache, safeCacheSize } from '@ts-linq/metrics-safe';
-import type { ColumnResolver, ConverterResolver, SqlVisitor } from '@ts-linq/sql-visitor';
 import { FragmentJoinPlanner } from '@ts-linq/sql-visitor/internal';
 import type {
   CountCache,
   CteDefinition,
   EntityAttacher,
   EntityCacheLike,
-  EntityCtorRef,
   FallbackPolicy,
   GlobalFilter,
   PerformanceOptions,
@@ -21,27 +18,34 @@ import type {
   TemporalClause,
   WhereClause
 } from '@ts-linq/types';
-import { InheritanceStrategy } from '@ts-linq/types';
 import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
 
 import { AggregateOperations } from './AggregateOperations';
 import { type QueryTagList } from './ast/query-tags';
-import { IncludeResolutionError } from './errors';
+import { BulkDmlExecutor } from './BulkDmlExecutor';
+import { CountCoordinator } from './CountCoordinator';
+import { extractKey } from './extractKey';
 import { FallbackManager } from './FallbackManager';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
-import type { NavigationProxy } from './include/IncludeSubquery';
-import { IncludeSubquery } from './include/IncludeSubquery';
+import type { IncludeSubquery, NavigationProxy } from './include/IncludeSubquery';
+import { IncludeBuilder } from './IncludeBuilder';
 import { IncludePlanner } from './IncludePlanner';
-import { resolveTargetCtor } from './includeUtils';
+import { InheritanceQueryPlanner } from './InheritanceQueryPlanner';
+import { JoinBuilder } from './JoinBuilder';
 import { PaginationBuilder } from './PaginationBuilder';
+import { type BuiltPredicate, PredicateBuilder } from './PredicateBuilder';
 import { QueryBuilder } from './QueryBuilder';
 import type { QueryContext } from './QueryContext';
 import { QueryExecutor } from './QueryExecutor';
 import { QueryModel } from './QueryModel';
+import { QueryRunner, type RunSpec } from './QueryRunner';
 import { RowMaterializer } from './RowMaterializer';
-import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
+import { SetOperationBuilder } from './SetOperationBuilder';
+import { type ISetPropertyCalls } from './SetPropertyCalls';
+import { StreamingExecutor } from './StreamingExecutor';
 import { applyTagWith } from './tag-with';
 import { captureCallSiteTag } from './tag-with-call-site';
+import { TrackingCoordinator } from './TrackingCoordinator';
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
@@ -96,6 +100,26 @@ export class Queryable<T> {
   private _executor!: QueryExecutor<T>;
   /** Stateless aggregate operations. Shared by reference across all clones. */
   private _aggregates!: AggregateOperations<T>;
+  /** Streaming executor (asAsyncEnumerable / toDictionary). Re-created per instance in ctor. */
+  private _streaming!: StreamingExecutor<T>;
+  /** Bulk DML (executeUpdate / executeDelete) executor. Re-created per instance in ctor. */
+  private _bulkDml!: BulkDmlExecutor<T>;
+  /** Predicate (where/having) clause builder + SQL-visitor/column plumbing. Re-created in ctor. */
+  private _predicates!: PredicateBuilder<T>;
+  /** include/thenInclude proxy + validation + path-walk builder. Re-created per instance in ctor. */
+  private _includeBuilder!: IncludeBuilder<T>;
+  /** Stateless tracking / identity-resolution coordinator. Shared by reference across all clones. */
+  private _tracking: TrackingCoordinator = new TrackingCoordinator();
+  /** Terminal-operation runner (toArray/first/any). Stateless; reuses the tracking coordinator. */
+  private _runner: QueryRunner = new QueryRunner(this._tracking);
+  /** Stateless count-cache / single-flight coordinator. Shared by reference across all clones. */
+  private _countCoordinator: CountCoordinator = new CountCoordinator();
+  /** Stateless set-operation (union/except/…) clause builder. Shared by reference across clones. */
+  private _setOps: SetOperationBuilder = new SetOperationBuilder();
+  /** Stateless join-clause builder. Shared by reference across clones. */
+  private _joinBuilder: JoinBuilder = new JoinBuilder();
+  /** Stateless ofType (TPH/TPT/TPC) strategy planner. Shared by reference across clones. */
+  private _inheritancePlanner: InheritanceQueryPlanner = new InheritanceQueryPlanner();
 
   /** Per-query tracking mode. Defaults to TrackAll (mirrors EF Core semantics). */
   private _trackingMode: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -172,6 +196,19 @@ export class Queryable<T> {
       this._provider,
       this._sqlBuilder
     );
+    this._streaming = new StreamingExecutor<T>(
+      this._entityClass,
+      this._provider,
+      this._sqlBuilder,
+      this._materializer
+    );
+    this._bulkDml = new BulkDmlExecutor<T>(this._entityClass, this._provider);
+    this._predicates = new PredicateBuilder<T>(
+      this._entityClass,
+      this._provider,
+      this._context.visitorFactory
+    );
+    this._includeBuilder = new IncludeBuilder<T>(this._entityClass);
   }
 
   /** Create a shallow clone sharing provider/loader but copying model. */
@@ -457,42 +494,20 @@ export class Queryable<T> {
     return cloned;
   }
 
-  /** Apply tracking / identity-resolution logic to a freshly materialized entity list. */
-  private _applyTracking(entities: T[]): T[] {
-    const meta = MetadataStorage.getEntity(this._entityClass);
-    if (meta?.isKeyless) return entities;
-    if (this._trackingMode === QueryTrackingBehavior.TrackAll && this._entityAttacher) {
-      for (const entity of entities) {
-        this._entityAttacher.attach(entity as object, this._entityClass);
-      }
-      return entities;
-    }
-    if (this._trackingMode === QueryTrackingBehavior.NoTrackingWithIdentityResolution) {
-      return this._deduplicateByPk(entities);
-    }
-    return entities;
-  }
-
-  /** Deduplicate entities with the same PK, returning the first-seen instance for duplicates. */
-  private _deduplicateByPk(entities: T[]): T[] {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    const pkProp = metadata?.primaryKeys?.[0];
-    if (!pkProp) return entities;
-    const seen = new Map<unknown, T>();
-    const result: T[] = [];
-    for (const entity of entities) {
-      const pk = (entity as Record<string, unknown>)[pkProp];
-      if (pk !== undefined) {
-        const existing = seen.get(pk);
-        if (existing) {
-          result.push(existing);
-          continue;
-        }
-        seen.set(pk, entity);
-      }
-      result.push(entity);
-    }
-    return result;
+  /** Assemble the terminal-run spec from the current chain state for {@link QueryRunner}. */
+  private buildRunSpec(model: QueryModel): RunSpec<T> {
+    return {
+      model,
+      executor: this._executor,
+      entityClass: this._entityClass,
+      includes: this._includes,
+      cte: this._cte,
+      splitting: this.effectiveSplittingBehavior,
+      filteredIncludes: this._filteredIncludes.size ? this._filteredIncludes : undefined,
+      abortSignal: this._abortSignal,
+      trackingMode: this._trackingMode,
+      attacher: this._entityAttacher
+    };
   }
 
   /**
@@ -501,35 +516,7 @@ export class Queryable<T> {
    * filter: column IN (v1, v2, ...)
    */
   public whereIn<K extends keyof T & string>(column: K, values: ReadonlyArray<T[K]>): Queryable<T> {
-    if (!values || values.length === 0) {
-      // IN (empty) matches nothing; ensure we return empty set via condition "1 = 0".
-      return this.withModel((model, draft) => {
-        model.where = model.where || [];
-        model.where.push({ condition: '1 = 0', parameters: [] });
-        draft._whereSignature += '|1=0:[]';
-      });
-    }
-
-    // Resolve column name from metadata (if available) or use property name
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    const dbColumn = metadata
-      ? metadata.columns.find((c) => c.propertyName === column || c.columnName === column)
-          ?.columnName || column
-      : column;
-
-    const quotedCol = this._provider.getDialect().quoteIdentifier(dbColumn);
-
-    const whereClause: WhereClause = {
-      condition: `${quotedCol} IN (${values.map(() => '?').join(', ')})`,
-      parameters: values as unknown as SqlParameter[]
-    };
-
-    const sigParams = values.length > 5 ? `[${values.length} values]` : JSON.stringify(values);
-    return this.withModel((model, draft) => {
-      model.where = model.where || [];
-      model.where.push(whereClause);
-      draft._whereSignature += `|${column}IN:${sigParams}`;
-    });
+    return this.applyPredicate(this._predicates.whereIn(column, values));
   }
 
   /** Apply configured global filters to the provided query model. */
@@ -540,9 +527,9 @@ export class Queryable<T> {
       this._softDeleteOptions ?? this._provider.softDeleteOptions,
       this._globalFilters,
       this._ignoredFilters,
-      this.buildColumnResolver(),
+      this._predicates.buildColumnResolver(),
       this._entityQueryFilters,
-      this.createSqlVisitor()
+      this._predicates.createSqlVisitor()
     );
   }
 
@@ -584,8 +571,18 @@ export class Queryable<T> {
     rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
-    return this.withModel((_model, draft) => {
-      draft._addJoinOn('INNER', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
+    return this.withModel((model) => {
+      model.joins = model.joins ?? [];
+      model.joins.push(
+        this._joinBuilder.build(
+          'INNER',
+          this._entityClass,
+          otherCtor,
+          extractKey(leftKey),
+          extractKey(rightKey),
+          alias
+        )
+      );
     });
   }
 
@@ -611,8 +608,18 @@ export class Queryable<T> {
     rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
-    return this.withModel((_model, draft) => {
-      draft._addJoinOn('LEFT', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
+    return this.withModel((model) => {
+      model.joins = model.joins ?? [];
+      model.joins.push(
+        this._joinBuilder.build(
+          'LEFT',
+          this._entityClass,
+          otherCtor,
+          extractKey(leftKey),
+          extractKey(rightKey),
+          alias
+        )
+      );
     });
   }
 
@@ -661,18 +668,7 @@ export class Queryable<T> {
     readonly ast: ExpressionNode;
     readonly parameters: readonly unknown[];
   }): Queryable<T> {
-    const visitor = this.createSqlVisitor();
-    const { condition, parameters } = visitor.toSql(
-      input.ast,
-      input.parameters,
-      this.buildColumnResolver()
-    );
-    const whereClause: WhereClause = { condition, parameters };
-    return this.withModel((model, draft) => {
-      model.where = model.where || [];
-      model.where.push(whereClause);
-      draft._whereSignature += `|${whereClause.condition}:${JSON.stringify(whereClause.parameters)}`;
-    });
+    return this.applyPredicate(this._predicates.whereCompiled(input));
   }
 
   /**
@@ -699,19 +695,13 @@ export class Queryable<T> {
 
   /** Add EXISTS (subquery) predicate. */
   public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
-    const subqueryBuilder = subquery._sqlBuilder;
-    const subqueryModel = subquery._model;
-    const subqueryEntity = subquery._entityClass as unknown as new () => unknown;
-    const { query, parameters } = subqueryBuilder.generateFromModel(subqueryEntity, subqueryModel);
-    const clause: WhereClause = {
-      condition: `EXISTS (${this.normalizeSplicedSubquerySql(query)})`,
-      parameters
-    };
-    return this.withModel((model, draft) => {
-      model.where = model.where || [];
-      model.where.push(clause);
-      draft._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
-    });
+    return this.applyPredicate(
+      this._predicates.whereExists(
+        subquery._sqlBuilder,
+        subquery._model,
+        subquery._entityClass as unknown as new () => unknown
+      )
+    );
   }
 
   /** Add IN (subquery) predicate for a column. */
@@ -719,39 +709,23 @@ export class Queryable<T> {
     column: keyof T & string,
     subquery: Queryable<TOther>
   ): Queryable<T> {
-    const subqueryBuilder = subquery._sqlBuilder;
-    const subqueryModel = subquery._model;
-    const subqueryEntity = subquery._entityClass as unknown as new () => unknown;
-    const { query, parameters } = subqueryBuilder.generateFromModel(subqueryEntity, subqueryModel);
-    // Resolve the property key to its mapped column name and quote it via the dialect so the
-    // predicate is correct under `@Column({ name })` and portable across dialects (no raw key).
-    const quotedColumn = this._provider
-      .getDialect()
-      .quoteIdentifier(this.resolveColumnName(column));
-    const clause: WhereClause = {
-      condition: `${quotedColumn} IN (${this.normalizeSplicedSubquerySql(query)})`,
-      parameters
-    };
-    return this.withModel((model, draft) => {
-      model.where = model.where || [];
-      model.where.push(clause);
-      draft._whereSignature += `|${clause.condition}:${JSON.stringify(clause.parameters)}`;
-    });
+    return this.applyPredicate(
+      this._predicates.whereInSubquery(
+        column,
+        subquery._sqlBuilder,
+        subquery._model,
+        subquery._entityClass as unknown as new () => unknown
+      )
+    );
   }
 
-  /**
-   * Reset a spliced subquery's placeholders back to positional `?`.
-   *
-   * The subquery is rendered by its own dialect pass, which may have already numbered its
-   * placeholders (`$1` for Postgres, `@p1` for SQL Server). Once spliced into the outer
-   * statement, the dialect renumbers placeholders globally in document order; pre-numbered
-   * subquery placeholders would survive that pass and collide with the outer parameters. By
-   * normalizing them to `?`, the single global renumber assigns consistent indices across the
-   * outer clause and the subquery, keeping every parameter aligned. Values are always
-   * parameterized (never interpolated), so no literal can contain a `$N`/`@pN` token.
-   */
-  private normalizeSplicedSubquerySql(sql: string): string {
-    return sql.replace(/@p\d+|\$\d+/g, '?');
+  /** Push a built predicate's clause onto the model and extend the count-cache signature. */
+  private applyPredicate(built: BuiltPredicate): Queryable<T> {
+    return this.withModel((model, draft) => {
+      model.where = model.where || [];
+      model.where.push(built.clause);
+      draft._whereSignature += built.signature;
+    });
   }
 
   /** With CTE support: define a named subquery and return a Queryable bound to that CTE. */
@@ -889,22 +863,14 @@ export class Queryable<T> {
   public union(other: Queryable<T>): Queryable<T> {
     return this.withModel((model) => {
       model.unions = model.unions || [];
-      model.unions.push({
-        all: false,
-        other: other._model.clone(),
-        entity: other._entityClass
-      });
+      model.unions.push(this._setOps.build('union', other._model, other._entityClass));
     });
   }
   /** UNION ALL with another queryable of the same entity. */
   public unionAll(other: Queryable<T>): Queryable<T> {
     return this.withModel((model) => {
       model.unions = model.unions || [];
-      model.unions.push({
-        all: true,
-        other: other._model.clone(),
-        entity: other._entityClass
-      });
+      model.unions.push(this._setOps.build('unionAll', other._model, other._entityClass));
     });
   }
 
@@ -932,48 +898,9 @@ export class Queryable<T> {
       })
     );
     sub._model = this._model.clone();
-
-    const subtypeMeta = MetadataStorage.getEntity(ctor);
-    if (!subtypeMeta?.hierarchyRoot) return sub;
-
-    const rootMeta = MetadataStorage.getEntity(subtypeMeta.hierarchyRoot as unknown as new () => T);
-    if (!rootMeta?.hierarchy) return sub;
-
-    const { strategy, discriminator } = rootMeta.hierarchy;
-
-    if (strategy === InheritanceStrategy.Tph) {
-      const entry = discriminator?.entries.find((e) => e.ctor === ctor);
-      if (entry && discriminator) {
-        // Quote the discriminator column through the dialect — no hardcoded ANSI `"`.
-        const quotedDiscriminator = this._provider
-          .getDialect()
-          .quoteIdentifier(discriminator.columnName);
-        sub._model.where = sub._model.where ?? [];
-        sub._model.where.push({
-          condition: `${quotedDiscriminator} = ?`,
-          parameters: [entry.value as SqlParameter]
-        });
-      }
-    } else if (strategy === InheritanceStrategy.Tpt) {
-      const pk = rootMeta.primaryKeys?.[0] ?? 'id';
-      const baseTable = rootMeta.tableName;
-      const subTable = subtypeMeta.tableName;
-      sub._model.joins = sub._model.joins ?? [];
-      // Emit a structured equi-join on the shared PK; the dialect renders + quotes it.
-      sub._model.joins.push({
-        type: 'INNER',
-        table: subTable,
-        onColumns: [
-          {
-            left: { table: baseTable, column: pk },
-            right: { table: subTable, column: pk }
-          }
-        ]
-      });
-    } else if (strategy === InheritanceStrategy.Tpc) {
-      sub._model.from = subtypeMeta.tableName;
-    }
-
+    this._inheritancePlanner.plan(ctor, sub._model, (id) =>
+      this._provider.getDialect().quoteIdentifier(id)
+    );
     return sub;
   }
 
@@ -1020,15 +947,10 @@ export class Queryable<T> {
     if (!this._model.groupBy) {
       throw new Error('havingCompiled() requires a preceding groupBy()');
     }
-    const visitor = this.createSqlVisitor();
-    const { condition, parameters } = visitor.toSql(
-      input.ast,
-      input.parameters,
-      this.buildColumnResolver()
-    );
+    const having = this._predicates.compileHaving(input);
     return this.withModel((model) => {
       // groupBy is guaranteed present (checked above; the cloned model carries it).
-      model.groupBy!.having = { condition, parameters };
+      model.groupBy!.having = having;
     });
   }
 
@@ -1103,75 +1025,15 @@ export class Queryable<T> {
   public include<K extends keyof T>(selector: (entity: T) => T[K]): Queryable<T>;
   public include<U>(selector: (entity: NavigationProxy<T>) => IncludeSubquery<U>): Queryable<T>;
   public include(keyOrSelector: unknown): Queryable<T> {
-    // ── String key ──────────────────────────────────────────────────────────
-    if (typeof keyOrSelector !== 'function') {
-      return this._addSimpleInclude(String(keyOrSelector));
-    }
-
-    // ── Lambda: try filtered-include proxy first ─────────────────────────────
-    // The proxy returns an IncludeSubquery for any property access.
-    // For a filtered lambda (b => b.posts.where(...).take(10)), the returned
-    // value will be an IncludeSubquery with filter specs captured.
-    // For a plain lambda (b => b.posts), the returned value will also be an
-    // IncludeSubquery but with isFiltered === false → treated as simple include.
-    let proxyResult: unknown;
-    const makeIncludeProxy = (): T =>
-      new Proxy({} as object, {
-        get(_target, prop) {
-          return new IncludeSubquery<unknown>(String(prop));
-        }
-      }) as unknown as T;
-    try {
-      proxyResult = (keyOrSelector as (entity: T) => unknown)(makeIncludeProxy());
-    } catch (err) {
-      // Proxy call threw (e.g. forbidden operator). Surface the captured error directly —
-      // re-running the lambda would invoke user side effects a second time (task-9 extracts
-      // this proxy entirely).
-      throw err;
-    }
-
-    if (proxyResult instanceof IncludeSubquery) {
-      const subquery = proxyResult as IncludeSubquery<unknown>;
-      const key = subquery.propertyName;
-      this._validateIncludeProperty(key);
-      return this.withModel((_model, draft) => {
-        draft._lastIncludePath = key;
-        if (subquery.isFiltered) {
-          draft._filteredIncludes.set(key, subquery);
-        } else if (!draft._includes.includes(key)) {
-          draft._includes.push(key);
-        }
-      });
-    }
-
-    // ── Fallback: plain key-extractor lambda (single property access) ────────
-    const key = extractKey(keyOrSelector as (entity: T) => T[keyof T]);
-    return this._addSimpleInclude(key);
-  }
-
-  private _addSimpleInclude(key: string): Queryable<T> {
-    this._validateIncludeProperty(key);
+    const decision = this._includeBuilder.resolveInclude(keyOrSelector);
     return this.withModel((_model, draft) => {
-      draft._lastIncludePath = key;
-      if (!draft._includes.includes(key)) draft._includes.push(key);
+      draft._lastIncludePath = decision.key;
+      if (decision.kind === 'filtered') {
+        draft._filteredIncludes.set(decision.key, decision.subquery);
+      } else if (!draft._includes.includes(decision.key)) {
+        draft._includes.push(decision.key);
+      }
     });
-  }
-
-  private _validateIncludeProperty(key: string): void {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    const valid = metadata?.relationships.some((r) => r.propertyName === key);
-    if (!valid) {
-      throw new IncludeResolutionError(
-        'UNKNOWN_PROPERTY',
-        `Property '${key}' does not exist on entity '${this._entityClass.name}'. ` +
-          `Define relationship '${key}' via decorators or fix the name.`,
-        {
-          entityName: this._entityClass.name,
-          propertyPath: key,
-          propertyName: key
-        }
-      );
-    }
   }
 
   /**
@@ -1199,40 +1061,7 @@ export class Queryable<T> {
     if (!this._lastIncludePath) {
       throw new Error('thenInclude() must be called after include()');
     }
-    const nestedKey = extractKey(selector as (entity: never) => never[keyof never]);
-
-    // Walk the metadata chain from the root entity class to validate nestedKey
-    // against the leaf entity in the current include chain.
-    let currentClass: EntityCtorRef = this._entityClass;
-    for (const segment of this._lastIncludePath.split('.')) {
-      const meta = MetadataStorage.getEntity(currentClass);
-      if (!meta) break;
-      const rel = meta.relationships.find((r) => r.propertyName === segment);
-      if (!rel) break;
-      const ctor = resolveTargetCtor(rel.targetEntity);
-      if (!ctor) break;
-      currentClass = ctor;
-    }
-
-    const leafMeta = MetadataStorage.getEntity(currentClass);
-    if (leafMeta) {
-      const valid = leafMeta.relationships.some((r) => r.propertyName === nestedKey);
-      if (!valid) {
-        const fullPath = `${this._lastIncludePath}.${nestedKey}`;
-        throw new IncludeResolutionError(
-          'UNKNOWN_PROPERTY',
-          `Property '${nestedKey}' does not exist on entity '${currentClass.name}'. ` +
-            `Check the include path '${fullPath}' for typos or missing relationship decorators.`,
-          {
-            entityName: currentClass.name,
-            propertyPath: fullPath,
-            propertyName: nestedKey
-          }
-        );
-      }
-    }
-
-    const path = `${this._lastIncludePath}.${nestedKey}`;
+    const path = this._includeBuilder.resolveThenInclude(this._lastIncludePath, selector);
     return this.withModel((_model, draft) => {
       draft._lastIncludePath = path;
       if (!draft._includes.includes(path)) draft._includes.push(path);
@@ -1270,40 +1099,12 @@ export class Queryable<T> {
    * }
    */
   public asAsyncEnumerable(signal?: AbortSignal): AsyncIterable<T> {
-    const queryModel = this.prepareQueryModel();
-    const startOffset = queryModel.offset ?? 0;
-    const maxRows = queryModel.limit;
-    queryModel.offset = undefined;
-    queryModel.limit = undefined;
-
-    const { query: baseSql, parameters } = this._sqlBuilder.generateFromModel(
-      this._entityClass,
-      queryModel
+    return this._streaming.stream(
+      this.prepareQueryModel(),
+      this._trackingMode,
+      this._entityAttacher,
+      signal
     );
-
-    const provider = this._provider;
-    const materializer = this._materializer;
-    const trackingMode = this._trackingMode;
-    const entityAttacher = this._entityAttacher;
-    const entityClass = this._entityClass;
-
-    return {
-      [Symbol.asyncIterator]: async function* (): AsyncIterator<T> {
-        for await (const row of provider.streamRows(
-          baseSql,
-          parameters,
-          startOffset,
-          maxRows,
-          signal
-        )) {
-          const entity = materializer.mapRowToEntity(row);
-          if (trackingMode === QueryTrackingBehavior.TrackAll && entityAttacher) {
-            entityAttacher.attach(entity as object, entityClass);
-          }
-          yield entity;
-        }
-      }
-    };
   }
 
   /**
@@ -1381,15 +1182,11 @@ export class Queryable<T> {
       resolvedSignal = elementSelectorOrSignal ?? signal;
     }
 
-    const map = new Map<K, V>();
-    for await (const entity of this.asAsyncEnumerable(resolvedSignal)) {
-      const key = keySelector(entity);
-      if (map.has(key)) {
-        throw new Error(`An item with the same key has already been added. Key: ${String(key)}`);
-      }
-      map.set(key, elementSelector ? elementSelector(entity) : (entity as unknown as V));
-    }
-    return map;
+    return this._streaming.collectDictionary(
+      this.asAsyncEnumerable(resolvedSignal),
+      keySelector,
+      elementSelector
+    );
   }
 
   /** Executes the query and returns materialized entities.
@@ -1397,17 +1194,7 @@ export class Queryable<T> {
    * const items = await context.products.where(p => p.stock > 0).toArray();
    */
   public async toArray(): Promise<T[]> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
-    const queryModel = this.prepareQueryModel();
-    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
-    const entities = await this._executor.executeAndMaterialize(
-      queryModel,
-      this._includes,
-      this._cte,
-      this.effectiveSplittingBehavior,
-      filteredIncludes
-    );
-    return this._applyTracking(entities);
+    return this._runner.toList(this.buildRunSpec(this.prepareQueryModel()));
   }
 
   /** Returns the first entity or throws if none.
@@ -1415,18 +1202,9 @@ export class Queryable<T> {
    * const first = await context.books.orderBy('id').first();
    */
   public async first(): Promise<T> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
-    const entities = await this._executor.executeAndMaterialize(
-      queryModel,
-      this._includes,
-      this._cte,
-      this.effectiveSplittingBehavior,
-      filteredIncludes
-    );
-    const tracked = this._applyTracking(entities);
+    const tracked = await this._runner.toList(this.buildRunSpec(queryModel));
     if (!tracked.length) throw new Error('Sequence contains no elements');
     return tracked[0];
   }
@@ -1436,18 +1214,9 @@ export class Queryable<T> {
    * const maybe = await context.books.where(b => b.id > 10000).firstOrDefault();
    */
   public async firstOrDefault(): Promise<T | null> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
-    const entities = await this._executor.executeAndMaterialize(
-      queryModel,
-      this._includes,
-      this._cte,
-      this.effectiveSplittingBehavior,
-      filteredIncludes
-    );
-    const tracked = this._applyTracking(entities);
+    const tracked = await this._runner.toList(this.buildRunSpec(queryModel));
     return tracked[0] ?? null;
   }
 
@@ -1479,67 +1248,22 @@ export class Queryable<T> {
   public async count(): Promise<number> {
     const metadata = MetadataStorage.getEntity(this._entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
-    if (this._performance?.enableCountCache) {
-      const key = this.buildCountCacheKey(metadata.tableName);
-      const inflight = this._inflightCounts.get(key);
-      if (inflight) return inflight;
-      const ttl = this._performance.countCacheTtlMs ?? 0;
-      const hit = this._externalCountCache?.get(key);
-      if (hit !== undefined) {
-        safeCache(this._provider.loggerRef, {
-          cache: 'count',
-          hit: true,
-          provider: this._provider.providerLabel,
-          ttl: ttl > 0
-        });
-        this._provider.loggerRef?.cache?.({
-          cache: 'count',
-          hit: true,
-          provider: this._provider.providerLabel
-        });
-        return hit;
-      }
-      const queryModel = this.prepareQueryModel();
-      const pending = this._executor.executeCount(metadata.tableName, queryModel);
-      this._inflightCounts.set(key, pending);
-      let value: number;
-      try {
-        value = await pending;
-      } finally {
-        this._inflightCounts.delete(key);
-      }
-      if (this._externalCountCache) this._externalCountCache.set(key, value);
-      safeCacheSize(this._provider.loggerRef, {
-        cache: 'count',
-        size: -1,
-        provider: this._provider.providerLabel
-      });
-      safeCache(this._provider.loggerRef, {
-        cache: 'count',
-        hit: false,
-        provider: this._provider.providerLabel
-      });
-      this._provider.loggerRef?.cache?.({
-        cache: 'count',
-        hit: false,
-        provider: this._provider.providerLabel
-      });
-      return value;
-    }
-    const queryModel = this.prepareQueryModel();
-    return this._executor.executeCount(metadata.tableName, queryModel);
-  }
-
-  private buildCountCacheKey(table: string): string {
-    const provider = this._provider?.providerLabel ? `${this._provider.providerLabel}|` : '';
-    const ns = this._performance?.cacheNamespace ? `${this._performance.cacheNamespace}|` : '';
-    return `${ns}${provider}${this._entityClass.name}|count|${table}|${this._whereSignature}`;
+    return this._countCoordinator.count({
+      entityName: this._entityClass.name,
+      tableName: metadata.tableName,
+      whereSignature: this._whereSignature,
+      performance: this._performance,
+      provider: this._provider,
+      executor: this._executor,
+      inflightCounts: this._inflightCounts,
+      externalCountCache: this._externalCountCache,
+      prepareModel: () => this.prepareQueryModel()
+    });
   }
 
   /** Resolve a TypeScript property name to its database column name via entity metadata. */
   protected resolveColumnName(propName: string): string {
-    const meta = MetadataStorage.getEntity(this._entityClass);
-    return meta?.columns.find((c) => c.propertyName === propName)?.columnName ?? propName;
+    return this._predicates.resolveColumnName(propName);
   }
 
   /** Returns true if at least one row matches the query.
@@ -1547,76 +1271,10 @@ export class Queryable<T> {
    * const exists = await context.products.where(p => p.name === 'Laptop').any();
    */
   public async any(): Promise<boolean> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
-    const filteredIncludes = this._filteredIncludes.size ? this._filteredIncludes : undefined;
-    const entities = await this._executor.executeAndMaterialize(
-      queryModel,
-      this._includes,
-      this._cte,
-      this.effectiveSplittingBehavior,
-      filteredIncludes
-    );
+    const entities = await this._runner.materialize(this.buildRunSpec(queryModel));
     return entities.length > 0;
-  }
-
-  /**
-   * Builds a ColumnResolver that maps TypeScript property names to SQL column names
-   * using entity metadata. Falls back to the property name when no mapping is found.
-   *
-   * For multi-segment paths (u.profile.city), only the last segment is resolved
-   * against the entity's own columns; prefix segments are left as-is.
-   */
-  private buildColumnResolver(): ColumnResolver | undefined {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata || metadata.columns.length === 0) return undefined;
-
-    return (node: PropertyNode): string => {
-      const lastSegment = node.name ?? node.path?.[node.path.length - 1];
-      const col =
-        lastSegment !== undefined
-          ? metadata.columns.find((c) => c.propertyName === lastSegment)
-          : undefined;
-      const resolvedName = col?.columnName ?? lastSegment;
-
-      if (node.name !== undefined) {
-        return resolvedName ?? node.name;
-      }
-      if (node.path !== undefined && node.path.length > 0) {
-        if (resolvedName === undefined) return node.path.join('.');
-        return [...node.path.slice(0, -1), resolvedName].join('.');
-      }
-      return '';
-    };
-  }
-
-  /**
-   * Builds a ConverterResolver that maps a TypeScript property name to its registered
-   * ValueConverter (via `HasConversion`), mirroring {@link buildColumnResolver}.
-   *
-   * Without this, value converters are silently ignored in WHERE/HAVING predicates: a literal
-   * compared against a converted column is emitted unconverted, producing wrong results. The
-   * resolver feeds {@link SqlVisitorFactory} so `BinaryVisitor` can lift literals to their
-   * provider representation. Returns `undefined` when the entity registers no converters.
-   */
-  private buildConverterResolver(): ConverterResolver | undefined {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata || metadata.columns.length === 0) return undefined;
-    const hasConverter = metadata.columns.some((c) => c.converter !== undefined);
-    if (!hasConverter) return undefined;
-
-    return (propertyName: string) =>
-      metadata.columns.find((c) => c.propertyName === propertyName)?.converter;
-  }
-
-  /** Assembles a fully-configured SqlVisitor (dialect translators + metadata converters/rewriters). */
-  private createSqlVisitor(): SqlVisitor {
-    return this._context.visitorFactory.create({
-      metadata: MetadataStorage.getEntity(this._entityClass),
-      dialect: this._provider.getDialect(),
-      converterResolver: this.buildConverterResolver()
-    });
   }
 
   /** Attach an AbortSignal to cancel execution before hitting the provider. */
@@ -1667,40 +1325,26 @@ export class Queryable<T> {
 
   /** Get elements that are in this sequence but not in the other (SQL EXCEPT). */
   public except(other: Queryable<T>): Queryable<T> {
-    const cloned = this.clone();
-    cloned._model.unions = cloned._model.unions ?? [];
-    cloned._model.unions.push({
-      all: false,
-      setOp: 'EXCEPT',
-      other: other._model.clone(),
-      entity: other._entityClass
+    return this.withModel((model) => {
+      model.unions = model.unions ?? [];
+      model.unions.push(this._setOps.build('except', other._model, other._entityClass));
     });
-    return cloned;
   }
 
   /** Get elements that are in both sequences (SQL INTERSECT). */
   public intersect(other: Queryable<T>): Queryable<T> {
-    const cloned = this.clone();
-    cloned._model.unions = cloned._model.unions ?? [];
-    cloned._model.unions.push({
-      all: false,
-      setOp: 'INTERSECT',
-      other: other._model.clone(),
-      entity: other._entityClass
+    return this.withModel((model) => {
+      model.unions = model.unions ?? [];
+      model.unions.push(this._setOps.build('intersect', other._model, other._entityClass));
     });
-    return cloned;
   }
 
   /** Concatenate with another sequence, preserving order (SQL UNION ALL). */
   public concat(other: Queryable<T>): Queryable<T> {
-    const cloned = this.clone();
-    cloned._model.unions = cloned._model.unions ?? [];
-    cloned._model.unions.push({
-      all: true,
-      other: other._model.clone(),
-      entity: other._entityClass
+    return this.withModel((model) => {
+      model.unions = model.unions ?? [];
+      model.unions.push(this._setOps.build('concat', other._model, other._entityClass));
     });
-    return cloned;
   }
 
   /**
@@ -1717,46 +1361,11 @@ export class Queryable<T> {
   public async executeUpdate(
     setters: (s: ISetPropertyCalls<T>) => ISetPropertyCalls<T>
   ): Promise<number> {
-    if (this._includes.length > 0 || this._filteredIncludes.size > 0) {
-      throw new Error(
-        'Cannot call executeUpdate() after include(). ' +
-          'Bulk DML does not support eager loading. Remove the include() call.'
-      );
-    }
-
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata) {
-      throw new Error(
-        `ts-linq: entity metadata not found for ${this._entityClass.name}. ` +
-          'Ensure the class is decorated with @Entity().'
-      );
-    }
-
-    const collector = new SetPropertyCalls<T>();
-    setters(collector);
-    const setterSpecs = collector.toSetterSpecs(metadata.columns);
-
-    if (setterSpecs.length === 0) {
-      throw new Error('executeUpdate() requires at least one setProperty() call.');
-    }
-
-    const queryModel = this.prepareQueryModel();
-    const dialect = this._provider.getDialect();
-
-    if (!dialect.buildBulkUpdate) {
-      throw new Error(
-        `The current dialect (${this._provider.providerLabel ?? 'unknown'}) does not support buildBulkUpdate. ` +
-          'Implement buildBulkUpdate() on the dialect class.'
-      );
-    }
-
-    const { sql, parameters } = dialect.buildBulkUpdate({
-      tableName: metadata.tableName,
-      setters: setterSpecs,
-      where: queryModel.where ?? []
-    });
-
-    return this._provider.executeNonQuery(sql, parameters);
+    return this._bulkDml.update(
+      setters,
+      this._includes.length > 0 || this._filteredIncludes.size > 0,
+      () => this.prepareQueryModel()
+    );
   }
 
   /**
@@ -1771,108 +1380,10 @@ export class Queryable<T> {
    *   .executeDelete();
    */
   public async executeDelete(): Promise<number> {
-    if (this._includes.length > 0 || this._filteredIncludes.size > 0) {
-      throw new Error(
-        'Cannot call executeDelete() after include(). ' +
-          'Bulk DML does not support eager loading. Remove the include() call.'
-      );
-    }
-
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata) {
-      throw new Error(
-        `ts-linq: entity metadata not found for ${this._entityClass.name}. ` +
-          'Ensure the class is decorated with @Entity().'
-      );
-    }
-
-    const queryModel = this.prepareQueryModel();
-    const dialect = this._provider.getDialect();
-
-    if (!dialect.buildBulkDelete) {
-      throw new Error(
-        `The current dialect (${this._provider.providerLabel ?? 'unknown'}) does not support buildBulkDelete. ` +
-          'Implement buildBulkDelete() on the dialect class.'
-      );
-    }
-
-    const { sql, parameters } = dialect.buildBulkDelete({
-      tableName: metadata.tableName,
-      where: queryModel.where ?? []
-    });
-
-    return this._provider.executeNonQuery(sql, parameters);
-  }
-
-  private _addJoinOn<TOther>(
-    type: 'INNER' | 'LEFT',
-    otherCtor: new () => TOther,
-    leftKey: string,
-    rightKey: string,
-    alias?: string
-  ): void {
-    const leftMeta = MetadataStorage.getEntity(this._entityClass);
-    const rightMeta = MetadataStorage.getEntity(otherCtor);
-    if (!leftMeta || !rightMeta) throw new Error('ts-linq: entity metadata not found for join');
-    const leftCol = leftMeta.columns.find((c) => c.propertyName === leftKey)?.columnName ?? leftKey;
-    const rightCol =
-      rightMeta.columns.find((c) => c.propertyName === rightKey)?.columnName ?? rightKey;
-    this._model.joins = this._model.joins ?? [];
-    // Emit a structured equi-join; the dialect renders the ON clause and quotes each identifier.
-    this._model.joins.push({
-      type,
-      table: rightMeta.tableName,
-      onColumns: [
-        {
-          left: { table: leftMeta.tableName, column: leftCol },
-          right: { table: rightMeta.tableName, column: rightCol }
-        }
-      ],
-      alias
-    });
-  }
-}
-
-/**
- * Extracts a property key string from either a string key or a lambda selector.
- * Uses a Proxy to intercept the first property access in the lambda.
- */
-/**
- * Extracts a property key string from either a literal key or a single-property lambda selector.
- *
- * **Supported forms:**
- * - String / symbol key: `'name'`, `'userId'`
- * - Single-property lambda: `entity => entity.name`
- *
- * **Not supported (throws at runtime):**
- * - Nested-path lambdas: `entity => entity.profile.city` — use the string `'profile.city'` instead.
- * - Branching lambdas: `entity => entity.a ? entity.b : entity.c`
- * - Non-property lambdas: `entity => 42`
- *
- * @throws {Error} When the lambda accesses zero properties or more than one property.
- */
-function extractKey<T>(keyOrSelector: keyof T | ((entity: T) => T[keyof T])): string {
-  if (typeof keyOrSelector !== 'function') return String(keyOrSelector);
-  const accessed: string[] = [];
-  const proxy = new Proxy(
-    {},
-    {
-      get(_, prop) {
-        accessed.push(String(prop));
-        return proxy;
-      }
-    }
-  ) as T;
-  keyOrSelector(proxy);
-  if (!accessed.length) throw new Error('Could not extract property name from selector lambda');
-  if (accessed.length > 1) {
-    throw new Error(
-      `Selector lambda accessed ${accessed.length} properties (${accessed.join(' → ')}). ` +
-        `Only single-property selectors are supported (e.g. \`entity => entity.name\`). ` +
-        `For nested paths use a string key (e.g. '${accessed.join('.')}').`
+    return this._bulkDml.delete(this._includes.length > 0 || this._filteredIncludes.size > 0, () =>
+      this.prepareQueryModel()
     );
   }
-  return accessed[0];
 }
 
 /**

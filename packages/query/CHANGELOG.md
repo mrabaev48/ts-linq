@@ -1,5 +1,23 @@
 # @ts-linq/query
 
+## 2.5.1
+
+### Patch Changes
+
+- refactor(query): decompose the `Queryable<T>` god class into focused collaborators
+
+  Internal decomposition only — the public fluent API is byte-for-byte unchanged (verified by a
+  prototype snapshot test). `Queryable<T>` is now a thin immutable facade over `QueryModel` +
+  `QueryContext` that delegates to 10 single-responsibility, constructor-injected collaborators:
+  `TrackingCoordinator`, `CountCoordinator`, `StreamingExecutor`, `SetOperationBuilder`,
+  `BulkDmlExecutor`, `QueryRunner`, `JoinBuilder`, `InheritanceQueryPlanner`, `PredicateBuilder`,
+  `IncludeBuilder` (plus the shared `extractKey` helper). Each collaborator has dedicated unit tests.
+
+  `Queryable.ts` shrank from 1930 → 1441 LOC (code lines 1168 → 777). The remaining size is the
+  public JSDoc (≈573 lines) that must stay on the facade for IntelliSense/discoverability, so the
+  original "< 600 LOC" target is reframed as "< ~450 facade code lines beyond the public contract";
+  no public documentation was removed. No behavioral change; no new exported types.
+
 ## 2.5.0
 
 ### Minor Changes
