@@ -35,6 +35,7 @@ import type { NavigationProxy } from './include/IncludeSubquery';
 import { IncludeSubquery } from './include/IncludeSubquery';
 import { IncludePlanner } from './IncludePlanner';
 import { resolveTargetCtor } from './includeUtils';
+import { JoinBuilder } from './JoinBuilder';
 import { PaginationBuilder } from './PaginationBuilder';
 import { QueryBuilder } from './QueryBuilder';
 import type { QueryContext } from './QueryContext';
@@ -114,6 +115,8 @@ export class Queryable<T> {
   private _countCoordinator: CountCoordinator = new CountCoordinator();
   /** Stateless set-operation (union/except/…) clause builder. Shared by reference across clones. */
   private _setOps: SetOperationBuilder = new SetOperationBuilder();
+  /** Stateless join-clause builder. Shared by reference across clones. */
+  private _joinBuilder: JoinBuilder = new JoinBuilder();
 
   /** Per-query tracking mode. Defaults to TrackAll (mirrors EF Core semantics). */
   private _trackingMode: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -587,8 +590,18 @@ export class Queryable<T> {
     rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
-    return this.withModel((_model, draft) => {
-      draft._addJoinOn('INNER', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
+    return this.withModel((model) => {
+      model.joins = model.joins ?? [];
+      model.joins.push(
+        this._joinBuilder.build(
+          'INNER',
+          this._entityClass,
+          otherCtor,
+          extractKey(leftKey),
+          extractKey(rightKey),
+          alias
+        )
+      );
     });
   }
 
@@ -614,8 +627,18 @@ export class Queryable<T> {
     rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
     alias?: string
   ): Queryable<T> {
-    return this.withModel((_model, draft) => {
-      draft._addJoinOn('LEFT', otherCtor, extractKey(leftKey), extractKey(rightKey), alias);
+    return this.withModel((model) => {
+      model.joins = model.joins ?? [];
+      model.joins.push(
+        this._joinBuilder.build(
+          'LEFT',
+          this._entityClass,
+          otherCtor,
+          extractKey(leftKey),
+          extractKey(rightKey),
+          alias
+        )
+      );
     });
   }
 
@@ -1608,34 +1631,6 @@ export class Queryable<T> {
     return this._bulkDml.delete(this._includes.length > 0 || this._filteredIncludes.size > 0, () =>
       this.prepareQueryModel()
     );
-  }
-
-  private _addJoinOn<TOther>(
-    type: 'INNER' | 'LEFT',
-    otherCtor: new () => TOther,
-    leftKey: string,
-    rightKey: string,
-    alias?: string
-  ): void {
-    const leftMeta = MetadataStorage.getEntity(this._entityClass);
-    const rightMeta = MetadataStorage.getEntity(otherCtor);
-    if (!leftMeta || !rightMeta) throw new Error('ts-linq: entity metadata not found for join');
-    const leftCol = leftMeta.columns.find((c) => c.propertyName === leftKey)?.columnName ?? leftKey;
-    const rightCol =
-      rightMeta.columns.find((c) => c.propertyName === rightKey)?.columnName ?? rightKey;
-    this._model.joins = this._model.joins ?? [];
-    // Emit a structured equi-join; the dialect renders the ON clause and quotes each identifier.
-    this._model.joins.push({
-      type,
-      table: rightMeta.tableName,
-      onColumns: [
-        {
-          left: { table: leftMeta.tableName, column: leftCol },
-          right: { table: rightMeta.tableName, column: rightCol }
-        }
-      ],
-      alias
-    });
   }
 }
 
