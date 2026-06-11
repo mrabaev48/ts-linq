@@ -27,6 +27,7 @@ import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
 import { AggregateOperations } from './AggregateOperations';
 import { type QueryTagList } from './ast/query-tags';
 import { IncludeResolutionError } from './errors';
+import { extractKey } from './extractKey';
 import { FallbackManager } from './FallbackManager';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import type { NavigationProxy } from './include/IncludeSubquery';
@@ -42,6 +43,7 @@ import { RowMaterializer } from './RowMaterializer';
 import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
 import { applyTagWith } from './tag-with';
 import { captureCallSiteTag } from './tag-with-call-site';
+import { TrackingCoordinator } from './TrackingCoordinator';
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
@@ -96,6 +98,8 @@ export class Queryable<T> {
   private _executor!: QueryExecutor<T>;
   /** Stateless aggregate operations. Shared by reference across all clones. */
   private _aggregates!: AggregateOperations<T>;
+  /** Stateless tracking / identity-resolution coordinator. Shared by reference across all clones. */
+  private _tracking: TrackingCoordinator = new TrackingCoordinator();
 
   /** Per-query tracking mode. Defaults to TrackAll (mirrors EF Core semantics). */
   private _trackingMode: QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
@@ -459,40 +463,12 @@ export class Queryable<T> {
 
   /** Apply tracking / identity-resolution logic to a freshly materialized entity list. */
   private _applyTracking(entities: T[]): T[] {
-    const meta = MetadataStorage.getEntity(this._entityClass);
-    if (meta?.isKeyless) return entities;
-    if (this._trackingMode === QueryTrackingBehavior.TrackAll && this._entityAttacher) {
-      for (const entity of entities) {
-        this._entityAttacher.attach(entity as object, this._entityClass);
-      }
-      return entities;
-    }
-    if (this._trackingMode === QueryTrackingBehavior.NoTrackingWithIdentityResolution) {
-      return this._deduplicateByPk(entities);
-    }
-    return entities;
-  }
-
-  /** Deduplicate entities with the same PK, returning the first-seen instance for duplicates. */
-  private _deduplicateByPk(entities: T[]): T[] {
-    const metadata = MetadataStorage.getEntity(this._entityClass);
-    const pkProp = metadata?.primaryKeys?.[0];
-    if (!pkProp) return entities;
-    const seen = new Map<unknown, T>();
-    const result: T[] = [];
-    for (const entity of entities) {
-      const pk = (entity as Record<string, unknown>)[pkProp];
-      if (pk !== undefined) {
-        const existing = seen.get(pk);
-        if (existing) {
-          result.push(existing);
-          continue;
-        }
-        seen.set(pk, entity);
-      }
-      result.push(entity);
-    }
-    return result;
+    return this._tracking.apply(
+      entities,
+      this._entityClass,
+      this._trackingMode,
+      this._entityAttacher
+    );
   }
 
   /**
@@ -1831,48 +1807,6 @@ export class Queryable<T> {
       alias
     });
   }
-}
-
-/**
- * Extracts a property key string from either a string key or a lambda selector.
- * Uses a Proxy to intercept the first property access in the lambda.
- */
-/**
- * Extracts a property key string from either a literal key or a single-property lambda selector.
- *
- * **Supported forms:**
- * - String / symbol key: `'name'`, `'userId'`
- * - Single-property lambda: `entity => entity.name`
- *
- * **Not supported (throws at runtime):**
- * - Nested-path lambdas: `entity => entity.profile.city` — use the string `'profile.city'` instead.
- * - Branching lambdas: `entity => entity.a ? entity.b : entity.c`
- * - Non-property lambdas: `entity => 42`
- *
- * @throws {Error} When the lambda accesses zero properties or more than one property.
- */
-function extractKey<T>(keyOrSelector: keyof T | ((entity: T) => T[keyof T])): string {
-  if (typeof keyOrSelector !== 'function') return String(keyOrSelector);
-  const accessed: string[] = [];
-  const proxy = new Proxy(
-    {},
-    {
-      get(_, prop) {
-        accessed.push(String(prop));
-        return proxy;
-      }
-    }
-  ) as T;
-  keyOrSelector(proxy);
-  if (!accessed.length) throw new Error('Could not extract property name from selector lambda');
-  if (accessed.length > 1) {
-    throw new Error(
-      `Selector lambda accessed ${accessed.length} properties (${accessed.join(' → ')}). ` +
-        `Only single-property selectors are supported (e.g. \`entity => entity.name\`). ` +
-        `For nested paths use a string key (e.g. '${accessed.join('.')}').`
-    );
-  }
-  return accessed[0];
 }
 
 /**
