@@ -1,5 +1,6 @@
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { QueryOptions, SqlDialect, SqlParameter, WhereClause } from '@ts-linq/types';
 
 import { Queryable } from '../src/Queryable';
@@ -113,7 +114,7 @@ describe('Converter lifting in .where() (end-to-end via Queryable)', () => {
 
   test('a converted-column predicate binds the CONVERTED literal (true → 1)', async () => {
     const provider = new CapturingProvider();
-    const q = new Queryable(ConvUser, provider).whereCompiled({
+    const q = new Queryable(ConvUser, QueryContext.fromProvider(provider)).whereCompiled({
       ast: {
         type: 'binary',
         operator: '===',

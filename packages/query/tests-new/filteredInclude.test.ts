@@ -15,6 +15,7 @@ import 'reflect-metadata';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 
 import { IncludeResolutionError } from '../src/errors';
 import { IncludeSubquery } from '../src/include/IncludeSubquery';
@@ -347,7 +348,7 @@ describe('Queryable.include() overload', () => {
   afterEach(() => MetadataStorage.reset());
 
   function makeQueryable(): Queryable<Blog> {
-    return new Queryable<Blog>(Blog, makeProvider());
+    return new Queryable<Blog>(Blog, QueryContext.fromProvider(makeProvider()));
   }
 
   it('string key: simple include added to _includes', () => {
@@ -535,7 +536,7 @@ describe('thenInclude after filtered include', () => {
   afterEach(() => MetadataStorage.reset());
 
   it('thenInclude correctly builds nested path posts.tags', () => {
-    const q = new Queryable<Blog>(Blog, makeProvider());
+    const q = new Queryable<Blog>(Blog, QueryContext.fromProvider(makeProvider()));
     q.include((b: unknown) =>
       (b as Record<string, IncludeSubquery<Post>>).posts.where((p: Post) => p.isPublished)
     );

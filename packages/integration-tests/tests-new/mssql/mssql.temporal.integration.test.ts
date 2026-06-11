@@ -15,6 +15,7 @@ import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { MssqlProvider } from '@ts-linq/provider-mssql';
 import { Queryable } from '@ts-linq/query';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { SqlParameter } from '@ts-linq/types';
 
 const url = process.env.MSSQL_URL;
@@ -237,14 +238,14 @@ mssqlDescribe('[integration][mssql] Temporal queries (system-versioned table)', 
   // ─── Queryable integration ────────────────────────────────────────────────
 
   test('Queryable.temporalAll() builds model.temporal correctly', () => {
-    const q = new Queryable(TemporalEmployee, provider as any);
+    const q = new Queryable(TemporalEmployee, QueryContext.fromProvider(provider as any));
     const tq = q.temporalAll();
     expect((tq as any)._model.temporal).toEqual({ mode: 'All' });
   });
 
   test('Queryable.temporalAsOf() builds model.temporal correctly', () => {
     const pt = new Date('2023-06-01');
-    const q = new Queryable(TemporalEmployee, provider as any);
+    const q = new Queryable(TemporalEmployee, QueryContext.fromProvider(provider as any));
     const tq = q.temporalAsOf(pt);
     expect((tq as any)._model.temporal).toEqual({ mode: 'AsOf', from: pt });
   });

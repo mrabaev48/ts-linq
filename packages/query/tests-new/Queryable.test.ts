@@ -1,6 +1,8 @@
-import { DatabaseProvider } from '@ts-linq/core';
+import { DatabaseProvider, QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { SqlDialect, SqlParameter } from '@ts-linq/types';
+import { QueryContext } from '@ts-linq/query/internal';
+import type { GlobalFilter, SqlDialect, SqlParameter } from '@ts-linq/types';
+import { QuerySplittingBehavior } from '@ts-linq/types';
 
 import { InMemoryCountCache } from '../src/CountCache';
 import { Queryable } from '../src/Queryable';
@@ -128,7 +130,7 @@ describe('Queryable (tests-new)', () => {
       { id: 1, name: 'Alice' },
       { id: 2, name: 'Bob' }
     ]);
-    const q = new Queryable(User, provider);
+    const q = new Queryable(User, QueryContext.fromProvider(provider));
     const items = await q.toArray();
     expect(items).toHaveLength(2);
     expect(items[0]).toEqual(expect.objectContaining({ id: 1, name: 'Alice' }));
@@ -137,7 +139,7 @@ describe('Queryable (tests-new)', () => {
   test('where() и orderBy()/skip()/take() не ломают исполнение', async () => {
     const provider = new TestProvider();
     provider.setRows([{ id: 3, name: 'Carol' }]);
-    const q = new Queryable(User, provider)
+    const q = new Queryable(User, QueryContext.fromProvider(provider))
       .whereCompiled({
         ast: {
           type: 'binary',
@@ -159,15 +161,13 @@ describe('Queryable (tests-new)', () => {
     provider.setCount(42);
     const q = new Queryable(
       User,
-      provider,
-      undefined,
-      undefined,
-      {
-        enableCountCache: true,
-        countCacheTtlMs: 10_000,
-        countCache: new InMemoryCountCache(10_000)
-      },
-      undefined
+      QueryContext.fromProvider(provider, {
+        performance: {
+          enableCountCache: true,
+          countCacheTtlMs: 10_000,
+          countCache: new InMemoryCountCache(10_000)
+        }
+      })
     ).whereCompiled({
       ast: {
         type: 'binary',
@@ -188,14 +188,14 @@ describe('Queryable (tests-new)', () => {
   test('first()/firstOrDefault()/any() работают поверх провайдера', async () => {
     const provider = new TestProvider();
     provider.setRows([{ id: 10, name: 'D' }]);
-    const q = new Queryable(User, provider).orderBy('id');
+    const q = new Queryable(User, QueryContext.fromProvider(provider)).orderBy('id');
     const first = await q.first();
     expect(first.id).toBe(10);
     const any = await q.any();
     expect(any).toBe(true);
     // Пустой результат для firstOrDefault()
     provider.setRows([]);
-    const firstOrDefault = await new Queryable(User, provider)
+    const firstOrDefault = await new Queryable(User, QueryContext.fromProvider(provider))
       .whereCompiled({
         ast: {
           type: 'binary',
@@ -211,7 +211,7 @@ describe('Queryable (tests-new)', () => {
 
   test('where() compiles lambda to SQL predicate via transformer', () => {
     const provider = new TestProvider();
-    const q = new Queryable(User, provider);
+    const q = new Queryable(User, QueryContext.fromProvider(provider));
     // The compile-time transformer rewrites where(lambda) → whereCompiled(ast).
     // After transformation, the call should succeed and return a Queryable.
     expect(() => q.where((u) => u.id > 0)).not.toThrow();
@@ -219,7 +219,7 @@ describe('Queryable (tests-new)', () => {
 
   test('select() compiles lambda to SQL projection via transformer', () => {
     const provider = new TestProvider();
-    const q = new Queryable(User, provider);
+    const q = new Queryable(User, QueryContext.fromProvider(provider));
     // The compile-time transformer rewrites select(lambda) → selectCompiled(ast).
     // After transformation, the call should succeed and return a Queryable.
     expect(() => q.select((u) => u.name)).not.toThrow();
@@ -256,7 +256,7 @@ describe('Queryable (tests-new)', () => {
 
     it('innerJoinOn() adds INNER JOIN with correct ON clause using column name mapping', () => {
       const provider = new TestProvider();
-      const q = new Queryable(User, provider);
+      const q = new Queryable(User, QueryContext.fromProvider(provider));
       q.innerJoinOn(Post, 'id', 'userId');
       const model = (
         q as unknown as {
@@ -276,7 +276,7 @@ describe('Queryable (tests-new)', () => {
 
     it('leftJoinOn() adds LEFT JOIN with correct ON clause using column name mapping', () => {
       const provider = new TestProvider();
-      const q = new Queryable(User, provider);
+      const q = new Queryable(User, QueryContext.fromProvider(provider));
       q.leftJoinOn(Post, 'id', 'userId');
       const model = (
         q as unknown as {
@@ -295,7 +295,7 @@ describe('Queryable (tests-new)', () => {
 
     it('innerJoinOn() respects optional alias', () => {
       const provider = new TestProvider();
-      const q = new Queryable(User, provider);
+      const q = new Queryable(User, QueryContext.fromProvider(provider));
       q.innerJoinOn(Post, 'id', 'userId', 'p');
       const model = (
         q as unknown as {
@@ -320,7 +320,7 @@ describe('Queryable (tests-new)', () => {
       MetadataStorage.addColumn(Post, { propertyName: 'id', columnName: 'id', type: 'INTEGER' });
 
       const provider = new TestProvider();
-      const q = new Queryable(User, provider);
+      const q = new Queryable(User, QueryContext.fromProvider(provider));
       q.innerJoinOn(Post, 'id', 'userId');
       const model = (q as unknown as { _model: { joins: Array<{ onColumns: unknown }> } })._model;
       expect(model.joins[0].onColumns).toEqual([
@@ -330,7 +330,7 @@ describe('Queryable (tests-new)', () => {
 
     it('multiple joinOn() calls accumulate joins', () => {
       const provider = new TestProvider();
-      const q = new Queryable(User, provider);
+      const q = new Queryable(User, QueryContext.fromProvider(provider));
       q.innerJoinOn(Post, 'id', 'userId').leftJoinOn(Post, 'id', 'userId', 'p2');
       const model = (q as unknown as { _model: { joins: Array<unknown> } })._model;
       expect(model.joins).toHaveLength(2);
@@ -339,9 +339,75 @@ describe('Queryable (tests-new)', () => {
     it('throws when entity metadata is not registered', () => {
       MetadataStorage.getInstance().clear();
       const provider = new TestProvider();
-      const q = new Queryable(User, provider);
+      const q = new Queryable(User, QueryContext.fromProvider(provider));
       expect(() => q.innerJoinOn(Post, 'id', 'userId')).toThrow(
         'ts-linq: entity metadata not found for join'
+      );
+    });
+  });
+
+  describe('QueryContext value object', () => {
+    it('with() returns a new context with one field changed and others preserved', () => {
+      const provider = new TestProvider();
+      const base = new QueryContext({
+        provider,
+        trackingMode: QueryTrackingBehavior.TrackAll,
+        globalSplittingBehavior: QuerySplittingBehavior.SplitQuery
+      });
+
+      const derived = base.with({ trackingMode: QueryTrackingBehavior.NoTracking });
+
+      // New instance, original untouched (immutability).
+      expect(derived).not.toBe(base);
+      expect(base.trackingMode).toBe(QueryTrackingBehavior.TrackAll);
+      // The overridden field changed…
+      expect(derived.trackingMode).toBe(QueryTrackingBehavior.NoTracking);
+      // …all other fields preserved (by reference where applicable).
+      expect(derived.provider).toBe(provider);
+      expect(derived.globalSplittingBehavior).toBe(QuerySplittingBehavior.SplitQuery);
+      expect(derived.visitorFactory).toBe(base.visitorFactory);
+    });
+
+    it('with() can explicitly clear a field via undefined', () => {
+      const base = QueryContext.fromProvider(new TestProvider(), {
+        globalSplittingBehavior: QuerySplittingBehavior.SingleQuery
+      });
+      const cleared = base.with({ globalSplittingBehavior: undefined });
+      expect(cleared.globalSplittingBehavior).toBeUndefined();
+      expect(base.globalSplittingBehavior).toBe(QuerySplittingBehavior.SingleQuery);
+    });
+  });
+
+  describe('selectCompiled projection carries the full context (regression)', () => {
+    it('preserves global filters and tracking mode across a projection', () => {
+      const provider = new TestProvider();
+      const globalFilters: GlobalFilter[] = [{ filterName: 'tenant' }];
+      const context = new QueryContext({
+        provider,
+        globalFilters,
+        trackingMode: QueryTrackingBehavior.NoTracking
+      });
+      const source = new Queryable(User, context);
+
+      const projected = source.selectCompiled<{ id: number }>({ fields: ['id'] });
+
+      // Before the fix these six config fields were silently dropped on projection.
+      const inspect = projected as unknown as {
+        _globalFilters?: GlobalFilter[];
+        _trackingMode: QueryTrackingBehavior;
+      };
+      expect(inspect._globalFilters).toBe(globalFilters);
+      expect(inspect._trackingMode).toBe(QueryTrackingBehavior.NoTracking);
+    });
+
+    it('preserves a per-chain asNoTracking() override applied before the projection', () => {
+      const provider = new TestProvider();
+      const source = new Queryable(User, QueryContext.fromProvider(provider)).asNoTracking();
+
+      const projected = source.selectCompiled<{ id: number }>({ fields: ['id'] });
+
+      expect((projected as unknown as { _trackingMode: QueryTrackingBehavior })._trackingMode).toBe(
+        QueryTrackingBehavior.NoTracking
       );
     });
   });

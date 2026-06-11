@@ -11,6 +11,7 @@
 
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { SqlDialect, SqlParameter, TemporalClause } from '@ts-linq/types';
 
 import { Queryable } from '../src/Queryable';
@@ -103,7 +104,7 @@ class StubProvider extends DatabaseProvider {
 // ---------------------------------------------------------------------------
 
 function makeQueryable(): Queryable<Employee> {
-  return new Queryable<Employee>(Employee, new StubProvider());
+  return new Queryable<Employee>(Employee, QueryContext.fromProvider(new StubProvider()));
 }
 
 // ---------------------------------------------------------------------------
