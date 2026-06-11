@@ -41,7 +41,7 @@ import { mssqlSpatialFunctions } from './spatial-functions';
  */
 export class MssqlDialect implements SqlDialect, DialectVisitorSupport {
   private readonly whereEmitter = new MssqlWhereEmitter();
-  private readonly joinEmitter = new MssqlJoinEmitter();
+  private readonly joinEmitter = new MssqlJoinEmitter((id) => this.quoteIdentifier(id));
   private readonly orderEmitter = new MssqlOrderEmitter();
   private readonly groupEmitter = new MssqlGroupEmitter();
   private readonly jsonPathTranslator = new MssqlJsonPathTranslator();

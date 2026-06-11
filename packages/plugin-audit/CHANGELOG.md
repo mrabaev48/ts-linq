@@ -1,5 +1,13 @@
 # @ts-linq/plugin-audit
 
+## 2.0.25
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.4.0
+  - @ts-linq/metadata@4.1.3
+
 ## 2.0.24
 
 ### Patch Changes

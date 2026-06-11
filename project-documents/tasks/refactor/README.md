@@ -232,7 +232,7 @@ Each package only depends on packages already completed above it.
 | provider-mssql | 9 | 2 | 5 | 2 | 0 | not-started |
 | provider-mysql | 8 | 2 | 5 | 1 | 0 | not-started |
 | provider-postgres | 8 | 2 | 4 | 2 | 0 | not-started |
-| query | 10 | 4 | 4 | 2 | 0 | 🔄 In Progress (task-4, task-8 ✅) |
+| query | 10 | 4 | 4 | 2 | 0 | 🔄 In Progress (task-4, task-8, task-6 ✅) |
 | sql-visitor | 6 | 0 | 2 | 4 | 0 | ✅ done (task-1/2/3/4/5/6 ✅) |
 | telemetry | 3 | 0 | 2 | 1 | 0 | not-started |
 | testkits | 6 | 0 | 3 | 3 | 0 | not-started |
