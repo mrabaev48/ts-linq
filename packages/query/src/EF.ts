@@ -1,3 +1,5 @@
+import { UnsupportedOperationError } from '@ts-linq/types';
+
 import { CapturedQueryPlan } from './compiled/CapturedQueryPlan';
 import { type EfFunctions, efFunctions } from './EF.functions';
 
@@ -94,7 +96,7 @@ export class EF {
    */
 
   static property<TValue>(_entity: object, _name: string): TValue {
-    throw new Error(
+    throw new UnsupportedOperationError(
       `EF.property() can only be used inside a compiled LINQ expression (e.g. .where(...) or .orderBy(...)). ` +
         `Use context.entry(entity).property("${_name}").currentValue to read shadow values at runtime.`
     );

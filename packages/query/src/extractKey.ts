@@ -1,3 +1,5 @@
+import { ValidationError } from '@ts-linq/types';
+
 /**
  * Extracts a property key string from either a literal key or a single-property lambda selector.
  *
@@ -28,9 +30,11 @@ export function extractKey<T>(keyOrSelector: keyof T | ((entity: T) => T[keyof T
     }
   ) as T;
   keyOrSelector(proxy);
-  if (!accessed.length) throw new Error('Could not extract property name from selector lambda');
+  if (!accessed.length) {
+    throw new ValidationError('Could not extract property name from selector lambda');
+  }
   if (accessed.length > 1) {
-    throw new Error(
+    throw new ValidationError(
       `Selector lambda accessed ${accessed.length} properties (${accessed.join(' → ')}). ` +
         `Only single-property selectors are supported (e.g. \`entity => entity.name\`). ` +
         `For nested paths use a string key (e.g. '${accessed.join('.')}').`

@@ -1,5 +1,15 @@
 # @ts-linq/dialect-mssql
 
+## 2.8.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.5.0
+  - @ts-linq/core@3.4.3
+  - @ts-linq/metadata@4.1.4
+  - @ts-linq/sql-visitor@4.3.1
+
 ## 2.8.0
 
 ### Minor Changes

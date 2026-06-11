@@ -1,5 +1,6 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { MetadataError, UnsupportedOperationError, ValidationError } from '@ts-linq/types';
 
 import type { QueryModel } from './QueryModel';
 import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
@@ -24,7 +25,7 @@ export class BulkDmlExecutor<T> {
     prepareModel: () => QueryModel
   ): Promise<number> {
     if (hasIncludes) {
-      throw new Error(
+      throw new UnsupportedOperationError(
         'Cannot call executeUpdate() after include(). ' +
           'Bulk DML does not support eager loading. Remove the include() call.'
       );
@@ -32,7 +33,7 @@ export class BulkDmlExecutor<T> {
 
     const metadata = MetadataStorage.getEntity(this.entityClass);
     if (!metadata) {
-      throw new Error(
+      throw new MetadataError(
         `ts-linq: entity metadata not found for ${this.entityClass.name}. ` +
           'Ensure the class is decorated with @Entity().'
       );
@@ -43,14 +44,14 @@ export class BulkDmlExecutor<T> {
     const setterSpecs = collector.toSetterSpecs(metadata.columns);
 
     if (setterSpecs.length === 0) {
-      throw new Error('executeUpdate() requires at least one setProperty() call.');
+      throw new ValidationError('executeUpdate() requires at least one setProperty() call.');
     }
 
     const queryModel = prepareModel();
     const dialect = this.provider.getDialect();
 
     if (!dialect.buildBulkUpdate) {
-      throw new Error(
+      throw new UnsupportedOperationError(
         `The current dialect (${this.provider.providerLabel ?? 'unknown'}) does not support buildBulkUpdate. ` +
           'Implement buildBulkUpdate() on the dialect class.'
       );
@@ -67,7 +68,7 @@ export class BulkDmlExecutor<T> {
 
   async delete(hasIncludes: boolean, prepareModel: () => QueryModel): Promise<number> {
     if (hasIncludes) {
-      throw new Error(
+      throw new UnsupportedOperationError(
         'Cannot call executeDelete() after include(). ' +
           'Bulk DML does not support eager loading. Remove the include() call.'
       );
@@ -75,7 +76,7 @@ export class BulkDmlExecutor<T> {
 
     const metadata = MetadataStorage.getEntity(this.entityClass);
     if (!metadata) {
-      throw new Error(
+      throw new MetadataError(
         `ts-linq: entity metadata not found for ${this.entityClass.name}. ` +
           'Ensure the class is decorated with @Entity().'
       );
@@ -85,7 +86,7 @@ export class BulkDmlExecutor<T> {
     const dialect = this.provider.getDialect();
 
     if (!dialect.buildBulkDelete) {
-      throw new Error(
+      throw new UnsupportedOperationError(
         `The current dialect (${this.provider.providerLabel ?? 'unknown'}) does not support buildBulkDelete. ` +
           'Implement buildBulkDelete() on the dialect class.'
       );

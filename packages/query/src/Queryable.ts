@@ -18,7 +18,14 @@ import type {
   TemporalClause,
   WhereClause
 } from '@ts-linq/types';
-import { QuerySplittingBehavior as QSB } from '@ts-linq/types';
+import {
+  InvalidIncludeError,
+  MetadataError,
+  OperationAbortedError,
+  QuerySplittingBehavior as QSB,
+  SequenceError,
+  UnsupportedOperationError
+} from '@ts-linq/types';
 
 import { AggregateOperations } from './AggregateOperations';
 import { type QueryTagList } from './ast/query-tags';
@@ -654,7 +661,7 @@ export class Queryable<T> {
   public where(predicate: (entity: T) => boolean): Queryable<T> {
     // Runtime predicate parsing is intentionally not supported.
     // Use the compile-time transformer which rewrites `where(...)` into `whereCompiled(...)`.
-    throw new Error(
+    throw new UnsupportedOperationError(
       "ts-linq(where): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
     );
   }
@@ -749,7 +756,7 @@ export class Queryable<T> {
    * const names = await context.authors.select(a => a.name).toArray();
    */
   public select<TResult>(_selector: (entity: T) => TResult): Queryable<TResult> {
-    throw new Error(
+    throw new UnsupportedOperationError(
       "ts-linq(select): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
     );
   }
@@ -926,11 +933,11 @@ export class Queryable<T> {
    */
   public having(predicate: (entity: T) => boolean): Queryable<T> {
     if (!this._model.groupBy) {
-      throw new Error('having() requires a preceding groupBy()');
+      throw new UnsupportedOperationError('having() requires a preceding groupBy()');
     }
     // Runtime predicate parsing is intentionally not supported.
     // Use the compile-time transformer which rewrites `having(...)` into `havingCompiled(...)`.
-    throw new Error(
+    throw new UnsupportedOperationError(
       "ts-linq(having): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
     );
   }
@@ -945,7 +952,7 @@ export class Queryable<T> {
     readonly parameters: readonly unknown[];
   }): Queryable<T> {
     if (!this._model.groupBy) {
-      throw new Error('havingCompiled() requires a preceding groupBy()');
+      throw new UnsupportedOperationError('havingCompiled() requires a preceding groupBy()');
     }
     const having = this._predicates.compileHaving(input);
     return this.withModel((model) => {
@@ -1059,7 +1066,7 @@ export class Queryable<T> {
    */
   public thenInclude(selector: (nav: never) => unknown): Queryable<T> {
     if (!this._lastIncludePath) {
-      throw new Error('thenInclude() must be called after include()');
+      throw new InvalidIncludeError('thenInclude() must be called after include()');
     }
     const path = this._includeBuilder.resolveThenInclude(this._lastIncludePath, selector);
     return this.withModel((_model, draft) => {
@@ -1205,7 +1212,9 @@ export class Queryable<T> {
     const queryModel = this.prepareQueryModel();
     queryModel.limit = 1;
     const tracked = await this._runner.toList(this.buildRunSpec(queryModel));
-    if (!tracked.length) throw new Error('Sequence contains no elements');
+    if (!tracked.length) {
+      throw new SequenceError('Sequence contains no elements', { details: { reason: 'empty' } });
+    }
     return tracked[0];
   }
 
@@ -1226,8 +1235,14 @@ export class Queryable<T> {
    */
   public async single(): Promise<T> {
     const results = await this.toArray();
-    if (results.length === 0) throw new Error('Sequence contains no elements');
-    if (results.length > 1) throw new Error('Sequence contains more than one element');
+    if (results.length === 0) {
+      throw new SequenceError('Sequence contains no elements', { details: { reason: 'empty' } });
+    }
+    if (results.length > 1) {
+      throw new SequenceError('Sequence contains more than one element', {
+        details: { reason: 'multiple' }
+      });
+    }
     return results[0];
   }
 
@@ -1237,7 +1252,11 @@ export class Queryable<T> {
    */
   public async singleOrDefault(): Promise<T | null> {
     const results = await this.toArray();
-    if (results.length > 1) throw new Error('Sequence contains more than one element');
+    if (results.length > 1) {
+      throw new SequenceError('Sequence contains more than one element', {
+        details: { reason: 'multiple' }
+      });
+    }
     return results[0] ?? null;
   }
 
@@ -1247,7 +1266,8 @@ export class Queryable<T> {
    */
   public async count(): Promise<number> {
     const metadata = MetadataStorage.getEntity(this._entityClass);
-    if (!metadata) throw new Error(`Entity metadata not found for ${this._entityClass.name}`);
+    if (!metadata)
+      throw new MetadataError(`Entity metadata not found for ${this._entityClass.name}`);
     return this._countCoordinator.count({
       entityName: this._entityClass.name,
       tableName: metadata.tableName,
@@ -1286,7 +1306,7 @@ export class Queryable<T> {
 
   /** Calculate average of a numeric property */
   public async average<K extends keyof T>(key: K): Promise<number> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
+    if (this._abortSignal?.aborted) throw new OperationAbortedError('Operation aborted');
     const colName = this.resolveColumnName(key as string);
     const queryModel = this.prepareQueryModel();
     return this._aggregates.average(queryModel, colName);
@@ -1294,7 +1314,7 @@ export class Queryable<T> {
 
   /** Calculate sum of a numeric property */
   public async sum<K extends keyof T>(key: K): Promise<number> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
+    if (this._abortSignal?.aborted) throw new OperationAbortedError('Operation aborted');
     const colName = this.resolveColumnName(key as string);
     const queryModel = this.prepareQueryModel();
     return this._aggregates.sum(queryModel, colName);
@@ -1302,7 +1322,7 @@ export class Queryable<T> {
 
   /** Find minimum value of a property */
   public async min<K extends keyof T>(key: K): Promise<T[K]> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
+    if (this._abortSignal?.aborted) throw new OperationAbortedError('Operation aborted');
     const colName = this.resolveColumnName(key as string);
     const queryModel = this.prepareQueryModel();
     return this._aggregates.min<K>(queryModel, colName);
@@ -1310,7 +1330,7 @@ export class Queryable<T> {
 
   /** Find maximum value of a property */
   public async max<K extends keyof T>(key: K): Promise<T[K]> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
+    if (this._abortSignal?.aborted) throw new OperationAbortedError('Operation aborted');
     const colName = this.resolveColumnName(key as string);
     const queryModel = this.prepareQueryModel();
     return this._aggregates.max<K>(queryModel, colName);
@@ -1318,7 +1338,7 @@ export class Queryable<T> {
 
   /** Check if the sequence contains a specific element */
   public async contains(item: T): Promise<boolean> {
-    if (this._abortSignal?.aborted) throw new Error('Operation aborted');
+    if (this._abortSignal?.aborted) throw new OperationAbortedError('Operation aborted');
     const queryModel = this.prepareQueryModel();
     return this._aggregates.contains(queryModel, item, async () => this.toArray());
   }

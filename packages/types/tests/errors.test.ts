@@ -1,7 +1,11 @@
 import {
   DatabaseError,
+  DuplicateKeyError,
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
+  OrmError,
+  OrmErrorCode,
+  SequenceError,
   UniqueConstraintError,
   ValidationError
 } from '../src/errors';
@@ -205,6 +209,46 @@ describe('Error Classes', () => {
       expect(validationError instanceof Error).toBe(true);
       expect(validationError instanceof ValidationError).toBe(true);
       expect(validationError instanceof DatabaseError).toBe(false);
+    });
+  });
+
+  describe('ValidationError options', () => {
+    it('accepts an optional cause and details', () => {
+      const cause = new Error('root');
+      const error = new ValidationError('bad input', { cause, details: { field: 'name' } });
+
+      expect(error.message).toBe('bad input');
+      expect(error.cause).toBe(cause);
+      expect(error.details).toEqual({ field: 'name' });
+      expect(error.code).toBe(OrmErrorCode.ValidationError);
+    });
+  });
+
+  describe('SequenceError', () => {
+    it('carries the SEQUENCE_ERROR code and is an OrmError', () => {
+      const error = new SequenceError('Sequence contains no elements', {
+        details: { reason: 'empty' }
+      });
+
+      expect(error.message).toBe('Sequence contains no elements');
+      expect(error.code).toBe(OrmErrorCode.SequenceError);
+      expect(error.details).toEqual({ reason: 'empty' });
+      expect(error.name).toBe('SequenceError');
+      expect(error instanceof OrmError).toBe(true);
+      expect(error instanceof Error).toBe(true);
+      expect(error instanceof DatabaseError).toBe(false);
+    });
+  });
+
+  describe('DuplicateKeyError', () => {
+    it('carries the DUPLICATE_KEY code and is an OrmError', () => {
+      const error = new DuplicateKeyError('duplicate', { details: { key: 'k1' } });
+
+      expect(error.code).toBe(OrmErrorCode.DuplicateKey);
+      expect(error.details).toEqual({ key: 'k1' });
+      expect(error.name).toBe('DuplicateKeyError');
+      expect(error instanceof OrmError).toBe(true);
+      expect(error instanceof Error).toBe(true);
     });
   });
 });

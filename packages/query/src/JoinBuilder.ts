@@ -1,5 +1,5 @@
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { JoinClause } from '@ts-linq/types';
+import { type JoinClause, MetadataError } from '@ts-linq/types';
 
 /**
  * Builds a structured {@link JoinClause} for `innerJoinOn` / `leftJoinOn`. The clause carries
@@ -19,7 +19,9 @@ export class JoinBuilder {
   ): JoinClause {
     const leftMeta = MetadataStorage.getEntity(leftEntity);
     const rightMeta = MetadataStorage.getEntity(rightEntity);
-    if (!leftMeta || !rightMeta) throw new Error('ts-linq: entity metadata not found for join');
+    if (!leftMeta || !rightMeta) {
+      throw new MetadataError('ts-linq: entity metadata not found for join');
+    }
     const leftCol = leftMeta.columns.find((c) => c.propertyName === leftKey)?.columnName ?? leftKey;
     const rightCol =
       rightMeta.columns.find((c) => c.propertyName === rightKey)?.columnName ?? rightKey;

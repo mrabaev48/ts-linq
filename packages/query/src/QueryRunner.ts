@@ -1,6 +1,10 @@
 import type { QueryTrackingBehavior } from '@ts-linq/core';
-import type { CteDefinition, QuerySplittingBehavior } from '@ts-linq/types';
 import type { EntityAttacher } from '@ts-linq/types';
+import {
+  type CteDefinition,
+  OperationAbortedError,
+  type QuerySplittingBehavior
+} from '@ts-linq/types';
 
 import type { IncludeSubquery } from './include/IncludeSubquery';
 import type { QueryExecutor } from './QueryExecutor';
@@ -39,7 +43,7 @@ export class QueryRunner {
 
   /** Execute and materialize without applying tracking (used by `any`). */
   async materialize<T>(spec: RunSpec<T>): Promise<T[]> {
-    if (spec.abortSignal?.aborted) throw new Error('Operation aborted');
+    if (spec.abortSignal?.aborted) throw new OperationAbortedError('Operation aborted');
     return spec.executor.executeAndMaterialize(
       spec.model,
       spec.includes,
