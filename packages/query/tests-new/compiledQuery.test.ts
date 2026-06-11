@@ -18,6 +18,7 @@ import 'reflect-metadata';
 import { describe, expect, it } from '@jest/globals';
 import { DatabaseProvider } from '@ts-linq/core';
 import { Column, Entity, MetadataStorage, PrimaryKey } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import type { SqlDialect, SqlParameter } from '@ts-linq/types';
 
 import { CapturedQueryPlan, PlanSqlCache } from '../src/compiled/CapturedQueryPlan';
@@ -130,7 +131,7 @@ class StubProvider extends DatabaseProvider {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeQueryable(provider: StubProvider): Queryable<User> {
-  return new Queryable<User>(User, provider);
+  return new Queryable<User>(User, QueryContext.fromProvider(provider));
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────

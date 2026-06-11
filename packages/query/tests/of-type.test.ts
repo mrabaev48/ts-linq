@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import { InheritanceStrategy } from '@ts-linq/types';
 
 import { Queryable } from '../src/Queryable';
@@ -116,13 +117,13 @@ describe('Queryable.ofType()', () => {
     beforeEach(registerTphHierarchy);
 
     it('returns a Queryable<EmailNotification>', () => {
-      const q = new Queryable(Notification, makeProvider());
+      const q = new Queryable(Notification, QueryContext.fromProvider(makeProvider()));
       const sub = q.ofType(EmailNotification);
       expect(sub).toBeInstanceOf(Queryable);
     });
 
     it('adds WHERE clause for discriminator value', () => {
-      const q = new Queryable(Notification, makeProvider());
+      const q = new Queryable(Notification, QueryContext.fromProvider(makeProvider()));
       const sub = q.ofType(EmailNotification);
       const model = (sub as unknown as { _model: { where?: Array<{ condition: string }> } })._model;
       expect(model.where).toBeDefined();
@@ -131,7 +132,7 @@ describe('Queryable.ofType()', () => {
     });
 
     it('preserves existing WHERE clauses', () => {
-      const q = new Queryable(Notification, makeProvider());
+      const q = new Queryable(Notification, QueryContext.fromProvider(makeProvider()));
       // Add a where via internal model mutation for test purposes
       (
         q as unknown as { _model: { where: Array<{ condition: string; parameters: unknown[] }> } }
@@ -147,7 +148,7 @@ describe('Queryable.ofType()', () => {
     beforeEach(registerTptHierarchy);
 
     it('adds INNER JOIN to the subtype table', () => {
-      const q = new Queryable(Payment, makeProvider());
+      const q = new Queryable(Payment, QueryContext.fromProvider(makeProvider()));
       const sub = q.ofType(CardPayment);
       const model = (
         sub as unknown as { _model: { joins?: Array<{ type: string; table: string }> } }
@@ -172,7 +173,7 @@ describe('Queryable.ofType()', () => {
     });
 
     it('changes FROM table to the concrete leaf table', () => {
-      const q = new Queryable(Payment, makeProvider());
+      const q = new Queryable(Payment, QueryContext.fromProvider(makeProvider()));
       const sub = q.ofType(CardPayment);
       const model = (sub as unknown as { _model: { from?: string } })._model;
       expect(model.from).toBe('card_payments');
@@ -186,7 +187,7 @@ describe('Queryable.ofType()', () => {
       class StandaloneSub extends Standalone {}
       MetadataStorage.addEntity(StandaloneSub, 'standalones');
 
-      const q = new Queryable(Standalone, makeProvider());
+      const q = new Queryable(Standalone, QueryContext.fromProvider(makeProvider()));
       const sub = q.ofType(StandaloneSub);
       expect(sub).toBeInstanceOf(Queryable);
       const model = (sub as unknown as { _model: { where?: unknown[]; joins?: unknown[] } })._model;

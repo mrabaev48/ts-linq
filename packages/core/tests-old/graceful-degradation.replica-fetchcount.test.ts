@@ -4,6 +4,7 @@ import { MetadataStorage } from '@ts-linq/metadata';
 import { Queryable } from '../src/query/Queryable';
 import { ProviderStub } from './_stubs/ProviderStub';
 import type { QueryFallback, FallbackRequest } from '@ts-linq/types';
+import { QueryContext } from '@ts-linq/query/internal';
 
 function defineE() {
   @Entity()
@@ -43,7 +44,7 @@ describe('ReplicaFallback.fetchCount', () => {
     const meta = MetadataStorage.getEntity(E)!;
     await provider.createTable(meta);
 
-    const q = new Queryable(E, provider).fallbackTo(fb).withFallbackPolicy({ allowOps: ['count'] });
+    const q = new Queryable(E, QueryContext.fromProvider(provider)).fallbackTo(fb).withFallbackPolicy({ allowOps: ['count'] });
     const n = await q.count();
     expect(n).toBe(42);
   });
@@ -71,7 +72,7 @@ describe('ReplicaFallback.fetchCount', () => {
     const meta2 = MetadataStorage.getEntity(E)!;
     await provider.createTable(meta2);
 
-    const q = new Queryable(E, provider).fallbackTo(fb).withFallbackPolicy({ allowOps: ['count'] });
+    const q = new Queryable(E, QueryContext.fromProvider(provider)).fallbackTo(fb).withFallbackPolicy({ allowOps: ['count'] });
     const n = await q.count();
     expect(n).toBe(2);
   });

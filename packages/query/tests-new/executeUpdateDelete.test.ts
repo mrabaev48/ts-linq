@@ -14,6 +14,7 @@ import 'reflect-metadata';
 import { describe, expect, it, jest } from '@jest/globals';
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import type {
   BulkDeleteContext,
   BulkUpdateContext,
@@ -179,7 +180,7 @@ function registerUserMetadata(): void {
 }
 
 function makeQueryable(provider: BulkTestProvider): Queryable<User> {
-  return new Queryable<User>(User, provider);
+  return new Queryable<User>(User, QueryContext.fromProvider(provider));
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@
 import 'reflect-metadata';
 
 import { createMetadataRegistry } from '@ts-linq/metadata';
+import { QueryContext } from '@ts-linq/query/internal';
 import { InheritanceStrategy } from '@ts-linq/types';
 
 import { EntityTypeBuilder } from '../../../orm/src/builders/EntityTypeBuilder';
@@ -103,7 +104,7 @@ describe('Inheritance — TPH round-trip', () => {
     MetadataStorage.setDefaultRegistry(registry);
 
     try {
-      const q = new Queryable(Notification, makeProvider());
+      const q = new Queryable(Notification, QueryContext.fromProvider(makeProvider()));
       const emailQ = q.ofType(EmailNotification);
       const model = getModel(emailQ);
       const where = (model.where ?? []) as Array<{ condition: string; parameters: unknown[] }>;
@@ -154,7 +155,7 @@ describe('Inheritance — TPT round-trip', () => {
     MetadataStorage.setDefaultRegistry(registry);
 
     try {
-      const q = new Queryable(Payment, makeProvider());
+      const q = new Queryable(Payment, QueryContext.fromProvider(makeProvider()));
       const cardQ = q.ofType(CardPayment);
       const model = getModel(cardQ);
       const joins = (model.joins ?? []) as Array<{ type: string; table: string }>;
@@ -194,7 +195,7 @@ describe('Inheritance — TPC round-trip', () => {
     MetadataStorage.setDefaultRegistry(registry);
 
     try {
-      const q = new Queryable(Payment, makeProvider());
+      const q = new Queryable(Payment, QueryContext.fromProvider(makeProvider()));
       const cardQ = q.ofType(CardPayment);
       const model = getModel(cardQ);
       expect(model.from).toBe('card_payments');
