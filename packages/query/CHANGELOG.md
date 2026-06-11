@@ -1,5 +1,21 @@
 # @ts-linq/query
 
+## 2.5.0
+
+### Minor Changes
+
+- Make `Queryable<T>` uniformly immutable. Chainable operators (`take`, `skip`, `distinct`,
+  `where*`, `groupBy`, `having`, `orderBy`/`thenBy`, `union`/`unionAll`, `include`/`thenInclude`,
+  `innerJoinOn`/`leftJoinOn`, `ignoreQueryFilters`, `fallbackTo`, `withAbort`, …) no longer mutate
+  the receiver — each returns a fresh instance derived through a single `withModel` path. This
+  fixes a shared-mutable-state aliasing bug where forking one base query corrupted both branches
+  (`const a = base.take(10); const b = base.take(20)` previously made `a` and `b` share the
+  last-written limit).
+
+  Migration: capture the returned instance — `q.take(10)` no longer mutates `q`. Code that relied
+  on in-place mutation (calling an operator as a statement and then reusing the original) must use
+  the returned value instead.
+
 ## 2.4.38
 
 ### Patch Changes

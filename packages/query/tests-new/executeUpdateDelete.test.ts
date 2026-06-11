@@ -205,8 +205,8 @@ describe('Queryable.executeDelete() (P0-04)', () => {
     const provider = new BulkTestProvider();
     const q = makeQueryable(provider);
 
-    // Simulate a WHERE clause by calling whereCompiled directly
-    q.whereCompiled({
+    // Simulate a WHERE clause by calling whereCompiled directly (immutable — capture the result)
+    const filtered = q.whereCompiled({
       ast: {
         type: 'binary',
         operator: '==',
@@ -216,7 +216,7 @@ describe('Queryable.executeDelete() (P0-04)', () => {
       parameters: []
     });
 
-    await q.executeDelete();
+    await filtered.executeDelete();
 
     expect(provider.lastNonQuerySql).toContain('DELETE FROM "users"');
     expect(provider.lastNonQuerySql).toContain('WHERE');
@@ -311,7 +311,7 @@ describe('Queryable.executeUpdate() (P0-04)', () => {
     const provider = new BulkTestProvider();
     const q = makeQueryable(provider);
 
-    q.whereCompiled({
+    const filtered = q.whereCompiled({
       ast: {
         type: 'binary',
         operator: '==',
@@ -321,7 +321,7 @@ describe('Queryable.executeUpdate() (P0-04)', () => {
       parameters: []
     });
 
-    await q.executeUpdate((s) => s.setProperty((u) => u.name, 'Admin'));
+    await filtered.executeUpdate((s) => s.setProperty((u) => u.name, 'Admin'));
 
     expect(provider.lastNonQuerySql).toContain('WHERE');
     expect(provider.lastNonQuerySql).toContain('UPDATE "users" SET "name" = ?');
