@@ -24,7 +24,7 @@ import { AggregateOperations } from './AggregateOperations';
 import { type QueryTagList } from './ast/query-tags';
 import { BulkDmlExecutor } from './BulkDmlExecutor';
 import { CountCoordinator } from './CountCoordinator';
-import { extractKey } from './extractKey';
+import { extractKey, type KeySelector } from './extractKey';
 import { FallbackManager } from './FallbackManager';
 import { GlobalFilterApplier } from './GlobalFilterApplier';
 import type { IncludeSubquery, NavigationProxy } from './include/IncludeSubquery';
@@ -46,6 +46,14 @@ import { StreamingExecutor } from './StreamingExecutor';
 import { applyTagWith } from './tag-with';
 import { captureCallSiteTag } from './tag-with-call-site';
 import { TrackingCoordinator } from './TrackingCoordinator';
+
+/**
+ * Resolves the *element* entity type of a navigation property: the item type for collection
+ * navigations (`Post[]` → `Post`), or the (non-nullable) reference type for single navigations
+ * (`Address | null` → `Address`). Mirrors the unwrapping done by {@link NavigationProxy} and
+ * threads the leaf entity type through the `include` → `thenInclude` chain.
+ */
+export type NavElement<X> = X extends ReadonlyArray<infer E> ? E : NonNullable<X>;
 
 /**
  * Fluent query builder over a given entity type. Accumulates query intent
@@ -565,10 +573,10 @@ export class Queryable<T> {
    * @param rightKey - A property key **or** a single-property lambda on `TOther`.
    *   Nested-path lambdas are **not** supported — pass a string key instead.
    */
-  public innerJoinOn<TOther>(
+  public innerJoinOn<TOther, KL extends keyof T = keyof T, KR extends keyof TOther = keyof TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
+    leftKey: (KL & string) | KeySelector<T, KL>,
+    rightKey: (KR & string) | KeySelector<TOther, KR>,
     alias?: string
   ): Queryable<T> {
     return this.withModel((model) => {
@@ -602,10 +610,10 @@ export class Queryable<T> {
    * @param rightKey - A property key **or** a single-property lambda on `TOther`.
    *   Nested-path lambdas are **not** supported — pass a string key instead.
    */
-  public leftJoinOn<TOther>(
+  public leftJoinOn<TOther, KL extends keyof T = keyof T, KR extends keyof TOther = keyof TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
+    leftKey: (KL & string) | KeySelector<T, KL>,
+    rightKey: (KR & string) | KeySelector<TOther, KR>,
     alias?: string
   ): Queryable<T> {
     return this.withModel((model) => {
@@ -796,9 +804,7 @@ export class Queryable<T> {
    *   Nested-path lambdas (`entity => entity.profile.city`) are **not** supported and will throw at runtime —
    *   pass a string key instead.
    */
-  public orderBy<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
-  ): OrderedQueryable<T> {
+  public orderBy<K extends keyof T>(keyOrSelector: K | KeySelector<T, K>): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const draft = this.withModel((model) => {
       model.orderBy = model.orderBy || [];
@@ -821,7 +827,7 @@ export class Queryable<T> {
    *   pass a string key instead.
    */
   public orderByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
+    keyOrSelector: K | KeySelector<T, K>
   ): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const draft = this.withModel((model) => {
@@ -1021,10 +1027,12 @@ export class Queryable<T> {
    *   filtered-include lambda returning an `IncludeSubquery`.
    * @throws {IncludeResolutionError} if the property is not a declared relationship.
    */
-  public include<K extends keyof T & string>(key: K): Queryable<T>;
-  public include<K extends keyof T>(selector: (entity: T) => T[K]): Queryable<T>;
-  public include<U>(selector: (entity: NavigationProxy<T>) => IncludeSubquery<U>): Queryable<T>;
-  public include(keyOrSelector: unknown): Queryable<T> {
+  public include<K extends keyof T & string>(key: K): IncludableQueryable<T, NavElement<T[K]>>;
+  public include<TProp>(selector: (entity: T) => TProp): IncludableQueryable<T, NavElement<TProp>>;
+  public include<U>(
+    selector: (entity: NavigationProxy<T>) => IncludeSubquery<U>
+  ): IncludableQueryable<T, U>;
+  public include(keyOrSelector: unknown): IncludableQueryable<T, unknown> {
     const decision = this._includeBuilder.resolveInclude(keyOrSelector);
     return this.withModel((_model, draft) => {
       draft._lastIncludePath = decision.key;
@@ -1033,7 +1041,10 @@ export class Queryable<T> {
       } else if (!draft._includes.includes(decision.key)) {
         draft._includes.push(decision.key);
       }
-    });
+      // The runtime instance is a plain Queryable clone; the IncludableQueryable<T, TNav> view is
+      // purely type-level (it adds no runtime members — `thenInclude` is inherited), so the cast in
+      // the return below is sound.
+    }) as IncludableQueryable<T, unknown>;
   }
 
   /**
@@ -1412,9 +1423,7 @@ export class OrderedQueryable<T> extends Queryable<T> {
    *
    * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
    */
-  public thenBy<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
-  ): OrderedQueryable<T> {
+  public thenBy<K extends keyof T>(keyOrSelector: K | KeySelector<T, K>): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const draft = this.withModel((model) => {
       model.orderBy = model.orderBy || [];
@@ -1429,7 +1438,7 @@ export class OrderedQueryable<T> extends Queryable<T> {
    * @param keyOrSelector - A property key string **or** a single-property lambda (`entity => entity.name`).
    */
   public thenByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
+    keyOrSelector: K | KeySelector<T, K>
   ): OrderedQueryable<T> {
     const column = this.resolveColumnName(extractKey(keyOrSelector));
     const draft = this.withModel((model) => {
@@ -1437,5 +1446,38 @@ export class OrderedQueryable<T> extends Queryable<T> {
       model.orderBy.push({ column, direction: 'DESC' });
     });
     return OrderedQueryable._fromQueryable(draft);
+  }
+}
+
+/**
+ * Returned by `Queryable.include(...)`. Carries the leaf navigation entity type `TNav` so that the
+ * subsequent `thenInclude(...)` selector is type-checked against the *actual* nested entity instead
+ * of the base `(nav: never) => unknown` signature, restoring IntelliSense and rejecting typos.
+ *
+ * This is a purely type-level view: `include()` returns a normal `Queryable<T>` clone at runtime
+ * and `thenInclude` is inherited unchanged (it delegates to `IncludeBuilder.resolveThenInclude`).
+ * Chaining is preserved at every depth — each `thenInclude` re-threads the next leaf type.
+ *
+ * @typeParam T - The root query element type (unchanged across the include chain).
+ * @typeParam TNav - The leaf navigation entity type the next `thenInclude` selects on.
+ */
+export class IncludableQueryable<T, TNav> extends Queryable<T> {
+  /**
+   * Eagerly loads a nested navigation property on the current include-chain leaf (`TNav`).
+   *
+   * @param selector - A single-property lambda on the leaf entity (`nav => nav.address`).
+   *   Nested-path lambdas are **not** supported — call `thenInclude` again for the next level.
+   * @returns An `IncludableQueryable` re-typed to the newly selected leaf entity.
+   */
+  public override thenInclude<TProp>(
+    selector: (nav: TNav) => TProp
+  ): IncludableQueryable<T, NavElement<TProp>>;
+  // The second signature mirrors the base `Queryable.thenInclude` exactly. It keeps this override
+  // assignable to the base method (a subclass instance must substitute for a `Queryable<T>`), which
+  // the precise narrowing alone would violate. The precise overload is listed first so it wins
+  // resolution and drives IntelliSense against the real leaf entity.
+  public override thenInclude(selector: (nav: never) => unknown): Queryable<T>;
+  public override thenInclude(selector: (nav: never) => unknown): Queryable<T> {
+    return super.thenInclude(selector);
   }
 }

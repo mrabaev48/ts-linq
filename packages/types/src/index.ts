@@ -24,6 +24,7 @@ export {
   OwnedEntityHydrationError,
   QueryFilterCompilationError,
   RelationshipLoadError,
+  SelectorExtractionError,
   TemporalNotSupportedError,
   UniqueConstraintError,
   UnsupportedOperationError,

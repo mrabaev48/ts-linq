@@ -56,7 +56,7 @@ export class IncludeBuilder<T> {
     }
 
     // ── Fallback: plain key-extractor lambda (single property access) ────────
-    return this.simple(extractKey(keyOrSelector as (entity: T) => T[keyof T]));
+    return this.simple(extractKey(keyOrSelector as (entity: T) => unknown));
   }
 
   /**
@@ -64,7 +64,7 @@ export class IncludeBuilder<T> {
    * responsible for guarding that a prior `include()` set `lastIncludePath`.
    */
   resolveThenInclude(lastIncludePath: string, selector: (nav: never) => unknown): string {
-    const nestedKey = extractKey(selector as (entity: never) => never[keyof never]);
+    const nestedKey = extractKey<never>(selector);
 
     // Walk the metadata chain from the root entity class to the leaf entity in the current chain.
     let currentClass: EntityCtorRef = this.entityClass;

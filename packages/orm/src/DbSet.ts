@@ -1,7 +1,14 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { EntityLoader } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { NavigationProxy, OrderedQueryable, QueryTagList } from '@ts-linq/query';
+import type {
+  IncludableQueryable,
+  KeySelector,
+  NavElement,
+  NavigationProxy,
+  OrderedQueryable,
+  QueryTagList
+} from '@ts-linq/query';
 import type { ISetPropertyCalls } from '@ts-linq/query';
 import type { IncludeSubquery } from '@ts-linq/query';
 import { Queryable } from '@ts-linq/query';
@@ -394,15 +401,13 @@ export class DbSet<T extends object> {
   // ─── Ordering ─────────────────────────────────────────────────────────────
 
   /** Sorts ascending by property key or lambda selector. Returns `OrderedQueryable` to enable `thenBy` chaining. */
-  public orderBy<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
-  ): OrderedQueryable<T> {
+  public orderBy<K extends keyof T>(keyOrSelector: K | KeySelector<T, K>): OrderedQueryable<T> {
     return this.newQueryable().orderBy(keyOrSelector);
   }
 
   /** Sorts descending by property key or lambda selector. Returns `OrderedQueryable` to enable `thenBy` chaining. */
   public orderByDescending<K extends keyof T>(
-    keyOrSelector: K | ((entity: T) => T[keyof T])
+    keyOrSelector: K | KeySelector<T, K>
   ): OrderedQueryable<T> {
     return this.newQueryable().orderByDescending(keyOrSelector);
   }
@@ -453,10 +458,12 @@ export class DbSet<T extends object> {
    * ctx.blogs.include(b => b.posts)
    * ctx.blogs.include(b => b.posts.where(p => p.isPublished).take(10))
    */
-  public include<K extends keyof T & string>(key: K): Queryable<T>;
-  public include<K extends keyof T>(selector: (entity: T) => T[K]): Queryable<T>;
-  public include<U>(selector: (entity: NavigationProxy<T>) => IncludeSubquery<U>): Queryable<T>;
-  public include(keyOrSelector: unknown): Queryable<T> {
+  public include<K extends keyof T & string>(key: K): IncludableQueryable<T, NavElement<T[K]>>;
+  public include<TProp>(selector: (entity: T) => TProp): IncludableQueryable<T, NavElement<TProp>>;
+  public include<U>(
+    selector: (entity: NavigationProxy<T>) => IncludeSubquery<U>
+  ): IncludableQueryable<T, U>;
+  public include(keyOrSelector: unknown): IncludableQueryable<T, unknown> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return this.newQueryable().include(keyOrSelector as any);
   }
@@ -491,20 +498,20 @@ export class DbSet<T extends object> {
   // ─── Joins ────────────────────────────────────────────────────────────────
 
   /** Adds a type-safe INNER JOIN on an equality key pair. Accepts string keys or lambda selectors. */
-  public innerJoinOn<TOther>(
+  public innerJoinOn<TOther, KL extends keyof T = keyof T, KR extends keyof TOther = keyof TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
+    leftKey: (KL & string) | KeySelector<T, KL>,
+    rightKey: (KR & string) | KeySelector<TOther, KR>,
     alias?: string
   ): Queryable<T> {
     return this.newQueryable().innerJoinOn(otherCtor, leftKey, rightKey, alias);
   }
 
   /** Adds a type-safe LEFT JOIN on an equality key pair. Accepts string keys or lambda selectors. */
-  public leftJoinOn<TOther>(
+  public leftJoinOn<TOther, KL extends keyof T = keyof T, KR extends keyof TOther = keyof TOther>(
     otherCtor: new () => TOther,
-    leftKey: (keyof T & string) | ((entity: T) => T[keyof T]),
-    rightKey: (keyof TOther & string) | ((entity: TOther) => TOther[keyof TOther]),
+    leftKey: (KL & string) | KeySelector<T, KL>,
+    rightKey: (KR & string) | KeySelector<TOther, KR>,
     alias?: string
   ): Queryable<T> {
     return this.newQueryable().leftJoinOn(otherCtor, leftKey, rightKey, alias);
