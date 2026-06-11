@@ -402,13 +402,7 @@ export class QueryExecutor<T> {
     _table: string
   ): { sql: string; params: SqlParameter[] } {
     // Route through the dialect via sqlBuilder so placeholders ($N, @pN, ?) are emitted correctly.
-    const countModel = queryModel.clone();
-    (countModel as unknown as { select?: string[] }).select = ['COUNT(*) as count'];
-    countModel.orderBy = undefined;
-    countModel.limit = undefined;
-    countModel.offset = undefined;
-    (countModel as unknown as { distinct?: boolean }).distinct = false;
-    const built = this.sqlBuilder.generateFromModel(this.entityClass, countModel);
+    const built = this.sqlBuilder.generateCount(this.entityClass, queryModel);
     return { sql: built.query, params: built.parameters as SqlParameter[] };
   }
 

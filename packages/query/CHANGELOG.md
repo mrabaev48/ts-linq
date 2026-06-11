@@ -1,5 +1,11 @@
 # @ts-linq/query
 
+## 3.0.0
+
+### Major Changes
+
+- Split `QueryBuilder` into a cache-agnostic `SqlCompiler` core, a pure `CacheKeyBuilder`, and a `CachingSqlCompiler` decorator (`QueryBuilder` is now a thin facade over these). Removed the deprecated no-op static methods `QueryBuilder.clearCache`, `QueryBuilder.disposeCache`, and `QueryBuilder.invalidateForEntity` — use the instance methods (`clearCache()`, `dispose()`, `invalidateForEntity()`) or `DbContext` cache APIs instead.
+
 ## 2.5.1
 
 ### Patch Changes
