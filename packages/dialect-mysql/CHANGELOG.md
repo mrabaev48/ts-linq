@@ -1,5 +1,35 @@
 # @ts-linq/dialect-mysql
 
+## 2.8.0
+
+### Minor Changes
+
+- Move raw SQL identifier assembly out of `Queryable` into the dialect layer (query/task-6).
+  - **Cross-dialect correctness (MySQL fix):** `ofType` (TPH/TPT) and join construction no longer
+    emit hardcoded ANSI double-quote (`"`) identifiers. Identifier quoting is now the dialect's
+    responsibility, so MySQL renders backticks and SQL Server renders brackets correctly.
+  - **`whereInSubquery` correctness:** the column is now resolved to its mapped name
+    (`@Column({ name })`) and quoted via the dialect before emission, instead of interpolating the
+    raw TypeScript property key.
+  - **Structured join model (`@ts-linq/types`):** `JoinClause` gains `onColumns`
+    (`JoinOnCondition[]` of table-qualified `JoinColumnRef`s); the dialect renders and quotes them.
+    The pre-rendered `on` string is now optional and `@deprecated`, retained as a
+    backward-compatible fallback.
+  - **`@ts-linq/sql-visitor`:** new public `renderJoinOn` helper renders structured join conditions
+    with an injected `quoteIdentifier`; `FragmentJoinPlanner` now emits `onColumns` (fixing the same
+    hardcoded-`"` portability bug in entity-splitting fragment joins).
+  - **Subquery parameter ordering:** `whereExists`/`whereInSubquery` now normalize a spliced
+    subquery's placeholders back to positional `?`, so the dialect's single global `?`→`$N`/`@pN`
+    renumbering keeps outer and subquery parameters correctly aligned.
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.4.0
+  - @ts-linq/sql-visitor@4.3.0
+  - @ts-linq/core@3.4.2
+  - @ts-linq/metadata@4.1.3
+
 ## 2.7.1
 
 ### Patch Changes

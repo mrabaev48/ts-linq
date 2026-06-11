@@ -22,7 +22,8 @@ class BankPayment extends Payment {}
 function makeProvider() {
   return {
     getDialect: () => ({
-      buildSelect: () => ({ query: 'SELECT 1', parameters: [] })
+      buildSelect: () => ({ query: 'SELECT 1', parameters: [] }),
+      quoteIdentifier: (id: string) => `"${id.replace(/"/g, '""')}"`
     }),
     loggerRef: undefined,
     providerLabel: 'test'

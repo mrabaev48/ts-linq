@@ -173,6 +173,28 @@ describe('MssqlDialect', () => {
       );
       expect(result.parameters).toEqual([]);
     });
+
+    it('renders structured onColumns with bracket identifier quoting', () => {
+      const options: QueryOptions = {
+        joins: [
+          {
+            type: 'INNER',
+            table: 'orders',
+            onColumns: [
+              {
+                left: { table: 'orders', column: 'user_id' },
+                right: { table: 'test_table', column: 'id' }
+              }
+            ]
+          }
+        ]
+      };
+      const result = dialect.buildSelect(TestEntity, options);
+
+      expect(result.query).toBe(
+        'SELECT * FROM [test_table] INNER JOIN [orders] ON [orders].[user_id] = [test_table].[id]'
+      );
+    });
   });
 
   describe('buildSelect - ORDER BY clause', () => {

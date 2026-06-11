@@ -1,5 +1,14 @@
 # @ts-linq/cache
 
+## 12.0.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.4.0
+  - @ts-linq/core@3.4.2
+  - @ts-linq/metrics-safe@1.2.6
+
 ## 12.0.1
 
 ### Patch Changes

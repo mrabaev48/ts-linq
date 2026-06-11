@@ -12,6 +12,7 @@ export { emitTagComments } from './emit-tags';
 export type { EfFunctionTranslator } from './functions/FunctionTranslator';
 export { JsonAccessRewriter } from './JsonAccessRewriter';
 export { ParameterState, ParameterStyle } from './ParameterStyle';
+export { renderJoinOn } from './render-join';
 export { CallSyntaxEmitter, ExecSyntaxEmitter } from './sp-call-emitter';
 export { SqlVisitor, type SqlVisitorOptions } from './SqlVisitor';
 export type { ConditionFragment, SqlFragment } from './types';
