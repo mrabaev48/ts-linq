@@ -45,7 +45,8 @@ export const OrmErrorCode = {
   OwnedEntityHydrationError: 'OWNED_ENTITY_HYDRATION_ERROR',
   RelationshipLoadError: 'RELATIONSHIP_LOAD_ERROR',
   QueryFilterCompilationError: 'QUERY_FILTER_COMPILATION_ERROR',
-  FallbackExhausted: 'FALLBACK_EXHAUSTED'
+  FallbackExhausted: 'FALLBACK_EXHAUSTED',
+  SelectorExtraction: 'SELECTOR_EXTRACTION_ERROR'
 } as const;
 
 /** Union of every stable code declared in {@link OrmErrorCode}. */
@@ -188,6 +189,25 @@ export class BatchConfigurationError extends OrmError {
 /** Thrown when an `include`/`thenInclude` path cannot be resolved. */
 export class InvalidIncludeError extends OrmError {
   public readonly code = OrmErrorCode.InvalidInclude;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when a key-selector lambda cannot be reduced to a single top-level property.
+ *
+ * The fluent query builders (`orderBy`, `innerJoinOn`, `include`, `thenInclude`,
+ * `setProperty`, …) accept single-property selectors such as `e => e.name`. A lambda that
+ * accesses zero properties (`() => 42`), more than one (`e => e.profile.city`), or branches
+ * (`e => cond ? e.a : e.b`) cannot be mapped to a column and fails closed with this error.
+ *
+ * The optional `details.accessed` payload carries the property segments observed by the proxy,
+ * which makes nested-path misuse easy to diagnose without leaking secrets.
+ */
+export class SelectorExtractionError extends OrmError {
+  public readonly code = OrmErrorCode.SelectorExtraction;
 
   constructor(message: string, opts?: OrmErrorOptions) {
     super(message, opts);

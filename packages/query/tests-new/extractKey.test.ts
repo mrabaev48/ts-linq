@@ -16,8 +16,9 @@
 import { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import { QueryContext } from '@ts-linq/query/internal';
-import type { SqlDialect, SqlParameter } from '@ts-linq/types';
+import { SelectorExtractionError, type SqlDialect, type SqlParameter } from '@ts-linq/types';
 
+import { extractKey } from '../src/extractKey';
 import { Queryable } from '../src/Queryable';
 
 // ---------------------------------------------------------------------------
@@ -276,5 +277,48 @@ describe('extractKey — join methods', () => {
     expect(() =>
       makeJoinQueryable().leftJoinOn(Post, nestedLambda('nested', 'id'), 'userId')
     ).toThrow(/Only single-property selectors are supported/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Shared helper: direct unit coverage of the single, unified extractor.
+// Both `extractKey` (ordering/join/include) and `SetPropertyCalls.setProperty`
+// now route through this one function with one consistent, typed error model.
+// ---------------------------------------------------------------------------
+
+describe('extractKey — shared helper (direct)', () => {
+  test('string key passes through unchanged', () => {
+    expect(extractKey<User>('name')).toBe('name');
+  });
+
+  test('single-property lambda returns the property name', () => {
+    expect(extractKey<User>((u) => u.age)).toBe('age');
+  });
+
+  test('multi-property lambda throws SelectorExtractionError with the unified message', () => {
+    const nested = ((u: Record<string, Record<string, unknown>>) =>
+      u['profile']['city']) as unknown as (u: User) => unknown;
+    expect(() => extractKey<User>(nested)).toThrow(SelectorExtractionError);
+    expect(() => extractKey<User>(nested)).toThrow(/Only single-property selectors are supported/);
+  });
+
+  test('zero-property lambda throws SelectorExtractionError', () => {
+    const literal = (() => 42) as unknown as (u: User) => unknown;
+    expect(() => extractKey<User>(literal)).toThrow(SelectorExtractionError);
+    expect(() => extractKey<User>(literal)).toThrow(
+      /Could not extract property name from selector lambda/
+    );
+  });
+
+  test('multi-segment failure carries the accessed segments in details', () => {
+    const nested = ((u: Record<string, Record<string, unknown>>) =>
+      u['profile']['city']) as unknown as (u: User) => unknown;
+    try {
+      extractKey<User>(nested);
+      throw new Error('expected extractKey to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(SelectorExtractionError);
+      expect((err as SelectorExtractionError).details).toEqual({ accessed: ['profile', 'city'] });
+    }
   });
 });

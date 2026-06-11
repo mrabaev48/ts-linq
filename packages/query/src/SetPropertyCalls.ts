@@ -1,5 +1,7 @@
 import type { SetterSpec, SqlParameter } from '@ts-linq/types';
 
+import { extractKey } from './extractKey';
+
 /**
  * Fluent builder for collecting SET assignments in executeUpdate().
  * Mirrors EF Core's ISetPropertyCalls<T>.
@@ -28,36 +30,6 @@ export interface SetterEntry {
   value: { kind: 'literal'; params: SqlParameter[] } | { kind: 'column'; refPropertyName: string };
 }
 
-/** @internal Extracts the first property name accessed by a selector lambda via a Proxy. */
-function extractSingleProp<T>(selector: (e: T) => unknown): string {
-  const accessed: string[] = [];
-  const proxy = new Proxy(
-    {},
-    {
-      get(_t, prop) {
-        accessed.push(String(prop));
-        return proxy;
-      }
-    }
-  ) as T;
-  let caught: unknown;
-  try {
-    selector(proxy);
-  } catch (err) {
-    // The proxy itself never throws; a throw here means the lambda failed before any
-    // property access. Preserve the original cause so the generic error below stays debuggable.
-    caught = err;
-  }
-  if (!accessed.length) {
-    throw new Error(
-      'setProperty: could not extract property name from selector lambda. ' +
-        'Use a simple single-property lambda, e.g. `e => e.name`.',
-      caught !== undefined ? { cause: caught } : undefined
-    );
-  }
-  return accessed[0];
-}
-
 function coerceToSqlParameter(value: unknown): SqlParameter {
   if (
     value === null ||
@@ -83,10 +55,10 @@ export class SetPropertyCalls<T> implements ISetPropertyCalls<T> {
     propertySelector: (e: T) => TProp,
     valueOrSelector: TProp | ((e: T) => TProp)
   ): ISetPropertyCalls<T> {
-    const propertyName = extractSingleProp(propertySelector);
+    const propertyName = extractKey<T>(propertySelector);
 
     if (typeof valueOrSelector === 'function') {
-      const refPropertyName = extractSingleProp(valueOrSelector as (e: T) => unknown);
+      const refPropertyName = extractKey<T>(valueOrSelector as (e: T) => unknown);
       this._setters.push({ propertyName, value: { kind: 'column', refPropertyName } });
     } else {
       this._setters.push({
