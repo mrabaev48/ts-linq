@@ -47,11 +47,11 @@ applies global query filters, tracking, caching and pagination. The public entry
 | 6 | task-1 | P0 | ✅ Completed | Decompose the god class into 10 focused collaborators (facade). |
 | 7 | task-7 | P1 | ✅ Completed | Split compile/execute/cache (decorator). |
 | 8 | task-5 | P1 | ✅ Completed | Honest selector types + type-level tests. |
-| 9 | task-9 | P2 | ⬜ Pending | Extract include proxy; fix double-invocation. |
+| 9 | task-9 | P2 | ✅ Completed | Extract include proxy into `IncludeSelectorResolver` (Result type); single invocation. |
 | 10 | task-10 | P2 | ⬜ Pending | Public API/barrel hygiene (bundle with major bump). |
 
-> **Package status: 🔄 In Progress** — task-4, task-8, task-6, task-3, task-2, task-1, task-7, task-5 done; tasks 9, 10 pending.
-> Note: task-1's `IncludeBuilder` already extracts the filtered-include `Proxy` (part of task-9's scope); task-9 remains for the double-invocation/cleanup specifics.
+> **Package status: 🔄 In Progress** — task-4, task-8, task-6, task-3, task-2, task-1, task-7, task-5, task-9 done; task-10 pending.
+> Note: task-1's `IncludeBuilder` already extracted the filtered-include `Proxy`; task-9 formalized it into a named `IncludeSelectorResolver` returning a discriminated `IncludeResolution` (`subquery | error`), invoked exactly once, and removed the dead `extractKey` fallback / useless catch.
 
 ## Dependencies on other packages
 - `@ts-linq/sql-visitor` — predicate→SQL fragment generation (task-4 wiring, sql-visitor

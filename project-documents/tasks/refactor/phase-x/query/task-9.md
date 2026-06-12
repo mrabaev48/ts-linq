@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: query
 priority: P2

@@ -1,5 +1,15 @@
 # @ts-linq/query
 
+## 3.1.1
+
+### Patch Changes
+
+- Extract the filtered-include `Proxy` out of `IncludeBuilder` into a named, independently testable
+  `IncludeSelectorResolver` that returns a discriminated `IncludeResolution` (`subquery | error`).
+  The include selector lambda is now invoked exactly once on every path, the original thrown error
+  object is rethrown directly (no re-invocation), and the dead `extractKey` fallback / useless
+  `try/catch` are removed. Internal clean-up only — no public API change.
+
 ## 3.1.0
 
 ### Minor Changes
