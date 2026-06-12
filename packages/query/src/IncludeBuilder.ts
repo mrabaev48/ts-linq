@@ -3,7 +3,8 @@ import type { EntityCtorRef } from '@ts-linq/types';
 
 import { IncludeResolutionError } from './errors';
 import { extractKey } from './extractKey';
-import { IncludeSubquery } from './include/IncludeSubquery';
+import type { IncludeSubquery } from './include/IncludeSubquery';
+import { IncludeSelectorResolver } from './IncludeSelectorResolver';
 import { resolveTargetCtor } from './includeUtils';
 
 /**
@@ -20,6 +21,8 @@ export type IncludeDecision =
  * nested paths. SQL-free and stateless apart from the entity binding — shared across clones.
  */
 export class IncludeBuilder<T> {
+  private readonly selectorResolver = new IncludeSelectorResolver();
+
   constructor(private readonly entityClass: new () => T) {}
 
   /** Resolve an `include(...)` argument (string key, plain lambda, or filtered lambda). */
@@ -29,34 +32,19 @@ export class IncludeBuilder<T> {
       return this.simple(String(keyOrSelector));
     }
 
-    // ── Lambda: try filtered-include proxy first ─────────────────────────────
-    // The proxy returns an IncludeSubquery for any property access. A filtered lambda
-    // (b => b.posts.where(...).take(10)) yields an IncludeSubquery with specs captured; a plain
-    // lambda (b => b.posts) yields one with isFiltered === false → treated as a simple include.
-    const makeIncludeProxy = (): T =>
-      new Proxy({} as object, {
-        get(_target, prop) {
-          return new IncludeSubquery<unknown>(String(prop));
-        }
-      }) as unknown as T;
-    let proxyResult: unknown;
-    try {
-      proxyResult = (keyOrSelector as (entity: T) => unknown)(makeIncludeProxy());
-    } catch (err) {
-      // Proxy call threw (e.g. forbidden operator). Surface the captured error directly —
-      // re-running the lambda would invoke user side effects a second time.
-      throw err;
+    // ── Lambda: drive the filtered-include proxy (invokes the selector exactly once) ──
+    const resolution = this.selectorResolver.resolve(keyOrSelector as (entity: never) => unknown);
+    if (resolution.kind === 'error') {
+      // Rethrow the original error object — no re-invocation of the selector.
+      throw resolution.error;
     }
 
-    if (proxyResult instanceof IncludeSubquery) {
-      const subquery = proxyResult as IncludeSubquery<unknown>;
-      const key = subquery.propertyName;
-      this.validate(key);
-      return subquery.isFiltered ? { kind: 'filtered', key, subquery } : { kind: 'simple', key };
-    }
-
-    // ── Fallback: plain key-extractor lambda (single property access) ────────
-    return this.simple(extractKey(keyOrSelector as (entity: T) => unknown));
+    // A filtered lambda (b => b.posts.where(...).take(10)) yields an IncludeSubquery with specs
+    // captured; a plain lambda (b => b.posts) yields one with isFiltered === false → simple include.
+    const subquery = resolution.value;
+    const key = subquery.propertyName;
+    this.validate(key);
+    return subquery.isFiltered ? { kind: 'filtered', key, subquery } : { kind: 'simple', key };
   }
 
   /**
