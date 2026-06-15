@@ -129,8 +129,8 @@ Each package only depends on packages already completed above it.
 | 5 | `sql-visitor` | foundation | Visitor/dispatch + param-state. Depends on `ast`, `types`. | ✅ done |
 | 6 | `concurrency` | foundation | Make retry policies canonical **before** `core` so its duplicate can be deleted. | ✅ done |
 | 7 | `core` | runtime | Decompose provider/loader; kill SQL injection + singleton coupling + silent catches. | ✅ done |
-| 8 | `query` | runtime | Decompose `Queryable`; immutability; wire `SqlVisitorOptions`; move SQL out. | 🔄 In Progress |
-| 9 | `transformer` | runtime | De-dupe entrypoints; stop swallowing TypeChecker failures. Depends on `ast`. |
+| 8 | `query` | runtime | Decompose `Queryable`; immutability; wire `SqlVisitorOptions`; move SQL out. | ✅ done |
+| 9 | `transformer` | runtime | De-dupe entrypoints; stop swallowing TypeChecker failures. Depends on `ast`. | 🔄 In Progress |
 | 10 | `migrations` | runtime | Injection-safe quoting; decompose runner. Needed by `orm` + `cli`. |
 | 11 | `telemetry` | runtime | De-dupe span mapping; masking. Needed by `orm`; do before it. |
 | 12 | `orm` | runtime | Decompose `DbContext`/`ChangeTracker`/`DbSet`; public/internal boundary. Top of runtime. |
@@ -232,11 +232,11 @@ Each package only depends on packages already completed above it.
 | provider-mssql | 9 | 2 | 5 | 2 | 0 | not-started |
 | provider-mysql | 8 | 2 | 5 | 1 | 0 | not-started |
 | provider-postgres | 8 | 2 | 4 | 2 | 0 | not-started |
-| query | 10 | 4 | 4 | 2 | 0 | 🔄 In Progress (task-4, task-8, task-6, task-3, task-2, task-1, task-7, task-5, task-9 ✅) |
+| query | 10 | 4 | 4 | 2 | 0 | ✅ done (task-1/2/3/4/5/6/7/8/9/10 ✅) |
 | sql-visitor | 6 | 0 | 2 | 4 | 0 | ✅ done (task-1/2/3/4/5/6 ✅) |
 | telemetry | 3 | 0 | 2 | 1 | 0 | not-started |
 | testkits | 6 | 0 | 3 | 3 | 0 | not-started |
-| transformer | 4 | 0 | 2 | 2 | 0 | not-started |
+| transformer | 4 | 0 | 2 | 2 | 0 | 🔄 In Progress |
 | types | 4 | 0 | 2 | 1 | 1 | ✅ done (task-1, task-2, task-3, task-4 ✅) |
 | typescript-config | 2 | 0 | 1 | 1 | 0 | not-started |
 | **Total** | **179** | **30** | **92** | **52** | **5** | not-started |
