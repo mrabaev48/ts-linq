@@ -1,0 +1,80 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CallVisitor — AST output snapshots Fallback — unsupported call: Math.floor(u.age) 1`] = `
+"{
+    type: "unsupported",
+    syntaxKind: 214,
+    description: "where() predicate contains unsupported expression: unsupported function call. Allowed: comparisons (>, <, >=, <=, ===, !==), logical (&&, ||), negation (!), null checks (=== null / !== null), string methods (.includes(), .startsWith(), .endsWith()), IN pattern ([...].includes(u.field) or arr.includes(u.field)), literals (string, number, boolean, null), external variable references."
+}"
+`;
+
+exports[`CallVisitor — AST output snapshots Pattern A — string method: u.name.includes("foo") 1`] = `
+"{
+    type: "method",
+    method: "includes",
+    object: {
+        type: "property",
+        name: "name"
+    },
+    args: [{
+            type: "literal",
+            value: "foo"
+        }]
+}"
+`;
+
+exports[`CallVisitor — AST output snapshots Pattern B — array includes (IN): ["admin","mod"].includes(u.role) 1`] = `
+"{
+    type: "in",
+    property: {
+        type: "property",
+        name: "role"
+    },
+    values: [{
+            type: "literal",
+            value: "admin"
+        }, {
+            type: "literal",
+            value: "mod"
+        }]
+}"
+`;
+
+exports[`CallVisitor — AST output snapshots Pattern C — identifier includes (IN ref): roles.includes(u.role) 1`] = `
+"{
+    type: "in",
+    property: {
+        type: "property",
+        name: "role"
+    },
+    valuesRef: 0
+}"
+`;
+
+exports[`CallVisitor — AST output snapshots Pattern D — EF.functions with parameterRef: EF.functions.dateDiffDay(l.createdAt, now) 1`] = `
+"{
+    type: "efFunction",
+    fn: "dateDiffDay",
+    args: [{
+            type: "property",
+            name: "createdAt"
+        }, {
+            type: "parameterRef",
+            index: 0
+        }]
+}"
+`;
+
+exports[`CallVisitor — AST output snapshots Pattern D — EF.functions: EF.functions.like(p.title, "%urgent%") 1`] = `
+"{
+    type: "efFunction",
+    fn: "like",
+    args: [{
+            type: "property",
+            name: "title"
+        }, {
+            type: "literal",
+            value: "%urgent%"
+        }]
+}"
+`;
