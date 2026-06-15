@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/orm",
-  "version": "4.1.4",
+  "version": "4.1.5",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",

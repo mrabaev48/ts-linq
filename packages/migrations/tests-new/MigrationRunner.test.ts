@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { DatabaseProvider } from '@ts-linq/core';
+import { MigrationApplyError, MigrationRollbackError } from '@ts-linq/types';
 
 import { Migration } from '../src/Migration';
 import { MigrationRunner } from '../src/MigrationRunner';
@@ -36,10 +37,21 @@ function createMockProvider(): DatabaseProvider {
   const nonQueries: Array<{ sql: string; params?: unknown[] }> = [];
   const migrations: Array<{ version: string; name: string; applied_at: string }> = [];
   let transactionActive = false;
+  let tableCreated = false;
+
+  // The bookkeeping table "exists" once its DDL has run or once it holds rows — a record cannot
+  // be present without the table. This models the `information_schema.tables` existence probe the
+  // store now performs to distinguish "table absent" from "query failed".
+  const tableExists = (): boolean => tableCreated || migrations.length > 0;
 
   return {
+    providerLabel: 'postgresql',
+
     executeQuery: jest.fn(async <T = unknown>(sql: string): Promise<T[]> => {
       queries.push(sql);
+      if (sql.includes('information_schema.tables')) {
+        return [{ cnt: tableExists() ? 1 : 0 }] as T[];
+      }
       if (sql.includes('SELECT version, name, applied_at FROM __migrations')) {
         return migrations as T[];
       }
@@ -49,7 +61,9 @@ function createMockProvider(): DatabaseProvider {
     executeNonQuery: jest.fn(async (sql: string, params?: unknown[]): Promise<number> => {
       nonQueries.push({ sql, params });
 
-      if (sql.includes('INSERT INTO __migrations')) {
+      if (sql.includes('CREATE TABLE') && sql.includes('__migrations')) {
+        tableCreated = true;
+      } else if (sql.includes('INSERT INTO __migrations')) {
         const [version, name, applied_at] = params as [string, string, string];
         migrations.push({ version, name, applied_at });
       } else if (sql.includes('DELETE FROM __migrations')) {
@@ -130,17 +144,19 @@ describe('MigrationRunner', () => {
       expect(applied[0].appliedAt).toBeInstanceOf(Date);
     });
 
-    it('should handle database errors gracefully', async () => {
+    it('propagates database errors instead of swallowing them', async () => {
+      // Previously this swallowed every error and returned [] — making a failing DB look like
+      // "no migrations applied" and risking re-running already-applied migrations. The store now
+      // surfaces genuine query failures instead of masquerading them as an empty result.
       const errorProvider = createMockProvider();
       const mockQuery = errorProvider.executeQuery as jest.MockedFunction<
         typeof errorProvider.executeQuery
       >;
-      mockQuery.mockRejectedValueOnce(new Error('Table not found'));
+      mockQuery.mockRejectedValue(new Error('Connection lost'));
 
       const errorRunner = new MigrationRunner(errorProvider);
-      const applied = await errorRunner.getAppliedMigrations();
 
-      expect(applied).toEqual([]);
+      await expect(errorRunner.getAppliedMigrations()).rejects.toThrow('Connection lost');
     });
   });
 
@@ -277,7 +293,7 @@ describe('MigrationRunner', () => {
       const migration = new TestMigration('001', 'Failing', upFn, async () => {});
       runner.addMigration(migration);
 
-      await expect(runner.migrate()).rejects.toThrow('Failed to apply migration Failing');
+      await expect(runner.migrate()).rejects.toThrow(MigrationApplyError);
 
       expect(provider.rollbackTransaction).toHaveBeenCalled();
     });
@@ -435,7 +451,7 @@ describe('MigrationRunner', () => {
 
       (provider.rollbackTransaction as jest.Mock).mockClear();
 
-      await expect(runner.rollback()).rejects.toThrow('Failed to rollback migration Test');
+      await expect(runner.rollback()).rejects.toThrow(MigrationRollbackError);
 
       expect(provider.rollbackTransaction).toHaveBeenCalledTimes(1);
     });
