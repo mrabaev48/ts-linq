@@ -146,3 +146,39 @@ describe('SequencesSqlBuilder — MySQL emulation (P1-21)', () => {
     expect(down).toHaveLength(0);
   });
 });
+
+describe('SequencesSqlBuilder — injection-safe quoting (task-1)', () => {
+  test('PostgreSQL escapes an embedded double-quote in schema/name', () => {
+    const up: string[] = [];
+    new SequencesSqlBuilder('postgresql').generate(
+      diff([{ kind: 'create', sequence: { name: 'a"b', schema: 's"x' } }]),
+      up,
+      []
+    );
+    // the embedded quote is doubled — the name cannot break out of its quoting
+    expect(up[0]).toContain('"s""x"."a""b"');
+  });
+
+  test('MSSQL escapes an embedded closing bracket in the name', () => {
+    const up: string[] = [];
+    new SequencesSqlBuilder('mssql').generate(
+      diff([{ kind: 'drop', sequence: { name: 'a]b', schema: 'dbo' } }]),
+      up,
+      []
+    );
+    expect(up[0]).toBe('DROP SEQUENCE [dbo].[a]]b];');
+  });
+
+  test('MySQL escapes embedded backticks and quotes the literal value', () => {
+    const up: string[] = [];
+    new SequencesSqlBuilder('mysql').generate(
+      diff([{ kind: 'create', sequence: { name: "se`q'1" } }]),
+      up,
+      []
+    );
+    // backtick doubled inside the table identifier
+    expect(up[0]).toContain('`__ts_linq_sequences`');
+    // value goes through the literal encoder: single-quote doubled
+    expect(up[1]).toContain("'se`q''1'");
+  });
+});

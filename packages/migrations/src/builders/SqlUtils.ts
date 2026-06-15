@@ -1,16 +1,13 @@
 import type { Dialect } from '../Dialect';
+import { QuoterFactory } from './quoting/QuoterFactory';
 
+/**
+ * Back-compat facade over the audited per-dialect {@link SqlQuoter}. Escapes embedded
+ * quote characters and wraps the identifier. Kept for existing callers; new code may use
+ * `QuoterFactory.for(dialect)` directly.
+ */
 export function q(dialect: Dialect, id: string): string {
-  switch (dialect) {
-    case 'postgresql':
-      return '"' + id + '"';
-    case 'mysql':
-      return '`' + id + '`';
-    case 'mssql':
-      return '[' + id + ']';
-    default:
-      return id;
-  }
+  return QuoterFactory.for(dialect).id(id);
 }
 
 export function mapType(dialect: Dialect, t: string): string {
@@ -52,22 +49,13 @@ export function groupType(up: string): 'int' | 'text' | 'bool' | 'date' | 'float
   return null;
 }
 
+/**
+ * Back-compat facade over the audited per-dialect {@link SqlQuoter} literal encoder.
+ * Folded into the single `literal()` path so identifier and value encoding share one
+ * auditable authority. Kept for existing callers.
+ */
 export function formatValue(dialect: Dialect, v: unknown): string {
-  if (v === null) return 'NULL';
-  if (typeof v === 'number') return String(v);
-  if (typeof v === 'boolean') {
-    switch (dialect) {
-      case 'postgresql':
-        return v ? 'TRUE' : 'FALSE';
-      case 'mysql':
-      default:
-        return v ? '1' : '0';
-      case 'mssql':
-        return v ? '1' : '0';
-    }
-  }
-  if (v instanceof Date) return `'${v.toISOString()}'`;
-  return `'${String(v).replace(/'/g, "''")}'`;
+  return QuoterFactory.for(dialect).literal(v);
 }
 
 export function norm(t: string): string {

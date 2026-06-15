@@ -319,9 +319,9 @@ export function buildAddUniqueConstraintSql(
     case 'postgresql':
       return `ALTER TABLE ${q(dialect, tableName)} ADD CONSTRAINT ${q(dialect, uc.name)} UNIQUE (${cols})`;
     case 'mysql':
-      return `ALTER TABLE \`${tableName}\` ADD UNIQUE KEY \`${uc.name}\` (${cols})`;
+      return `ALTER TABLE ${q(dialect, tableName)} ADD UNIQUE KEY ${q(dialect, uc.name)} (${cols})`;
     case 'mssql':
-      return `ALTER TABLE [${tableName}] ADD CONSTRAINT [${uc.name}] UNIQUE (${cols})`;
+      return `ALTER TABLE ${q(dialect, tableName)} ADD CONSTRAINT ${q(dialect, uc.name)} UNIQUE (${cols})`;
     default:
       return `ALTER TABLE ${q(dialect, tableName)} ADD CONSTRAINT ${q(dialect, uc.name)} UNIQUE (${cols})`;
   }
@@ -336,9 +336,9 @@ export function buildDropUniqueConstraintSql(
     case 'postgresql':
       return `ALTER TABLE ${q(dialect, tableName)} DROP CONSTRAINT IF EXISTS ${q(dialect, name)}`;
     case 'mysql':
-      return `ALTER TABLE \`${tableName}\` DROP INDEX \`${name}\``;
+      return `ALTER TABLE ${q(dialect, tableName)} DROP INDEX ${q(dialect, name)}`;
     case 'mssql':
-      return `ALTER TABLE [${tableName}] DROP CONSTRAINT [${name}]`;
+      return `ALTER TABLE ${q(dialect, tableName)} DROP CONSTRAINT ${q(dialect, name)}`;
     default:
       return `ALTER TABLE ${q(dialect, tableName)} DROP CONSTRAINT ${q(dialect, name)}`;
   }

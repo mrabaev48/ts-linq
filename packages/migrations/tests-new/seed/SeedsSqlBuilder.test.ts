@@ -85,4 +85,36 @@ describe('SeedsSqlBuilder', () => {
       expect(up[0]).toContain('[roles]');
     });
   });
+
+  describe('injection-safe quoting (task-1)', () => {
+    it('escapes a single-quote in a string value (cannot break out)', () => {
+      const ops: SeedRowOp[] = [
+        { kind: 'insert', table: 'users', pkColumns: ['id'], row: { id: 1, name: "O'Brien" } }
+      ];
+      const up: string[] = [];
+      const down: string[] = [];
+      new SeedsSqlBuilder('postgresql').generate(ops, up, down);
+      expect(up[0]).toBe(`INSERT INTO "users" ("id", "name") VALUES (1, 'O''Brien')`);
+    });
+
+    it('escapes the dialect quote char embedded in a column/table identifier', () => {
+      const ops: SeedRowOp[] = [
+        { kind: 'insert', table: 'ro"les', pkColumns: ['id'], row: { id: 1, 'na"me': 'admin' } }
+      ];
+      const up: string[] = [];
+      const down: string[] = [];
+      new SeedsSqlBuilder('postgresql').generate(ops, up, down);
+      expect(up[0]).toBe(`INSERT INTO "ro""les" ("id", "na""me") VALUES (1, 'admin')`);
+    });
+
+    it('MySQL doubles a backtick in an identifier', () => {
+      const ops: SeedRowOp[] = [
+        { kind: 'insert', table: 'ro`les', pkColumns: ['id'], row: { id: 1 } }
+      ];
+      const up: string[] = [];
+      const down: string[] = [];
+      new SeedsSqlBuilder('mysql').generate(ops, up, down);
+      expect(up[0]).toContain('`ro``les`');
+    });
+  });
 });
