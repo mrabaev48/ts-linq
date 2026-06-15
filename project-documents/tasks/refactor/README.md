@@ -236,7 +236,7 @@ Each package only depends on packages already completed above it.
 | sql-visitor | 6 | 0 | 2 | 4 | 0 | ✅ done (task-1/2/3/4/5/6 ✅) |
 | telemetry | 3 | 0 | 2 | 1 | 0 | not-started |
 | testkits | 6 | 0 | 3 | 3 | 0 | not-started |
-| transformer | 4 | 0 | 2 | 2 | 0 | 🔄 In Progress (task-4 ✅) |
+| transformer | 4 | 0 | 2 | 2 | 0 | 🔄 In Progress (task-4, task-3 ✅) |
 | types | 4 | 0 | 2 | 1 | 1 | ✅ done (task-1, task-2, task-3, task-4 ✅) |
 | typescript-config | 2 | 0 | 1 | 1 | 0 | not-started |
 | **Total** | **179** | **30** | **92** | **52** | **5** | not-started |

@@ -1,6 +1,6 @@
 # Refactor Audit: transformer
 
-**Status: 🔄 In Progress** — task-4 ✅ completed; tasks 3, 2, 1 pending.
+**Status: 🔄 In Progress** — tasks 4, 3 ✅ completed; tasks 2, 1 pending.
 
 ## Package responsibility
 `@ts-linq/transformer` is the **compile-time** ts-patch transformer that rewrites
@@ -41,7 +41,7 @@ break circular imports, a single authorised `as unknown as` cast at
 | Order | Task | Priority | Status | Reason |
 |---:|---|---|---|---|
 | 1 | task-4 | P1 | ✅ Completed | Silent skip → runtime throw is a real DX defect; make it visible. |
-| 2 | task-3 | P1 | ⬜ Pending | De-duplicate the two entrypoints + the fragile receiver-patch. |
+| 2 | task-3 | P1 | ✅ Completed | De-duplicate the two entrypoints + the fragile receiver-patch. |
 | 3 | task-2 | P2 | ⬜ Pending | Method-accurate diagnostics (trivial, high clarity). |
 | 4 | task-1 | P2 | ⬜ Pending | Split CallVisitor mega-module; DRY literal conversion. |
 
