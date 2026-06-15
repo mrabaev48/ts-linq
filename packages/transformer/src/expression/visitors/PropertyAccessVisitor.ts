@@ -10,7 +10,8 @@ export function visit(
   _depth: number
 ): ts.Expression {
   const chain = collectPropertyChain(node);
-  if (chain === null) return makeUnsupported(node, tctx.sink);
+  if (chain === null)
+    return makeUnsupported(node, { sink: tctx.sink, methodName: tctx.methodName });
 
   const { root, segments, hasOptional } = chain;
 

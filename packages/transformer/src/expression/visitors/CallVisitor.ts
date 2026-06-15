@@ -34,7 +34,7 @@ export function visit(
   depth: number
 ): ts.Expression {
   if (!ts.isPropertyAccessExpression(node.expression)) {
-    return makeUnsupported(node, tctx.sink);
+    return makeUnsupported(node, { sink: tctx.sink, methodName: tctx.methodName });
   }
 
   const callee = node.expression;
@@ -67,7 +67,7 @@ export function visit(
     return visitEfFunction(method, node.arguments, tctx);
   }
 
-  return makeUnsupported(node, tctx.sink);
+  return makeUnsupported(node, { sink: tctx.sink, methodName: tctx.methodName });
 }
 
 function visitArrayIncludes(
@@ -76,7 +76,8 @@ function visitArrayIncludes(
   tctx: TransformContext
 ): ts.Expression {
   const propExpr = extractPropertyNode(argNode, tctx.paramName);
-  if (propExpr === null) return makeUnsupported(argNode, tctx.sink);
+  if (propExpr === null)
+    return makeUnsupported(argNode, { sink: tctx.sink, methodName: tctx.methodName });
 
   const valueLiterals: ts.Expression[] = [];
   for (const el of arrayNode.elements) {
@@ -101,7 +102,8 @@ function visitIdentifierIncludes(
   tctx: TransformContext
 ): ts.Expression {
   const propExpr = extractPropertyNode(argNode, tctx.paramName);
-  if (propExpr === null) return makeUnsupported(argNode, tctx.sink);
+  if (propExpr === null)
+    return makeUnsupported(argNode, { sink: tctx.sink, methodName: tctx.methodName });
 
   const idx = tctx.parameters.length;
   tctx.parameters.push(identNode);
@@ -122,7 +124,7 @@ function visitStringMethod(
 ): ts.Expression {
   const chain = collectPropertyChain(receiverAccess);
   if (chain === null || chain.root !== tctx.paramName) {
-    return makeUnsupported(receiverAccess, tctx.sink);
+    return makeUnsupported(receiverAccess, { sink: tctx.sink, methodName: tctx.methodName });
   }
 
   const propNode = buildPropertyNode(chain.segments, chain.hasOptional);
@@ -152,7 +154,7 @@ function extractArrayElementLiteral(el: ts.Expression, tctx: TransformContext): 
       ts.factory.createNumericLiteral(el.operand.text)
     );
   }
-  return makeUnsupported(el, tctx.sink);
+  return makeUnsupported(el, { sink: tctx.sink, methodName: tctx.methodName });
 }
 
 function visitEfFunction(

@@ -31,5 +31,7 @@ export function dispatch(
   depth: number
 ): ts.Expression {
   const handler = DISPATCH_MAP[node.kind];
-  return handler !== undefined ? handler(node, tctx, depth) : makeUnsupported(node, tctx.sink);
+  return handler !== undefined
+    ? handler(node, tctx, depth)
+    : makeUnsupported(node, { sink: tctx.sink, methodName: tctx.methodName });
 }

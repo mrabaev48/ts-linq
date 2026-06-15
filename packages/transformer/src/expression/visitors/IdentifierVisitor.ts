@@ -13,7 +13,9 @@ export function visit(node: ts.Identifier, tctx: TransformContext, _depth: numbe
         `Use ${tctx.paramName}.propertyName instead.`,
       ts.DiagnosticCategory.Error
     );
-    return makeUnsupported(node);
+    // Diagnostic already emitted above; pass methodName only (no sink) to keep the
+    // sentinel description method-accurate without double-reporting.
+    return makeUnsupported(node, { methodName: tctx.methodName });
   }
   // External variable — capture as ParameterRef
   const idx = tctx.parameters.length;

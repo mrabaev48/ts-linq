@@ -445,4 +445,64 @@ describe('WhereTransformer — hasQueryFilter() rewrite (P0-11)', () => {
     expect(outputText).toContain('hasQueryFilterCompiled');
     expect(outputText).toContain('parameters: [currentTenant]');
   });
+
+  it('unsupported expression names hasQueryFilter(), not where()', () => {
+    const { diagnostics } = compileAndTransformWithBuilder(
+      [
+        "import { EntityTypeBuilder } from '@ts-linq/orm';",
+        '',
+        'type Post = { isDeleted: boolean; total: number };',
+        '',
+        'const b = new EntityTypeBuilder<Post>();',
+        'b.hasQueryFilter(p => p.isDeleted ? p.total : 0);'
+      ].join('\n')
+    );
+
+    expect(diagnostics.length).toBeGreaterThan(0);
+    const msg = ts.flattenDiagnosticMessageText(diagnostics[0]!.messageText, '\n');
+    expect(msg.startsWith('hasQueryFilter() predicate')).toBe(true);
+    expect(msg).toContain('unsupported expression');
+    expect(msg).not.toContain('where()');
+  });
+});
+
+// ─── Method-aware unsupported-expression diagnostics (task-2) ──────────────────
+
+describe('WhereTransformer — method-aware unsupported-expression diagnostics', () => {
+  it('having() unsupported expression names having(), not where()', () => {
+    const { diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type Order = { flag: boolean; total: number };',
+        '',
+        'const q = new Queryable<Order>();',
+        'q.having(o => o.flag ? o.total : 0);'
+      ].join('\n')
+    );
+
+    expect(diagnostics.length).toBeGreaterThan(0);
+    const msg = ts.flattenDiagnosticMessageText(diagnostics[0]!.messageText, '\n');
+    expect(msg.startsWith('having() predicate')).toBe(true);
+    expect(msg).toContain('unsupported expression');
+    expect(msg).not.toContain('where()');
+  });
+
+  it('where() unsupported expression still names where() (regression)', () => {
+    const { diagnostics } = compileAndTransform(
+      [
+        "import { Queryable } from '@ts-linq/query';",
+        '',
+        'type Order = { flag: boolean; total: number };',
+        '',
+        'const q = new Queryable<Order>();',
+        'q.where(o => o.flag ? o.total : 0);'
+      ].join('\n')
+    );
+
+    expect(diagnostics.length).toBeGreaterThan(0);
+    const msg = ts.flattenDiagnosticMessageText(diagnostics[0]!.messageText, '\n');
+    expect(msg.startsWith('where() predicate')).toBe(true);
+    expect(msg).toContain('unsupported expression');
+  });
 });
