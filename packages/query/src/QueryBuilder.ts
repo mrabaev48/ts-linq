@@ -9,8 +9,11 @@ import type { SqlCacheOptimizationInsights } from './SqlCacheCapabilities';
 import { type SqlCompiler, SqlCompilerImpl } from './SqlCompiler';
 
 /**
- * QueryBuilder is the public facade over SQL compilation: a cache-agnostic
+ * QueryBuilder is the internal facade over SQL compilation: a cache-agnostic
  * {@link SqlCompilerImpl} core wrapped by the {@link CachingSqlCompiler} decorator.
+ *
+ * @internal Not part of the stable public API. Import from `@ts-linq/query/internal`
+ * if you genuinely need direct SQL compilation (not recommended).
  */
 export class QueryBuilder implements SqlCompiler {
   private readonly _compiler: CachingSqlCompiler;
