@@ -1,70 +1,27 @@
 import { MetadataStorage } from '@ts-linq/metadata';
+import type { EntityMetadata, IndexMetadata } from '@ts-linq/types';
+import { SnapshotSerializationError, SnapshotValidationError } from '@ts-linq/types';
+
+import { ColumnMapper } from './expanders/ColumnMapper';
+import type { EntityExpander, ExpansionContext } from './expanders/EntityExpander';
+import { ComplexTypeExpander } from './expanders/model/ComplexTypeExpander';
+import { InheritanceExpander } from './expanders/model/InheritanceExpander';
+import { OwnedEntityExpander } from './expanders/model/OwnedEntityExpander';
+import { SkipNavigationExpander } from './expanders/model/SkipNavigationExpander';
 import type {
-  ColumnMetadata,
-  ComplexTypePropertyMetadata,
-  EntityMetadata,
-  IndexMetadata,
-  OwnedEntityMetadata
-} from '@ts-linq/types';
-import {
-  InheritanceStrategy,
-  SnapshotSerializationError,
-  SnapshotValidationError,
-  StorageStrategy
-} from '@ts-linq/types';
+  ModelColumnSnapshot,
+  ModelIndexSnapshot,
+  ModelSnapshot,
+  ModelTableSnapshot
+} from './model-snapshot.types';
 
-/**
- * A normalized snapshot of a single column in the model.
- * Used for change-detection between two model states.
- */
-export interface ModelColumnSnapshot {
-  name: string;
-  type: string;
-  nullable: boolean;
-  isPrimaryKey: boolean;
-  defaultValue?: unknown;
-  defaultExpression?: string;
-}
-
-/**
- * A normalized snapshot of a single table (entity) in the model.
- */
-export interface ModelTableSnapshot {
-  name: string;
-  columns: ModelColumnSnapshot[];
-  primaryKeys: string[];
-  indexes: ModelIndexSnapshot[];
-  /** Seed rows declared via hasData(), keyed by column names. Sorted by PK for stable JSON. */
-  seedData?: Record<string, unknown>[];
-}
-
-/**
- * A normalized snapshot of an index in the model.
- */
-export interface ModelIndexSnapshot {
-  name: string;
-  columns: string[];
-  unique: boolean;
-  where?: string;
-}
-
-/**
- * A deterministic, versioned snapshot of the full application model.
- * Can be serialized to JSON and stored alongside migrations to detect model drift.
- *
- * Mirrors EF Core's model snapshot concept used by `HasPendingModelChanges()`.
- *
- * @example
- * const builder = new ModelSnapshotBuilder();
- * const snapshot = builder.buildFromMetadata();
- * const json = new ModelSnapshotSerializer().serialize(snapshot);
- * fs.writeFileSync('model.snapshot.json', json);
- */
-export interface ModelSnapshot {
-  /** Schema version — increment when the snapshot structure itself changes. */
-  readonly version: 1;
-  readonly tables: ModelTableSnapshot[];
-}
+// Re-export the snapshot value types so the public package surface is unchanged.
+export type {
+  ModelColumnSnapshot,
+  ModelIndexSnapshot,
+  ModelSnapshot,
+  ModelTableSnapshot
+} from './model-snapshot.types';
 
 function comparePkValue(a: unknown, b: unknown): number {
   if (typeof a === 'number' && typeof b === 'number') return a - b;
@@ -85,317 +42,122 @@ function sortSeedRows(
 }
 
 /**
- * Builds a deterministic `ModelSnapshot` from the current `MetadataStorage`.
- * All collections are sorted alphabetically so the JSON output is stable
- * across runs regardless of decorator execution order.
+ * Builds a deterministic `ModelSnapshot` from a set of entities.
+ *
+ * The builder is a thin coordinator: it builds one base table per entity, then runs
+ * an ordered list of {@link EntityExpander} strategies (owned entities, complex types,
+ * inheritance, skip-navigation join tables) over each entity. All canonical sorting
+ * (tables / columns / indexes / primary keys) happens once, here in the coordinator,
+ * so the JSON output is stable regardless of decorator execution order.
+ *
+ * The entity list is injected via {@link ModelSnapshotBuilder.buildFrom}; the no-arg
+ * {@link ModelSnapshotBuilder.buildFromMetadata} reads the global `MetadataStorage`
+ * for back-compatibility.
  */
 export class ModelSnapshotBuilder {
+  private readonly columnMapper = new ColumnMapper();
+  private readonly expanders: ReadonlyArray<
+    EntityExpander<ModelTableSnapshot, ModelColumnSnapshot>
+  > = [
+    new OwnedEntityExpander(),
+    new ComplexTypeExpander(),
+    new InheritanceExpander(),
+    new SkipNavigationExpander()
+  ];
+
   /**
-   * Serialize all registered entities into a `ModelSnapshot`.
-   * The result is canonical: tables sorted by name, columns sorted by name,
-   * indexes sorted by name, index columns sorted alphabetically.
+   * Serialize all globally registered entities into a `ModelSnapshot`.
+   * Back-compat entrypoint reading the global `MetadataStorage` singleton.
    */
   public buildFromMetadata(): ModelSnapshot {
-    const entities = MetadataStorage.getEntities();
-    const entityByType = new Map<Function, EntityMetadata>(
+    return this.buildFrom(MetadataStorage.getEntities());
+  }
+
+  /**
+   * Serialize an injected set of entities into a canonical `ModelSnapshot`:
+   * tables sorted by name, columns sorted by name, indexes sorted by name with
+   * sorted columns. Inverts the global-registry coupling (testable in isolation).
+   */
+  public buildFrom(entities: ReadonlyArray<EntityMetadata>): ModelSnapshot {
+    const entityByType = new Map<Function | string, EntityMetadata>(
       entities.filter((e) => e.target).map((e) => [e.target!, e])
     );
 
-    const extraTables: ModelTableSnapshot[] = [];
+    const tables = new Map<string, ModelTableSnapshot>();
 
-    const tables: ModelTableSnapshot[] = entities
-      .map((entity: EntityMetadata): ModelTableSnapshot => {
-        const primaryKeyProps: string[] = entity.primaryKeys ?? [];
+    // Sweep 1: one base table per entity (so the inheritance/skip-nav expanders in
+    // sweep 2 can see every table — e.g. TPC overwrites a subtype's partial table).
+    for (const entity of entities) {
+      tables.set(entity.tableName, this.buildBaseTable(entity));
+    }
 
-        const columns: ModelColumnSnapshot[] = entity.columns
-          .map(
-            (col: ColumnMetadata): ModelColumnSnapshot => ({
-              name: col.columnName,
-              type: String(col.type ?? '').toUpperCase(),
-              nullable: col.nullable ?? true,
-              isPrimaryKey: primaryKeyProps.includes(col.propertyName),
-              defaultValue: col.defaultValue,
-              defaultExpression: col.defaultExpression
-            })
-          )
-          .sort((a, b) => a.name.localeCompare(b.name));
+    // Sweep 2: run the ordered expanders over each entity.
+    for (const entity of entities) {
+      const table = tables.get(entity.tableName);
+      if (!table) continue;
+      const ctx: ExpansionContext<ModelTableSnapshot, ModelColumnSnapshot> = {
+        entity,
+        entityByType,
+        columns: table.columns,
+        tables,
+        columnMapper: this.columnMapper
+      };
+      for (const expander of this.expanders) {
+        expander.expand(ctx);
+      }
+    }
 
-        // Expand owned entity columns into the owner table snapshot
-        for (const owned of entity.ownedEntities ?? []) {
-          this._expandOwnedEntity(owned, entity, entityByType, columns, extraTables);
-        }
+    return { version: 1, tables: this.finalize(tables) };
+  }
 
-        // Expand complex type columns into the owner table snapshot (P1-17)
-        for (const cp of entity.complexProperties ?? []) {
-          this._expandComplexProperty(cp, cp.columnPrefix, columns);
-        }
+  /** Build the entity's own table (base columns + indexes + seed data). */
+  private buildBaseTable(entity: EntityMetadata): ModelTableSnapshot {
+    const primaryKeyProps: string[] = entity.primaryKeys ?? [];
 
-        // TPH: add discriminator column to the root entity table
-        if (
-          entity.hierarchy?.strategy === InheritanceStrategy.Tph &&
-          entity.hierarchy.discriminator
-        ) {
-          const { columnName, columnType } = entity.hierarchy.discriminator;
-          if (!columns.some((c) => c.name === columnName)) {
-            columns.push({
-              name: columnName,
-              type: columnType.toUpperCase(),
-              nullable: true,
-              isPrimaryKey: false
-            });
-          }
-        }
-
-        const primaryKeys: string[] = primaryKeyProps
-          .map((pk) => entity.columns.find((c) => c.propertyName === pk)?.columnName ?? pk)
-          .sort();
-
-        const indexes: ModelIndexSnapshot[] = ((entity.indexes ?? []) as IndexMetadata[])
-          .map(
-            (idx): ModelIndexSnapshot => ({
-              name: idx.name,
-              columns: [...idx.columns].sort(),
-              unique: !!idx.unique,
-              where: idx.where
-            })
-          )
-          .sort((a, b) => a.name.localeCompare(b.name));
-
-        columns.sort((a, b) => a.name.localeCompare(b.name));
-
-        const seedData = entity.seedData?.length
-          ? sortSeedRows(entity.seedData, primaryKeys)
-          : undefined;
-
-        return {
-          name: entity.tableName,
-          columns,
-          primaryKeys,
-          indexes,
-          ...(seedData !== undefined ? { seedData } : {})
-        };
+    const columns: ModelColumnSnapshot[] = entity.columns.map((col) =>
+      this.columnMapper.toModelColumn(col, {
+        isPrimaryKey: primaryKeyProps.includes(col.propertyName)
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
+    );
 
-    // TPT / TPC: register subtype tables
-    for (const entity of entities) {
-      if (!entity.hierarchy) continue;
+    const primaryKeys: string[] = primaryKeyProps
+      .map((pk) => entity.columns.find((c) => c.propertyName === pk)?.columnName ?? pk)
+      .sort();
 
-      const { strategy, subtypes, discriminator } = entity.hierarchy;
+    const indexes: ModelIndexSnapshot[] = ((entity.indexes ?? []) as IndexMetadata[]).map(
+      (idx): ModelIndexSnapshot => ({
+        name: idx.name,
+        columns: [...idx.columns],
+        unique: !!idx.unique,
+        where: idx.where
+      })
+    );
 
-      if (strategy === InheritanceStrategy.Tpt) {
-        // Each subtype gets its own table with its own columns + FK to root PK
-        for (const subtypeCtor of subtypes) {
-          const subtypeMeta = entityByType.get(subtypeCtor);
-          if (!subtypeMeta) continue;
-          // Skip if this table is already in the main tables list
-          if (tables.some((t) => t.name === subtypeMeta.tableName)) continue;
-
-          const pkCols: string[] = (entity.primaryKeys ?? []).map(
-            (pk) => entity.columns.find((c) => c.propertyName === pk)?.columnName ?? pk
-          );
-
-          const subtypeColumns: ModelColumnSnapshot[] = subtypeMeta.columns
-            .map(
-              (col): ModelColumnSnapshot => ({
-                name: col.columnName,
-                type: String(col.type ?? '').toUpperCase(),
-                nullable: col.nullable ?? true,
-                isPrimaryKey: pkCols.includes(col.columnName)
-              })
-            )
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-          extraTables.push({
-            name: subtypeMeta.tableName,
-            columns: subtypeColumns,
-            primaryKeys: pkCols.sort(),
-            indexes: []
-          });
-        }
-      } else if (strategy === InheritanceStrategy.Tpc) {
-        // Each concrete leaf gets a full table (root columns + subtype columns)
-        const rootColumns: ModelColumnSnapshot[] = entity.columns.map(
-          (col): ModelColumnSnapshot => ({
-            name: col.columnName,
-            type: String(col.type ?? '').toUpperCase(),
-            nullable: col.nullable ?? true,
-            isPrimaryKey: (entity.primaryKeys ?? []).some(
-              (pk) =>
-                entity.columns.find((c) => c.propertyName === pk)?.columnName === col.columnName
-            )
-          })
-        );
-        // Add discriminator column if any (synthetic)
-        if (discriminator) {
-          if (!rootColumns.some((c) => c.name === discriminator.columnName)) {
-            rootColumns.push({
-              name: discriminator.columnName,
-              type: discriminator.columnType.toUpperCase(),
-              nullable: true,
-              isPrimaryKey: false
-            });
-          }
-        }
-
-        for (const subtypeCtor of subtypes) {
-          const subtypeMeta = entityByType.get(subtypeCtor);
-          if (!subtypeMeta) continue;
-          const pkCols: string[] = (entity.primaryKeys ?? []).map(
-            (pk) => entity.columns.find((c) => c.propertyName === pk)?.columnName ?? pk
-          );
-
-          const allCols: ModelColumnSnapshot[] = [
-            ...rootColumns,
-            ...subtypeMeta.columns
-              .filter((col) => !rootColumns.some((rc) => rc.name === col.columnName))
-              .map(
-                (col): ModelColumnSnapshot => ({
-                  name: col.columnName,
-                  type: String(col.type ?? '').toUpperCase(),
-                  nullable: col.nullable ?? true,
-                  isPrimaryKey: pkCols.includes(col.columnName)
-                })
-              )
-          ].sort((a, b) => a.name.localeCompare(b.name));
-
-          const fullTable: ModelTableSnapshot = {
-            name: subtypeMeta.tableName,
-            columns: allCols,
-            primaryKeys: pkCols.sort(),
-            indexes: []
-          };
-
-          // Replace the partial-column table created in the main loop (TPC subtypes have
-          // separate table entries but they only contain subtype-own columns at that point)
-          const existingIdx = tables.findIndex((t) => t.name === subtypeMeta.tableName);
-          if (existingIdx >= 0) {
-            tables[existingIdx] = fullTable;
-          } else {
-            extraTables.push(fullTable);
-          }
-        }
-      }
-    }
-
-    // Skip navigation join tables (many-to-many, synthesized)
-    const emittedJoinTables = new Set<string>();
-    for (const entity of entities) {
-      for (const sn of entity.skipNavigations ?? []) {
-        if (!sn.isSynthesized) continue;
-        if (emittedJoinTables.has(sn.joinTableName)) continue;
-        emittedJoinTables.add(sn.joinTableName);
-        const pks = [sn.leftForeignKey, sn.rightForeignKey].sort();
-        extraTables.push({
-          name: sn.joinTableName,
-          columns: [
-            { name: sn.leftForeignKey, type: 'INT', nullable: false, isPrimaryKey: true },
-            { name: sn.rightForeignKey, type: 'INT', nullable: false, isPrimaryKey: true }
-          ].sort((a, b) => a.name.localeCompare(b.name)),
-          primaryKeys: pks,
-          indexes: []
-        });
-      }
-    }
+    const seedData = entity.seedData?.length
+      ? sortSeedRows(entity.seedData, primaryKeys)
+      : undefined;
 
     return {
-      version: 1,
-      tables: [...tables, ...extraTables].sort((a, b) => a.name.localeCompare(b.name))
+      name: entity.tableName,
+      columns,
+      primaryKeys,
+      indexes,
+      ...(seedData !== undefined ? { seedData } : {})
     };
   }
 
-  private _expandComplexProperty(
-    complex: ComplexTypePropertyMetadata,
-    prefix: string,
-    ownerColumns: ModelColumnSnapshot[]
-  ): void {
-    for (const col of complex.properties) {
-      ownerColumns.push({
-        name: `${prefix}${col.columnName}`,
-        type: String(col.type ?? '').toUpperCase(),
-        nullable: !complex.isRequired || (col.nullable ?? true),
-        isPrimaryKey: false,
-        defaultValue: col.defaultValue,
-        defaultExpression: col.defaultExpression
-      });
-    }
-
-    for (const nested of complex.nested) {
-      this._expandComplexProperty(nested, `${prefix}${nested.columnPrefix}`, ownerColumns);
-    }
-  }
-
-  private _expandOwnedEntity(
-    owned: OwnedEntityMetadata,
-    ownerEntity: EntityMetadata,
-    entityByType: Map<Function, EntityMetadata>,
-    ownerColumns: ModelColumnSnapshot[],
-    extraTables: ModelTableSnapshot[]
-  ): void {
-    const ownedEntityMeta = entityByType.get(owned.ownedType);
-
-    if (owned.strategy === StorageStrategy.TableSplit) {
-      const prefix = owned.columnPrefix ?? `${owned.ownerPropertyName}_`;
-      const sourceCols: ColumnMetadata[] = ownedEntityMeta?.columns ?? [];
-      for (const col of sourceCols) {
-        ownerColumns.push({
-          name: `${prefix}${col.columnName}`,
-          type: String(col.type ?? '').toUpperCase(),
-          nullable: col.nullable ?? true,
-          isPrimaryKey: false,
-          defaultValue: col.defaultValue,
-          defaultExpression: col.defaultExpression
-        });
+  /** Centralized canonical sort applied to every emitted table. */
+  private finalize(tables: Map<string, ModelTableSnapshot>): ModelTableSnapshot[] {
+    const result = [...tables.values()];
+    for (const table of result) {
+      table.columns.sort((a, b) => a.name.localeCompare(b.name));
+      table.primaryKeys.sort();
+      for (const index of table.indexes) {
+        index.columns.sort();
       }
-    } else if (owned.strategy === StorageStrategy.Json) {
-      const jsonCol = owned.jsonColumnName ?? owned.ownerPropertyName;
-      // Use JSONB as the canonical abstract type for JSON-strategy columns.
-      // Dialects map: Postgres → JSONB, MySQL → JSON, MSSQL → NVARCHAR(MAX).
-      ownerColumns.push({
-        name: jsonCol,
-        type: 'JSONB',
-        nullable: true,
-        isPrimaryKey: false
-      });
-    } else if (owned.strategy === StorageStrategy.SeparateTable) {
-      const ownedTableName = ownedEntityMeta?.tableName ?? owned.ownerPropertyName;
-      const ownerPrimaryKeys = ownerEntity.primaryKeys ?? [];
-      const fkColumns: ModelColumnSnapshot[] =
-        owned.foreignKeyColumns?.map((fk) => ({
-          name: fk,
-          type: 'INTEGER',
-          nullable: false,
-          isPrimaryKey: true
-        })) ??
-        ownerPrimaryKeys.map((pk) => {
-          const col = ownerEntity.columns.find((c) => c.propertyName === pk);
-          return {
-            name: `${ownerEntity.tableName}_${col?.columnName ?? pk}`,
-            type: String(col?.type ?? 'INTEGER').toUpperCase(),
-            nullable: false,
-            isPrimaryKey: true
-          };
-        });
-
-      const ownedCols: ModelColumnSnapshot[] = (ownedEntityMeta?.columns ?? []).map((col) => ({
-        name: col.columnName,
-        type: String(col.type ?? '').toUpperCase(),
-        nullable: col.nullable ?? true,
-        isPrimaryKey: false,
-        defaultValue: col.defaultValue,
-        defaultExpression: col.defaultExpression
-      }));
-
-      const allCols = [...fkColumns, ...ownedCols].sort((a, b) => a.name.localeCompare(b.name));
-      const primaryKeys = fkColumns.map((c) => c.name).sort();
-
-      extraTables.push({
-        name: ownedTableName,
-        columns: allCols,
-        primaryKeys,
-        indexes: []
-      });
+      table.indexes.sort((a, b) => a.name.localeCompare(b.name));
     }
+    return result.sort((a, b) => a.name.localeCompare(b.name));
   }
 }
 

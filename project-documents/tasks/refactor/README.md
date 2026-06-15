@@ -221,7 +221,7 @@ Each package only depends on packages already completed above it.
 | jest-config | 2 | 0 | 2 | 0 | 0 | not-started |
 | metadata | 5 | 1 | 2 | 2 | 0 | ✅ done (task-1/2/3/4/5 ✅) |
 | metrics-safe | 3 | 0 | 1 | 1 | 1 |  ✅ done |
-| migrations | 7 | 3 | 3 | 1 | 0 | 🔄 In Progress (task-1, task-2, task-3, task-4 ✅) |
+| migrations | 7 | 3 | 3 | 1 | 0 | 🔄 In Progress (task-1, task-2, task-3, task-4, task-5 ✅) |
 | open-telemetry-sql-logger | 4 | 0 | 3 | 1 | 0 | not-started |
 | orm | 8 | 2 | 4 | 2 | 0 | not-started |
 | pagination | 1 | 0 | 0 | 1 | 0 | not-started |
