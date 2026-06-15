@@ -2,7 +2,7 @@ import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { QueryBuilder } from '@ts-linq/query';
+import { QueryBuilder } from '@ts-linq/query/internal';
 import type { QueryOptions } from '@ts-linq/types';
 import fc from 'fast-check';
 

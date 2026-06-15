@@ -1,5 +1,28 @@
 # @ts-linq/query
 
+## 4.0.0
+
+### Major Changes
+
+- Curate the `@ts-linq/query` public barrel. `src/index.ts` now uses explicit named exports
+  instead of `export *`, and internal collaborators are no longer part of the stable contract.
+
+  **Breaking:** `QueryBuilder`, `LruCache`, and `LruCacheOptions` are no longer exported from
+  `@ts-linq/query`. They live behind `@ts-linq/query/internal` (tagged `@internal`).
+
+  Migration: if you genuinely need them (not recommended — they are implementation detail),
+  import from `@ts-linq/query/internal`:
+
+  ```ts
+  // before
+  import { QueryBuilder } from '@ts-linq/query';
+  // after
+  import { QueryBuilder } from '@ts-linq/query/internal';
+  ```
+
+  The intended public surface (`Queryable`, `OrderedQueryable`, `IncludableQueryable`,
+  `TypedQueryable`, `QueryModel`, `EF`, error/selector types, etc.) is unchanged.
+
 ## 3.1.1
 
 ### Patch Changes

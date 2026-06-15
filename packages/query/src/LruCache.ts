@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import type { SqlCache, SqlCacheEntry } from '@ts-linq/types';
 
+/** @internal Not part of the stable public API; import from `@ts-linq/query/internal`. */
 export interface LruCacheOptions {
   maxSize?: number;
   enableLru?: boolean;
@@ -17,6 +18,8 @@ interface LruCacheEntry extends SqlCacheEntry {
 /**
  * Fixed-size Map-backed store with optional LRU promotion and SHA-256 key compression.
  * Single responsibility: entry storage and eviction policy only.
+ *
+ * @internal Not part of the stable public API; import from `@ts-linq/query/internal`.
  */
 export class LruCache implements SqlCache {
   private store = new Map<string, LruCacheEntry>();

@@ -48,9 +48,9 @@ applies global query filters, tracking, caching and pagination. The public entry
 | 7 | task-7 | P1 | ✅ Completed | Split compile/execute/cache (decorator). |
 | 8 | task-5 | P1 | ✅ Completed | Honest selector types + type-level tests. |
 | 9 | task-9 | P2 | ✅ Completed | Extract include proxy into `IncludeSelectorResolver` (Result type); single invocation. |
-| 10 | task-10 | P2 | ⬜ Pending | Public API/barrel hygiene (bundle with major bump). |
+| 10 | task-10 | P2 | ✅ Completed | Public API/barrel hygiene: explicit named exports; `QueryBuilder`/`LruCache` → `/internal` (major bump). |
 
-> **Package status: 🔄 In Progress** — task-4, task-8, task-6, task-3, task-2, task-1, task-7, task-5, task-9 done; task-10 pending.
+> **Package status: ✅ done** — all tasks 1–10 complete (task-4, task-8, task-6, task-3, task-2, task-1, task-7, task-5, task-9, task-10).
 > Note: task-1's `IncludeBuilder` already extracted the filtered-include `Proxy`; task-9 formalized it into a named `IncludeSelectorResolver` returning a discriminated `IncludeResolution` (`subquery | error`), invoked exactly once, and removed the dead `extractKey` fallback / useless catch.
 
 ## Dependencies on other packages

@@ -1,6 +1,6 @@
 import { MssqlDialect } from '@ts-linq/dialect-mssql';
 import { MetadataStorage } from '@ts-linq/metadata';
-import { QueryBuilder } from '@ts-linq/query';
+import { QueryBuilder } from '@ts-linq/query/internal';
 import type { QueryOptions } from '@ts-linq/types';
 
 class MsUser {
