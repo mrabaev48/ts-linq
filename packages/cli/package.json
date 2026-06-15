@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/cli",
-  "version": "1.3.39",
+  "version": "1.3.40",
   "description": "Command-line tools for ts-linq ORM",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
