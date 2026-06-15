@@ -1,5 +1,23 @@
 # @ts-linq/migrations
 
+## 2.6.29
+
+### Patch Changes
+
+- Security: route all emitted-SQL identifier and literal quoting through a single audited,
+  injection-safe quoting authority per dialect.
+
+  Previously `q()` wrapped identifiers in the dialect quote character **without escaping**
+  embedded quotes (e.g. a column `a"b` produced `"a"b"`), and several sequence/seed/unique-constraint
+  builders interpolated bare identifiers into quote characters directly. A crafted
+  scaffolded/introspected name or seed value could break out of its quoting and inject SQL into a
+  generated migration. This introduces a `SqlQuoter` Strategy (`PostgresQuoter` / `MySqlQuoter` /
+  `MssqlQuoter`) selected via `QuoterFactory`, doubling the dialect quote char (`"`→`""`,
+  `` ` ``→` ` ``, `]`→`]]`). `q()`and`formatValue()` keep their signatures and now delegate to
+the quoter (`formatValue`folded into the single`literal()` path). Output for ordinary
+  identifiers/values is unchanged. A scoped ESLint rule plus a unit test guard prevent reintroducing
+  raw identifier interpolation in the builders.
+
 ## 2.6.28
 
 ### Patch Changes

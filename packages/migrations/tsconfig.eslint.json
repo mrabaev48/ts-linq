@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "rootDir": ".",
+    "paths": {
+      "@src/*": ["src/*"],
+      "@ts-linq/*": ["../*/src"]
+    }
+  },
+  "include": ["src/**/*", "tests/**/*", "tests-new/**/*"],
+  "exclude": ["dist", "node_modules", "**/*.d.ts"]
+}
