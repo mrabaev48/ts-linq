@@ -6,7 +6,12 @@ import type {
   IndexMetadata,
   OwnedEntityMetadata
 } from '@ts-linq/types';
-import { InheritanceStrategy, StorageStrategy } from '@ts-linq/types';
+import {
+  InheritanceStrategy,
+  SnapshotSerializationError,
+  SnapshotValidationError,
+  StorageStrategy
+} from '@ts-linq/types';
 
 /**
  * A normalized snapshot of a single column in the model.
@@ -407,10 +412,16 @@ export class ModelSnapshotSerializer {
 
   /**
    * Parse and validate a JSON string into a `ModelSnapshot`.
-   * @throws {Error} When the JSON structure is not a valid `ModelSnapshot`.
+   * @throws {SnapshotSerializationError} When the JSON cannot be parsed.
+   * @throws {SnapshotValidationError} When the parsed structure is not a valid `ModelSnapshot`.
    */
   public deserialize(json: string): ModelSnapshot {
-    const obj: unknown = JSON.parse(json);
+    let obj: unknown;
+    try {
+      obj = JSON.parse(json);
+    } catch (error) {
+      throw new SnapshotSerializationError('Failed to parse ModelSnapshot JSON', { cause: error });
+    }
     this.assertValid(obj);
     return obj;
   }
@@ -421,7 +432,9 @@ export class ModelSnapshotSerializer {
       typeof obj !== 'object' ||
       !Array.isArray((obj as Record<string, unknown>).tables)
     ) {
-      throw new Error('Invalid ModelSnapshot: expected an object with a "tables" array property.');
+      throw new SnapshotValidationError(
+        'Invalid ModelSnapshot: expected an object with a "tables" array property'
+      );
     }
   }
 }

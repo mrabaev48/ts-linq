@@ -9,18 +9,24 @@
 
 import {
   BatchConfigurationError,
+  BundleBuildError,
   DatabaseError,
   DecoratorUsageError,
   FallbackExhaustedError,
   ForeignKeyConstraintError,
   InvalidIncludeError,
   MetadataError,
+  MigrationApplyError,
+  MigrationRollbackError,
   OperationAbortedError,
   OptimisticConcurrencyError,
   OrmError,
   OrmErrorCode,
+  ProviderRequiredError,
   QueryFilterCompilationError,
   SelectorExtractionError,
+  SnapshotSerializationError,
+  SnapshotValidationError,
   TemporalNotSupportedError,
   UniqueConstraintError,
   UnsupportedOperationError,
@@ -57,6 +63,14 @@ type _FilterCode = Expect<
 >;
 type _FallbackCode = Expect<Equal<FallbackExhaustedError['code'], 'FALLBACK_EXHAUSTED'>>;
 type _SelectorCode = Expect<Equal<SelectorExtractionError['code'], 'SELECTOR_EXTRACTION_ERROR'>>;
+type _MigApplyCode = Expect<Equal<MigrationApplyError['code'], 'MIGRATION_APPLY_ERROR'>>;
+type _MigRollbackCode = Expect<Equal<MigrationRollbackError['code'], 'MIGRATION_ROLLBACK_ERROR'>>;
+type _SnapSerCode = Expect<
+  Equal<SnapshotSerializationError['code'], 'SNAPSHOT_SERIALIZATION_ERROR'>
+>;
+type _SnapValCode = Expect<Equal<SnapshotValidationError['code'], 'SNAPSHOT_VALIDATION_ERROR'>>;
+type _BundleCode = Expect<Equal<BundleBuildError['code'], 'BUNDLE_BUILD_ERROR'>>;
+type _ProviderCode = Expect<Equal<ProviderRequiredError['code'], 'PROVIDER_REQUIRED_ERROR'>>;
 
 // `details` is a readonly structured payload, never `any`.
 type _DetailsType = Expect<
@@ -85,7 +99,13 @@ describe('OrmError hierarchy', () => {
       new OperationAbortedError('x'),
       new QueryFilterCompilationError('x'),
       new FallbackExhaustedError('x'),
-      new SelectorExtractionError('x')
+      new SelectorExtractionError('x'),
+      new MigrationApplyError('x'),
+      new MigrationRollbackError('x'),
+      new SnapshotSerializationError('x'),
+      new SnapshotValidationError('x'),
+      new BundleBuildError('x'),
+      new ProviderRequiredError('x')
     ];
     for (const e of errors) {
       expect(e).toBeInstanceOf(OrmError);
@@ -131,6 +151,12 @@ describe('OrmError hierarchy', () => {
     );
     expect(new FallbackExhaustedError('x').code).toBe(OrmErrorCode.FallbackExhausted);
     expect(new SelectorExtractionError('x').code).toBe(OrmErrorCode.SelectorExtraction);
+    expect(new MigrationApplyError('x').code).toBe(OrmErrorCode.MigrationApply);
+    expect(new MigrationRollbackError('x').code).toBe(OrmErrorCode.MigrationRollback);
+    expect(new SnapshotSerializationError('x').code).toBe(OrmErrorCode.SnapshotSerialization);
+    expect(new SnapshotValidationError('x').code).toBe(OrmErrorCode.SnapshotValidation);
+    expect(new BundleBuildError('x').code).toBe(OrmErrorCode.BundleBuild);
+    expect(new ProviderRequiredError('x').code).toBe(OrmErrorCode.ProviderRequired);
   });
 
   it('sets the constructor name on every error', () => {
@@ -199,5 +225,52 @@ describe('OrmError cause and details', () => {
     const fk = new ForeignKeyConstraintError('fk', 'orders', 'fk_user');
     expect(fk.table).toBe('orders');
     expect(fk.constraint).toBe('fk_user');
+  });
+});
+
+// --- runtime: migration error factories --------------------------------------
+
+describe('Migration error factories', () => {
+  it('MigrationApplyError.from preserves cause and records { version, name } without leaking the raw cause into the message', () => {
+    const root = new Error('relation already exists');
+    const err = MigrationApplyError.from('20240101120000', 'AddUsers', root);
+    expect(err).toBeInstanceOf(MigrationApplyError);
+    expect(err.code).toBe(OrmErrorCode.MigrationApply);
+    expect(err.cause).toBe(root);
+    expect(err.details).toEqual({ version: '20240101120000', name: 'AddUsers' });
+    expect(err.message).not.toContain('relation already exists');
+    expect(err.message).toContain('AddUsers');
+  });
+
+  it('MigrationRollbackError.from preserves cause and records { version, name }', () => {
+    const root = new Error('cannot drop table');
+    const err = MigrationRollbackError.from('20240101120000', 'AddUsers', root);
+    expect(err).toBeInstanceOf(MigrationRollbackError);
+    expect(err.code).toBe(OrmErrorCode.MigrationRollback);
+    expect(err.cause).toBe(root);
+    expect(err.details).toEqual({ version: '20240101120000', name: 'AddUsers' });
+  });
+
+  it('SnapshotSerializationError preserves the underlying parse error as cause', () => {
+    const parseError = new SyntaxError('Unexpected token');
+    const err = new SnapshotSerializationError('Failed to parse', { cause: parseError });
+    expect(err.cause).toBe(parseError);
+  });
+
+  it('SnapshotValidationError carries safe-to-log context', () => {
+    const err = new SnapshotValidationError('missing pk', {
+      details: { table: 'users', missingColumns: ['id'] }
+    });
+    expect(err.details).toEqual({ table: 'users', missingColumns: ['id'] });
+  });
+
+  it('BundleBuildError and ProviderRequiredError carry diagnostic context', () => {
+    const bundle = new BundleBuildError('no dir', { details: { dir: '/migrations' } });
+    expect(bundle.details).toEqual({ dir: '/migrations' });
+
+    const provider = new ProviderRequiredError('needs provider', {
+      details: { operation: 'buildActualFromProvider' }
+    });
+    expect(provider.details).toEqual({ operation: 'buildActualFromProvider' });
   });
 });
