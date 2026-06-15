@@ -1,5 +1,19 @@
 # @ts-linq/transformer
 
+## 2.1.26
+
+### Patch Changes
+
+- Refactor `CallVisitor` into a Chain-of-Responsibility dispatcher with one handler per
+  call pattern (`ArrayIncludesCall`, `IdentifierIncludesCall`, `StringMethodCall`,
+  `EfFunctionCall`) and a single shared `literalToAstNode` converter.
+
+  As part of unifying the two previously-duplicated literal converters, negative numeric
+  literals passed as `EF.functions.*` arguments (e.g. `EF.functions.dateDiffDay(p.x, -5)`)
+  are now emitted as inline literal nodes instead of being captured as runtime
+  `parameterRef`s — matching the array-`includes` path and producing semantically
+  equivalent SQL.
+
 ## 2.1.25
 
 ### Patch Changes
