@@ -1,7 +1,7 @@
 import { PostgresDialect } from '@ts-linq/dialect-postgres';
 import { Column, Entity, MetadataStorage, PrimaryKey } from '@ts-linq/metadata';
 import { PostgresProvider } from '@ts-linq/provider-postgres';
-import { QueryBuilder } from '@ts-linq/query';
+import { QueryBuilder } from '@ts-linq/query/internal';
 
 describe('PostgreSQL Provider + QueryBuilder Integration', () => {
   @Entity({ name: 'users' })
