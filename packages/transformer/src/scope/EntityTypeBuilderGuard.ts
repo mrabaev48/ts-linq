@@ -1,16 +1,15 @@
 import type * as ts from 'typescript';
 
+import type { DiagnosticSink } from '../diagnostics/DiagnosticSink';
+import { hasTypeBrand } from './hasTypeBrand';
+
 const BUILDER_BRAND = '__tsLinqEntityTypeBuilderBrand';
 
 export function receiverIsEntityTypeBuilder(
   checker: ts.TypeChecker,
-  receiver: ts.Expression
+  receiver: ts.Expression,
+  methodName: string,
+  sink?: DiagnosticSink
 ): boolean {
-  try {
-    const type = checker.getTypeAtLocation(receiver);
-    const props = checker.getPropertiesOfType(type);
-    return props.some((p) => p.getName() === BUILDER_BRAND);
-  } catch {
-    return false;
-  }
+  return hasTypeBrand(checker, receiver, BUILDER_BRAND, methodName, sink);
 }
