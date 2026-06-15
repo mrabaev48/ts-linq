@@ -1,6 +1,6 @@
 # Refactor Audit: migrations
 
-**Status: 🔄 In Progress** — task-1, task-2, task-4 ✅ completed; tasks 3, 5–7 pending.
+**Status: 🔄 In Progress** — task-1, task-2, task-3, task-4 ✅ completed; tasks 5–7 pending.
 
 ## Package responsibility
 
@@ -63,7 +63,7 @@ dialect SQL via the `Dialect` string union instead of delegating.
 |---:|---|---|---|---|
 | 1 | task-1.md — Injection-safe identifier/literal quoting layer | P0 | ✅ Completed | Security + correctness in the hot DDL/DML path; everything builds on it |
 | 2 | task-2.md — Decompose MigrationRunner (history store, logging, errors, tx) | P0 | ✅ Completed | Runner → thin orchestrator over injected `MigrationHistoryStore` + `TransactionScope` + `MigrationLogger`; **silent-swallow data-corruption fix** (`list()` existence-probes instead of returning `[]` on any error); task-4 typed errors with preserved `cause` + suppressed-error chaining on rollback failure; `__migrations` schema shared with the idempotent emitter; `new MigrationRunner(provider)` retained |
-| 3 | task-3.md — Safe bundle/script code generation | P0 | ⬜ Pending | Path/identifier injection in generated executable code |
+| 3 | task-3.md — Safe bundle/script code generation | P0 | ✅ Completed | New `JsLiteral` encoder (`bundle/codegen/JsLiteral.ts`) — `generateEntrySource` now emits structure and routes every path leaf through JSON-escaped, POSIX-normalized `modulePath()`; idempotent emitter reuses task-1 `literal()` for `version`/`name` + fail-fast `BundleBuildError` on malformed identifiers; generated runtime allow-lists `DB_PROVIDER` (`postgres\|mysql\|mssql`) before the dynamic import; `__migrations` shared schema confirmed converged. Closes arbitrary-code (bundle) + arbitrary-SQL (script) injection |
 | 4 | task-4.md — Typed error hierarchy for migrations | P1 | ✅ Completed | Foundation for error model; **pulled ahead of task-2/task-3** to satisfy task-2's `depends_on` (runner consumes `MigrationApplyError`/`MigrationRollbackError`). Classes extend `OrmError` in `@ts-linq/types` (CLAUDE.md §16 — no parallel hierarchy); non-runner serializer/bundle/seed sites migrated, runner deferred to task-2 |
 | 5 | task-5.md — Decompose snapshot builders into strategy expanders | P1 | ⬜ Pending | God modules; couples to MetadataStorage singleton; hard to extend |
 | 6 | task-6.md — Centralize dialect-inspector selection | P1 | ⬜ Pending | Duplicated dialect dispatch; provider-coupling risk |

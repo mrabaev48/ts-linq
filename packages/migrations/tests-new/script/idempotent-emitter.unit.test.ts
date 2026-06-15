@@ -1,5 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
+import { BundleBuildError, OrmErrorCode } from '@ts-linq/types';
 
+import type { Dialect } from '../../src/Dialect';
 import type { IdempotentMigrationStep } from '../../src/script/idempotent-emitter';
 import { IdempotentEmitter } from '../../src/script/idempotent-emitter';
 
@@ -203,6 +205,79 @@ describe('IdempotentEmitter', () => {
       const sql = emitter.emit([singleStep], 'postgresql');
 
       expect(sql).toContain('-- Migration: 20241201000000_CreateUsers');
+    });
+  });
+
+  describe('fail-fast validation of malformed steps', () => {
+    const dialects: Dialect[] = ['postgresql', 'mssql', 'mysql'];
+
+    const malformedSteps: Array<{ label: string; step: IdempotentMigrationStep }> = [
+      {
+        label: 'name containing a single quote (SQL injection attempt)',
+        step: { version: '20241201000000', name: "Bad'Name", upSql: ['SELECT 1'] }
+      },
+      {
+        label: 'name containing a hyphen',
+        step: { version: '20241201000000', name: 'a-b', upSql: ['SELECT 1'] }
+      },
+      {
+        label: 'name containing a space',
+        step: { version: '20241201000000', name: 'Create Users', upSql: ['SELECT 1'] }
+      },
+      {
+        label: 'version that is not 14 digits',
+        step: { version: '123', name: 'CreateUsers', upSql: ['SELECT 1'] }
+      },
+      {
+        label: 'version containing non-digits',
+        step: { version: "2024'OR'1", name: 'CreateUsers', upSql: ['SELECT 1'] }
+      }
+    ];
+
+    for (const dialect of dialects) {
+      for (const { label, step } of malformedSteps) {
+        it(`rejects ${label} (${dialect}) with a typed BundleBuildError`, () => {
+          expect(() => emitter.emit([step], dialect)).toThrow(BundleBuildError);
+          try {
+            emitter.emitStatements([step], dialect);
+            throw new Error('expected emitStatements to throw');
+          } catch (e) {
+            expect(e).toBeInstanceOf(BundleBuildError);
+            expect((e as BundleBuildError).code).toBe(OrmErrorCode.BundleBuild);
+            expect((e as BundleBuildError).details).toMatchObject({
+              version: step.version,
+              name: step.name,
+              reason: 'invalid-migration-identifier'
+            });
+          }
+        });
+      }
+    }
+
+    it('accepts a well-formed step (no throw)', () => {
+      expect(() => emitter.emit([singleStep], 'postgresql')).not.toThrow();
+    });
+  });
+
+  describe('literal escaping of emitted values', () => {
+    // A valid name/version is byte-for-byte unchanged through the literal encoder, so the
+    // emitted SQL still contains the single-quoted form with no extra escaping.
+    it('emits version/name as single-quoted SQL literals for PostgreSQL', () => {
+      const sql = emitter.emit([singleStep], 'postgresql');
+      expect(sql).toContain("'20241201000000'");
+      expect(sql).toContain("'CreateUsers'");
+    });
+
+    it('emits version/name as single-quoted SQL literals for MySQL', () => {
+      const sql = emitter.emit([singleStep], 'mysql');
+      expect(sql).toContain("'20241201000000'");
+      expect(sql).toContain("'CreateUsers'");
+    });
+
+    it('emits version/name as single-quoted SQL literals for MSSQL', () => {
+      const sql = emitter.emit([singleStep], 'mssql');
+      expect(sql).toContain("'20241201000000'");
+      expect(sql).toContain("'CreateUsers'");
     });
   });
 });

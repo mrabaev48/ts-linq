@@ -4,6 +4,8 @@ import * as path from 'node:path';
 
 import { BundleBuildError } from '@ts-linq/types';
 
+import { JsLiteral } from './codegen/JsLiteral';
+
 /**
  * Supported target platforms for the migration bundle.
  * Mirrors the `--target` values supported by `dotnet ef migrations bundle -r`.
@@ -103,7 +105,9 @@ export class MigrationBundleBuilder {
 
   private generateEntrySource(migrations: MigrationFileEntry[], migrationsDir: string): string {
     const importLines = migrations.map(
-      (m, i) => `import * as migration_${i} from '${m.absolutePath}';`
+      // The absolute path is a leaf value: POSIX-normalized and JSON-escaped so a path
+      // containing a quote or Windows backslash cannot break out of the import specifier.
+      (m, i) => `import * as migration_${i} from ${JsLiteral.modulePath(m.absolutePath)};`
     );
 
     const registerLines = migrations.map((m, i) =>
@@ -126,7 +130,8 @@ export class MigrationBundleBuilder {
       ].join('\n  ')
     );
 
-    const relDir = path.relative(path.dirname(os.tmpdir()), migrationsDir);
+    // Strip line breaks so a path containing a newline cannot escape the `//` comment.
+    const relDir = path.relative(path.dirname(os.tmpdir()), migrationsDir).replace(/[\r\n]+/g, ' ');
 
     return [
       `// Auto-generated migration bundle`,
@@ -144,8 +149,15 @@ export class MigrationBundleBuilder {
       `    process.exit(1);`,
       `  }`,
       ``,
-      `  // Dynamic provider import — resolved at bundle time based on DB_PROVIDER env var`,
+      `  // Dynamic provider import — resolved at bundle runtime from the DB_PROVIDER env var.`,
+      `  // The name is constrained to an allow-list before the import so an attacker-controlled`,
+      `  // env var cannot load an arbitrary module.`,
+      `  const ALLOWED_PROVIDERS = ['postgres', 'mysql', 'mssql'];`,
       `  const providerName = process.env['DB_PROVIDER'] ?? 'postgres';`,
+      `  if (!ALLOWED_PROVIDERS.includes(providerName)) {`,
+      `    console.error(\`[ts-linq bundle] Unsupported DB_PROVIDER "\${providerName}". Expected one of: \${ALLOWED_PROVIDERS.join(', ')}.\`);`,
+      `    process.exit(1);`,
+      `  }`,
       `  let provider: import('@ts-linq/core').DatabaseProvider;`,
       `  try {`,
       `    const mod = await import(\`@ts-linq/provider-\${providerName}\`);`,

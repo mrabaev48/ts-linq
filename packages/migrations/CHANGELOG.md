@@ -1,5 +1,27 @@
 # @ts-linq/migrations
 
+## 2.7.1
+
+### Patch Changes
+
+- Security: close arbitrary-code and arbitrary-SQL injection in generated migration artifacts.
+
+  The bundle generator (`MigrationBundleBuilder`) and the idempotent-script emitter
+  (`IdempotentEmitter`) previously built executable `.mjs`/`.sql` output by raw string
+  concatenation, interpolating filesystem paths and migration metadata directly. A path or
+  identifier containing a quote could break out and inject arbitrary code/SQL into an artifact
+  an operator later runs; Windows backslash paths also produced invalid import specifiers.
+  - New internal `JsLiteral` encoder: `generateEntrySource` now emits structure and routes every
+    path leaf through a JSON-escaped, POSIX-normalized import specifier.
+  - The idempotent emitter reuses the dialect `literal()` encoder for `version`/`name` and
+    fails fast with a typed `BundleBuildError` when an identifier is malformed
+    (`version` not `^\d{14}$`, `name` not `^[A-Za-z0-9_]+$`).
+  - The generated bundle runtime constrains `DB_PROVIDER` to an allow-list
+    (`postgres`/`mysql`/`mssql`) before the dynamic provider import.
+
+  Public signatures (`MigrationBundleBuilder.build`, `IdempotentEmitter.emit/emitStatements`)
+  are unchanged.
+
 ## 2.7.0
 
 ### Minor Changes
