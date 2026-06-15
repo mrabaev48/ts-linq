@@ -1,5 +1,24 @@
 # @ts-linq/types
 
+## 4.6.0
+
+### Minor Changes
+
+- Add a typed error model for migrations rooted at `OrmError`.
+
+  `@ts-linq/types` gains six new error classes — `MigrationApplyError`,
+  `MigrationRollbackError`, `SnapshotSerializationError`, `SnapshotValidationError`,
+  `BundleBuildError`, `ProviderRequiredError` — each extending the canonical `OrmError`
+  hierarchy (CLAUDE.md §16) with new stable `OrmErrorCode` literals, structured `details`
+  context, and preserved `cause`. `MigrationApplyError`/`MigrationRollbackError` provide
+  `static from(version, name, cause)` factories for consistent, user-safe diagnostics.
+
+  `@ts-linq/migrations` replaces the bare `throw new Error(...)` calls in its serializers
+  (`SchemaSnapshot`, `model-snapshot`), bundle builder (`build-bundle`), and seed validator
+  (`SeedDiff`) with these typed errors, preserving the underlying `cause` where one exists.
+  Callers can now branch on `error.code` instead of string-matching messages. The
+  `MigrationRunner` apply/rollback sites are intentionally deferred to a follow-up task.
+
 ## 4.5.0
 
 ### Minor Changes

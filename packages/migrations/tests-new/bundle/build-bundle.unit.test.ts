@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { BundleBuildError, OrmErrorCode } from '@ts-linq/types';
 
 import { MigrationBundleBuilder } from '../../src/bundle/build-bundle';
 
@@ -39,13 +40,20 @@ describe('MigrationBundleBuilder', () => {
   });
 
   describe('build()', () => {
-    it('throws when migrations directory does not exist', async () => {
+    it('throws a typed BundleBuildError when migrations directory does not exist', async () => {
       const builder = new MigrationBundleBuilder();
       const nonExistentDir = path.join(tempDir, 'nonexistent');
 
-      await expect(builder.build({ migrationsDir: nonExistentDir, outputFile })).rejects.toThrow(
-        /does not exist/
-      );
+      await expect(
+        builder.build({ migrationsDir: nonExistentDir, outputFile })
+      ).rejects.toBeInstanceOf(BundleBuildError);
+      try {
+        await builder.build({ migrationsDir: nonExistentDir, outputFile });
+      } catch (e) {
+        expect(e).toBeInstanceOf(BundleBuildError);
+        expect((e as BundleBuildError).code).toBe(OrmErrorCode.BundleBuild);
+        expect((e as BundleBuildError).details).toEqual({ dir: nonExistentDir });
+      }
     });
 
     it('throws when esbuild is not installed', async () => {

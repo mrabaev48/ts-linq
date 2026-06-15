@@ -22,6 +22,12 @@ describe('Type Exports', () => {
     expect(types.QueryFilterCompilationError).toBeDefined();
     expect(types.FallbackExhaustedError).toBeDefined();
     expect(types.SelectorExtractionError).toBeDefined();
+    expect(types.MigrationApplyError).toBeDefined();
+    expect(types.MigrationRollbackError).toBeDefined();
+    expect(types.SnapshotSerializationError).toBeDefined();
+    expect(types.SnapshotValidationError).toBeDefined();
+    expect(types.BundleBuildError).toBeDefined();
+    expect(types.ProviderRequiredError).toBeDefined();
   });
 
   it('should export Result helper functions', () => {
@@ -76,6 +82,12 @@ describe('Type Exports', () => {
       'QueryFilterCompilationError',
       'FallbackExhaustedError',
       'SelectorExtractionError',
+      'MigrationApplyError',
+      'MigrationRollbackError',
+      'SnapshotSerializationError',
+      'SnapshotValidationError',
+      'BundleBuildError',
+      'ProviderRequiredError',
       'ok',
       'err',
       'LoadingStrategy',
