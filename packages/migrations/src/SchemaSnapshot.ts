@@ -1,47 +1,65 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage, SequenceRegistry } from '@ts-linq/metadata';
-import type {
-  ColumnMetadata,
-  EntityMetadata,
-  IndexMetadata,
-  RelationshipMetadata,
-  TableFragmentMetadata
-} from '@ts-linq/types';
+import type { EntityMetadata, IndexMetadata, SequenceMetadata } from '@ts-linq/types';
 import {
   ProviderRequiredError,
   SnapshotSerializationError,
   SnapshotValidationError
 } from '@ts-linq/types';
 
-import { deleteBehaviorToSql } from './builders/handlers/ForeignKeyHandlers';
-import type {
-  ColumnDef,
-  ForeignKeyDef,
-  IndexDef,
-  SchemaSnapshot,
-  SequenceDef,
-  TableSnapshot,
-  ViewSnapshot
-} from './DiffTypes';
+import type { ColumnDef, IndexDef, SchemaSnapshot, TableSnapshot, ViewSnapshot } from './DiffTypes';
 import {
   MssqlSchemaInspector,
   MySqlSchemaInspector,
   PostgresSchemaInspector
 } from './SchemaInspector';
+import { ColumnMapper } from './snapshot/expanders/ColumnMapper';
+import type { ExpansionContext } from './snapshot/expanders/EntityExpander';
+import { ForeignKeyResolver } from './snapshot/expanders/schema/ForeignKeyResolver';
+import { SequenceExpander } from './snapshot/expanders/schema/SequenceExpander';
+import { ShadowPropertyExpander } from './snapshot/expanders/schema/ShadowPropertyExpander';
+import { TableFragmentExpander } from './snapshot/expanders/schema/TableFragmentExpander';
 
 /**
  * OOP builders/serializers for SchemaSnapshot with thin functional wrappers for back-compat.
+ *
+ * The builder is a thin coordinator: per entity it projects base columns via the shared
+ * {@link ColumnMapper}, then runs the schema {@link ShadowPropertyExpander} /
+ * {@link TableFragmentExpander} strategies and resolves foreign keys through
+ * {@link ForeignKeyResolver}. Sequences are mapped by {@link SequenceExpander}. The entity
+ * list and sequence list are injected via {@link SchemaSnapshotBuilder.buildFrom}; the no-arg
+ * {@link SchemaSnapshotBuilder.buildExpectedFromMetadata} reads the global registries for
+ * back-compatibility.
  */
 export class SchemaSnapshotBuilder {
   private readonly provider?: DatabaseProvider;
+
+  private readonly columnMapper = new ColumnMapper();
+  private readonly shadowExpander = new ShadowPropertyExpander();
+  private readonly fragmentExpander = new TableFragmentExpander();
+  private readonly sequenceExpander = new SequenceExpander();
+  private readonly foreignKeyResolver = new ForeignKeyResolver();
 
   constructor(provider?: DatabaseProvider) {
     this.provider = provider;
   }
 
+  /**
+   * Build the expected schema snapshot from the globally registered entities and
+   * sequences. Back-compat entrypoint reading the global registries.
+   */
   public buildExpectedFromMetadata(): SchemaSnapshot {
-    const entities = MetadataStorage.getEntities();
+    return this.buildFrom(MetadataStorage.getEntities(), SequenceRegistry.getAll());
+  }
 
+  /**
+   * Build the expected schema snapshot from an injected set of entities and sequences.
+   * Inverts the global-registry coupling so the snapshot is testable in isolation.
+   */
+  public buildFrom(
+    entities: ReadonlyArray<EntityMetadata>,
+    sequences: ReadonlyArray<SequenceMetadata>
+  ): SchemaSnapshot {
     // Build a lookup map for resolving target entity metadata by class reference or class name.
     const entityByTarget = new Map<Function | string, EntityMetadata>();
     for (const e of entities) {
@@ -74,35 +92,23 @@ export class SchemaSnapshotBuilder {
       // Build primary-table columns (exclude fragment-only properties when splitting).
       const primaryColumns: ColumnDef[] = entityMeta.columns
         .filter((col) => fragments.length === 0 || !fragmentedProps.has(col.propertyName))
-        .map((column: ColumnMetadata) => ({
-          name: column.columnName,
-          type: this.mapPortableType(column.type),
-          nullable: column.nullable ?? true,
-          defaultValue:
-            column.converter && column.defaultValue !== undefined
-              ? column.converter.toProvider(column.defaultValue)
-              : column.defaultValue,
-          defaultExpression: column.defaultExpression,
-          isPrimaryKey: primaryKeyProps.includes(column.propertyName),
-          isComputed: column.isComputed,
-          computedExpression: column.computedExpression,
-          computedStorage: column.computedStorage,
-          comment: column.comment
-        }));
+        .map((column) =>
+          this.columnMapper.toSchemaColumn(column, {
+            isPrimaryKey: primaryKeyProps.includes(column.propertyName)
+          })
+        );
+
+      // Per-entity expansion context shared by the schema strategies.
+      const ctx: ExpansionContext<TableSnapshot, ColumnDef> = {
+        entity: entityMeta,
+        entityByType: entityByTarget,
+        columns: primaryColumns,
+        tables: tableMap,
+        columnMapper: this.columnMapper
+      };
 
       // Shadow properties appear as regular columns in DDL (P1-16).
-      if (entityMeta.shadowProperties) {
-        for (const sp of entityMeta.shadowProperties.values()) {
-          primaryColumns.push({
-            name: sp.columnName,
-            type: this.mapPortableType(sp.type),
-            nullable: sp.nullable ?? true,
-            defaultValue: sp.defaultValue,
-            defaultExpression: sp.defaultExpression,
-            comment: sp.comment
-          });
-        }
-      }
+      this.shadowExpander.expand(ctx);
 
       const primaryKeys = primaryKeyProps.map(
         (pk) => entityMeta.columns.find((column) => column.propertyName === pk)?.columnName || pk
@@ -137,7 +143,7 @@ export class SchemaSnapshotBuilder {
         columns: ak.columns
       }));
 
-      const foreignKeys = this.buildForeignKeys(entityMeta, entityByTarget);
+      const foreignKeys = this.foreignKeyResolver.resolve(entityMeta, entityByTarget);
 
       // Table splitting: merge into existing snapshot when another entity already claimed this table.
       const primaryTableName = entityMeta.tableName;
@@ -170,160 +176,17 @@ export class SchemaSnapshotBuilder {
       }
 
       // Entity splitting: emit one additional TableSnapshot per fragment.
-      for (const fragment of fragments) {
-        this.buildFragmentSnapshot(entityMeta, fragment, primaryKeys, tableMap);
-      }
+      this.fragmentExpander.expand(ctx);
     }
 
     const views = Array.from(viewMap.values());
-
-    const rawSequences = SequenceRegistry.getAll();
-    const sequences: SequenceDef[] = rawSequences.map((s) => ({
-      name: s.name,
-      ...(s.schema !== undefined ? { schema: s.schema } : {}),
-      ...(s.type !== undefined ? { type: s.type } : {}),
-      ...(s.startsAt !== undefined ? { startsAt: s.startsAt } : {}),
-      ...(s.incrementsBy !== undefined ? { incrementsBy: s.incrementsBy } : {}),
-      ...(s.minValue !== undefined ? { minValue: s.minValue } : {}),
-      ...(s.maxValue !== undefined ? { maxValue: s.maxValue } : {}),
-      ...(s.cyclesOn !== undefined ? { cyclesOn: s.cyclesOn } : {})
-    }));
+    const sequenceDefs = this.sequenceExpander.expand(sequences);
 
     return {
       tables: Array.from(tableMap.values()),
       ...(views.length > 0 ? { views } : {}),
-      ...(sequences.length > 0 ? { sequences } : {})
+      ...(sequenceDefs.length > 0 ? { sequences: sequenceDefs } : {})
     };
-  }
-
-  private buildFragmentSnapshot(
-    entityMeta: EntityMetadata,
-    fragment: TableFragmentMetadata,
-    primaryKeys: string[],
-    tableMap: Map<string, TableSnapshot>
-  ): void {
-    const primaryKeyProps = entityMeta.primaryKeys ?? [];
-    const fragmentPropSet = new Set<string>(fragment.properties ?? []);
-
-    // Fragment table contains PK columns + its own properties.
-    const fragmentColumns: ColumnDef[] = entityMeta.columns
-      .filter(
-        (col) => primaryKeyProps.includes(col.propertyName) || fragmentPropSet.has(col.propertyName)
-      )
-      .map((column: ColumnMetadata) => ({
-        name: column.columnName,
-        type: this.mapPortableType(column.type),
-        nullable: column.nullable ?? true,
-        defaultValue:
-          column.converter && column.defaultValue !== undefined
-            ? column.converter.toProvider(column.defaultValue)
-            : column.defaultValue,
-        defaultExpression: column.defaultExpression,
-        isPrimaryKey: primaryKeyProps.includes(column.propertyName),
-        isComputed: column.isComputed,
-        computedExpression: column.computedExpression,
-        computedStorage: column.computedStorage,
-        comment: column.comment
-      }));
-
-    if (fragmentColumns.length === 0) return;
-
-    const existing = tableMap.get(fragment.tableName);
-    if (existing) {
-      for (const col of fragmentColumns) {
-        if (!existing.columns.some((c) => c.name === col.name)) {
-          existing.columns.push(col);
-        }
-      }
-    } else {
-      tableMap.set(fragment.tableName, {
-        name: fragment.tableName,
-        columns: fragmentColumns,
-        primaryKeys,
-        indexes: [],
-        foreignKeys: []
-      });
-    }
-  }
-
-  private buildForeignKeys(
-    entityMeta: EntityMetadata,
-    entityByTarget: Map<Function | string, EntityMetadata>
-  ): ForeignKeyDef[] {
-    const fks: ForeignKeyDef[] = [];
-    for (const rel of entityMeta.relationships ?? []) {
-      // Only the dependent side (many-to-one / one-to-one with foreignKey) owns the FK column.
-      if (rel.type !== 'many-to-one' && rel.type !== 'one-to-one') continue;
-      if (!rel.foreignKey) continue;
-
-      const targetMeta = this.resolveTargetMeta(rel, entityByTarget);
-      if (!targetMeta) continue;
-
-      // If hasPrincipalKey() was called, resolve refColumns from the named alternate key.
-      let refColumns: string[];
-      if (rel.inverseSide) {
-        const ak = (targetMeta.alternateKeys ?? []).find((k) =>
-          k.columns.includes(rel.inverseSide!)
-        );
-        if (ak) {
-          refColumns = ak.columns.map(
-            (col) => targetMeta.columns.find((c) => c.propertyName === col)?.columnName ?? col
-          );
-        } else {
-          // Fall back to PK if the referenced property happens to be a PK column.
-          refColumns = [
-            targetMeta.columns.find((c) => c.propertyName === rel.inverseSide)?.columnName ??
-              rel.inverseSide
-          ];
-        }
-      } else {
-        const refPkProps = targetMeta.primaryKeys ?? [];
-        if (refPkProps.length === 0) continue;
-        refColumns = refPkProps
-          .map((pk) => targetMeta.columns.find((c) => c.propertyName === pk)?.columnName ?? pk)
-          .filter(Boolean);
-      }
-
-      if (refColumns.length === 0) continue;
-
-      const fk: ForeignKeyDef = {
-        columns: [rel.foreignKey],
-        refTable: targetMeta.tableName,
-        refColumns
-      };
-
-      if (rel.onDelete) {
-        const clause = deleteBehaviorToSql(rel.onDelete);
-        if (clause) fk.onDelete = clause;
-      }
-
-      fks.push(fk);
-    }
-    return fks;
-  }
-
-  private resolveTargetMeta(
-    rel: RelationshipMetadata,
-    entityByTarget: Map<Function | string, EntityMetadata>
-  ): EntityMetadata | undefined {
-    const { targetEntity } = rel;
-    if (!targetEntity) return undefined;
-    if (typeof targetEntity === 'function') {
-      // Could be the class itself or a lazy factory (() => Class).
-      const direct = entityByTarget.get(targetEntity);
-      if (direct) return direct;
-      // Try calling it as a factory.
-      try {
-        const resolved = (targetEntity as () => Function)();
-        if (resolved) return entityByTarget.get(resolved);
-      } catch {
-        // Not a factory, ignore.
-      }
-    }
-    if (typeof targetEntity === 'string') {
-      return entityByTarget.get(targetEntity);
-    }
-    return undefined;
   }
 
   public async buildActualFromProvider(expected?: SchemaSnapshot): Promise<SchemaSnapshot> {
@@ -377,31 +240,6 @@ export class SchemaSnapshotBuilder {
       });
     }
     return { tables };
-  }
-
-  private mapPortableType(type: string): string {
-    switch (String(type || '').toUpperCase()) {
-      case 'INTEGER':
-      case 'NUMBER':
-        return 'INTEGER';
-      case 'REAL':
-      case 'FLOAT':
-      case 'DOUBLE':
-        return 'REAL';
-      case 'BOOLEAN':
-        return 'INTEGER';
-      case 'DATETIME':
-      case 'DATE':
-        return 'TEXT';
-      case 'BLOB':
-        return 'BLOB';
-      default:
-        return 'TEXT';
-    }
-  }
-
-  private normalizePortableType(type: string): string {
-    return this.mapPortableType(type);
   }
 }
 
