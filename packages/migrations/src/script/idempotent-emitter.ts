@@ -1,5 +1,13 @@
+import { BundleBuildError } from '@ts-linq/types';
+
+import { QuoterFactory } from '../builders/quoting/QuoterFactory';
 import type { Dialect } from '../Dialect';
 import { buildEnsureMigrationsTableSql, MIGRATIONS_TABLE } from '../runner/MigrationsTableSchema';
+
+/** A migration version must be a 14-digit timestamp (e.g. `20241201000000`). */
+const VERSION_PATTERN = /^\d{14}$/;
+/** A migration name must be a plain identifier — letters, digits, and underscores only. */
+const NAME_PATTERN = /^[A-Za-z0-9_]+$/;
 
 /**
  * Metadata and SQL for a single migration step consumed by `IdempotentEmitter`.
@@ -127,6 +135,7 @@ export class IdempotentEmitter {
   // ---------------------------------------------------------------------------
 
   private buildStatements(step: IdempotentMigrationStep, dialect: Dialect): string[] {
+    this.assertValidStep(step);
     switch (dialect) {
       case 'postgresql':
         return [this.pgBlock(step)];
@@ -143,12 +152,13 @@ export class IdempotentEmitter {
    * PL/pgSQL requires every statement inside a block to be terminated with `;`.
    */
   private pgBlock(step: IdempotentMigrationStep): string {
+    const quoter = QuoterFactory.for('postgresql');
     const stmts = step.upSql
       .map((s) => this.ensureSemicolon(this.indentSql(s, '        ')))
       .join('\n\n');
     const insertRecord = [
       `        INSERT INTO ${IdempotentEmitter.MIGRATIONS_TABLE} (version, name, applied_at)`,
-      `        VALUES ('${step.version}', '${step.name}', NOW()::TEXT);`
+      `        VALUES (${quoter.literal(step.version)}, ${quoter.literal(step.name)}, NOW()::TEXT);`
     ].join('\n');
 
     return [
@@ -157,7 +167,7 @@ export class IdempotentEmitter {
       `BEGIN`,
       `    IF NOT EXISTS (`,
       `        SELECT 1 FROM ${IdempotentEmitter.MIGRATIONS_TABLE}`,
-      `        WHERE version = '${step.version}'`,
+      `        WHERE version = ${quoter.literal(step.version)}`,
       `    ) THEN`,
       stmts,
       '',
@@ -172,17 +182,18 @@ export class IdempotentEmitter {
    * GO is intentionally omitted — programmatic drivers do not support it.
    */
   private mssqlBlock(step: IdempotentMigrationStep): string {
+    const quoter = QuoterFactory.for('mssql');
     const stmts = step.upSql.map((s) => this.indentSql(s, '    ')).join('\n\n');
     const insertRecord = [
       `    INSERT INTO ${IdempotentEmitter.MIGRATIONS_TABLE} (version, name, applied_at)`,
-      `    VALUES ('${step.version}', '${step.name}', CONVERT(VARCHAR(50), GETDATE(), 126))`
+      `    VALUES (${quoter.literal(step.version)}, ${quoter.literal(step.name)}, CONVERT(VARCHAR(50), GETDATE(), 126))`
     ].join('\n');
 
     return [
       `-- Migration: ${step.version}_${step.name}`,
       `IF NOT EXISTS (`,
       `    SELECT 1 FROM ${IdempotentEmitter.MIGRATIONS_TABLE}`,
-      `    WHERE version = '${step.version}'`,
+      `    WHERE version = ${quoter.literal(step.version)}`,
       `)`,
       `BEGIN`,
       stmts,
@@ -215,12 +226,34 @@ export class IdempotentEmitter {
       return `${prefix}${s.trim()};`;
     });
 
+    const quoter = QuoterFactory.for('mysql');
     const insertIgnore = [
       `INSERT IGNORE INTO ${IdempotentEmitter.MIGRATIONS_TABLE} (version, name, applied_at)`,
-      `VALUES ('${step.version}', '${step.name}', NOW());`
+      `VALUES (${quoter.literal(step.version)}, ${quoter.literal(step.name)}, NOW());`
     ].join('\n');
 
     return [...ddlStatements, insertIgnore];
+  }
+
+  /**
+   * Fail-fast guard: reject a step whose `version`/`name` does not match the migration
+   * identifier format before any SQL is emitted. Even though the literals are encoded, a
+   * malformed identifier signals corrupt input — emitting a guard block for it would produce
+   * broken or misleading SQL, so we stop up front with a typed error.
+   */
+  private assertValidStep(step: IdempotentMigrationStep): void {
+    if (!VERSION_PATTERN.test(step.version) || !NAME_PATTERN.test(step.name)) {
+      throw new BundleBuildError(
+        'Cannot emit idempotent SQL for a migration with a malformed version or name.',
+        {
+          details: {
+            version: step.version,
+            name: step.name,
+            reason: 'invalid-migration-identifier'
+          }
+        }
+      );
+    }
   }
 
   /** Append a semicolon if the statement does not already end with one. */
