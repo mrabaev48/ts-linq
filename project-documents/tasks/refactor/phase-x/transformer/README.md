@@ -1,5 +1,7 @@
 # Refactor Audit: transformer
 
+**Status: 🔄 In Progress** — task-4 ✅ completed; tasks 3, 2, 1 pending.
+
 ## Package responsibility
 `@ts-linq/transformer` is the **compile-time** ts-patch transformer that rewrites
 `.where(...)`, `.having(...)`, `.select(...)` and `hasQueryFilter(...)` calls on branded
@@ -36,12 +38,12 @@ break circular imports, a single authorised `as unknown as` cast at
 4. Decompose `CallVisitor` by pattern; DRY the literal conversion.
 
 ## Recommended task order
-| Order | Task | Priority | Reason |
-|---:|---|---|---|
-| 1 | task-4 | P1 | Silent skip → runtime throw is a real DX defect; make it visible. |
-| 2 | task-3 | P1 | De-duplicate the two entrypoints + the fragile receiver-patch. |
-| 3 | task-2 | P2 | Method-accurate diagnostics (trivial, high clarity). |
-| 4 | task-1 | P2 | Split CallVisitor mega-module; DRY literal conversion. |
+| Order | Task | Priority | Status | Reason |
+|---:|---|---|---|---|
+| 1 | task-4 | P1 | ✅ Completed | Silent skip → runtime throw is a real DX defect; make it visible. |
+| 2 | task-3 | P1 | ⬜ Pending | De-duplicate the two entrypoints + the fragile receiver-patch. |
+| 3 | task-2 | P2 | ⬜ Pending | Method-accurate diagnostics (trivial, high clarity). |
+| 4 | task-1 | P2 | ⬜ Pending | Split CallVisitor mega-module; DRY literal conversion. |
 
 ## Dependencies on other packages
 - `typescript` (peer dependency) — the entire package operates on the TS AST/TypeChecker.

@@ -18,7 +18,7 @@ export function rewriteCall(
 
   const methodName = expr.name.text;
   const receiver = expr.expression;
-  if (!receiverIsQueryable(checker, receiver)) return null;
+  if (!receiverIsQueryable(checker, receiver, methodName, sink)) return null;
 
   const arg0 = call.arguments[0];
   if (arg0 === undefined) return null;

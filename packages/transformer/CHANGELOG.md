@@ -1,5 +1,17 @@
 # @ts-linq/transformer
 
+## 2.1.23
+
+### Patch Changes
+
+- Scope guards no longer silently swallow `TypeChecker` failures. When the checker throws while
+  deciding whether a `.where/.having/.select/.hasQueryFilter` receiver is a branded
+  Queryable/EntityTypeBuilder, the rewrite is still skipped (the compile does not crash), but a
+  build-time **warning** diagnostic is now emitted via the existing `DiagnosticSink` instead of
+  deferring to a misleading runtime "compile-time transformer is required" stub error. A
+  genuinely non-branded receiver is unchanged — it returns `false` with no diagnostic. Both
+  guards now share a single `hasTypeBrand` helper (DRY). Compile-time-only; no runtime API change.
+
 ## 2.1.22
 
 ### Patch Changes
