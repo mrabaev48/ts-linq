@@ -1,5 +1,29 @@
 # @ts-linq/migrations
 
+## 2.7.0
+
+### Minor Changes
+
+- Decompose `MigrationRunner` into injected, testable collaborators and fix a data-integrity bug.
+
+  **Data-corruption fix:** `getAppliedMigrations()`/the new history store no longer swallow query
+  errors. Previously a connection/permission failure was indistinguishable from "table not yet
+  created" (both returned `[]`), so a failing database could look like "no migrations applied" and
+  cause already-applied migrations to be re-run. The store now probes for the bookkeeping table's
+  existence and only returns `[]` when it is genuinely absent; any other query failure propagates.
+
+  **Decomposition:** the runner is now a thin orchestrator over three injectable collaborators —
+  `MigrationHistoryStore` (with the provider-backed `DefaultMigrationHistoryStore`), `TransactionScope`
+  (centralized begin/commit/rollback), and a `MigrationLogger` port (`NO_OP_LOGGER` default — no more
+  `console.*` in the library). Apply/rollback failures now throw the typed `MigrationApplyError`/
+  `MigrationRollbackError` with the original error preserved as `cause`; if a rollback itself fails it
+  is attached as a suppressed error so the original cause is never masked. The `__migrations` table
+  schema is defined once (`MIGRATIONS_TABLE` / `buildEnsureMigrationsTableSql`) and shared with the
+  idempotent emitter.
+
+  Backward compatible: `new MigrationRunner(provider)` continues to work; the new collaborators are
+  supplied via an optional `MigrationRunnerOptions` argument.
+
 ## 2.6.30
 
 ### Patch Changes
