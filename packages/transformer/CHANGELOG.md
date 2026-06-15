@@ -1,5 +1,15 @@
 # @ts-linq/transformer
 
+## 2.1.24
+
+### Patch Changes
+
+- Internal refactor: de-duplicate the two transformer entrypoints (`tsLinqTransformer`
+  default export and `createWhereTransformer`) behind a single shared `buildVisitor`
+  that owns the dispatch `Map` and the chained-receiver re-rewrite logic. Both
+  entrypoints are now thin adapters differing only in how they obtain the
+  `DiagnosticSink`. No runtime/public API change and identical AST output.
+
 ## 2.1.23
 
 ### Patch Changes
