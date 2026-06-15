@@ -46,7 +46,13 @@ export const OrmErrorCode = {
   RelationshipLoadError: 'RELATIONSHIP_LOAD_ERROR',
   QueryFilterCompilationError: 'QUERY_FILTER_COMPILATION_ERROR',
   FallbackExhausted: 'FALLBACK_EXHAUSTED',
-  SelectorExtraction: 'SELECTOR_EXTRACTION_ERROR'
+  SelectorExtraction: 'SELECTOR_EXTRACTION_ERROR',
+  MigrationApply: 'MIGRATION_APPLY_ERROR',
+  MigrationRollback: 'MIGRATION_ROLLBACK_ERROR',
+  SnapshotSerialization: 'SNAPSHOT_SERIALIZATION_ERROR',
+  SnapshotValidation: 'SNAPSHOT_VALIDATION_ERROR',
+  BundleBuild: 'BUNDLE_BUILD_ERROR',
+  ProviderRequired: 'PROVIDER_REQUIRED_ERROR'
 } as const;
 
 /** Union of every stable code declared in {@link OrmErrorCode}. */
@@ -302,6 +308,109 @@ export class QueryFilterCompilationError extends OrmError {
  */
 export class FallbackExhaustedError extends OrmError {
   public readonly code = OrmErrorCode.FallbackExhausted;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when applying a migration fails. The migration runner wraps the
+ * underlying failure (transaction/DDL error) so callers branch on `code` rather
+ * than parsing an interpolated message. `details` carries safe-to-log context
+ * (`version`/`name`) and `cause` preserves the original failure.
+ *
+ * Prefer {@link MigrationApplyError.from} to populate the context consistently.
+ */
+export class MigrationApplyError extends OrmError {
+  public readonly code = OrmErrorCode.MigrationApply;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+
+  /** Builds a user-safe apply failure that preserves `cause` and records `{ version, name }`. */
+  static from(version: string, name: string, cause: unknown): MigrationApplyError {
+    return new MigrationApplyError(`Failed to apply migration '${name}'`, {
+      cause,
+      details: { version, name }
+    });
+  }
+}
+
+/**
+ * Thrown when rolling back a migration fails. Mirrors {@link MigrationApplyError}
+ * for the `down()` direction: `details` carries `{ version, name }` and `cause`
+ * preserves the original failure.
+ *
+ * Prefer {@link MigrationRollbackError.from} to populate the context consistently.
+ */
+export class MigrationRollbackError extends OrmError {
+  public readonly code = OrmErrorCode.MigrationRollback;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+
+  /** Builds a user-safe rollback failure that preserves `cause` and records `{ version, name }`. */
+  static from(version: string, name: string, cause: unknown): MigrationRollbackError {
+    return new MigrationRollbackError(`Failed to roll back migration '${name}'`, {
+      cause,
+      details: { version, name }
+    });
+  }
+}
+
+/**
+ * Thrown when a persisted snapshot cannot be parsed back from its serialized
+ * form — e.g. a corrupt JSON document that fails `JSON.parse`. Distinguished
+ * from {@link SnapshotValidationError} (well-formed JSON, wrong shape): this is
+ * a low-level (de)serialization failure with the original parse error as `cause`.
+ */
+export class SnapshotSerializationError extends OrmError {
+  public readonly code = OrmErrorCode.SnapshotSerialization;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when a parsed snapshot/seed payload is structurally invalid — e.g. a
+ * missing `tables` array or a seed row missing primary-key columns. The JSON
+ * parsed fine; its shape violates the snapshot contract. `details` carries
+ * safe-to-log context (`table`, missing column names) for diagnosis.
+ */
+export class SnapshotValidationError extends OrmError {
+  public readonly code = OrmErrorCode.SnapshotValidation;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when building a migration bundle fails — e.g. the optional `esbuild`
+ * dependency is missing, or the migrations source directory does not exist.
+ * `details` carries safe-to-log context (`dir`, reason) and `cause` preserves
+ * the underlying failure where one exists.
+ */
+export class BundleBuildError extends OrmError {
+  public readonly code = OrmErrorCode.BundleBuild;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when an operation requires a database provider that was not supplied —
+ * e.g. building the actual schema snapshot from a live connection without a
+ * configured provider. `details.operation` identifies the operation that
+ * needed the provider.
+ */
+export class ProviderRequiredError extends OrmError {
+  public readonly code = OrmErrorCode.ProviderRequired;
 
   constructor(message: string, opts?: OrmErrorOptions) {
     super(message, opts);

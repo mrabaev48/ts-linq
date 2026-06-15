@@ -1,6 +1,6 @@
 # Refactor Audit: migrations
 
-**Status: 🔄 In Progress** — task-1 ✅ completed; tasks 2–7 pending.
+**Status: 🔄 In Progress** — task-1, task-4 ✅ completed; tasks 2, 3, 5–7 pending.
 
 ## Package responsibility
 
@@ -64,7 +64,7 @@ dialect SQL via the `Dialect` string union instead of delegating.
 | 1 | task-1.md — Injection-safe identifier/literal quoting layer | P0 | ✅ Completed | Security + correctness in the hot DDL/DML path; everything builds on it |
 | 2 | task-2.md — Decompose MigrationRunner (history store, logging, errors, tx) | P0 | ⬜ Pending | Untestable critical apply/rollback path; silent swallow; lost cause |
 | 3 | task-3.md — Safe bundle/script code generation | P0 | ⬜ Pending | Path/identifier injection in generated executable code |
-| 4 | task-4.md — Typed error hierarchy for migrations | P1 | ⬜ Pending | Foundation for error model across runner/serializers/builders |
+| 4 | task-4.md — Typed error hierarchy for migrations | P1 | ✅ Completed | Foundation for error model; **pulled ahead of task-2/task-3** to satisfy task-2's `depends_on` (runner consumes `MigrationApplyError`/`MigrationRollbackError`). Classes extend `OrmError` in `@ts-linq/types` (CLAUDE.md §16 — no parallel hierarchy); non-runner serializer/bundle/seed sites migrated, runner deferred to task-2 |
 | 5 | task-5.md — Decompose snapshot builders into strategy expanders | P1 | ⬜ Pending | God modules; couples to MetadataStorage singleton; hard to extend |
 | 6 | task-6.md — Centralize dialect-inspector selection | P1 | ⬜ Pending | Duplicated dialect dispatch; provider-coupling risk |
 | 7 | task-7.md — Clean up MigrationHandlers grab-bag + structural casts | P2 | ⬜ Pending | Clean-code / typescript debt; low cohesion |

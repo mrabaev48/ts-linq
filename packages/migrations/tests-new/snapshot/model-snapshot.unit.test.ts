@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
+import { OrmErrorCode, SnapshotSerializationError, SnapshotValidationError } from '@ts-linq/types';
 
 import { ModelSnapshotBuilder, ModelSnapshotSerializer } from '../../src/snapshot/model-snapshot';
 
@@ -140,11 +141,24 @@ describe('ModelSnapshotSerializer', () => {
     expect(restored.tables[0].name).toBe('users');
   });
 
-  it('throws on invalid JSON structure', () => {
-    expect(() => serializer.deserialize('{"invalid": true}')).toThrow(/Invalid ModelSnapshot/);
+  it('throws a typed SnapshotValidationError on invalid JSON structure', () => {
+    expect(() => serializer.deserialize('{"invalid": true}')).toThrow(SnapshotValidationError);
+    try {
+      serializer.deserialize('{"invalid": true}');
+    } catch (e) {
+      expect(e).toBeInstanceOf(SnapshotValidationError);
+      expect((e as SnapshotValidationError).code).toBe(OrmErrorCode.SnapshotValidation);
+    }
   });
 
-  it('throws on malformed JSON', () => {
-    expect(() => serializer.deserialize('not-json')).toThrow();
+  it('throws a typed SnapshotSerializationError on malformed JSON, preserving the parse cause', () => {
+    expect(() => serializer.deserialize('not-json')).toThrow(SnapshotSerializationError);
+    try {
+      serializer.deserialize('not-json');
+    } catch (e) {
+      expect(e).toBeInstanceOf(SnapshotSerializationError);
+      expect((e as SnapshotSerializationError).code).toBe(OrmErrorCode.SnapshotSerialization);
+      expect((e as SnapshotSerializationError).cause).toBeInstanceOf(Error);
+    }
   });
 });

@@ -1,3 +1,5 @@
+import { SnapshotValidationError } from '@ts-linq/types';
+
 import type { SeedRowOp } from '../DiffTypes';
 import type { ModelTableSnapshot } from '../snapshot/model-snapshot';
 
@@ -20,9 +22,10 @@ function validatePkPresent(
 ): void {
   const missing = pkColumns.filter((col) => row[col] === undefined || row[col] === null);
   if (missing.length > 0) {
-    throw new Error(
+    throw new SnapshotValidationError(
       `hasData(): seed row in table '${tableName}' is missing primary key column(s): ${missing.join(', ')}. ` +
-        `All seed rows must have explicit, stable primary key values.`
+        `All seed rows must have explicit, stable primary key values.`,
+      { details: { table: tableName, missingColumns: missing } }
     );
   }
 }

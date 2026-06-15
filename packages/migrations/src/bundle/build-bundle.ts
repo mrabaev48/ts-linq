@@ -2,6 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
+import { BundleBuildError } from '@ts-linq/types';
+
 /**
  * Supported target platforms for the migration bundle.
  * Mirrors the `--target` values supported by `dotnet ef migrations bundle -r`.
@@ -186,9 +188,10 @@ export class MigrationBundleBuilder {
     let esbuild: typeof import('esbuild');
     try {
       esbuild = await import('esbuild');
-    } catch {
-      throw new Error(
-        'esbuild is required to build migration bundles.\n' + 'Install it with: pnpm add -D esbuild'
+    } catch (error) {
+      throw new BundleBuildError(
+        'esbuild is required to build migration bundles. Install it with: pnpm add -D esbuild',
+        { cause: error, details: { reason: 'esbuild-missing' } }
       );
     }
 
@@ -243,9 +246,10 @@ export class MigrationBundleBuilder {
 
   private assertMigrationsDirExists(dir: string): void {
     if (!fs.existsSync(dir)) {
-      throw new Error(
-        `Migrations directory does not exist: ${dir}\n` +
-          'Run "pnpm ts-linq generate:migration <Name>" to create your first migration.'
+      throw new BundleBuildError(
+        'Migrations directory does not exist. ' +
+          'Run "pnpm ts-linq generate:migration <Name>" to create your first migration.',
+        { details: { dir } }
       );
     }
   }
