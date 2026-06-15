@@ -142,6 +142,73 @@ module.exports.CreateUsers = class CreateUsers {
       // Verify builder is constructed correctly
       expect(builder).toBeDefined();
     });
+
+    /**
+     * Reaches into the private discovery + emission methods to assert the generated source
+     * is injection-safe without requiring esbuild.
+     */
+    type EntrySourceBuilder = {
+      discoverMigrations(dir: string): Array<{
+        version: string;
+        name: string;
+        absolutePath: string;
+      }>;
+      generateEntrySource(
+        migrations: Array<{ version: string; name: string; absolutePath: string }>,
+        migrationsDir: string
+      ): string;
+    };
+
+    function generateFor(dir: string): { source: string; absolutePath: string } {
+      createMigrationFile(
+        dir,
+        '20241201000000_CreateUsers.js',
+        'module.exports.CreateUsers = class {};'
+      );
+      const builder = new MigrationBundleBuilder() as unknown as EntrySourceBuilder;
+      const migrations = builder.discoverMigrations(dir);
+      const source = builder.generateEntrySource(migrations, dir);
+      return { source, absolutePath: migrations[0].absolutePath };
+    }
+
+    it('emits the migration import specifier as a JSON-escaped, POSIX-normalized literal', () => {
+      const { source, absolutePath } = generateFor(migrationsDir);
+      const expectedSpecifier = JSON.stringify(absolutePath.replace(/\\/g, '/'));
+
+      expect(source).toContain(`import * as migration_0 from ${expectedSpecifier};`);
+    });
+
+    it('does not emit the raw absolute path in a single-quoted import specifier', () => {
+      const { source, absolutePath } = generateFor(migrationsDir);
+
+      // The vulnerable form was `from '<absolutePath>'` — it must no longer appear.
+      expect(source).not.toContain(`from '${absolutePath}'`);
+    });
+
+    it('handles a migrations directory whose path contains a space and a quote', () => {
+      const adversarialDir = path.join(tempDir, "weird ' dir");
+      fs.mkdirSync(adversarialDir);
+
+      const { source, absolutePath } = generateFor(adversarialDir);
+      const specifier = JSON.stringify(absolutePath.replace(/\\/g, '/'));
+
+      // The emitted specifier round-trips through JSON.parse (i.e. it is a valid literal).
+      const match = source.match(/import \* as migration_0 from (".*?");/);
+      expect(match).not.toBeNull();
+      expect(match?.[1]).toBe(specifier);
+      expect(JSON.parse(match![1])).toBe(absolutePath.replace(/\\/g, '/'));
+    });
+
+    it('constrains the dynamic provider import to an allow-list', () => {
+      const { source } = generateFor(migrationsDir);
+
+      expect(source).toContain("const ALLOWED_PROVIDERS = ['postgres', 'mysql', 'mssql'];");
+      expect(source).toContain('if (!ALLOWED_PROVIDERS.includes(providerName)) {');
+      // The allow-list guard must appear before the dynamic import.
+      expect(source.indexOf('ALLOWED_PROVIDERS.includes(providerName)')).toBeLessThan(
+        source.indexOf('await import(`@ts-linq/provider-')
+      );
+    });
   });
 
   describe('target detection', () => {
