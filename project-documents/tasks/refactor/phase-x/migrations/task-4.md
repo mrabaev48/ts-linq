@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: migrations
 priority: P1
@@ -11,6 +11,16 @@ related: ["task-2.md", "task-3.md"]
 ---
 
 # Refactor: Typed error hierarchy for migrations
+
+> **Implementation note (CLAUDE.md §16 reconciliation).** This task was written before
+> CLAUDE.md §16. The proposed standalone `MigrationError extends Error` + `MigrationErrorCode`
+> hierarchy was **not** implemented as a separate hierarchy. Instead, per §16, the migration
+> error classes (`MigrationApplyError`, `MigrationRollbackError`, `SnapshotSerializationError`,
+> `SnapshotValidationError`, `BundleBuildError`, `ProviderRequiredError`) extend the canonical
+> `OrmError` root in `@ts-linq/types`, and their codes are new literals on `OrmErrorCode`. The
+> runner sites (`MigrationRunner.ts:105,140`) are intentionally deferred to task-2, which
+> consumes `MigrationApplyError`/`MigrationRollbackError`. All non-runner serializer/bundle/seed
+> sites are migrated here.
 
 ## Problem
 

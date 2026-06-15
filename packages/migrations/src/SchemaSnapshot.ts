@@ -7,6 +7,11 @@ import type {
   RelationshipMetadata,
   TableFragmentMetadata
 } from '@ts-linq/types';
+import {
+  ProviderRequiredError,
+  SnapshotSerializationError,
+  SnapshotValidationError
+} from '@ts-linq/types';
 
 import { deleteBehaviorToSql } from './builders/handlers/ForeignKeyHandlers';
 import type {
@@ -323,7 +328,12 @@ export class SchemaSnapshotBuilder {
 
   public async buildActualFromProvider(expected?: SchemaSnapshot): Promise<SchemaSnapshot> {
     if (!this.provider)
-      throw new Error('SchemaSnapshotBuilder requires a provider for actual schema');
+      throw new ProviderRequiredError(
+        'A database provider is required to build the actual schema',
+        {
+          details: { operation: 'buildActualFromProvider' }
+        }
+      );
     const label = this.provider.providerLabel;
     // Mirror expected columns/PKs if provided, and fetch actual indexes.
     const idxFetch = async (table: string): Promise<IndexDef[]> => {
@@ -401,14 +411,21 @@ export class SchemaSnapshotSerializer {
   }
 
   public deserialize(jsonText: string): SchemaSnapshot {
-    const obj = JSON.parse(jsonText);
+    let obj: unknown;
+    try {
+      obj = JSON.parse(jsonText);
+    } catch (error) {
+      throw new SnapshotSerializationError('Failed to parse SchemaSnapshot JSON', { cause: error });
+    }
     this.assertValid(obj);
     return obj;
   }
 
   private assertValid(obj: unknown): asserts obj is SchemaSnapshot {
     if (!obj || typeof obj !== 'object' || !Array.isArray((obj as { tables?: unknown[] }).tables)) {
-      throw new Error('Invalid SchemaSnapshot JSON');
+      throw new SnapshotValidationError(
+        'Invalid SchemaSnapshot: expected an object with a "tables" array property'
+      );
     }
   }
 }

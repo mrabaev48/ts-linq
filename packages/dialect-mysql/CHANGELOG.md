@@ -1,5 +1,15 @@
 # @ts-linq/dialect-mysql
 
+## 2.8.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.6.0
+  - @ts-linq/core@3.4.4
+  - @ts-linq/metadata@4.1.5
+  - @ts-linq/sql-visitor@4.3.2
+
 ## 2.8.1
 
 ### Patch Changes

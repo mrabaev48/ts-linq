@@ -1,3 +1,5 @@
+import { OrmErrorCode, SnapshotValidationError } from '@ts-linq/types';
+
 import { diffSeeds, topoSortSeedOps } from '../../src/seed/SeedDiff';
 import type { ModelTableSnapshot } from '../../src/snapshot/model-snapshot';
 
@@ -84,11 +86,21 @@ describe('diffSeeds', () => {
     expect(ops.find((op) => op.kind === 'insert')).toBeTruthy();
   });
 
-  it('throws if a seed row is missing a PK column', () => {
+  it('throws a typed SnapshotValidationError if a seed row is missing a PK column', () => {
     const prev: ModelTableSnapshot[] = [];
     const current = [makeTable('roles', ['id'], [{ name: 'admin' }])]; // no id
 
-    expect(() => diffSeeds(prev, current)).toThrow(/missing primary key column/);
+    expect(() => diffSeeds(prev, current)).toThrow(SnapshotValidationError);
+    try {
+      diffSeeds(prev, current);
+    } catch (e) {
+      expect(e).toBeInstanceOf(SnapshotValidationError);
+      expect((e as SnapshotValidationError).code).toBe(OrmErrorCode.SnapshotValidation);
+      expect((e as SnapshotValidationError).details).toEqual({
+        table: 'roles',
+        missingColumns: ['id']
+      });
+    }
   });
 
   it('emits DELETE for rows from a table that no longer exists in current', () => {

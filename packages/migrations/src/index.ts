@@ -19,6 +19,7 @@ export * from './DialectMigrationSql';
 export * from './DiffBasedMigration';
 export * from './DiffMigrationGenerator';
 export * from './DiffTypes';
+export * from './errors';
 export * from './Migration';
 export * from './MigrationBuilder';
 export * from './MigrationFileBuilder';
