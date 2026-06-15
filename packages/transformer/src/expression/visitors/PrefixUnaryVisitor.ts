@@ -35,5 +35,5 @@ export function visit(
     return makeObject([prop('type', str('literal')), prop('value', num(node.operand.text))]);
   }
 
-  return makeUnsupported(node, tctx.sink);
+  return makeUnsupported(node, { sink: tctx.sink, methodName: tctx.methodName });
 }

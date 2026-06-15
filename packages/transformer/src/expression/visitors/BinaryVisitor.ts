@@ -56,7 +56,9 @@ export function visit(
       'Use only: ===, !==, ==, !=, >, <, >=, <=, &&, ||.',
     ts.DiagnosticCategory.Error
   );
-  return makeUnsupported(node.operatorToken);
+  // Diagnostic already emitted above; pass methodName only (no sink) to keep the
+  // sentinel description method-accurate without double-reporting.
+  return makeUnsupported(node.operatorToken, { methodName: tctx.methodName });
 }
 
 function visitComparison(
