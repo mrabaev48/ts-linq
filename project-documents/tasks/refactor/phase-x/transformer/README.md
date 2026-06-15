@@ -1,6 +1,6 @@
 # Refactor Audit: transformer
 
-**Status: 🔄 In Progress** — tasks 4, 3, 2 ✅ completed; task 1 pending.
+**Status: ✅ Complete** — all tasks (4, 3, 2, 1) ✅ completed.
 
 ## Package responsibility
 `@ts-linq/transformer` is the **compile-time** ts-patch transformer that rewrites
@@ -43,7 +43,7 @@ break circular imports, a single authorised `as unknown as` cast at
 | 1 | task-4 | P1 | ✅ Completed | Silent skip → runtime throw is a real DX defect; make it visible. |
 | 2 | task-3 | P1 | ✅ Completed | De-duplicate the two entrypoints + the fragile receiver-patch. |
 | 3 | task-2 | P2 | ✅ Completed | Method-accurate diagnostics (trivial, high clarity). |
-| 4 | task-1 | P2 | ⬜ Pending | Split CallVisitor mega-module; DRY literal conversion. |
+| 4 | task-1 | P2 | ✅ Completed | Split CallVisitor mega-module; DRY literal conversion. |
 
 ## Dependencies on other packages
 - `typescript` (peer dependency) — the entire package operates on the TS AST/TypeChecker.
