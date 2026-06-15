@@ -15,7 +15,7 @@ export function rewriteSelectCall(
   if (!ts.isPropertyAccessExpression(expr)) return null;
 
   const receiver = expr.expression;
-  if (!receiverIsQueryable(checker, receiver)) return null;
+  if (!receiverIsQueryable(checker, receiver, 'select', sink)) return null;
 
   const arg0 = call.arguments[0];
   if (arg0 === undefined) return null;
