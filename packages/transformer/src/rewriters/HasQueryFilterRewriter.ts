@@ -17,7 +17,7 @@ export function rewriteHasQueryFilterCall(
   if (!ts.isPropertyAccessExpression(expr)) return null;
 
   const receiver = expr.expression;
-  if (!receiverIsEntityTypeBuilder(checker, receiver)) return null;
+  if (!receiverIsEntityTypeBuilder(checker, receiver, 'hasQueryFilter', sink)) return null;
 
   const args = call.arguments;
 
