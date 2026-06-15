@@ -1,25 +1,46 @@
 import type { DatabaseProvider } from '@ts-linq/core';
+import { MigrationApplyError, MigrationRollbackError } from '@ts-linq/types';
 
 import type { Migration } from './Migration';
+import { DefaultMigrationHistoryStore } from './runner/DefaultMigrationHistoryStore';
+import type { MigrationHistoryStore, MigrationRecord } from './runner/MigrationHistoryStore';
+import { type MigrationLogger, NO_OP_LOGGER } from './runner/MigrationLogger';
+import { TransactionScope } from './runner/TransactionScope';
+
+export type { MigrationRecord } from './runner/MigrationHistoryStore';
 
 /**
- * A record stored in the migrations table representing an applied migration.
+ * Injectable collaborators for {@link MigrationRunner}.
+ *
+ * All optional: any omitted collaborator is built from the provider, so `new
+ * MigrationRunner(provider)` keeps working. Supply a fake `historyStore`/`transactionScope` to
+ * unit-test orchestration without a live database, or a `logger` to surface progress.
  */
-export interface MigrationRecord {
-  version: string;
-  name: string;
-  appliedAt: Date;
+export interface MigrationRunnerOptions {
+  historyStore?: MigrationHistoryStore;
+  transactionScope?: TransactionScope;
+  logger?: MigrationLogger;
 }
 
 /**
- * Executes pending migrations in order and can roll back to a target version.
+ * Orchestrates applying pending migrations in order and rolling back to a target version.
+ *
+ * The runner is a thin use-case layer: persistence is delegated to a {@link MigrationHistoryStore}
+ * (Repository), transactional safety to a {@link TransactionScope} (Scoped Resource), and progress
+ * reporting to an injected {@link MigrationLogger} (no `console` in the library). Failures are
+ * surfaced as the typed {@link MigrationApplyError}/{@link MigrationRollbackError} with the original
+ * error preserved as `cause`.
  */
 export class MigrationRunner {
-  private _provider: DatabaseProvider;
+  private readonly _historyStore: MigrationHistoryStore;
+  private readonly _transactionScope: TransactionScope;
+  private readonly _logger: MigrationLogger;
   private _migrations: Migration[] = [];
 
-  constructor(provider: DatabaseProvider) {
-    this._provider = provider;
+  constructor(provider: DatabaseProvider, options: MigrationRunnerOptions = {}) {
+    this._historyStore = options.historyStore ?? new DefaultMigrationHistoryStore(provider);
+    this._transactionScope = options.transactionScope ?? new TransactionScope(provider);
+    this._logger = options.logger ?? NO_OP_LOGGER;
   }
 
   /** Register a migration to be considered during `migrate()`. */
@@ -30,53 +51,12 @@ export class MigrationRunner {
 
   /** Ensure the migrations bookkeeping table exists. */
   public async ensureMigrationTableExists(): Promise<void> {
-    const sql = this.buildEnsureTableSql(this._provider.providerLabel as string);
-    await this._provider.executeNonQuery(sql);
-  }
-
-  private buildEnsureTableSql(dialect: string): string {
-    if (dialect === 'mssql') {
-      return `
-IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = '__migrations')
-BEGIN
-    CREATE TABLE __migrations (
-        version NVARCHAR(50) NOT NULL PRIMARY KEY,
-        name NVARCHAR(255) NOT NULL,
-        applied_at NVARCHAR(50) NOT NULL
-    )
-END`;
-    }
-    // PostgreSQL, MySQL, SQLite — use standard IF NOT EXISTS syntax.
-    // MySQL requires VARCHAR with explicit length for indexed/primary-key columns.
-    const vt = dialect === 'mysql' ? 'VARCHAR(50)' : 'TEXT';
-    const nt = dialect === 'mysql' ? 'VARCHAR(255)' : 'TEXT';
-    const dt = dialect === 'mysql' ? 'VARCHAR(50)' : 'TEXT';
-    return `
-CREATE TABLE IF NOT EXISTS __migrations (
-    version ${vt} PRIMARY KEY,
-    name ${nt} NOT NULL,
-    applied_at ${dt} NOT NULL
-)`;
+    await this._historyStore.ensureExists();
   }
 
   /** Read the list of applied migrations from the database. */
   public async getAppliedMigrations(): Promise<MigrationRecord[]> {
-    try {
-      const results = await this._provider.executeQuery<{
-        version: string;
-        name: string;
-        applied_at: string;
-      }>('SELECT version, name, applied_at FROM __migrations ORDER BY version');
-
-      return results.map((row) => ({
-        version: row.version,
-        name: row.name,
-        appliedAt: new Date(row.applied_at)
-      }));
-    } catch (error) {
-      // Table might not exist yet
-      return [];
-    }
+    return this._historyStore.list();
   }
 
   /** Apply all pending migrations in order. */
@@ -86,25 +66,24 @@ CREATE TABLE IF NOT EXISTS __migrations (
     const appliedVersions = new Set(appliedMigrations.map((m) => m.version));
 
     for (const migration of this._migrations) {
-      if (!appliedVersions.has(migration.getVersion())) {
-        console.log(`Applying migration: ${migration.getName()}`);
-
-        try {
-          await this._provider.beginTransaction();
-          await migration.up();
-
-          await this._provider.executeNonQuery(
-            'INSERT INTO __migrations (version, name, applied_at) VALUES (?, ?, ?)',
-            [migration.getVersion(), migration.getName(), new Date().toISOString()]
-          );
-
-          await this._provider.commitTransaction();
-          console.log(`Migration ${migration.getName()} applied successfully`);
-        } catch (error) {
-          await this._provider.rollbackTransaction();
-          throw new Error(`Failed to apply migration ${migration.getName()}: ${error}`);
-        }
+      if (appliedVersions.has(migration.getVersion())) {
+        continue;
       }
+
+      const version = migration.getVersion();
+      const name = migration.getName();
+      this._logger.info(`Applying migration: ${name}`);
+
+      try {
+        await this._transactionScope.run(async () => {
+          await migration.up();
+          await this._historyStore.record(version, name, new Date());
+        });
+      } catch (error) {
+        throw MigrationApplyError.from(version, name, error);
+      }
+
+      this._logger.info(`Migration ${name} applied successfully`);
     }
   }
 
@@ -113,7 +92,7 @@ CREATE TABLE IF NOT EXISTS __migrations (
     await this.ensureMigrationTableExists();
     const appliedMigrations = await this.getAppliedMigrations();
 
-    // Sort in reverse order for rollback
+    // Sort in reverse order for rollback.
     appliedMigrations.reverse();
 
     for (const appliedMigration of appliedMigrations) {
@@ -122,24 +101,24 @@ CREATE TABLE IF NOT EXISTS __migrations (
       }
 
       const migration = this._migrations.find((m) => m.getVersion() === appliedMigration.version);
-      if (migration) {
-        console.log(`Rolling back migration: ${migration.getName()}`);
-
-        try {
-          await this._provider.beginTransaction();
-          await migration.down();
-
-          await this._provider.executeNonQuery('DELETE FROM __migrations WHERE version = ?', [
-            migration.getVersion()
-          ]);
-
-          await this._provider.commitTransaction();
-          console.log(`Migration ${migration.getName()} rolled back successfully`);
-        } catch (error) {
-          await this._provider.rollbackTransaction();
-          throw new Error(`Failed to rollback migration ${migration.getName()}: ${error}`);
-        }
+      if (!migration) {
+        continue;
       }
+
+      const version = migration.getVersion();
+      const name = migration.getName();
+      this._logger.info(`Rolling back migration: ${name}`);
+
+      try {
+        await this._transactionScope.run(async () => {
+          await migration.down();
+          await this._historyStore.remove(version);
+        });
+      } catch (error) {
+        throw MigrationRollbackError.from(version, name, error);
+      }
+
+      this._logger.info(`Migration ${name} rolled back successfully`);
     }
   }
 }

@@ -1,6 +1,6 @@
 # Refactor Audit: migrations
 
-**Status: 🔄 In Progress** — task-1, task-4 ✅ completed; tasks 2, 3, 5–7 pending.
+**Status: 🔄 In Progress** — task-1, task-2, task-4 ✅ completed; tasks 3, 5–7 pending.
 
 ## Package responsibility
 
@@ -62,7 +62,7 @@ dialect SQL via the `Dialect` string union instead of delegating.
 | Order | Task | Priority | Status | Reason |
 |---:|---|---|---|---|
 | 1 | task-1.md — Injection-safe identifier/literal quoting layer | P0 | ✅ Completed | Security + correctness in the hot DDL/DML path; everything builds on it |
-| 2 | task-2.md — Decompose MigrationRunner (history store, logging, errors, tx) | P0 | ⬜ Pending | Untestable critical apply/rollback path; silent swallow; lost cause |
+| 2 | task-2.md — Decompose MigrationRunner (history store, logging, errors, tx) | P0 | ✅ Completed | Runner → thin orchestrator over injected `MigrationHistoryStore` + `TransactionScope` + `MigrationLogger`; **silent-swallow data-corruption fix** (`list()` existence-probes instead of returning `[]` on any error); task-4 typed errors with preserved `cause` + suppressed-error chaining on rollback failure; `__migrations` schema shared with the idempotent emitter; `new MigrationRunner(provider)` retained |
 | 3 | task-3.md — Safe bundle/script code generation | P0 | ⬜ Pending | Path/identifier injection in generated executable code |
 | 4 | task-4.md — Typed error hierarchy for migrations | P1 | ✅ Completed | Foundation for error model; **pulled ahead of task-2/task-3** to satisfy task-2's `depends_on` (runner consumes `MigrationApplyError`/`MigrationRollbackError`). Classes extend `OrmError` in `@ts-linq/types` (CLAUDE.md §16 — no parallel hierarchy); non-runner serializer/bundle/seed sites migrated, runner deferred to task-2 |
 | 5 | task-5.md — Decompose snapshot builders into strategy expanders | P1 | ⬜ Pending | God modules; couples to MetadataStorage singleton; hard to extend |
@@ -93,5 +93,7 @@ dialect SQL via the `Dialect` string union instead of delegating.
 - LOC ≈ 9.6K. Largest: `model-snapshot.ts` (427), `SchemaSnapshot.ts` (414),
   `MigrationHandlers.ts` (359), `MigrationBuilder.ts` (333), `idempotent-emitter.ts`
   (253), `build-bundle.ts` (252).
-- `idempotent-emitter` and `MigrationRunner` define the `__migrations` table schema
-  independently and slightly differently — consistency risk noted in task-2.
+- ~~`idempotent-emitter` and `MigrationRunner` define the `__migrations` table schema
+  independently and slightly differently — consistency risk noted in task-2.~~ ✅ Resolved
+  in task-2: both now consume the single `runner/MigrationsTableSchema.ts`
+  (`MIGRATIONS_TABLE` + `buildEnsureMigrationsTableSql`).
