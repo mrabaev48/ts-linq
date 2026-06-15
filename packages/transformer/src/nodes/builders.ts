@@ -66,15 +66,22 @@ const SUPPORTED_SUMMARY =
 /**
  * Build an `{ type: "unsupported", syntaxKind, description }` sentinel and
  * optionally emit a compiler ERROR diagnostic pointing at the offending node.
+ *
+ * The diagnostic names the actual rewritten method (`where`, `having`,
+ * `hasQueryFilter`, …) taken from {@link TransformContext.methodName}, falling
+ * back to a generic "predicate" wording when no method name is supplied.
  */
-export function makeUnsupported(node: ts.Node, sink?: DiagnosticSink): ts.ObjectLiteralExpression {
+export function makeUnsupported(
+  node: ts.Node,
+  ctx?: { sink?: DiagnosticSink; methodName?: string }
+): ts.ObjectLiteralExpression {
   const kind = node.kind;
   const name = syntaxKindName(kind);
-  const message =
-    `where() predicate contains unsupported expression: ${name}. ` + SUPPORTED_SUMMARY;
+  const prefix = ctx?.methodName !== undefined ? `${ctx.methodName}() predicate` : 'predicate';
+  const message = `${prefix} contains unsupported expression: ${name}. ` + SUPPORTED_SUMMARY;
 
-  if (sink !== undefined) {
-    reportDiagnostic(sink, node, message, ts.DiagnosticCategory.Error);
+  if (ctx?.sink !== undefined) {
+    reportDiagnostic(ctx.sink, node, message, ts.DiagnosticCategory.Error);
   }
 
   return makeObject([

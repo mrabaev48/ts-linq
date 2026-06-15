@@ -11,7 +11,8 @@ export function transformExpression(
   tctx: TransformContext,
   depth = 0
 ): ts.Expression {
-  if (depth > MAX_DEPTH) return makeUnsupported(node, tctx.sink);
+  if (depth > MAX_DEPTH)
+    return makeUnsupported(node, { sink: tctx.sink, methodName: tctx.methodName });
 
   // Parenthesised — transparent unwrap (does not consume a depth level)
   if (ts.isParenthesizedExpression(node)) {
@@ -23,7 +24,7 @@ export function transformExpression(
     ts.isCallExpression(node) &&
     (node as ts.CallExpression & { questionDotToken?: unknown }).questionDotToken !== undefined
   ) {
-    return makeUnsupported(node, tctx.sink);
+    return makeUnsupported(node, { sink: tctx.sink, methodName: tctx.methodName });
   }
 
   return dispatch(node, tctx, depth);

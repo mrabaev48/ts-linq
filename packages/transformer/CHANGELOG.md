@@ -1,5 +1,13 @@
 # @ts-linq/transformer
 
+## 2.1.25
+
+### Patch Changes
+
+- Method-aware unsupported-expression diagnostics: `makeUnsupported` now names the actual rewritten
+  method (`where`/`having`/`hasQueryFilter`) taken from `TransformContext.methodName` instead of
+  hardcoding `where()`. Compile-time diagnostic text only — no runtime or public API change.
+
 ## 2.1.24
 
 ### Patch Changes
