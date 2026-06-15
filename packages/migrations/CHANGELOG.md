@@ -1,5 +1,19 @@
 # @ts-linq/migrations
 
+## 2.8.0
+
+### Minor Changes
+
+- Decompose the snapshot builders into strategy-based expanders. `ModelSnapshotBuilder` and
+  `SchemaSnapshotBuilder` are now thin coordinators that compose an ordered list of single-concern
+  `EntityExpander` strategies (inheritance, owned entities, complex types, shadow properties, table
+  fragments, skip-navigation join tables) and a shared `ColumnMapper` that owns the single
+  column→snapshot mapping. Both builders gain an additive public `buildFrom(entities[, sequences])`
+  overload that accepts an injected model, inverting the previous hard coupling to the global
+  `MetadataStorage` / `SequenceRegistry` singletons; the existing no-arg `buildFromMetadata` /
+  `buildExpectedFromMetadata` methods are retained as the back-compatible default. Public builder
+  signatures and snapshot output are unchanged.
+
 ## 2.7.1
 
 ### Patch Changes
