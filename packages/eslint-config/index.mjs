@@ -151,8 +151,18 @@ const testOverrides = {
  *                                                      Pass an explicit glob array for monorepo roots, e.g.
  *                                                      ['./tsconfig.eslint.json', './packages/*\/tsconfig.eslint.json']
  * @param {string[]}        [options.ignores]         - additional ignore globs
- * @param {object}          [options.rules]           - rule overrides / additions
+ * @param {object}          [options.rules]           - global rule overrides / additions (all files)
  * @param {object}          [options.languageOptions] - extra languageOptions (e.g. globals)
+ * @param {Array<{files: string[], ignores?: string[], rules: object}>} [options.overrides]
+ *        - scoped rule blocks. Each entry is appended as its own flat-config block targeting
+ *          `files` (optionally excluding `ignores`), letting a consumer package add
+ *          package-local rules to specific paths without touching any global rule set.
+ *          Example (a consumer's own eslint.config.mjs):
+ *            createNodeConfig({ tsconfigRootDir, project, overrides: [{
+ *              files: ['src/builders/**\/*.ts'],
+ *              ignores: ['src/builders/quoting/**'],
+ *              rules: { 'no-restricted-syntax': ['error', { ... }] }
+ *            }] })
  */
 export function createNodeConfig(options = {}) {
   const {
@@ -160,7 +170,8 @@ export function createNodeConfig(options = {}) {
     project = true,
     ignores: extraIgnores = [],
     rules: extraRules = {},
-    languageOptions: extraLanguageOptions = {}
+    languageOptions: extraLanguageOptions = {},
+    overrides: scopedOverrides = []
   } = options;
 
   return typescriptEslint.config(
@@ -219,6 +230,14 @@ export function createNodeConfig(options = {}) {
     {
       files: ['**/*.js', '**/*.cjs', '**/*.mjs'],
       extends: [typescriptEslint.configs.disableTypeChecked]
-    }
+    },
+
+    // 8. Consumer-provided scoped overrides (appended last so they take precedence).
+    //    Each block targets specific paths with package-local rules.
+    ...scopedOverrides.map(({ files, ignores, rules }) => ({
+      files,
+      ...(ignores ? { ignores } : {}),
+      rules
+    }))
   );
 }
