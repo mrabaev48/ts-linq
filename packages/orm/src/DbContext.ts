@@ -28,6 +28,7 @@ import { ChangeExecutor } from './context/ChangeExecutor';
 import { DbContextBootstrapper } from './context/DbContextBootstrapper';
 import type { DbContextServices } from './context/DbContextServices';
 import { DbSetRegistry } from './context/DbSetRegistry';
+import { type DiagnosticSink } from './context/DiagnosticSink';
 import { getOriginal } from './context/entityOriginal';
 import { SaveChangesPipeline } from './context/save-pipeline/SaveChangesPipeline';
 import { TransactionScope } from './context/TransactionScope';
@@ -129,6 +130,9 @@ export abstract class DbContext {
   }
   private get _cacheCoordinator(): CacheCoordinator {
     return this._services.cacheCoordinator;
+  }
+  private get _diagnosticSink(): DiagnosticSink {
+    return this._services.diagnosticSink;
   }
   private get _interceptorRegistry(): InterceptorRegistry {
     return this._services.interceptorRegistry;
@@ -244,8 +248,11 @@ export abstract class DbContext {
         const original = getOriginal(e.target);
 
         const _tmp = new (original as unknown as new () => unknown)();
-      } catch {
-        // ignore constructors with side-effects/args
+      } catch (e) {
+        // Best-effort pre-warm: entity constructors with required args / side
+        // effects legitimately fail here, so we recover and continue — but log
+        // at debug so a genuine model-misconfiguration is not fully hidden.
+        this._diagnosticSink.internalDiag('DbContext.ensureCreated.instantiate', e, 'debug');
       }
     }
     const entities = this._registry.getEntities();
@@ -345,7 +352,9 @@ export abstract class DbContext {
         try {
           await fn();
         } catch (e) {
-          // logInternalError('DbContext.cache.warmUp.task', e);
+          // Warm-up is best-effort: a failing pre-fetch must not reject the
+          // batch. Log at debug and continue.
+          this._diagnosticSink.internalDiag('DbContext.cache.warmUp.task', e, 'debug');
         }
       });
       await Promise.all(tasks);
@@ -378,7 +387,8 @@ export abstract class DbContext {
             provider: this._provider.providerLabel
           });
       } catch (e) {
-        // logInternalError('DbContext.cache.reportMetrics', e);
+        // Telemetry-only metrics readout: log and continue, never throw.
+        this._diagnosticSink.internalDiag('DbContext.cache.reportMetrics', e);
       }
     }
   } as const;
@@ -393,7 +403,9 @@ export abstract class DbContext {
     try {
       this._memoryProfiler?.stop?.();
     } catch (e) {
-      // logInternalError('DbContext.dispose.memoryProfiler.stop', e);
+      // Cleanup-with-swallow during dispose: log at warn, never rethrow so the
+      // rest of teardown still runs.
+      this._diagnosticSink.internalDiag('DbContext.dispose.memoryProfiler.stop', e);
     }
   }
 

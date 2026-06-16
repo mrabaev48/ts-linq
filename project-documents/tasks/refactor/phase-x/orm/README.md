@@ -69,7 +69,7 @@
 | Order | Task | Priority | Status | Reason |
 |---:|---|---|---|---|
 | 1 | task-1.md — Decompose `DbContext` god class | P0 | ✅ Completed | Core hot path; blocks testability of everything else |
-| 2 | task-2.md — Eliminate silent/commented catches in core paths | P0 | — | Data-loss / debugging hazard in commit/rollback/dispose |
+| 2 | task-2.md — Eliminate silent/commented catches in core paths | P0 | ✅ Completed | Data-loss / debugging hazard in commit/rollback/dispose |
 | 3 | task-3.md — Replace `DbSet` manual Queryable forwarding | P1 | — | God-class regression; API drift risk |
 | 4 | task-4.md — Split `ChangeTracker` responsibilities | P1 | — | Untestable multi-concern class on the save path |
 | 5 | task-5.md — Introduce typed ORM error hierarchy | P1 | — | Bare `Error` throws; no codes/context |
@@ -77,7 +77,7 @@
 | 7 | task-7.md — Split `EntityTypeBuilder` config axes | P2 | — | SRP; large write-out method |
 | 8 | task-8.md — Reduce `as unknown as` casts in DbSet factory | P2 | — | Type-safety erosion |
 
-> **Package status: 🔄 In Progress** — task-1 ✅ done; tasks 2–8 pending.
+> **Package status: 🔄 In Progress** — task-1, task-2 ✅ done; tasks 3–8 pending.
 
 ## Dependencies on other packages
 

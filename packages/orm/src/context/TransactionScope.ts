@@ -5,7 +5,7 @@ import type { DbContextServices } from './DbContextServices';
 /** Subset of services the scope needs (provider + caches for invalidation). */
 type TransactionScopeServices = Pick<
   DbContextServices,
-  'provider' | 'cacheCoordinator' | 'entityCache'
+  'provider' | 'cacheCoordinator' | 'entityCache' | 'diagnosticSink'
 >;
 
 /**
@@ -57,7 +57,13 @@ export class TransactionScope {
           });
         }
       } catch (e) {
-        // logInternalError('DbContext.commitTransaction.invalidateCaches', e);
+        // Post-commit: the provider commit already succeeded, so a failed cache
+        // invalidation may leave stale entries → wrong results. Surface an
+        // observable staleness warning instead of swallowing it silently.
+        this.services.diagnosticSink.cacheStaleAfterCommit(
+          'DbContext.commitTransaction.invalidateCaches',
+          e
+        );
       }
     } else {
       this._depth--;
@@ -77,7 +83,12 @@ export class TransactionScope {
           provider: this.services.provider.providerLabel
         });
       } catch (e) {
-        // logInternalError('DbContext.rollbackTransaction.entityCacheClear', e);
+        // Telemetry-only entity-cache size readout during rollback bookkeeping:
+        // log and continue, never abort the rollback.
+        this.services.diagnosticSink.internalDiag(
+          'DbContext.rollbackTransaction.entityCacheClear',
+          e
+        );
       }
     }
   }

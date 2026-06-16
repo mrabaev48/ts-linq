@@ -1,5 +1,22 @@
 # @ts-linq/orm
 
+## 4.1.14
+
+### Patch Changes
+
+- Eliminate silent and commented-out `catch` blocks across the ORM's core paths
+  (refactor orm/task-2). Errors on commit/rollback/cache-invalidation, profiler
+  shutdown, metrics reporting, validation and migration discovery are now routed
+  through a single internal `DiagnosticSink` seam (Null Object default; logger-backed
+  via the provider's existing `loggerRef`) instead of being dropped.
+
+  Headline fix: a **post-commit cache-invalidation failure is now observable**. Such a
+  failure can leave the L2/SQL/count caches stale relative to just-committed data;
+  previously it was swallowed twice (in `CacheCoordinator.invalidateOnCommit` and again
+  in the transaction scope), producing wrong query results with no signal. It now
+  surfaces a structured staleness warning (`{ staleCache: true }`) on the configured
+  logger. Public API is unchanged; behaviour-only fix.
+
 ## 4.1.13
 
 ### Patch Changes
