@@ -19,7 +19,13 @@ export const CoreEventId = {
   circuit: 'core.circuit-open',
   fallback: 'core.fallback',
   hedgedWin: 'core.hedged-win',
-  analysis: 'core.analysis'
+  analysis: 'core.analysis',
+  // Plain text-log methods (debug/info/warn/error). Routable like structured
+  // events: target these ids with WarningConfigurationBuilder.suppress()/.throw()/.log().
+  logDebug: 'core.log-debug',
+  logInfo: 'core.log-info',
+  logWarn: 'core.log-warn',
+  logError: 'core.log-error'
 } as const;
 
 export const RelationalEventId = {
