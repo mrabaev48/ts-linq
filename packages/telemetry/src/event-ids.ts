@@ -12,12 +12,20 @@ export const CoreEventId = {
   queryError: 'core.query-error',
   transactionStart: 'core.transaction-start',
   transactionEnd: 'core.transaction-end',
-  retry: 'core.retry'
+  retry: 'core.retry',
+  cache: 'core.cache',
+  cacheSize: 'core.cache-size',
+  connectionHealth: 'core.connection-health',
+  circuit: 'core.circuit-open',
+  fallback: 'core.fallback',
+  hedgedWin: 'core.hedged-win',
+  analysis: 'core.analysis'
 } as const;
 
 export const RelationalEventId = {
   multipleCollectionIncludeWarning: 'relational.multiple-collection-include',
-  queryPossibleExpressionWarning: 'relational.query-possible-expression-warning'
+  queryPossibleExpressionWarning: 'relational.query-possible-expression-warning',
+  crossQuery: 'relational.cross-query-chunk'
 } as const;
 
 /** Loosely-typed event identifier — any string is valid for custom events. */

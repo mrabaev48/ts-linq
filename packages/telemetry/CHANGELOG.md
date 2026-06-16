@@ -1,5 +1,29 @@
 # @ts-linq/telemetry
 
+## 2.2.0
+
+### Minor Changes
+
+- Make DiagnosticEmitter's resilience and cache events routable (no silent discard).
+
+  Eight event methods (`cache`, `connectionHealth`, `circuit`, `fallback`, `hedgedWin`,
+  `analysis`, `crossQuery`, `cacheSize`) were hard-coded no-ops with no opt-in path.
+  Resilience events (circuit-breaker state changes, fallback degradation, connection health)
+  are now routed through the existing `route()` mechanism at `warning`/`error` level and
+  surface by default. Verbose events (`cache`, `cacheSize`, `crossQuery`, `analysis`,
+  `hedgedWin`) route at `trace`/`debug` and stay silent at the default `information` level,
+  but are fully configurable via `WarningConfigurationBuilder`.
+
+  New event ids added to `CoreEventId` and `RelationalEventId`:
+  - `core.circuit-open` — circuit breaker state change (default: `warning`)
+  - `core.fallback` — fallback attempt result (default: `warning`/`error`)
+  - `core.connection-health` — connection health probe (default: `warning` if unhealthy, `debug` if healthy)
+  - `core.cache` — cache hit/miss (default: `trace`)
+  - `core.cache-size` — cache size report (default: `trace`)
+  - `core.hedged-win` — hedged request winner (default: `debug`)
+  - `core.analysis` — query analysis result (default: `debug`)
+  - `relational.cross-query-chunk` — cross-query chunked IN operation (default: `debug`)
+
 ## 2.1.20
 
 ### Patch Changes
