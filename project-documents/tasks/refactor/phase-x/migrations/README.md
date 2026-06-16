@@ -1,6 +1,6 @@
 # Refactor Audit: migrations
 
-**Status: 🔄 In Progress** — task-1, task-2, task-3, task-4, task-5 ✅ completed; tasks 6–7 pending.
+**Status: 🔄 In Progress** — task-1, task-2, task-3, task-4, task-5, task-6 ✅ completed; task-7 pending.
 
 ## Package responsibility
 
@@ -66,7 +66,7 @@ dialect SQL via the `Dialect` string union instead of delegating.
 | 3 | task-3.md — Safe bundle/script code generation | P0 | ✅ Completed | New `JsLiteral` encoder (`bundle/codegen/JsLiteral.ts`) — `generateEntrySource` now emits structure and routes every path leaf through JSON-escaped, POSIX-normalized `modulePath()`; idempotent emitter reuses task-1 `literal()` for `version`/`name` + fail-fast `BundleBuildError` on malformed identifiers; generated runtime allow-lists `DB_PROVIDER` (`postgres\|mysql\|mssql`) before the dynamic import; `__migrations` shared schema confirmed converged. Closes arbitrary-code (bundle) + arbitrary-SQL (script) injection |
 | 4 | task-4.md — Typed error hierarchy for migrations | P1 | ✅ Completed | Foundation for error model; **pulled ahead of task-2/task-3** to satisfy task-2's `depends_on` (runner consumes `MigrationApplyError`/`MigrationRollbackError`). Classes extend `OrmError` in `@ts-linq/types` (CLAUDE.md §16 — no parallel hierarchy); non-runner serializer/bundle/seed sites migrated, runner deferred to task-2 |
 | 5 | task-5.md — Decompose snapshot builders into strategy expanders | P1 | ✅ Completed | Both god-builders → thin coordinators over ordered `EntityExpander` strategies (`snapshot/expanders/`): model = `OwnedEntity`/`ComplexType`/`Inheritance`/`SkipNavigation`; schema = `ShadowProperty`/`TableFragment`/`Sequence` + `ForeignKeyResolver`. Single `ColumnMapper` owns the column→snapshot mapping (model + schema + shadow + portable-type). `MetadataStorage`/`SequenceRegistry` coupling inverted via additive public `buildFrom(entities[, sequences])`; no-arg `buildFromMetadata`/`buildExpectedFromMetadata` retained as back-compat default. Canonical sorting centralized in the model coordinator; expanders read only the injected context |
-| 6 | task-6.md — Centralize dialect-inspector selection | P1 | ⬜ Pending | Duplicated dialect dispatch; provider-coupling risk |
+| 6 | task-6.md — Centralize dialect-inspector selection | P1 | ✅ Completed | New `SchemaInspector` interface + `SchemaInspectorFactory.for(label, provider)` (`SchemaInspector.ts`) — the single dialect → inspector selection point (Factory + ISP + DIP). Both duplicated dispatch chains (`SchemaSnapshot.buildActualFromProvider`, `SchemaInspectionService.buildActualSnapshot` ×2) now resolve one inspector via the factory; no `if (label === …)` inspector dispatch remains outside it. The two divergent unknown-dialect fallbacks (assume-exists vs empty indexes) are unified into one documented policy: unsupported labels throw the typed `UnsupportedOperationError` (`@ts-linq/types`). Supported-dialect snapshots unchanged |
 | 7 | task-7.md — Clean up MigrationHandlers grab-bag + structural casts | P2 | ⬜ Pending | Clean-code / typescript debt; low cohesion |
 
 ## Dependencies on other packages
@@ -105,10 +105,10 @@ dialect SQL via the `Dialect` string union instead of delegating.
   current callers (`DiffMigrationGenerator`, CLI `Schema*Command`, orm
   `has-pending-model-changes`) use the no-arg path. Eventual removal: have callers inject
   the model via `buildFrom(...)`, then drop the singleton reads.
-- **Coordination with task-6** (centralize dialect-inspector selection): both touch snapshot
-  construction. task-5 left `buildActualFromProvider`'s per-dialect inspector dispatch
-  (`postgresql`/`mysql`/`mssql` branches in `SchemaSnapshot.ts`) untouched — that dispatch is
-  task-6's target and should reuse a shared inspector selector rather than the inline `if`s.
+- **Coordination with task-6** (centralize dialect-inspector selection): ✅ Resolved by task-6.
+  `buildActualFromProvider`'s per-dialect inspector dispatch now resolves one inspector via
+  `SchemaInspectorFactory.for(label, provider)` instead of inline `postgresql`/`mysql`/`mssql`
+  `if`s; the same factory backs `SchemaInspectionService`.
 - **`ForeignKeyResolver` is a collaborator, not an `EntityExpander`** (it returns FKs instead
   of mutating the table map). Same for the keyless→view routing and the inline
   index/uniqueConstraint mapping, which stay in the schema coordinator. These were left out of

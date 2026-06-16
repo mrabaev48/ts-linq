@@ -8,11 +8,7 @@ import {
 } from '@ts-linq/types';
 
 import type { ColumnDef, IndexDef, SchemaSnapshot, TableSnapshot, ViewSnapshot } from './DiffTypes';
-import {
-  MssqlSchemaInspector,
-  MySqlSchemaInspector,
-  PostgresSchemaInspector
-} from './SchemaInspector';
+import { SchemaInspectorFactory } from './SchemaInspector';
 import { ColumnMapper } from './snapshot/expanders/ColumnMapper';
 import type { ExpansionContext } from './snapshot/expanders/EntityExpander';
 import { ForeignKeyResolver } from './snapshot/expanders/schema/ForeignKeyResolver';
@@ -197,35 +193,16 @@ export class SchemaSnapshotBuilder {
           details: { operation: 'buildActualFromProvider' }
         }
       );
-    const label = this.provider.providerLabel;
+    const inspector = SchemaInspectorFactory.for(this.provider.providerLabel, this.provider);
     // Mirror expected columns/PKs if provided, and fetch actual indexes.
     const idxFetch = async (table: string): Promise<IndexDef[]> => {
-      if (label === 'postgresql') {
-        const ins = new PostgresSchemaInspector(this.provider!);
-        const list = await ins.getIndexes(table);
-        return list.map((i) => ({
-          name: i.name,
-          columns: i.columns,
-          unique: i.unique,
-          where: i.where
-        }));
-      }
-      if (label === 'mysql') {
-        const ins = new MySqlSchemaInspector(this.provider!);
-        const list = await ins.getIndexes(table);
-        return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique }));
-      }
-      if (label === 'mssql') {
-        const ins = new MssqlSchemaInspector(this.provider!);
-        const list = await ins.getIndexes(table);
-        return list.map((i) => ({
-          name: i.name,
-          columns: i.columns,
-          unique: i.unique,
-          where: i.where
-        }));
-      }
-      return [];
+      const list = await inspector.getIndexes(table);
+      return list.map((i) => ({
+        name: i.name,
+        columns: i.columns,
+        unique: i.unique,
+        where: i.where
+      }));
     };
     const tables: TableSnapshot[] = [];
     const source = expected?.tables || [];

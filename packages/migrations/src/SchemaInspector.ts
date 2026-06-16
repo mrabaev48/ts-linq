@@ -1,4 +1,5 @@
 import type { DatabaseProvider } from '@ts-linq/core';
+import { UnsupportedOperationError } from '@ts-linq/types';
 
 export interface TableIndexDef {
   name: string;
@@ -7,8 +8,22 @@ export interface TableIndexDef {
   where?: string;
 }
 
+/**
+ * Dialect-agnostic contract for reading an existing database schema.
+ *
+ * The concrete per-dialect inspectors implement this; callers depend on the
+ * interface (not the concrete classes) and obtain an instance via
+ * {@link SchemaInspectorFactory.for}.
+ */
+export interface SchemaInspector {
+  /** List the user tables present in the connected database. */
+  listTables(): Promise<string[]>;
+  /** List the user-declared (non-primary-key) indexes for a table. */
+  getIndexes(table: string): Promise<TableIndexDef[]>;
+}
+
 /** PostgreSQL schema inspector using pg_catalog views. */
-export class PostgresSchemaInspector {
+export class PostgresSchemaInspector implements SchemaInspector {
   constructor(private provider: DatabaseProvider) {}
 
   public async listTables(): Promise<string[]> {
@@ -52,7 +67,7 @@ export class PostgresSchemaInspector {
 }
 
 /** MySQL schema inspector using information_schema.statistics. */
-export class MySqlSchemaInspector {
+export class MySqlSchemaInspector implements SchemaInspector {
   constructor(private provider: DatabaseProvider) {}
 
   public async listTables(): Promise<string[]> {
@@ -97,7 +112,7 @@ export class MySqlSchemaInspector {
 }
 
 /** MSSQL schema inspector using sys catalog views. */
-export class MssqlSchemaInspector {
+export class MssqlSchemaInspector implements SchemaInspector {
   constructor(private provider: DatabaseProvider) {}
 
   public async listTables(): Promise<string[]> {
@@ -145,5 +160,41 @@ export class MssqlSchemaInspector {
       result.push({ name: e.name, columns: e._cols, unique: e.unique, where: e.where });
     }
     return result;
+  }
+}
+
+/**
+ * Single selection point that maps a provider's dialect label to the matching
+ * {@link SchemaInspector}. This is the only place dialect → inspector dispatch
+ * is allowed to live; callers must not branch on the label themselves.
+ *
+ * Unknown-dialect policy: an unsupported label throws a typed
+ * {@link UnsupportedOperationError} rather than silently falling back to a
+ * divergent default (previously one path assumed tables existed while another
+ * returned empty indexes). Schema inspection is only meaningful for a dialect
+ * we know how to introspect.
+ */
+export class SchemaInspectorFactory {
+  /**
+   * Resolve the inspector for the given dialect label.
+   *
+   * @param label - The provider's `providerLabel` (e.g. `'postgresql'`).
+   * @param provider - The database provider the inspector queries against.
+   * @throws {UnsupportedOperationError} if the label is not a supported dialect.
+   */
+  public static for(label: string, provider: DatabaseProvider): SchemaInspector {
+    switch (label) {
+      case 'postgresql':
+        return new PostgresSchemaInspector(provider);
+      case 'mysql':
+        return new MySqlSchemaInspector(provider);
+      case 'mssql':
+        return new MssqlSchemaInspector(provider);
+      default:
+        throw new UnsupportedOperationError(
+          `Schema inspection is not supported for provider dialect '${label}'`,
+          { details: { operation: 'SchemaInspectorFactory.for', providerLabel: label } }
+        );
+    }
   }
 }
