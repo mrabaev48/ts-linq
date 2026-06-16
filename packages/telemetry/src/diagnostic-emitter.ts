@@ -17,6 +17,7 @@ import type {
   WarningBehavior
 } from '@ts-linq/types';
 
+import { CoreEventId } from './event-ids';
 import { maskParams } from './parameter-masker';
 import { EfWarningError } from './warning-router';
 
@@ -68,21 +69,24 @@ export class DiagnosticEmitter implements SqlLogger {
   }
 
   // ── Logger text methods ───────────────────────────────────────────────────
+  // Routed through real, catalogued event ids (CoreEventId.log*) so they honour
+  // WarningConfigurationBuilder.suppress()/.throw()/.log() exactly like the
+  // structured event methods below. The level argument preserves level filtering.
 
   debug(message: string, _meta?: Record<string, unknown>): void {
-    this.route('', 'debug', message);
+    this.route(CoreEventId.logDebug, 'debug', message);
   }
 
   info(message: string, _meta?: Record<string, unknown>): void {
-    this.route('', 'information', message);
+    this.route(CoreEventId.logInfo, 'information', message);
   }
 
   warn(message: string, _meta?: Record<string, unknown>): void {
-    this.route('', 'warning', message);
+    this.route(CoreEventId.logWarn, 'warning', message);
   }
 
   error(message: string, _meta?: Record<string, unknown>): void {
-    this.route('', 'error', message);
+    this.route(CoreEventId.logError, 'error', message);
   }
 
   // ── SqlLogger event methods ───────────────────────────────────────────────
