@@ -8,12 +8,12 @@ export {
   buildInlineFkSql,
   deleteBehaviorToSql
 } from './builders/handlers/ForeignKeyHandlers';
+export { buildCreateIndexSql } from './builders/handlers/IndexHandlers';
 export { buildCreateTableSql } from './builders/handlers/TableHandlers';
 export {
   buildAddUniqueConstraintSql,
-  buildCreateIndexSql,
   buildDropUniqueConstraintSql
-} from './builders/MigrationHandlers';
+} from './builders/UniqueConstraintsSqlBuilder';
 export * from './bundle/build-bundle';
 export * from './DialectMigrationSql';
 export * from './DiffBasedMigration';

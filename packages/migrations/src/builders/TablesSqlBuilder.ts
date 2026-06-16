@@ -1,6 +1,6 @@
 import type { Dialect } from '../Dialect';
 import type { TableDiff } from '../DiffTypes';
-import { handleCreateTable, handleDropTable, handleTableRename } from './MigrationHandlers';
+import { handleCreateTable, handleDropTable, handleTableRename } from './handlers/TableHandlers';
 
 export class TablesSqlBuilder {
   constructor(private readonly dialect: Dialect) {}
