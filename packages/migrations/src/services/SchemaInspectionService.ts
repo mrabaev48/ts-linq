@@ -1,64 +1,27 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 
 import type { IndexDef, SchemaSnapshot, TableSnapshot } from '../DiffTypes';
-import {
-  MssqlSchemaInspector,
-  MySqlSchemaInspector,
-  PostgresSchemaInspector
-} from '../SchemaInspector';
+import { SchemaInspectorFactory } from '../SchemaInspector';
 
 export class SchemaInspectionService {
   public async buildActualSnapshot(
     provider: DatabaseProvider,
     expected: SchemaSnapshot
   ): Promise<SchemaSnapshot> {
-    const label = provider.providerLabel;
+    // Single dialect → inspector selection point (throws on unsupported dialects).
+    const inspector = SchemaInspectorFactory.for(provider.providerLabel, provider);
 
-    const existingTables = await (async (): Promise<Set<string>> => {
-      if (label === 'postgresql') {
-        const ins = new PostgresSchemaInspector(provider);
-        return new Set(await ins.listTables());
-      }
-      if (label === 'mysql') {
-        const ins = new MySqlSchemaInspector(provider);
-        return new Set(await ins.listTables());
-      }
-      if (label === 'mssql') {
-        const ins = new MssqlSchemaInspector(provider);
-        return new Set(await ins.listTables());
-      }
-      // Unknown provider: assume tables exist to avoid destructive diffs.
-      return new Set<string>(expected.tables.map((t) => t.name));
-    })();
+    const existingTables = new Set(await inspector.listTables());
 
-    // For supported providers: mirror expected columns/PKs, fetch actual indexes via dialect inspectors
+    // Mirror expected columns/PKs, fetch actual indexes via the dialect inspector.
     const fetchIndexes = async (table: string): Promise<IndexDef[]> => {
-      if (label === 'postgresql') {
-        const ins = new PostgresSchemaInspector(provider);
-        const list = await ins.getIndexes(table);
-        return list.map((i) => ({
-          name: i.name,
-          columns: i.columns,
-          unique: i.unique,
-          where: i.where
-        }));
-      }
-      if (label === 'mysql') {
-        const ins = new MySqlSchemaInspector(provider);
-        const list = await ins.getIndexes(table);
-        return list.map((i) => ({ name: i.name, columns: i.columns, unique: i.unique }));
-      }
-      if (label === 'mssql') {
-        const ins = new MssqlSchemaInspector(provider);
-        const list = await ins.getIndexes(table);
-        return list.map((i) => ({
-          name: i.name,
-          columns: i.columns,
-          unique: i.unique,
-          where: i.where
-        }));
-      }
-      return [];
+      const list = await inspector.getIndexes(table);
+      return list.map((i) => ({
+        name: i.name,
+        columns: i.columns,
+        unique: i.unique,
+        where: i.where
+      }));
     };
 
     const actualTables: TableSnapshot[] = [];

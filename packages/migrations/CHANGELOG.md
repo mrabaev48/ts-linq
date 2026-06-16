@@ -1,5 +1,19 @@
 # @ts-linq/migrations
 
+## 2.8.1
+
+### Patch Changes
+
+- Centralize dialect schema-inspector selection behind a single `SchemaInspectorFactory`.
+
+  The provider-label → inspector dispatch (`postgresql`/`mysql`/`mssql`) was duplicated across
+  `SchemaSnapshot.buildActualFromProvider` and `SchemaInspectionService.buildActualSnapshot` (twice),
+  and the copies had drifted on the unknown-provider fallback (one assumed tables existed, the other
+  returned empty indexes). All call sites now resolve a `SchemaInspector` through
+  `SchemaInspectorFactory.for(label, provider)`. Unknown dialects follow one documented policy: they
+  throw a typed `UnsupportedOperationError` instead of a silent divergent fallback. Behaviour for the
+  supported dialects is unchanged.
+
 ## 2.8.0
 
 ### Minor Changes
