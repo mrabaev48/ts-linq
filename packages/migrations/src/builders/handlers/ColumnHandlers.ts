@@ -1,6 +1,6 @@
 import type { Dialect } from '../../Dialect';
-import type { ColumnDef, TableDiff } from '../../DiffTypes';
-import { formatValue, mapType, q } from '../SqlUtils';
+import type { ColumnChange, ColumnDef, TableDiff } from '../../DiffTypes';
+import { formatValue, mapType, norm, q } from '../SqlUtils';
 
 export function handleColumnRenames(td: TableDiff, dialect: Dialect, up: string[]): void {
   const rns = td.columnRenames;
@@ -128,4 +128,102 @@ export function buildAlterNullSql(
       return _exhaustive;
     }
   }
+}
+
+export function handleColumnChanges(
+  td: TableDiff,
+  dialect: Dialect,
+  up: string[],
+  down: string[]
+): void {
+  if (!td.columnChanges || td.columnChanges.length === 0) return;
+  for (const ch of td.columnChanges) {
+    if (ch.kind === 'add') {
+      handleAddColumnChange(dialect, td, ch, up, down);
+      continue;
+    }
+    if (ch.kind === 'alter') {
+      handleAlterColumnChange(dialect, td, ch, up);
+      continue;
+    }
+    if (ch.kind === 'drop') {
+      handleDropColumnChange(dialect, td, ch, up);
+    }
+  }
+}
+
+export function handleAddColumnChange(
+  dialect: Dialect,
+  td: TableDiff,
+  ch: ColumnChange,
+  up: string[],
+  down: string[]
+): void {
+  if (isComputedColumn(ch.column) || hasDefaultExpression(ch.column)) {
+    const colSql = renderColumn(dialect, ch.column);
+    const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
+    up.push(`ALTER TABLE ${q(dialect, td.table)} ${kw} ${colSql}`);
+  } else {
+    up.push(
+      buildAddColumnSql(
+        dialect,
+        td,
+        ch.column.name,
+        ch.column.type,
+        ch.column.nullable,
+        ch.column.defaultValue
+      )
+    );
+  }
+  down.push(buildDropColumnSql(dialect, td.table, ch.column.name));
+}
+
+export function handleAlterColumnChange(
+  dialect: Dialect,
+  td: TableDiff,
+  ch: ColumnChange,
+  up: string[]
+): void {
+  if (isComputedChanged(ch.prev, ch.column)) {
+    up.push(buildDropColumnSql(dialect, td.table, ch.column.name));
+    const kw = dialect === 'mssql' ? 'ADD' : 'ADD COLUMN';
+    up.push(`ALTER TABLE ${q(dialect, td.table)} ${kw} ${renderColumn(dialect, ch.column)}`);
+    return;
+  }
+  if (hasTypeChanged(ch.prev, ch.column)) {
+    up.push(buildAlterTypeSql(dialect, td.table, ch.column.name, ch.column.type));
+  }
+  const prevNullable = ch.prev?.nullable;
+  if (typeof prevNullable === 'boolean' && prevNullable !== ch.column.nullable) {
+    up.push(buildAlterNullSql(dialect, td.table, ch.column.name, ch.column.nullable));
+  }
+}
+
+export function handleDropColumnChange(
+  dialect: Dialect,
+  td: TableDiff,
+  ch: ColumnChange,
+  up: string[]
+): void {
+  up.push(buildDropColumnSql(dialect, td.table, ch.column.name));
+}
+
+export function isComputedColumn(c: ColumnDef): boolean {
+  return !!c.isComputed && !!c.computedExpression;
+}
+
+export function hasDefaultExpression(c: ColumnDef): boolean {
+  return !!c.defaultExpression;
+}
+
+export function isComputedChanged(prev: ColumnDef | undefined, curr: ColumnDef): boolean {
+  return (
+    prev?.isComputed !== curr.isComputed ||
+    prev?.computedExpression !== curr.computedExpression ||
+    prev?.computedStorage !== curr.computedStorage
+  );
+}
+
+export function hasTypeChanged(prev: ColumnDef | undefined, curr: ColumnDef): boolean {
+  return !!prev && norm(prev.type) !== norm(curr.type);
 }
