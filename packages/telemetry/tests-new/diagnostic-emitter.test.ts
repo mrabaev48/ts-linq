@@ -133,3 +133,108 @@ describe('DiagnosticEmitter — no-op when sink absent', () => {
     expect(() => emitter.info('test')).not.toThrow();
   });
 });
+
+describe('DiagnosticEmitter — resilience events routing', () => {
+  it('circuit (open) surfaces at default level (information)', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.circuit({ state: 'open', failures: 5, reason: 'timeout' });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('Circuit open');
+    expect(messages[0]).toContain('timeout');
+    expect(messages[0]).toContain('failures: 5');
+  });
+
+  it('fallback with succeeded=false routes at error level', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.fallback({ fallback: 'cache', attempted: true, succeeded: false });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('failed');
+  });
+
+  it('fallback with succeeded=true routes at warning level', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.fallback({ fallback: 'cache', attempted: true, succeeded: true });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('succeeded');
+  });
+
+  it('fallback marks stale data', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.fallback({ fallback: 'cache', attempted: true, succeeded: true, isStale: true });
+    expect(messages[0]).toContain('[stale]');
+  });
+
+  it('connectionHealth unhealthy surfaces at default level (information)', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.connectionHealth({ healthy: false, latencyMs: 250 });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('unhealthy');
+    expect(messages[0]).toContain('250ms');
+  });
+
+  it('connectionHealth healthy is suppressed at default level (debug < information)', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.connectionHealth({ healthy: true });
+    expect(messages).toHaveLength(0);
+  });
+
+  it('cache hit is suppressed at default level (trace < information)', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.cache({ cache: 'sqlGen', hit: true });
+    expect(messages).toHaveLength(0);
+  });
+
+  it('cache hit surfaces when level is trace', () => {
+    const { emitter, messages } = makeEmitter({ level: 'trace' });
+    emitter.cache({ cache: 'sqlGen', hit: true });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('Cache hit');
+  });
+
+  it('suppress("core.circuit-open") silences circuit event', () => {
+    const routes = new Map([['core.circuit-open', 'suppress' as const]]);
+    const { emitter, messages } = makeEmitter({ level: 'information', warningRoutes: routes });
+    emitter.circuit({ state: 'open', failures: 3 });
+    expect(messages).toHaveLength(0);
+  });
+
+  it('throw("core.circuit-open") escalates to EfWarningError', () => {
+    const routes = new Map([['core.circuit-open', 'throw' as const]]);
+    const { emitter } = makeEmitter({ level: 'information', warningRoutes: routes });
+    expect(() => emitter.circuit({ state: 'open', failures: 3 })).toThrow(EfWarningError);
+  });
+
+  it('cacheSize is suppressed at default level (trace < information)', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.cacheSize({ cache: 'sqlGen', size: 100 });
+    expect(messages).toHaveLength(0);
+  });
+
+  it('crossQuery is suppressed at default level (debug < information)', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.crossQuery({ op: 'IN-chunk', entity: 'User', column: 'id', chunks: 2, size: 1000 });
+    expect(messages).toHaveLength(0);
+  });
+
+  it('crossQuery surfaces when level is debug', () => {
+    const { emitter, messages } = makeEmitter({ level: 'debug' });
+    emitter.crossQuery({ op: 'IN-chunk', entity: 'User', column: 'id', chunks: 2, size: 1000 });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('User.id');
+  });
+
+  it('hedgedWin surfaces when level is debug', () => {
+    const { emitter, messages } = makeEmitter({ level: 'debug' });
+    emitter.hedgedWin({ fallback: 'replica', operation: 'findAll' });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('replica');
+  });
+
+  it('analysis surfaces when level is debug', () => {
+    const { emitter, messages } = makeEmitter({ level: 'debug' });
+    emitter.analysis({ sql: 'SELECT 1', params: [], durationMs: 120, slow: true });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('[SLOW]');
+    expect(messages[0]).toContain('120ms');
+  });
+});
