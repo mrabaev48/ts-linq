@@ -11,6 +11,8 @@ import {
   ModelSnapshotSerializer
 } from '@ts-linq/migrations';
 
+import { createDiagnosticSink } from '../context/DiagnosticSink';
+
 /**
  * Options accepted by `ctx.database.migrate()`.
  * Mirrors EF Core's `MigrationOptions`.
@@ -248,8 +250,14 @@ export class PendingModelChangesChecker {
           continue;
         }
       }
-    } catch {
-      // file could not be loaded — skip
+    } catch (e) {
+      // Best-effort migration discovery: a file that cannot be required is
+      // skipped, but log at debug so a genuine load failure is observable.
+      createDiagnosticSink(this._provider.loggerRef).internalDiag(
+        'PendingModelChangesChecker.loadMigrationClass',
+        e,
+        'debug'
+      );
     }
     return null;
   }

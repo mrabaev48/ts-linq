@@ -1,5 +1,7 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 
+import { createDiagnosticSink } from '../context/DiagnosticSink';
+
 /**
  * Represents an active database transaction returned by `context.database.beginTransactionAsync()`.
  * Mirrors EF Core's `IDbContextTransaction`.
@@ -79,8 +81,14 @@ export class DbContextTransaction implements AsyncDisposable {
       this._disposed = true;
       try {
         await this._rollback();
-      } catch {
-        // Swallow dispose-time rollback errors — the transaction may already be gone.
+      } catch (e) {
+        // Cleanup-with-swallow: a dispose-time rollback may fail because the
+        // transaction is already gone. Never rethrow from `asyncDispose`, but log
+        // at warn so the failure is observable instead of silently dropped.
+        createDiagnosticSink(this._provider.loggerRef).internalDiag(
+          'DbContextTransaction.asyncDispose.rollback',
+          e
+        );
       }
     }
   }

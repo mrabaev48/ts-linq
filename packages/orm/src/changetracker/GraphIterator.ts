@@ -97,7 +97,10 @@ export class GraphIterator {
         const result = (targetEntity as () => EntityCtorRef)();
         if (typeof result === 'function') return result;
       } catch {
-        // Not a thunk — it's a direct constructor
+        // Invoking it threw → it is a direct constructor (a class invoked
+        // without `new`), not a lazy thunk. This is an expected capability probe,
+        // not a swallowed error, so we resolve to the constructor itself.
+        return targetEntity as EntityCtorRef;
       }
       return targetEntity as EntityCtorRef;
     }
