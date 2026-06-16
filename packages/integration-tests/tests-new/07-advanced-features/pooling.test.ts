@@ -148,14 +148,16 @@ describe('DbContext Pooling & Factory — integration', () => {
 
     it('transaction depth is reset after return', async () => {
       const ctx = await factory.createDbContextAsync();
-      // Access private field via cast to verify reset
-      const ctxAny = ctx as unknown as Record<string, number>;
-      ctxAny['_transactionDepth'] = 3;
+      // Drive the (nested) transaction depth through the public API, then verify
+      // that returning the context to the pool resets it (observed via the public
+      // `isInTransaction` surface rather than a private field).
+      await ctx.beginTransaction();
+      await ctx.beginTransaction();
+      expect(ctx.isInTransaction).toBe(true);
       await ctx[Symbol.asyncDispose]();
 
       const recycled = await factory.createDbContextAsync();
-      const recycledAny = recycled as unknown as Record<string, number>;
-      expect(recycledAny['_transactionDepth']).toBe(0);
+      expect(recycled.isInTransaction).toBe(false);
     });
   });
 });
