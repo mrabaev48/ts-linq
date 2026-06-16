@@ -1,49 +1,44 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { LoadingOptions } from '@ts-linq/core';
-import type { DbContextOptions, DiagnosticsOptions, MemoryProfilerLike } from '@ts-linq/core';
-import type { SaveChangesEventData } from '@ts-linq/core';
-import { EntityLoader, InterceptionResult } from '@ts-linq/core';
+import type { DbContextOptions, MemoryProfilerLike } from '@ts-linq/core';
+import type { EntityLoader } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
 import { LazyLoadingProxy } from '@ts-linq/core';
-import { EntityCache } from '@ts-linq/core';
-import { type MetadataRegistry, MetadataStorage, reflectGetOwnMetadata } from '@ts-linq/metadata';
-import { safeCacheSize } from '@ts-linq/metrics-safe';
-import { EnhancedSqlCache, InMemoryCountCache } from '@ts-linq/query/internal';
-import { DiagnosticEmitter } from '@ts-linq/telemetry';
+import type { MetadataRegistry } from '@ts-linq/metadata';
+import { type EnhancedSqlCache } from '@ts-linq/query/internal';
 import type { EntityCtorRef } from '@ts-linq/types';
-import type { GlobalFilter, PerformanceOptions, Result, SoftDeleteOptions } from '@ts-linq/types';
+import type {
+  ExecutionStrategyOptions,
+  GlobalFilter,
+  PerformanceOptions,
+  QuerySplittingBehavior,
+  Result,
+  SoftDeleteOptions
+} from '@ts-linq/types';
 import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
-import { OptimisticConcurrencyError } from '@ts-linq/types';
 
-import { applyCompiledModel } from './bootstrap/use-compiled-model';
-import { type JoinRowChange } from './ChangeTracker';
 import { EntityEntry } from './changetracker/EntityEntry';
-import { ChangeTrackerFacade } from './ChangeTrackerFacade';
-import { DeleteCommand } from './commands/DeleteCommand';
-import { FragmentDmlExecutor } from './commands/FragmentDmlExecutor';
-import { InsertCommand } from './commands/InsertCommand';
-import { UpdateCommand } from './commands/UpdateCommand';
+import { type ChangeTrackerFacade } from './ChangeTrackerFacade';
+import { type DeleteCommand } from './commands/DeleteCommand';
+import { type FragmentDmlExecutor } from './commands/FragmentDmlExecutor';
+import { type InsertCommand } from './commands/InsertCommand';
+import { type UpdateCommand } from './commands/UpdateCommand';
+import { ChangeExecutor } from './context/ChangeExecutor';
+import { DbContextBootstrapper } from './context/DbContextBootstrapper';
+import type { DbContextServices } from './context/DbContextServices';
+import { DbSetRegistry } from './context/DbSetRegistry';
+import { getOriginal } from './context/entityOriginal';
+import { SaveChangesPipeline } from './context/save-pipeline/SaveChangesPipeline';
+import { TransactionScope } from './context/TransactionScope';
+import { ValueGenerationService } from './context/ValueGenerationService';
 import { DatabaseFacade } from './DatabaseFacade';
-import { DbSet } from './DbSet';
-import type { DbSetContext } from './DbSetContext';
-import { DbUpdateConcurrencyException } from './exceptions/DbUpdateConcurrencyException';
-import { InterceptorRegistry } from './interceptors/InterceptorRegistry';
-import { type EntityQueryFilterMap, ModelBuilder } from './ModelBuilder';
-import { BatchExecutor } from './save-changes/batch-executor';
-import { SpExecutor } from './save-changes/sp-executor';
-import { AuditInterceptor } from './services/AuditInterceptor';
-import { CacheCoordinator } from './services/CacheCoordinator';
-import { ChangeValidationService } from './services/ChangeValidationService';
-import { SoftDeleteInterceptor } from './services/SoftDeleteInterceptor';
-import type { NormalizedChange } from './types';
-import { HiLoValueGenerator } from './valueGenerators/HiLoValueGenerator';
-// import { logInternalError } from '@ts-linq/core'; // REMOVED
-
-function getOriginal<T extends EntityCtorRef>(target: T): T {
-  const maybe = reflectGetOwnMetadata('orm:original', target);
-  return (maybe as T | undefined) ?? target;
-}
+import { type DbSet } from './DbSet';
+import { type InterceptorRegistry } from './interceptors/InterceptorRegistry';
+import { type EntityQueryFilterMap, type ModelBuilder } from './ModelBuilder';
+import { type SpExecutor } from './save-changes/sp-executor';
+import { type CacheCoordinator } from './services/CacheCoordinator';
+import { type ChangeValidationService } from './services/ChangeValidationService';
 
 /**
  * Base unit-of-work style context that orchestrates entity sets, change tracking
@@ -58,43 +53,92 @@ function getOriginal<T extends EntityCtorRef>(target: T): T {
  *   or use `set(YourEntity)` directly instead of the auto-generated property.
  */
 export abstract class DbContext {
-  private _provider: DatabaseProvider;
-  private _registry: MetadataRegistry;
-  private _changeTracker: ChangeTrackerFacade;
-  private _entityLoader: EntityLoader;
-  private _dbSets: Map<EntityCtorRef, DbSet<object>> = new Map();
-  private _decoratedDbSets: Map<EntityCtorRef, DbSet<object>> = new Map();
-  private _defaultLoadingStrategy: LoadingStrategy = LoadingStrategy.Eager;
-  private _entityCache?: EntityCacheLike;
-  private _performanceOptions?: PerformanceOptions;
-  private _loadingDefaults: LoadingDefaults = {};
-  private _softDelete?: SoftDeleteOptions;
-  private _globalFilters?: GlobalFilter[];
-  private _entityQueryFilterMap: EntityQueryFilterMap = new Map();
-  private _diagnostics?: DiagnosticsOptions;
-  private _memoryProfiler?: MemoryProfilerLike;
-  private _validationService!: ChangeValidationService;
-  private _insertCmd!: InsertCommand;
-  private _updateCmd!: UpdateCommand;
-  private _deleteCmd!: DeleteCommand;
-  private _fragmentExecutor!: FragmentDmlExecutor;
-  private _spExecutor!: SpExecutor;
-  /** SQL cache created and owned by this context (undefined when user supplied their own). */
-  private _ownedSqlCache?: EnhancedSqlCache;
-  private _querySplittingBehavior?: import('@ts-linq/types').QuerySplittingBehavior;
-  private _cacheCoordinator!: CacheCoordinator;
-  private _auditInterceptor!: AuditInterceptor;
-  /** Per-context Hi-Lo generator instances, keyed by "schema.name" or "name". */
-  private readonly _hiLoGenerators = new Map<string, HiLoValueGenerator>();
-  private _softDeleteInterceptor!: SoftDeleteInterceptor;
-  private _interceptorRegistry!: InterceptorRegistry;
-  private _transactionDepth = 0;
+  /** All built collaborators + resolved options (see {@link DbContextBootstrapper}). */
+  private readonly _services: DbContextServices;
+
+  // ── Extracted collaborators ──
+  private readonly _dbSetRegistry: DbSetRegistry;
+  private readonly _valueGen: ValueGenerationService;
+  private readonly _changeExecutor: ChangeExecutor;
+  private readonly _transactionScope: TransactionScope;
+  private readonly _saveChangesPipeline: SaveChangesPipeline;
+
+  // ── Mutable per-context facade state (not owned by the services value object) ──
+  private _defaultLoadingStrategy: LoadingStrategy;
   private _database!: DatabaseFacade;
-  private _executionStrategyOptions?: import('@ts-linq/types').ExecutionStrategyOptions;
   /** @internal Callback set by a pooled factory; overrides dispose to return context to pool. */
   private _returnToPool?: () => Promise<void>;
-  /** maxBatchSize from DbContextOptionsBuilder.maxBatchSize(); 0 = per-row path. */
-  private _maxBatchSize = 0;
+
+  // ── Read-only accessors delegating to the services value object ──
+  private get _provider(): DatabaseProvider {
+    return this._services.provider;
+  }
+  private get _registry(): MetadataRegistry {
+    return this._services.registry;
+  }
+  private get _changeTracker(): ChangeTrackerFacade {
+    return this._services.changeTracker;
+  }
+  private get _entityLoader(): EntityLoader {
+    return this._services.entityLoader;
+  }
+  private get _entityCache(): EntityCacheLike | undefined {
+    return this._services.entityCache;
+  }
+  private get _performanceOptions(): PerformanceOptions | undefined {
+    return this._services.performanceOptions;
+  }
+  private get _loadingDefaults(): LoadingDefaults {
+    return this._services.loadingDefaults;
+  }
+  private get _softDelete(): SoftDeleteOptions | undefined {
+    return this._services.softDelete;
+  }
+  private get _globalFilters(): GlobalFilter[] | undefined {
+    return this._services.globalFilters;
+  }
+  private get _entityQueryFilterMap(): EntityQueryFilterMap {
+    return this._services.entityQueryFilterMap;
+  }
+  private get _memoryProfiler(): MemoryProfilerLike | undefined {
+    return this._services.memoryProfiler;
+  }
+  private get _validationService(): ChangeValidationService {
+    return this._services.validationService;
+  }
+  private get _insertCmd(): InsertCommand {
+    return this._services.insertCmd;
+  }
+  private get _updateCmd(): UpdateCommand {
+    return this._services.updateCmd;
+  }
+  private get _deleteCmd(): DeleteCommand {
+    return this._services.deleteCmd;
+  }
+  private get _fragmentExecutor(): FragmentDmlExecutor {
+    return this._services.fragmentExecutor;
+  }
+  private get _spExecutor(): SpExecutor {
+    return this._services.spExecutor;
+  }
+  private get _ownedSqlCache(): EnhancedSqlCache | undefined {
+    return this._services.ownedSqlCache;
+  }
+  private get _querySplittingBehavior(): QuerySplittingBehavior | undefined {
+    return this._services.querySplittingBehavior;
+  }
+  private get _cacheCoordinator(): CacheCoordinator {
+    return this._services.cacheCoordinator;
+  }
+  private get _interceptorRegistry(): InterceptorRegistry {
+    return this._services.interceptorRegistry;
+  }
+  private get _executionStrategyOptions(): ExecutionStrategyOptions | undefined {
+    return this._services.executionStrategyOptions;
+  }
+  private get _maxBatchSize(): number {
+    return this._services.maxBatchSize;
+  }
 
   /**
    * Create a new database context instance.
@@ -102,147 +146,34 @@ export abstract class DbContext {
    * @param options Connection and provider configuration.
    */
   constructor(options: DbContextOptions) {
-    // Initialize database provider from options
-    this._provider = options.provider as DatabaseProvider;
-    this._executionStrategyOptions = options.executionStrategy;
-    this._softDelete = options.softDelete;
-    // Propagate soft-delete settings into provider for GlobalFilterApplier and ProviderStub
-    this._provider.configureSoftDelete(options.softDelete);
-    // Wire DiagnosticEmitter when logTo() was configured on the builder
-    if (options.logging?.sink) {
-      this._provider.attachLogger(new DiagnosticEmitter(options.logging));
-    }
-    this._globalFilters = options.globalFilters;
-    this._diagnostics = options.diagnostics;
-    // Start external memory profiler if provided
-    const mp = this._diagnostics?.memoryProfiler;
-    if (mp) {
-      this._memoryProfiler = mp;
-      mp.start?.();
-    }
-    this._validationService = new ChangeValidationService(
-      options.validation?.translate,
-      options.audit
-    );
-
-    this._registry = options.registry ?? MetadataStorage.getInstance();
-    this._changeTracker = new ChangeTrackerFacade(this._registry);
-    this._changeTracker.setProvider(this._provider);
-    this._entityLoader = new EntityLoader(this._provider, undefined, this._registry);
-    this._querySplittingBehavior = options.querySplittingBehavior;
-    this._maxBatchSize = options.maxBatchSize ?? 0;
-    this._insertCmd = new InsertCommand(this._provider, (c) =>
-      this._cacheCoordinator.updateEntry(c)
-    );
-    this._updateCmd = new UpdateCommand(this._provider, (c) =>
-      this._cacheCoordinator.updateEntry(c)
-    );
-    this._fragmentExecutor = new FragmentDmlExecutor(this._provider);
-    this._spExecutor = new SpExecutor(this._provider, this._registry);
-    this._deleteCmd = new DeleteCommand(
-      this._provider,
-      async (c) => this._softDeleteInterceptor.apply(c),
-      (c) => this._cacheCoordinator.removeEntry(c)
-    );
-    // Initialize optional L2 entity cache
-    if (options.performance?.enableEntityCache) {
-      this._entityCache =
-        options.performance.entityCache ??
-        new EntityCache(
-          options.performance.entityCacheSize ?? 10000,
-          this._provider.loggerRef,
-          this._provider.providerLabel
-        );
-    }
-    // Create an owned SQL cache when none is supplied so that dispose() can stop its timer.
-    // When the user passes their own SqlCache we leave ownership with them.
-    this._ownedSqlCache = options.performance?.sqlCache ? undefined : new EnhancedSqlCache();
-
-    // Store performance options; auto-inject per-context count cache when none supplied.
-    // Preserve the original ternary form to avoid exposing a pre-existing CountCache ↔
-    // InMemoryCountCache type mismatch to TypeScript's widening rules.
-    this._performanceOptions = options.performance?.countCache
-      ? options.performance
-      : { ...options.performance, countCache: new InMemoryCountCache() };
-
-    // Inject owned SQL cache without touching the countCache assignment above.
-    if (this._ownedSqlCache) {
-      this._performanceOptions = { ...this._performanceOptions, sqlCache: this._ownedSqlCache };
-    }
-
-    this._cacheCoordinator = new CacheCoordinator(
-      this._entityCache,
-      this._performanceOptions?.sqlCache,
-      this._performanceOptions?.countCache,
-      this._provider.providerLabel,
-      this._performanceOptions?.cacheNamespace,
-      this._registry,
-      (ec) => this._registry.getEntity(ec)?.primaryKeys?.[0]
-    );
-
-    this._auditInterceptor = new AuditInterceptor(options.audit, (ec) =>
-      this._registry.getEntity(ec)
-    );
-
-    this._softDeleteInterceptor = new SoftDeleteInterceptor(
-      options.softDelete,
-      (ec) => this._registry.getEntity(ec),
-      async (entity, cls) => {
-        await this._provider.update(entity, cls);
-      },
-      (c) => this._cacheCoordinator.updateEntry(c)
-    );
-
-    // Build InterceptorRegistry from built-in + user-supplied interceptors.
-    // Built-in interceptors are added only when their respective feature is enabled.
-    const builtIn: object[] = [];
-    if (options.audit?.enabled) builtIn.push(this._auditInterceptor);
-    if (options.softDelete?.enabled) builtIn.push(this._softDeleteInterceptor);
-    this._interceptorRegistry = new InterceptorRegistry([
-      ...builtIn,
-      ...(options.interceptors ?? [])
-    ]);
-
-    // Configure provider with partitioned interceptors.
-    this._provider.configureInterceptors({
-      command: this._interceptorRegistry.forEachCommand(),
-      connection: this._interceptorRegistry.forEachConnection(),
-      transaction: this._interceptorRegistry.forEachTransaction(),
-      materialization: this._interceptorRegistry.forEachMaterialization()
+    // All collaborator wiring + cache/performance defaulting lives in the
+    // bootstrapper; the constructor stays free of inline branches.
+    this._services = DbContextBootstrapper.bootstrap(options, (mb) => this.onModelCreating(mb));
+    this._defaultLoadingStrategy = this._services.defaultLoadingStrategy;
+    this._valueGen = new ValueGenerationService(this._services.registry, this._services.provider);
+    this._changeExecutor = new ChangeExecutor(this._services);
+    this._transactionScope = new TransactionScope(this._services);
+    this._saveChangesPipeline = new SaveChangesPipeline({
+      provider: this._services.provider,
+      changeTracker: this._services.changeTracker,
+      valueGen: this._valueGen,
+      validationService: this._services.validationService,
+      interceptorRegistry: this._services.interceptorRegistry,
+      changeExecutor: this._changeExecutor,
+      cacheCoordinator: this._services.cacheCoordinator,
+      transactionScope: this._transactionScope
+    });
+    this._dbSetRegistry = new DbSetRegistry(this._services, {
+      beginTransaction: async () => this.beginTransaction(),
+      commitTransaction: async () => this.commitTransaction(),
+      rollbackTransaction: async () => this.rollbackTransaction()
     });
 
-    // Propagate query performance analysis options into provider if available
-    const analysis = options.performance?.analysis;
-    if (analysis) {
-      this._provider.configureQueryAnalysis(analysis);
-    }
-    // Apply configurable IN() chunk size into loader
-    this._entityLoader.setInChunkSize(this._performanceOptions?.inClauseChunkSize);
-    this._loadingDefaults = options.loading || {};
-
-    // Apply loading strategy from options or keep default
-    if (this._loadingDefaults.strategy) {
-      this._defaultLoadingStrategy = this._loadingDefaults.strategy;
-      this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
-    } else {
-      this._entityLoader.setDefaultStrategy(this._defaultLoadingStrategy);
-    }
-
-    if (options.compiledModel) {
-      applyCompiledModel(
-        options.compiledModel,
-        options.compiledModelClassMap ?? {},
-        this._registry
-      );
-    }
-
-    const modelBuilder = new ModelBuilder(this._registry);
-    this.onModelCreating(modelBuilder);
-    modelBuilder._finalize();
-    this._entityQueryFilterMap = modelBuilder._getQueryFilterMap();
-
-    this.initializeDbSets();
-    this._database = new DatabaseFacade(this.buildDbSetContext(), options.migrationsDirectory);
+    this._dbSetRegistry.initialize(this);
+    this._database = new DatabaseFacade(
+      this._dbSetRegistry.buildDbSetContext(),
+      options.migrationsDirectory
+    );
   }
 
   /**
@@ -271,25 +202,7 @@ export abstract class DbContext {
    * @returns Configured `DbSet` instance.
    */
   public set<T extends object>(entityClass: new () => T): DbSet<T> {
-    const maybe = reflectGetOwnMetadata('orm:original', entityClass);
-    const normalized: EntityCtorRef =
-      typeof maybe === 'function' ? (maybe as EntityCtorRef) : entityClass;
-    if (!this._dbSets.has(normalized)) {
-      throw new Error(`DbSet for ${entityClass.name} is not configured`);
-    }
-    // Fast path: no decoration — return the shared instance unchanged
-    if ((entityClass as unknown) === normalized) {
-      return this._dbSets.get(normalized) as unknown as DbSet<T>;
-    }
-    // Decorated class: return a scoped DbSet that uses the decorated constructor.
-    // Cached to avoid allocating on every call.
-    if (!this._decoratedDbSets.has(entityClass)) {
-      this._decoratedDbSets.set(
-        entityClass,
-        new DbSet<object>(entityClass, this.buildDbSetContext())
-      );
-    }
-    return this._decoratedDbSets.get(entityClass) as unknown as DbSet<T>;
+    return this._dbSetRegistry.set(entityClass);
   }
 
   /**
@@ -312,14 +225,7 @@ export abstract class DbContext {
    * @returns A fully configured and context-injected `DbSet<T>`.
    */
   protected defineSet<T extends object>(entityClass: new () => T): DbSet<T> {
-    const original = getOriginal(entityClass);
-    if (this._dbSets.has(original)) {
-      return this._dbSets.get(original) as unknown as DbSet<T>;
-    }
-    // Entity not yet in the registry (dynamic registration after construction).
-    const dbSet = new DbSet<T>(entityClass, this.buildDbSetContext());
-    this._dbSets.set(original as unknown as EntityCtorRef, dbSet as unknown as DbSet<object>);
-    return dbSet;
+    return this._dbSetRegistry.defineSet(entityClass);
   }
 
   /**
@@ -365,108 +271,7 @@ export abstract class DbContext {
    * @returns Number of affected rows.
    */
   public async saveChanges(): Promise<number> {
-    if (this._changeTracker.autoDetectChangesEnabled) {
-      this._changeTracker.detectChanges();
-    }
-    this._changeTracker.applyCascades();
-    const changes = this._changeTracker.getChanges();
-    if (!changes || changes.length === 0) return 0;
-    await this.prefillHiLoIds(changes);
-    this.prefillDefaults(changes);
-    const normalizedForValidation = this.normalizeForValidation(changes);
-    this._validationService.validate(normalizedForValidation);
-    const normalizedForInvalidation = normalizedForValidation.map((c) => ({
-      entity: c.entity,
-      entityClass: c.entityClass,
-      state: c.state
-    }));
-
-    // Build event data for the ISaveChangesInterceptor pipeline.
-    const entries = changes.map((c) => ({
-      entity: c.entity,
-      entityClass: c.entityClass,
-      state: c.state
-    }));
-    const eventData: SaveChangesEventData = { entityCount: entries.length, entries };
-
-    // savingChanges — interceptors may short-circuit the entire operation
-    const saveChangesInterceptors = this._interceptorRegistry.forEachSaveChanges();
-    let suppressResult = InterceptionResult.NoResult<number>();
-    for (const ic of saveChangesInterceptors) {
-      const r = await ic.savingChanges?.(eventData, suppressResult);
-      if (r) suppressResult = r;
-      if (suppressResult.isSuppressed) return suppressResult.result ?? 0;
-    }
-
-    const ownTransaction = !this.isInTransaction;
-    if (ownTransaction) {
-      await this._provider.beginTransaction();
-    }
-    try {
-      let affectedRows = 0;
-      if (this._maxBatchSize > 0) {
-        const allNormalized = changes.map((c) => this.normalizeChange(c));
-        const spChanges: typeof allNormalized = [];
-        const dmlChanges: typeof allNormalized = [];
-        for (const c of allNormalized) {
-          const op = c.state === 'added' ? 'insert' : c.state === 'modified' ? 'update' : 'delete';
-          if (this._spExecutor.hasSp(c.entityClass, op as 'insert' | 'update' | 'delete')) {
-            spChanges.push(c);
-          } else {
-            dmlChanges.push(c);
-          }
-        }
-        for (const c of spChanges) {
-          affectedRows += await this.processChange(c);
-        }
-        if (dmlChanges.length > 0) {
-          const batchExecutor = new BatchExecutor(
-            this._provider,
-            this._maxBatchSize,
-            this._registry
-          );
-          affectedRows += await batchExecutor.execute(dmlChanges);
-        }
-      } else {
-        for (const change of changes) {
-          const normalized = this.normalizeChange(change);
-          affectedRows += await this.processChange(normalized);
-        }
-      }
-
-      // Process many-to-many skip navigation join-row inserts/deletes
-      const skipNavChanges = this._changeTracker.collectSkipNavigationChanges();
-      affectedRows += await this._applySkipNavigationChanges(skipNavChanges);
-
-      if (ownTransaction) {
-        await this._provider.commitTransaction();
-      }
-      this._cacheCoordinator.invalidateAfterMutation(normalizedForInvalidation);
-      this._changeTracker.acceptAllChanges();
-
-      // savedChanges — interceptors may adjust the final row count
-      let result = affectedRows;
-      for (const ic of saveChangesInterceptors) {
-        const r = await ic.savedChanges?.(eventData, result);
-        if (r !== undefined) result = r;
-      }
-      return result;
-    } catch (error) {
-      if (ownTransaction) {
-        await this._provider.rollbackTransaction();
-      }
-      // saveChangesFailed — notify interceptors of the failure
-      for (const ic of saveChangesInterceptors) {
-        await ic.saveChangesFailed?.(eventData, error as Error);
-      }
-      if (error instanceof OptimisticConcurrencyError) {
-        const failedEntries = changes.map(
-          (c) => new EntityEntry(c.entity, c.entityClass, this._provider)
-        );
-        throw new DbUpdateConcurrencyException(error.message, failedEntries);
-      }
-      throw error;
-    }
+    return this._saveChangesPipeline.run();
   }
 
   /**
@@ -495,7 +300,7 @@ export abstract class DbContext {
 
   /** Whether a caller-managed transaction is currently active on this context. */
   public get isInTransaction(): boolean {
-    return this._transactionDepth > 0;
+    return this._transactionScope.isActive;
   }
 
   /**
@@ -509,10 +314,7 @@ export abstract class DbContext {
    * semantics and allows service-layer code to be transaction-agnostic.
    */
   public async beginTransaction(): Promise<void> {
-    if (this._transactionDepth === 0) {
-      await this._provider.beginTransaction();
-    }
-    this._transactionDepth++;
+    await this._transactionScope.begin();
   }
 
   /**
@@ -521,24 +323,7 @@ export abstract class DbContext {
    * issued only when the outermost transaction (depth 1 → 0) is committed.
    */
   public async commitTransaction(): Promise<void> {
-    if (this._transactionDepth <= 1) {
-      await this._provider.commitTransaction();
-      this._transactionDepth = 0;
-      try {
-        this._cacheCoordinator.invalidateOnCommit();
-        if (this._entityCache) {
-          safeCacheSize(this._provider.loggerRef, {
-            cache: 'entityL2',
-            size: this._entityCache.size?.() ?? -1,
-            provider: this._provider.providerLabel
-          });
-        }
-      } catch (e) {
-        // logInternalError('DbContext.commitTransaction.invalidateCaches', e);
-      }
-    } else {
-      this._transactionDepth--;
-    }
+    await this._transactionScope.commit();
   }
 
   /**
@@ -546,20 +331,7 @@ export abstract class DbContext {
    * Resets the transaction depth counter to zero unconditionally.
    */
   public async rollbackTransaction(): Promise<void> {
-    await this._provider.rollbackTransaction();
-    this._transactionDepth = 0;
-    this._cacheCoordinator.clearAll();
-    if (this._entityCache) {
-      try {
-        safeCacheSize(this._provider.loggerRef, {
-          cache: 'entityL2',
-          size: this._entityCache.size?.() ?? 0,
-          provider: this._provider.providerLabel
-        });
-      } catch (e) {
-        // logInternalError('DbContext.rollbackTransaction.entityCacheClear', e);
-      }
-    }
+    await this._transactionScope.rollback();
   }
 
   /** Simple cache utilities (warm-up etc.). */
@@ -641,7 +413,7 @@ export abstract class DbContext {
   public reset(): void {
     this._changeTracker.clear();
     this._cacheCoordinator.clearAll();
-    this._transactionDepth = 0;
+    this._transactionScope.reset();
   }
 
   /**
@@ -802,303 +574,4 @@ export abstract class DbContext {
   }
 
   // Removed string-based include API in favor of predicate-based include on Queryable
-
-  /**
-   * Initialize DbSets for all registered entities.
-   *
-   * This method also defines auto-generated properties on the context instance
-   * for each entity using a simple naming convention (see class JSDoc). If your
-   * code expects different names, prefer `set(Entity)` or add your own proxy
-   * getters that delegate to `set(Entity)`.
-   */
-  private buildDbSetContext(): DbSetContext {
-    return {
-      provider: this._provider,
-      changeTracker: this._changeTracker,
-      entityLoader: this._entityLoader,
-      entityCache: this._entityCache,
-      performance: this._performanceOptions,
-      globalFilters: this._globalFilters,
-      softDeleteOptions: this._softDelete,
-      querySplittingBehavior: this._querySplittingBehavior,
-      beginTransaction: async () => this.beginTransaction(),
-      commitTransaction: async () => this.commitTransaction(),
-      rollbackTransaction: async () => this.rollbackTransaction(),
-      executionStrategyOptions: this._executionStrategyOptions,
-      entityQueryFilterMap: this._entityQueryFilterMap,
-      registry: this._registry
-    };
-  }
-
-  private initializeDbSets(): void {
-    const entities = this._registry.getEntities();
-
-    for (const entity of entities) {
-      if (!entity.target) continue;
-      const original = getOriginal(entity.target);
-      const dbSet = new DbSet<object>(
-        original as unknown as new () => object,
-        this.buildDbSetContext()
-      );
-      this._dbSets.set(original, dbSet);
-
-      // Create a writable, configurable data property for easy access.
-      // Writable so that subclass field initialisers (e.g. `users = this.defineSet(User)`)
-      // can overwrite it without throwing "property has only a getter".
-      const base = original.name.toLowerCase();
-      const propertyName = base.endsWith('y') ? base.slice(0, -1) + 'ies' : base + 's';
-      Object.defineProperty(this, propertyName, {
-        value: dbSet,
-        writable: true,
-        enumerable: true,
-        configurable: true
-      });
-    }
-  }
-
-  /**
-   * Async pre-pass: assigns Hi-Lo IDs to all "added" entities whose PK/FK column
-   * declares a sequence with a block size. Reserves blocks in batches per sequence.
-   */
-  private async prefillHiLoIds(
-    changes: Array<{ entity: object; entityClass: EntityCtorRef; state: string }>
-  ): Promise<void> {
-    for (const change of changes) {
-      if (change.state !== 'added') continue;
-      const meta = this._registry.getEntity(change.entityClass);
-      if (!meta) continue;
-      const record = change.entity as Record<string, unknown>;
-      for (const col of meta.columns) {
-        if (!col.hiLoBlockSize || !col.sequenceName) continue;
-        if (record[col.propertyName] !== undefined) continue;
-        const key = col.sequenceSchema
-          ? `${col.sequenceSchema}.${col.sequenceName}`
-          : col.sequenceName;
-        let gen = this._hiLoGenerators.get(key);
-        if (!gen) {
-          const seqName = col.sequenceName;
-          const seqSchema = col.sequenceSchema;
-          const blockSize = col.hiLoBlockSize;
-          const provider = this._provider;
-          gen = new HiLoValueGenerator(seqName, seqSchema, blockSize, async (n, s, bs) =>
-            provider.nextSequenceValue(n, s, bs)
-          );
-          this._hiLoGenerators.set(key, gen);
-        }
-        await gen.ensureBlock();
-        record[col.propertyName] = gen.next({
-          entityClass: change.entityClass,
-          propertyName: col.propertyName
-        });
-      }
-    }
-  }
-
-  private prefillDefaults(
-    changes: Array<{ entity: object; entityClass: EntityCtorRef; state: string }>
-  ): void {
-    for (const change of changes) {
-      const { state } = change;
-      if (state !== 'added' && state !== 'modified') continue;
-      const meta = this._registry.getEntity(change.entityClass);
-      if (!meta) continue;
-      const record = change.entity as Record<string, unknown>;
-      for (const col of meta.columns) {
-        const policy = col.valueGeneratedPolicy;
-        if (!policy) {
-          // Legacy defaultValue fill for added entities only
-          if (
-            state === 'added' &&
-            record[col.propertyName] === undefined &&
-            col.defaultValue !== undefined
-          ) {
-            record[col.propertyName] = col.defaultValue;
-          }
-          continue;
-        }
-
-        if (policy === 'Never') continue;
-        if (policy === 'OnAdd' && state !== 'added') continue;
-        if (policy === 'OnUpdate' && state !== 'modified') continue;
-        // OnAddOrUpdate: runs for both
-
-        if (!col.valueGeneratorClass) {
-          // DB-side generation — fill defaultValue for added entities only
-          if (
-            state === 'added' &&
-            record[col.propertyName] === undefined &&
-            col.defaultValue !== undefined
-          ) {
-            record[col.propertyName] = col.defaultValue;
-          }
-          continue;
-        }
-
-        // Client-side generator: run when value equals sentinel (or undefined if no sentinel set)
-        const currentValue = record[col.propertyName];
-        const sentinel = col.sentinel;
-        const shouldGenerate =
-          sentinel !== undefined ? currentValue === sentinel : currentValue === undefined;
-
-        if (shouldGenerate) {
-          const generator = new col.valueGeneratorClass();
-          record[col.propertyName] = generator.next({
-            entityClass: change.entityClass,
-            propertyName: col.propertyName
-          });
-        }
-      }
-    }
-  }
-
-  private normalizeForValidation(
-    changes: Array<{
-      entity: object;
-      entityClass: EntityCtorRef;
-      state: string;
-      originalValues?: object;
-    }>
-  ): Array<{
-    entity: Record<string, unknown>;
-    entityClass: EntityCtorRef;
-    state: string;
-    originalValues?: object;
-  }> {
-    return changes.map((c) => ({
-      entity: c.entity as Record<string, unknown>,
-      entityClass: c.entityClass,
-      state: c.state,
-      originalValues: c.originalValues
-    }));
-  }
-
-  private normalizeChange(change: {
-    entity: object;
-    entityClass: EntityCtorRef;
-    state: string;
-    originalValues?: object;
-  }): {
-    entity: Record<string, unknown>;
-    entityClass: EntityCtorRef;
-    state: string;
-    originalValues?: object;
-  } {
-    const shadowValues = this._changeTracker.getShadowValues(change.entity);
-    const entity =
-      shadowValues && shadowValues.size > 0
-        ? { ...(change.entity as Record<string, unknown>), ...Object.fromEntries(shadowValues) }
-        : (change.entity as Record<string, unknown>);
-
-    return {
-      entity,
-      entityClass: change.entityClass,
-      state: change.state,
-      originalValues: change.originalValues
-    };
-  }
-
-  private async _applySkipNavigationChanges(changes: JoinRowChange[]): Promise<number> {
-    let count = 0;
-    for (const change of changes) {
-      if (change.operation === 'insert') {
-        await this._provider.insert(change.joinRow, change.joinEntityCtor);
-      } else {
-        await this._provider.delete(change.joinRow, change.joinEntityCtor);
-      }
-      count++;
-    }
-    return count;
-  }
-
-  private async processChange(change: NormalizedChange): Promise<number> {
-    switch (change.state) {
-      case 'added':
-        if (this._spExecutor.hasSp(change.entityClass, 'insert')) {
-          await this._spExecutor.executeInsert(change.entity, change.entityClass);
-          return 1;
-        }
-        await this.applyInsert(change);
-        return 1;
-      case 'modified':
-        if (this._spExecutor.hasSp(change.entityClass, 'update')) {
-          return await this._spExecutor.executeUpdate(
-            change.entity,
-            change.originalValues as Record<string, unknown> | undefined,
-            change.entityClass
-          );
-        }
-        await this.applyUpdate(change);
-        return 1;
-      case 'deleted':
-        if (this._spExecutor.hasSp(change.entityClass, 'delete')) {
-          return await this._spExecutor.executeDelete(
-            change.entity,
-            change.originalValues as Record<string, unknown> | undefined,
-            change.entityClass
-          );
-        }
-        return (await this.applyDelete(change)) ? 1 : 0;
-      default:
-        return 0;
-    }
-  }
-
-  private async applyInsert(
-    change: Pick<NormalizedChange, 'entity' | 'entityClass'>
-  ): Promise<void> {
-    // Primary table insert (normal path).
-    await this._insertCmd.execute({ ...change, state: 'added' });
-
-    // Entity splitting: insert into each secondary fragment table.
-    const meta = this._registry.getEntity(change.entityClass);
-    if (meta?.tableFragments?.length) {
-      for (const fragment of meta.tableFragments) {
-        await this._fragmentExecutor.insertFragment(change.entity, meta, fragment);
-      }
-    }
-  }
-
-  private async applyUpdate(
-    change: Pick<NormalizedChange, 'entity' | 'entityClass' | 'originalValues'>
-  ): Promise<void> {
-    // Primary table update (normal path).
-    await this._updateCmd.execute({ ...change, state: 'modified' });
-
-    // Entity splitting: update each secondary fragment table.
-    const meta = this._registry.getEntity(change.entityClass);
-    if (meta?.tableFragments?.length) {
-      for (const fragment of meta.tableFragments) {
-        await this._fragmentExecutor.updateFragment(
-          change.entity,
-          meta,
-          fragment,
-          change.originalValues
-        );
-      }
-    }
-  }
-
-  private async applyDelete(
-    change: Pick<NormalizedChange, 'entity' | 'entityClass' | 'originalValues'>
-  ): Promise<boolean> {
-    // Entity splitting: delete from secondary fragments first (reverse order) before primary.
-    const meta = this._registry.getEntity(change.entityClass);
-    if (meta?.tableFragments?.length) {
-      for (const fragment of [...meta.tableFragments].reverse()) {
-        await this._fragmentExecutor.deleteFragment(
-          change.entity,
-          meta,
-          fragment,
-          change.originalValues
-        );
-      }
-    }
-
-    return await this._deleteCmd.execute({ ...change, state: 'deleted' });
-  }
-
-  private getPrimaryKey(entityClass: EntityCtorRef): string | undefined {
-    const meta = this._registry.getEntity(entityClass);
-    return meta?.primaryKeys?.[0];
-  }
 }

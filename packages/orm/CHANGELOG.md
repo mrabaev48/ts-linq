@@ -1,5 +1,17 @@
 # @ts-linq/orm
 
+## 4.1.13
+
+### Patch Changes
+
+- Decompose the `DbContext` god class into focused internal collaborators
+  (`DbContextBootstrapper`/`DbContextServices`, `SaveChangesPipeline`,
+  `ChangeExecutor`, `TransactionScope`, `DbSetRegistry`, `ValueGenerationService`).
+  The constructor no longer inlines cache/performance defaulting, and the
+  `saveChanges` body now lives in an ordered step pipeline. This is an internal
+  restructure only — all public method signatures and runtime behaviour are
+  unchanged.
+
 ## 4.1.12
 
 ### Patch Changes
