@@ -1,5 +1,18 @@
 # @ts-linq/migrations
 
+## 2.8.2
+
+### Patch Changes
+
+- Internal cleanup: remove the `builders/MigrationHandlers.ts` re-export grab-bag. Its live
+  logic moved to the matching `handlers/*` modules (index → `IndexHandlers`, column-change +
+  computed/default predicates → `ColumnHandlers`, FK creates → `ForeignKeyHandlers`) and the
+  unique-constraint SQL was consolidated into `UniqueConstraintsSqlBuilder` (routing through the
+  audited quoter). Structural-typing casts in the column-change predicates were replaced with
+  typed `ColumnDef` access. No public API change — `buildAddUniqueConstraintSql`,
+  `buildDropUniqueConstraintSql`, and `buildCreateIndexSql` remain importable and emit identical
+  SQL.
+
 ## 2.8.1
 
 ### Patch Changes

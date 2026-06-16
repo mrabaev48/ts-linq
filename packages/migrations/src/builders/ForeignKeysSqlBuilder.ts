@@ -1,6 +1,6 @@
 import type { Dialect } from '../Dialect';
 import type { TableDiff } from '../DiffTypes';
-import { handleFkCreates, handleFkDrops } from './MigrationHandlers';
+import { handleFkCreates, handleFkDrops } from './handlers/ForeignKeyHandlers';
 
 export class ForeignKeysSqlBuilder {
   constructor(private readonly dialect: Dialect) {}

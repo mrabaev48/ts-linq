@@ -131,8 +131,8 @@ Each package only depends on packages already completed above it.
 | 7 | `core` | runtime | Decompose provider/loader; kill SQL injection + singleton coupling + silent catches. | ✅ done |
 | 8 | `query` | runtime | Decompose `Queryable`; immutability; wire `SqlVisitorOptions`; move SQL out. | ✅ done |
 | 9 | `transformer` | runtime | De-dupe entrypoints; stop swallowing TypeChecker failures. Depends on `ast`. | ✅ done |
-| 10 | `migrations` | runtime | Injection-safe quoting; decompose runner. Needed by `orm` + `cli`. | 🔄 In Progress |
-| 11 | `telemetry` | runtime | De-dupe span mapping; masking. Needed by `orm`; do before it. |
+| 10 | `migrations` | runtime | Injection-safe quoting; decompose runner. Needed by `orm` + `cli`. | ✅ done |
+| 11 | `telemetry` | runtime | De-dupe span mapping; masking. Needed by `orm`; do before it. | 🔄 In Progress |
 | 12 | `orm` | runtime | Decompose `DbContext`/`ChangeTracker`/`DbSet`; public/internal boundary. Top of runtime. |
 | 13 | `dialect-postgres` | dialects | **Reference dialect** — extract the shared base dialect + capability model + central quoting here. |
 | 14 | `dialect-mysql` | dialects | Consume the shared base; sequence emulation; central quoting. |
@@ -221,7 +221,7 @@ Each package only depends on packages already completed above it.
 | jest-config | 2 | 0 | 2 | 0 | 0 | not-started |
 | metadata | 5 | 1 | 2 | 2 | 0 | ✅ done (task-1/2/3/4/5 ✅) |
 | metrics-safe | 3 | 0 | 1 | 1 | 1 |  ✅ done |
-| migrations | 7 | 3 | 3 | 1 | 0 | 🔄 In Progress (task-1, task-2, task-3, task-4, task-5, task-6 ✅) |
+| migrations | 7 | 3 | 3 | 1 | 0 | ✅ done (task-1/2/3/4/5/6/7 ✅) |
 | open-telemetry-sql-logger | 4 | 0 | 3 | 1 | 0 | not-started |
 | orm | 8 | 2 | 4 | 2 | 0 | not-started |
 | pagination | 1 | 0 | 0 | 1 | 0 | not-started |
@@ -234,7 +234,7 @@ Each package only depends on packages already completed above it.
 | provider-postgres | 8 | 2 | 4 | 2 | 0 | not-started |
 | query | 10 | 4 | 4 | 2 | 0 | ✅ done (task-1/2/3/4/5/6/7/8/9/10 ✅) |
 | sql-visitor | 6 | 0 | 2 | 4 | 0 | ✅ done (task-1/2/3/4/5/6 ✅) |
-| telemetry | 3 | 0 | 2 | 1 | 0 | not-started |
+| telemetry | 3 | 0 | 2 | 1 | 0 | 🔄 In Progress |
 | testkits | 6 | 0 | 3 | 3 | 0 | not-started |
 | transformer | 4 | 0 | 2 | 2 | 0 | ✅ done (task-1/2/3/4 ✅) |
 | types | 4 | 0 | 2 | 1 | 1 | ✅ done (task-1, task-2, task-3, task-4 ✅) |
