@@ -90,6 +90,7 @@ describe('Type Exports', () => {
       'ProviderRequiredError',
       'ok',
       'err',
+      'maskSql',
       'LoadingStrategy',
       'EntityState',
       'DeleteBehavior',

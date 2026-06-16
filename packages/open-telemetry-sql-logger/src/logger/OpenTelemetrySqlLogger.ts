@@ -1,4 +1,5 @@
 import type { SqlLogger, SqlParameter } from '@ts-linq/types';
+import { maskSql as maskSqlLiterals } from '@ts-linq/types';
 
 interface OtelLike {
   trace: {
@@ -46,17 +47,7 @@ export class OpenTelemetrySqlLogger implements SqlLogger {
 
   private mask(input: string): string {
     if (!this.maskSql) return input;
-    let s = input;
-    // redact single- and double-quoted strings using safe regexps (no unmatched groups)
-    s = s.replace(/'(?:[^']|''+)*'/g, "'[REDACTED]'").replace(/"(?:[^"\\]|\\.)*"/g, '"[REDACTED]"');
-    for (const re of this.maskPatterns) {
-      try {
-        s = s.replace(re, '[REDACTED]');
-      } catch {
-        // Ignore regex errors
-      }
-    }
-    return s;
+    return maskSqlLiterals(input, this.maskPatterns);
   }
 
   public debug(_message: string, _meta?: Record<string, unknown>): void {

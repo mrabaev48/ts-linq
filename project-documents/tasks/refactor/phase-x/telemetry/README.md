@@ -54,7 +54,7 @@ silent-discard emitter and duplicated masking.
 | Order | Task | Priority | Reason |
 |---:|---|---|---|
 | 1 | ✅ task-1.md — Make DiagnosticEmitter's discarded resilience/cache events routable (no silent discard) | P1 | Operationally important events are invisible with no opt-in |
-| 2 | task-2.md — Extract shared SQL-masking utility; remove triplicated regex masking | P1 | Same redaction copy-pasted in 3 loggers; security-sensitive |
+| 2 | ✅ task-2.md — Extract shared SQL-masking utility; remove triplicated regex masking | P1 | Same redaction copy-pasted in 3 loggers; security-sensitive |
 | 3 | task-3.md — Fix DiagnosticEmitter text logging routing through empty-string event id | P2 | Magic value; warning routes never apply to text logs |
 
 ## Dependencies on other packages
