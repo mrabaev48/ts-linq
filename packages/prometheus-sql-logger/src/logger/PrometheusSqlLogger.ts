@@ -1,4 +1,5 @@
 import type { SqlLogger, SqlParameter } from '@ts-linq/types';
+import { maskSql as maskSqlLiterals } from '@ts-linq/types';
 
 type LabelValues = Record<string, string>;
 
@@ -611,15 +612,7 @@ export class PrometheusSqlLogger implements SqlLogger {
   }
   private maskIfNeeded(sql: string): string {
     if (!this.maskSql) return sql;
-    let s = sql;
-    // redact single- and double-quoted strings using safe regexps (no unmatched groups)
-    s = s.replace(/'(?:[^']|''+)*'/g, "'[REDACTED]'").replace(/"(?:[^"\\]|\\.)*"/g, '"[REDACTED]"');
-    for (const re of this.maskPatterns) {
-      try {
-        s = s.replace(re, '[REDACTED]');
-      } catch {}
-    }
-    return s;
+    return maskSqlLiterals(sql, this.maskPatterns);
   }
   private parseOperation(sql: string): string {
     const m = sql.trim().match(/^(SELECT|INSERT|UPDATE|DELETE)\b/i);

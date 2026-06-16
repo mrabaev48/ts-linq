@@ -13,6 +13,7 @@ import type {
   SqlLogger,
   TransactionInfo
 } from '@ts-linq/types';
+import { maskSql as maskSqlLiterals } from '@ts-linq/types';
 
 import { parseTagsFromSql } from '../tag-span-attributes';
 
@@ -52,17 +53,7 @@ export class TelemetryProvider implements SqlLogger {
 
   private mask(sql: string): string {
     if (!this.maskSql) return sql;
-    let s = sql
-      .replace(/'(?:[^']|''+)*'/g, "'[REDACTED]'")
-      .replace(/"(?:[^"\\]|\\.)*"/g, '"[REDACTED]"');
-    for (const re of this.maskPatterns) {
-      try {
-        s = s.replace(re, '[REDACTED]');
-      } catch {
-        // ignore invalid regex patterns
-      }
-    }
-    return s;
+    return maskSqlLiterals(sql, this.maskPatterns);
   }
 
   // OTel is span/trace-only — text log methods are intentional no-ops
