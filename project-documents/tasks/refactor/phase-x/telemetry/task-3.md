@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: telemetry
 priority: P2
@@ -74,10 +74,10 @@ small **Clean Code** fix:
 
 ## Acceptance criteria
 
-- [ ] No `route('', ...)` calls remain.
-- [ ] Text logs carry real, catalogued event ids.
-- [ ] Text logs honour `suppress`/`throw`/`log` like structured events.
-- [ ] Default (unconfigured) output behaviour is unchanged.
+- [x] No `route('', ...)` calls remain.
+- [x] Text logs carry real, catalogued event ids.
+- [x] Text logs honour `suppress`/`throw`/`log` like structured events.
+- [x] Default (unconfigured) output behaviour is unchanged.
 
 ## Refactor order
 

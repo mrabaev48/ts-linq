@@ -105,6 +105,54 @@ describe('DiagnosticEmitter — warning routing', () => {
   });
 });
 
+describe('DiagnosticEmitter — text-log routing', () => {
+  it('suppress("core.log-warn") silences warn() output', () => {
+    const routes = new Map([['core.log-warn', 'suppress' as const]]);
+    const { emitter, messages } = makeEmitter({ level: 'debug', warningRoutes: routes });
+    emitter.warn('careful');
+    expect(messages).toHaveLength(0);
+  });
+
+  it('suppress("core.log-warn") does not affect other text levels', () => {
+    const routes = new Map([['core.log-warn', 'suppress' as const]]);
+    const { emitter, messages } = makeEmitter({ level: 'debug', warningRoutes: routes });
+    emitter.info('still here');
+    emitter.error('also here');
+    expect(messages).toEqual(['still here', 'also here']);
+  });
+
+  it('level filtering still applies to a non-suppressed text log', () => {
+    const routes = new Map([['core.log-warn', 'suppress' as const]]);
+    const { emitter, messages } = makeEmitter({ level: 'warning', warningRoutes: routes });
+    // info is below the configured warning level → filtered out by level, not by route
+    emitter.info('below threshold');
+    expect(messages).toHaveLength(0);
+  });
+
+  it('throw("core.log-error") raises EfWarningError from error()', () => {
+    const routes = new Map([['core.log-error', 'throw' as const]]);
+    const { emitter } = makeEmitter({ level: 'error', warningRoutes: routes });
+    expect(() => emitter.error('boom')).toThrow(EfWarningError);
+  });
+
+  it('log("core.log-debug") forces output even when level is above the threshold', () => {
+    const routes = new Map([['core.log-debug', 'log' as const]]);
+    const { emitter, messages } = makeEmitter({ level: 'error', warningRoutes: routes });
+    emitter.debug('forced');
+    expect(messages).toEqual(['forced']);
+  });
+
+  it('default (no routes) text-log behaviour is unchanged', () => {
+    const { emitter, messages } = makeEmitter({ level: 'information' });
+    emitter.debug('d');
+    emitter.info('i');
+    emitter.warn('w');
+    emitter.error('e');
+    // debug is below information and dropped; the rest pass through unchanged
+    expect(messages).toEqual(['i', 'w', 'e']);
+  });
+});
+
 describe('DiagnosticEmitter — queryEnd success', () => {
   it('includes duration in output', () => {
     const { emitter, messages } = makeEmitter();

@@ -1,5 +1,12 @@
 # @ts-linq/orm
 
+## 4.1.12
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/telemetry@2.3.0
+
 ## 4.1.11
 
 ### Patch Changes
