@@ -1,5 +1,13 @@
 # @ts-linq/telemetry
 
+## 2.3.0
+
+### Minor Changes
+
+- Make `DiagnosticEmitter` text-log methods (`debug`/`info`/`warn`/`error`) routable like structured events.
+
+  These methods previously routed through a magic empty-string event id (`''`), so the per-event warning routes (`suppress`/`throw`/`log`) configured via `WarningConfigurationBuilder` could never apply to plain text logs. They now carry real catalogued ids — `CoreEventId.logDebug` (`core.log-debug`), `logInfo` (`core.log-info`), `logWarn` (`core.log-warn`), `logError` (`core.log-error`) — so users can `suppress`/`throw`/`log` text-log categories just like structured events. Log-level filtering and default (unconfigured) output behaviour are unchanged.
+
 ## 2.2.1
 
 ### Patch Changes
