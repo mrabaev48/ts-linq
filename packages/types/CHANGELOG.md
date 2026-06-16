@@ -1,5 +1,20 @@
 # @ts-linq/types
 
+## 4.7.0
+
+### Minor Changes
+
+- Extract a single shared `maskSql(sql, patterns?)` SQL-literal redaction utility into
+  `@ts-linq/types` (alongside the other pure runtime helpers) and have all three
+  `SqlLogger` implementations delegate to it.
+
+  Previously the same security-sensitive redaction (two literal regexes plus a custom
+  `maskPatterns` loop with per-pattern `try/catch`) was copy-pasted into
+  `TelemetryProvider.mask`, `OpenTelemetrySqlLogger.mask`, and
+  `PrometheusSqlLogger.maskIfNeeded`, so a hardening fixed in one logger silently left
+  the other two leaking literals. The masked output is byte-identical to the previous
+  behaviour; this is a pure de-duplication onto one tested unit.
+
 ## 4.6.0
 
 ### Minor Changes
