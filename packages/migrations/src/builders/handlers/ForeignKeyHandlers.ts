@@ -26,6 +26,17 @@ export function deleteBehaviorToSql(behavior: DeleteBehavior): string | undefine
   }
 }
 
+export function handleFkCreates(td: TableDiff, dialect: Dialect, up: string[]): void {
+  const fkc = td.fkCreates;
+  if (!fkc || fkc.length === 0) return;
+  for (const fk of fkc) {
+    const okCols = Array.isArray(fk.columns) && fk.columns.length > 0;
+    const okRef = Array.isArray(fk.refColumns) && fk.refColumns.length > 0;
+    if (!okCols || !okRef) continue;
+    up.push(buildAddFkSql(dialect, td.table, fk));
+  }
+}
+
 export function handleFkDrops(td: TableDiff, dialect: Dialect, up: string[]): void {
   const fkd = td.fkDrops;
   if (!fkd || fkd.length === 0) return;

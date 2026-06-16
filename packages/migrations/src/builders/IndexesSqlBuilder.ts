@@ -1,6 +1,6 @@
 import type { Dialect } from '../Dialect';
 import type { TableDiff } from '../DiffTypes';
-import { handleIndexCreates, handleIndexDrops } from './MigrationHandlers';
+import { handleIndexCreates, handleIndexDrops } from './handlers/IndexHandlers';
 
 export class IndexesSqlBuilder {
   constructor(private readonly dialect: Dialect) {}

@@ -1,6 +1,6 @@
 # Refactor Audit: migrations
 
-**Status: 🔄 In Progress** — task-1, task-2, task-3, task-4, task-5, task-6 ✅ completed; task-7 pending.
+**Status: ✅ Complete** — task-1, task-2, task-3, task-4, task-5, task-6, task-7 ✅ completed. All tasks done.
 
 ## Package responsibility
 
@@ -67,7 +67,7 @@ dialect SQL via the `Dialect` string union instead of delegating.
 | 4 | task-4.md — Typed error hierarchy for migrations | P1 | ✅ Completed | Foundation for error model; **pulled ahead of task-2/task-3** to satisfy task-2's `depends_on` (runner consumes `MigrationApplyError`/`MigrationRollbackError`). Classes extend `OrmError` in `@ts-linq/types` (CLAUDE.md §16 — no parallel hierarchy); non-runner serializer/bundle/seed sites migrated, runner deferred to task-2 |
 | 5 | task-5.md — Decompose snapshot builders into strategy expanders | P1 | ✅ Completed | Both god-builders → thin coordinators over ordered `EntityExpander` strategies (`snapshot/expanders/`): model = `OwnedEntity`/`ComplexType`/`Inheritance`/`SkipNavigation`; schema = `ShadowProperty`/`TableFragment`/`Sequence` + `ForeignKeyResolver`. Single `ColumnMapper` owns the column→snapshot mapping (model + schema + shadow + portable-type). `MetadataStorage`/`SequenceRegistry` coupling inverted via additive public `buildFrom(entities[, sequences])`; no-arg `buildFromMetadata`/`buildExpectedFromMetadata` retained as back-compat default. Canonical sorting centralized in the model coordinator; expanders read only the injected context |
 | 6 | task-6.md — Centralize dialect-inspector selection | P1 | ✅ Completed | New `SchemaInspector` interface + `SchemaInspectorFactory.for(label, provider)` (`SchemaInspector.ts`) — the single dialect → inspector selection point (Factory + ISP + DIP). Both duplicated dispatch chains (`SchemaSnapshot.buildActualFromProvider`, `SchemaInspectionService.buildActualSnapshot` ×2) now resolve one inspector via the factory; no `if (label === …)` inspector dispatch remains outside it. The two divergent unknown-dialect fallbacks (assume-exists vs empty indexes) are unified into one documented policy: unsupported labels throw the typed `UnsupportedOperationError` (`@ts-linq/types`). Supported-dialect snapshots unchanged |
-| 7 | task-7.md — Clean up MigrationHandlers grab-bag + structural casts | P2 | ⬜ Pending | Clean-code / typescript debt; low cohesion |
+| 7 | task-7.md — Clean up MigrationHandlers grab-bag + structural casts | P2 | ✅ Completed | Full pure-barrel: the 359-LOC hybrid `builders/MigrationHandlers.ts` is **deleted**; its live logic moved to the matching `handlers/*` files (index → `IndexHandlers`, column-change + computed/default predicates → `ColumnHandlers`, FK creates → `ForeignKeyHandlers`) and the unique-constraint SQL consolidated into `UniqueConstraintsSqlBuilder` (already routing through the task-1 quoter — bypass confirmed closed). The four `*SqlBuilder`s and `index.ts` import directly from the new homes; all previously-exported names (`buildAddUniqueConstraintSql`, `buildDropUniqueConstraintSql`, `buildCreateIndexSql`) stay importable. Structural casts in the moved predicates removed — the fields (`isComputed`/`computedExpression`/`computedStorage`/`defaultExpression`) were already first-class on `ColumnDef`; new type-level + adversarial-escaping + barrel-contract tests added. Dead `// moved to …` comments gone with the file |
 
 ## Dependencies on other packages
 
@@ -91,8 +91,9 @@ dialect SQL via the `Dialect` string union instead of delegating.
 ## Notes
 
 - LOC ≈ 9.6K. Largest: `model-snapshot.ts` (427), `SchemaSnapshot.ts` (414),
-  `MigrationHandlers.ts` (359), `MigrationBuilder.ts` (333), `idempotent-emitter.ts`
-  (253), `build-bundle.ts` (252).
+  `MigrationBuilder.ts` (333), `idempotent-emitter.ts` (253), `build-bundle.ts` (252).
+  (`MigrationHandlers.ts`, formerly 359, was removed in task-7 — its logic now lives in
+  `handlers/*` and `UniqueConstraintsSqlBuilder`.)
 - ~~`idempotent-emitter` and `MigrationRunner` define the `__migrations` table schema
   independently and slightly differently — consistency risk noted in task-2.~~ ✅ Resolved
   in task-2: both now consume the single `runner/MigrationsTableSchema.ts`
@@ -114,3 +115,20 @@ dialect SQL via the `Dialect` string union instead of delegating.
   index/uniqueConstraint mapping, which stay in the schema coordinator. These were left out of
   the expander interface deliberately (scope), and could be folded into the strategy model
   later if the coordinator grows further.
+
+### task-7 follow-ups (tech debt)
+
+- **Quoter bypass confirmed closed.** The unique-constraint SQL (now in
+  `UniqueConstraintsSqlBuilder`) routes every identifier through `q()` →
+  `QuoterFactory.for(dialect)` (task-1). No raw `` `${tableName}` `` / `[${tableName}]`
+  interpolation remains anywhere in the unique-constraint path; covered by the new
+  adversarial-escaping test.
+- **Remaining structural casts elsewhere in `migrations` (out of task-7 scope).** A handful of
+  `as { … }` casts still read loosely-typed *actual-snapshot* shapes returned by introspection:
+  `builders/handlers/ColumnHandlers.ts:51` (`defaultExpressionDialect` in `renderColumn` — not a
+  declared `ColumnDef` member), `SchemaSnapshot.ts:127-131,240`,
+  `comparators/IndexComparator.ts:25-30`, `comparators/ColumnComparator.ts:12-13`. These were not
+  in task-7's evidence (which targeted the now-deleted `MigrationHandlers` predicates) and reach
+  fields on provider-introspected objects rather than the typed model. Candidate follow-up: model
+  the actual-snapshot shape as a typed interface (or promote `defaultExpressionDialect` onto
+  `ColumnDef`) so these casts can be dropped too.

@@ -97,7 +97,7 @@ describe('Alternate Keys — DDL generation', () => {
   });
 });
 
-// ── MigrationHandlers helper functions ───────────────────────────────────────
+// ── Unique-constraint / index SQL helper functions ───────────────────────────
 
 describe('buildAddUniqueConstraintSql / buildDropUniqueConstraintSql', () => {
   it('PG: wraps columns in double-quotes', () => {
