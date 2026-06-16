@@ -122,35 +122,65 @@ export class DiagnosticEmitter implements SqlLogger {
     this.route('core.transaction-end', 'debug', 'Transaction ended');
   }
 
-  cache(_info: CacheInfo): void {
-    /* cache events are not forwarded to the text sink by default */
+  cache(info: CacheInfo): void {
+    this.route('core.cache', 'trace', `Cache ${info.hit ? 'hit' : 'miss'} [${info.cache}]`);
   }
 
-  connectionHealth(_info: ConnectionHealthInfo): void {
-    /* connection health events are not forwarded to the text sink by default */
+  connectionHealth(info: ConnectionHealthInfo): void {
+    const level = info.healthy ? 'debug' : 'warning';
+    const lat = info.latencyMs != null ? ` (${info.latencyMs}ms)` : '';
+    this.route(
+      'core.connection-health',
+      level,
+      `Connection ${info.healthy ? 'healthy' : 'unhealthy'}${lat}`
+    );
   }
 
-  circuit(_info: CircuitEventInfo): void {
-    /* circuit events are not forwarded to the text sink by default */
+  circuit(info: CircuitEventInfo): void {
+    const reason = info.reason ? ` — ${info.reason}` : '';
+    this.route(
+      'core.circuit-open',
+      'warning',
+      `Circuit ${info.state}${reason} (failures: ${info.failures ?? 0})`
+    );
   }
 
-  fallback(_info: FallbackInfo): void {
-    /* fallback events are not forwarded to the text sink by default */
+  fallback(info: FallbackInfo): void {
+    const level = info.succeeded === false ? 'error' : 'warning';
+    const stale = info.isStale ? ' [stale]' : '';
+    this.route(
+      'core.fallback',
+      level,
+      `Fallback "${info.fallback}"${stale}: ${info.succeeded ? 'succeeded' : 'failed'}`
+    );
   }
 
-  hedgedWin(_info: HedgedWinInfo): void {
-    /* hedged-win events are not forwarded to the text sink by default */
+  hedgedWin(info: HedgedWinInfo): void {
+    this.route(
+      'core.hedged-win',
+      'debug',
+      `Hedged win: "${info.fallback}" won operation "${info.operation}"`
+    );
   }
 
-  analysis(_info: QueryAnalysisInfo): void {
-    /* analysis events are not forwarded to the text sink by default */
+  analysis(info: QueryAnalysisInfo): void {
+    const slow = info.slow ? ' [SLOW]' : '';
+    this.route(
+      'core.analysis',
+      'debug',
+      `Query analysis${slow} (${info.durationMs}ms): ${info.sql}`
+    );
   }
 
-  crossQuery(_params: CrossQueryParams): void {
-    /* cross-query events are not forwarded to the text sink by default */
+  crossQuery(params: CrossQueryParams): void {
+    this.route(
+      'relational.cross-query-chunk',
+      'debug',
+      `Cross-query ${params.op} on ${params.entity}.${params.column}: ${params.chunks} chunks, size=${params.size}`
+    );
   }
 
-  cacheSize(_params: CacheSizeInfo): void {
-    /* cache-size events are not forwarded to the text sink by default */
+  cacheSize(params: CacheSizeInfo): void {
+    this.route('core.cache-size', 'trace', `Cache size [${params.cache}]: ${params.size}`);
   }
 }
