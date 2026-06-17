@@ -59,6 +59,11 @@ export type NavElement<X> = X extends ReadonlyArray<infer E> ? E : NonNullable<X
  * Fluent query builder over a given entity type. Accumulates query intent
  * in a QueryModel and delegates SQL generation to QueryBuilder.
  */
+// NOTE: `Queryable` deliberately does *not* `implements IQueryableSurface` — that would create a
+// src-level import cycle with `IQueryableSurface` (which references `Queryable` for its return
+// types) and trip the no-circular architecture rule. The contract is enforced instead by a
+// type-level assertion in `tests-new/IQueryableSurface.type.test.ts` (test files are outside the
+// dependency-cruiser graph), backed at runtime by the `DbSet ↔ Queryable` parity test.
 export class Queryable<T> {
   /** Used by the compile-time transformer to identify Queryable instances. Do not use at runtime. */
   declare readonly __tsLinqWhereTransformerBrand: true;

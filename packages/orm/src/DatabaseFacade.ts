@@ -1,8 +1,8 @@
 import { ExecutionStrategy } from '@ts-linq/concurrency';
 import type { DatabaseProvider } from '@ts-linq/core';
-import { Queryable } from '@ts-linq/query';
-import { QueryContext } from '@ts-linq/query/internal';
+import type { Queryable } from '@ts-linq/query';
 
+import { QueryableFactory } from './context/QueryableFactory';
 import type { MigrateOptions } from './database/has-pending-model-changes';
 import { PendingModelChangesChecker } from './database/has-pending-model-changes';
 import type { DbSetContext } from './DbSetContext';
@@ -99,10 +99,10 @@ export class DatabaseFacade {
    */
   sqlQuery<T extends object>(query: SqlInterpolated, entityClass: new () => T): Queryable<T> {
     const { sql, params } = interpolatedToRaw(query);
-    return new Queryable<T>(
-      entityClass,
-      new QueryContext({ provider: this._provider, entityLoader: this._context.entityLoader })
-    )._withRawSqlSource({ sql, params });
+    return QueryableFactory.raw(entityClass, this._provider, this._context.entityLoader, {
+      sql,
+      params
+    });
   }
 
   /**
@@ -120,10 +120,10 @@ export class DatabaseFacade {
     ...values: unknown[]
   ): Queryable<T> {
     const params = values.map(toSqlParam);
-    return new Queryable<T>(
-      entityClass,
-      new QueryContext({ provider: this._provider, entityLoader: this._context.entityLoader })
-    )._withRawSqlSource({ sql: rawSql, params });
+    return QueryableFactory.raw(entityClass, this._provider, this._context.entityLoader, {
+      sql: rawSql,
+      params
+    });
   }
 
   /**
