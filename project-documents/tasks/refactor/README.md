@@ -223,7 +223,7 @@ Each package only depends on packages already completed above it.
 | metrics-safe | 3 | 0 | 1 | 1 | 1 |  ✅ done |
 | migrations | 7 | 3 | 3 | 1 | 0 | ✅ done (task-1/2/3/4/5/6/7 ✅) |
 | open-telemetry-sql-logger | 4 | 0 | 3 | 1 | 0 | not-started |
-| orm | 8 | 2 | 4 | 2 | 0 | 🔄 In Progress (task-1/2/3 ✅) |
+| orm | 8 | 2 | 4 | 2 | 0 | 🔄 In Progress (task-1/2/3/4 ✅) |
 | pagination | 1 | 0 | 0 | 1 | 0 | not-started |
 | plugin-audit | 5 | 1 | 3 | 1 | 0 | not-started |
 | plugin-multi-tenant | 6 | 2 | 3 | 1 | 0 | not-started |
