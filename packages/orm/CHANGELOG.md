@@ -1,5 +1,32 @@
 # @ts-linq/orm
 
+## 4.2.0
+
+### Minor Changes
+
+- Replace `DbSet`'s ~50 hand-forwarded `Queryable` operators with a single-source-of-truth delegation.
+  - **`@ts-linq/query`**: new public type `IQueryableSurface<T>` describing the full chain-starting
+    query operator surface of `Queryable`. `Queryable` keeps its precise signatures; the contract is
+    asserted by a type-level test (a `src`-level `implements` would create an import cycle).
+  - **`@ts-linq/orm`**: `DbSet<T>` no longer mirrors `Queryable` by hand (810 → 383 LOC). It
+    declaration-merges `IQueryableSurface<T>` for full, inference-preserving types and installs one
+    delegating forwarder per operator at runtime, each routed through a cached chain-starting seed
+    `Queryable` (removing the former per-operator allocation). A `DbSet ↔ Queryable` parity contract
+    test now guards the surface, so a new operator added to `@ts-linq/query` is surfaced on `DbSet`
+    automatically instead of relying on developer discipline. The compile-time transformer brand and
+    the branded `*Compiled` operators remain reachable. A new `QueryableFactory` is the single
+    `Queryable` construction site, shared by `DbSet` and `DatabaseFacade`.
+
+    Additive surface: `DbSet` now also exposes `ofType`, `asSplitQuery`, `asSingleQuery`, and
+    `toListAsync` (already on `Queryable`), reaching full EF-Core-style parity. No existing `DbSet`
+    call site changes — direct terminals such as `ctx.users.toArray()` /
+    `ctx.logs.executeDelete()` keep working.
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/query@4.1.0
+
 ## 4.1.14
 
 ### Patch Changes

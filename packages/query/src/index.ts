@@ -10,6 +10,7 @@ export { IncludeResolutionError } from './errors';
 export type { KeySelector } from './extractKey';
 export type { NavigationProxy } from './include/IncludeSubquery';
 export { IncludeSubquery } from './include/IncludeSubquery';
+export type { IQueryableSurface } from './IQueryableSurface';
 export type { NavElement } from './Queryable';
 export { IncludableQueryable, OrderedQueryable, Queryable } from './Queryable';
 export { QueryModel } from './QueryModel';
