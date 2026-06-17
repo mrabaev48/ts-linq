@@ -24,6 +24,7 @@ import type {
 } from '@ts-linq/types';
 
 import type { ChangeTracker } from './ChangeTracker';
+import { type DiagnosticSink, NULL_DIAGNOSTIC_SINK } from './context/DiagnosticSink';
 import type { DbSetContext } from './DbSetContext';
 import { KeylessMutationError } from './exceptions/KeylessMutationError';
 import type { LocalView } from './LocalView';
@@ -55,6 +56,7 @@ export class DbSet<T extends object> {
   private _querySplittingBehavior?: QuerySplittingBehavior;
   private _entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>;
   private _registry?: import('@ts-linq/metadata').MetadataRegistry;
+  private _diagnosticSink: DiagnosticSink = NULL_DIAGNOSTIC_SINK;
   private static readonly DEFAULT_IN_CHUNK_SIZE = 1000;
 
   /**
@@ -95,6 +97,7 @@ export class DbSet<T extends object> {
     this._querySplittingBehavior = context.querySplittingBehavior;
     this._entityQueryFilters = context.entityQueryFilterMap?.get(this._entityClass);
     this._registry = context.registry;
+    this._diagnosticSink = context.diagnosticSink ?? NULL_DIAGNOSTIC_SINK;
   }
 
   private _assertNotKeyless(operation: string): void {
@@ -798,8 +801,10 @@ export class DbSet<T extends object> {
 
       const prefix = `${ns}${providerPrefix}${entityName}|count|`;
       extCount.invalidateBy((key: string) => key.startsWith(prefix));
-    } catch {
-      // ignore errors during cache invalidation
+    } catch (e) {
+      // Count-cache invalidation is telemetry-adjacent bookkeeping: log and
+      // continue so cache-key drift is visible instead of silently swallowed.
+      this._diagnosticSink.internalDiag('DbSet.invalidateCountCache', e);
     }
   }
 }

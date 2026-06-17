@@ -18,6 +18,7 @@ import { CacheCoordinator } from '../services/CacheCoordinator';
 import { ChangeValidationService } from '../services/ChangeValidationService';
 import { SoftDeleteInterceptor } from '../services/SoftDeleteInterceptor';
 import type { DbContextServices } from './DbContextServices';
+import { createDiagnosticSink } from './DiagnosticSink';
 
 /** Mutable view used internally while the services graph is assembled. */
 type MutableServices = { -readonly [K in keyof DbContextServices]: DbContextServices[K] };
@@ -60,6 +61,10 @@ export class DbContextBootstrapper {
     if (options.logging?.sink) {
       provider.attachLogger(new DiagnosticEmitter(options.logging));
     }
+    // Build the internal diagnostics sink from the (now attached) provider logger.
+    // Null Object when no logger is configured, keeping swallow-path call sites
+    // branch-free and silent by default.
+    services.diagnosticSink = createDiagnosticSink(provider.loggerRef);
     services.globalFilters = options.globalFilters;
     services.diagnostics = options.diagnostics;
     // Start external memory profiler if provided
@@ -70,7 +75,8 @@ export class DbContextBootstrapper {
     }
     services.validationService = new ChangeValidationService(
       options.validation?.translate,
-      options.audit
+      options.audit,
+      services.diagnosticSink
     );
 
     const registry: MetadataRegistry = options.registry ?? MetadataStorage.getInstance();
@@ -129,7 +135,8 @@ export class DbContextBootstrapper {
       provider.providerLabel,
       services.performanceOptions?.cacheNamespace,
       registry,
-      (ec) => registry.getEntity(ec)?.primaryKeys?.[0]
+      (ec) => registry.getEntity(ec)?.primaryKeys?.[0],
+      services.diagnosticSink
     );
 
     services.auditInterceptor = new AuditInterceptor(options.audit, (ec) => registry.getEntity(ec));

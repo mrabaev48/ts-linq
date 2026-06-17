@@ -3,6 +3,8 @@ import type { EntityCtorRef } from '@ts-linq/types';
 import type { AuditOptions, ValidationRule } from '@ts-linq/types';
 import { ValidationError } from '@ts-linq/types';
 
+import { type DiagnosticSink, NULL_DIAGNOSTIC_SINK } from '../context/DiagnosticSink';
+
 type ChangeForValidation = {
   entity: Record<string, unknown>;
   entityClass: EntityCtorRef;
@@ -14,14 +16,17 @@ type ChangeForValidation = {
 export class ChangeValidationService {
   private readonly translate?: (key: string, params?: Record<string, unknown>) => string;
   private readonly audit?: AuditOptions;
+  private readonly diagnostics: DiagnosticSink;
   private readonly rulesCache: WeakMap<EntityCtorRef, ValidationRule[]> = new WeakMap();
 
   constructor(
     translate?: (key: string, params?: Record<string, unknown>) => string,
-    audit?: AuditOptions
+    audit?: AuditOptions,
+    diagnostics: DiagnosticSink = NULL_DIAGNOSTIC_SINK
   ) {
     this.translate = translate;
     this.audit = audit;
+    this.diagnostics = diagnostics;
   }
 
   public validate(changes: ChangeForValidation[]): void {
@@ -219,8 +224,11 @@ export class ChangeValidationService {
           errors.push(this.buildValidationDetail(meta, rule.propertyName, baseMsg));
         }
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      // Conditional validation rules run user-supplied predicates; a misbehaving
+      // predicate must not abort the whole validation pass, but the failure is
+      // logged instead of silently dropped.
+      this.diagnostics.internalDiag('ChangeValidationService.runConditionalValidations', e);
     }
   }
 

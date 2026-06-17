@@ -2,6 +2,7 @@ import { reflectGetOwnMetadata } from '@ts-linq/metadata';
 import type { EntityCtorRef } from '@ts-linq/types';
 import type { CountCache, EntityCacheLike } from '@ts-linq/types';
 
+import { type DiagnosticSink, NULL_DIAGNOSTIC_SINK } from '../context/DiagnosticSink';
 import type { NormalizedChange } from '../types';
 
 type SqlCacheLike = { invalidateBy?: (m: (k: string) => boolean) => number };
@@ -26,7 +27,8 @@ export class CacheCoordinator {
     private readonly providerLabel: string | undefined,
     private readonly cacheNamespace: string | undefined,
     private readonly registry: RegistryLike,
-    private readonly getPrimaryKey: (entityClass: EntityCtorRef) => string | undefined
+    private readonly getPrimaryKey: (entityClass: EntityCtorRef) => string | undefined,
+    private readonly diagnostics: DiagnosticSink = NULL_DIAGNOSTIC_SINK
   ) {}
 
   updateEntry(change: Pick<NormalizedChange, 'entity' | 'entityClass'>): void {
@@ -50,29 +52,32 @@ export class CacheCoordinator {
       this.removeDeletedFromEntityCache(changes, needFullL2Clear);
       this.invalidateSqlCacheByNames(changedNames);
       this.invalidateCountCacheByNames(changedNames);
-    } catch {
-      /* ignore */
+    } catch (e) {
+      this.diagnostics.internalDiag('CacheCoordinator.invalidateAfterMutation', e);
     }
   }
 
+  /**
+   * Invalidate caches after a committed transaction. Intentionally does NOT
+   * swallow: a failure here means the cache may now be stale relative to the
+   * just-committed data, so the error must propagate to the caller
+   * ({@link TransactionScope.commit}) which surfaces an observable staleness
+   * warning. Swallowing it here would hide the very defect orm/task-2 fixes.
+   */
   invalidateOnCommit(): void {
-    try {
-      if (this.entityCache) this.entityCache.clear();
-    } catch {
-      /* ignore */
-    }
+    if (this.entityCache) this.entityCache.clear();
   }
 
   clearAll(): void {
     try {
       if (this.entityCache) this.entityCache.clear();
-    } catch {
-      /* ignore */
+    } catch (e) {
+      this.diagnostics.internalDiag('CacheCoordinator.clearAll.entityCache', e);
     }
     try {
       this.countCache?.clear();
-    } catch {
-      /* ignore */
+    } catch (e) {
+      this.diagnostics.internalDiag('CacheCoordinator.clearAll.countCache', e);
     }
   }
 
@@ -84,8 +89,8 @@ export class CacheCoordinator {
           this.sqlCache.invalidateBy((k) => k.startsWith(prefix) || k.includes(`|${name}|`));
         }
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      this.diagnostics.internalDiag('CacheCoordinator.invalidateByEntityNames.sqlCache', e);
     }
     try {
       if (this.countCache?.invalidateBy) {
@@ -93,8 +98,8 @@ export class CacheCoordinator {
           this.countCache.invalidateBy((k) => k.includes(`|count|`) && k.includes(`${name}|`));
         }
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      this.diagnostics.internalDiag('CacheCoordinator.invalidateByEntityNames.countCache', e);
     }
   }
 
@@ -109,8 +114,8 @@ export class CacheCoordinator {
           return true;
         }
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      this.diagnostics.internalDiag('CacheCoordinator.computeNeedFullL2Clear', e);
     }
     return false;
   }
@@ -130,8 +135,8 @@ export class CacheCoordinator {
         }
       }
       if (needFullClear) this.entityCache.clear();
-    } catch {
-      /* ignore */
+    } catch (e) {
+      this.diagnostics.internalDiag('CacheCoordinator.removeDeletedFromEntityCache', e);
     }
   }
 
@@ -145,8 +150,8 @@ export class CacheCoordinator {
           this.sqlCache.invalidateBy((key) => key.startsWith(prefix));
         }
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      this.diagnostics.internalDiag('CacheCoordinator.invalidateSqlCacheByNames', e);
     }
   }
 
@@ -159,8 +164,8 @@ export class CacheCoordinator {
         const prefix = `${ns}${providerPrefix}${name}|count|`;
         this.countCache.invalidateBy((key) => key.startsWith(prefix));
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      this.diagnostics.internalDiag('CacheCoordinator.invalidateCountCacheByNames', e);
     }
   }
 }
