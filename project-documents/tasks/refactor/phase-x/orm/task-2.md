@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: orm
 priority: P0
@@ -114,3 +114,40 @@ No empty `catch {}` and no commented-out logging may remain.
 This is independent of task-1 but should land before or together with it, since
 task-1 moves several of these methods into new classes; fixing the catches first
 keeps the move mechanical.
+
+## Implementation note (completed)
+
+Implemented on branch `audit-refactor/orm-fix-silent-catches`.
+
+- **Seam:** new internal `DiagnosticSink` (`src/context/DiagnosticSink.ts`) with a
+  `NULL_DIAGNOSTIC_SINK` Null Object, a logger-backed default routing through the
+  existing `provider.loggerRef` (`SqlLogger`), and `createDiagnosticSink(logger)`.
+  Built once in `DbContextBootstrapper` and carried on `DbContextServices`.
+- **The 7 cited sites** were reclassified per the table (debug recovery / warn
+  cleanup / observable staleness). Post-commit invalidation failure now emits an
+  **observable structured staleness warning** (`{ staleCache: true }`) via
+  `cacheStaleAfterCommit`.
+- **Scope expanded to a full `orm/src` sweep** (user-approved): the original 7
+  sites were not the only silent swallows. Critically, `CacheCoordinator`
+  (`src/services/CacheCoordinator.ts`) had **9** `catch { /* ignore */ }` blocks —
+  and `invalidateOnCommit()` self-swallowed, so without fixing it the new
+  staleness warning would have been dead code (the throw never reached
+  `TransactionScope`). `invalidateOnCommit()` now propagates; the remaining 8 log
+  via the sink. Four further pre-existing swallows were reclassified:
+  `ChangeValidationService.runConditionalValidations` (sink-injected),
+  `DbContextTransaction.asyncDispose` rollback + `PendingModelChangesChecker
+  .loadMigrationClass` (sink built from `provider.loggerRef`), and the
+  `GraphIterator` thunk-vs-ctor **capability probe** (restructured to a non-empty,
+  documented catch — no logger, it is expected control flow).
+- **CI gate:** new `packages/orm/eslint.config.mjs` adds a scoped
+  `no-restricted-syntax` rule banning empty catch in `src/**`, plus a
+  `tests-new/NoEmptyCatch.test.ts` grep gate (also forbids commented
+  `logInternalError`).
+- **Coordination with task-5:** the reclassified catches log-and-continue; where
+  task-5 later wraps/rethrows, it should adopt typed `OrmError` subclasses. No
+  parallel hierarchy introduced here.
+- **Validation:** typecheck, lint (empty-catch rule enforced, 0 errors), unit
+  3683, integration 457 (one MSSQL-spatial container flake re-confirmed passing in
+  isolation), e2e 290, build, arch deps/cycles/dead — all green.
+- **Changeset:** `@ts-linq/orm` patch (behavioural fix; sink internal, public API
+  unchanged).

@@ -29,6 +29,7 @@ import { type AuditInterceptor } from '../services/AuditInterceptor';
 import { type CacheCoordinator } from '../services/CacheCoordinator';
 import { type ChangeValidationService } from '../services/ChangeValidationService';
 import { type SoftDeleteInterceptor } from '../services/SoftDeleteInterceptor';
+import { type DiagnosticSink } from './DiagnosticSink';
 
 /**
  * Immutable value object holding every collaborator and resolved option that the
@@ -52,6 +53,8 @@ export interface DbContextServices {
   readonly fragmentExecutor: FragmentDmlExecutor;
   readonly spExecutor: SpExecutor;
   readonly cacheCoordinator: CacheCoordinator;
+  /** Single internal diagnostics seam for the context's swallow paths. */
+  readonly diagnosticSink: DiagnosticSink;
   readonly auditInterceptor: AuditInterceptor;
   readonly softDeleteInterceptor: SoftDeleteInterceptor;
   readonly interceptorRegistry: InterceptorRegistry;

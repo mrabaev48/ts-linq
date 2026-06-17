@@ -45,7 +45,8 @@ export class DbSetRegistry {
       rollbackTransaction: async () => this.tx.rollbackTransaction(),
       executionStrategyOptions: this.services.executionStrategyOptions,
       entityQueryFilterMap: this.services.entityQueryFilterMap,
-      registry: this.services.registry
+      registry: this.services.registry,
+      diagnosticSink: this.services.diagnosticSink
     };
   }
 

@@ -12,6 +12,7 @@ import type {
 } from '@ts-linq/types';
 
 import type { ChangeTracker } from './ChangeTracker';
+import type { DiagnosticSink } from './context/DiagnosticSink';
 
 export interface DbSetContext {
   provider: DatabaseProvider;
@@ -33,4 +34,6 @@ export interface DbSetContext {
   entityQueryFilterMap?: Map<EntityCtorRef, ReadonlyArray<QueryFilterMetadata>>;
   /** Active metadata registry — used for keyless guards and other metadata lookups (P1-26). */
   registry?: MetadataRegistry;
+  /** Shared internal diagnostics sink for the owning context's swallow paths. */
+  diagnosticSink?: DiagnosticSink;
 }
