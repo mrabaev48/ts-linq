@@ -6,7 +6,6 @@ export { EntityEntry } from './changetracker/EntityEntry';
 export type { EntityEntryGraphNode } from './changetracker/EntityEntryGraphNode';
 export { JsonSnapshotter } from './changetracker/JsonSnapshotter';
 export { PropertyEntry } from './changetracker/PropertyEntry';
-export { ChangeTrackerFacade } from './ChangeTrackerFacade';
 export * from './database/has-pending-model-changes';
 export * from './DatabaseFacade';
 export * from './DbContext';

@@ -6,28 +6,19 @@
  * complex types are compared by structure on every DetectChanges call.
  */
 
+import { defaultEqualityComparer } from './EqualityComparer';
+
 /**
  * Recursively compares two values by structure.
  * Handles: primitives, null/undefined, Date, Array, plain objects.
+ *
+ * @remarks
+ * Thin delegate to the shared {@link defaultEqualityComparer} so there is exactly
+ * one deep-equality implementation in the package (refactor task-4). Retained as a
+ * named export for backward compatibility and complex-type call sites.
  */
 export function complexDeepEquals(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (a === null || b === null) return a === b;
-  if (a === undefined || b === undefined) return a === b;
-  if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false;
-    return a.every((v, i) => complexDeepEquals(v, (b as unknown[])[i]));
-  }
-  if (typeof a === 'object' && typeof b === 'object') {
-    const aKeys = Object.keys(a as object);
-    const bKeys = Object.keys(b as object);
-    if (aKeys.length !== bKeys.length) return false;
-    return aKeys.every((k) =>
-      complexDeepEquals((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])
-    );
-  }
-  return false;
+  return defaultEqualityComparer.equals(a, b);
 }
 
 /**

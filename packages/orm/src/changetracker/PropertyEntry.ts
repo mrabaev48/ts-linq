@@ -1,4 +1,4 @@
-import type { ChangeTracker } from '../ChangeTracker';
+import type { IChangeTrackerForEntry } from './IChangeTrackerForEntry';
 
 /**
  * Accessor for a single shadow property value on a tracked entity.
@@ -8,7 +8,7 @@ export class PropertyEntry<TValue = unknown> {
   constructor(
     private readonly entity: object,
     private readonly name: string,
-    private readonly changeTracker: ChangeTracker
+    private readonly changeTracker: IChangeTrackerForEntry
   ) {}
 
   get currentValue(): TValue {

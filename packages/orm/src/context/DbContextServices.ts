@@ -17,7 +17,7 @@ import type {
   SoftDeleteOptions
 } from '@ts-linq/types';
 
-import { type ChangeTrackerFacade } from '../ChangeTrackerFacade';
+import { type ChangeTracker } from '../ChangeTracker';
 import { type DeleteCommand } from '../commands/DeleteCommand';
 import { type FragmentDmlExecutor } from '../commands/FragmentDmlExecutor';
 import { type InsertCommand } from '../commands/InsertCommand';
@@ -44,7 +44,7 @@ import { type DiagnosticSink } from './DiagnosticSink';
 export interface DbContextServices {
   readonly provider: DatabaseProvider;
   readonly registry: MetadataRegistry;
-  readonly changeTracker: ChangeTrackerFacade;
+  readonly changeTracker: ChangeTracker;
   readonly entityLoader: EntityLoader;
   readonly validationService: ChangeValidationService;
   readonly insertCmd: InsertCommand;

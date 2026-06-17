@@ -2,7 +2,7 @@ import { MetadataStorage } from '@ts-linq/metadata';
 import type { EntityCtorRef } from '@ts-linq/types';
 import { EntityState } from '@ts-linq/types';
 
-import type { ChangeTracker } from '../ChangeTracker';
+import type { IChangeTrackerForEntry } from './IChangeTrackerForEntry';
 import { PropertyEntry } from './PropertyEntry';
 
 export class EntityEntry<T = unknown> {
@@ -11,7 +11,7 @@ export class EntityEntry<T = unknown> {
     public readonly entityClass: EntityCtorRef,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private readonly provider: any,
-    private readonly changeTracker?: ChangeTracker
+    private readonly changeTracker?: IChangeTrackerForEntry
   ) {}
 
   /**
