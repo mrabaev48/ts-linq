@@ -15,8 +15,8 @@ import { beforeEach, describe, expect, it } from '@jest/globals';
 import { EntityState } from '@ts-linq/core';
 import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
 
+import { ChangeTracker } from '../src/ChangeTracker';
 import { EntityEntry } from '../src/changetracker/EntityEntry';
-import { ChangeTrackerFacade } from '../src/ChangeTrackerFacade';
 import type { LocalViewChange } from '../src/LocalView';
 
 // ── Test entities ─────────────────────────────────────────────────────────────
@@ -49,10 +49,10 @@ class OrderLine {
 // ── LocalView tests ───────────────────────────────────────────────────────────
 
 describe('LocalView (P1-29)', () => {
-  let tracker: ChangeTrackerFacade;
+  let tracker: ChangeTracker;
 
   beforeEach(() => {
-    tracker = new ChangeTrackerFacade();
+    tracker = new ChangeTracker();
   });
 
   // ── subscribe / unsubscribe ─────────────────────────────────────────────────
@@ -245,10 +245,10 @@ describe('LocalView (P1-29)', () => {
 // ── ChangeTracker.findEntry tests ─────────────────────────────────────────────
 
 describe('ChangeTracker.findEntry (P1-29)', () => {
-  let tracker: ChangeTrackerFacade;
+  let tracker: ChangeTracker;
 
   beforeEach(() => {
-    tracker = new ChangeTrackerFacade();
+    tracker = new ChangeTracker();
   });
 
   it('returns EntityEntry for a tracked entity by single PK', () => {
@@ -309,10 +309,10 @@ describe('ChangeTracker.findEntry (P1-29)', () => {
 // ── ChangeTracker.entries tests ───────────────────────────────────────────────
 
 describe('ChangeTracker.entries (P1-29)', () => {
-  let tracker: ChangeTrackerFacade;
+  let tracker: ChangeTracker;
 
   beforeEach(() => {
-    tracker = new ChangeTrackerFacade();
+    tracker = new ChangeTracker();
   });
 
   it('returns all EntityEntry instances for a given type', () => {
@@ -360,10 +360,10 @@ describe('DbSet.find via ChangeTracker (P1-29)', () => {
    * covering the same cases that DbSet.find() would exercise.
    */
 
-  let tracker: ChangeTrackerFacade;
+  let tracker: ChangeTracker;
 
   beforeEach(() => {
-    tracker = new ChangeTrackerFacade();
+    tracker = new ChangeTracker();
   });
 
   it('returns entity when found by PK in tracker', () => {
