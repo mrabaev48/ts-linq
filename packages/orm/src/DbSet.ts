@@ -1,30 +1,20 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { EntityLoader } from '@ts-linq/core';
+import type { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type {
-  IncludableQueryable,
-  KeySelector,
-  NavElement,
-  NavigationProxy,
-  OrderedQueryable,
-  QueryTagList
-} from '@ts-linq/query';
-import type { ISetPropertyCalls } from '@ts-linq/query';
-import type { IncludeSubquery } from '@ts-linq/query';
-import { Queryable } from '@ts-linq/query';
-import { QueryContext } from '@ts-linq/query/internal';
+import type { IQueryableSurface, Queryable } from '@ts-linq/query';
 import type { EntityCacheLike } from '@ts-linq/types';
 import type {
-  FallbackPolicy,
   GlobalFilter,
   PerformanceOptions,
-  QueryFallback,
   QueryFilterMetadata,
   QuerySplittingBehavior
 } from '@ts-linq/types';
 
 import type { ChangeTracker } from './ChangeTracker';
 import { type DiagnosticSink, NULL_DIAGNOSTIC_SINK } from './context/DiagnosticSink';
+import { QueryableFactory } from './context/QueryableFactory';
+import { installQueryableForwarders } from './context/queryableForwarding';
 import type { DbSetContext } from './DbSetContext';
 import { KeylessMutationError } from './exceptions/KeylessMutationError';
 import type { LocalView } from './LocalView';
@@ -35,12 +25,33 @@ import { interpolatedToRaw, toSqlParam } from './sql/sqlTag';
  * Represents a typed set of entities providing CRUD operations and direct LINQ-style querying.
  * Mirrors EF Core's DbSet<T> — query methods are available directly without an intermediate .query() call.
  *
+ * ## Query surface (parity, zero drift)
+ *
+ * `DbSet<T>` does **not** hand-mirror the ~50 `Queryable<T>` operators. Instead it
+ * declaration-merges {@link IQueryableSurface} (so every operator is statically reachable with
+ * full generic inference) and installs a single delegating forwarder per operator onto the
+ * prototype (see {@link installQueryableForwarders}), each routed through one cached chain-starting
+ * seed `Queryable` (`_seed()`). A new operator added to `@ts-linq/query` therefore surfaces on
+ * `DbSet` automatically — the `DbSet ↔ Queryable` parity is guarded by a contract test rather than
+ * developer discipline.
+ *
+ * The transformer brand (`__tsLinqWhereTransformerBrand`) and the branded `*Compiled` operators
+ * remain reachable: the brand is declared on the class, the compiled operators are part of
+ * {@link IQueryableSurface} (types) and the forwarder install (runtime).
+ *
  * @example
  * class AppDbContext extends DbContext {
  *   users = this.set(User);
  * }
  * const adults = await ctx.users.where(u => u.age >= 18).orderBy('name').toArray();
  */
+// The merged interface supplies the full, inference-preserving query surface (where/select/orderBy/
+// include/terminals/aggregates/…). Implementation is provided at runtime by the forwarder install
+// at the bottom of this module; declaring them on the class body would collide with the merge.
+// The class/interface merge is the intentional mixin mechanism here, hence the rule disable.
+export interface DbSet<T extends object> extends IQueryableSurface<T> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DbSet<T extends object> {
   /** Used by the compile-time transformer to identify this as a queryable target. Do not use at runtime. */
   declare readonly __tsLinqWhereTransformerBrand: true;
@@ -57,7 +68,10 @@ export class DbSet<T extends object> {
   private _entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>;
   private _registry?: import('@ts-linq/metadata').MetadataRegistry;
   private _diagnosticSink: DiagnosticSink = NULL_DIAGNOSTIC_SINK;
-  private static readonly DEFAULT_IN_CHUNK_SIZE = 1000;
+
+  /** Cached chain-starting seed and the tracking mode it was built for (see {@link _seed}). */
+  private _seedCache?: Queryable<T>;
+  private _seedTracking?: QueryTrackingBehavior;
 
   /**
    * Create a DbSet for the given entity type.
@@ -98,6 +112,9 @@ export class DbSet<T extends object> {
     this._entityQueryFilters = context.entityQueryFilterMap?.get(this._entityClass);
     this._registry = context.registry;
     this._diagnosticSink = context.diagnosticSink ?? NULL_DIAGNOSTIC_SINK;
+    // Invalidate any seed built against a previous injection.
+    this._seedCache = undefined;
+    this._seedTracking = undefined;
   }
 
   private _assertNotKeyless(operation: string): void {
@@ -112,6 +129,45 @@ export class DbSet<T extends object> {
   /** The entity constructor this set operates on. */
   get entityClass(): new () => T {
     return this._entityClass;
+  }
+
+  // ─── Internal Queryable seed ──────────────────────────────────────────────
+
+  /**
+   * The cached chain-starting seed `Queryable` that every forwarded operator delegates to.
+   *
+   * Caching avoids re-allocating a fresh `Queryable` per operator call (the former
+   * `newQueryable()` hot-path). The seed is memoized on the change-tracker's current
+   * `queryTrackingBehavior` — a publicly mutable field — and rebuilt only when it changes, so
+   * flipping the global tracking mode between queries is still honored. The cache is also cleared
+   * on (re-)injection of the context.
+   *
+   * `@internal` — do not call directly.
+   */
+  _seed(): Queryable<T> {
+    if (!this._provider) {
+      throw new Error(
+        `DbSet<${this._entityClass.name}> has no database context. ` +
+          `Declare it inside a DbContext subclass: \`${this._entityClass.name.toLowerCase()}s = this.defineSet(${this._entityClass.name})\``
+      );
+    }
+    const tracking = this._changeTracker?.queryTrackingBehavior;
+    if (!this._seedCache || this._seedTracking !== tracking) {
+      this._seedCache = QueryableFactory.fromContext(this._entityClass, {
+        provider: this._provider,
+        entityLoader: this._entityLoader,
+        entityCache: this._entityCache,
+        performance: this._performance,
+        globalFilters: this._globalFilters,
+        softDeleteOptions: this._softDeleteOptions,
+        entityAttacher: this._changeTracker,
+        trackingMode: tracking,
+        globalSplittingBehavior: this._querySplittingBehavior,
+        entityQueryFilters: this._entityQueryFilters
+      });
+      this._seedTracking = tracking;
+    }
+    return this._seedCache;
   }
 
   // ─── Local / Find (P1-29) ─────────────────────────────────────────────────
@@ -174,7 +230,7 @@ export class DbSet<T extends object> {
     const pks = meta?.primaryKeys ? [...meta.primaryKeys].sort() : [];
     if (!pks.length || pkValues.length === 0) return null;
 
-    let query = this.newQueryable();
+    let query = this._seed();
     for (let i = 0; i < pks.length; i++) {
       const col = pks[i] as keyof T & string;
       const val = pkValues[i];
@@ -182,139 +238,6 @@ export class DbSet<T extends object> {
       query = query.whereIn(col, [val as T[typeof col]]);
     }
     return query.firstOrDefault();
-  }
-
-  // ─── Internal Queryable factory ───────────────────────────────────────────
-
-  private newQueryable(): Queryable<T> {
-    if (!this._provider) {
-      throw new Error(
-        `DbSet<${this._entityClass.name}> has no database context. ` +
-          `Declare it inside a DbContext subclass: \`${this._entityClass.name.toLowerCase()}s = this.defineSet(${this._entityClass.name})\``
-      );
-    }
-    const context = new QueryContext({
-      provider: this._provider,
-      entityLoader: this._entityLoader,
-      entityCache: this._entityCache,
-      performance: this._performance,
-      globalFilters: this._globalFilters,
-      softDeleteOptions: this._softDeleteOptions,
-      entityAttacher: this._changeTracker,
-      trackingMode: this._changeTracker?.queryTrackingBehavior,
-      globalSplittingBehavior: this._querySplittingBehavior,
-      entityQueryFilters: this._entityQueryFilters
-    });
-    return new Queryable<T>(this._entityClass, context);
-  }
-
-  // ─── Global filter API (P0-11) ────────────────────────────────────────────
-
-  /**
-   * Disables all model-level global query filters for this query (EF9 parity).
-   * Pass one or more filter names to disable only specific named filters.
-   */
-  public ignoreQueryFilters(): Queryable<T>;
-  public ignoreQueryFilters(...names: string[]): Queryable<T>;
-  public ignoreQueryFilters(...names: string[]): Queryable<T> {
-    return (this.newQueryable().ignoreQueryFilters as (...args: string[]) => Queryable<T>)(
-      ...names
-    );
-  }
-
-  // ─── Tracking API ─────────────────────────────────────────────────────────
-
-  /** Return a Queryable for this set with change-tracker attachment disabled. */
-  public asNoTracking(): Queryable<T> {
-    return this.newQueryable().asNoTracking();
-  }
-
-  /** Return a Queryable for this set with change-tracker attachment enabled (the default). */
-  public asTracking(): Queryable<T> {
-    return this.newQueryable().asTracking();
-  }
-
-  /** Return a Queryable that deduplicates entities by PK without attaching to the change tracker. */
-  public asNoTrackingWithIdentityResolution(): Queryable<T> {
-    return this.newQueryable().asNoTrackingWithIdentityResolution();
-  }
-
-  // ─── Query tagging API (EF Core parity) ─────────────────────────────────
-
-  /**
-   * Attach a diagnostic comment to the emitted SQL statement (mirrors EF Core `TagWith`).
-   *
-   * @param tag - Single-line label. Must not contain newline characters or the sequence `*\/`.
-   * @throws {QueryTagError} When the tag contains forbidden characters.
-   */
-  public tagWith(tag: string): Queryable<T> {
-    return this.newQueryable().tagWith(tag);
-  }
-
-  /**
-   * Attach the caller's source file and line number as a diagnostic tag (mirrors EF Core `TagWithCallSite`).
-   */
-  public tagWithCallSite(): Queryable<T> {
-    return this.newQueryable().tagWithCallSite();
-  }
-
-  /**
-   * Return the ordered list of tags attached to the underlying queryable.
-   * Returns an empty array when no tags have been set.
-   */
-  public getTags(): QueryTagList {
-    return this.newQueryable().getTags();
-  }
-
-  // ─── Temporal API (SQL Server system-versioned tables / EF Core parity) ──
-
-  /**
-   * Query the entity state at a specific point in time.
-   * Emits `FOR SYSTEM_TIME AS OF @p` on MSSQL; throws on other dialects.
-   *
-   * @example
-   * const snapshot = await ctx.employees
-   *   .temporalAsOf(new Date('2023-01-01'))
-   *   .where(e => e.department === 'Sales')
-   *   .toArray();
-   */
-  public temporalAsOf(pointInTime: Date): Queryable<T> {
-    return this.newQueryable().temporalAsOf(pointInTime);
-  }
-
-  /**
-   * Query all historical and current rows.
-   * Emits `FOR SYSTEM_TIME ALL` on MSSQL; throws on other dialects.
-   *
-   * @example
-   * const history = await ctx.employees.temporalAll().orderBy('PeriodStart').toArray();
-   */
-  public temporalAll(): Queryable<T> {
-    return this.newQueryable().temporalAll();
-  }
-
-  /**
-   * Query rows active at any point within the half-open interval [from, to).
-   * Emits `FOR SYSTEM_TIME BETWEEN @from AND @to` on MSSQL; throws on other dialects.
-   */
-  public temporalBetween(from: Date, to: Date): Queryable<T> {
-    return this.newQueryable().temporalBetween(from, to);
-  }
-
-  /**
-   * Query rows active at any point within the open interval (from, to).
-   * Emits `FOR SYSTEM_TIME FROM @from TO @to` on MSSQL; throws on other dialects.
-   */
-  public temporalFromTo(from: Date, to: Date): Queryable<T> {
-    return this.newQueryable().temporalFromTo(from, to);
-  }
-
-  /**
-   * Query rows whose entire active period falls within [from, to].
-   * Emits `FOR SYSTEM_TIME CONTAINED IN (@from, @to)` on MSSQL; throws on other dialects.
-   */
-  public temporalContainedIn(from: Date, to: Date): Queryable<T> {
-    return this.newQueryable().temporalContainedIn(from, to);
   }
 
   // ─── Raw SQL entry points ──────────────────────────────────────────────────
@@ -332,7 +255,7 @@ export class DbSet<T extends object> {
    */
   public fromSqlInterpolated(query: SqlInterpolated): Queryable<T> {
     const { sql: rawSql, params } = interpolatedToRaw(query);
-    return this.newQueryable()._withRawSqlSource({ sql: rawSql, params });
+    return this._seed()._withRawSqlSource({ sql: rawSql, params });
   }
 
   /**
@@ -346,362 +269,7 @@ export class DbSet<T extends object> {
    */
   public fromSqlRaw(rawSql: string, ...values: unknown[]): Queryable<T> {
     const params = values.map(toSqlParam);
-    return this.newQueryable()._withRawSqlSource({ sql: rawSql, params });
-  }
-
-  // ─── Filter methods ───────────────────────────────────────────────────────
-
-  /**
-   * Adds a WHERE predicate. Requires the compile-time transformer (@ts-linq/transformer).
-   * @example
-   * const adults = await ctx.users.where(u => u.age >= 18).toArray();
-   */
-  public where(predicate: (entity: T) => boolean): Queryable<T> {
-    return this.newQueryable().where(predicate);
-  }
-
-  /** Called by the compile-time transformer — do not call directly. */
-  public whereCompiled(...args: Parameters<Queryable<T>['whereCompiled']>): Queryable<T> {
-    return this.newQueryable().whereCompiled(...args);
-  }
-
-  /** Adds a WHERE IN clause for a specific column. */
-  public whereIn<K extends keyof T & string>(column: K, values: ReadonlyArray<T[K]>): Queryable<T> {
-    return this.newQueryable().whereIn(column, values);
-  }
-
-  /** Adds a WHERE EXISTS (subquery) predicate. */
-  public whereExists<TOther>(subquery: Queryable<TOther>): Queryable<T> {
-    return this.newQueryable().whereExists(subquery);
-  }
-
-  /** Adds a WHERE col IN (subquery) predicate. */
-  public whereInSubquery<TOther>(
-    column: keyof T & string,
-    subquery: Queryable<TOther>
-  ): Queryable<T> {
-    return this.newQueryable().whereInSubquery(column, subquery);
-  }
-
-  // ─── Projection ───────────────────────────────────────────────────────────
-
-  /**
-   * Projects entities. Requires the compile-time transformer.
-   * @example
-   * const names = await ctx.users.select(u => u.name).toArray();
-   */
-  public select<TResult>(selector: (entity: T) => TResult): Queryable<TResult> {
-    return this.newQueryable().select(selector);
-  }
-
-  /** Called by the compile-time transformer — do not call directly. */
-  public selectCompiled<TResult>(
-    ...args: Parameters<Queryable<T>['selectCompiled']>
-  ): Queryable<TResult> {
-    return this.newQueryable().selectCompiled<TResult>(...args);
-  }
-
-  // ─── Ordering ─────────────────────────────────────────────────────────────
-
-  /** Sorts ascending by property key or lambda selector. Returns `OrderedQueryable` to enable `thenBy` chaining. */
-  public orderBy<K extends keyof T>(keyOrSelector: K | KeySelector<T, K>): OrderedQueryable<T> {
-    return this.newQueryable().orderBy(keyOrSelector);
-  }
-
-  /** Sorts descending by property key or lambda selector. Returns `OrderedQueryable` to enable `thenBy` chaining. */
-  public orderByDescending<K extends keyof T>(
-    keyOrSelector: K | KeySelector<T, K>
-  ): OrderedQueryable<T> {
-    return this.newQueryable().orderByDescending(keyOrSelector);
-  }
-
-  // ─── Pagination ───────────────────────────────────────────────────────────
-
-  /** Limits the number of returned rows (SQL LIMIT). */
-  public take(count: number): Queryable<T> {
-    return this.newQueryable().take(count);
-  }
-
-  /** Skips the given number of rows (SQL OFFSET). */
-  public skip(count: number): Queryable<T> {
-    return this.newQueryable().skip(count);
-  }
-
-  // ─── Grouping ─────────────────────────────────────────────────────────────
-
-  /** Groups results by a property key (SQL GROUP BY). */
-  public groupBy<K extends keyof T>(key: K): Queryable<T> {
-    return this.newQueryable().groupBy(key);
-  }
-
-  /** Applies a HAVING predicate. Requires the compile-time transformer. */
-  public having(predicate: (entity: T) => boolean): Queryable<T> {
-    return this.newQueryable().having(predicate);
-  }
-
-  /** Called by the compile-time transformer — do not call directly. */
-  public havingCompiled(...args: Parameters<Queryable<T>['havingCompiled']>): Queryable<T> {
-    return this.newQueryable().havingCompiled(...args);
-  }
-
-  // ─── Distinct ─────────────────────────────────────────────────────────────
-
-  /** Ensures distinct rows (SQL DISTINCT). */
-  public distinct(): Queryable<T> {
-    return this.newQueryable().distinct();
-  }
-
-  // ─── Eager loading ────────────────────────────────────────────────────────
-
-  /**
-   * Eager-loads a related entity by navigation property name, lambda selector,
-   * or filtered lambda (where/orderBy/take inside include).
-   * @example
-   * ctx.blogs.include('posts')
-   * ctx.blogs.include(b => b.posts)
-   * ctx.blogs.include(b => b.posts.where(p => p.isPublished).take(10))
-   */
-  public include<K extends keyof T & string>(key: K): IncludableQueryable<T, NavElement<T[K]>>;
-  public include<TProp>(selector: (entity: T) => TProp): IncludableQueryable<T, NavElement<TProp>>;
-  public include<U>(
-    selector: (entity: NavigationProxy<T>) => IncludeSubquery<U>
-  ): IncludableQueryable<T, U>;
-  public include(keyOrSelector: unknown): IncludableQueryable<T, unknown> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return this.newQueryable().include(keyOrSelector as any);
-  }
-
-  // ─── Set operations ───────────────────────────────────────────────────────
-
-  /** SQL UNION (distinct). */
-  public union(other: Queryable<T>): Queryable<T> {
-    return this.newQueryable().union(other);
-  }
-
-  /** SQL UNION ALL. */
-  public unionAll(other: Queryable<T>): Queryable<T> {
-    return this.newQueryable().unionAll(other);
-  }
-
-  /** Concatenates sequences preserving duplicates (SQL UNION ALL). */
-  public concat(other: Queryable<T>): Queryable<T> {
-    return this.newQueryable().concat(other);
-  }
-
-  /** SQL INTERSECT. */
-  public intersect(other: Queryable<T>): Queryable<T> {
-    return this.newQueryable().intersect(other);
-  }
-
-  /** SQL EXCEPT. */
-  public except(other: Queryable<T>): Queryable<T> {
-    return this.newQueryable().except(other);
-  }
-
-  // ─── Joins ────────────────────────────────────────────────────────────────
-
-  /** Adds a type-safe INNER JOIN on an equality key pair. Accepts string keys or lambda selectors. */
-  public innerJoinOn<TOther, KL extends keyof T = keyof T, KR extends keyof TOther = keyof TOther>(
-    otherCtor: new () => TOther,
-    leftKey: (KL & string) | KeySelector<T, KL>,
-    rightKey: (KR & string) | KeySelector<TOther, KR>,
-    alias?: string
-  ): Queryable<T> {
-    return this.newQueryable().innerJoinOn(otherCtor, leftKey, rightKey, alias);
-  }
-
-  /** Adds a type-safe LEFT JOIN on an equality key pair. Accepts string keys or lambda selectors. */
-  public leftJoinOn<TOther, KL extends keyof T = keyof T, KR extends keyof TOther = keyof TOther>(
-    otherCtor: new () => TOther,
-    leftKey: (KL & string) | KeySelector<T, KL>,
-    rightKey: (KR & string) | KeySelector<TOther, KR>,
-    alias?: string
-  ): Queryable<T> {
-    return this.newQueryable().leftJoinOn(otherCtor, leftKey, rightKey, alias);
-  }
-
-  // ─── CTE / resilience / cancellation ─────────────────────────────────────
-
-  /** Defines a named CTE (WITH ...) subquery. */
-  public withCte(name: string, subquery: Queryable<unknown>): Queryable<T> {
-    return this.newQueryable().withCte(name, subquery);
-  }
-
-  /** Registers a graceful-degradation fallback source. */
-  public fallbackTo(source: QueryFallback<T>): Queryable<T> {
-    return this.newQueryable().fallbackTo(source);
-  }
-
-  /** Overrides per-query fallback policy. */
-  public withFallbackPolicy(policy: Partial<FallbackPolicy>): Queryable<T> {
-    return this.newQueryable().withFallbackPolicy(policy);
-  }
-
-  /** Attaches an AbortSignal to cancel the query before it hits the provider. */
-  public withAbort(signal: AbortSignal): Queryable<T> {
-    return this.newQueryable().withAbort(signal);
-  }
-
-  // ─── Bulk DML — ExecuteUpdate / ExecuteDelete ─────────────────────────────
-
-  /**
-   * Executes a bulk UPDATE in a single SQL statement without loading entities.
-   * Mirrors EF Core's `ExecuteUpdateAsync(setters => setters.SetProperty(...))`.
-   *
-   * @example
-   * const n = await ctx.users
-   *   .where(u => u.isActive)
-   *   .executeUpdate(s => s.setProperty(u => u.name, 'Locked'));
-   */
-  public async executeUpdate(
-    setters: (s: ISetPropertyCalls<T>) => ISetPropertyCalls<T>
-  ): Promise<number> {
-    return this.newQueryable().executeUpdate(setters);
-  }
-
-  /**
-   * Executes a bulk DELETE in a single SQL statement without loading entities.
-   * Mirrors EF Core's `ExecuteDeleteAsync()`.
-   *
-   * @example
-   * const n = await ctx.logs
-   *   .where(l => l.createdAt < cutoff)
-   *   .executeDelete();
-   */
-  public async executeDelete(): Promise<number> {
-    return this.newQueryable().executeDelete();
-  }
-
-  // ─── Terminal — element retrieval ─────────────────────────────────────────
-
-  /** Executes the query and returns all matching entities. */
-  public async toArray(): Promise<T[]> {
-    return this.newQueryable().toArray();
-  }
-
-  /**
-   * Returns an AsyncIterable<T> that streams entities using chunked pagination.
-   * Memory-bounded — suitable for large result sets (ETL, exports).
-   * Mirrors EF Core's AsAsyncEnumerable().
-   */
-  public asAsyncEnumerable(signal?: AbortSignal): AsyncIterable<T> {
-    return this.newQueryable().asAsyncEnumerable(signal);
-  }
-
-  /**
-   * Executes an async action for each entity, streaming without buffering all results.
-   * Mirrors EF Core's ForEachAsync().
-   */
-  public async forEachAsync(
-    action: (entity: T) => void | Promise<void>,
-    signal?: AbortSignal
-  ): Promise<void> {
-    return this.newQueryable().forEachAsync(action, signal);
-  }
-
-  /**
-   * Materializes the query into a Map keyed by keySelector.
-   * Throws on duplicate keys. Mirrors EF Core's ToDictionaryAsync().
-   */
-  public async toDictionaryAsync<K>(
-    keySelector: (entity: T) => K,
-    signal?: AbortSignal
-  ): Promise<Map<K, T>>;
-
-  public async toDictionaryAsync<K, V>(
-    keySelector: (entity: T) => K,
-    elementSelector: (entity: T) => V,
-    signal?: AbortSignal
-  ): Promise<Map<K, V>>;
-
-  public async toDictionaryAsync<K, V = T>(
-    keySelector: (entity: T) => K,
-    elementSelectorOrSignal?: ((entity: T) => V) | AbortSignal,
-    signal?: AbortSignal
-  ): Promise<Map<K, V>> {
-    if (typeof elementSelectorOrSignal === 'function') {
-      return this.newQueryable().toDictionaryAsync(keySelector, elementSelectorOrSignal, signal);
-    }
-    const resolvedSignal = elementSelectorOrSignal ?? signal;
-    return this.newQueryable().toDictionaryAsync(keySelector, resolvedSignal) as unknown as Promise<
-      Map<K, V>
-    >;
-  }
-
-  /** Returns the first entity, throws if none. */
-  public async first(): Promise<T> {
-    return this.newQueryable().first();
-  }
-
-  /** Returns the first entity or null. */
-  public async firstOrDefault(): Promise<T | null> {
-    return this.newQueryable().firstOrDefault();
-  }
-
-  /** Returns exactly one entity; throws if 0 or more than 1. */
-  public async single(): Promise<T> {
-    return this.newQueryable().single();
-  }
-
-  /** Returns one entity or null; throws if more than 1. */
-  public async singleOrDefault(): Promise<T | null> {
-    return this.newQueryable().singleOrDefault();
-  }
-
-  // ─── Terminal — aggregates ────────────────────────────────────────────────
-
-  /** Returns the number of matching rows. */
-  public async count(): Promise<number> {
-    return this.newQueryable().count();
-  }
-
-  /** Returns true if at least one row matches. */
-  public async any(): Promise<boolean> {
-    return this.newQueryable().any();
-  }
-
-  /** Returns true if the sequence contains the given item. */
-  public async contains(item: T): Promise<boolean> {
-    return this.newQueryable().contains(item);
-  }
-
-  /** Returns the sum of a numeric property. */
-  public async sum<K extends keyof T>(key: K): Promise<number> {
-    return this.newQueryable().sum(key);
-  }
-
-  /** Returns the average of a numeric property. */
-  public async average<K extends keyof T>(key: K): Promise<number> {
-    return this.newQueryable().average(key);
-  }
-
-  /** Returns the minimum value of a property. */
-  public async min<K extends keyof T>(key: K): Promise<T[K]> {
-    return this.newQueryable().min(key);
-  }
-
-  /** Returns the maximum value of a property. */
-  public async max<K extends keyof T>(key: K): Promise<T[K]> {
-    return this.newQueryable().max(key);
-  }
-
-  // ─── Terminal — pagination ────────────────────────────────────────────────
-
-  /** Offset-based pagination. */
-  public async paginate(
-    page: number,
-    size: number
-  ): Promise<{ items: T[]; total: number; page: number; size: number }> {
-    return this.newQueryable().paginate(page, size);
-  }
-
-  /** Keyset (cursor-based) pagination. */
-  public async keysetPaginate<TKey extends keyof T>(
-    key: TKey,
-    after: T[TKey] | null,
-    size: number
-  ): Promise<{ items: T[]; pageSize: number; nextAfter: T[TKey] | null }> {
-    return this.newQueryable().keysetPaginate(key, after, size);
+    return this._seed()._withRawSqlSource({ sql: rawSql, params });
   }
 
   // ─── Mutation methods ─────────────────────────────────────────────────────
@@ -808,3 +376,8 @@ export class DbSet<T extends object> {
     }
   }
 }
+
+// Install one delegating forwarder per Queryable operator onto DbSet.prototype, each routed through
+// the cached chain-starting seed. This is the runtime half of the parity contract whose types come
+// from the merged `IQueryableSurface` interface above.
+installQueryableForwarders(DbSet.prototype, (self) => (self as DbSet<object>)._seed());
