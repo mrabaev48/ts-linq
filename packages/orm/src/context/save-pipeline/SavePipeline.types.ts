@@ -5,7 +5,7 @@ import type {
 } from '@ts-linq/core';
 import type { EntityCtorRef } from '@ts-linq/types';
 
-import type { ChangeTrackerFacade } from '../../ChangeTrackerFacade';
+import type { ChangeTracker } from '../../ChangeTracker';
 import type { InterceptorRegistry } from '../../interceptors/InterceptorRegistry';
 import type { CacheCoordinator } from '../../services/CacheCoordinator';
 import type { ChangeValidationService } from '../../services/ChangeValidationService';
@@ -14,7 +14,7 @@ import type { TransactionScope } from '../TransactionScope';
 import type { ValueGenerationService } from '../ValueGenerationService';
 
 /** A single tracked change as returned by the change tracker. */
-export type SaveChange = ReturnType<ChangeTrackerFacade['getChanges']>[number];
+export type SaveChange = ReturnType<ChangeTracker['getChanges']>[number];
 
 /** Cache-invalidation projection of a change (entity + class + state). */
 export interface InvalidationChange {
@@ -46,7 +46,7 @@ export interface SaveContext {
 /** Collaborators every {@link SaveStep} may use. */
 export interface SavePipelineDeps {
   readonly provider: DatabaseProvider;
-  readonly changeTracker: ChangeTrackerFacade;
+  readonly changeTracker: ChangeTracker;
   readonly valueGen: ValueGenerationService;
   readonly validationService: ChangeValidationService;
   readonly interceptorRegistry: InterceptorRegistry;

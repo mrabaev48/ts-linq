@@ -18,8 +18,8 @@ import type {
 import type { EntityCacheLike, LoadingDefaults } from '@ts-linq/types';
 import { err, ok } from '@ts-linq/types';
 
+import { type ChangeTracker } from './ChangeTracker';
 import { EntityEntry } from './changetracker/EntityEntry';
-import { type ChangeTrackerFacade } from './ChangeTrackerFacade';
 import { type DeleteCommand } from './commands/DeleteCommand';
 import { type FragmentDmlExecutor } from './commands/FragmentDmlExecutor';
 import { type InsertCommand } from './commands/InsertCommand';
@@ -77,7 +77,7 @@ export abstract class DbContext {
   private get _registry(): MetadataRegistry {
     return this._services.registry;
   }
-  private get _changeTracker(): ChangeTrackerFacade {
+  private get _changeTracker(): ChangeTracker {
     return this._services.changeTracker;
   }
   private get _entityLoader(): EntityLoader {
@@ -474,7 +474,7 @@ export abstract class DbContext {
    *
    * @returns The `ChangeTracker` handling entity states for this context.
    */
-  public get changeTracker(): ChangeTrackerFacade {
+  public get changeTracker(): ChangeTracker {
     return this._changeTracker;
   }
 

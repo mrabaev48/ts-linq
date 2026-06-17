@@ -5,7 +5,7 @@ import { EnhancedSqlCache, InMemoryCountCache } from '@ts-linq/query/internal';
 import { DiagnosticEmitter } from '@ts-linq/telemetry';
 
 import { applyCompiledModel } from '../bootstrap/use-compiled-model';
-import { ChangeTrackerFacade } from '../ChangeTrackerFacade';
+import { ChangeTracker } from '../ChangeTracker';
 import { DeleteCommand } from '../commands/DeleteCommand';
 import { FragmentDmlExecutor } from '../commands/FragmentDmlExecutor';
 import { InsertCommand } from '../commands/InsertCommand';
@@ -81,7 +81,7 @@ export class DbContextBootstrapper {
 
     const registry: MetadataRegistry = options.registry ?? MetadataStorage.getInstance();
     services.registry = registry;
-    services.changeTracker = new ChangeTrackerFacade(registry);
+    services.changeTracker = new ChangeTracker(registry);
     services.changeTracker.setProvider(provider);
     services.entityLoader = new EntityLoader(provider, undefined, registry);
     services.querySplittingBehavior = options.querySplittingBehavior;

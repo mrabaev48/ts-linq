@@ -1,5 +1,22 @@
 # @ts-linq/orm
 
+## 5.0.0
+
+### Major Changes
+
+- Decompose the `ChangeTracker` god class into focused collaborators behind a stable
+  facade (identity map, state machine, snapshot/shadow stores, change detector with a
+  single `EqualityComparer`, skip-navigation diffing, graph traversal, and an
+  observer-based `LocalView` fan-out). The public method set of `ChangeTracker` is
+  unchanged and now additionally exposes `findEntry` / `entries`.
+
+  **Breaking:** `ChangeTrackerFacade` has been removed from the public API. It existed
+  only to dodge a `ChangeTracker ↔ EntityEntry` import cycle, which is now broken via an
+  injected entry factory (Abstract Factory) and a narrow `IChangeTrackerForEntry` port.
+
+  Migration: replace `ChangeTrackerFacade` with `ChangeTracker` — the `findEntry` and
+  `entries` methods are identical and now live directly on `ChangeTracker`.
+
 ## 4.2.0
 
 ### Minor Changes
