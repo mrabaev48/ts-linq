@@ -1,5 +1,29 @@
 # @ts-linq/orm
 
+## 6.0.0
+
+### Major Changes
+
+- Establish a real public/internal API boundary for `@ts-linq/orm`.
+
+  Implementation-only collaborators are no longer exported from the package
+  entrypoint (`@ts-linq/orm`). The following are now reachable **only** via the new
+  opt-in `@ts-linq/orm/internal` subpath (cjs + esm + types): `BatchExecutor`,
+  `groupChanges`/`chunkGroup` (batch grouper), `IdentityMap`, `InterceptorRegistry`,
+  `CascadeWalker`, `JsonSnapshotter`, `PendingModelChangesChecker`, and the built-in
+  value-generator classes `HiLoValueGenerator`, `UlidValueGenerator`,
+  `UtcNowValueGenerator`, `UuidV7ValueGenerator`. The user-implemented
+  `FetchNextHiLoBlock` type remains public.
+
+  **Migration:** if you depend on any of these implementation internals, import them
+  from `@ts-linq/orm/internal` instead of `@ts-linq/orm` (not recommended — they carry
+  no semver guarantee). The supported public API (`DbContext`, `DbSet`, `ModelBuilder`
+  and builders, `ChangeTracker`, factory/pooling, options builders, the `sql` tag,
+  typed exceptions) is unchanged.
+
+  A public-API snapshot test now gates the `@ts-linq/orm` barrel so internals cannot
+  silently re-leak.
+
 ## 5.1.0
 
 ### Minor Changes
