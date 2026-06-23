@@ -1,12 +1,16 @@
+// @public — the supported public API of `@ts-linq/orm`.
+//
+// Implementation-only collaborators (batch executor/grouper, identity map, interceptor
+// registry, cascade walker, JSON snapshotter, pending-model-changes probe, value-generator
+// *classes*) are intentionally NOT re-exported here; they live behind the opt-in
+// `@ts-linq/orm/internal` subpath. The `OrmPublicBarrel` test gates this surface so internals
+// cannot silently re-leak from `"."`.
 export * from './builders';
 export { SequenceBuilder } from './builders/SequenceBuilder';
 export * from './ChangeTracker';
-export { CascadeWalker } from './changetracker/CascadeWalker';
 export { EntityEntry } from './changetracker/EntityEntry';
 export type { EntityEntryGraphNode } from './changetracker/EntityEntryGraphNode';
-export { JsonSnapshotter } from './changetracker/JsonSnapshotter';
 export { PropertyEntry } from './changetracker/PropertyEntry';
-export * from './database/has-pending-model-changes';
 export * from './DatabaseFacade';
 export * from './DbContext';
 export * from './DbContextOptionsBuilder';
@@ -16,8 +20,6 @@ export { KeylessMutationError } from './exceptions/KeylessMutationError';
 export * from './factory';
 export * from './factory/DbContextFactory';
 export * from './factory/IDbContextFactory';
-export * from './IdentityMap';
-export * from './interceptors/InterceptorRegistry';
 export * from './lifecycle/resetContext';
 export type { LocalViewChange, LocalViewChangeType, LocalViewListener } from './LocalView';
 export { LocalView } from './LocalView';
@@ -27,15 +29,12 @@ export * from './options/enable-sensitive-data-logging';
 export * from './options/log-to';
 export * from './pooling/DbContextPool';
 export * from './pooling/PooledDbContextFactory';
-export * from './save-changes/batch-executor';
-export * from './save-changes/batch-grouper';
 export { sql, SqlInterpolated } from './sql/sqlTag';
 export * from './transactions/DbContextTransaction';
+// Callback type users implement to feed a HiLo value generator. The concrete
+// `HiLoValueGenerator` class is internal (see `@ts-linq/orm/internal`); this type stays public
+// so consumers can type their block-fetch function without depending on the implementation.
 export type { FetchNextHiLoBlock } from './valueGenerators/HiLoValueGenerator';
-export { HiLoValueGenerator } from './valueGenerators/HiLoValueGenerator';
-export { UlidValueGenerator } from './valueGenerators/UlidValueGenerator';
-export { UtcNowValueGenerator } from './valueGenerators/UtcNowValueGenerator';
-export { UuidV7ValueGenerator } from './valueGenerators/UuidV7ValueGenerator';
 // Catchable base classes for the errors orm throws — re-exported from the canonical
 // `@ts-linq/types` hierarchy so consumers can branch on them without a second import.
 export { DbUpdateException, OrmConfigurationError } from '@ts-linq/types';

@@ -15,6 +15,7 @@ const tsLinqTsJestConfig = {
       '@ts-linq/types': ['packages/types/src'],
       '@ts-linq/metadata': ['packages/metadata/src'],
       '@ts-linq/core': ['packages/core/src'],
+      '@ts-linq/orm/internal': ['packages/orm/src/internal'],
       '@ts-linq/orm': ['packages/orm/src'],
       '@ts-linq/query': ['packages/query/src'],
       '@ts-linq/query/internal': ['packages/query/src/internal'],
@@ -52,6 +53,7 @@ const tsLinqModuleNameMapper = {
   '^@ts-linq/types$': '<rootDir>/packages/types/src',
   '^@ts-linq/metadata$': '<rootDir>/packages/metadata/src',
   '^@ts-linq/core$': '<rootDir>/packages/core/src',
+  '^@ts-linq/orm/internal$': '<rootDir>/packages/orm/src/internal',
   '^@ts-linq/orm$': '<rootDir>/packages/orm/src',
   '^@ts-linq/query/internal$': '<rootDir>/packages/query/src/internal',
   '^@ts-linq/query$': '<rootDir>/packages/query/src',
@@ -118,6 +120,7 @@ function createPackageJestConfig(overrides) {
     roots: ['<rootDir>/tests'],
     testMatch: ['**/*.test.ts'],
     moduleNameMapper: {
+      '^@ts-linq/orm/internal$': '<rootDir>/../orm/src/internal',
       '^@ts-linq/query/internal$': '<rootDir>/../query/src/internal',
       '^@ts-linq/sql-visitor/internal$': '<rootDir>/../sql-visitor/src/internal',
       '^@ts-linq/(.*)$': '<rootDir>/../$1/src'
