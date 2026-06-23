@@ -28,6 +28,8 @@ describe('Type Exports', () => {
     expect(types.SnapshotValidationError).toBeDefined();
     expect(types.BundleBuildError).toBeDefined();
     expect(types.ProviderRequiredError).toBeDefined();
+    expect(types.OrmConfigurationError).toBeDefined();
+    expect(types.DbUpdateException).toBeDefined();
   });
 
   it('should export Result helper functions', () => {
@@ -88,6 +90,8 @@ describe('Type Exports', () => {
       'SnapshotValidationError',
       'BundleBuildError',
       'ProviderRequiredError',
+      'OrmConfigurationError',
+      'DbUpdateException',
       'ok',
       'err',
       'maskSql',

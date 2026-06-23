@@ -1,5 +1,5 @@
 import { reflectGetOwnMetadata } from '@ts-linq/metadata';
-import type { EntityCtorRef } from '@ts-linq/types';
+import { type EntityCtorRef, OrmConfigurationError } from '@ts-linq/types';
 
 import { DbSet } from '../DbSet';
 import type { DbSetContext } from '../DbSetContext';
@@ -56,7 +56,7 @@ export class DbSetRegistry {
     const normalized: EntityCtorRef =
       typeof maybe === 'function' ? (maybe as EntityCtorRef) : entityClass;
     if (!this._dbSets.has(normalized)) {
-      throw new Error(`DbSet for ${entityClass.name} is not configured`);
+      throw OrmConfigurationError.setNotConfigured(entityClass.name);
     }
     // Fast path: no decoration — return the shared instance unchanged
     if ((entityClass as unknown) === normalized) {
