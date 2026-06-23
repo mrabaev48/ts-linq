@@ -1,5 +1,12 @@
 # @ts-linq/metadata
 
+## 4.1.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.8.0
+
 ## 4.1.6
 
 ### Patch Changes

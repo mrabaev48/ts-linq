@@ -144,7 +144,7 @@ export class TransactionalExecutionStep implements SaveStep {
         const failedEntries = ctx.changes.map(
           (c) => new EntityEntry(c.entity, c.entityClass, deps.provider)
         );
-        throw new DbUpdateConcurrencyException(error.message, failedEntries);
+        throw new DbUpdateConcurrencyException(error.message, failedEntries, { cause: error });
       }
       throw error;
     }
