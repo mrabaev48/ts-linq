@@ -1,6 +1,7 @@
 import { ExecutionStrategy } from '@ts-linq/concurrency';
 import type { DatabaseProvider } from '@ts-linq/core';
 import type { Queryable } from '@ts-linq/query';
+import { OrmConfigurationError } from '@ts-linq/types';
 
 import { QueryableFactory } from './context/QueryableFactory';
 import type { MigrateOptions } from './database/has-pending-model-changes';
@@ -44,10 +45,7 @@ export class DatabaseFacade {
 
   private get _checker(): PendingModelChangesChecker {
     if (!this._migrationsDir) {
-      throw new Error(
-        'Migrations directory is not configured on this DbContext.\n' +
-          'Call .migrations({ directory: "./migrations" }) on DbContextOptionsBuilder.'
-      );
+      throw OrmConfigurationError.migrationsDirectoryNotConfigured();
     }
     return new PendingModelChangesChecker(this._provider, this._migrationsDir);
   }

@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/transformer",
-  "version": "2.1.28",
+  "version": "2.1.29",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",

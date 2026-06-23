@@ -1,5 +1,39 @@
 # @ts-linq/orm
 
+## 5.1.0
+
+### Minor Changes
+
+- Introduce a typed ORM error hierarchy rooted at the canonical `@ts-linq/types`
+  `OrmError` (no second base — CLAUDE.md §16).
+  - **`@ts-linq/types`**: add mid-level `OrmConfigurationError` (developer-configuration
+    mistakes; carries a stable `code` chosen via the `setNotConfigured`/`noDbContext`/
+    `noPrimaryKey`/`transformerRequired`/`migrationsDirectoryNotConfigured` factory
+    helpers) and `DbUpdateException` (generic persistence-failure boundary), plus the
+    new `OrmErrorCode` literals `ORM_SET_NOT_CONFIGURED`, `ORM_NO_PRIMARY_KEY`,
+    `ORM_NO_DB_CONTEXT`, `ORM_TRANSFORMER_REQUIRED`, `ORM_MIGRATIONS_DIR_NOT_CONFIGURED`,
+    `ORM_KEYLESS_MUTATION`, `ORM_UPDATE_FAILED`, `ORM_UPDATE_CONCURRENCY`.
+  - **`@ts-linq/orm`**: bare `throw new Error(...)` at the DbSet/DbContext/DatabaseFacade/
+    EntityTypeBuilder boundaries are now typed (message text preserved).
+    `DbUpdateConcurrencyException` and `KeylessMutationError` are re-parented under the
+    canonical hierarchy — public names/export paths unchanged — and now carry a `code`;
+    optimistic-concurrency translation preserves the originating
+    `OptimisticConcurrencyError` as `cause`. `OrmConfigurationError`/`DbUpdateException`
+    are re-exported from the public barrel as catchable contract.
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.8.0
+  - @ts-linq/concurrency@3.0.8
+  - @ts-linq/core@3.4.6
+  - @ts-linq/metadata@4.1.7
+  - @ts-linq/metrics-safe@1.2.10
+  - @ts-linq/migrations@2.8.4
+  - @ts-linq/query@4.1.1
+  - @ts-linq/sql-visitor@4.3.4
+  - @ts-linq/telemetry@2.3.1
+
 ## 5.0.0
 
 ### Major Changes

@@ -36,3 +36,6 @@ export { HiLoValueGenerator } from './valueGenerators/HiLoValueGenerator';
 export { UlidValueGenerator } from './valueGenerators/UlidValueGenerator';
 export { UtcNowValueGenerator } from './valueGenerators/UtcNowValueGenerator';
 export { UuidV7ValueGenerator } from './valueGenerators/UuidV7ValueGenerator';
+// Catchable base classes for the errors orm throws — re-exported from the canonical
+// `@ts-linq/types` hierarchy so consumers can branch on them without a second import.
+export { DbUpdateException, OrmConfigurationError } from '@ts-linq/types';

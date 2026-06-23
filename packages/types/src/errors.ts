@@ -52,7 +52,15 @@ export const OrmErrorCode = {
   SnapshotSerialization: 'SNAPSHOT_SERIALIZATION_ERROR',
   SnapshotValidation: 'SNAPSHOT_VALIDATION_ERROR',
   BundleBuild: 'BUNDLE_BUILD_ERROR',
-  ProviderRequired: 'PROVIDER_REQUIRED_ERROR'
+  ProviderRequired: 'PROVIDER_REQUIRED_ERROR',
+  SetNotConfigured: 'ORM_SET_NOT_CONFIGURED',
+  NoPrimaryKey: 'ORM_NO_PRIMARY_KEY',
+  NoDbContext: 'ORM_NO_DB_CONTEXT',
+  TransformerRequired: 'ORM_TRANSFORMER_REQUIRED',
+  MigrationsDirNotConfigured: 'ORM_MIGRATIONS_DIR_NOT_CONFIGURED',
+  KeylessMutation: 'ORM_KEYLESS_MUTATION',
+  DbUpdate: 'ORM_UPDATE_FAILED',
+  DbUpdateConcurrency: 'ORM_UPDATE_CONCURRENCY'
 } as const;
 
 /** Union of every stable code declared in {@link OrmErrorCode}. */
@@ -411,6 +419,96 @@ export class BundleBuildError extends OrmError {
  */
 export class ProviderRequiredError extends OrmError {
   public readonly code = OrmErrorCode.ProviderRequired;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Stable codes carried by an {@link OrmConfigurationError}. Each value identifies
+ * a distinct developer-configuration mistake so callers can branch on `e.code`
+ * instead of string-matching the message.
+ */
+export type OrmConfigurationErrorCode =
+  | typeof OrmErrorCode.SetNotConfigured
+  | typeof OrmErrorCode.NoPrimaryKey
+  | typeof OrmErrorCode.NoDbContext
+  | typeof OrmErrorCode.TransformerRequired
+  | typeof OrmErrorCode.MigrationsDirNotConfigured
+  | typeof OrmErrorCode.KeylessMutation;
+
+/**
+ * Thrown for developer-configuration mistakes detected at the ORM boundary — a
+ * `DbSet` declared without a context, a missing primary key, an entity without a
+ * configured set, a missing migrations directory, or a missing compile-time
+ * transformer. The specific failure is identified by the literal `code` (one of
+ * {@link OrmConfigurationErrorCode}); prefer the static factory helpers, which
+ * centralize the codes and keep call sites terse.
+ */
+export class OrmConfigurationError extends OrmError {
+  public readonly code: OrmConfigurationErrorCode;
+
+  constructor(message: string, code: OrmConfigurationErrorCode, opts?: OrmErrorOptions) {
+    super(message, opts);
+    this.code = code;
+  }
+
+  /** A `DbSet` was requested for an entity that has no configured set. */
+  static setNotConfigured(entityName: string): OrmConfigurationError {
+    return new OrmConfigurationError(
+      `DbSet for ${entityName} is not configured`,
+      OrmErrorCode.SetNotConfigured,
+      { details: { entityName } }
+    );
+  }
+
+  /** A `DbSet` was used without being wired to a `DbContext`. */
+  static noDbContext(entityName: string): OrmConfigurationError {
+    return new OrmConfigurationError(
+      `DbSet<${entityName}> has no database context. ` +
+        `Declare it inside a DbContext subclass: \`${entityName.toLowerCase()}s = this.defineSet(${entityName})\``,
+      OrmErrorCode.NoDbContext,
+      { details: { entityName } }
+    );
+  }
+
+  /** An operation that requires a primary key (e.g. upsert) ran on a key-less entity. */
+  static noPrimaryKey(entityName: string): OrmConfigurationError {
+    return new OrmConfigurationError(
+      `No primary key defined for ${entityName}`,
+      OrmErrorCode.NoPrimaryKey,
+      { details: { entityName } }
+    );
+  }
+
+  /** A compile-time-transformer-only API was called without the transformer configured. */
+  static transformerRequired(): OrmConfigurationError {
+    return new OrmConfigurationError(
+      "ts-linq(hasQueryFilter): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'.",
+      OrmErrorCode.TransformerRequired
+    );
+  }
+
+  /** A migrations-aware operation ran without a configured migrations directory. */
+  static migrationsDirectoryNotConfigured(): OrmConfigurationError {
+    return new OrmConfigurationError(
+      'Migrations directory is not configured on this DbContext.\n' +
+        'Call .migrations({ directory: "./migrations" }) on DbContextOptionsBuilder.',
+      OrmErrorCode.MigrationsDirNotConfigured
+    );
+  }
+}
+
+/**
+ * Generic persistence failure raised when applying tracked changes fails. Acts as
+ * the error-translation boundary root for `saveChanges`: lower-level provider /
+ * concurrency failures are wrapped here with `cause` preserved so the root cause
+ * is never lost. Concrete failure modes (e.g. concurrency) extend this and narrow
+ * the `code`.
+ */
+export class DbUpdateException extends OrmError {
+  public readonly code: string = OrmErrorCode.DbUpdate;
 
   constructor(message: string, opts?: OrmErrorOptions) {
     super(message, opts);
