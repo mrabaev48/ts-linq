@@ -140,6 +140,7 @@ import type { OrmErrorOptions } from '..';
 import {
   BatchConfigurationError,
   DatabaseError,
+  DbUpdateException,
   DecoratorUsageError,
   err,
   ForeignKeyConstraintError,
@@ -149,6 +150,7 @@ import {
   ok,
   OperationAbortedError,
   OptimisticConcurrencyError,
+  OrmConfigurationError,
   OrmErrorCode,
   SelectorExtractionError,
   TemporalNotSupportedError,
@@ -303,6 +305,8 @@ const _batchError = new BatchConfigurationError('test');
 const _includeError = new InvalidIncludeError('test');
 const _selectorError = new SelectorExtractionError('test');
 const _abortedError = new OperationAbortedError('test');
+const _configError = OrmConfigurationError.setNotConfigured('test');
+const _dbUpdateError = new DbUpdateException('test');
 const _ormErrorCode = OrmErrorCode.DatabaseError;
 declare const _ormErrorOptions: OrmErrorOptions;
 // OrmError is abstract: reference the type, never instantiate it directly.

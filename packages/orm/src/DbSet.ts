@@ -3,13 +3,13 @@ import type { EntityLoader } from '@ts-linq/core';
 import type { QueryTrackingBehavior } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { IQueryableSurface, Queryable } from '@ts-linq/query';
-import type { EntityCacheLike } from '@ts-linq/types';
 import type {
   GlobalFilter,
   PerformanceOptions,
   QueryFilterMetadata,
   QuerySplittingBehavior
 } from '@ts-linq/types';
+import { type EntityCacheLike, OrmConfigurationError } from '@ts-linq/types';
 
 import type { ChangeTracker } from './ChangeTracker';
 import { type DiagnosticSink, NULL_DIAGNOSTIC_SINK } from './context/DiagnosticSink';
@@ -146,10 +146,7 @@ export class DbSet<T extends object> {
    */
   _seed(): Queryable<T> {
     if (!this._provider) {
-      throw new Error(
-        `DbSet<${this._entityClass.name}> has no database context. ` +
-          `Declare it inside a DbContext subclass: \`${this._entityClass.name.toLowerCase()}s = this.defineSet(${this._entityClass.name})\``
-      );
+      throw OrmConfigurationError.noDbContext(this._entityClass.name);
     }
     const tracking = this._changeTracker?.queryTrackingBehavior;
     if (!this._seedCache || this._seedTracking !== tracking) {
@@ -334,7 +331,7 @@ export class DbSet<T extends object> {
   public async upsert(entity: T): Promise<T> {
     const metadata = MetadataStorage.getEntity(this._entityClass);
     if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0)
-      throw new Error(`No primary key defined for ${this._entityClass.name}`);
+      throw OrmConfigurationError.noPrimaryKey(this._entityClass.name);
     const pk = metadata.primaryKeys[0];
     const id = (entity as unknown as Record<string, unknown>)[pk];
     if (id === undefined || id === null) {

@@ -1,5 +1,13 @@
 # @ts-linq/plugin-multi-tenant
 
+## 2.0.29
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.8.0
+  - @ts-linq/metadata@4.1.7
+
 ## 2.0.28
 
 ### Patch Changes

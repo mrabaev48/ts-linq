@@ -11,6 +11,7 @@ import {
   BatchConfigurationError,
   BundleBuildError,
   DatabaseError,
+  DbUpdateException,
   DecoratorUsageError,
   FallbackExhaustedError,
   ForeignKeyConstraintError,
@@ -20,6 +21,7 @@ import {
   MigrationRollbackError,
   OperationAbortedError,
   OptimisticConcurrencyError,
+  OrmConfigurationError,
   OrmError,
   OrmErrorCode,
   ProviderRequiredError,
@@ -71,6 +73,19 @@ type _SnapSerCode = Expect<
 type _SnapValCode = Expect<Equal<SnapshotValidationError['code'], 'SNAPSHOT_VALIDATION_ERROR'>>;
 type _BundleCode = Expect<Equal<BundleBuildError['code'], 'BUNDLE_BUILD_ERROR'>>;
 type _ProviderCode = Expect<Equal<ProviderRequiredError['code'], 'PROVIDER_REQUIRED_ERROR'>>;
+
+// OrmConfigurationError carries one of the configuration-code literals (not widened to string).
+type _ConfigCode = Expect<
+  Equal<
+    OrmConfigurationError['code'],
+    | 'ORM_SET_NOT_CONFIGURED'
+    | 'ORM_NO_PRIMARY_KEY'
+    | 'ORM_NO_DB_CONTEXT'
+    | 'ORM_TRANSFORMER_REQUIRED'
+    | 'ORM_MIGRATIONS_DIR_NOT_CONFIGURED'
+    | 'ORM_KEYLESS_MUTATION'
+  >
+>;
 
 // `details` is a readonly structured payload, never `any`.
 type _DetailsType = Expect<
@@ -272,5 +287,68 @@ describe('Migration error factories', () => {
       details: { operation: 'buildActualFromProvider' }
     });
     expect(provider.details).toEqual({ operation: 'buildActualFromProvider' });
+  });
+});
+
+// --- runtime: orm-boundary mid-level errors ----------------------------------
+
+describe('OrmConfigurationError', () => {
+  it('roots under OrmError and Error', () => {
+    const err = OrmConfigurationError.setNotConfigured('User');
+    expect(err).toBeInstanceOf(OrmConfigurationError);
+    expect(err).toBeInstanceOf(OrmError);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('OrmConfigurationError');
+  });
+
+  it('setNotConfigured carries the stable code, message, and details', () => {
+    const err = OrmConfigurationError.setNotConfigured('User');
+    expect(err.code).toBe(OrmErrorCode.SetNotConfigured);
+    expect(err.message).toBe('DbSet for User is not configured');
+    expect(err.details).toEqual({ entityName: 'User' });
+  });
+
+  it('noDbContext carries the stable code and the actionable message', () => {
+    const err = OrmConfigurationError.noDbContext('User');
+    expect(err.code).toBe(OrmErrorCode.NoDbContext);
+    expect(err.message).toContain('DbSet<User> has no database context');
+    expect(err.message).toContain('this.defineSet(User)');
+    expect(err.details).toEqual({ entityName: 'User' });
+  });
+
+  it('noPrimaryKey carries the stable code and message', () => {
+    const err = OrmConfigurationError.noPrimaryKey('User');
+    expect(err.code).toBe(OrmErrorCode.NoPrimaryKey);
+    expect(err.message).toBe('No primary key defined for User');
+  });
+
+  it('transformerRequired carries the stable code and message', () => {
+    const err = OrmConfigurationError.transformerRequired();
+    expect(err.code).toBe(OrmErrorCode.TransformerRequired);
+    expect(err.message).toContain('compile-time transformer is required');
+  });
+
+  it('migrationsDirectoryNotConfigured carries the stable code and message', () => {
+    const err = OrmConfigurationError.migrationsDirectoryNotConfigured();
+    expect(err.code).toBe(OrmErrorCode.MigrationsDirNotConfigured);
+    expect(err.message).toContain('Migrations directory is not configured');
+  });
+
+  it('preserves cause when supplied', () => {
+    const root = new Error('boom');
+    const err = new OrmConfigurationError('x', OrmErrorCode.NoDbContext, { cause: root });
+    expect(err.cause).toBe(root);
+  });
+});
+
+describe('DbUpdateException', () => {
+  it('roots under OrmError with the generic update code and preserves cause', () => {
+    const root = new Error('provider failed');
+    const err = new DbUpdateException('update failed', { cause: root });
+    expect(err).toBeInstanceOf(OrmError);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('DbUpdateException');
+    expect(err.code).toBe(OrmErrorCode.DbUpdate);
+    expect(err.cause).toBe(root);
   });
 });

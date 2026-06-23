@@ -1,3 +1,10 @@
+import {
+  DbUpdateException,
+  OptimisticConcurrencyError,
+  OrmError,
+  OrmErrorCode
+} from '@ts-linq/types';
+
 import { EntityEntry } from '../src/changetracker/EntityEntry';
 import { DbUpdateConcurrencyException } from '../src/exceptions/DbUpdateConcurrencyException';
 
@@ -20,6 +27,20 @@ describe('DbUpdateConcurrencyException', () => {
     const ex = new DbUpdateConcurrencyException('conflict', [entry]);
     expect(ex.entries).toHaveLength(1);
     expect(ex.entries[0]).toBe(entry);
+  });
+
+  test('extends the canonical OrmError / DbUpdateException hierarchy with a stable code', () => {
+    const ex = new DbUpdateConcurrencyException('conflict', []);
+    expect(ex).toBeInstanceOf(DbUpdateException);
+    expect(ex).toBeInstanceOf(OrmError);
+    expect(ex.code).toBe(OrmErrorCode.DbUpdateConcurrency);
+  });
+
+  test('preserves the originating concurrency failure as cause', () => {
+    const root = new OptimisticConcurrencyError('version mismatch');
+    const ex = new DbUpdateConcurrencyException('conflict', [], { cause: root });
+    expect(ex.cause).toBe(root);
+    expect(ex.cause).toBeInstanceOf(OptimisticConcurrencyError);
   });
 });
 

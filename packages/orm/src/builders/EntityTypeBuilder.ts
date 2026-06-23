@@ -12,7 +12,7 @@ import type {
   ShadowPropertyMetadata,
   TableFragmentMetadata
 } from '@ts-linq/types';
-import { InheritanceStrategy } from '@ts-linq/types';
+import { InheritanceStrategy, OrmConfigurationError } from '@ts-linq/types';
 
 import type { CollectionCollectionBuilder } from './CollectionCollectionBuilder';
 import { CollectionNavigationBuilder } from './CollectionNavigationBuilder';
@@ -360,9 +360,7 @@ export class EntityTypeBuilder<T extends object> {
     _nameOrPredicate: string | ((e: T) => boolean),
     _predicate?: (e: T) => boolean
   ): this {
-    throw new Error(
-      "ts-linq(hasQueryFilter): compile-time transformer is required. Configure ts-patch plugin '@ts-linq/transformer'."
-    );
+    throw OrmConfigurationError.transformerRequired();
   }
 
   /** @internal — called by the compile-time transformer in place of hasQueryFilter. */

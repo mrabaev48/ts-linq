@@ -1,5 +1,12 @@
 # @ts-linq/ast
 
+## 3.2.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.8.0
+
 ## 3.2.7
 
 ### Patch Changes
