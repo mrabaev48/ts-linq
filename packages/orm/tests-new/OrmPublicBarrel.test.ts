@@ -11,6 +11,11 @@ import * as internal from '../src/internal';
  * assertion, forcing a deliberate decision (and a changeset). Implementation-only collaborators
  * (executors, registries, coordinators, `IdentityMap`, value-generator classes) must stay off
  * the `"."` barrel and remain reachable only through `@ts-linq/orm/internal`.
+ *
+ * This allowlist snapshot is the **single authoritative gate** for the orm public surface
+ * (orm/task-6.1 item 4), matching the `QueryPublicBarrel` precedent. `arch:dead` (ts-prune) is
+ * intentionally NOT wired to also police this barrel — one gate only, to avoid divergent/duplicated
+ * coverage. Change the allowlist only via a deliberate decision (and a changeset).
  */
 describe('@ts-linq/orm public barrel', () => {
   const EXPECTED_VALUE_EXPORTS = [

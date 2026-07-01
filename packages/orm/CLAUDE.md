@@ -26,6 +26,15 @@ value generators, pooling, transactions. Composes `core` + `query` + `metadata` 
   subtle — read existing code before changing lifecycle.
 - Enforce a **public/internal boundary**: don't re-export internal collaborators from the barrel
   and freeze them as contract (refactor `task-6`).
+- **Never import `@ts-linq/query/internal` from orm source** (refactor `task-6.1`). orm consumes the
+  public `@ts-linq/query` boundary seam instead — `createQueryable` / `createRawSqlQueryable` (hide
+  the internal `QueryContext`) and `createDefaultSqlCache` / `createDefaultCountCache` returning the
+  public `OwnedSqlCache` / `CountCache` types. The old `tsconfig` `paths` alias to
+  `../query/dist/internal` was removed and `.dependency-cruiser.cjs` now forbids the deep import
+  from orm. If you need something new from query, add it to query's public surface, not a deep import.
+- **`OrmPublicBarrel.test.ts` is the single authoritative gate** for the `"."` public surface
+  (refactor `task-6.1`). ts-prune (`arch:dead`) is intentionally not wired to also police the orm
+  barrel — one gate only. Widen the allowlist only via a deliberate decision + changeset.
 
 ## Public API surface & stability
 
