@@ -1,7 +1,7 @@
 import type { DatabaseProvider, DbContextOptions } from '@ts-linq/core';
 import { EntityCache, EntityLoader, LoadingStrategy } from '@ts-linq/core';
 import { type MetadataRegistry, MetadataStorage } from '@ts-linq/metadata';
-import { EnhancedSqlCache, InMemoryCountCache } from '@ts-linq/query/internal';
+import { createDefaultCountCache, createDefaultSqlCache } from '@ts-linq/query';
 import { DiagnosticEmitter } from '@ts-linq/telemetry';
 
 import { applyCompiledModel } from '../bootstrap/use-compiled-model';
@@ -111,14 +111,14 @@ export class DbContextBootstrapper {
     }
     // Create an owned SQL cache when none is supplied so that dispose() can stop its timer.
     // When the user passes their own SqlCache we leave ownership with them.
-    services.ownedSqlCache = options.performance?.sqlCache ? undefined : new EnhancedSqlCache();
+    services.ownedSqlCache = options.performance?.sqlCache ? undefined : createDefaultSqlCache();
 
     // Store performance options; auto-inject per-context count cache when none supplied.
     // Preserve the original ternary form to avoid exposing a pre-existing CountCache ↔
     // InMemoryCountCache type mismatch to TypeScript's widening rules.
     services.performanceOptions = options.performance?.countCache
       ? options.performance
-      : { ...options.performance, countCache: new InMemoryCountCache() };
+      : { ...options.performance, countCache: createDefaultCountCache() };
 
     // Inject owned SQL cache without touching the countCache assignment above.
     if (services.ownedSqlCache) {

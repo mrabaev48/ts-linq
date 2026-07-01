@@ -3,8 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"],
-      "@ts-linq/query/internal": ["../query/dist/internal"]
+      "@src/*": ["src/*"]
     },
     "composite": true,
     "declaration": true,
