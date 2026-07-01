@@ -5,7 +5,7 @@ import type { EntityLoader } from '@ts-linq/core';
 import { LoadingStrategy } from '@ts-linq/core';
 import { LazyLoadingProxy } from '@ts-linq/core';
 import type { MetadataRegistry } from '@ts-linq/metadata';
-import { type EnhancedSqlCache } from '@ts-linq/query/internal';
+import { type OwnedSqlCache } from '@ts-linq/query';
 import type { EntityCtorRef } from '@ts-linq/types';
 import type {
   ExecutionStrategyOptions,
@@ -122,7 +122,7 @@ export abstract class DbContext {
   private get _spExecutor(): SpExecutor {
     return this._services.spExecutor;
   }
-  private get _ownedSqlCache(): EnhancedSqlCache | undefined {
+  private get _ownedSqlCache(): OwnedSqlCache | undefined {
     return this._services.ownedSqlCache;
   }
   private get _querySplittingBehavior(): QuerySplittingBehavior | undefined {
