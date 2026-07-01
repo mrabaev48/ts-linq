@@ -1,6 +1,13 @@
 import type { ValueGenerator, ValueGeneratorContext } from '@ts-linq/types';
 
-/** Callback type for reserving the next Hi-Lo block from the database. */
+/**
+ * Callback type for reserving the next Hi-Lo block from the database.
+ *
+ * @public — a user-implemented callback exported from `@ts-linq/orm` so consumers can type their
+ * block-fetch function. It is independent of the concrete {@link HiLoValueGenerator} class, which
+ * is an implementation detail behind `@ts-linq/orm/internal`. Keeping the type public while the
+ * class is internal is deliberate (orm/task-6, confirmed orm/task-6.1 item 2).
+ */
 export type FetchNextHiLoBlock = (
   sequenceName: string,
   schema: string | undefined,
