@@ -6,7 +6,7 @@ import type {
   MemoryProfilerLike
 } from '@ts-linq/core';
 import type { MetadataRegistry } from '@ts-linq/metadata';
-import type { EnhancedSqlCache } from '@ts-linq/query/internal';
+import type { OwnedSqlCache } from '@ts-linq/query';
 import type {
   EntityCacheLike,
   ExecutionStrategyOptions,
@@ -59,7 +59,7 @@ export interface DbContextServices {
   readonly softDeleteInterceptor: SoftDeleteInterceptor;
   readonly interceptorRegistry: InterceptorRegistry;
   /** SQL cache created and owned by this context (undefined when the user supplied their own). */
-  readonly ownedSqlCache?: EnhancedSqlCache;
+  readonly ownedSqlCache?: OwnedSqlCache;
   readonly entityCache?: EntityCacheLike;
   readonly performanceOptions?: PerformanceOptions;
   readonly softDelete?: SoftDeleteOptions;
