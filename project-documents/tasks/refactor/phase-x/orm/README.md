@@ -75,10 +75,10 @@
 | 5 | task-5.md — Introduce typed ORM error hierarchy | P1 | ✅ Completed | Bare `Error` throws; no codes/context |
 | 6 | task-6.md — Public/internal API boundary via `exports` | P1 | ✅ Completed | Internals leak from barrel; `internal/` unreachable |
 | 6.1 | task-6.1.md — task-6 follow-ups (query coupling decision, TSDoc, gate, dual-package resolve, stray-artifact guard) | P2 | ✅ Completed | Close the six tech-debt items left by task-6 |
-| 7 | task-7.md — Split `EntityTypeBuilder` config axes | P2 | — | SRP; large write-out method |
+| 7 | task-7.md — Split `EntityTypeBuilder` config axes | P2 | ✅ Completed | SRP; large write-out method |
 | 8 | task-8.md — Reduce `as unknown as` casts in DbSet factory | P2 | — | Type-safety erosion |
 
-> **Package status: 🔄 In Progress** — task-1, task-2, task-3, task-4, task-5, task-6, task-6.1 ✅ done; tasks 7–8 pending.
+> **Package status: 🔄 In Progress** — task-1, task-2, task-3, task-4, task-5, task-6, task-6.1, task-7 ✅ done; task-8 pending.
 
 ## Dependencies on other packages
 
