@@ -1,5 +1,20 @@
 # @ts-linq/orm
 
+## 6.0.2
+
+### Patch Changes
+
+- refactor(orm): decompose `EntityTypeBuilder` into per-concern configuration aspects.
+
+  Purely structural, no public API or runtime behaviour change. The 573-LOC god-builder is now a
+  thin facade delegating accumulation and registry write-out to cohesive `EntityConfigAspect`
+  objects (`KeyAndTableAspect`, `ColumnAspect`, `RelationshipAspect`, `IndexAndConstraintAspect`,
+  `InheritanceAspect`, `OwnedAndComplexAspect`, `SkipNavigationAspect`, `TableSplittingAspect`,
+  `QueryFilterAspect`, `StoredProcedureAspect`, `MiscMetadataAspect`). `_applyToRegistry` is now an
+  explicit, documented ordered aspect loop; the previously implicit "skip-nav after primary keys"
+  sequencing is now an explicit `AspectApplyContext` data dependency. The fluent public API and the
+  `__tsLinqEntityTypeBuilderBrand` (consumed by the compile-time transformer) are unchanged.
+
 ## 6.0.1
 
 ### Patch Changes

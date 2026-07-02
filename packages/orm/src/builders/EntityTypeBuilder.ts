@@ -1,232 +1,173 @@
 import type { MetadataRegistry, PropertyAccessMode } from '@ts-linq/metadata';
-import { createPropertyAccessor, type PropertyAccessor } from '@ts-linq/metadata';
-import { StoredProcedureBuilder } from '@ts-linq/metadata';
-import type { EntityStoredProcedureMapping } from '@ts-linq/types';
-import type {
-  AlternateKeyMetadata,
-  CheckConstraintMetadata,
-  ColumnMetadata,
-  IndexMetadata,
-  QueryFilterMetadata,
-  RelationshipMetadata,
-  ShadowPropertyMetadata,
-  TableFragmentMetadata
-} from '@ts-linq/types';
-import { InheritanceStrategy, OrmConfigurationError } from '@ts-linq/types';
+import type { StoredProcedureBuilder } from '@ts-linq/metadata';
+import type { QueryFilterMetadata } from '@ts-linq/types';
+import { OrmConfigurationError } from '@ts-linq/types';
 
-import type { CollectionCollectionBuilder } from './CollectionCollectionBuilder';
+import { ColumnAspect } from './aspects/ColumnAspect';
+import type { AspectApplyContext, EntityConfigAspect } from './aspects/EntityConfigAspect';
+import { IndexAndConstraintAspect } from './aspects/IndexAndConstraintAspect';
+import { InheritanceAspect } from './aspects/InheritanceAspect';
+import { KeyAndTableAspect } from './aspects/KeyAndTableAspect';
+import { MiscMetadataAspect } from './aspects/MiscMetadataAspect';
+import { OwnedAndComplexAspect } from './aspects/OwnedAndComplexAspect';
+import { QueryFilterAspect } from './aspects/QueryFilterAspect';
+import { RelationshipAspect } from './aspects/RelationshipAspect';
+import { SkipNavigationAspect } from './aspects/SkipNavigationAspect';
+import { StoredProcedureAspect } from './aspects/StoredProcedureAspect';
+import { TableSplittingAspect } from './aspects/TableSplittingAspect';
 import { CollectionNavigationBuilder } from './CollectionNavigationBuilder';
-import { ComplexTypeBuilder } from './ComplexTypeBuilder';
-import { DiscriminatorBuilder } from './DiscriminatorBuilder';
-import { IndexBuilder } from './IndexBuilder';
-import { OwnedNavigationBuilder } from './OwnedNavigationBuilder';
+import type { ComplexTypeBuilder } from './ComplexTypeBuilder';
+import type { DiscriminatorBuilder } from './DiscriminatorBuilder';
+import type { IndexBuilder } from './IndexBuilder';
+import type { OwnedNavigationBuilder } from './OwnedNavigationBuilder';
 import { PropertyBuilder } from './PropertyBuilder';
-import { ReferenceNavigationBuilder } from './ReferenceNavigationBuilder';
-import { TableSplitConfigBuilder } from './TableSplitConfigBuilder';
-import { extractPropertyName, extractPropertyNames } from './utils';
-
-function resolveOwnedArgs<TOwned extends object, TOwner>(
-  ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<TOwner, TOwned>) => void),
-  configure?: (b: OwnedNavigationBuilder<TOwner, TOwned>) => void
-): [new () => TOwned, ((b: OwnedNavigationBuilder<TOwner, TOwned>) => void) | undefined] {
-  // Arrow functions have undefined prototype; class constructors have an object prototype.
-  if (typeof ownedCtorOrConfigure === 'function' && ownedCtorOrConfigure.prototype !== undefined) {
-    return [ownedCtorOrConfigure as new () => TOwned, configure];
-  }
-  return [
-    Object as unknown as new () => TOwned,
-    ownedCtorOrConfigure as ((b: OwnedNavigationBuilder<TOwner, TOwned>) => void) | undefined
-  ];
-}
+import type { ReferenceNavigationBuilder } from './ReferenceNavigationBuilder';
+import type { TableSplitConfigBuilder } from './TableSplitConfigBuilder';
+import { extractPropertyName } from './utils';
 
 /**
- * Fluent builder for configuring a single entity type.
- * Mirrors EF Core's EntityTypeBuilder<T>.
+ * Fluent builder for configuring a single entity type. Mirrors EF Core's `EntityTypeBuilder<T>`.
  *
- * All configuration is accumulated internally and written to the registry
- * in a single batch when ModelBuilder._finalize() calls _applyToRegistry().
- * This ensures decorator metadata is fully settled before fluent overrides run.
+ * A thin **facade**: each fluent method delegates to a cohesive, per-concern
+ * {@link EntityConfigAspect} (the aspects carry the behaviour docs). Configuration is accumulated
+ * in the aspects and written to the registry in a single batch when `ModelBuilder._finalize()`
+ * calls `_applyToRegistry()`, which iterates the aspects in an explicit, documented order (see
+ * `_applyOrder`) — ensuring decorator metadata is fully settled before fluent overrides run.
  */
 export class EntityTypeBuilder<T extends object> {
   /** Brand used by the compile-time transformer to identify EntityTypeBuilder receivers. */
   declare readonly __tsLinqEntityTypeBuilderBrand: true;
 
-  private _tableName?: string;
-  private _schema?: string;
-  private _primaryKeys?: string[];
-  private readonly _columns: Map<string, ColumnMetadata> = new Map();
-  private readonly _relationships: RelationshipMetadata[] = [];
-  private readonly _indexes: IndexMetadata[] = [];
-  private _isTemporal?: boolean;
-  private _historyTableName?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly _ownedBuilders: OwnedNavigationBuilder<T, any>[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly _complexBuilders: ComplexTypeBuilder<any>[] = [];
-  private _inheritanceStrategy?: InheritanceStrategy;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private _discriminatorBuilder?: DiscriminatorBuilder<any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly _skipNavBuilders: CollectionCollectionBuilder<T, any>[] = [];
-  private readonly _queryFilters: QueryFilterMetadata[] = [];
-  private readonly _seedRows: Record<string, unknown>[] = [];
-  private readonly _checkConstraints: CheckConstraintMetadata[] = [];
-  private _entityComment?: string;
-  private readonly _shadowColumns: Map<string, ColumnMetadata> = new Map();
-  private readonly _tableFragments: TableFragmentMetadata[] = [];
-  private _isKeyless?: boolean;
-  private _viewName?: string;
-  private _viewSql?: string;
-  private readonly _alternateKeys: AlternateKeyMetadata[] = [];
-  private _entityAccessMode?: PropertyAccessMode;
-  private readonly _spMapping: EntityStoredProcedureMapping = {};
+  private readonly _keyAndTable = new KeyAndTableAspect<T>();
+  private readonly _column = new ColumnAspect<T>();
+  private readonly _relationship: RelationshipAspect<T>;
+  private readonly _indexAndConstraint: IndexAndConstraintAspect<T>;
+  private readonly _inheritance = new InheritanceAspect<T>();
+  private readonly _ownedAndComplex: OwnedAndComplexAspect<T>;
+  private readonly _skipNav = new SkipNavigationAspect<T>();
+  private readonly _tableSplitting = new TableSplittingAspect<T>();
+  private readonly _queryFilter = new QueryFilterAspect<T>();
+  private readonly _storedProcedure = new StoredProcedureAspect<T>();
+  private readonly _misc = new MiscMetadataAspect<T>();
 
-  constructor(private readonly _ctor: new () => T) {}
+  /**
+   * Aspects in their apply order. The only hard ordering constraints are:
+   *   1. `KeyAndTableAspect` runs first — its `addEntity` creates the registry record every other
+   *      aspect merges into, and it publishes `ctx.primaryKeys`.
+   *   2. `SkipNavigationAspect` runs after `KeyAndTableAspect` — it reads `ctx.primaryKeys` to
+   *      derive the m2m left foreign key (the former implicit "skip-nav after PKs" sequencing).
+   * All remaining aspects write independent, ctor-keyed registry entries; their order is for
+   * readability only.
+   */
+  private readonly _applyOrder: readonly EntityConfigAspect<T>[];
+
+  constructor(private readonly _ctor: new () => T) {
+    this._relationship = new RelationshipAspect<T>(_ctor);
+    this._indexAndConstraint = new IndexAndConstraintAspect<T>(_ctor);
+    this._ownedAndComplex = new OwnedAndComplexAspect<T>(_ctor);
+    this._applyOrder = [
+      this._keyAndTable, // 1. addEntity + schema + PKs (publishes ctx.primaryKeys) — must be first
+      this._column, // 2. columns + shadow properties
+      this._relationship, // 3. relationships
+      this._indexAndConstraint, // 4. indexes + alternate keys + check constraints
+      this._inheritance, // 5. TPH/TPT/TPC hierarchy + discriminator
+      this._ownedAndComplex, // 6. owned entities + complex properties
+      this._skipNav, // 7. skip navigations (m2m) — PK-dependent, reads ctx.primaryKeys
+      this._tableSplitting, // 8. table fragments (entity splitting)
+      this._queryFilter, // 9. query filters (no-op on registry; per-context)
+      this._storedProcedure, // 10. stored-procedure mapping
+      this._misc // 11. temporal / seed / comment / keyless / view
+    ];
+  }
 
   toTable(name: string, schema?: string): this {
-    this._tableName = name;
-    if (schema !== undefined) this._schema = schema;
+    this._keyAndTable.toTable(name, schema);
     return this;
   }
 
-  /**
-   * Maps this entity to a database view.
-   * Mirrors EF Core's `ToView(viewName)`.
-   */
   toView(name: string): this {
-    this._viewName = name;
+    this._misc.toView(name);
     return this;
   }
 
-  /**
-   * Declares this entity as keyless — no primary key, never tracked, mutations forbidden.
-   * Mirrors EF Core's `HasNoKey()`.
-   */
   hasNoKey(): this {
-    this._isKeyless = true;
+    this._misc.hasNoKey();
     return this;
   }
 
-  /**
-   * Sets the default property access mode for all properties on this entity.
-   * Can be overridden per-property with `property(...).usePropertyAccessMode(mode)`.
-   * Mirrors EF Core's `EntityTypeBuilder.UsePropertyAccessMode(mode)`.
-   */
+  /** Sets the default access mode for all properties; overridable per-property. */
   usePropertyAccessMode(mode: PropertyAccessMode): this {
-    this._entityAccessMode = mode;
+    this._column.usePropertyAccessMode(mode);
     return this;
   }
 
-  /**
-   * Supplies optional CREATE VIEW DDL to be emitted by migrations.
-   * If omitted, the view is assumed pre-existing.
-   */
+  /** Optional CREATE VIEW DDL for migrations; if omitted, the view is assumed pre-existing. */
   hasViewSql(sql: string): this {
-    this._viewSql = sql;
+    this._misc.hasViewSql(sql);
     return this;
   }
 
-  /**
-   * Maps additional properties of this entity to a separate physical table (entity splitting).
-   * Mirrors EF Core's `SplitToTable(tableName, configure)`.
-   *
-   * @example
-   * b.splitToTable("OrdersDetails", s => {
-   *   s.property(o => o.notes);
-   *   s.property(o => o.internalRef);
-   * });
-   */
+  /** Maps additional properties to a separate table (entity splitting; `SplitToTable(...)`). */
   splitToTable(
     tableName: string,
     configure: (b: TableSplitConfigBuilder<T>) => void,
     schema?: string
   ): this {
-    const configBuilder = new TableSplitConfigBuilder<T>();
-    configure(configBuilder);
-    this._tableFragments.push({
-      tableName,
-      ...(schema !== undefined ? { schema } : {}),
-      properties: configBuilder._build()
-    });
+    this._tableSplitting.splitToTable(tableName, configure, schema);
     return this;
   }
 
   hasKey<K extends keyof T>(...keys: K[]): this {
-    this._primaryKeys = keys as string[];
+    this._keyAndTable.hasKey(keys as string[]);
     return this;
   }
 
+  /** Configures a mapped property (selector) or a shadow property (string name). */
   property<TValue>(name: string): PropertyBuilder<TValue>;
   property<K extends keyof T>(selector: (e: T) => T[K]): PropertyBuilder<T[K]>;
   property<TValue, K extends keyof T>(
     selectorOrName: ((e: T) => T[K]) | string
   ): PropertyBuilder<TValue> | PropertyBuilder<T[K]> {
     if (typeof selectorOrName === 'string') {
-      return new PropertyBuilder<TValue>(selectorOrName, this._shadowColumns, true);
+      return new PropertyBuilder<TValue>(selectorOrName, this._column.shadowColumns, true);
     }
     const propName = extractPropertyName(selectorOrName);
-    return new PropertyBuilder<T[K]>(propName, this._columns);
+    return new PropertyBuilder<T[K]>(propName, this._column.columns);
   }
 
   hasOne<TRel extends object>(
     selector: (e: T) => TRel | null | undefined,
     relClass?: new () => TRel
   ): ReferenceNavigationBuilder<T, TRel> {
-    const propName = extractPropertyName(selector);
-    return new ReferenceNavigationBuilder<T, TRel>(
-      this._ctor,
-      propName,
-      relClass,
-      this._relationships
-    );
+    return this._relationship.hasOne(selector, relClass);
   }
 
   hasMany<TRel extends object>(
     selector: (e: T) => TRel[],
     relClass?: new () => TRel
   ): CollectionNavigationBuilder<T, TRel> {
+    // Bridges two aspects: the relationship accumulator and the skip-navigation (m2m) accumulator.
     const propName = extractPropertyName(selector);
     return new CollectionNavigationBuilder<T, TRel>(
       this._ctor,
       propName,
       relClass,
-      this._relationships,
-      this._skipNavBuilders
+      this._relationship.relationships,
+      this._skipNav.skipNavBuilders
     );
   }
 
-  /**
-   * Registers an index on one or more columns.
-   * Accepts either a lambda selector (`p => [p.a, p.b]`) or spread key names (`'a', 'b'`).
-   * Mirrors EF Core's `HasIndex(...)`.
-   */
   hasIndex(selector: (e: T) => unknown): IndexBuilder<T>;
   hasIndex<K extends keyof T>(...keys: K[]): IndexBuilder<T>;
   hasIndex<K extends keyof T>(
     selectorOrKey: ((e: T) => unknown) | K,
     ...restKeys: K[]
   ): IndexBuilder<T> {
-    if (typeof selectorOrKey === 'function') {
-      const cols = extractPropertyNames(selectorOrKey as (e: T) => unknown);
-      return new IndexBuilder<T>(this._ctor, cols, this._indexes);
-    }
-    const cols = [selectorOrKey as string, ...(restKeys as string[])];
-    return new IndexBuilder<T>(this._ctor, cols, this._indexes);
+    return this._indexAndConstraint.hasIndex(selectorOrKey, restKeys);
   }
 
-  /**
-   * Declares an alternate (non-PK) unique key on one or more columns.
-   * The alternate key is emitted as a named UNIQUE constraint and can be the target of an FK.
-   * Mirrors EF Core's `HasAlternateKey(...)`.
-   *
-   * @example
-   * b.hasAlternateKey(u => u.email);
-   * b.hasAlternateKey(o => [o.tenantId, o.publicNumber]);
-   */
   hasAlternateKey(selector: (e: T) => unknown): this {
-    const cols = extractPropertyNames(selector);
-    const name = `AK_${this._ctor.name}_${cols.join('_')}`;
-    this._alternateKeys.push({ name, columns: cols });
+    this._indexAndConstraint.hasAlternateKey(selector);
     return this;
   }
 
@@ -235,17 +176,7 @@ export class EntityTypeBuilder<T extends object> {
     ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<T, TOwned>) => void),
     configure?: (b: OwnedNavigationBuilder<T, TOwned>) => void
   ): OwnedNavigationBuilder<T, TOwned> {
-    const propName = extractPropertyName(selector);
-    const [resolvedCtor, resolvedConfigure] = resolveOwnedArgs(ownedCtorOrConfigure, configure);
-    const builder = new OwnedNavigationBuilder<T, TOwned>(
-      this._ctor,
-      resolvedCtor as new () => TOwned,
-      propName,
-      false
-    );
-    resolvedConfigure?.(builder);
-    this._ownedBuilders.push(builder);
-    return builder;
+    return this._ownedAndComplex.ownsOne(selector, ownedCtorOrConfigure, configure);
   }
 
   ownsMany<TOwned extends object>(
@@ -253,106 +184,53 @@ export class EntityTypeBuilder<T extends object> {
     ownedCtorOrConfigure?: (new () => TOwned) | ((b: OwnedNavigationBuilder<T, TOwned>) => void),
     configure?: (b: OwnedNavigationBuilder<T, TOwned>) => void
   ): OwnedNavigationBuilder<T, TOwned> {
-    const propName = extractPropertyName(selector);
-    const [resolvedCtor, resolvedConfigure] = resolveOwnedArgs(ownedCtorOrConfigure, configure);
-    const builder = new OwnedNavigationBuilder<T, TOwned>(
-      this._ctor,
-      resolvedCtor as new () => TOwned,
-      propName,
-      true
-    );
-    resolvedConfigure?.(builder);
-    this._ownedBuilders.push(builder);
-    return builder;
+    return this._ownedAndComplex.ownsMany(selector, ownedCtorOrConfigure, configure);
   }
 
-  /**
-   * Configures a complex type property — a value-object with no identity, no DbSet, and
-   * no ChangeTracker entry. Its columns are flattened into the owner table.
-   * Mirrors EF Core's `ComplexProperty(selector, configure?)`.
-   *
-   * @example
-   * builder.complexProperty(c => c.shippingAddress, b => {
-   *   b.property(a => a.street).hasMaxLength(200);
-   *   b.property(a => a.city).hasMaxLength(100);
-   * });
-   */
+  /** Configures a complex-type (identity-less value object) property; columns flatten into owner. */
   complexProperty<TComplex>(
     selector: (e: T) => TComplex | undefined,
     configure?: (b: ComplexTypeBuilder<NonNullable<TComplex>>) => void
   ): this {
-    const propName = extractPropertyName(selector);
-    const builder = new ComplexTypeBuilder<NonNullable<TComplex>>(propName);
-    if (configure) configure(builder);
-    this._complexBuilders.push(builder);
+    this._ownedAndComplex.complexProperty(selector, configure);
     return this;
   }
 
-  /**
-   * Configures a discriminator column for TPH inheritance.
-   * Automatically sets strategy to TPH; chain `.hasValue()` to register subtypes.
-   *
-   * @example
-   * mb.entity(Payment)
-   *   .hasDiscriminator<string>('kind')
-   *   .hasValue(CardPayment, 'card')
-   *   .hasValue(BankPayment, 'bank');
-   */
+  /** Configures a TPH discriminator column (implies TPH); chain `.hasValue()` for subtypes. */
   hasDiscriminator<TKey>(name: string, type = 'TEXT'): DiscriminatorBuilder<TKey> {
-    this._inheritanceStrategy = InheritanceStrategy.Tph;
-    const builder = new DiscriminatorBuilder<TKey>(name, type);
-    this._discriminatorBuilder = builder;
-    return builder;
+    return this._inheritance.hasDiscriminator<TKey>(name, type);
   }
 
-  /** Explicitly select Table-per-Hierarchy storage strategy. */
   useTphMappingStrategy(): this {
-    this._inheritanceStrategy = InheritanceStrategy.Tph;
+    this._inheritance.useTph();
     return this;
   }
 
-  /** Select Table-per-Type storage strategy (base table + per-subtype joined tables). */
   useTptMappingStrategy(): this {
-    this._inheritanceStrategy = InheritanceStrategy.Tpt;
+    this._inheritance.useTpt();
     return this;
   }
 
-  /** Select Table-per-Concrete-type storage strategy (one table per leaf, UNION ALL). */
   useTpcMappingStrategy(): this {
-    this._inheritanceStrategy = InheritanceStrategy.Tpc;
+    this._inheritance.useTpc();
     return this;
   }
 
-  /**
-   * Declares that this entity maps to a SQL Server system-versioned (temporal) table.
-   * Allows querying historical data via `temporalAsOf`, `temporalAll`, etc.
-   *
-   * @example
-   * mb.entity(Employee).isTemporal();
-   */
   isTemporal(): this {
-    this._isTemporal = true;
+    this._misc.isTemporal();
     return this;
   }
 
-  /**
-   * Specifies a custom name for the associated history table.
-   * Defaults to `tableName + 'History'` when not set.
-   *
-   * @example
-   * mb.entity(Employee).isTemporal().withHistoryTable('EmployeeHistoryArchive');
-   */
   withHistoryTable(name: string): this {
-    this._historyTableName = name;
+    this._misc.withHistoryTable(name);
     return this;
   }
 
   /**
    * Adds a global query filter applied to every SELECT for this entity.
-   * Use the unnamed overload for a single filter, or supply a name (EF9) to compose multiple.
    *
-   * **Requires the ts-linq compile-time transformer** — the predicate lambda is rewritten
-   * by the TypeScript transformer plugin into `hasQueryFilterCompiled(...)`.
+   * **Requires the ts-linq compile-time transformer** — the predicate lambda is rewritten by the
+   * TypeScript transformer plugin into `hasQueryFilterCompiled(...)`.
    */
   hasQueryFilter(predicate: (e: T) => boolean): this;
   hasQueryFilter(name: string, predicate: (e: T) => boolean): this;
@@ -368,49 +246,22 @@ export class EntityTypeBuilder<T extends object> {
     nameOrCompiled: string | { ast: unknown; parameters: readonly unknown[] },
     compiled?: { ast: unknown; parameters: readonly unknown[] }
   ): this {
-    let name: string;
-    let filter: { ast: unknown; parameters: readonly unknown[] };
-    if (typeof nameOrCompiled === 'string') {
-      name = nameOrCompiled;
-      filter = compiled!;
-    } else {
-      name = '_default';
-      filter = nameOrCompiled;
-    }
-    const idx = this._queryFilters.findIndex((f) => f.name === name);
-    const entry: QueryFilterMetadata = { name, ast: filter.ast, parameters: filter.parameters };
-    if (idx >= 0) {
-      this._queryFilters[idx] = entry;
-    } else {
-      this._queryFilters.push(entry);
-    }
+    this._queryFilter.hasQueryFilterCompiled(nameOrCompiled, compiled);
     return this;
   }
 
-  /**
-   * Adds a CHECK constraint to this entity's table.
-   * Mirrors EF Core's `HasCheckConstraint(name, sql)`.
-   */
   hasCheckConstraint(name: string, sql: string): this {
-    this._checkConstraints.push({ name, sql });
+    this._indexAndConstraint.hasCheckConstraint(name, sql);
     return this;
   }
 
-  /**
-   * Sets a documentation comment for this entity's table.
-   * Mirrors EF Core's `HasComment(comment)`.
-   */
   hasComment(comment: string): this {
-    this._entityComment = comment;
+    this._misc.hasComment(comment);
     return this;
   }
 
-  /**
-   * Declares seed rows for this entity. Rows must have stable primary key values.
-   * Mirrors EF Core's `HasData(...)`.
-   */
   hasData(...rows: T[]): this {
-    this._seedRows.push(...(rows as Record<string, unknown>[]));
+    this._misc.hasData(rows as Record<string, unknown>[]);
     return this;
   }
 
@@ -418,9 +269,7 @@ export class EntityTypeBuilder<T extends object> {
     name: string,
     configure?: (b: StoredProcedureBuilder<T>) => StoredProcedureBuilder<T>
   ): this {
-    const builder = new StoredProcedureBuilder<T>();
-    const configured = configure ? configure(builder) : builder;
-    this._spMapping.insert = configured._build(name);
+    this._storedProcedure.insertUsingStoredProcedure(name, configure);
     return this;
   }
 
@@ -428,9 +277,7 @@ export class EntityTypeBuilder<T extends object> {
     name: string,
     configure?: (b: StoredProcedureBuilder<T>) => StoredProcedureBuilder<T>
   ): this {
-    const builder = new StoredProcedureBuilder<T>();
-    const configured = configure ? configure(builder) : builder;
-    this._spMapping.update = configured._build(name);
+    this._storedProcedure.updateUsingStoredProcedure(name, configure);
     return this;
   }
 
@@ -438,136 +285,20 @@ export class EntityTypeBuilder<T extends object> {
     name: string,
     configure?: (b: StoredProcedureBuilder<T>) => StoredProcedureBuilder<T>
   ): this {
-    const builder = new StoredProcedureBuilder<T>();
-    const configured = configure ? configure(builder) : builder;
-    this._spMapping.delete = configured._build(name);
+    this._storedProcedure.deleteUsingStoredProcedure(name, configure);
     return this;
   }
 
-  /** @internal */
+  /** @internal — applies all accumulated aspects to the registry in the declared order. */
   _applyToRegistry(registry: MetadataRegistry): void {
-    registry.addEntity(this._ctor, this._tableName);
-
-    if (this._schema !== undefined) {
-      registry.mergeFluentSchema(this._ctor, this._schema);
-    }
-
-    if (this._primaryKeys !== undefined) {
-      registry.setFluentPrimaryKeys(this._ctor, this._primaryKeys);
-    }
-
-    for (const column of this._columns.values()) {
-      // Apply entity-level access mode when the property does not have its own mode.
-      if (this._entityAccessMode !== undefined && !column.accessMode) {
-        column.accessMode = this._entityAccessMode;
-        column.accessor = createPropertyAccessor(
-          column.propertyName,
-          column.fieldName,
-          this._entityAccessMode
-        ) as PropertyAccessor;
-      }
-      registry.mergeFluentColumn(this._ctor, column);
-    }
-
-    for (const rel of this._relationships) {
-      registry.mergeFluentRelationship(this._ctor, rel);
-    }
-
-    for (const idx of this._indexes) {
-      registry.mergeFluentIndex(this._ctor, idx);
-    }
-
-    for (const ak of this._alternateKeys) {
-      registry.mergeFluentAlternateKey(this._ctor, ak);
-    }
-
-    if (this._isTemporal !== undefined) {
-      registry.mergeFluentTemporal(this._ctor, this._isTemporal, this._historyTableName);
-    }
-
-    for (const ob of this._ownedBuilders) {
-      registry.addOwnedEntity(this._ctor, ob._buildMetadata());
-    }
-
-    for (const cb of this._complexBuilders) {
-      registry.addComplexProperty(this._ctor, cb._build());
-    }
-
-    if (this._inheritanceStrategy !== undefined) {
-      const disc = this._discriminatorBuilder?._buildMetadata();
-      const subtypes = disc?.entries.map((e) => e.ctor) ?? [];
-      registry.setHierarchyMetadata(this._ctor, {
-        strategy: this._inheritanceStrategy,
-        rootEntity: this._ctor,
-        discriminator: disc,
-        subtypes
-      });
-      for (const sub of subtypes) {
-        registry.setHierarchyRoot(sub, this._ctor);
-      }
-    }
-
-    // Process skip navigation (many-to-many) builders after primary keys are set
-    const leftPk = this._primaryKeys?.[0] ?? 'id';
-    for (const snb of this._skipNavBuilders) {
-      snb._applyToRegistry(registry, leftPk, 'id');
-    }
-
-    if (this._seedRows.length > 0) {
-      registry.setSeedData(this._ctor, [...this._seedRows]);
-    }
-
-    if (this._checkConstraints.length > 0) {
-      registry.setCheckConstraints(this._ctor, [...this._checkConstraints]);
-    }
-
-    if (this._entityComment !== undefined) {
-      registry.setEntityComment(this._ctor, this._entityComment);
-    }
-
-    for (const col of this._shadowColumns.values()) {
-      const shadowProp: ShadowPropertyMetadata = {
-        propertyName: col.propertyName,
-        columnName: col.columnName,
-        type: col.type,
-        nullable: col.nullable,
-        defaultValue: col.defaultValue,
-        defaultExpression: col.defaultExpression,
-        comment: col.comment,
-        length: col.length,
-        precision: col.precision,
-        scale: col.scale
-      };
-      registry.addShadowProperty(this._ctor, shadowProp);
-    }
-
-    if (this._tableFragments.length > 0) {
-      registry.mergeFluentTableFragments(this._ctor, this._tableFragments);
-    }
-
-    if (this._isKeyless !== undefined) {
-      registry.setFluentKeyless(this._ctor, this._isKeyless);
-    }
-
-    if (this._viewName !== undefined) {
-      registry.setFluentViewName(this._ctor, this._viewName);
-    }
-
-    if (this._viewSql !== undefined) {
-      registry.setFluentViewSql(this._ctor, this._viewSql);
-    }
-
-    if (
-      this._spMapping.insert !== undefined ||
-      this._spMapping.update !== undefined ||
-      this._spMapping.delete !== undefined
-    ) {
-      registry.setStoredProcedureMapping(this._ctor, this._spMapping);
+    const ctx: AspectApplyContext = {};
+    for (const aspect of this._applyOrder) {
+      aspect.applyTo(registry, this._ctor, ctx);
     }
   }
 
   /** @internal — returns per-context query filters (not stored in global MetadataRegistry). */
-  _getQueryFilters(): ReadonlyArray<import('@ts-linq/types').QueryFilterMetadata> {
-    return this._queryFilters;
+  _getQueryFilters(): ReadonlyArray<QueryFilterMetadata> {
+    return this._queryFilter.getQueryFilters();
   }
 }
