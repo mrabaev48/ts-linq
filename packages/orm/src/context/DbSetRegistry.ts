@@ -1,4 +1,3 @@
-import { reflectGetOwnMetadata } from '@ts-linq/metadata';
 import { type EntityCtorRef, OrmConfigurationError } from '@ts-linq/types';
 
 import { DbSet } from '../DbSet';
@@ -50,39 +49,62 @@ export class DbSetRegistry {
     };
   }
 
+  /**
+   * The single audited bridge between the heterogeneous storage (`DbSet<object>`,
+   * keyed by the entity constructor the set was created for) and the public generic
+   * `DbSet<T>` surface.
+   *
+   * safe: stored under its own ctor key — the `T` recovered on read is exactly the
+   * `T` used on write. `DbSet<T>` is invariant only over its `_entityClass` field,
+   * which is structurally erased at runtime, so the relation cannot be expressed
+   * structurally but holds by construction.
+   */
+  private asTyped<T extends object>(dbSet: DbSet<object>): DbSet<T> {
+    return dbSet as unknown as DbSet<T>;
+  }
+
+  /**
+   * Instantiate a `DbSet<object>` for `ctor`. The abstract-ness of `EntityCtorRef`
+   * is erased at runtime (every registered entity target is a concrete class), so a
+   * single narrowing `as` to the concrete construct signature suffices here.
+   */
+  private instantiate(ctor: EntityCtorRef): DbSet<object> {
+    return new DbSet<object>(ctor as new () => object, this.buildDbSetContext());
+  }
+
   /** Get a DbSet for the specified entity type. */
   set<T extends object>(entityClass: new () => T): DbSet<T> {
-    const maybe = reflectGetOwnMetadata('orm:original', entityClass);
-    const normalized: EntityCtorRef =
-      typeof maybe === 'function' ? (maybe as EntityCtorRef) : entityClass;
-    if (!this._dbSets.has(normalized)) {
+    const normalized = getOriginal(entityClass);
+    const stored = this._dbSets.get(normalized);
+    if (stored === undefined) {
       throw OrmConfigurationError.setNotConfigured(entityClass.name);
     }
-    // Fast path: no decoration — return the shared instance unchanged
-    if ((entityClass as unknown) === normalized) {
-      return this._dbSets.get(normalized) as unknown as DbSet<T>;
+    // Fast path: no decoration — return the shared instance unchanged.
+    if (entityClass === normalized) {
+      return this.asTyped<T>(stored);
     }
     // Decorated class: return a scoped DbSet that uses the decorated constructor.
     // Cached to avoid allocating on every call.
-    if (!this._decoratedDbSets.has(entityClass)) {
-      this._decoratedDbSets.set(
-        entityClass,
-        new DbSet<object>(entityClass, this.buildDbSetContext())
-      );
+    let decorated = this._decoratedDbSets.get(entityClass);
+    if (decorated === undefined) {
+      decorated = this.instantiate(entityClass);
+      this._decoratedDbSets.set(entityClass, decorated);
     }
-    return this._decoratedDbSets.get(entityClass) as unknown as DbSet<T>;
+    return this.asTyped<T>(decorated);
   }
 
   /** Create and register a typed DbSet for the given entity class. */
   defineSet<T extends object>(entityClass: new () => T): DbSet<T> {
     const original = getOriginal(entityClass);
-    if (this._dbSets.has(original)) {
-      return this._dbSets.get(original) as unknown as DbSet<T>;
+    const existing = this._dbSets.get(original);
+    if (existing !== undefined) {
+      return this.asTyped<T>(existing);
     }
     // Entity not yet in the registry (dynamic registration after construction).
-    const dbSet = new DbSet<T>(entityClass, this.buildDbSetContext());
-    this._dbSets.set(original as unknown as EntityCtorRef, dbSet as unknown as DbSet<object>);
-    return dbSet;
+    // Construct with the passed-in `entityClass`, but key on the undecorated `original`.
+    const dbSet = this.instantiate(entityClass);
+    this._dbSets.set(original, dbSet);
+    return this.asTyped<T>(dbSet);
   }
 
   /**
@@ -96,10 +118,7 @@ export class DbSetRegistry {
     for (const entity of entities) {
       if (!entity.target) continue;
       const original = getOriginal(entity.target);
-      const dbSet = new DbSet<object>(
-        original as unknown as new () => object,
-        this.buildDbSetContext()
-      );
+      const dbSet = this.instantiate(original);
       this._dbSets.set(original, dbSet);
 
       // Create a writable, configurable data property for easy access.

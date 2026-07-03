@@ -247,7 +247,7 @@ export abstract class DbContext {
         if (!e.target) continue;
         const original = getOriginal(e.target);
 
-        const _tmp = new (original as unknown as new () => unknown)();
+        const _tmp = new (original as new () => object)();
       } catch (e) {
         // Best-effort pre-warm: entity constructors with required args / side
         // effects legitimately fail here, so we recover and continue — but log
@@ -581,7 +581,7 @@ export abstract class DbContext {
       return LazyLoadingProxy.isRelationshipLoaded(entity, propertyName);
     }
     // For non-proxy entities, check if property key exists (even if undefined/null)
-    const record = entity as unknown as Record<string, unknown>;
+    const record = entity as object as Record<string, unknown>;
     return propertyName in record;
   }
 

@@ -1,5 +1,17 @@
 # @ts-linq/orm
 
+## 6.0.3
+
+### Patch Changes
+
+- Internal type-safety cleanup in the `DbSet` factory paths (`DbSetRegistry`). The
+  five-plus scattered `as unknown as DbSet<T>` / `as unknown as EntityCtorRef` /
+  `as unknown as new () => object` double casts are collapsed into a single audited
+  bridge (`DbSetRegistry.asTyped`, documented as `safe: stored under its own ctor
+key`), with constructor narrowing confined to one `instantiate` helper and the
+  `orm:original` metadata read routed through the canonical `getOriginal` reader. No
+  public API or runtime behavior change.
+
 ## 6.0.2
 
 ### Patch Changes
