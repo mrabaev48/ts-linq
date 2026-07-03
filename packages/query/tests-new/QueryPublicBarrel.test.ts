@@ -28,6 +28,13 @@ describe('@ts-linq/query public barrel', () => {
     'SetPropertyCalls',
     'TypedOrderedQueryable',
     'TypedQueryable',
+    // Boundary seam added for orm/task-6.1 so downstream packages build seed Queryables and
+    // default caches without importing @ts-linq/query/internal. Type-only companions
+    // (OwnedSqlCache, QueryableSeedProps) are erased and not asserted here.
+    'createDefaultCountCache',
+    'createDefaultSqlCache',
+    'createQueryable',
+    'createRawSqlQueryable',
     'sanitizeTag',
     'typed'
   ];

@@ -19,11 +19,18 @@ import { SqlVisitorFactory } from './SqlVisitorFactory';
 const DEFAULT_VISITOR_FACTORY = new SqlVisitorFactory();
 
 /**
- * Construction inputs for {@link QueryContext}.
+ * Public, fully type-safe seed configuration for constructing a chain-starting
+ * {@link Queryable} through the {@link createQueryable} factory. Every field is typed against the
+ * package's public contracts (`@ts-linq/core` / `@ts-linq/types`); the query-internal
+ * {@link SqlVisitorFactory} assembly detail is intentionally NOT part of this shape and is added
+ * only by the internal {@link QueryContextProps}.
  *
- * @internal
+ * This is the boundary abstraction `@ts-linq/orm` depends on instead of reaching into
+ * `@ts-linq/query/internal` for the raw {@link QueryContext} (orm/task-6.1).
+ *
+ * @public
  */
-export interface QueryContextProps {
+export interface QueryableSeedProps {
   /** Database provider used for execution. */
   readonly provider: DatabaseProvider;
   /** Optional entity loader for eager includes. */
@@ -44,6 +51,15 @@ export interface QueryContextProps {
   readonly globalSplittingBehavior?: QuerySplittingBehavior;
   /** Per-context entity query filters from ModelBuilder.hasQueryFilter (P0-11). */
   readonly entityQueryFilters?: ReadonlyArray<QueryFilterMetadata>;
+}
+
+/**
+ * Construction inputs for {@link QueryContext} — the public {@link QueryableSeedProps} plus the
+ * query-internal visitor-factory assembly point.
+ *
+ * @internal
+ */
+export interface QueryContextProps extends QueryableSeedProps {
   /** Visitor factory. Defaults to a shared stateless instance. */
   readonly visitorFactory?: SqlVisitorFactory;
 }

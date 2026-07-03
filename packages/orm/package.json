@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/orm",
-  "version": "6.0.0",
+  "version": "6.0.2",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
@@ -40,6 +40,7 @@
     "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
     "clean": "rm -rf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --fix"
+    "lint": "eslint . --fix",
+    "smoke:internal": "node scripts/smoke-internal-resolution.cjs"
   }
 }

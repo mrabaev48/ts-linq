@@ -118,10 +118,10 @@ module.exports = {
       name: 'no-query-internal-from-non-collaborators',
       severity: 'error',
       comment:
-        'Only packages/orm and packages/integration-tests may import @ts-linq/query/internal. All others must use the public @ts-linq/query entrypoint.',
+        'Only packages/integration-tests may import @ts-linq/query/internal. All others (including orm, which now consumes the public @ts-linq/query boundary seam — orm/task-6.1) must use the public @ts-linq/query entrypoint.',
       from: {
         path: '^packages/([^/]+)/src',
-        pathNot: '^packages/(orm|integration-tests)/'
+        pathNot: '^packages/integration-tests/'
       },
       to: {
         path: '^packages/query/src/internal'

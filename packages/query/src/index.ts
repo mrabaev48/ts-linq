@@ -13,6 +13,16 @@ export { IncludeSubquery } from './include/IncludeSubquery';
 export type { IQueryableSurface } from './IQueryableSurface';
 export type { NavElement } from './Queryable';
 export { IncludableQueryable, OrderedQueryable, Queryable } from './Queryable';
+// @public — the boundary seam other packages use instead of `@ts-linq/query/internal` to build a
+// seed `Queryable`/default caches without touching the internal `QueryContext` (orm/task-6.1).
+export {
+  createDefaultCountCache,
+  createDefaultSqlCache,
+  createQueryable,
+  createRawSqlQueryable,
+  type OwnedSqlCache
+} from './QueryableFactory';
+export type { QueryableSeedProps } from './QueryContext';
 export { QueryModel } from './QueryModel';
 export type { ISetPropertyCalls, SetterEntry } from './SetPropertyCalls';
 export { SetPropertyCalls } from './SetPropertyCalls';
