@@ -52,3 +52,29 @@ declare const spb: StoredProcedureBuilder<Person>;
 expectType<StoredProcedureBuilder<Person>>(spb.hasParameter((p) => p.name));
 expectType<StoredProcedureBuilder<Person>>(spb.hasParameter((p) => p.id, (b) => b.isOutput()));
 expectType<StoredProcedureBuilder<Person>>(spb.hasOriginalValueParameter((p) => p.id));
+
+// ── orm/task-8: DbSet factory inference through DbSetRegistry ────────────────
+// The registry stores heterogeneous DbSet<object> but exposes generic methods;
+// the single audited internal cast must not leak — `set`/`defineSet` stay typed.
+import { DbContext } from '../src/DbContext';
+
+class Account {
+  id!: number;
+  email!: string;
+}
+
+class TaskEightContext extends DbContext {
+  // Auto-defined accessor via the protected `defineSet` factory.
+  readonly accounts = this.defineSet(Account);
+}
+
+declare const ctx: TaskEightContext;
+
+// `ctx.set(Account)` infers DbSet<Account> (not DbSet<object>).
+expectType<DbSet<Account>>(ctx.set(Account));
+
+// The defined accessor property is typed as DbSet<Account>.
+expectType<DbSet<Account>>(ctx.accounts);
+
+// @ts-expect-error — a non-constructor (arrow) is not a valid entity class.
+ctx.set(() => new Account());
