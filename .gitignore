@@ -36,6 +36,17 @@ __test_configs__
 # TypeScript incremental build info
 *.tsbuildinfo
 
+# Stray compiled artifacts inside package sources (orm/task-6.1 item 6).
+# A misdirected `tsc` (wrong -p / rootDir) can emit .js/.d.ts/maps INTO packages/*/src, where
+# ts-jest resolves the stale .js before the .ts and throws phantom `SyntaxError: Unexpected token
+# 'export'`. Sources are .ts only — never commit build output into src. The one genuine hand-written
+# .js under a package src is negated below.
+/packages/*/src/**/*.js
+/packages/*/src/**/*.js.map
+/packages/*/src/**/*.d.ts
+/packages/*/src/**/*.d.ts.map
+!/packages/e2e-tests/src/jest-transformer.js
+
 # macOS filesystem metadata
 .DS_Store
 

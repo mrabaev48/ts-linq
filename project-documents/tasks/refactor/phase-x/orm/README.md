@@ -74,26 +74,30 @@
 | 4 | task-4.md — Split `ChangeTracker` responsibilities | P1 | ✅ Completed | Untestable multi-concern class on the save path |
 | 5 | task-5.md — Introduce typed ORM error hierarchy | P1 | ✅ Completed | Bare `Error` throws; no codes/context |
 | 6 | task-6.md — Public/internal API boundary via `exports` | P1 | ✅ Completed | Internals leak from barrel; `internal/` unreachable |
-| 7 | task-7.md — Split `EntityTypeBuilder` config axes | P2 | — | SRP; large write-out method |
+| 6.1 | task-6.1.md — task-6 follow-ups (query coupling decision, TSDoc, gate, dual-package resolve, stray-artifact guard) | P2 | ✅ Completed | Close the six tech-debt items left by task-6 |
+| 7 | task-7.md — Split `EntityTypeBuilder` config axes | P2 | ✅ Completed | SRP; large write-out method |
 | 8 | task-8.md — Reduce `as unknown as` casts in DbSet factory | P2 | — | Type-safety erosion |
 
-> **Package status: 🔄 In Progress** — task-1, task-2, task-3, task-4, task-5, task-6 ✅ done; tasks 7–8 pending.
+> **Package status: 🔄 In Progress** — task-1, task-2, task-3, task-4, task-5, task-6, task-6.1, task-7 ✅ done; task-8 pending.
 
 ## Dependencies on other packages
 
 `@ts-linq/orm` depends on `core`, `metadata`, `query`, `types`, `metrics-safe`,
-`migrations`, `sql-visitor`, `telemetry`, `concurrency`. It consumes
-`@ts-linq/query/internal` (`EnhancedSqlCache`, `InMemoryCountCache`, **and the
-intentionally-internal `QueryContext`/`QueryContextProps`** value object) via the
-official published `@ts-linq/query/internal` subpath at runtime; a tsconfig `paths`
-alias to `../query/dist/internal` provides the compile-time type-shim under classic
-`node` module resolution (which does not read `package.json` `exports`). This is a
-**sanctioned** cross-package internal channel — dependency-cruiser's
-`no-query-internal-from-non-collaborators` rule explicitly whitelists `orm`, and it
-mirrors how `@ts-linq/query` itself consumes `@ts-linq/sql-visitor/internal`
-(`../sql-visitor/dist/internal`). The alias **cannot** be removed while orm legitimately
-uses the internal `QueryContext`; task-6 therefore scoped the query coupling to "already
-consistent" and focused on orm's own public/internal boundary (see task-6 notes / tech-debt).
+`migrations`, `sql-visitor`, `telemetry`, `concurrency`.
+
+**As of task-6.1, orm no longer consumes `@ts-linq/query/internal`.** The earlier
+build-coupling (a tsconfig `paths` alias to `../query/dist/internal`, needed because classic
+`node` module resolution does not read `package.json` `exports`) is **gone**. Instead
+`@ts-linq/query` now publishes a small **boundary seam** on its public `.` entrypoint —
+`createQueryable` / `createRawSqlQueryable` (which hide the intentionally-internal
+`QueryContext`) plus `createDefaultSqlCache` / `createDefaultCountCache` returning the public
+`OwnedSqlCache` / `CountCache` types. orm depends on that published contract, the `paths` alias
+was removed, and `.dependency-cruiser.cjs`'s `no-query-internal-from-non-collaborators` rule was
+tightened to forbid the deep import from orm (only `integration-tests` remains whitelisted). This
+implements task-6.1 item 1 option (b) via a public seam — chosen over accepting the alias as a
+sanctioned channel (option a) and over relocating the abstractions to a new package (option b2,
+infeasible: `QueryContext` transitively pulls `SqlVisitorFactory`, `EnhancedSqlCache` pulls the
+Lru/Ttl/Metrics cache stack).
 
 ## Testing strategy
 

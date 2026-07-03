@@ -1,5 +1,43 @@
 # @ts-linq/orm
 
+## 6.0.2
+
+### Patch Changes
+
+- refactor(orm): decompose `EntityTypeBuilder` into per-concern configuration aspects.
+
+  Purely structural, no public API or runtime behaviour change. The 573-LOC god-builder is now a
+  thin facade delegating accumulation and registry write-out to cohesive `EntityConfigAspect`
+  objects (`KeyAndTableAspect`, `ColumnAspect`, `RelationshipAspect`, `IndexAndConstraintAspect`,
+  `InheritanceAspect`, `OwnedAndComplexAspect`, `SkipNavigationAspect`, `TableSplittingAspect`,
+  `QueryFilterAspect`, `StoredProcedureAspect`, `MiscMetadataAspect`). `_applyToRegistry` is now an
+  explicit, documented ordered aspect loop; the previously implicit "skip-nav after primary keys"
+  sequencing is now an explicit `AspectApplyContext` data dependency. The fluent public API and the
+  `__tsLinqEntityTypeBuilderBrand` (consumed by the compile-time transformer) are unchanged.
+
+## 6.0.1
+
+### Patch Changes
+
+- refactor(orm): resolve task-6 public/internal boundary follow-ups (task-6.1)
+
+  `@ts-linq/query` gains a small public **boundary seam** so downstream packages build seed
+  queryables and default caches without reaching into `@ts-linq/query/internal`:
+  `createQueryable`, `createRawSqlQueryable`, `createDefaultSqlCache` (→ new public `OwnedSqlCache`),
+  `createDefaultCountCache`, and the public `QueryableSeedProps` type (the internal `QueryContext`
+  stays internal).
+
+  `@ts-linq/orm` now consumes that seam instead of the internal `QueryContext`/`EnhancedSqlCache`/
+  `InMemoryCountCache`: the `tsconfig` `paths` alias to `../query/dist/internal` is removed and the
+  `no-query-internal-from-non-collaborators` dependency-cruiser rule is tightened to forbid the deep
+  import from orm. Also: per-symbol `@public`/`@internal` TSDoc on the advanced barrel exports,
+  documented single public-API gate (`OrmPublicBarrel.test.ts`), a dual-package resolution smoke check
+  for `@ts-linq/orm/internal`, and a `.gitignore` guard against stray compiled artifacts under
+  `packages/*/src`. No runtime behavior change; the orm public surface is unchanged.
+
+- Updated dependencies
+  - @ts-linq/query@4.2.0
+
 ## 6.0.0
 
 ### Major Changes
