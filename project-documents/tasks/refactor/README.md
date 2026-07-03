@@ -133,8 +133,8 @@ Each package only depends on packages already completed above it.
 | 9 | `transformer` | runtime | De-dupe entrypoints; stop swallowing TypeChecker failures. Depends on `ast`. | ✅ done |
 | 10 | `migrations` | runtime | Injection-safe quoting; decompose runner. Needed by `orm` + `cli`. | ✅ done |
 | 11 | `telemetry` | runtime | De-dupe span mapping; masking. Needed by `orm`; do before it. | ✅ done |
-| 12 | `orm` | runtime | Decompose `DbContext`/`ChangeTracker`/`DbSet`; public/internal boundary. Top of runtime. | 🔄 In Progress |
-| 13 | `dialect-postgres` | dialects | **Reference dialect** — extract the shared base dialect + capability model + central quoting here. |
+| 12 | `orm` | runtime | Decompose `DbContext`/`ChangeTracker`/`DbSet`; public/internal boundary. Top of runtime. | ✅ done |
+| 13 | `dialect-postgres` | dialects | **Reference dialect** — extract the shared base dialect + capability model + central quoting here. | 🔄 In Progress |
 | 14 | `dialect-mysql` | dialects | Consume the shared base; sequence emulation; central quoting. |
 | 15 | `dialect-mssql` | dialects | Consume the shared base; fix DDL interpolation + computed-column INSERT. |
 | 16 | `testkits` | testing | Contract-test harness + decompose `TestProvider` **before** providers, so they get contract tests. |
@@ -212,7 +212,7 @@ Each package only depends on packages already completed above it.
 | core | 9 | 4 | 3 | 2 | 0 | ✅ done (task-1/2/3/4/5/6/7/8/9 ✅) |
 | dialect-mssql | 4 | 1 | 2 | 1 | 0 | not-started |
 | dialect-mysql | 2 | 0 | 2 | 0 | 0 | not-started |
-| dialect-postgres | 9 | 1 | 5 | 3 | 0 | not-started |
+| dialect-postgres | 9 | 1 | 5 | 3 | 0 | 🔄 In Progress |
 | e2e-tests | 3 | 0 | 2 | 1 | 0 | not-started |
 | eslint-config | 2 | 0 | 1 | 1 | 0 | not-started |
 | examples | 1 | 0 | 0 | 1 | 0 | not-started |
@@ -223,7 +223,7 @@ Each package only depends on packages already completed above it.
 | metrics-safe | 3 | 0 | 1 | 1 | 1 |  ✅ done |
 | migrations | 7 | 3 | 3 | 1 | 0 | ✅ done (task-1/2/3/4/5/6/7 ✅) |
 | open-telemetry-sql-logger | 4 | 0 | 3 | 1 | 0 | not-started |
-| orm | 8 | 2 | 4 | 2 | 0 | 🔄 In Progress (task-1/2/3/4/5/6/6.1/7 ✅; 8 pending) |
+| orm | 8 | 2 | 4 | 2 | 0 | ✅ done (task-1/2/3/4/5/6/6.1/7/8 ✅) |
 | pagination | 1 | 0 | 0 | 1 | 0 | not-started |
 | plugin-audit | 5 | 1 | 3 | 1 | 0 | not-started |
 | plugin-multi-tenant | 6 | 2 | 3 | 1 | 0 | not-started |

@@ -59,7 +59,7 @@ export function installQueryableForwarders(
     if (Object.prototype.hasOwnProperty.call(target, name)) continue;
     Object.defineProperty(target, name, {
       value: function (this: unknown, ...args: unknown[]): unknown {
-        const seed = seedAccessor(this) as unknown as Record<
+        const seed = seedAccessor(this) as object as Record<
           string,
           (...callArgs: unknown[]) => unknown
         >;

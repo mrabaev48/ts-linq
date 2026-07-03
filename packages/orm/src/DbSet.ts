@@ -333,7 +333,7 @@ export class DbSet<T extends object> {
     if (!metadata || !metadata.primaryKeys || metadata.primaryKeys.length === 0)
       throw OrmConfigurationError.noPrimaryKey(this._entityClass.name);
     const pk = metadata.primaryKeys[0];
-    const id = (entity as unknown as Record<string, unknown>)[pk];
+    const id = (entity as object as Record<string, unknown>)[pk];
     if (id === undefined || id === null) {
       this.add(entity);
       return entity;
