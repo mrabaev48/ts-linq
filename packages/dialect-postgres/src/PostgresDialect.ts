@@ -32,6 +32,7 @@ import { PgWhereEmitter } from './emitters/PgWhereEmitter';
 import { postgresEfFunctions } from './functions/index';
 import { PostgresJsonPathTranslator } from './json/JsonPathTranslator';
 import { postgresLtreeFunctions } from './ltree-functions';
+import { quoteIdentifier, quoteStringLiteral } from './quoting';
 import { createPostgresSpCallSyntax } from './sp-syntax';
 import { postgisSpatialFunctions } from './spatial-functions';
 
@@ -52,7 +53,12 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
   readonly parameterLimit = PG_PARAM_LIMIT;
 
   public quoteIdentifier(identifier: string): string {
-    return `"${identifier.replace(/"/g, '""')}"`;
+    return quoteIdentifier(identifier);
+  }
+
+  /** Quote a string literal (escaping `'`) for interpolation into SQL string-literal positions. */
+  public quoteStringLiteral(value: string): string {
+    return quoteStringLiteral(value);
   }
 
   /**
@@ -150,14 +156,14 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
   }
 
   private buildFromClause(tableName: string): string {
-    return ` FROM "${tableName}"`;
+    return ` FROM ${quoteIdentifier(tableName)}`;
   }
 
   private buildJoins(options: QueryOptions): string {
     if (!options.joins || options.joins.length === 0) return '';
     let out = '';
     for (const join of options.joins) {
-      out += ` ${join.type} JOIN "${join.table}"`;
+      out += ` ${join.type} JOIN ${quoteIdentifier(join.table)}`;
       if (join.alias) out += ` AS ${join.alias}`;
       out += ` ON ${join.on}`;
     }
@@ -224,12 +230,12 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
       if (primaryKeys.has(c.propertyName) && !hasValue(c.propertyName)) return false;
       return true;
     });
-    const names = cols.map((c) => `"${c.columnName}"`);
+    const names = cols.map((c) => quoteIdentifier(c.columnName));
     const placeholders = cols.map((_, i) => `$${i + 1}`);
     const parameters: SqlParameter[] = cols.map((c) =>
       this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
-    const sql = `INSERT INTO "${metadata.tableName}" (${names.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
+    const sql = `INSERT INTO ${quoteIdentifier(metadata.tableName)} (${names.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
     return { sql, parameters };
   }
 
@@ -249,18 +255,19 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     );
     if (setCols.length === 0) throw new Error('No columns to update');
 
-    const sets = setCols.map((c, i) => `\"${c.columnName}\" = $${i + 1}`);
+    const sets = setCols.map((c, i) => `${quoteIdentifier(c.columnName)} = $${i + 1}`);
     const parameters: SqlParameter[] = setCols.map((c) =>
       this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
 
     if (versionCol) {
-      sets.push(`\"${versionCol.columnName}\" = \"${versionCol.columnName}\" + 1`);
+      const versionId = quoteIdentifier(versionCol.columnName);
+      sets.push(`${versionId} = ${versionId} + 1`);
     }
 
     const where = primaryKeys.map(
       (pk, i) =>
-        `\"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}\" = $${setCols.length + i + 1}`
+        `${quoteIdentifier(metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk)} = $${setCols.length + i + 1}`
     );
     const whereVals: SqlParameter[] = primaryKeys.map((pk) => {
       const col = metadata.columns.find((c) => c.propertyName === pk);
@@ -268,10 +275,10 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     });
     parameters.push(...whereVals);
 
-    let sql = `UPDATE \"${metadata.tableName}\" SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
+    let sql = `UPDATE ${quoteIdentifier(metadata.tableName)} SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
 
     if (versionCol) {
-      sql += ` AND \"${versionCol.columnName}\" = $${parameters.length + 1}`;
+      sql += ` AND ${quoteIdentifier(versionCol.columnName)} = $${parameters.length + 1}`;
       parameters.push(
         this.coerceParameter(this.applyConverter(entity[versionCol.propertyName], versionCol))
       );
@@ -280,7 +287,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     const tokens = (concurrencyTokens ?? []).filter((c) => !c.isVersion);
     for (const col of tokens) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
-      sql += ` AND \"${col.columnName}\" = $${parameters.length + 1}`;
+      sql += ` AND ${quoteIdentifier(col.columnName)} = $${parameters.length + 1}`;
       parameters.push(this.coerceParameter(this.applyConverter(origVal, col)));
     }
 
@@ -298,16 +305,16 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     }
     const where = metadata.primaryKeys.map(
       (pk, i) =>
-        `\"${metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk}\" = $${i + 1}`
+        `${quoteIdentifier(metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk)} = $${i + 1}`
     );
     const parameters: SqlParameter[] = metadata.primaryKeys.map((pk) =>
       this.coerceParameter(entity[pk])
     );
-    let sql = `DELETE FROM \"${metadata.tableName}\" WHERE ${where.join(' AND ')}`;
+    let sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${where.join(' AND ')}`;
 
     for (const col of concurrencyTokens ?? []) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
-      sql += ` AND \"${col.columnName}\" = $${parameters.length + 1}`;
+      sql += ` AND ${quoteIdentifier(col.columnName)} = $${parameters.length + 1}`;
       parameters.push(this.coerceParameter(this.applyConverter(origVal, col)));
     }
 
@@ -319,16 +326,16 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     const setClauses: string[] = [];
 
     for (const setter of ctx.setters) {
-      const col = `"${setter.columnName}"`;
+      const col = quoteIdentifier(setter.columnName);
       if (setter.value.kind === 'literal') {
         setClauses.push(`${col} = ?`);
         params.push(...setter.value.params);
       } else {
-        setClauses.push(`${col} = "${setter.value.refColumnName}"`);
+        setClauses.push(`${col} = ${quoteIdentifier(setter.value.refColumnName)}`);
       }
     }
 
-    let sql = `UPDATE "${ctx.tableName}" SET ${setClauses.join(', ')}`;
+    let sql = `UPDATE ${quoteIdentifier(ctx.tableName)} SET ${setClauses.join(', ')}`;
 
     if (ctx.where.length > 0) {
       const conditions = ctx.where.map((w) => w.condition).join(' AND ');
@@ -342,7 +349,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
 
   public buildBulkDelete(ctx: BulkDeleteContext): SqlWithParams {
     const params: SqlParameter[] = [];
-    let sql = `DELETE FROM "${ctx.tableName}"`;
+    let sql = `DELETE FROM ${quoteIdentifier(ctx.tableName)}`;
 
     if (ctx.where.length > 0) {
       const conditions = ctx.where.map((w) => w.condition).join(' AND ');

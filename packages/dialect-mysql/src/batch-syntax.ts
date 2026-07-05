@@ -7,6 +7,8 @@ import type {
   SqlWithParams
 } from '@ts-linq/types';
 
+import { quoteIdentifier } from './quoting';
+
 /** MySQL practical parameter limit. */
 export const MYSQL_PARAM_LIMIT = 65535;
 
@@ -65,8 +67,8 @@ export function buildMysqlBatchInsert(
     }
   }
 
-  const colNames = cols.map((c) => `\`${c.columnName}\``).join(',');
-  const sql = `INSERT INTO \`${metadata.tableName}\` (${colNames}) VALUES ${rowPlaceholders.join(',')}`;
+  const colNames = cols.map((c) => quoteIdentifier(c.columnName)).join(',');
+  const sql = `INSERT INTO ${quoteIdentifier(metadata.tableName)} (${colNames}) VALUES ${rowPlaceholders.join(',')}`;
   // MySQL INSERT does not return rows; caller must use LAST_INSERT_ID() to retrieve generated PKs
   return {
     sql,
@@ -98,15 +100,15 @@ export function buildMysqlBatchUpdate(
   const statements: Array<{ sql: string; parameters: SqlParameter[] }> = [];
 
   for (const entity of entities) {
-    const setClause = setCols.map((c) => `\`${c.columnName}\`=?`).join(',');
+    const setClause = setCols.map((c) => `${quoteIdentifier(c.columnName)}=?`).join(',');
     const whereClause = pks
       .map((pk) => {
         const col = metadata.columns.find((c) => c.propertyName === pk)!;
-        return `\`${col.columnName}\`=?`;
+        return `${quoteIdentifier(col.columnName)}=?`;
       })
       .join(' AND ');
 
-    const sql = `UPDATE \`${metadata.tableName}\` SET ${setClause} WHERE ${whereClause}`;
+    const sql = `UPDATE ${quoteIdentifier(metadata.tableName)} SET ${setClause} WHERE ${whereClause}`;
     const parameters: SqlParameter[] = [
       ...setCols.map((c) => coerce(entity[c.propertyName])),
       ...pks.map((pk) => coerce(entity[pk]))
@@ -132,7 +134,7 @@ export function buildMysqlBatchDelete(entities: Entity[], metadata: EntityMetada
   const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
   const parameters: SqlParameter[] = entities.map((e) => coerce(e[pk]));
   const placeholders = parameters.map(() => '?').join(',');
-  const sql = `DELETE FROM \`${metadata.tableName}\` WHERE \`${pkCol.columnName}\` IN (${placeholders})`;
+  const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`;
   return { sql, parameters };
 }
 

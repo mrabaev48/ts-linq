@@ -2,6 +2,7 @@ import { SqlHelper } from '@ts-linq/core';
 import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
 
 import { MySqlIndexBuilder } from './builders/MySqlIndexBuilder';
+import { quoteIdentifier, quoteStringLiteral } from './quoting';
 
 type LoggerLike = { warn(message: string, error?: unknown): void };
 
@@ -18,19 +19,17 @@ export class MySqlDdlStrategy {
     if (metadata.primaryKeys && metadata.primaryKeys.length) {
       const pkCols = metadata.primaryKeys.map((pk) => {
         const col = metadata.columns.find((c) => c.propertyName === pk);
-        return `\`${col?.columnName || pk}\``;
+        return quoteIdentifier(col?.columnName || pk);
       });
       cols.push(`PRIMARY KEY (${pkCols.join(', ')})`);
     }
 
     for (const cc of metadata.checkConstraints ?? []) {
-      cols.push(`CONSTRAINT \`${cc.name}\` CHECK (${cc.sql})`);
+      cols.push(`CONSTRAINT ${quoteIdentifier(cc.name)} CHECK (${cc.sql})`);
     }
 
-    const tableComment = metadata.comment
-      ? ` COMMENT='${metadata.comment.replace(/'/g, "''")}'`
-      : '';
-    return `CREATE TABLE IF NOT EXISTS \`${metadata.tableName}\` (${cols.join(', ')})${tableComment}`;
+    const tableComment = metadata.comment ? ` COMMENT=${quoteStringLiteral(metadata.comment)}` : '';
+    return `CREATE TABLE IF NOT EXISTS ${quoteIdentifier(metadata.tableName)} (${cols.join(', ')})${tableComment}`;
   }
 
   public generateCreateIndexSql(
@@ -55,11 +54,11 @@ export class MySqlDdlStrategy {
     column: Omit<ColumnMetadata, 'propertyName'>
   ): string {
     const colDef = this.generateColumnDefinition(column);
-    return `ALTER TABLE \`${tableName}\` ADD COLUMN ${colDef}`;
+    return `ALTER TABLE ${quoteIdentifier(tableName)} ADD COLUMN ${colDef}`;
   }
 
   public generateDropColumnSql(tableName: string, columnName: string): string {
-    return `ALTER TABLE \`${tableName}\` DROP COLUMN \`${columnName}\``;
+    return `ALTER TABLE ${quoteIdentifier(tableName)} DROP COLUMN ${quoteIdentifier(columnName)}`;
   }
 
   public generateAlterColumnTypeSql(
@@ -67,12 +66,12 @@ export class MySqlDdlStrategy {
     columnName: string,
     newType: string
   ): string {
-    const colDef = `\`${columnName}\` ${this.mapTypeToMySql(newType)}`;
-    return `ALTER TABLE \`${tableName}\` MODIFY COLUMN ${colDef}`;
+    const colDef = `${quoteIdentifier(columnName)} ${this.mapTypeToMySql(newType)}`;
+    return `ALTER TABLE ${quoteIdentifier(tableName)} MODIFY COLUMN ${colDef}`;
   }
 
   public generateRenameTableSql(tableName: string, newTableName: string): string {
-    return `ALTER TABLE \`${tableName}\` RENAME TO \`${newTableName}\``;
+    return `ALTER TABLE ${quoteIdentifier(tableName)} RENAME TO ${quoteIdentifier(newTableName)}`;
   }
 
   public generateForeignKeySql(
@@ -86,7 +85,7 @@ export class MySqlDdlStrategy {
       onUpdate?: string;
     }
   ): string {
-    let sql = `ALTER TABLE \`${tableName}\` ADD CONSTRAINT \`${fk.name}\` FOREIGN KEY (\`${fk.columnName}\`) REFERENCES \`${fk.relatedTableName}\` (\`${fk.relatedColumnName}\`)`;
+    let sql = `ALTER TABLE ${quoteIdentifier(tableName)} ADD CONSTRAINT ${quoteIdentifier(fk.name)} FOREIGN KEY (${quoteIdentifier(fk.columnName)}) REFERENCES ${quoteIdentifier(fk.relatedTableName)} (${quoteIdentifier(fk.relatedColumnName)})`;
     if (fk.onDelete && fk.onDelete !== 'NO ACTION') {
       sql += ` ON DELETE ${fk.onDelete}`;
     }
@@ -105,8 +104,8 @@ export class MySqlDdlStrategy {
     name: string,
     columns: string[]
   ): string {
-    const cols = columns.map((c) => `\`${c}\``).join(', ');
-    return `ALTER TABLE \`${tableName}\` ADD UNIQUE KEY \`${name}\` (${cols})`;
+    const cols = columns.map((c) => quoteIdentifier(c)).join(', ');
+    return `ALTER TABLE ${quoteIdentifier(tableName)} ADD UNIQUE KEY ${quoteIdentifier(name)} (${cols})`;
   }
 
   /**
@@ -114,7 +113,7 @@ export class MySqlDdlStrategy {
    * MySQL uses DROP INDEX syntax for unique keys.
    */
   public generateDropUniqueConstraintSql(tableName: string, name: string): string {
-    return `ALTER TABLE \`${tableName}\` DROP INDEX \`${name}\``;
+    return `ALTER TABLE ${quoteIdentifier(tableName)} DROP INDEX ${quoteIdentifier(name)}`;
   }
 
   public generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string {
@@ -126,9 +125,9 @@ export class MySqlDdlStrategy {
         );
       }
       const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
-      return `\`${column.columnName}\` ${this.mapTypeToMySql(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
+      return `${quoteIdentifier(column.columnName)} ${this.mapTypeToMySql(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
     }
-    let def = `\`${column.columnName}\` ${this.mapTypeToMySql(column.type)}`;
+    let def = `${quoteIdentifier(column.columnName)} ${this.mapTypeToMySql(column.type)}`;
     if (column.length) def += `(${column.length})`;
     if (!column.nullable) def += ' NOT NULL';
     if (column.isGenerated) def += ' AUTO_INCREMENT';
@@ -138,7 +137,7 @@ export class MySqlDdlStrategy {
       def += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
     }
     if (column.comment) {
-      def += ` COMMENT '${column.comment.replace(/'/g, "''")}'`;
+      def += ` COMMENT ${quoteStringLiteral(column.comment)}`;
     }
     return def;
   }
