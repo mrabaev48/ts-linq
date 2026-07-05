@@ -1,5 +1,22 @@
 # @ts-linq/dialect-kit
 
+## 0.2.0
+
+### Minor Changes
+
+- Deduplicate parameter coercion and column-selection helpers into `@ts-linq/dialect-kit`.
+
+  `coerceSqlParameter`, `applyConverter`, `numberPlaceholders`, `selectInsertableColumns`,
+  `selectUpdatableColumns` (and the `InsertableColumnOptions` policy type) are now the single source of
+  truth in `@ts-linq/dialect-kit`, replacing ~6 near-identical copies previously spread across each
+  dialect class and its `batch-syntax` module. Per-dialect INSERT differences are expressed as an
+  explicit policy object rather than divergent code.
+
+  **Behavioural fix (SQL Server):** computed columns are now excluded from INSERT (and UPDATE) column
+  lists on the MSSQL dialect, matching the PostgreSQL and MySQL dialects. Previously MSSQL emitted the
+  computed column into the INSERT list — a latent bug. Computed-column handling is now uniform across
+  all three dialects.
+
 ## 0.1.0
 
 ### Minor Changes

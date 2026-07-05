@@ -2,9 +2,12 @@
 
 ## Role
 
-Shared **stateless SQL clause emitters** for the three dialects. Holds the single source of truth
-for rendering `WHERE` / `JOIN` / `GROUP BY … HAVING` / `ORDER BY` fragments, so dialects compose
-them into `buildSelect` instead of copy-pasting near-identical emitter classes.
+Shared **stateless SQL clause emitters** plus **parameter/column helpers** for the three dialects.
+Holds the single source of truth for rendering `WHERE` / `JOIN` / `GROUP BY … HAVING` / `ORDER BY`
+fragments, for parameter coercion (`coerceSqlParameter`, `applyConverter`), placeholder renumbering
+(`numberPlaceholders`), and INSERT/UPDATE column selection (`selectInsertableColumns` /
+`selectUpdatableColumns`), so dialects compose them into `buildSelect`/CRUD/`batch-syntax` instead of
+copy-pasting near-identical logic.
 
 ## Hard boundaries
 
@@ -24,7 +27,12 @@ them into `buildSelect` instead of copy-pasting near-identical emitter classes.
 
 ## Public API surface & stability
 
-- Public via `src/index.ts`: `emitWhere`, `emitJoin`, `emitGroup`, `emitOrder`.
+- Public via `src/index.ts`: `emitWhere`, `emitJoin`, `emitGroup`, `emitOrder`; `coerceSqlParameter`,
+  `applyConverter`, `numberPlaceholders`; `selectInsertableColumns`, `selectUpdatableColumns`,
+  `InsertableColumnOptions`.
+- `InsertableColumnOptions` (`excludeComputed`, `excludeGeneratedPk`) is the **policy object**: legit
+  per-dialect INSERT differences are declared config, never hidden branches. All three dialects
+  currently pass `{ excludeComputed: true, excludeGeneratedPk: true }`.
 - Intended future home for the shared base dialect (refactor `dialect-*/task-1`).
 
 ## Validation

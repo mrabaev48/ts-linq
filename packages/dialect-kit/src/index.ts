@@ -6,3 +6,14 @@ export { emitGroup } from './emitters/emitGroup';
 export { emitJoin } from './emitters/emitJoin';
 export { emitOrder } from './emitters/emitOrder';
 export { emitWhere } from './emitters/emitWhere';
+
+// Shared parameter coercion and column-selection utilities — the single source of truth previously
+// copy-pasted across each dialect class and its `batch-syntax` module. Per-dialect differences are
+// expressed as explicit policy (see InsertableColumnOptions), never as duplicated code branches.
+export {
+  type InsertableColumnOptions,
+  selectInsertableColumns,
+  selectUpdatableColumns
+} from './columns/select-columns';
+export { applyConverter, coerceSqlParameter } from './params/coerce';
+export { numberPlaceholders } from './params/placeholders';

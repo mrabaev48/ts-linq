@@ -1,4 +1,14 @@
-import { emitGroup, emitJoin, emitOrder, emitWhere } from '@ts-linq/dialect-kit';
+import {
+  applyConverter,
+  coerceSqlParameter,
+  emitGroup,
+  emitJoin,
+  emitOrder,
+  emitWhere,
+  type InsertableColumnOptions,
+  selectInsertableColumns,
+  selectUpdatableColumns
+} from '@ts-linq/dialect-kit';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
@@ -28,6 +38,12 @@ import { MySqlJsonPathTranslator } from './json/JsonPathTranslator';
 import { quoteIdentifier, quoteStringLiteral } from './quoting';
 import { createMysqlSpCallSyntax } from './sp-syntax';
 import { mysqlSpatialFunctions } from './spatial-functions';
+
+/** MySQL INSERT column policy: computed columns and unset (AUTO_INCREMENT) PKs are omitted. */
+const MYSQL_INSERT_POLICY: InsertableColumnOptions = {
+  excludeComputed: true,
+  excludeGeneratedPk: true
+};
 
 /**
  * MySQL dialect for SELECT generation.
@@ -146,13 +162,11 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
     return '';
   }
   public buildInsert(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithReturning {
-    const insertable = metadata.columns.filter(
-      (c) => (!c.isGenerated || entity[c.propertyName] !== undefined) && !c.isComputed
-    );
+    const insertable = selectInsertableColumns(metadata, entity, MYSQL_INSERT_POLICY);
     const names = insertable.map((c) => quoteIdentifier(c.columnName));
     const placeholders = insertable.map(() => '?');
     const parameters: SqlParameter[] = insertable.map((c) =>
-      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
+      coerceSqlParameter(applyConverter(entity[c.propertyName], c))
     );
     return {
       sql: `INSERT INTO ${quoteIdentifier(metadata.tableName)} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
@@ -171,12 +185,10 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
       throw new Error(`No primary key defined for entity ${metadata.tableName}`);
     }
     const primaryKeys = metadata.primaryKeys;
-    const updatable = metadata.columns.filter(
-      (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
-    );
+    const updatable = selectUpdatableColumns(metadata);
     const setClauses: string[] = updatable.map((c) => `${quoteIdentifier(c.columnName)} = ?`);
     const setParams: SqlParameter[] = updatable.map((c) =>
-      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
+      coerceSqlParameter(applyConverter(entity[c.propertyName], c))
     );
     if (versionCol) {
       const versionId = quoteIdentifier(versionCol.columnName);
@@ -187,18 +199,18 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
     for (const pk of primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      whereParams.push(this.coerceParameter(this.applyConverter(entity[pk], col)));
+      whereParams.push(coerceSqlParameter(applyConverter(entity[pk], col)));
     }
     if (versionCol) {
       whereClauses.push(`${quoteIdentifier(versionCol.columnName)} = ?`);
       whereParams.push(
-        this.coerceParameter(this.applyConverter(entity[versionCol.propertyName], versionCol))
+        coerceSqlParameter(applyConverter(entity[versionCol.propertyName], versionCol))
       );
     }
     for (const col of (concurrencyTokens ?? []).filter((c) => !c.isVersion)) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
       whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      whereParams.push(this.coerceParameter(this.applyConverter(origVal, col)));
+      whereParams.push(coerceSqlParameter(applyConverter(origVal, col)));
     }
     const sql = `UPDATE ${quoteIdentifier(metadata.tableName)} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, parameters: [...setParams, ...whereParams] };
@@ -218,12 +230,12 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
     for (const pk of metadata.primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      parameters.push(this.coerceParameter(entity[pk]));
+      parameters.push(coerceSqlParameter(entity[pk]));
     }
     for (const col of concurrencyTokens ?? []) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
       whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      parameters.push(this.coerceParameter(this.applyConverter(origVal, col)));
+      parameters.push(coerceSqlParameter(applyConverter(origVal, col)));
     }
     const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, parameters };
@@ -265,27 +277,5 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
     }
 
     return { sql, parameters: params };
-  }
-
-  private applyConverter(value: unknown, col: ColumnMetadata): unknown {
-    return col.converter ? col.converter.toProvider(value) : value;
-  }
-
-  private coerceParameter(value: unknown): SqlParameter {
-    if (
-      value === null ||
-      typeof value === 'string' ||
-      typeof value === 'number' ||
-      typeof value === 'boolean' ||
-      value instanceof Date ||
-      value instanceof Uint8Array
-    ) {
-      return value;
-    }
-    try {
-      return JSON.stringify(value ?? null);
-    } catch {
-      return String(value);
-    }
   }
 }
