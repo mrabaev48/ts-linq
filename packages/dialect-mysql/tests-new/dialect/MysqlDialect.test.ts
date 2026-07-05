@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { MetadataStorage } from '@ts-linq/metadata';
-import type { QueryOptions } from '@ts-linq/types';
+import type { EntityMetadata, QueryOptions } from '@ts-linq/types';
 
 import { MysqlDialect } from '../../src/MysqlDialect';
 
@@ -368,6 +368,47 @@ describe('MysqlDialect', () => {
     it('should escape backticks in identifier by doubling them', () => {
       expect(dialect.quoteIdentifier('table`name')).toBe('`table``name`');
       expect(dialect.quoteIdentifier('col`umn')).toBe('`col``umn`');
+    });
+  });
+
+  describe('quoteStringLiteral', () => {
+    it('should wrap in single quotes and double embedded single quotes', () => {
+      expect(dialect.quoteStringLiteral("o'brien")).toBe("'o''brien'");
+      expect(dialect.quoteStringLiteral('plain')).toBe("'plain'");
+    });
+  });
+
+  // task-3: MySQL CRUD previously emitted bare, unquoted identifiers. They now route through
+  // quoteIdentifier, which backtick-escapes an embedded backtick so it cannot break out.
+  describe('adversarial identifiers (task-3)', () => {
+    const adversarialMeta: EntityMetadata = {
+      tableName: 'tbl`evil',
+      primaryKeys: ['id'],
+      columns: [
+        { propertyName: 'id', columnName: 'id', type: 'INT', nullable: false, primaryKey: true },
+        { propertyName: 'weird', columnName: 'we`ird', type: 'TEXT', nullable: true }
+      ],
+      relationships: [],
+      indexes: []
+    };
+
+    it('buildInsert escapes backticks in table and column names', () => {
+      const { sql } = dialect.buildInsert({ id: 1, weird: 'x' }, adversarialMeta);
+      expect(sql).toContain('INSERT INTO `tbl``evil`');
+      expect(sql).toContain('`we``ird`');
+      expect(sql).not.toContain('INSERT INTO tbl`evil');
+    });
+
+    it('buildUpdate escapes backticks in table and column names', () => {
+      const { sql } = dialect.buildUpdate({ id: 1, weird: 'x' }, adversarialMeta);
+      expect(sql).toContain('UPDATE `tbl``evil`');
+      expect(sql).toContain('`we``ird` = ?');
+      expect(sql).toContain('`id` = ?');
+    });
+
+    it('buildDelete escapes backticks in table and column names', () => {
+      const { sql } = dialect.buildDelete({ id: 1 }, adversarialMeta);
+      expect(sql).toBe('DELETE FROM `tbl``evil` WHERE `id` = ?');
     });
   });
 });

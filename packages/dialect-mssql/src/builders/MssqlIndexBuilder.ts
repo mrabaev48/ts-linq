@@ -1,3 +1,5 @@
+import { quoteIdentifier, quoteStringLiteral } from '../quoting';
+
 type LoggerLike = { warn(message: string, error?: unknown): void };
 
 export type MssqlIndexSpec = {
@@ -24,12 +26,16 @@ export class MssqlIndexBuilder {
     this.warnUnsupported(index);
     const unique = index.unique ? 'UNIQUE ' : '';
     const cols = index.columns
-      .map((c) => (index.orders?.[c] ? `${c} ${index.orders[c]}` : c))
+      .map((c) =>
+        index.orders?.[c] ? `${quoteIdentifier(c)} ${index.orders[c]}` : quoteIdentifier(c)
+      )
       .join(', ');
     const include =
-      index.include && index.include.length > 0 ? ` INCLUDE (${index.include.join(', ')})` : '';
+      index.include && index.include.length > 0
+        ? ` INCLUDE (${index.include.map((c) => quoteIdentifier(c)).join(', ')})`
+        : '';
     const whereSql = index.where ? ` WHERE ${index.where}` : '';
-    return `IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='${index.name}' AND object_id=OBJECT_ID('${table}')) CREATE ${unique}INDEX ${index.name} ON ${table} (${cols})${include}${whereSql}`;
+    return `IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name=${quoteStringLiteral(index.name)} AND object_id=OBJECT_ID(${quoteStringLiteral(table)})) CREATE ${unique}INDEX ${quoteIdentifier(index.name)} ON ${quoteIdentifier(table)} (${cols})${include}${whereSql}`;
   }
 
   private isValid(index: { name?: string; columns?: string[] }): boolean {

@@ -1,5 +1,13 @@
 # @ts-linq/testkits
 
+## 7.0.25
+
+### Patch Changes
+
+- @ts-linq/provider-mssql@3.0.25
+- @ts-linq/provider-mysql@3.0.25
+- @ts-linq/provider-postgres@3.0.25
+
 ## 7.0.24
 
 ### Patch Changes

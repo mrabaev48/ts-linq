@@ -1,3 +1,5 @@
+import { quoteIdentifier } from '../quoting';
+
 type LoggerLike = { warn(message: string, error?: unknown): void };
 
 export type PgIndexSpec = {
@@ -98,7 +100,7 @@ export class PgIndexBuilder {
     const ord = index.orders?.[column] ? ` ${index.orders[column]}` : '';
     const coll = index.collations?.[column] ? ` COLLATE ${index.collations[column]}` : '';
     const nulls = index.nulls?.[column] ? ` NULLS ${index.nulls[column]}` : '';
-    return `"${column}"${ord}${coll}${nulls}`;
+    return `${quoteIdentifier(column)}${ord}${coll}${nulls}`;
   }
 
   private buildUniqueKeyword(index: { unique: boolean }): string {
@@ -127,6 +129,6 @@ export class PgIndexBuilder {
     withSql: string,
     whereSql: string
   ): string {
-    return `CREATE ${unique}INDEX${concurrently} IF NOT EXISTS "${name}" ON "${table}"${using} (${columnsListSql})${withSql}${whereSql}`;
+    return `CREATE ${unique}INDEX${concurrently} IF NOT EXISTS ${quoteIdentifier(name)} ON ${quoteIdentifier(table)}${using} (${columnsListSql})${withSql}${whereSql}`;
   }
 }

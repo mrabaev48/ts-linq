@@ -7,6 +7,8 @@ import type {
   SqlWithParams
 } from '@ts-linq/types';
 
+import { quoteIdentifier } from './quoting';
+
 /** SQL Server hard cap on bind parameters per statement. */
 export const MSSQL_PARAM_LIMIT = 2100;
 
@@ -69,12 +71,13 @@ export function buildMssqlBatchInsert(
   const firstPk = metadata.primaryKeys?.[0];
   const pkColMeta = firstPk ? metadata.columns.find((c) => c.propertyName === firstPk) : undefined;
 
-  const colNames = cols.map((c) => `[${c.columnName}]`).join(',');
+  const colNames = cols.map((c) => quoteIdentifier(c.columnName)).join(',');
+  const tableId = quoteIdentifier(metadata.tableName);
   let sql: string;
   if (pkColMeta?.isGenerated) {
-    sql = `INSERT INTO [${metadata.tableName}] (${colNames}) OUTPUT INSERTED.[${pkColMeta.columnName}] AS id VALUES ${rowPlaceholders.join(',')}`;
+    sql = `INSERT INTO ${tableId} (${colNames}) OUTPUT INSERTED.${quoteIdentifier(pkColMeta.columnName)} AS id VALUES ${rowPlaceholders.join(',')}`;
   } else {
-    sql = `INSERT INTO [${metadata.tableName}] (${colNames}) VALUES ${rowPlaceholders.join(',')}`;
+    sql = `INSERT INTO ${tableId} (${colNames}) VALUES ${rowPlaceholders.join(',')}`;
   }
 
   return { sql: numberPlaceholders(sql), parameters };
@@ -116,18 +119,24 @@ export function buildMssqlBatchUpdate(
     }
   }
 
-  const bColNames = allCols.map((c) => `[${c.columnName}]`).join(',');
-  const setClause = setCols.map((c) => `t.[${c.columnName}]=b.[${c.columnName}]`).join(',');
+  const bColNames = allCols.map((c) => quoteIdentifier(c.columnName)).join(',');
+  const setClause = setCols
+    .map((c) => {
+      const colId = quoteIdentifier(c.columnName);
+      return `t.${colId}=b.${colId}`;
+    })
+    .join(',');
   const onClause = pks
     .map((pk) => {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      return `t.[${col.columnName}]=b.[${col.columnName}]`;
+      const colId = quoteIdentifier(col.columnName);
+      return `t.${colId}=b.${colId}`;
     })
     .join(' AND ');
 
   const sql =
     `UPDATE t SET ${setClause} ` +
-    `FROM [${metadata.tableName}] t ` +
+    `FROM ${quoteIdentifier(metadata.tableName)} t ` +
     `JOIN (VALUES ${rowPlaceholders.join(',')}) AS b(${bColNames}) ON ${onClause}`;
 
   return { sql: numberPlaceholders(sql), parameters };
@@ -148,7 +157,7 @@ export function buildMssqlBatchDelete(entities: Entity[], metadata: EntityMetada
   const parameters: SqlParameter[] = entities.map((e) => coerce(e[pk]));
   const placeholders = parameters.map(() => '?').join(',');
   const sql = numberPlaceholders(
-    `DELETE FROM [${metadata.tableName}] WHERE [${pkCol.columnName}] IN (${placeholders})`
+    `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`
   );
   return { sql, parameters };
 }
