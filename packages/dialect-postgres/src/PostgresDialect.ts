@@ -1,4 +1,15 @@
-import { emitGroup, emitJoin, emitOrder, emitWhere } from '@ts-linq/dialect-kit';
+import {
+  applyConverter,
+  coerceSqlParameter,
+  emitGroup,
+  emitJoin,
+  emitOrder,
+  emitWhere,
+  type InsertableColumnOptions,
+  numberPlaceholders,
+  selectInsertableColumns,
+  selectUpdatableColumns
+} from '@ts-linq/dialect-kit';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
@@ -29,6 +40,12 @@ import { postgresLtreeFunctions } from './ltree-functions';
 import { quoteIdentifier, quoteStringLiteral } from './quoting';
 import { createPostgresSpCallSyntax } from './sp-syntax';
 import { postgisSpatialFunctions } from './spatial-functions';
+
+/** PostgreSQL INSERT column policy: computed columns and unset (SERIAL/IDENTITY) PKs are omitted. */
+const PG_INSERT_POLICY: InsertableColumnOptions = {
+  excludeComputed: true,
+  excludeGeneratedPk: true
+};
 
 /**
  * PostgreSQL implementation of SqlDialect.
@@ -119,18 +136,8 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     query += emitGroup(parameters, options);
     query += emitOrder(options);
     query += this.buildLimitOffset(options);
-    query = this.numberPlaceholders(query, parameters.length);
+    query = numberPlaceholders(query, '$');
     return { query, parameters };
-  }
-
-  /** Replace all '?' placeholders by $1..$n according to their order. */
-  private numberPlaceholders(sql: string, paramCount: number): string {
-    if (paramCount === 0) return sql;
-    let index = 0;
-    return sql.replace(/\?/g, () => {
-      index++;
-      return `$${index}`;
-    });
   }
 
   private buildSelectHead(options: QueryOptions): string {
@@ -167,24 +174,11 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     return '';
   }
   public buildInsert(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithReturning {
-    const primaryKeys = new Set<string>(metadata.primaryKeys ?? []);
-    const hasValue = (propertyName: string): boolean => {
-      const v = entity[propertyName];
-      return v !== null && v !== undefined;
-    };
-    const cols = metadata.columns.filter((c) => {
-      if (c.isComputed) return false;
-      // Never include generated columns unless caller explicitly provided a value
-      if (c.isGenerated && !hasValue(c.propertyName)) return false;
-      // Heuristic: allow DB-generated PKs when value is missing even if metadata didn't mark it generated.
-      // This matches common SERIAL/IDENTITY PK usage while still allowing explicit PK inserts.
-      if (primaryKeys.has(c.propertyName) && !hasValue(c.propertyName)) return false;
-      return true;
-    });
+    const cols = selectInsertableColumns(metadata, entity, PG_INSERT_POLICY);
     const names = cols.map((c) => quoteIdentifier(c.columnName));
     const placeholders = cols.map((_, i) => `$${i + 1}`);
     const parameters: SqlParameter[] = cols.map((c) =>
-      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
+      coerceSqlParameter(applyConverter(entity[c.propertyName], c))
     );
     const sql = `INSERT INTO ${quoteIdentifier(metadata.tableName)} (${names.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
     return { sql, parameters };
@@ -201,14 +195,12 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
       throw new Error(`No primary key defined for ${metadata.tableName}`);
     }
     const primaryKeys = metadata.primaryKeys;
-    const setCols = metadata.columns.filter(
-      (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
-    );
+    const setCols = selectUpdatableColumns(metadata);
     if (setCols.length === 0) throw new Error('No columns to update');
 
     const sets = setCols.map((c, i) => `${quoteIdentifier(c.columnName)} = $${i + 1}`);
     const parameters: SqlParameter[] = setCols.map((c) =>
-      this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
+      coerceSqlParameter(applyConverter(entity[c.propertyName], c))
     );
 
     if (versionCol) {
@@ -222,7 +214,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     );
     const whereVals: SqlParameter[] = primaryKeys.map((pk) => {
       const col = metadata.columns.find((c) => c.propertyName === pk);
-      return this.coerceParameter(col ? this.applyConverter(entity[pk], col) : entity[pk]);
+      return coerceSqlParameter(col ? applyConverter(entity[pk], col) : entity[pk]);
     });
     parameters.push(...whereVals);
 
@@ -231,7 +223,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     if (versionCol) {
       sql += ` AND ${quoteIdentifier(versionCol.columnName)} = $${parameters.length + 1}`;
       parameters.push(
-        this.coerceParameter(this.applyConverter(entity[versionCol.propertyName], versionCol))
+        coerceSqlParameter(applyConverter(entity[versionCol.propertyName], versionCol))
       );
     }
 
@@ -239,7 +231,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     for (const col of tokens) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
       sql += ` AND ${quoteIdentifier(col.columnName)} = $${parameters.length + 1}`;
-      parameters.push(this.coerceParameter(this.applyConverter(origVal, col)));
+      parameters.push(coerceSqlParameter(applyConverter(origVal, col)));
     }
 
     return { sql, parameters };
@@ -259,14 +251,14 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
         `${quoteIdentifier(metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk)} = $${i + 1}`
     );
     const parameters: SqlParameter[] = metadata.primaryKeys.map((pk) =>
-      this.coerceParameter(entity[pk])
+      coerceSqlParameter(entity[pk])
     );
     let sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${where.join(' AND ')}`;
 
     for (const col of concurrencyTokens ?? []) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
       sql += ` AND ${quoteIdentifier(col.columnName)} = $${parameters.length + 1}`;
-      parameters.push(this.coerceParameter(this.applyConverter(origVal, col)));
+      parameters.push(coerceSqlParameter(applyConverter(origVal, col)));
     }
 
     return { sql, parameters };
@@ -294,7 +286,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
       sql += ` WHERE ${conditions}`;
     }
 
-    sql = this.numberPlaceholders(sql, params.length);
+    sql = numberPlaceholders(sql, '$');
     return { sql, parameters: params };
   }
 
@@ -308,29 +300,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
       sql += ` WHERE ${conditions}`;
     }
 
-    sql = this.numberPlaceholders(sql, params.length);
+    sql = numberPlaceholders(sql, '$');
     return { sql, parameters: params };
-  }
-
-  private applyConverter(value: unknown, col: ColumnMetadata): unknown {
-    return col.converter ? col.converter.toProvider(value) : value;
-  }
-
-  private coerceParameter(value: unknown): SqlParameter {
-    if (
-      value === null ||
-      typeof value === 'string' ||
-      typeof value === 'number' ||
-      typeof value === 'boolean' ||
-      value instanceof Date ||
-      value instanceof Uint8Array
-    ) {
-      return value;
-    }
-    try {
-      return JSON.stringify(value ?? null);
-    } catch {
-      return String(value);
-    }
   }
 }

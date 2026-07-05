@@ -1,3 +1,9 @@
+import {
+  coerceSqlParameter,
+  type InsertableColumnOptions,
+  selectInsertableColumns,
+  selectUpdatableColumns
+} from '@ts-linq/dialect-kit';
 import { calcChunkSize, chunkArray } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
@@ -11,6 +17,12 @@ import { quoteIdentifier } from './quoting';
 
 /** PostgreSQL hard cap on bind parameters per statement. */
 export const PG_PARAM_LIMIT = 65535;
+
+/** PostgreSQL INSERT column policy: computed columns and unset (SERIAL/IDENTITY) PKs are omitted. */
+const PG_INSERT_POLICY: InsertableColumnOptions = {
+  excludeComputed: true,
+  excludeGeneratedPk: true
+};
 
 type Entity = Record<string, unknown>;
 
@@ -29,36 +41,6 @@ function toPgCast(type?: string): string {
   return 'text';
 }
 
-function coerce(value: unknown): SqlParameter {
-  if (
-    value === null ||
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    value instanceof Date ||
-    value instanceof Uint8Array
-  ) {
-    return value;
-  }
-  try {
-    return JSON.stringify(value ?? null);
-  } catch {
-    return String(value);
-  }
-}
-
-/** Insertable columns: exclude computed; exclude generated PKs unless caller supplied a value. */
-function insertableCols(metadata: EntityMetadata, entity: Entity) {
-  const pks = new Set<string>(metadata.primaryKeys ?? []);
-  return metadata.columns.filter((c) => {
-    if (c.isComputed) return false;
-    const v = entity[c.propertyName];
-    if (c.isGenerated && (v === null || v === undefined)) return false;
-    if (pks.has(c.propertyName) && (v === null || v === undefined)) return false;
-    return true;
-  });
-}
-
 /**
  * Build a PostgreSQL multi-row INSERT:
  *   INSERT INTO "t" ("c1","c2") VALUES ($1,$2),($3,$4) RETURNING *
@@ -69,7 +51,7 @@ export function buildPgBatchInsert(
 ): BatchInsertResult {
   if (entities.length === 0) throw new Error('buildPgBatchInsert: empty entity list');
 
-  const cols = insertableCols(metadata, entities[0]);
+  const cols = selectInsertableColumns(metadata, entities[0], PG_INSERT_POLICY);
   if (cols.length === 0) throw new Error('buildPgBatchInsert: no insertable columns');
 
   const parameters: SqlParameter[] = [];
@@ -80,7 +62,7 @@ export function buildPgBatchInsert(
     const rowPh = cols.map(() => `$${idx++}`).join(',');
     rowPlaceholders.push(`(${rowPh})`);
     for (const c of cols) {
-      parameters.push(coerce(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName]));
     }
   }
 
@@ -104,9 +86,7 @@ export function buildPgBatchUpdate(
   }
 
   const pks = metadata.primaryKeys;
-  const setCols = metadata.columns.filter(
-    (c) => !pks.includes(c.propertyName) && !c.isGenerated && !c.isComputed
-  );
+  const setCols = selectUpdatableColumns(metadata);
   if (setCols.length === 0) throw new Error('buildPgBatchUpdate: no updatable columns');
 
   const allCols = [
@@ -122,7 +102,7 @@ export function buildPgBatchUpdate(
     const rowPh = allCols.map(() => `$${idx++}`).join(',');
     rowPlaceholders.push(`(${rowPh})`);
     for (const c of allCols) {
-      parameters.push(coerce(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName]));
     }
   }
 
@@ -161,7 +141,7 @@ export function buildPgBatchDelete(entities: Entity[], metadata: EntityMetadata)
 
   const pk = metadata.primaryKeys[0];
   const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
-  const parameters: SqlParameter[] = entities.map((e) => coerce(e[pk]));
+  const parameters: SqlParameter[] = entities.map((e) => coerceSqlParameter(e[pk]));
   const placeholders = parameters.map((_, i) => `$${i + 1}`).join(',');
   const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`;
   return { sql, parameters };
@@ -178,14 +158,11 @@ export function chunkPgBatch(
 ): Entity[][] {
   let paramsPerRow: number;
   if (operation === 'insert') {
-    const cols = insertableCols(metadata, entities[0] ?? {});
+    const cols = selectInsertableColumns(metadata, entities[0] ?? {}, PG_INSERT_POLICY);
     paramsPerRow = cols.length;
   } else if (operation === 'update') {
     const pks = metadata.primaryKeys ?? [];
-    const setCols = metadata.columns.filter(
-      (c) => !pks.includes(c.propertyName) && !c.isGenerated && !c.isComputed
-    );
-    paramsPerRow = pks.length + setCols.length;
+    paramsPerRow = pks.length + selectUpdatableColumns(metadata).length;
   } else {
     paramsPerRow = 1; // single PK per DELETE row
   }
