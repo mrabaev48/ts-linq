@@ -1,3 +1,4 @@
+import { emitGroup, emitJoin, emitOrder, emitWhere } from '@ts-linq/dialect-kit';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
@@ -22,10 +23,6 @@ import {
   buildMysqlBatchUpdate,
   MYSQL_PARAM_LIMIT
 } from './batch-syntax';
-import { MySqlGroupEmitter } from './emitters/MySqlGroupEmitter';
-import { MySqlJoinEmitter } from './emitters/MySqlJoinEmitter';
-import { MySqlOrderEmitter } from './emitters/MySqlOrderEmitter';
-import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
 import { mysqlEfFunctions } from './functions/index';
 import { MySqlJsonPathTranslator } from './json/JsonPathTranslator';
 import { quoteIdentifier, quoteStringLiteral } from './quoting';
@@ -39,10 +36,6 @@ import { mysqlSpatialFunctions } from './spatial-functions';
  * - Leaves '?' placeholders as-is (mysql2 supports positional params)
  */
 export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
-  private readonly whereEmitter = new MySqlWhereEmitter();
-  private readonly joinEmitter = new MySqlJoinEmitter((id) => this.quoteIdentifier(id));
-  private readonly orderEmitter = new MySqlOrderEmitter();
-  private readonly groupEmitter = new MySqlGroupEmitter();
   private readonly jsonPathTranslator = new MySqlJsonPathTranslator();
 
   readonly parameterLimit = MYSQL_PARAM_LIMIT;
@@ -117,10 +110,10 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
       if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
       query += this.buildFromClause(options.from ?? metadata.viewName ?? metadata.tableName);
     }
-    query += this.joinEmitter.emit(options);
-    query += this.whereEmitter.emit(parameters, options);
-    query += this.groupEmitter.emit(parameters, options);
-    query += this.orderEmitter.emit(options);
+    query += emitJoin(options, (id) => this.quoteIdentifier(id));
+    query += emitWhere(parameters, options);
+    query += emitGroup(parameters, options);
+    query += emitOrder(options);
     query += this.buildLimitOffset(options);
     return { query, parameters };
   }

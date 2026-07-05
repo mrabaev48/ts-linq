@@ -30,8 +30,8 @@ export const mysqlGolden: SqlDialectContractGolden = {
       query: 'SELECT * FROM `test_table` GROUP BY name HAVING COUNT(*) > ?',
       parameters: [5]
     },
-    // Divergence: MySQL emits a bare trailing ` GROUP BY ` for empty columns (MSSQL guards it out).
-    'group-empty': { query: 'SELECT * FROM `test_table` GROUP BY ', parameters: [] },
+    // Empty GROUP BY columns are guarded out across all dialects (shared emitGroup guard).
+    'group-empty': { query: 'SELECT * FROM `test_table`', parameters: [] },
     'limit-offset': { query: 'SELECT * FROM `test_table` LIMIT 10 OFFSET 20', parameters: [] },
     combined: {
       query:

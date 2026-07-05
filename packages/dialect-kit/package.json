@@ -1,8 +1,8 @@
 {
-  "name": "@ts-linq/dialect-postgres",
-  "version": "2.8.6",
+  "name": "@ts-linq/dialect-kit",
+  "version": "0.1.0",
   "private": true,
-  "description": "POSTGRES SQL dialect for ts-linq ORM",
+  "description": "Shared stateless SQL clause emitters for ts-linq dialects",
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
@@ -23,11 +23,8 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "@ts-linq/dialect-kit": "workspace:*",
-    "@ts-linq/metadata": "workspace:*",
     "@ts-linq/sql-visitor": "workspace:*",
-    "@ts-linq/types": "workspace:*",
-    "@ts-linq/core": "workspace:*"
+    "@ts-linq/types": "workspace:*"
   },
   "devDependencies": {
     "@ts-linq/typescript-config": "workspace:*",
