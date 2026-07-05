@@ -1,3 +1,9 @@
+import {
+  coerceSqlParameter,
+  type InsertableColumnOptions,
+  selectInsertableColumns,
+  selectUpdatableColumns
+} from '@ts-linq/dialect-kit';
 import { calcChunkSize, chunkArray } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
@@ -12,36 +18,13 @@ import { quoteIdentifier } from './quoting';
 /** MySQL practical parameter limit. */
 export const MYSQL_PARAM_LIMIT = 65535;
 
+/** MySQL INSERT column policy: computed columns and unset (AUTO_INCREMENT) PKs are omitted. */
+const MYSQL_INSERT_POLICY: InsertableColumnOptions = {
+  excludeComputed: true,
+  excludeGeneratedPk: true
+};
+
 type Entity = Record<string, unknown>;
-
-function coerce(value: unknown): SqlParameter {
-  if (
-    value === null ||
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    value instanceof Date ||
-    value instanceof Uint8Array
-  ) {
-    return value;
-  }
-  try {
-    return JSON.stringify(value ?? null);
-  } catch {
-    return String(value);
-  }
-}
-
-function insertableCols(metadata: EntityMetadata, entity: Entity) {
-  const pks = new Set<string>(metadata.primaryKeys ?? []);
-  return metadata.columns.filter((c) => {
-    if (c.isComputed) return false;
-    const v = entity[c.propertyName];
-    if (c.isGenerated && (v === null || v === undefined)) return false;
-    if (pks.has(c.propertyName) && (v === null || v === undefined)) return false;
-    return true;
-  });
-}
 
 /**
  * Build a MySQL multi-row INSERT:
@@ -54,7 +37,7 @@ export function buildMysqlBatchInsert(
 ): BatchInsertResult {
   if (entities.length === 0) throw new Error('buildMysqlBatchInsert: empty entity list');
 
-  const cols = insertableCols(metadata, entities[0]);
+  const cols = selectInsertableColumns(metadata, entities[0], MYSQL_INSERT_POLICY);
   if (cols.length === 0) throw new Error('buildMysqlBatchInsert: no insertable columns');
 
   const parameters: SqlParameter[] = [];
@@ -63,7 +46,7 @@ export function buildMysqlBatchInsert(
   for (const entity of entities) {
     rowPlaceholders.push(`(${cols.map(() => '?').join(',')})`);
     for (const c of cols) {
-      parameters.push(coerce(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName]));
     }
   }
 
@@ -92,9 +75,7 @@ export function buildMysqlBatchUpdate(
   }
 
   const pks = metadata.primaryKeys;
-  const setCols = metadata.columns.filter(
-    (c) => !pks.includes(c.propertyName) && !c.isGenerated && !c.isComputed
-  );
+  const setCols = selectUpdatableColumns(metadata);
   if (setCols.length === 0) throw new Error('buildMysqlBatchUpdate: no updatable columns');
 
   const statements: Array<{ sql: string; parameters: SqlParameter[] }> = [];
@@ -110,8 +91,8 @@ export function buildMysqlBatchUpdate(
 
     const sql = `UPDATE ${quoteIdentifier(metadata.tableName)} SET ${setClause} WHERE ${whereClause}`;
     const parameters: SqlParameter[] = [
-      ...setCols.map((c) => coerce(entity[c.propertyName])),
-      ...pks.map((pk) => coerce(entity[pk]))
+      ...setCols.map((c) => coerceSqlParameter(entity[c.propertyName])),
+      ...pks.map((pk) => coerceSqlParameter(entity[pk]))
     ];
 
     statements.push({ sql, parameters });
@@ -132,7 +113,7 @@ export function buildMysqlBatchDelete(entities: Entity[], metadata: EntityMetada
 
   const pk = metadata.primaryKeys[0];
   const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
-  const parameters: SqlParameter[] = entities.map((e) => coerce(e[pk]));
+  const parameters: SqlParameter[] = entities.map((e) => coerceSqlParameter(e[pk]));
   const placeholders = parameters.map(() => '?').join(',');
   const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`;
   return { sql, parameters };
@@ -149,14 +130,11 @@ export function chunkMysqlBatch(
 ): Entity[][] {
   let paramsPerRow: number;
   if (operation === 'insert') {
-    const cols = insertableCols(metadata, entities[0] ?? {});
+    const cols = selectInsertableColumns(metadata, entities[0] ?? {}, MYSQL_INSERT_POLICY);
     paramsPerRow = cols.length;
   } else if (operation === 'update') {
     const pks = metadata.primaryKeys ?? [];
-    const setCols = metadata.columns.filter(
-      (c) => !pks.includes(c.propertyName) && !c.isGenerated && !c.isComputed
-    );
-    paramsPerRow = pks.length + setCols.length;
+    paramsPerRow = pks.length + selectUpdatableColumns(metadata).length;
   } else {
     paramsPerRow = 1;
   }

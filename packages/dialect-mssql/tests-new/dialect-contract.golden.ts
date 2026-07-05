@@ -1,10 +1,10 @@
 import type { SqlDialectContractGolden } from '@ts-linq/testkits';
 
 /**
- * Golden expectations for {@link MssqlDialect}, captured from current behaviour. Divergences from the
- * other dialects (empty `GROUP BY` guarded out, computed column *included* in INSERT, OFFSET/FETCH
- * paging, single-statement batch UPDATE via VALUES JOIN) are encoded here as-is; convergence is the
- * job of later dialect dedup tasks.
+ * Golden expectations for {@link MssqlDialect}, captured from current behaviour. Remaining divergences
+ * from the other dialects (empty `GROUP BY` guarded out, OFFSET/FETCH paging, single-statement batch
+ * UPDATE via VALUES JOIN) are encoded here as-is. The former computed-column INSERT divergence was
+ * reconciled in task-4 — computed columns are now excluded from INSERT on every dialect.
  *
  * task-3 (centralize quoting): CRUD identifiers are now bracket-quoted (`[users]`, `[title]`), where
  * INSERT/UPDATE/DELETE previously emitted bare, unquoted identifiers. This is the intended security
@@ -50,10 +50,11 @@ export const mssqlGolden: SqlDialectContractGolden = {
       parameters: ['Alice', 'a@a.com'],
       returningPk: 'id'
     },
-    // Divergence: MSSQL does NOT exclude the computed column from INSERT (latent bug, captured as-is).
+    // Reconciled (task-4): the computed column is now excluded from INSERT on every dialect, fixing
+    // the former MSSQL-only latent bug. Uniform with the MySQL/PG goldens.
     'computed-col': {
-      sql: 'INSERT INTO [users] ([name], [full_name]) OUTPUT INSERTED.[id] AS id VALUES (@p1, @p2)',
-      parameters: ['Alice', 'ignored'],
+      sql: 'INSERT INTO [users] ([name]) OUTPUT INSERTED.[id] AS id VALUES (@p1)',
+      parameters: ['Alice'],
       returningPk: 'id'
     },
     'supplied-pk': {
