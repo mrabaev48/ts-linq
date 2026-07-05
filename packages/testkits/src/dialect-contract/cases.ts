@@ -67,7 +67,7 @@ const selectInputs: ReadonlyArray<readonly [string, QueryOptions]> = [
     'group-having',
     { groupBy: { columns: ['name'], having: { condition: 'COUNT(*) > ?', parameters: [5] } } }
   ],
-  // Divergence: MSSQL guards empty GROUP BY columns; PG/MySQL emit a bare ` GROUP BY `.
+  // All dialects guard empty GROUP BY columns (shared emitGroup guard) — no dangling ` GROUP BY `.
   ['group-empty', { groupBy: { columns: [] } }],
   ['limit-offset', { limit: 10, offset: 20 }],
   [

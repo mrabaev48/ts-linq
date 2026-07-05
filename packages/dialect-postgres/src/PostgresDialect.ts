@@ -1,3 +1,4 @@
+import { emitGroup, emitJoin, emitOrder, emitWhere } from '@ts-linq/dialect-kit';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
@@ -7,15 +8,12 @@ import type {
   BulkUpdateContext,
   ColumnMetadata,
   EntityMetadata,
-  GroupByClause,
-  OrderByClause,
   QueryOptions,
   SqlDialect,
   SqlParameter,
   SqlQueryResult,
   SqlWithParams,
-  SqlWithReturning,
-  WhereClause
+  SqlWithReturning
 } from '@ts-linq/types';
 import { TemporalNotSupportedError } from '@ts-linq/types';
 
@@ -25,10 +23,6 @@ import {
   buildPgBatchUpdate,
   PG_PARAM_LIMIT
 } from './batch-syntax';
-import { PgGroupEmitter } from './emitters/PgGroupEmitter';
-import { PgJoinEmitter } from './emitters/PgJoinEmitter';
-import { PgOrderEmitter } from './emitters/PgOrderEmitter';
-import { PgWhereEmitter } from './emitters/PgWhereEmitter';
 import { postgresEfFunctions } from './functions/index';
 import { PostgresJsonPathTranslator } from './json/JsonPathTranslator';
 import { postgresLtreeFunctions } from './ltree-functions';
@@ -44,10 +38,6 @@ import { postgisSpatialFunctions } from './spatial-functions';
  * - Leaves identifier quoting to providers/metadata (table/column names are passed as-is)
  */
 export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
-  private readonly whereEmitter = new PgWhereEmitter();
-  private readonly joinEmitter = new PgJoinEmitter((id) => this.quoteIdentifier(id));
-  private readonly orderEmitter = new PgOrderEmitter();
-  private readonly groupEmitter = new PgGroupEmitter();
   private readonly jsonPathTranslator = new PostgresJsonPathTranslator();
 
   readonly parameterLimit = PG_PARAM_LIMIT;
@@ -124,10 +114,10 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
       if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
       query += this.buildFromClause(options.from ?? metadata.viewName ?? metadata.tableName);
     }
-    query += this.joinEmitter.emit(options);
-    query += this.whereEmitter.emit(parameters, options);
-    query += this.groupEmitter.emit(parameters, options);
-    query += this.orderEmitter.emit(options);
+    query += emitJoin(options, (id) => this.quoteIdentifier(id));
+    query += emitWhere(parameters, options);
+    query += emitGroup(parameters, options);
+    query += emitOrder(options);
     query += this.buildLimitOffset(options);
     query = this.numberPlaceholders(query, parameters.length);
     return { query, parameters };
@@ -159,49 +149,10 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     return ` FROM ${quoteIdentifier(tableName)}`;
   }
 
-  private buildJoins(options: QueryOptions): string {
-    if (!options.joins || options.joins.length === 0) return '';
-    let out = '';
-    for (const join of options.joins) {
-      out += ` ${join.type} JOIN ${quoteIdentifier(join.table)}`;
-      if (join.alias) out += ` AS ${join.alias}`;
-      out += ` ON ${join.on}`;
-    }
-    return out;
-  }
-
   private collectSelectParams(parameters: SqlParameter[], options: QueryOptions): void {
     if (options.selectParams && options.selectParams.length) {
       parameters.push(...options.selectParams);
     }
-  }
-
-  private buildWhereClause(parameters: SqlParameter[], options: QueryOptions): string {
-    if (!options.where) return '';
-    const whereArray = Array.isArray(options.where) ? options.where : [options.where];
-    if (whereArray.length === 0) return '';
-    const whereClauses = whereArray.map((w: WhereClause) => w.condition);
-    for (const w of whereArray) parameters.push(...w.parameters);
-    return ` WHERE ${whereClauses.join(' AND ')}`;
-  }
-
-  private buildGroupByHaving(parameters: SqlParameter[], options: QueryOptions): string {
-    if (!options.groupBy) return '';
-    const groupBy: GroupByClause = Array.isArray(options.groupBy)
-      ? { columns: options.groupBy }
-      : options.groupBy;
-    let sql = ` GROUP BY ${groupBy.columns.join(', ')}`;
-    if (groupBy.having) {
-      sql += ` HAVING ${groupBy.having.condition}`;
-      parameters.push(...groupBy.having.parameters);
-    }
-    return sql;
-  }
-
-  private buildOrderBy(options: QueryOptions): string {
-    if (!options.orderBy || options.orderBy.length === 0) return '';
-    const orderByClauses = options.orderBy.map((o: OrderByClause) => `${o.column} ${o.direction}`);
-    return ` ORDER BY ${orderByClauses.join(', ')}`;
   }
 
   private buildLimitOffset(options: QueryOptions): string {

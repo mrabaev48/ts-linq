@@ -18,6 +18,7 @@
   "references": [
     { "path": "../types" },
     { "path": "../metadata" },
-    { "path": "../core" }
+    { "path": "../core" },
+    { "path": "../dialect-kit" }
   ]
 }
