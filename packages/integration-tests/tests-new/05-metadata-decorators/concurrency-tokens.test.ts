@@ -105,7 +105,7 @@ describe('SQL WHERE injection — concurrency tokens across dialects', () => {
         [titleToken],
         orig
       );
-      expect(sql).toContain('AND title = ?');
+      expect(sql).toContain('AND `title` = ?');
       expect(parameters).toContain('Old');
     });
   });
@@ -124,7 +124,7 @@ describe('SQL WHERE injection — concurrency tokens across dialects', () => {
         [titleToken],
         orig
       );
-      expect(sql).toContain('AND title = @p');
+      expect(sql).toContain('AND [title] = @p');
       expect(parameters).toContain('Old');
     });
   });
