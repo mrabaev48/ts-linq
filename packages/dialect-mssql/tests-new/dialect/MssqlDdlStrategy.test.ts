@@ -295,8 +295,8 @@ describe('MssqlDdlStrategy', () => {
 
       expect(sql).toContain('CREATE INDEX');
       expect(sql).toContain('idx_users_name');
-      expect(sql).toContain('ON users');
-      expect(sql).toContain('(name)');
+      expect(sql).toContain('ON [users]');
+      expect(sql).toContain('([name])');
     });
 
     it('should generate unique index', () => {
@@ -329,7 +329,7 @@ describe('MssqlDdlStrategy', () => {
         orders: { name: 'DESC' }
       });
 
-      expect(sql).toContain('name DESC');
+      expect(sql).toContain('[name] DESC');
     });
 
     it('should generate index with INCLUDE columns', () => {
@@ -377,6 +377,66 @@ describe('MssqlDdlStrategy', () => {
 
       expect(sql).toBe('');
       expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('invalid index spec'));
+    });
+  });
+
+  // task-3 (highest risk): MSSQL DDL interpolates the table name into T-SQL *string literals*
+  // (sys.tables lookup, sp_rename, sp_addextendedproperty, sys.indexes lookup). A single quote in
+  // the name must be doubled so it cannot break out of the literal; identifier positions stay
+  // bracket-quoted.
+  describe('adversarial identifiers — literal-injection defense (task-3)', () => {
+    it('generateCreateTableSql doubles single quotes in the sys.tables literal and quotes the identifier', () => {
+      const metadata: EntityMetadata = {
+        tableName: "o'brien",
+        columns: [{ propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false }],
+        relationships: [],
+        indexes: [],
+        primaryKeys: []
+      };
+
+      const sql = strategy.generateCreateTableSql(metadata);
+
+      expect(sql).toContain("WHERE name = 'o''brien'");
+      expect(sql).toContain("CREATE TABLE [o'brien]");
+      // The raw, unescaped literal must never appear (would terminate the string early).
+      expect(sql).not.toContain("name = 'o'brien'");
+    });
+
+    it('generateRenameTableSql doubles single quotes in both sp_rename arguments', () => {
+      const sql = strategy.generateRenameTableSql("o'brien", "new'table");
+      expect(sql).toBe("EXEC sp_rename 'o''brien', 'new''table'");
+    });
+
+    it('generateCommentSql doubles single quotes in the table/column literals', () => {
+      const metadata: EntityMetadata = {
+        tableName: "o'brien",
+        comment: 'a comment',
+        columns: [
+          { propertyName: 'id', columnName: "c'ol", type: 'INTEGER', nullable: false, comment: 'c' }
+        ],
+        relationships: [],
+        indexes: [],
+        primaryKeys: []
+      };
+
+      const stmts = strategy.generateCommentSql(metadata);
+
+      expect(stmts[0]).toContain("N'o''brien'");
+      expect(stmts[1]).toContain("N'c''ol'");
+      expect(stmts.join('\n')).not.toContain("N'o'brien'");
+    });
+
+    it('MssqlIndexBuilder doubles single quotes in sys.indexes/OBJECT_ID literals and quotes identifiers', () => {
+      const sql = strategy.generateCreateIndexSql("o'brien", {
+        name: "idx'x",
+        columns: ['na]me'],
+        unique: false
+      });
+
+      expect(sql).toContain("WHERE name='idx''x'");
+      expect(sql).toContain("OBJECT_ID('o''brien')");
+      expect(sql).toContain("ON [o'brien]");
+      expect(sql).toContain('[na]]me]');
     });
   });
 });

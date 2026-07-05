@@ -1,5 +1,28 @@
 # @ts-linq/dialect-mssql
 
+## 2.8.5
+
+### Patch Changes
+
+- Security: centralize identifier/literal quoting across all three SQL dialects, closing an
+  identifier-break-out gap and (MSSQL) a DDL string-literal injection gap.
+
+  Each dialect already exposed a correct, escaping `quoteIdentifier`, but its own DML/DDL/batch/index
+  builders did not use it — they hardcoded the quote character inline (bypassing escaping) and, in the
+  MSSQL/MySQL CRUD paths, omitted identifier quoting entirely. In addition, several MSSQL DDL builders
+  interpolated the raw table name into T-SQL string literals (`sys.tables` lookup, `sp_rename`,
+  `sp_addextendedproperty`, `sys.indexes`/`OBJECT_ID`) without escaping single quotes.
+
+  All SQL generation now routes identifiers through the dialect's `quoteIdentifier` and string literals
+  through a new `quoteStringLiteral` (escaping `'` → `''`), both centralized in a per-dialect `quoting`
+  module. A table or column name containing the dialect's own quote character — or, for MSSQL literal
+  positions, a single quote — can no longer break out of the quoted context.
+
+  Behavioural note: MSSQL and MySQL INSERT/UPDATE/DELETE now emit quoted identifiers
+  (``INSERT INTO `users` (`name`)`` / `INSERT INTO [users] ([name])`) where they previously emitted
+  bare, unquoted identifiers. This fixes reserved-word / case-sensitive-collation breakage and closes
+  the injection gap; previously-broken adversarial identifiers now work. No public API changed.
+
 ## 2.8.4
 
 ### Patch Changes
