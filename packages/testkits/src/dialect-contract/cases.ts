@@ -97,7 +97,7 @@ export const insertCases: ReadonlyArray<ContractCase<SqlWithReturning>> = [
     invoke: (d) => d.buildInsert!({ name: 'Alice', email: 'a@a.com' }, insertMeta)
   },
   {
-    // Divergence: MySQL/PG exclude the computed column; MSSQL includes it.
+    // Reconciled (task-4): every dialect now excludes the computed column from INSERT.
     id: 'computed-col',
     invoke: (d) => d.buildInsert!({ name: 'Alice', fullName: 'ignored' }, insertComputedMeta)
   },

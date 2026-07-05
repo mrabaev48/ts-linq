@@ -4,7 +4,7 @@ import type { SqlParameter, TemporalClause, TemporalMode } from '@ts-linq/types'
  * Appends a `FOR SYSTEM_TIME` clause to an MSSQL SELECT query for system-versioned tables.
  *
  * Date parameters are pushed into the provided `params` array using `?` placeholders,
- * which are then renumbered to `@p1..@pN` by `MssqlDialect.numberPlaceholders`.
+ * which are then renumbered to `@p1..@pN` by the shared `numberPlaceholders` helper.
  *
  * @param temporal - Temporal clause describing the operator and optional date bounds.
  * @param params   - Mutable parameter array; date values are appended here.

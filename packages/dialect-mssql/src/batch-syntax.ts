@@ -1,3 +1,10 @@
+import {
+  coerceSqlParameter,
+  type InsertableColumnOptions,
+  numberPlaceholders,
+  selectInsertableColumns,
+  selectUpdatableColumns
+} from '@ts-linq/dialect-kit';
 import { calcChunkSize, chunkArray } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
@@ -12,37 +19,13 @@ import { quoteIdentifier } from './quoting';
 /** SQL Server hard cap on bind parameters per statement. */
 export const MSSQL_PARAM_LIMIT = 2100;
 
+/** SQL Server INSERT column policy: computed columns and unset (IDENTITY) PKs are omitted. */
+const MSSQL_INSERT_POLICY: InsertableColumnOptions = {
+  excludeComputed: true,
+  excludeGeneratedPk: true
+};
+
 type Entity = Record<string, unknown>;
-
-function coerce(value: unknown): SqlParameter {
-  if (
-    value === null ||
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    value instanceof Date ||
-    value instanceof Uint8Array
-  ) {
-    return value;
-  }
-  try {
-    return JSON.stringify(value ?? null);
-  } catch {
-    return String(value);
-  }
-}
-
-/** Replace positional `?` markers with @p1, @p2, … */
-function numberPlaceholders(sql: string): string {
-  let idx = 0;
-  return sql.replace(/\?/g, () => `@p${++idx}`);
-}
-
-function insertableCols(metadata: EntityMetadata, entity: Entity) {
-  return metadata.columns.filter(
-    (col) => !col.isGenerated || entity[col.propertyName] !== undefined
-  );
-}
 
 /**
  * Build a SQL Server multi-row INSERT with OUTPUT:
@@ -54,7 +37,7 @@ export function buildMssqlBatchInsert(
 ): BatchInsertResult {
   if (entities.length === 0) throw new Error('buildMssqlBatchInsert: empty entity list');
 
-  const cols = insertableCols(metadata, entities[0]);
+  const cols = selectInsertableColumns(metadata, entities[0], MSSQL_INSERT_POLICY);
   if (cols.length === 0) throw new Error('buildMssqlBatchInsert: no insertable columns');
 
   const parameters: SqlParameter[] = [];
@@ -64,7 +47,7 @@ export function buildMssqlBatchInsert(
     const rowPh = cols.map(() => '?').join(',');
     rowPlaceholders.push(`(${rowPh})`);
     for (const c of cols) {
-      parameters.push(coerce(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName]));
     }
   }
 
@@ -80,7 +63,7 @@ export function buildMssqlBatchInsert(
     sql = `INSERT INTO ${tableId} (${colNames}) VALUES ${rowPlaceholders.join(',')}`;
   }
 
-  return { sql: numberPlaceholders(sql), parameters };
+  return { sql: numberPlaceholders(sql, '@p'), parameters };
 }
 
 /**
@@ -98,9 +81,7 @@ export function buildMssqlBatchUpdate(
   }
 
   const pks = metadata.primaryKeys;
-  const setCols = metadata.columns.filter(
-    (c) => !pks.includes(c.propertyName) && !c.isGenerated && !c.isComputed
-  );
+  const setCols = selectUpdatableColumns(metadata);
   if (setCols.length === 0) throw new Error('buildMssqlBatchUpdate: no updatable columns');
 
   const allCols = [
@@ -115,7 +96,7 @@ export function buildMssqlBatchUpdate(
     const rowPh = allCols.map(() => '?').join(',');
     rowPlaceholders.push(`(${rowPh})`);
     for (const c of allCols) {
-      parameters.push(coerce(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName]));
     }
   }
 
@@ -139,7 +120,7 @@ export function buildMssqlBatchUpdate(
     `FROM ${quoteIdentifier(metadata.tableName)} t ` +
     `JOIN (VALUES ${rowPlaceholders.join(',')}) AS b(${bColNames}) ON ${onClause}`;
 
-  return { sql: numberPlaceholders(sql), parameters };
+  return { sql: numberPlaceholders(sql, '@p'), parameters };
 }
 
 /**
@@ -154,10 +135,11 @@ export function buildMssqlBatchDelete(entities: Entity[], metadata: EntityMetada
 
   const pk = metadata.primaryKeys[0];
   const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
-  const parameters: SqlParameter[] = entities.map((e) => coerce(e[pk]));
+  const parameters: SqlParameter[] = entities.map((e) => coerceSqlParameter(e[pk]));
   const placeholders = parameters.map(() => '?').join(',');
   const sql = numberPlaceholders(
-    `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`
+    `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`,
+    '@p'
   );
   return { sql, parameters };
 }
@@ -173,14 +155,11 @@ export function chunkMssqlBatch(
 ): Entity[][] {
   let paramsPerRow: number;
   if (operation === 'insert') {
-    const cols = insertableCols(metadata, entities[0] ?? {});
+    const cols = selectInsertableColumns(metadata, entities[0] ?? {}, MSSQL_INSERT_POLICY);
     paramsPerRow = cols.length;
   } else if (operation === 'update') {
     const pks = metadata.primaryKeys ?? [];
-    const setCols = metadata.columns.filter(
-      (c) => !pks.includes(c.propertyName) && !c.isGenerated && !c.isComputed
-    );
-    paramsPerRow = pks.length + setCols.length;
+    paramsPerRow = pks.length + selectUpdatableColumns(metadata).length;
   } else {
     paramsPerRow = 1;
   }
