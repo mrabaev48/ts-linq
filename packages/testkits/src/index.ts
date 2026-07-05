@@ -1,4 +1,5 @@
 export * from './builders/EntityBuilder';
+export { runSqlDialectContract, type SqlDialectContractGolden } from './dialect-contract';
 export * from './fixtures/TestEntities';
 export {
   createDatabaseHarness,
