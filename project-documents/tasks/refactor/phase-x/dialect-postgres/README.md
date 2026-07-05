@@ -41,14 +41,14 @@ dialect packages are near-identical and the shared abstractions must live in one
 - task-6 — Shared dialect contract-test harness — P1, testing ✅ **completed**
 - task-7 — Shared `DdlStrategy` contract + extracted type-mapping — P1, architecture
 - task-8 — Remove dead `chunk*Batch`, dedup OptionsBuilder, fix dialect→core/metadata coupling — P2, package-boundary
-- task-9 — Remove PG dead clause methods + collapse 12 emitters into shared pure emitters — P2, clean-code
+- task-9 — Remove PG dead clause methods + collapse 12 emitters into shared pure emitters — P2, clean-code ✅ **completed**
 
 ## Recommended task order
 | Order | Task | Priority | Reason |
 |---:|---|---|---|
 | 1 | task-6 (contract harness) ✅ | P1 | Safety net before any dedup; documents current behavior |
 | 2 | task-3 (centralize quoting) ✅ | P0 | Only safety/correctness defect; feeds task-1/task-7 |
-| 3 | task-9 (PG dead code + shared emitters) | P2 | Low-risk simplification shrinking task-1's surface |
+| 3 | task-9 (PG dead code + shared emitters) ✅ | P2 | Low-risk simplification shrinking task-1's surface |
 | 4 | task-4 (dedup coerce/columns) | P1 | Removes 6× duplication; resolves computed-col divergence |
 | 5 | task-5 (typed coercion error) | P2 | Lands inside task-4's shared module |
 | 6 | task-1 (shared base dialect) | P1 | The core dedup; guarded by task-6 |
@@ -75,3 +75,8 @@ All shared abstractions (`AbstractSqlDialect`, `DialectSyntax`, shared emitters,
 `AbstractDdlStrategy`, `TypeMapper`) should live in one shared package — prefer a new `@ts-linq/dialect-kit`
 to keep `@ts-linq/sql-visitor`'s surface narrow, or reuse `sql-visitor` if a new package is undesirable. The
 decision must avoid any circular dependency (`arch:cycles`).
+
+**Shared-home decision (resolved by task-9):** the new `@ts-linq/dialect-kit` package now hosts the shared
+clause emitters (`emitWhere`/`emitJoin`/`emitGroup`/`emitOrder`). Dependency graph is
+`dialect-* → dialect-kit → {sql-visitor, types}` — verified acyclic via `arch:cycles`. task-1's
+`AbstractSqlDialect` and the other cluster-wide abstractions should build on this same package.
