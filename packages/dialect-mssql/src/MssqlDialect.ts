@@ -1,3 +1,4 @@
+import { emitGroup, emitJoin, emitOrder, emitWhere } from '@ts-linq/dialect-kit';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
@@ -22,10 +23,6 @@ import {
   MSSQL_PARAM_LIMIT
 } from './batch-syntax';
 import { buildTemporalClause } from './emit-temporal';
-import { MssqlGroupEmitter } from './emitters/MssqlGroupEmitter';
-import { MssqlJoinEmitter } from './emitters/MssqlJoinEmitter';
-import { MssqlOrderEmitter } from './emitters/MssqlOrderEmitter';
-import { MssqlWhereEmitter } from './emitters/MssqlWhereEmitter';
 import { mssqlEfFunctions } from './functions/index';
 import { mssqlHierarchyFunctions } from './hierarchy-functions';
 import { MssqlJsonPathTranslator } from './json/JsonPathTranslator';
@@ -41,10 +38,6 @@ import { mssqlSpatialFunctions } from './spatial-functions';
  * - Converts '?' placeholders to @p1..@pn for MSSQL parameter style
  */
 export class MssqlDialect implements SqlDialect, DialectVisitorSupport {
-  private readonly whereEmitter = new MssqlWhereEmitter();
-  private readonly joinEmitter = new MssqlJoinEmitter((id) => this.quoteIdentifier(id));
-  private readonly orderEmitter = new MssqlOrderEmitter();
-  private readonly groupEmitter = new MssqlGroupEmitter();
   private readonly jsonPathTranslator = new MssqlJsonPathTranslator();
 
   readonly parameterLimit = MSSQL_PARAM_LIMIT;
@@ -120,10 +113,10 @@ export class MssqlDialect implements SqlDialect, DialectVisitorSupport {
         query += buildTemporalClause(options.temporal, parameters);
       }
     }
-    query += this.joinEmitter.emit(options);
-    query += this.whereEmitter.emit(parameters, options);
-    query += this.groupEmitter.emit(parameters, options);
-    query += this.orderEmitter.emit(options);
+    query += emitJoin(options, (id) => this.quoteIdentifier(id));
+    query += emitWhere(parameters, options);
+    query += emitGroup(parameters, options);
+    query += emitOrder(options);
     query += this.buildOffsetFetch(options, hasLimit, hasOffset);
     query = this.numberPlaceholders(query, parameters.length);
     return { query, parameters };
