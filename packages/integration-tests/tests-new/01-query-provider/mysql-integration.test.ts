@@ -64,8 +64,8 @@ describe('MySQL Provider + QueryBuilder Integration', () => {
       const result = dialect.buildInsert({ name: 'Widget', inStock: true }, metadata);
       // isGenerated (AUTO_INCREMENT) column must be excluded from INSERT
       expect(result.sql).not.toContain('`id`');
-      expect(result.sql).toContain('INSERT INTO products');
-      expect(result.sql).toContain('name');
+      expect(result.sql).toContain('INSERT INTO `products`');
+      expect(result.sql).toContain('`name`');
     });
 
     it('should handle batch insert with AUTO_INCREMENT', () => {
