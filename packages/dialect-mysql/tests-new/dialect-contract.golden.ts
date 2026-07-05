@@ -5,6 +5,10 @@ import type { SqlDialectContractGolden } from '@ts-linq/testkits';
  * other dialects (empty `GROUP BY` emitted, computed column excluded from INSERT, per-row batch UPDATE
  * `statements[]`, `LAST_INSERT_ID` PK writeback) are encoded here as-is; convergence is the job of
  * later dialect dedup tasks.
+ *
+ * task-3 (centralize quoting): CRUD identifiers are now backtick-quoted (`` `users` ``, `` `title` ``),
+ * where INSERT/UPDATE/DELETE previously emitted bare, unquoted identifiers. This is the intended
+ * security fix (identifier break-out closed); the escaped output is the new golden.
  */
 export const mysqlGolden: SqlDialectContractGolden = {
   parameterLimit: 65535,
@@ -37,31 +41,34 @@ export const mysqlGolden: SqlDialectContractGolden = {
   },
   insert: {
     basic: {
-      sql: 'INSERT INTO users (name, email) VALUES (?, ?)',
+      sql: 'INSERT INTO `users` (`name`, `email`) VALUES (?, ?)',
       parameters: ['Alice', 'a@a.com']
     },
     // Divergence: MySQL excludes the computed column from INSERT.
-    'computed-col': { sql: 'INSERT INTO users (name) VALUES (?)', parameters: ['Alice'] },
+    'computed-col': { sql: 'INSERT INTO `users` (`name`) VALUES (?)', parameters: ['Alice'] },
     'supplied-pk': {
-      sql: 'INSERT INTO users (id, name, email) VALUES (?, ?, ?)',
+      sql: 'INSERT INTO `users` (`id`, `name`, `email`) VALUES (?, ?, ?)',
       parameters: [99, 'Alice', 'a@a.com']
     }
   },
   update: {
-    'no-token': { sql: 'UPDATE articles SET title = ? WHERE id = ?', parameters: ['Hello', 1] },
+    'no-token': {
+      sql: 'UPDATE `articles` SET `title` = ? WHERE `id` = ?',
+      parameters: ['Hello', 1]
+    },
     'nonversion-token': {
-      sql: 'UPDATE articles SET title = ? WHERE id = ? AND title = ?',
+      sql: 'UPDATE `articles` SET `title` = ? WHERE `id` = ? AND `title` = ?',
       parameters: ['New title', 1, 'Old title']
     },
     version: {
-      sql: 'UPDATE articles SET title = ?, version = ?, version = version + 1 WHERE id = ? AND version = ?',
+      sql: 'UPDATE `articles` SET `title` = ?, `version` = ?, `version` = `version` + 1 WHERE `id` = ? AND `version` = ?',
       parameters: ['Hello', 3, 1, 3]
     }
   },
   delete: {
-    'no-token': { sql: 'DELETE FROM articles WHERE id = ?', parameters: [1] },
+    'no-token': { sql: 'DELETE FROM `articles` WHERE `id` = ?', parameters: [1] },
     token: {
-      sql: 'DELETE FROM articles WHERE id = ? AND title = ?',
+      sql: 'DELETE FROM `articles` WHERE `id` = ? AND `title` = ?',
       parameters: [1, 'Original title']
     }
   },

@@ -5,6 +5,10 @@ import type { SqlDialectContractGolden } from '@ts-linq/testkits';
  * other dialects (empty `GROUP BY` guarded out, computed column *included* in INSERT, OFFSET/FETCH
  * paging, single-statement batch UPDATE via VALUES JOIN) are encoded here as-is; convergence is the
  * job of later dialect dedup tasks.
+ *
+ * task-3 (centralize quoting): CRUD identifiers are now bracket-quoted (`[users]`, `[title]`), where
+ * INSERT/UPDATE/DELETE previously emitted bare, unquoted identifiers. This is the intended security
+ * fix (identifier break-out closed); the escaped output is the new golden.
  */
 export const mssqlGolden: SqlDialectContractGolden = {
   parameterLimit: 2100,
@@ -42,37 +46,40 @@ export const mssqlGolden: SqlDialectContractGolden = {
   },
   insert: {
     basic: {
-      sql: 'INSERT INTO users (name, email) OUTPUT INSERTED.[id] AS id VALUES (@p1, @p2)',
+      sql: 'INSERT INTO [users] ([name], [email]) OUTPUT INSERTED.[id] AS id VALUES (@p1, @p2)',
       parameters: ['Alice', 'a@a.com'],
       returningPk: 'id'
     },
     // Divergence: MSSQL does NOT exclude the computed column from INSERT (latent bug, captured as-is).
     'computed-col': {
-      sql: 'INSERT INTO users (name, full_name) OUTPUT INSERTED.[id] AS id VALUES (@p1, @p2)',
+      sql: 'INSERT INTO [users] ([name], [full_name]) OUTPUT INSERTED.[id] AS id VALUES (@p1, @p2)',
       parameters: ['Alice', 'ignored'],
       returningPk: 'id'
     },
     'supplied-pk': {
-      sql: 'INSERT INTO users (id, name, email) OUTPUT INSERTED.[id] AS id VALUES (@p1, @p2, @p3)',
+      sql: 'INSERT INTO [users] ([id], [name], [email]) OUTPUT INSERTED.[id] AS id VALUES (@p1, @p2, @p3)',
       parameters: [99, 'Alice', 'a@a.com'],
       returningPk: 'id'
     }
   },
   update: {
-    'no-token': { sql: 'UPDATE articles SET title = @p1 WHERE id = @p2', parameters: ['Hello', 1] },
+    'no-token': {
+      sql: 'UPDATE [articles] SET [title] = @p1 WHERE [id] = @p2',
+      parameters: ['Hello', 1]
+    },
     'nonversion-token': {
-      sql: 'UPDATE articles SET title = @p1 WHERE id = @p2 AND title = @p3',
+      sql: 'UPDATE [articles] SET [title] = @p1 WHERE [id] = @p2 AND [title] = @p3',
       parameters: ['New title', 1, 'Old title']
     },
     version: {
-      sql: 'UPDATE articles SET title = @p1, version = @p2, version = version + 1 WHERE id = @p3 AND version = @p4',
+      sql: 'UPDATE [articles] SET [title] = @p1, [version] = @p2, [version] = [version] + 1 WHERE [id] = @p3 AND [version] = @p4',
       parameters: ['Hello', 3, 1, 3]
     }
   },
   delete: {
-    'no-token': { sql: 'DELETE FROM articles WHERE id = @p1', parameters: [1] },
+    'no-token': { sql: 'DELETE FROM [articles] WHERE [id] = @p1', parameters: [1] },
     token: {
-      sql: 'DELETE FROM articles WHERE id = @p1 AND title = @p2',
+      sql: 'DELETE FROM [articles] WHERE [id] = @p1 AND [title] = @p2',
       parameters: [1, 'Original title']
     }
   },

@@ -12,7 +12,7 @@ export class MssqlJoinEmitter {
     if (!options.joins || options.joins.length === 0) return '';
     let out = '';
     for (const join of options.joins) {
-      out += ` ${join.type} JOIN [${join.table}]`;
+      out += ` ${join.type} JOIN ${this.quoteIdentifier(join.table)}`;
       if (join.alias) out += ` AS ${join.alias}`;
       out += ` ON ${renderJoinOn(join, this.quoteIdentifier)}`;
     }

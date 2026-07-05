@@ -3,6 +3,7 @@ import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
 
 type LoggerLike = { warn(message: string, error?: unknown): void };
 import { MssqlIndexBuilder } from './builders/MssqlIndexBuilder';
+import { quoteIdentifier, quoteStringLiteral } from './quoting';
 
 export class MssqlDdlStrategy {
   private readonly indexBuilder: MssqlIndexBuilder;
@@ -19,16 +20,16 @@ export class MssqlDdlStrategy {
     if (metadata.primaryKeys && metadata.primaryKeys.length > 0) {
       const pkCols = metadata.primaryKeys.map((pk) => {
         const col = metadata.columns.find((column) => column.propertyName === pk);
-        return `[${col ? col.columnName : pk}]`;
+        return quoteIdentifier(col ? col.columnName : pk);
       });
       columns.push(`PRIMARY KEY (${pkCols.join(', ')})`);
     }
 
     for (const cc of metadata.checkConstraints ?? []) {
-      columns.push(`CONSTRAINT [${cc.name}] CHECK (${cc.sql})`);
+      columns.push(`CONSTRAINT ${quoteIdentifier(cc.name)} CHECK (${cc.sql})`);
     }
 
-    return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '${metadata.tableName}') BEGIN CREATE TABLE [${metadata.tableName}] (${columns.join(', ')}) END`;
+    return `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = ${quoteStringLiteral(metadata.tableName)}) BEGIN CREATE TABLE ${quoteIdentifier(metadata.tableName)} (${columns.join(', ')}) END`;
   }
 
   public generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string {
@@ -40,7 +41,7 @@ export class MssqlDdlStrategy {
         );
       }
       const persisted = storage === 'PERSISTED' || storage === 'STORED' ? ' PERSISTED' : '';
-      return `[${column.columnName}] AS (${column.computedExpression})${persisted}`;
+      return `${quoteIdentifier(column.columnName)} AS (${column.computedExpression})${persisted}`;
     }
     let sqlType = this.mapTypeToMssql(column.type);
     if (column.length) {
@@ -51,7 +52,7 @@ export class MssqlDdlStrategy {
         sqlType += `(${column.length})`;
       }
     }
-    let definition = `[${column.columnName}] ${sqlType}`;
+    let definition = `${quoteIdentifier(column.columnName)} ${sqlType}`;
     if (column.isGenerated) {
       definition += ' IDENTITY(1,1)';
     }
@@ -83,11 +84,11 @@ export class MssqlDdlStrategy {
     column: Omit<ColumnMetadata, 'propertyName'>
   ): string {
     const colDef = this.generateColumnDefinition(column);
-    return `ALTER TABLE [${tableName}] ADD ${colDef}`;
+    return `ALTER TABLE ${quoteIdentifier(tableName)} ADD ${colDef}`;
   }
 
   public generateDropColumnSql(tableName: string, columnName: string): string {
-    return `ALTER TABLE [${tableName}] DROP COLUMN [${columnName}]`;
+    return `ALTER TABLE ${quoteIdentifier(tableName)} DROP COLUMN ${quoteIdentifier(columnName)}`;
   }
 
   public generateAlterColumnTypeSql(
@@ -95,12 +96,12 @@ export class MssqlDdlStrategy {
     columnName: string,
     newType: string
   ): string {
-    const colDef = `[${columnName}] ${this.mapTypeToMssql(newType)}`;
-    return `ALTER TABLE [${tableName}] ALTER COLUMN ${colDef}`;
+    const colDef = `${quoteIdentifier(columnName)} ${this.mapTypeToMssql(newType)}`;
+    return `ALTER TABLE ${quoteIdentifier(tableName)} ALTER COLUMN ${colDef}`;
   }
 
   public generateRenameTableSql(tableName: string, newTableName: string): string {
-    return `EXEC sp_rename '${tableName}', '${newTableName}'`;
+    return `EXEC sp_rename ${quoteStringLiteral(tableName)}, ${quoteStringLiteral(newTableName)}`;
   }
 
   public generateForeignKeySql(
@@ -114,7 +115,7 @@ export class MssqlDdlStrategy {
       onUpdate?: string;
     }
   ): string {
-    let sql = `ALTER TABLE [${tableName}] ADD CONSTRAINT [${fk.name}] FOREIGN KEY ([${fk.columnName}]) REFERENCES [${fk.relatedTableName}] ([${fk.relatedColumnName}])`;
+    let sql = `ALTER TABLE ${quoteIdentifier(tableName)} ADD CONSTRAINT ${quoteIdentifier(fk.name)} FOREIGN KEY (${quoteIdentifier(fk.columnName)}) REFERENCES ${quoteIdentifier(fk.relatedTableName)} (${quoteIdentifier(fk.relatedColumnName)})`;
     if (fk.onDelete && fk.onDelete !== 'NO ACTION') {
       sql += ` ON DELETE ${fk.onDelete}`;
     }
@@ -133,15 +134,15 @@ export class MssqlDdlStrategy {
     name: string,
     columns: string[]
   ): string {
-    const cols = columns.map((c) => `[${c}]`).join(', ');
-    return `ALTER TABLE [${tableName}] ADD CONSTRAINT [${name}] UNIQUE (${cols})`;
+    const cols = columns.map((c) => quoteIdentifier(c)).join(', ');
+    return `ALTER TABLE ${quoteIdentifier(tableName)} ADD CONSTRAINT ${quoteIdentifier(name)} UNIQUE (${cols})`;
   }
 
   /**
    * Generates `ALTER TABLE ... DROP CONSTRAINT ...` for an alternate key.
    */
   public generateDropUniqueConstraintSql(tableName: string, name: string): string {
-    return `ALTER TABLE [${tableName}] DROP CONSTRAINT [${name}]`;
+    return `ALTER TABLE ${quoteIdentifier(tableName)} DROP CONSTRAINT ${quoteIdentifier(name)}`;
   }
 
   /**
@@ -153,13 +154,13 @@ export class MssqlDdlStrategy {
     const table = entityMetadata.tableName;
     if (entityMetadata.comment) {
       stmts.push(
-        `EXEC sp_addextendedproperty 'MS_Description', N'${entityMetadata.comment.replace(/'/g, "''")}', 'SCHEMA', N'dbo', 'TABLE', N'${table}'`
+        `EXEC sp_addextendedproperty 'MS_Description', N${quoteStringLiteral(entityMetadata.comment)}, 'SCHEMA', N'dbo', 'TABLE', N${quoteStringLiteral(table)}`
       );
     }
     for (const col of entityMetadata.columns) {
       if (col.comment) {
         stmts.push(
-          `EXEC sp_addextendedproperty 'MS_Description', N'${col.comment.replace(/'/g, "''")}', 'SCHEMA', N'dbo', 'TABLE', N'${table}', 'COLUMN', N'${col.columnName}'`
+          `EXEC sp_addextendedproperty 'MS_Description', N${quoteStringLiteral(col.comment)}, 'SCHEMA', N'dbo', 'TABLE', N${quoteStringLiteral(table)}, 'COLUMN', N${quoteStringLiteral(col.columnName)}`
         );
       }
     }

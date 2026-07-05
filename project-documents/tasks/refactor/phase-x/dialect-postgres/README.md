@@ -35,7 +35,7 @@ dialect packages are near-identical and the shared abstractions must live in one
 ## Task index
 - task-1 — Shared base SQL dialect (Template Method + `DialectSyntax`) — P1, architecture
 - task-2 — Replace all-optional `SqlDialect` with an explicit capability model — P1, typescript
-- task-3 — Centralize identifier quoting (DML & DDL) — P0, sql
+- task-3 — Centralize identifier quoting (DML & DDL) — P0, sql ✅ **completed**
 - task-4 — Deduplicate coerce/applyConverter/insertableCols/numberPlaceholders — P1, clean-code
 - task-5 — Replace silent `JSON.stringify` catch-and-swallow in coercion — P2, error-handling
 - task-6 — Shared dialect contract-test harness — P1, testing ✅ **completed**
@@ -47,7 +47,7 @@ dialect packages are near-identical and the shared abstractions must live in one
 | Order | Task | Priority | Reason |
 |---:|---|---|---|
 | 1 | task-6 (contract harness) ✅ | P1 | Safety net before any dedup; documents current behavior |
-| 2 | task-3 (centralize quoting) | P0 | Only safety/correctness defect; feeds task-1/task-7 |
+| 2 | task-3 (centralize quoting) ✅ | P0 | Only safety/correctness defect; feeds task-1/task-7 |
 | 3 | task-9 (PG dead code + shared emitters) | P2 | Low-risk simplification shrinking task-1's surface |
 | 4 | task-4 (dedup coerce/columns) | P1 | Removes 6× duplication; resolves computed-col divergence |
 | 5 | task-5 (typed coercion error) | P2 | Lands inside task-4's shared module |

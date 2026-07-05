@@ -28,6 +28,7 @@ import { MySqlOrderEmitter } from './emitters/MySqlOrderEmitter';
 import { MySqlWhereEmitter } from './emitters/MySqlWhereEmitter';
 import { mysqlEfFunctions } from './functions/index';
 import { MySqlJsonPathTranslator } from './json/JsonPathTranslator';
+import { quoteIdentifier, quoteStringLiteral } from './quoting';
 import { createMysqlSpCallSyntax } from './sp-syntax';
 import { mysqlSpatialFunctions } from './spatial-functions';
 
@@ -47,7 +48,12 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
   readonly parameterLimit = MYSQL_PARAM_LIMIT;
 
   public quoteIdentifier(identifier: string): string {
-    return `\`${identifier.replace(/`/g, '``')}\``;
+    return quoteIdentifier(identifier);
+  }
+
+  /** Quote a string literal (escaping `'`) for interpolation into SQL string-literal positions. */
+  public quoteStringLiteral(value: string): string {
+    return quoteStringLiteral(value);
   }
 
   /**
@@ -127,7 +133,7 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
   }
 
   private buildFromClause(tableName: string): string {
-    return ` FROM \`${tableName}\``;
+    return ` FROM ${quoteIdentifier(tableName)}`;
   }
 
   private collectSelectParams(parameters: SqlParameter[], options: QueryOptions): void {
@@ -150,13 +156,13 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
     const insertable = metadata.columns.filter(
       (c) => (!c.isGenerated || entity[c.propertyName] !== undefined) && !c.isComputed
     );
-    const names = insertable.map((c) => c.columnName);
+    const names = insertable.map((c) => quoteIdentifier(c.columnName));
     const placeholders = insertable.map(() => '?');
     const parameters: SqlParameter[] = insertable.map((c) =>
       this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
     return {
-      sql: `INSERT INTO ${metadata.tableName} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
+      sql: `INSERT INTO ${quoteIdentifier(metadata.tableName)} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
       parameters
     };
   }
@@ -175,30 +181,33 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
     const updatable = metadata.columns.filter(
       (c) => !primaryKeys.includes(c.propertyName) && !c.isGenerated && !c.isComputed
     );
-    const setClauses: string[] = updatable.map((c) => `${c.columnName} = ?`);
+    const setClauses: string[] = updatable.map((c) => `${quoteIdentifier(c.columnName)} = ?`);
     const setParams: SqlParameter[] = updatable.map((c) =>
       this.coerceParameter(this.applyConverter(entity[c.propertyName], c))
     );
-    if (versionCol) setClauses.push(`${versionCol.columnName} = ${versionCol.columnName} + 1`);
+    if (versionCol) {
+      const versionId = quoteIdentifier(versionCol.columnName);
+      setClauses.push(`${versionId} = ${versionId} + 1`);
+    }
     const whereClauses: string[] = [];
     const whereParams: SqlParameter[] = [];
     for (const pk of primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      whereClauses.push(`${col.columnName} = ?`);
+      whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
       whereParams.push(this.coerceParameter(this.applyConverter(entity[pk], col)));
     }
     if (versionCol) {
-      whereClauses.push(`${versionCol.columnName} = ?`);
+      whereClauses.push(`${quoteIdentifier(versionCol.columnName)} = ?`);
       whereParams.push(
         this.coerceParameter(this.applyConverter(entity[versionCol.propertyName], versionCol))
       );
     }
     for (const col of (concurrencyTokens ?? []).filter((c) => !c.isVersion)) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
-      whereClauses.push(`${col.columnName} = ?`);
+      whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
       whereParams.push(this.coerceParameter(this.applyConverter(origVal, col)));
     }
-    const sql = `UPDATE ${metadata.tableName} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
+    const sql = `UPDATE ${quoteIdentifier(metadata.tableName)} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, parameters: [...setParams, ...whereParams] };
   }
 
@@ -215,15 +224,15 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
     const parameters: SqlParameter[] = [];
     for (const pk of metadata.primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      whereClauses.push(`${col.columnName} = ?`);
+      whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
       parameters.push(this.coerceParameter(entity[pk]));
     }
     for (const col of concurrencyTokens ?? []) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
-      whereClauses.push(`${col.columnName} = ?`);
+      whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
       parameters.push(this.coerceParameter(this.applyConverter(origVal, col)));
     }
-    const sql = `DELETE FROM ${metadata.tableName} WHERE ${whereClauses.join(' AND ')}`;
+    const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${whereClauses.join(' AND ')}`;
     return { sql, parameters };
   }
 
@@ -232,16 +241,16 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
     const setClauses: string[] = [];
 
     for (const setter of ctx.setters) {
-      const col = `\`${setter.columnName}\``;
+      const col = quoteIdentifier(setter.columnName);
       if (setter.value.kind === 'literal') {
         setClauses.push(`${col} = ?`);
         params.push(...setter.value.params);
       } else {
-        setClauses.push(`${col} = \`${setter.value.refColumnName}\``);
+        setClauses.push(`${col} = ${quoteIdentifier(setter.value.refColumnName)}`);
       }
     }
 
-    let sql = `UPDATE \`${ctx.tableName}\` SET ${setClauses.join(', ')}`;
+    let sql = `UPDATE ${quoteIdentifier(ctx.tableName)} SET ${setClauses.join(', ')}`;
 
     if (ctx.where.length > 0) {
       const conditions = ctx.where.map((w) => w.condition).join(' AND ');
@@ -254,7 +263,7 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
 
   public buildBulkDelete(ctx: BulkDeleteContext): SqlWithParams {
     const params: SqlParameter[] = [];
-    let sql = `DELETE FROM \`${ctx.tableName}\``;
+    let sql = `DELETE FROM ${quoteIdentifier(ctx.tableName)}`;
 
     if (ctx.where.length > 0) {
       const conditions = ctx.where.map((w) => w.condition).join(' AND ');

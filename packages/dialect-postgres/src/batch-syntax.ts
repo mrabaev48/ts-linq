@@ -7,6 +7,8 @@ import type {
   SqlWithParams
 } from '@ts-linq/types';
 
+import { quoteIdentifier } from './quoting';
+
 /** PostgreSQL hard cap on bind parameters per statement. */
 export const PG_PARAM_LIMIT = 65535;
 
@@ -82,8 +84,8 @@ export function buildPgBatchInsert(
     }
   }
 
-  const colNames = cols.map((c) => `"${c.columnName}"`).join(',');
-  const sql = `INSERT INTO "${metadata.tableName}" (${colNames}) VALUES ${rowPlaceholders.join(',')} RETURNING *`;
+  const colNames = cols.map((c) => quoteIdentifier(c.columnName)).join(',');
+  const sql = `INSERT INTO ${quoteIdentifier(metadata.tableName)} (${colNames}) VALUES ${rowPlaceholders.join(',')} RETURNING *`;
   return { sql, parameters };
 }
 
@@ -124,21 +126,25 @@ export function buildPgBatchUpdate(
     }
   }
 
-  const cteColNames = allCols.map((c) => `"${c.columnName}"`).join(',');
+  const cteColNames = allCols.map((c) => quoteIdentifier(c.columnName)).join(',');
   // Add type casts so PostgreSQL can resolve CTE column types correctly
   const setClause = setCols
-    .map((c) => `"${c.columnName}"=_batch."${c.columnName}"::${toPgCast(c.type)}`)
+    .map((c) => {
+      const colId = quoteIdentifier(c.columnName);
+      return `${colId}=_batch.${colId}::${toPgCast(c.type)}`;
+    })
     .join(',');
   const whereClause = pks
     .map((pk) => {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      return `"${metadata.tableName}"."${col.columnName}"=_batch."${col.columnName}"::${toPgCast(col.type)}`;
+      const colId = quoteIdentifier(col.columnName);
+      return `${quoteIdentifier(metadata.tableName)}.${colId}=_batch.${colId}::${toPgCast(col.type)}`;
     })
     .join(' AND ');
 
   const sql =
     `WITH _batch(${cteColNames}) AS (VALUES ${rowPlaceholders.join(',')}) ` +
-    `UPDATE "${metadata.tableName}" SET ${setClause} FROM _batch WHERE ${whereClause}`;
+    `UPDATE ${quoteIdentifier(metadata.tableName)} SET ${setClause} FROM _batch WHERE ${whereClause}`;
 
   return { sql, parameters };
 }
@@ -157,7 +163,7 @@ export function buildPgBatchDelete(entities: Entity[], metadata: EntityMetadata)
   const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
   const parameters: SqlParameter[] = entities.map((e) => coerce(e[pk]));
   const placeholders = parameters.map((_, i) => `$${i + 1}`).join(',');
-  const sql = `DELETE FROM "${metadata.tableName}" WHERE "${pkCol.columnName}" IN (${placeholders})`;
+  const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`;
   return { sql, parameters };
 }
 

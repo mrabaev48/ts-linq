@@ -82,7 +82,7 @@ describe('MSSQL Migrations + Dialect Integration', () => {
       expect(sql).toContain(
         "IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='idx_users_name' AND object_id=OBJECT_ID('users'))"
       );
-      expect(sql).toContain('CREATE INDEX idx_users_name ON users (name)');
+      expect(sql).toContain('CREATE INDEX [idx_users_name] ON [users] ([name])');
     });
 
     it('should generate CREATE UNIQUE INDEX', () => {
@@ -91,7 +91,7 @@ describe('MSSQL Migrations + Dialect Integration', () => {
         columns: ['email'],
         unique: true
       });
-      expect(sql).toContain('CREATE UNIQUE INDEX idx_users_email ON users (email)');
+      expect(sql).toContain('CREATE UNIQUE INDEX [idx_users_email] ON [users] ([email])');
     });
 
     it('should generate INDEX with INCLUDE columns', () => {
@@ -102,7 +102,7 @@ describe('MSSQL Migrations + Dialect Integration', () => {
         include: ['total']
       });
       expect(sql).toContain(
-        'CREATE INDEX idx_orders_customer ON orders (customerId) INCLUDE (total)'
+        'CREATE INDEX [idx_orders_customer] ON [orders] ([customerId]) INCLUDE ([total])'
       );
     });
   });
