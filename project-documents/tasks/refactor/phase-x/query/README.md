@@ -76,3 +76,9 @@ applies global query filters, tracking, caching and pagination. The public entry
 task-4 and task-8 are the two findings most likely to be production-visible bugs (silent
 wrong results / data leak) and should be prioritized over the structural decomposition.
 Several tasks are breaking → coordinate a single `major` changeset where possible.
+
+**Follow-up (tracked in `core/task-10`, P3, optional):** `SetPropertyCalls`'s literal coercion tail
+is a duplicate of `SqlHelper.ensureSqlParameter`'s. Both were made fail-fast in-place (coercion
+sweep); their optional de-duplication into a single `@ts-linq/core` helper is filed under
+`core/task-10` (anchored in `core` because the shared helper lives there and `query → core` already
+holds). Not a `query`-package task.

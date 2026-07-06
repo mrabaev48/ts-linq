@@ -18,6 +18,7 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 - **`as unknown as` double-casts and `Record` punning** throughout loaders erode type safety (task-7).
 - **Direct `console` logging + static logger global** bypass the logging abstraction (task-8).
 - **Uncurated `export *` barrel** with documentation drift (task-9).
+- **Duplicated non-dialect coercion tail** — `SqlHelper.ensureSqlParameter` and `query`'s `SetPropertyCalls` carry identical primitive/`bigint`/JSON/throw coercion tails that cannot reuse the `dialect-kit` canonical copy (boundary); residual DRY/drift risk (task-10, P3, optional follow-up from the coercion fail-fast sweep).
 
 ## Refactor goals
 - Decompose the provider god class into injected, unit-testable collaborators.
@@ -39,8 +40,11 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 | 7 | task-7 | P1 | ✅ Completed | Remove `as unknown as` casts + centralize `Record` punning in the loading layer |
 | 8 | task-8 | P2 | ✅ Completed | Logger injection / no console |
 | 9 | task-9 | P2 | ✅ Completed | Curate barrel after structure settles |
+| 10 | task-10 | P3 | ⬜ Not started | Optional: unify the non-dialect coercion tail (`SqlHelper` + `query/SetPropertyCalls`) into one `core` helper |
 
-> **✅ The `core` package refactor is fully complete — all tasks 1–9 are done.**
+> **✅ The `core` package audit (tasks 1–9) is complete.** `task-10` is a later, optional **P3**
+> follow-up filed during the coercion fail-fast sweep (the fail-fast fix already shipped in-place;
+> task-10 only removes residual duplication) — it does not block anything.
 
 > **task-4 (✅ Completed)** — junction reads now go through the provider capability
 > `DatabaseProvider.queryJunction(spec: JunctionQuerySpec)`: every identifier is validated

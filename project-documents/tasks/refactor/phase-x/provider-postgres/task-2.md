@@ -7,7 +7,7 @@ effort: M
 risk: medium
 category: architecture
 depends_on: ["provider-mssql/task-2.md"]
-related: ["provider-mssql/task-2.md", "provider-mysql/task-2.md"]
+related: ["provider-mssql/task-2.md", "provider-mysql/task-2.md", "dialect-postgres/task-5.md"]
 ---
 
 # Refactor: Adopt the shared `EntityMapper` + `ValueCoercer` in Postgres (with a `TypeReader`)
@@ -29,13 +29,21 @@ branch present in MSSQL. This proves the triplication has already drifted.
 - The Postgres-only type-reading layer is fused into the mapper, blocking reuse and isolated testing.
 - The `findWhereIn` cast defeats the type system and the coercer.
 
+> **Fail-fast already shipped.** `PostgresProvider.coerceToSqlParameter` already throws
+> `ParameterCoercionError` on a non-serializable value (coercion fail-fast sweep) instead of the old
+> silent `String()` — consistent with the canonical tail in `@ts-linq/dialect-kit` `coerceSqlParameter`
+> (`dialect-postgres/task-5`). This task centralizes; it must **not** reintroduce a `String()` fallback.
+
 ## Target architecture
-Consume the shared `EntityMapper` + `ValueCoercer` (`provider-mssql/task-2.md`). Postgres supplies:
+Consume the shared `EntityMapper` + `ValueCoercer` from the new `@ts-linq/provider-kit`
+(`provider-mssql/task-2.md`). Postgres supplies:
 - a `TypeReader` wrapping `convertValueFromPg` (read side),
 - an encoder list (`HierarchyIdEncoder`→ltree, `GeometryEncoder`→EWKB-hex) plus a JSON write
-  pre-step equivalent to `convertValueForPg` for the coercer.
-Route `findWhereIn` array params through a typed array-parameter path instead of the `unknown` cast.
-SOLID: SRP/DIP/OCP as in the anchor.
+  pre-step equivalent to `convertValueForPg`.
+The `ValueCoercer` serialization tail is delegated to `@ts-linq/dialect-kit` `coerceSqlParameter`
+(fail-fast), so the ltree/EWKB encoders sit in front of the canonical tail — no local `String()`
+fallback. Route `findWhereIn` array params through a typed array-parameter path instead of the
+`unknown` cast. SOLID: SRP/DIP/OCP as in the anchor.
 
 ## Proposed refactor
 1. Remove the two private methods; keep `convertValueForPg`/`convertValueFromPg` as the Postgres `TypeReader`/JSON pre-step injected into the shared collaborators.
@@ -47,7 +55,7 @@ SOLID: SRP/DIP/OCP as in the anchor.
 
 ## Testing plan
 - Unit: mapper with Postgres `TypeReader` (BOOLEAN/INTEGER/TIMESTAMPTZ/JSONB conversions).
-- Unit: coercer with ltree + EWKB-hex encoders + JSON pre-step + unified `undefined` rule.
+- Unit: coercer with ltree + EWKB-hex encoders + JSON pre-step + unified `undefined` rule; tail asserts `bigint` → string and a circular reference → throws `ParameterCoercionError` (never `String()`).
 - Provider: `findWhereIn` array path typed correctly; round-trip.
 - Regression: existing CRUD + snapshot tests pass.
 
