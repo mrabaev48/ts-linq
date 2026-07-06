@@ -178,7 +178,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     const names = cols.map((c) => quoteIdentifier(c.columnName));
     const placeholders = cols.map((_, i) => `$${i + 1}`);
     const parameters: SqlParameter[] = cols.map((c) =>
-      coerceSqlParameter(applyConverter(entity[c.propertyName], c))
+      coerceSqlParameter(applyConverter(entity[c.propertyName], c), c.propertyName)
     );
     const sql = `INSERT INTO ${quoteIdentifier(metadata.tableName)} (${names.join(',')}) VALUES (${placeholders.join(',')}) RETURNING *`;
     return { sql, parameters };
@@ -200,7 +200,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
 
     const sets = setCols.map((c, i) => `${quoteIdentifier(c.columnName)} = $${i + 1}`);
     const parameters: SqlParameter[] = setCols.map((c) =>
-      coerceSqlParameter(applyConverter(entity[c.propertyName], c))
+      coerceSqlParameter(applyConverter(entity[c.propertyName], c), c.propertyName)
     );
 
     if (versionCol) {
@@ -214,7 +214,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     );
     const whereVals: SqlParameter[] = primaryKeys.map((pk) => {
       const col = metadata.columns.find((c) => c.propertyName === pk);
-      return coerceSqlParameter(col ? applyConverter(entity[pk], col) : entity[pk]);
+      return coerceSqlParameter(col ? applyConverter(entity[pk], col) : entity[pk], pk);
     });
     parameters.push(...whereVals);
 
@@ -223,7 +223,10 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     if (versionCol) {
       sql += ` AND ${quoteIdentifier(versionCol.columnName)} = $${parameters.length + 1}`;
       parameters.push(
-        coerceSqlParameter(applyConverter(entity[versionCol.propertyName], versionCol))
+        coerceSqlParameter(
+          applyConverter(entity[versionCol.propertyName], versionCol),
+          versionCol.propertyName
+        )
       );
     }
 
@@ -231,7 +234,7 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
     for (const col of tokens) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
       sql += ` AND ${quoteIdentifier(col.columnName)} = $${parameters.length + 1}`;
-      parameters.push(coerceSqlParameter(applyConverter(origVal, col)));
+      parameters.push(coerceSqlParameter(applyConverter(origVal, col), col.propertyName));
     }
 
     return { sql, parameters };
@@ -251,14 +254,14 @@ export class PostgresDialect implements SqlDialect, DialectVisitorSupport {
         `${quoteIdentifier(metadata.columns.find((c) => c.propertyName === pk)?.columnName || pk)} = $${i + 1}`
     );
     const parameters: SqlParameter[] = metadata.primaryKeys.map((pk) =>
-      coerceSqlParameter(entity[pk])
+      coerceSqlParameter(entity[pk], pk)
     );
     let sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${where.join(' AND ')}`;
 
     for (const col of concurrencyTokens ?? []) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
       sql += ` AND ${quoteIdentifier(col.columnName)} = $${parameters.length + 1}`;
-      parameters.push(coerceSqlParameter(applyConverter(origVal, col)));
+      parameters.push(coerceSqlParameter(applyConverter(origVal, col), col.propertyName));
     }
 
     return { sql, parameters };

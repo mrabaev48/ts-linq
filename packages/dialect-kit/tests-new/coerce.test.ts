@@ -1,5 +1,5 @@
 import { applyConverter, coerceSqlParameter } from '@ts-linq/dialect-kit';
-import type { ColumnMetadata } from '@ts-linq/types';
+import { type ColumnMetadata, OrmError, ParameterCoercionError } from '@ts-linq/types';
 
 describe('coerceSqlParameter', () => {
   it('passes null through unchanged', () => {
@@ -30,10 +30,30 @@ describe('coerceSqlParameter', () => {
     expect(coerceSqlParameter(undefined)).toBe('null');
   });
 
-  it('falls back to String(value) for a non-serializable (circular) value', () => {
+  it('renders bigint as its decimal string (no throw)', () => {
+    expect(coerceSqlParameter(1n)).toBe('1');
+    expect(coerceSqlParameter(9007199254740993n)).toBe('9007199254740993');
+  });
+
+  it('throws a typed ParameterCoercionError for a non-serializable (circular) value', () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
-    expect(coerceSqlParameter(circular)).toBe('[object Object]');
+
+    expect(() => coerceSqlParameter(circular, 'payload')).toThrow(ParameterCoercionError);
+
+    try {
+      coerceSqlParameter(circular, 'payload');
+      throw new Error('expected coerceSqlParameter to throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(ParameterCoercionError);
+      expect(e).toBeInstanceOf(OrmError);
+      const err = e as ParameterCoercionError;
+      // identifier context is surfaced for diagnosis…
+      expect(err.details).toEqual({ property: 'payload' });
+      expect(err.message).toContain('payload');
+      // …and the original serialization failure is preserved as `cause`.
+      expect(err.cause).toBeInstanceOf(Error);
+    }
   });
 });
 

@@ -37,7 +37,7 @@ dialect packages are near-identical and the shared abstractions must live in one
 - task-2 — Replace all-optional `SqlDialect` with an explicit capability model — P1, typescript
 - task-3 — Centralize identifier quoting (DML & DDL) — P0, sql ✅ **completed**
 - task-4 — Deduplicate coerce/applyConverter/insertableCols/numberPlaceholders — P1, clean-code ✅ **completed**
-- task-5 — Replace silent `JSON.stringify` catch-and-swallow in coercion — P2, error-handling
+- task-5 — Replace silent `JSON.stringify` catch-and-swallow in coercion — P2, error-handling ✅ **completed**
 - task-6 — Shared dialect contract-test harness — P1, testing ✅ **completed**
 - task-7 — Shared `DdlStrategy` contract + extracted type-mapping — P1, architecture
 - task-8 — Remove dead `chunk*Batch`, dedup OptionsBuilder, fix dialect→core/metadata coupling — P2, package-boundary
@@ -50,7 +50,7 @@ dialect packages are near-identical and the shared abstractions must live in one
 | 2 | task-3 (centralize quoting) ✅ | P0 | Only safety/correctness defect; feeds task-1/task-7 |
 | 3 | task-9 (PG dead code + shared emitters) ✅ | P2 | Low-risk simplification shrinking task-1's surface |
 | 4 | task-4 (dedup coerce/columns) ✅ | P1 | Removes 6× duplication; resolves computed-col divergence |
-| 5 | task-5 (typed coercion error) | P2 | Lands inside task-4's shared module |
+| 5 | task-5 (typed coercion error) ✅ | P2 | Lands inside task-4's shared module |
 | 6 | task-1 (shared base dialect) | P1 | The core dedup; guarded by task-6 |
 | 7 | task-7 (shared DdlStrategy) | P1 | Mirrors task-1 for DDL; depends on task-3 |
 | 8 | task-2 (capability model) | P1 | Typed contract replacing optional methods |

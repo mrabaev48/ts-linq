@@ -62,7 +62,7 @@ export function buildPgBatchInsert(
     const rowPh = cols.map(() => `$${idx++}`).join(',');
     rowPlaceholders.push(`(${rowPh})`);
     for (const c of cols) {
-      parameters.push(coerceSqlParameter(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName], c.propertyName));
     }
   }
 
@@ -102,7 +102,7 @@ export function buildPgBatchUpdate(
     const rowPh = allCols.map(() => `$${idx++}`).join(',');
     rowPlaceholders.push(`(${rowPh})`);
     for (const c of allCols) {
-      parameters.push(coerceSqlParameter(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName], c.propertyName));
     }
   }
 
@@ -141,7 +141,7 @@ export function buildPgBatchDelete(entities: Entity[], metadata: EntityMetadata)
 
   const pk = metadata.primaryKeys[0];
   const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
-  const parameters: SqlParameter[] = entities.map((e) => coerceSqlParameter(e[pk]));
+  const parameters: SqlParameter[] = entities.map((e) => coerceSqlParameter(e[pk], pk));
   const placeholders = parameters.map((_, i) => `$${i + 1}`).join(',');
   const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`;
   return { sql, parameters };

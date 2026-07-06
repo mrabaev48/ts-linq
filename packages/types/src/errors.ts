@@ -60,7 +60,8 @@ export const OrmErrorCode = {
   MigrationsDirNotConfigured: 'ORM_MIGRATIONS_DIR_NOT_CONFIGURED',
   KeylessMutation: 'ORM_KEYLESS_MUTATION',
   DbUpdate: 'ORM_UPDATE_FAILED',
-  DbUpdateConcurrency: 'ORM_UPDATE_CONCURRENCY'
+  DbUpdateConcurrency: 'ORM_UPDATE_CONCURRENCY',
+  ParameterCoercion: 'PARAMETER_COERCION_ERROR'
 } as const;
 
 /** Union of every stable code declared in {@link OrmErrorCode}. */
@@ -509,6 +510,22 @@ export class OrmConfigurationError extends OrmError {
  */
 export class DbUpdateException extends OrmError {
   public readonly code: string = OrmErrorCode.DbUpdate;
+
+  constructor(message: string, opts?: OrmErrorOptions) {
+    super(message, opts);
+  }
+}
+
+/**
+ * Thrown when a SQL parameter value cannot be serialized into a driver-safe
+ * form — e.g. a circular reference that fails `JSON.stringify`. Fails fast with
+ * actionable context instead of silently writing a corrupt `"[object Object]"`
+ * parameter to the database. `details.property` names the offending column /
+ * property (when the caller supplies it) and `cause` preserves the original
+ * serialization failure. The message is user-safe and never embeds the value.
+ */
+export class ParameterCoercionError extends OrmError {
+  public readonly code = OrmErrorCode.ParameterCoercion;
 
   constructor(message: string, opts?: OrmErrorOptions) {
     super(message, opts);
