@@ -46,7 +46,7 @@ export function buildMysqlBatchInsert(
   for (const entity of entities) {
     rowPlaceholders.push(`(${cols.map(() => '?').join(',')})`);
     for (const c of cols) {
-      parameters.push(coerceSqlParameter(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName], c.propertyName));
     }
   }
 
@@ -91,8 +91,8 @@ export function buildMysqlBatchUpdate(
 
     const sql = `UPDATE ${quoteIdentifier(metadata.tableName)} SET ${setClause} WHERE ${whereClause}`;
     const parameters: SqlParameter[] = [
-      ...setCols.map((c) => coerceSqlParameter(entity[c.propertyName])),
-      ...pks.map((pk) => coerceSqlParameter(entity[pk]))
+      ...setCols.map((c) => coerceSqlParameter(entity[c.propertyName], c.propertyName)),
+      ...pks.map((pk) => coerceSqlParameter(entity[pk], pk))
     ];
 
     statements.push({ sql, parameters });
@@ -113,7 +113,7 @@ export function buildMysqlBatchDelete(entities: Entity[], metadata: EntityMetada
 
   const pk = metadata.primaryKeys[0];
   const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
-  const parameters: SqlParameter[] = entities.map((e) => coerceSqlParameter(e[pk]));
+  const parameters: SqlParameter[] = entities.map((e) => coerceSqlParameter(e[pk], pk));
   const placeholders = parameters.map(() => '?').join(',');
   const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`;
   return { sql, parameters };

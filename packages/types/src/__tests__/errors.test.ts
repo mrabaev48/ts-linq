@@ -24,6 +24,7 @@ import {
   OrmConfigurationError,
   OrmError,
   OrmErrorCode,
+  ParameterCoercionError,
   ProviderRequiredError,
   QueryFilterCompilationError,
   SelectorExtractionError,
@@ -172,6 +173,21 @@ describe('OrmError hierarchy', () => {
     expect(new SnapshotValidationError('x').code).toBe(OrmErrorCode.SnapshotValidation);
     expect(new BundleBuildError('x').code).toBe(OrmErrorCode.BundleBuild);
     expect(new ProviderRequiredError('x').code).toBe(OrmErrorCode.ProviderRequired);
+    expect(new ParameterCoercionError('x').code).toBe(OrmErrorCode.ParameterCoercion);
+  });
+
+  it('ParameterCoercionError extends OrmError and carries cause + identifier context', () => {
+    const cause = new TypeError('Converting circular structure to JSON');
+    const err = new ParameterCoercionError("Failed to coerce parameter for property 'payload'", {
+      cause,
+      details: { property: 'payload' }
+    });
+    expect(err).toBeInstanceOf(OrmError);
+    expect(err).not.toBeInstanceOf(DatabaseError);
+    expect(err.code).toBe(OrmErrorCode.ParameterCoercion);
+    expect(err.cause).toBe(cause);
+    expect(err.details).toEqual({ property: 'payload' });
+    expect(err.name).toBe('ParameterCoercionError');
   });
 
   it('sets the constructor name on every error', () => {
