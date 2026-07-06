@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/composite-sql-logger",
-  "version": "12.0.7",
+  "version": "12.0.8",
   "private": true,
   "description": "Composite SqlLogger (+Factory) for ts-linq (optional package)",
   "main": "./dist/index.js",

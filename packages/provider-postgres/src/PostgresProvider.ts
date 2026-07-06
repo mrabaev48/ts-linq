@@ -12,6 +12,7 @@ import {
   DatabaseError,
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
+  ParameterCoercionError,
   UniqueConstraintError
 } from '@ts-linq/types';
 
@@ -117,7 +118,7 @@ export class PostgresProvider extends DatabaseProvider {
     return { sql: rawSql.replace(/\?/g, () => `$${++index}`), params };
   }
 
-  private coerceToSqlParameter(value: unknown): SqlParameter {
+  private coerceToSqlParameter(value: unknown, property?: string): SqlParameter {
     if (isHierarchyId(value)) {
       return encodeLtree(value);
     }
@@ -134,10 +135,19 @@ export class PostgresProvider extends DatabaseProvider {
     ) {
       return value;
     }
+    // `bigint` is not JSON-serializable; render it as decimal text (preserves prior behavior).
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    // A non-serializable value (e.g. a circular reference) fails fast instead of silently binding a
+    // corrupt `"[object Object]"` parameter.
     try {
       return JSON.stringify(value ?? null);
-    } catch {
-      return String(value);
+    } catch (cause) {
+      throw new ParameterCoercionError(
+        `Failed to coerce parameter${property ? ` for property '${property}'` : ''} to a driver-safe value`,
+        { cause, details: { property } }
+      );
     }
   }
 
@@ -282,7 +292,8 @@ export class PostgresProvider extends DatabaseProvider {
     const placeholders = insertCols.map((_, i) => `$${i + 1}`);
     const values: SqlParameter[] = insertCols.map((c) =>
       this.coerceToSqlParameter(
-        convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type)
+        convertValueForPg((entity as Record<string, unknown>)[c.propertyName], c.type),
+        c.propertyName
       )
     );
     const conflictTargets = primaryKeys
@@ -346,7 +357,7 @@ export class PostgresProvider extends DatabaseProvider {
     const col = meta.columns.find((c) => c.propertyName === pk)?.columnName || pk;
 
     const where: import('@ts-linq/types').WhereClause[] = [
-      { condition: `"${col}" = ?`, parameters: [this.coerceToSqlParameter(id)] }
+      { condition: `"${col}" = ?`, parameters: [this.coerceToSqlParameter(id, pk)] }
     ];
 
     const dialect = this.getDialect();
@@ -385,7 +396,7 @@ export class PostgresProvider extends DatabaseProvider {
         meta.columns.find((c) => c.propertyName === k || c.columnName === k)?.columnName || k;
       return {
         condition: `"${colName}" = ?`,
-        parameters: [this.coerceToSqlParameter(conditions[k])]
+        parameters: [this.coerceToSqlParameter(conditions[k], k)]
       };
     });
 
