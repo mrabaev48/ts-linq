@@ -10,7 +10,7 @@ MySQL Hi-Lo counter-table emulation, and MySQL error/transient translation. Publ
 ## Current architectural problems
 - **God class.** `MySqlProvider.ts` is 532 LOC across many responsibilities (task-1).
 - **Forked insert pipeline + unpinned pool transactions.** `executeInsert` duplicates the execute pipeline, and transactions run on the pool rather than a pinned connection — a silent isolation bug (task-8). This is the most severe MySQL-specific finding.
-- **Triplicated mapper/coercer**, with the coercer bypassed in `upsert` (task-2).
+- **Triplicated mapper/coercer**, with the coercer bypassed in `upsert` (task-2). Note: the silent `String()` coercion fallback was already removed (coercion fail-fast sweep) — task-2 is pure consolidation into `@ts-linq/provider-kit`, delegating the tail to `dialect-kit`.
 - **Bespoke error mapping** split across `code` (mapping) and `errno` (transience) (task-3).
 - **Implicit capability probing** via `if (!dialect.buildX) throw` (task-4).
 - **Raw, unquoted upsert SQL** in the provider (task-5).
@@ -30,7 +30,7 @@ MySQL Hi-Lo counter-table emulation, and MySQL error/transient translation. Publ
 | 2 | task-6 (contract suite) | P1 | Safety net before structural change |
 | 3 | task-8 (pinned tx + remove executeInsert) | P1 | Fixes a real isolation bug + pipeline drift |
 | 4 | task-3 (error registry) | P1 | Independent; unifies code/errno split |
-| 5 | task-2 (shared mapper/coercer) | P1 | Removes triplication + upsert coercion bypass |
+| 5 | task-2 (shared mapper/coercer → `provider-kit`) | P1 | Removes triplication + upsert coercion bypass; adopts `@ts-linq/provider-kit` (coercion tail delegated to `dialect-kit`) |
 | 6 | task-4 (capabilities) | P1 | Removes hidden feature gaps |
 | 7 | task-1 (god-class decomposition) | P0 | Main structural fix; absorbs tx pinning |
 | 8 | task-5 (upsert → dialect) | P2 | Correct layer + quoting |
@@ -40,7 +40,9 @@ MySQL Hi-Lo counter-table emulation, and MySQL error/transient translation. Publ
   (DDL, `buildMysqlNextBlockSql`, receives `buildUpsert` in task-5), `@ts-linq/metadata`,
   `@ts-linq/types` (config/errors + new capability/error types).
 - Shared collaborators (mapper/coercer/error registry/capabilities) are defined under
-  provider-mssql tasks and consumed here.
+  provider-mssql tasks and consumed here. The mapper/coercer live in the **new `@ts-linq/provider-kit`**
+  (its `ValueCoercer` tail reuses `@ts-linq/dialect-kit` `coerceSqlParameter`; `core` must not depend
+  on `dialect-kit`).
 
 ## Testing strategy
 - Unit (offline, fake driver): contract suite + MySQL cases (insertId, Hi-Lo, upsert, **connection pinning**).

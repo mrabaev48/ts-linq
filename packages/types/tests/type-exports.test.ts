@@ -30,6 +30,7 @@ describe('Type Exports', () => {
     expect(types.ProviderRequiredError).toBeDefined();
     expect(types.OrmConfigurationError).toBeDefined();
     expect(types.DbUpdateException).toBeDefined();
+    expect(types.ParameterCoercionError).toBeDefined();
   });
 
   it('should export Result helper functions', () => {
@@ -92,6 +93,7 @@ describe('Type Exports', () => {
       'ProviderRequiredError',
       'OrmConfigurationError',
       'DbUpdateException',
+      'ParameterCoercionError',
       'ok',
       'err',
       'maskSql',

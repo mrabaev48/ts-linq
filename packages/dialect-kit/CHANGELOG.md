@@ -1,5 +1,29 @@
 # @ts-linq/dialect-kit
 
+## 0.2.1
+
+### Patch Changes
+
+- Fail fast on unserializable SQL parameters instead of writing corrupt `"[object Object]"`.
+
+  **`@ts-linq/types`** adds a new `ParameterCoercionError` (extends the canonical `OrmError`) with a
+  new stable `OrmErrorCode.ParameterCoercion` (`'PARAMETER_COERCION_ERROR'`) literal. It carries the
+  offending column/property identifier in `details.property` and preserves the original serialization
+  failure via `cause`.
+
+  **`@ts-linq/dialect-kit`** — the shared `coerceSqlParameter` no longer swallows a `JSON.stringify`
+  failure and silently degrades to `String(value)` (which bound a corrupt `"[object Object]"` SQL
+  parameter with no diagnostic — a programmer error turning into silent data corruption). A
+  non-serializable value (e.g. a circular reference) now throws `ParameterCoercionError` with the
+  property identifier and `cause`. `bigint` is handled explicitly (rendered as its decimal string)
+  before the JSON path, preserving prior behavior for that value. The happy path (primitives, `Date`,
+  `Uint8Array`, plain objects/arrays → JSON) is unchanged. `coerceSqlParameter` gains an optional
+  `property?: string` argument used to enrich the thrown error's context.
+
+- Updated dependencies
+  - @ts-linq/types@4.9.0
+  - @ts-linq/sql-visitor@4.3.5
+
 ## 0.2.0
 
 ### Minor Changes

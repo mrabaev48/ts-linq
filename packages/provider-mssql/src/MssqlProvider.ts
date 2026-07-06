@@ -13,6 +13,7 @@ import {
   DatabaseError,
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
+  ParameterCoercionError,
   UniqueConstraintError
 } from '@ts-linq/types';
 
@@ -323,7 +324,7 @@ export class MssqlProvider extends DatabaseProvider {
     const insertCols = insertableCols.map((c) => c.columnName).join(', ');
     const insertVals = insertableCols.map((c) => `s.${c.columnName}`).join(', ');
     const params: SqlParameter[] = sourceCols.map((c) =>
-      this.coerceToSqlParameter((entity as Record<string, unknown>)[c.propertyName])
+      this.coerceToSqlParameter((entity as Record<string, unknown>)[c.propertyName], c.propertyName)
     );
 
     const sql =
@@ -350,7 +351,7 @@ export class MssqlProvider extends DatabaseProvider {
     const where: import('@ts-linq/types').WhereClause[] = [
       {
         condition: `${this.getDialect().quoteIdentifier(pkCol.columnName)} = ?`,
-        parameters: [this.coerceToSqlParameter(id)]
+        parameters: [this.coerceToSqlParameter(id, pk)]
       }
     ];
 
@@ -414,7 +415,7 @@ export class MssqlProvider extends DatabaseProvider {
     );
     const columnName = columnMeta ? columnMeta.columnName : column;
     const placeholders = values.map(() => '?').join(', ');
-    const coerced = values.map((v) => this.coerceToSqlParameter(v));
+    const coerced = values.map((v) => this.coerceToSqlParameter(v, column));
 
     const where: import('@ts-linq/types').WhereClause[] = [
       {
@@ -568,7 +569,7 @@ export class MssqlProvider extends DatabaseProvider {
     return entity;
   }
 
-  private coerceToSqlParameter(value: unknown): SqlParameter {
+  private coerceToSqlParameter(value: unknown, property?: string): SqlParameter {
     if (value === undefined) return null;
     if (isHierarchyId(value)) {
       return encodeHierarchyId(value);
@@ -586,10 +587,19 @@ export class MssqlProvider extends DatabaseProvider {
     ) {
       return value;
     }
+    // `bigint` is not JSON-serializable; render it as decimal text (preserves prior behavior).
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    // A non-serializable value (e.g. a circular reference) fails fast instead of silently binding a
+    // corrupt `"[object Object]"` parameter.
     try {
       return JSON.stringify(value ?? null);
-    } catch {
-      return String(value);
+    } catch (cause) {
+      throw new ParameterCoercionError(
+        `Failed to coerce parameter${property ? ` for property '${property}'` : ''} to a driver-safe value`,
+        { cause, details: { property } }
+      );
     }
   }
 }

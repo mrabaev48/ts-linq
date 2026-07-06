@@ -1,3 +1,5 @@
+import { OrmError, ParameterCoercionError } from '@ts-linq/types';
+
 import { SqlHelper } from '../src/utils/SqlHelper';
 
 describe('SqlHelper', () => {
@@ -98,6 +100,36 @@ describe('SqlHelper', () => {
       expect(result.whereClause).toContain('ids IN (?, ?, ?)');
       expect(result.whereClause).toContain('AND');
       expect(result.params).toEqual(['John', 1, 2, 3]);
+    });
+
+    it('should JSON-serialize plain objects (happy path unchanged)', () => {
+      const result = SqlHelper.buildWhereClause({ meta: { a: 1 } });
+      expect(result.params).toEqual(['{"a":1}']);
+    });
+
+    it('should render bigint as its decimal string (no throw)', () => {
+      const result = SqlHelper.buildWhereClause({ big: 9007199254740993n });
+      expect(result.params).toEqual(['9007199254740993']);
+    });
+
+    it('should throw a typed ParameterCoercionError for a non-serializable value', () => {
+      const circular: Record<string, unknown> = {};
+      circular.self = circular;
+
+      expect(() => SqlHelper.buildWhereClause({ payload: circular })).toThrow(
+        ParameterCoercionError
+      );
+
+      try {
+        SqlHelper.buildWhereClause({ payload: circular });
+        throw new Error('expected buildWhereClause to throw');
+      } catch (e) {
+        expect(e).toBeInstanceOf(ParameterCoercionError);
+        expect(e).toBeInstanceOf(OrmError);
+        const err = e as ParameterCoercionError;
+        expect(err.details).toEqual({ property: 'payload' });
+        expect(err.cause).toBeInstanceOf(Error);
+      }
     });
   });
 

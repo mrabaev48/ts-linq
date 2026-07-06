@@ -11,7 +11,7 @@ ltree-codec, spatial-codec (re-exported via `src/index.ts`).
 ## Current architectural problems
 - **God class.** `PostgresProvider.ts` is 578 LOC across many responsibilities (task-1).
 - **Module-global driver + broken `MetricsSafe` import.** `require('pg')` is a module global, and the require-failure fallback references a non-existent `../utils/MetricsSafe` path behind a silent catch, so a missing driver produces no diagnostic (task-7).
-- **Diverged triplicated mapper/coercer.** Postgres is the proven-drift copy (routes through `convertValueFromPg`, omits the `undefined` branch); `findWhereIn` casts an array to `SqlParameter` via `unknown` (task-2).
+- **Diverged triplicated mapper/coercer.** Postgres is the proven-drift copy (routes through `convertValueFromPg`, omits the `undefined` branch); `findWhereIn` casts an array to `SqlParameter` via `unknown` (task-2). Note: the silent `String()` coercion fallback was already removed (coercion fail-fast sweep) — task-2 is pure consolidation into `@ts-linq/provider-kit`, delegating the tail to `dialect-kit`.
 - **Bespoke error mapping** covering only unique/FK; check/not-null collapse to `DatabaseError` (task-3).
 - **Implicit capability probing** via `if (!dialect.buildX) throw` (task-4).
 - **Raw `ON CONFLICT` upsert SQL** in the provider (task-5).
@@ -31,14 +31,14 @@ ltree-codec, spatial-codec (re-exported via `src/index.ts`).
 | 1 | task-7 (driver DI + fix MetricsSafe) | P0 | Foundation for testing; fixes a real silent bug |
 | 2 | task-6 (contract suite) | P1 | Safety net before structural change |
 | 3 | task-3 (error registry) | P1 | Independent; extends coverage |
-| 4 | task-2 (shared mapper/coercer + findWhereIn typing) | P1 | Removes proven drift + type hole |
+| 4 | task-2 (shared mapper/coercer → `provider-kit` + findWhereIn typing) | P1 | Removes proven drift + type hole; adopts `@ts-linq/provider-kit` (coercion tail delegated to `dialect-kit`) |
 | 5 | task-4 (capabilities) | P1 | Removes hidden feature gaps |
 | 6 | task-1 (god-class decomposition) | P0 | Main structural fix; depends on 1–5 |
 | 7 | task-5 (upsert → dialect) | P2 | Correct layer |
 | 8 | task-8 (shared spatial codec) | P2 | Cross-provider DRY; high-risk binary code |
 
 ## Dependencies on other packages
-- `@ts-linq/core` (`DatabaseProvider`, geometry model + `isGeometry`) — shared collaborators + codec likely land here.
+- `@ts-linq/core` (`DatabaseProvider`, geometry model + `isGeometry`) — the shared spatial codec (task-8) may land here; the mapper/coercer (task-2) land in the **new `@ts-linq/provider-kit`** (its `ValueCoercer` tail reuses `@ts-linq/dialect-kit` `coerceSqlParameter`; `core` must not depend on `dialect-kit`).
 - `@ts-linq/dialect-postgres` (DDL + SQL gen; receives `buildUpsert` in task-5).
 - `@ts-linq/metadata`, `@ts-linq/types` (config/errors + new capability/error types).
 - `@ts-linq/metrics-safe` — the correct logging module the provider currently references via a broken relative path (task-7).

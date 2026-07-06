@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/query",
-  "version": "4.2.0",
+  "version": "4.2.2",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",

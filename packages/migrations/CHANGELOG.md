@@ -1,5 +1,21 @@
 # @ts-linq/migrations
 
+## 2.8.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/core@3.4.8
+
+## 2.8.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.9.0
+  - @ts-linq/core@3.4.7
+  - @ts-linq/metadata@4.1.8
+
 ## 2.8.4
 
 ### Patch Changes

@@ -169,7 +169,7 @@ export class MssqlDialect implements SqlDialect, DialectVisitorSupport {
     const columnNames = insertable.map((c) => quoteIdentifier(c.columnName));
     const placeholders = insertable.map(() => '?');
     const parameters: SqlParameter[] = insertable.map((c) =>
-      coerceSqlParameter(applyConverter(entity[c.propertyName], c))
+      coerceSqlParameter(applyConverter(entity[c.propertyName], c), c.propertyName)
     );
 
     const firstPk = metadata.primaryKeys?.[0];
@@ -211,7 +211,7 @@ export class MssqlDialect implements SqlDialect, DialectVisitorSupport {
 
     const setClauses: string[] = updatable.map((c) => `${quoteIdentifier(c.columnName)} = ?`);
     const setParams: SqlParameter[] = updatable.map((c) =>
-      coerceSqlParameter(applyConverter(entity[c.propertyName], c))
+      coerceSqlParameter(applyConverter(entity[c.propertyName], c), c.propertyName)
     );
 
     if (versionCol) {
@@ -224,20 +224,23 @@ export class MssqlDialect implements SqlDialect, DialectVisitorSupport {
     for (const pk of primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      whereParams.push(coerceSqlParameter(applyConverter(entity[pk], col)));
+      whereParams.push(coerceSqlParameter(applyConverter(entity[pk], col), pk));
     }
 
     if (versionCol) {
       whereClauses.push(`${quoteIdentifier(versionCol.columnName)} = ?`);
       whereParams.push(
-        coerceSqlParameter(applyConverter(entity[versionCol.propertyName], versionCol))
+        coerceSqlParameter(
+          applyConverter(entity[versionCol.propertyName], versionCol),
+          versionCol.propertyName
+        )
       );
     }
 
     for (const col of (concurrencyTokens ?? []).filter((c) => !c.isVersion)) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
       whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      whereParams.push(coerceSqlParameter(applyConverter(origVal, col)));
+      whereParams.push(coerceSqlParameter(applyConverter(origVal, col), col.propertyName));
     }
 
     let sql = `UPDATE ${quoteIdentifier(metadata.tableName)} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
@@ -266,12 +269,12 @@ export class MssqlDialect implements SqlDialect, DialectVisitorSupport {
     for (const pk of metadata.primaryKeys) {
       const col = metadata.columns.find((c) => c.propertyName === pk)!;
       whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      parameters.push(coerceSqlParameter(entity[pk]));
+      parameters.push(coerceSqlParameter(entity[pk], pk));
     }
     for (const col of concurrencyTokens ?? []) {
       const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
       whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      parameters.push(coerceSqlParameter(applyConverter(origVal, col)));
+      parameters.push(coerceSqlParameter(applyConverter(origVal, col), col.propertyName));
     }
     let sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${whereClauses.join(' AND ')}`;
 
