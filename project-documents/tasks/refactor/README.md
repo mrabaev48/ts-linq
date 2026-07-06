@@ -138,7 +138,7 @@ Each package only depends on packages already completed above it.
 | 14 | `dialect-mysql` | dialects | Consume the shared base; sequence emulation; central quoting. |
 | 15 | `dialect-mssql` | dialects | Consume the shared base; fix DDL interpolation + computed-column INSERT. |
 | 16 | `testkits` | testing | Contract-test harness + decompose `TestProvider` **before** providers, so they get contract tests. |
-| 17 | `provider-postgres` | providers | **Reference provider** — extract shared mapper/coercer + error registry + driver port here. |
+| 17 | `provider-postgres` | providers | **Reference provider** — extract shared mapper/coercer + error registry + driver port here. The mapper/coercer land in a **new `@ts-linq/provider-kit`** (deps incl. `dialect-kit`); the `ValueCoercer` tail reuses `dialect-kit` `coerceSqlParameter` (fail-fast) — `core` must not depend on `dialect-kit`. See `provider-*/task-2`. |
 | 18 | `provider-mysql` | providers | Consume shared mapper; fix unpinned-pool transaction isolation. |
 | 19 | `provider-mssql` | providers | Consume shared mapper; invert driver dependency. |
 | 20 | `cli` | tooling | Replace require-based execution / stub provider; provider factory; exit codes. |
@@ -209,7 +209,7 @@ Each package only depends on packages already completed above it.
 | cli | 7 | 2 | 3 | 1 | 1 | not-started |
 | composite-sql-logger | 3 | 0 | 2 | 1 | 0 | not-started |
 | concurrency | 2 | 0 | 2 | 0 | 0 | ✅ done (task-1, task-2 ✅) |
-| core | 9 | 4 | 3 | 2 | 0 | ✅ done (task-1/2/3/4/5/6/7/8/9 ✅) |
+| core | 10 | 4 | 3 | 2 | 1 | ✅ done 1–9; task-10 ⬜ (P3, optional coercion-tail de-dup) |
 | dialect-mssql | 4 | 1 | 2 | 1 | 0 | not-started |
 | dialect-mysql | 2 | 0 | 2 | 0 | 0 | not-started |
 | dialect-postgres | 9 | 1 | 5 | 3 | 0 | 🔄 In Progress (task-3, task-4, task-5, task-6, task-9 ✅) |
