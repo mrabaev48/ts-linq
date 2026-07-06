@@ -1,4 +1,4 @@
-import type { SetterSpec, SqlParameter } from '@ts-linq/types';
+import { ParameterCoercionError, type SetterSpec, type SqlParameter } from '@ts-linq/types';
 
 import { extractKey } from './extractKey';
 
@@ -30,7 +30,7 @@ export interface SetterEntry {
   value: { kind: 'literal'; params: SqlParameter[] } | { kind: 'column'; refPropertyName: string };
 }
 
-function coerceToSqlParameter(value: unknown): SqlParameter {
+function coerceToSqlParameter(value: unknown, property?: string): SqlParameter {
   if (
     value === null ||
     typeof value === 'string' ||
@@ -41,10 +41,19 @@ function coerceToSqlParameter(value: unknown): SqlParameter {
   ) {
     return value as SqlParameter;
   }
+  // `bigint` is not JSON-serializable; render it as decimal text (preserves prior behavior).
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  // A non-serializable value (e.g. a circular reference) fails fast instead of silently binding a
+  // corrupt `"[object Object]"` parameter.
   try {
     return JSON.stringify(value ?? null);
-  } catch {
-    return String(value);
+  } catch (cause) {
+    throw new ParameterCoercionError(
+      `Failed to coerce parameter${property ? ` for property '${property}'` : ''} to a driver-safe value`,
+      { cause, details: { property } }
+    );
   }
 }
 
@@ -63,7 +72,7 @@ export class SetPropertyCalls<T> implements ISetPropertyCalls<T> {
     } else {
       this._setters.push({
         propertyName,
-        value: { kind: 'literal', params: [coerceToSqlParameter(valueOrSelector)] }
+        value: { kind: 'literal', params: [coerceToSqlParameter(valueOrSelector, propertyName)] }
       });
     }
 

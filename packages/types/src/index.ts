@@ -28,6 +28,7 @@ export {
   OrmErrorCode,
   type OrmErrorOptions,
   OwnedEntityHydrationError,
+  ParameterCoercionError,
   ProviderRequiredError,
   QueryFilterCompilationError,
   RelationshipLoadError,

@@ -1,5 +1,33 @@
 # @ts-linq/core
 
+## 3.4.8
+
+### Patch Changes
+
+- Propagate fail-fast parameter coercion to the remaining copies outside `@ts-linq/dialect-kit`.
+
+  The silent `catch { return String(value) }` fallback (which bound a corrupt `"[object Object]"` SQL
+  parameter with no diagnostic on a serialization failure such as a circular reference) is removed
+  from every remaining coercion helper: `SqlHelper.ensureSqlParameter` (`@ts-linq/core`),
+  `SetPropertyCalls`'s literal coercion (`@ts-linq/query`), and each provider's private
+  `coerceToSqlParameter` (`@ts-linq/provider-postgres` / `-mssql` / `-mysql`). These now throw the
+  typed `ParameterCoercionError` (from `@ts-linq/types`) with the offending column/property in
+  `details.property` and the original failure preserved as `cause`. `bigint` is rendered as its
+  decimal string before the JSON path, preserving prior behavior. The happy path (primitives, `Date`,
+  `Uint8Array`, plain objects/arrays → JSON) is unchanged. No public API changes — the affected
+  coercion functions are private/internal.
+
+## 3.4.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.9.0
+  - @ts-linq/ast@3.2.9
+  - @ts-linq/concurrency@3.0.9
+  - @ts-linq/metadata@4.1.8
+  - @ts-linq/metrics-safe@1.2.11
+
 ## 3.4.6
 
 ### Patch Changes

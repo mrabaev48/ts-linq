@@ -12,6 +12,7 @@ import {
   DatabaseError,
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
+  ParameterCoercionError,
   UniqueConstraintError
 } from '@ts-linq/types';
 
@@ -294,7 +295,7 @@ export class MySqlProvider extends DatabaseProvider {
     const where: import('@ts-linq/types').WhereClause[] = [
       {
         condition: `${this.getDialect().quoteIdentifier(pkCol.columnName)} = ?`,
-        parameters: [this.coerceToSqlParameter(id)]
+        parameters: [this.coerceToSqlParameter(id, pk)]
       }
     ];
 
@@ -355,7 +356,7 @@ export class MySqlProvider extends DatabaseProvider {
     );
     const columnName = columnMeta ? columnMeta.columnName : column;
     const placeholders = values.map(() => '?').join(', ');
-    const coerced = values.map((v) => this.coerceToSqlParameter(v));
+    const coerced = values.map((v) => this.coerceToSqlParameter(v, column));
 
     const where: import('@ts-linq/types').WhereClause[] = [
       {
@@ -464,7 +465,7 @@ export class MySqlProvider extends DatabaseProvider {
   }
 
   /** Coerce arbitrary JS value into a valid SqlParameter for MySQL. */
-  private coerceToSqlParameter(value: unknown): SqlParameter {
+  private coerceToSqlParameter(value: unknown, property?: string): SqlParameter {
     if (isGeometryObject(value)) {
       return encodeWkb(value);
     }
@@ -478,10 +479,19 @@ export class MySqlProvider extends DatabaseProvider {
     ) {
       return value;
     }
+    // `bigint` is not JSON-serializable; render it as decimal text (preserves prior behavior).
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    // A non-serializable value (e.g. a circular reference) fails fast instead of silently binding a
+    // corrupt `"[object Object]"` parameter.
     try {
       return JSON.stringify(value ?? null);
-    } catch {
-      return String(value);
+    } catch (cause) {
+      throw new ParameterCoercionError(
+        `Failed to coerce parameter${property ? ` for property '${property}'` : ''} to a driver-safe value`,
+        { cause, details: { property } }
+      );
     }
   }
 

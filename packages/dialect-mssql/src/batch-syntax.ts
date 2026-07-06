@@ -47,7 +47,7 @@ export function buildMssqlBatchInsert(
     const rowPh = cols.map(() => '?').join(',');
     rowPlaceholders.push(`(${rowPh})`);
     for (const c of cols) {
-      parameters.push(coerceSqlParameter(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName], c.propertyName));
     }
   }
 
@@ -96,7 +96,7 @@ export function buildMssqlBatchUpdate(
     const rowPh = allCols.map(() => '?').join(',');
     rowPlaceholders.push(`(${rowPh})`);
     for (const c of allCols) {
-      parameters.push(coerceSqlParameter(entity[c.propertyName]));
+      parameters.push(coerceSqlParameter(entity[c.propertyName], c.propertyName));
     }
   }
 
@@ -135,7 +135,7 @@ export function buildMssqlBatchDelete(entities: Entity[], metadata: EntityMetada
 
   const pk = metadata.primaryKeys[0];
   const pkCol = metadata.columns.find((c) => c.propertyName === pk)!;
-  const parameters: SqlParameter[] = entities.map((e) => coerceSqlParameter(e[pk]));
+  const parameters: SqlParameter[] = entities.map((e) => coerceSqlParameter(e[pk], pk));
   const placeholders = parameters.map(() => '?').join(',');
   const sql = numberPlaceholders(
     `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`,

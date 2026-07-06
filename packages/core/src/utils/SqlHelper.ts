@@ -1,4 +1,4 @@
-import type { SqlParameter } from '@ts-linq/types';
+import { ParameterCoercionError, type SqlParameter } from '@ts-linq/types';
 
 enum SqlInlineValueType {
   String = 'string',
@@ -29,10 +29,10 @@ export class SqlHelper {
       } else if (Array.isArray(value)) {
         const placeholders = value.map(() => '?').join(', ');
         clauses.push(`${key} IN (${placeholders})`);
-        for (const arrayValue of value) params.push(SqlHelper.ensureSqlParameter(arrayValue));
+        for (const arrayValue of value) params.push(SqlHelper.ensureSqlParameter(arrayValue, key));
       } else {
         clauses.push(`${key} = ?`);
-        params.push(SqlHelper.ensureSqlParameter(value));
+        params.push(SqlHelper.ensureSqlParameter(value, key));
       }
     }
 
@@ -43,7 +43,7 @@ export class SqlHelper {
   }
 
   /** Coerce an arbitrary value into a SqlParameter. */
-  private static ensureSqlParameter(value: unknown): SqlParameter {
+  private static ensureSqlParameter(value: unknown, property?: string): SqlParameter {
     if (
       value === null ||
       typeof value === 'string' ||
@@ -54,11 +54,19 @@ export class SqlHelper {
     ) {
       return value;
     }
-    // Fallback: JSON-encode objects (including arrays) into TEXT
+    // `bigint` is not JSON-serializable; render it as decimal text (preserves prior behavior).
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    // Fallback: JSON-encode objects (including arrays) into TEXT. A non-serializable value (e.g. a
+    // circular reference) fails fast instead of silently binding a corrupt `"[object Object]"`.
     try {
       return JSON.stringify(value ?? null);
-    } catch {
-      return String(value);
+    } catch (cause) {
+      throw new ParameterCoercionError(
+        `Failed to coerce parameter${property ? ` for property '${property}'` : ''} to a driver-safe value`,
+        { cause, details: { property } }
+      );
     }
   }
 

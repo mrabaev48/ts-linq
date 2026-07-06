@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/core",
-  "version": "3.4.6",
+  "version": "3.4.8",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
