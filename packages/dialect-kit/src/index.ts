@@ -23,3 +23,8 @@ export { numberPlaceholders } from './params/placeholders';
 // invariant CREATE TABLE / ALTER / FK / constraint / comment algorithms; each concrete dialect
 // supplies a `TypeMapper` plus the divergent hooks. Single source of truth for cross-dialect DDL.
 export { AbstractDdlStrategy, type DdlLoggerLike } from './ddl/AbstractDdlStrategy';
+// Shared base SQL dialect (Template Method) + injected token strategy (Strategy). The base owns the
+// invariant SQL-assembly algorithms; each concrete dialect supplies a `DialectSyntax` plus a few
+// divergent hooks. Single source of truth for cross-dialect DML/SELECT assembly.
+export { AbstractSqlDialect, type InsertDecoration } from './dialect/AbstractSqlDialect';
+export type { DialectSyntax } from './dialect/DialectSyntax';

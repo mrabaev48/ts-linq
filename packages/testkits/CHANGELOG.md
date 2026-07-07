@@ -11,6 +11,13 @@
   - @ts-linq/provider-mssql@3.0.32
   - @ts-linq/provider-mysql@3.0.32
   - @ts-linq/provider-postgres@3.0.32
+## 7.0.31
+
+### Patch Changes
+
+- @ts-linq/provider-mssql@3.0.31
+- @ts-linq/provider-mysql@3.0.31
+- @ts-linq/provider-postgres@3.0.31
 
 ## 7.0.30
 
