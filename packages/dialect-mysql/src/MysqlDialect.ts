@@ -1,29 +1,13 @@
-import {
-  applyConverter,
-  coerceSqlParameter,
-  emitGroup,
-  emitJoin,
-  emitOrder,
-  emitWhere,
-  type InsertableColumnOptions,
-  selectInsertableColumns,
-  selectUpdatableColumns
-} from '@ts-linq/dialect-kit';
+import { AbstractSqlDialect } from '@ts-linq/dialect-kit';
 import { MetadataStorage } from '@ts-linq/metadata';
 import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
   BatchUpdateResult,
-  BulkDeleteContext,
-  BulkUpdateContext,
-  ColumnMetadata,
   EntityMetadata,
   QueryOptions,
   SqlDialect,
-  SqlParameter,
-  SqlQueryResult,
-  SqlWithParams,
-  SqlWithReturning
+  SqlWithParams
 } from '@ts-linq/types';
 import { TemporalNotSupportedError } from '@ts-linq/types';
 
@@ -35,35 +19,21 @@ import {
 } from './batch-syntax';
 import { mysqlEfFunctions } from './functions/index';
 import { MySqlJsonPathTranslator } from './json/JsonPathTranslator';
-import { quoteIdentifier, quoteStringLiteral } from './quoting';
 import { createMysqlSpCallSyntax } from './sp-syntax';
 import { mysqlSpatialFunctions } from './spatial-functions';
-
-/** MySQL INSERT column policy: computed columns and unset (AUTO_INCREMENT) PKs are omitted. */
-const MYSQL_INSERT_POLICY: InsertableColumnOptions = {
-  excludeComputed: true,
-  excludeGeneratedPk: true
-};
+import { mysqlSyntax } from './syntax';
 
 /**
- * MySQL dialect for SELECT generation.
- *
- * - Uses LIMIT and OFFSET (LIMIT n OFFSET m)
- * - Leaves '?' placeholders as-is (mysql2 supports positional params)
+ * MySQL implementation of `SqlDialect`. The invariant SELECT/CRUD/bulk assembly lives in
+ * {@link AbstractSqlDialect}; this class wires the MySQL {@link DialectSyntax}. MySQL has no
+ * `RETURNING`/`OUTPUT` and no temporal support, so it only overrides the temporal-rejection hook.
  */
-export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
+export class MysqlDialect extends AbstractSqlDialect implements SqlDialect, DialectVisitorSupport {
   private readonly jsonPathTranslator = new MySqlJsonPathTranslator();
 
   readonly parameterLimit = MYSQL_PARAM_LIMIT;
 
-  public quoteIdentifier(identifier: string): string {
-    return quoteIdentifier(identifier);
-  }
-
-  /** Quote a string literal (escaping `'`) for interpolation into SQL string-literal positions. */
-  public quoteStringLiteral(value: string): string {
-    return quoteStringLiteral(value);
-  }
+  protected readonly syntax = mysqlSyntax;
 
   /**
    * Dialect-specific translators consumed by the `query` layer's SQL visitor factory so that
@@ -102,183 +72,17 @@ export class MysqlDialect implements SqlDialect, DialectVisitorSupport {
   ): SqlWithParams {
     return buildMysqlBatchDelete(entities, metadata);
   }
-  /**
-   * Build SELECT for MySQL based on normalized QueryOptions.
-   * @param entityClass Entity constructor to resolve table name
-   * @param options Normalized query options (select/where/order/joins/group/limit/offset)
-   */
-  public buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult {
+
+  protected getEntityMetadata<T>(entityClass: new () => T): EntityMetadata | undefined {
+    return MetadataStorage.getEntity(entityClass);
+  }
+
+  protected assertTemporalSupported(options: QueryOptions): void {
     if (options.temporal) {
       throw new TemporalNotSupportedError(
         'Temporal queries (FOR SYSTEM_TIME) are not supported by the MySQL dialect. ' +
           'Use the @ts-linq/plugin-audit package for row-history tracking on MySQL.'
       );
     }
-    const parameters: SqlParameter[] = [];
-    let query = this.buildSelectHead(options);
-    // SELECT-clause params must precede FROM params so placeholder indices are correct.
-    this.collectSelectParams(parameters, options);
-    if (options.rawSqlSource) {
-      parameters.push(...options.rawSqlSource.params);
-      query += ` FROM (${options.rawSqlSource.sql}) AS t0`;
-    } else {
-      const metadata = MetadataStorage.getEntity(entityClass);
-      if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
-      query += this.buildFromClause(options.from ?? metadata.viewName ?? metadata.tableName);
-    }
-    query += emitJoin(options, (id) => this.quoteIdentifier(id));
-    query += emitWhere(parameters, options);
-    query += emitGroup(parameters, options);
-    query += emitOrder(options);
-    query += this.buildLimitOffset(options);
-    return { query, parameters };
-  }
-
-  private buildSelectHead(options: QueryOptions): string {
-    let head = 'SELECT ';
-    if (options.distinct) head += 'DISTINCT ';
-    head += options.select && options.select.length ? options.select.join(', ') : '*';
-    return head;
-  }
-
-  private buildFromClause(tableName: string): string {
-    return ` FROM ${quoteIdentifier(tableName)}`;
-  }
-
-  private collectSelectParams(parameters: SqlParameter[], options: QueryOptions): void {
-    if (options.selectParams && options.selectParams.length)
-      parameters.push(...options.selectParams);
-  }
-
-  private buildLimitOffset(options: QueryOptions): string {
-    const hasLimit = options.limit !== undefined && options.limit !== null;
-    const hasOffset = options.offset !== undefined && options.offset !== null;
-    if (hasLimit) {
-      return ` LIMIT ${options.limit}` + (hasOffset ? ` OFFSET ${options.offset}` : '');
-    }
-    if (hasOffset) {
-      return ` LIMIT 18446744073709551615 OFFSET ${options.offset}`;
-    }
-    return '';
-  }
-  public buildInsert(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithReturning {
-    const insertable = selectInsertableColumns(metadata, entity, MYSQL_INSERT_POLICY);
-    const names = insertable.map((c) => quoteIdentifier(c.columnName));
-    const placeholders = insertable.map(() => '?');
-    const parameters: SqlParameter[] = insertable.map((c) =>
-      coerceSqlParameter(applyConverter(entity[c.propertyName], c), c.propertyName)
-    );
-    return {
-      sql: `INSERT INTO ${quoteIdentifier(metadata.tableName)} (${names.join(', ')}) VALUES (${placeholders.join(', ')})`,
-      parameters
-    };
-  }
-
-  public buildUpdate(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata,
-    versionCol?: ColumnMetadata,
-    concurrencyTokens?: ColumnMetadata[],
-    originalValues?: Record<string, unknown>
-  ): SqlWithParams {
-    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
-      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
-    }
-    const primaryKeys = metadata.primaryKeys;
-    const updatable = selectUpdatableColumns(metadata);
-    const setClauses: string[] = updatable.map((c) => `${quoteIdentifier(c.columnName)} = ?`);
-    const setParams: SqlParameter[] = updatable.map((c) =>
-      coerceSqlParameter(applyConverter(entity[c.propertyName], c), c.propertyName)
-    );
-    if (versionCol) {
-      const versionId = quoteIdentifier(versionCol.columnName);
-      setClauses.push(`${versionId} = ${versionId} + 1`);
-    }
-    const whereClauses: string[] = [];
-    const whereParams: SqlParameter[] = [];
-    for (const pk of primaryKeys) {
-      const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      whereParams.push(coerceSqlParameter(applyConverter(entity[pk], col), pk));
-    }
-    if (versionCol) {
-      whereClauses.push(`${quoteIdentifier(versionCol.columnName)} = ?`);
-      whereParams.push(
-        coerceSqlParameter(
-          applyConverter(entity[versionCol.propertyName], versionCol),
-          versionCol.propertyName
-        )
-      );
-    }
-    for (const col of (concurrencyTokens ?? []).filter((c) => !c.isVersion)) {
-      const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
-      whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      whereParams.push(coerceSqlParameter(applyConverter(origVal, col), col.propertyName));
-    }
-    const sql = `UPDATE ${quoteIdentifier(metadata.tableName)} SET ${setClauses.join(', ')} WHERE ${whereClauses.join(' AND ')}`;
-    return { sql, parameters: [...setParams, ...whereParams] };
-  }
-
-  public buildDelete(
-    entity: Record<string, unknown>,
-    metadata: EntityMetadata,
-    concurrencyTokens?: ColumnMetadata[],
-    originalValues?: Record<string, unknown>
-  ): SqlWithParams {
-    if (!metadata.primaryKeys || metadata.primaryKeys.length === 0) {
-      throw new Error(`No primary key defined for entity ${metadata.tableName}`);
-    }
-    const whereClauses: string[] = [];
-    const parameters: SqlParameter[] = [];
-    for (const pk of metadata.primaryKeys) {
-      const col = metadata.columns.find((c) => c.propertyName === pk)!;
-      whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      parameters.push(coerceSqlParameter(entity[pk], pk));
-    }
-    for (const col of concurrencyTokens ?? []) {
-      const origVal = originalValues?.[col.propertyName] ?? entity[col.propertyName];
-      whereClauses.push(`${quoteIdentifier(col.columnName)} = ?`);
-      parameters.push(coerceSqlParameter(applyConverter(origVal, col), col.propertyName));
-    }
-    const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${whereClauses.join(' AND ')}`;
-    return { sql, parameters };
-  }
-
-  public buildBulkUpdate(ctx: BulkUpdateContext): SqlWithParams {
-    const params: SqlParameter[] = [];
-    const setClauses: string[] = [];
-
-    for (const setter of ctx.setters) {
-      const col = quoteIdentifier(setter.columnName);
-      if (setter.value.kind === 'literal') {
-        setClauses.push(`${col} = ?`);
-        params.push(...setter.value.params);
-      } else {
-        setClauses.push(`${col} = ${quoteIdentifier(setter.value.refColumnName)}`);
-      }
-    }
-
-    let sql = `UPDATE ${quoteIdentifier(ctx.tableName)} SET ${setClauses.join(', ')}`;
-
-    if (ctx.where.length > 0) {
-      const conditions = ctx.where.map((w) => w.condition).join(' AND ');
-      for (const w of ctx.where) params.push(...w.parameters);
-      sql += ` WHERE ${conditions}`;
-    }
-
-    return { sql, parameters: params };
-  }
-
-  public buildBulkDelete(ctx: BulkDeleteContext): SqlWithParams {
-    const params: SqlParameter[] = [];
-    let sql = `DELETE FROM ${quoteIdentifier(ctx.tableName)}`;
-
-    if (ctx.where.length > 0) {
-      const conditions = ctx.where.map((w) => w.condition).join(' AND ');
-      for (const w of ctx.where) params.push(...w.parameters);
-      sql += ` WHERE ${conditions}`;
-    }
-
-    return { sql, parameters: params };
   }
 }

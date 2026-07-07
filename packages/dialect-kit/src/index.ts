@@ -17,3 +17,9 @@ export {
 } from './columns/select-columns';
 export { applyConverter, coerceSqlParameter } from './params/coerce';
 export { numberPlaceholders } from './params/placeholders';
+
+// Shared base SQL dialect (Template Method) + injected token strategy (Strategy). The base owns the
+// invariant SQL-assembly algorithms; each concrete dialect supplies a `DialectSyntax` plus a few
+// divergent hooks. Single source of truth for cross-dialect DML/SELECT assembly.
+export { AbstractSqlDialect, type InsertDecoration } from './dialect/AbstractSqlDialect';
+export type { DialectSyntax } from './dialect/DialectSyntax';
