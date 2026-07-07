@@ -9,6 +9,11 @@
   - @ts-linq/core@3.5.1
   - @ts-linq/metadata@4.1.9
   - @ts-linq/migrations@2.8.8
+## 1.3.51
+
+### Patch Changes
+
+- @ts-linq/migrations@2.8.7
 
 ## 1.3.50
 
