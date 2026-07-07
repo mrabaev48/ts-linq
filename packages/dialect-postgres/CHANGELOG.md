@@ -1,5 +1,35 @@
 # @ts-linq/dialect-postgres
 
+## 2.8.12
+
+### Patch Changes
+
+- refactor(dialect): shared `DdlStrategy` contract + `AbstractDdlStrategy` (Template Method)
+
+  Introduce a shared DDL-generation contract and hoist the triplicated CREATE TABLE / ALTER / FK /
+  constraint / comment algorithm out of the three dialect DDL strategy classes.
+  - **`@ts-linq/types`** (minor): new `DdlStrategy`, `TypeMapper`, `ForeignKeySpec`, and
+    `CreateIndexSpec` interfaces — the contract migrations/scaffolding/providers depend on instead of
+    concrete classes (Dependency Inversion; a missing method is now a compile error).
+  - **`@ts-linq/dialect-kit`** (minor): new `AbstractDdlStrategy` (Template Method) owning the invariant
+    DDL algorithm, parameterized by a per-dialect `TypeMapper` (Strategy) + the task-3 quoting helpers +
+    divergent hooks. Also relocates `formatValue` here from `@ts-linq/core`'s `SqlHelper`, removing the
+    dialect→core dependency-direction smell in the DDL surface.
+  - **`@ts-linq/dialect-postgres` / `dialect-mysql` / `dialect-mssql`** (patch): each concrete strategy
+    now `extends AbstractDdlStrategy implements DdlStrategy`, reduced to a `TypeMapper` + divergent
+    hooks. No SQL output change (byte-verified). The COMMENT-in-column-definition drift is reconciled
+    structurally: the shared skeleton is comment-free and MySQL's inline comment is an explicit,
+    documented dialect hook.
+  - **`@ts-linq/core`** (patch): `DdlStrategy` now re-exports from `@ts-linq/types` (backward compatible;
+    `DdlBuilder` and the public `core` surface are unchanged).
+
+- Updated dependencies
+  - @ts-linq/types@4.10.0
+  - @ts-linq/dialect-kit@0.4.0
+  - @ts-linq/core@3.5.1
+  - @ts-linq/metadata@4.1.9
+  - @ts-linq/sql-visitor@4.3.6
+
 ## 2.8.10
 
 ### Patch Changes

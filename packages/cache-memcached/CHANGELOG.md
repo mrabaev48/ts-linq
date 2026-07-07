@@ -1,5 +1,13 @@
 # @ts-linq/cache-memcached
 
+## 1.0.48
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.10.0
+  - @ts-linq/core@3.5.1
+
 ## 1.0.47
 
 ### Patch Changes

@@ -10,12 +10,16 @@ describe('DdlBuilder', () => {
   beforeEach(() => {
     mockStrategy = {
       generateCreateTableSql: jest.fn(),
+      generateColumnDefinition: jest.fn(),
       generateCreateIndexSql: jest.fn(),
-      generateDropTableSql: jest.fn(),
-      generateDropIndexSql: jest.fn(),
-      generateAlterTableAddColumnSql: jest.fn(),
-      generateAlterTableDropColumnSql: jest.fn(),
-      generateAlterTableModifyColumnSql: jest.fn()
+      generateAddColumnSql: jest.fn(),
+      generateDropColumnSql: jest.fn(),
+      generateAlterColumnTypeSql: jest.fn(),
+      generateRenameTableSql: jest.fn(),
+      generateForeignKeySql: jest.fn(),
+      generateAddUniqueConstraintSql: jest.fn(),
+      generateDropUniqueConstraintSql: jest.fn(),
+      generateCommentSql: jest.fn()
     } as jest.Mocked<DdlStrategy>;
 
     builder = new DdlBuilder(mockStrategy);
