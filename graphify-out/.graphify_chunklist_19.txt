@@ -1,0 +1,12 @@
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/transformer/task-1.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/transformer/task-2.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/transformer/task-3.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/transformer/task-4.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/types/README.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/types/task-1.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/types/task-2.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/types/task-3.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/types/task-4.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/typescript-config/README.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/typescript-config/task-1.md
+/Users/mikhail.soosaar_1/Documents/WebsStormProjects/ts-linq/project-documents/tasks/refactor/phase-x/typescript-config/task-2.md

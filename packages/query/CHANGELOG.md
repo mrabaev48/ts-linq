@@ -1,5 +1,31 @@
 # @ts-linq/query
 
+## 4.2.3
+
+### Patch Changes
+
+- Unify the non-dialect parameter-coercion tail into one SSOT in `@ts-linq/core`.
+
+  The primitive/`bigint`/JSON/throw coercion tail — previously duplicated in
+  `SqlHelper.ensureSqlParameter` (`@ts-linq/core`) and the module-level `coerceToSqlParameter`
+  (`@ts-linq/query`'s `SetPropertyCalls`) — is extracted into a single pure helper,
+  `coerceParameterValue(value, property?)`, exported from `@ts-linq/core` (deps: `@ts-linq/types`
+  only). `SqlHelper` delegates to it and `query`'s `SetPropertyCalls` imports it (`query → core`
+  already exists — no new package edge, `arch:cycles` clean). Both duplicated tails are removed.
+
+  Behaviour is byte-for-byte preserved: primitives / `Date` / `Uint8Array` pass through, `bigint`
+  renders as its decimal string, plain objects are JSON-serialized, and a non-serializable value
+  (e.g. a circular reference) fails fast with a typed `ParameterCoercionError` (`cause` +
+  `details.property`) rather than a corrupt `"[object Object]"` parameter — no `String()` fallback.
+
+  This is a deliberate two-tail-by-design: the dialect/provider layer keeps its own canonical tail
+  (`coerceSqlParameter` in `@ts-linq/dialect-kit`) because `core`/`query` must not depend on
+  `dialect-kit`. `@ts-linq/core` is `minor` (new public `coerceParameterValue` export);
+  `@ts-linq/query` is `patch` (internal delegation, no API/behaviour change).
+
+- Updated dependencies
+  - @ts-linq/core@3.5.0
+
 ## 4.2.2
 
 ### Patch Changes
