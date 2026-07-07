@@ -16,4 +16,10 @@ export {
   selectUpdatableColumns
 } from './columns/select-columns';
 export { applyConverter, coerceSqlParameter } from './params/coerce';
+export { formatValue } from './params/format-value';
 export { numberPlaceholders } from './params/placeholders';
+
+// Shared base DDL strategy (Template Method) — the DDL mirror of the shared SQL base. Owns the
+// invariant CREATE TABLE / ALTER / FK / constraint / comment algorithms; each concrete dialect
+// supplies a `TypeMapper` plus the divergent hooks. Single source of truth for cross-dialect DDL.
+export { AbstractDdlStrategy, type DdlLoggerLike } from './ddl/AbstractDdlStrategy';
