@@ -1,5 +1,29 @@
 # @ts-linq/dialect-postgres
 
+## 2.8.11
+
+### Patch Changes
+
+- Introduce a shared base SQL dialect (Template Method + injected `DialectSyntax` Strategy) to
+  eliminate the ~85% cross-dialect DML/SELECT duplication.
+
+  `@ts-linq/dialect-kit` gains two new public exports: `AbstractSqlDialect` (owns the invariant
+  clause-ordering and parameter-collection algorithms for `buildSelect`/`buildInsert`/`buildUpdate`/
+  `buildDelete`/`buildBulkUpdate`/`buildBulkDelete`) and the `DialectSyntax` interface (plus the
+  `InsertDecoration` helper type). `DialectSyntax` captures the only three variation axes — identifier
+  quoting, parameter-marker renumbering, and LIMIT/OFFSET/SELECT-head syntax — as injectable policy.
+
+  `@ts-linq/dialect-postgres`, `@ts-linq/dialect-mysql`, and `@ts-linq/dialect-mssql` are internally
+  restructured to extend `AbstractSqlDialect`, each reduced to a `DialectSyntax` wiring plus a few
+  divergent hooks (temporal support, CTE prefix, `RETURNING`/`OUTPUT` write-back). Exported class
+  names and the `SqlDialect` shape are unchanged, and SQL output is byte-identical (guarded by the
+  shared contract-test harness and per-dialect golden snapshots). One latent bug is fixed as a side
+  effect: MySQL's `buildUpdate` now consistently rejects an empty updatable-column set (as PostgreSQL
+  and SQL Server already did) instead of emitting invalid `SET  WHERE` SQL.
+
+- Updated dependencies
+  - @ts-linq/dialect-kit@0.3.0
+
 ## 2.8.10
 
 ### Patch Changes
