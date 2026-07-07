@@ -209,7 +209,7 @@ Each package only depends on packages already completed above it.
 | cli | 7 | 2 | 3 | 1 | 1 | not-started |
 | composite-sql-logger | 3 | 0 | 2 | 1 | 0 | not-started |
 | concurrency | 2 | 0 | 2 | 0 | 0 | ✅ done (task-1, task-2 ✅) |
-| core | 10 | 4 | 3 | 2 | 1 | ✅ done 1–9; task-10 ⬜ (P3, optional coercion-tail de-dup) |
+| core | 10 | 4 | 3 | 2 | 1 | ✅ done (1–10; task-10 ✅ P3 coercion-tail de-dup) |
 | dialect-mssql | 4 | 1 | 2 | 1 | 0 | not-started |
 | dialect-mysql | 2 | 0 | 2 | 0 | 0 | not-started |
 | dialect-postgres | 9 | 1 | 5 | 3 | 0 | 🔄 In Progress (task-3, task-4, task-5, task-6, task-9 ✅) |

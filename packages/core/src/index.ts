@@ -114,6 +114,7 @@ export {
 export { LoadingStrategy } from './loading/LoadingStrategy';
 
 // Utils
+export { coerceParameterValue } from './utils/coerceParameterValue';
 export { ctorName } from './utils/ctorName';
 export { EntityCache } from './utils/EntityCache';
 export { getPrometheusMetrics, startPrometheusServer } from './utils/PrometheusEndpoint';
