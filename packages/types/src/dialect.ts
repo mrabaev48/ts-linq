@@ -97,3 +97,52 @@ export interface SqlDialect {
   /** Return the SP call syntax emitter for this dialect (P2-33). */
   getSpCallSyntax?(): SpCallSyntax;
 }
+
+// ─── DDL strategy contract ────────────────────────────────────────────────────
+// Implemented by every dialect via `AbstractDdlStrategy` (@ts-linq/dialect-kit). Migrations,
+// scaffolding, and providers depend on this interface — never on the concrete classes — so a
+// missing method is a compile error, not a runtime one (Dependency Inversion).
+
+/** Maps a logical column type (+ optional length) to the dialect's physical SQL type (Strategy). */
+export interface TypeMapper {
+  mapType(logicalType: string, length?: number): string;
+}
+
+/** Foreign-key specification passed to {@link DdlStrategy.generateForeignKeySql}. */
+export interface ForeignKeySpec {
+  name: string;
+  columnName: string;
+  relatedTableName: string;
+  relatedColumnName: string;
+  onDelete?: string;
+  onUpdate?: string;
+}
+
+/**
+ * Minimal index specification shared by every dialect's `generateCreateIndexSql`. Concrete dialects
+ * accept additional optional, dialect-specific fields (ordering, INCLUDE, etc.) on top of this.
+ */
+export interface CreateIndexSpec {
+  name: string;
+  columns: string[];
+  unique: boolean;
+}
+
+/**
+ * DDL generation contract for a SQL dialect. Owns CREATE TABLE / ALTER / FK / unique-constraint /
+ * comment generation. The shared, invariant algorithm lives in `AbstractDdlStrategy`; each concrete
+ * dialect supplies only a {@link TypeMapper} plus the genuinely divergent hooks.
+ */
+export interface DdlStrategy {
+  generateCreateTableSql(metadata: EntityMetadata): string;
+  generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string;
+  generateCreateIndexSql(tableName: string, index: CreateIndexSpec): string;
+  generateAddColumnSql(tableName: string, column: Omit<ColumnMetadata, 'propertyName'>): string;
+  generateDropColumnSql(tableName: string, columnName: string): string;
+  generateAlterColumnTypeSql(tableName: string, columnName: string, newType: string): string;
+  generateRenameTableSql(tableName: string, newTableName: string): string;
+  generateForeignKeySql(tableName: string, fk: ForeignKeySpec): string;
+  generateAddUniqueConstraintSql(tableName: string, name: string, columns: string[]): string;
+  generateDropUniqueConstraintSql(tableName: string, name: string): string;
+  generateCommentSql(metadata: EntityMetadata): string[];
+}

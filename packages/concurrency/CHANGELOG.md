@@ -1,5 +1,12 @@
 # @ts-linq/concurrency
 
+## 3.0.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.10.0
+
 ## 3.0.9
 
 ### Patch Changes

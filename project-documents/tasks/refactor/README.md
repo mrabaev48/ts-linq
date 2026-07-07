@@ -212,7 +212,7 @@ Each package only depends on packages already completed above it.
 | core | 10 | 4 | 3 | 2 | 1 | ✅ done (1–10; task-10 ✅ P3 coercion-tail de-dup) |
 | dialect-mssql | 4 | 1 | 2 | 1 | 0 | not-started |
 | dialect-mysql | 2 | 0 | 2 | 0 | 0 | not-started |
-| dialect-postgres | 9 | 1 | 5 | 3 | 0 | 🔄 In Progress (task-1, task-3, task-4, task-5, task-6, task-9 ✅) |
+| dialect-postgres | 12 | 1 | 5 | 5 | 1 | 🔄 In Progress (task-1, task-3, task-4, task-5, task-6, task-7, task-9 ✅; task-10/11/12 tech-debt from task-7) |
 | e2e-tests | 3 | 0 | 2 | 1 | 0 | not-started |
 | eslint-config | 2 | 0 | 1 | 1 | 0 | not-started |
 | examples | 1 | 0 | 0 | 1 | 0 | not-started |
