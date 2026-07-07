@@ -1,4 +1,6 @@
-import { ParameterCoercionError, type SqlParameter } from '@ts-linq/types';
+import { type SqlParameter } from '@ts-linq/types';
+
+import { coerceParameterValue } from './coerceParameterValue';
 
 enum SqlInlineValueType {
   String = 'string',
@@ -42,32 +44,9 @@ export class SqlHelper {
     };
   }
 
-  /** Coerce an arbitrary value into a SqlParameter. */
+  /** Coerce an arbitrary value into a SqlParameter (delegates to the shared core SSOT tail). */
   private static ensureSqlParameter(value: unknown, property?: string): SqlParameter {
-    if (
-      value === null ||
-      typeof value === 'string' ||
-      typeof value === 'number' ||
-      typeof value === 'boolean' ||
-      value instanceof Date ||
-      value instanceof Uint8Array
-    ) {
-      return value;
-    }
-    // `bigint` is not JSON-serializable; render it as decimal text (preserves prior behavior).
-    if (typeof value === 'bigint') {
-      return value.toString();
-    }
-    // Fallback: JSON-encode objects (including arrays) into TEXT. A non-serializable value (e.g. a
-    // circular reference) fails fast instead of silently binding a corrupt `"[object Object]"`.
-    try {
-      return JSON.stringify(value ?? null);
-    } catch (cause) {
-      throw new ParameterCoercionError(
-        `Failed to coerce parameter${property ? ` for property '${property}'` : ''} to a driver-safe value`,
-        { cause, details: { property } }
-      );
-    }
+    return coerceParameterValue(value, property);
   }
 
   /**
