@@ -40,7 +40,7 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 | 7 | task-7 | P1 | ✅ Completed | Remove `as unknown as` casts + centralize `Record` punning in the loading layer |
 | 8 | task-8 | P2 | ✅ Completed | Logger injection / no console |
 | 9 | task-9 | P2 | ✅ Completed | Curate barrel after structure settles |
-| 10 | task-10 | P3 | ⬜ Not started | Optional: unify the non-dialect coercion tail (`SqlHelper` + `query/SetPropertyCalls`) into one `core` helper |
+| 10 | task-10 | P3 | ✅ Completed | Optional: unify the non-dialect coercion tail (`SqlHelper` + `query/SetPropertyCalls`) into one `core` helper |
 
 > **✅ The `core` package audit (tasks 1–9) is complete.** `task-10` is a later, optional **P3**
 > follow-up filed during the coercion fail-fast sweep (the fail-fast fix already shipped in-place;
@@ -205,6 +205,26 @@ It depends on `@ts-linq/types`, `@ts-linq/metadata`, `@ts-linq/ast`, `@ts-linq/m
 > value-object trees deserve their own packages, hard-removal of the `@deprecated` core→types
 > re-exports in a future major, and the `utils/RetryPolicies` → `@ts-linq/concurrency` facade
 > (same canonical-path theme). **The `core` package refactor is now fully complete (tasks 1–9).**
+>
+> **task-10 (✅ Completed)** — P3 follow-up filed after tasks 1–9, during the coercion fail-fast
+> sweep (`dialect-postgres/task-5`). The primitive/`bigint`/JSON/throw coercion tail — previously
+> duplicated in `SqlHelper.ensureSqlParameter` and `query`'s module-level `coerceToSqlParameter`
+> — is unified into one pure SSOT, `coerceParameterValue(value, property?)` in
+> `core/src/utils/coerceParameterValue.ts` (deps: `@ts-linq/types` only). `SqlHelper.ensureSqlParameter`
+> now delegates to it and `query`'s `SetPropertyCalls` imports it from `@ts-linq/core`
+> (`query → core` already exists — **no new package edge, `arch:cycles` clean**). Both duplicated
+> tails are removed; fail-fast (`ParameterCoercionError`, no `String()` fallback) and the happy path
+> are byte-for-byte preserved. This is a **deliberate two-tail-by-design**: the dialect/provider
+> layer keeps its own canonical tail (`coerceSqlParameter` in `@ts-linq/dialect-kit`) because
+> `core`/`query` **must not** depend on `dialect-kit` (documented boundary + latent cycle once
+> `dialect-kit` grows the shared base dialect). A single repo-wide tail would require a new zero-dep
+> package below both layers — out of scope for an ~8-line pure function. `coerceParameterValue` is
+> exported from the curated public barrel (only path `query` can reach it), so `PublicSurface.test.ts`
+> is widened by one symbol → `@ts-linq/core` `minor`; `@ts-linq/query` `patch` (internal delegation,
+> no API/behaviour change). Coverage: new `tests-new/coerceParameterValue.test.ts` (passthrough /
+> object→JSON / `bigint`→decimal / circular→`ParameterCoercionError` with `cause` + `details.property`);
+> existing `SqlHelper.test.ts` + `SetPropertyCalls.test.ts` pass unchanged. **`core` stays fully
+> complete overall (1–10).**
 
 ## Dependencies on other packages
 - `@ts-linq/types` — error hierarchy (`types/task-2`), `SqlDialect`/identifier quoting (task-4), metadata interfaces.

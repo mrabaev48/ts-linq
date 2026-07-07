@@ -49,6 +49,7 @@ describe('@ts-linq/core public surface', () => {
     'ValidIf',
     'ValidIfOf',
     'awaitLazyLoad',
+    'coerceParameterValue',
     'createGeometryCollection',
     'createLineString',
     'createMultiLineString',
