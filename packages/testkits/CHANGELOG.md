@@ -1,5 +1,16 @@
 # @ts-linq/testkits
 
+## 7.0.32
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.10.0
+  - @ts-linq/core@3.5.1
+  - @ts-linq/metadata@4.1.9
+  - @ts-linq/provider-mssql@3.0.32
+  - @ts-linq/provider-mysql@3.0.32
+  - @ts-linq/provider-postgres@3.0.32
 ## 7.0.31
 
 ### Patch Changes

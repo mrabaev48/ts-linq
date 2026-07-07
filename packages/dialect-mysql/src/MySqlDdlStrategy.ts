@@ -1,35 +1,41 @@
-import { SqlHelper } from '@ts-linq/core';
-import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
+import { AbstractDdlStrategy, type DdlLoggerLike } from '@ts-linq/dialect-kit';
+import type { ColumnMetadata, DdlStrategy, EntityMetadata } from '@ts-linq/types';
 
 import { MySqlIndexBuilder } from './builders/MySqlIndexBuilder';
+import { MySqlTypeMapper } from './MySqlTypeMapper';
 import { quoteIdentifier, quoteStringLiteral } from './quoting';
 
-type LoggerLike = { warn(message: string, error?: unknown): void };
-
-export class MySqlDdlStrategy {
+/**
+ * MySQL DDL strategy. The invariant CREATE TABLE / ALTER / FK / constraint algorithms live in
+ * {@link AbstractDdlStrategy}; this class supplies only the MySQL `TypeMapper` and the divergent
+ * hooks (`AUTO_INCREMENT`, `GENERATED … VIRTUAL|STORED`, `ADD UNIQUE KEY` / `DROP INDEX`).
+ *
+ * MySQL emits comments **inline** — table-level `COMMENT=` in CREATE TABLE and column `COMMENT` in
+ * the column definition — rather than as standalone statements, so it keeps the base's no-op comment
+ * hooks (`generateCommentSql` returns `[]`). This inline behavior is an intentional, documented
+ * dialect divergence, not copy-paste drift.
+ */
+export class MySqlDdlStrategy extends AbstractDdlStrategy implements DdlStrategy {
+  protected readonly typeMapper = new MySqlTypeMapper();
+  protected readonly addColumnClause = 'ADD COLUMN';
   private readonly indexBuilder: MySqlIndexBuilder;
-  constructor(private readonly logger?: LoggerLike) {
+
+  constructor(logger?: DdlLoggerLike) {
+    super(logger);
     this.indexBuilder = new MySqlIndexBuilder(logger);
   }
-  public generateCreateTableSql(metadata: EntityMetadata): string {
-    if (!metadata || !metadata.columns) {
-      throw new Error(`Entity metadata is invalid or missing columns: ${JSON.stringify(metadata)}`);
-    }
-    const cols: string[] = metadata.columns.map((c) => this.generateColumnDefinition(c));
-    if (metadata.primaryKeys && metadata.primaryKeys.length) {
-      const pkCols = metadata.primaryKeys.map((pk) => {
-        const col = metadata.columns.find((c) => c.propertyName === pk);
-        return quoteIdentifier(col?.columnName || pk);
-      });
-      cols.push(`PRIMARY KEY (${pkCols.join(', ')})`);
-    }
 
-    for (const cc of metadata.checkConstraints ?? []) {
-      cols.push(`CONSTRAINT ${quoteIdentifier(cc.name)} CHECK (${cc.sql})`);
-    }
+  protected quoteIdentifier(identifier: string): string {
+    return quoteIdentifier(identifier);
+  }
 
-    const tableComment = metadata.comment ? ` COMMENT=${quoteStringLiteral(metadata.comment)}` : '';
-    return `CREATE TABLE IF NOT EXISTS ${quoteIdentifier(metadata.tableName)} (${cols.join(', ')})${tableComment}`;
+  protected quoteStringLiteral(value: string): string {
+    return quoteStringLiteral(value);
+  }
+
+  /** Public logical→physical type map. Retained for backward compatibility (delegates to the mapper). */
+  public mapTypeToMySql(type: string): string {
+    return this.typeMapper.mapType(type);
   }
 
   public generateCreateIndexSql(
@@ -49,123 +55,48 @@ export class MySqlDdlStrategy {
     return this.indexBuilder.buildCreateIndexSql(table, index);
   }
 
-  public generateAddColumnSql(
-    tableName: string,
-    column: Omit<ColumnMetadata, 'propertyName'>
-  ): string {
-    const colDef = this.generateColumnDefinition(column);
-    return `ALTER TABLE ${quoteIdentifier(tableName)} ADD COLUMN ${colDef}`;
+  protected wrapCreateTable(metadata: EntityMetadata, body: string): string {
+    const tableComment = metadata.comment
+      ? ` COMMENT=${this.quoteStringLiteral(metadata.comment)}`
+      : '';
+    return `CREATE TABLE IF NOT EXISTS ${this.quoteIdentifier(metadata.tableName)} (${body})${tableComment}`;
   }
 
-  public generateDropColumnSql(tableName: string, columnName: string): string {
-    return `ALTER TABLE ${quoteIdentifier(tableName)} DROP COLUMN ${quoteIdentifier(columnName)}`;
-  }
-
-  public generateAlterColumnTypeSql(
-    tableName: string,
-    columnName: string,
-    newType: string
-  ): string {
-    const colDef = `${quoteIdentifier(columnName)} ${this.mapTypeToMySql(newType)}`;
-    return `ALTER TABLE ${quoteIdentifier(tableName)} MODIFY COLUMN ${colDef}`;
-  }
-
-  public generateRenameTableSql(tableName: string, newTableName: string): string {
-    return `ALTER TABLE ${quoteIdentifier(tableName)} RENAME TO ${quoteIdentifier(newTableName)}`;
-  }
-
-  public generateForeignKeySql(
-    tableName: string,
-    fk: {
-      name: string;
-      columnName: string;
-      relatedTableName: string;
-      relatedColumnName: string;
-      onDelete?: string;
-      onUpdate?: string;
+  protected renderComputedColumn(column: Omit<ColumnMetadata, 'propertyName'>): string {
+    const storage = column.computedStorage;
+    if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
+      this.logger?.warn(
+        `MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`
+      );
     }
-  ): string {
-    let sql = `ALTER TABLE ${quoteIdentifier(tableName)} ADD CONSTRAINT ${quoteIdentifier(fk.name)} FOREIGN KEY (${quoteIdentifier(fk.columnName)}) REFERENCES ${quoteIdentifier(fk.relatedTableName)} (${quoteIdentifier(fk.relatedColumnName)})`;
-    if (fk.onDelete && fk.onDelete !== 'NO ACTION') {
-      sql += ` ON DELETE ${fk.onDelete}`;
-    }
-    if (fk.onUpdate && fk.onUpdate !== 'NO ACTION') {
-      sql += ` ON UPDATE ${fk.onUpdate}`;
-    }
-    return sql;
+    const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
+    return `${this.quoteIdentifier(column.columnName)} ${this.typeMapper.mapType(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
   }
 
-  /**
-   * Generates `ALTER TABLE ... ADD UNIQUE KEY ... (...)` for an alternate key.
-   * Mirrors EF Core's HasAlternateKey DDL for MySQL.
-   */
+  protected renderScalarColumn(column: Omit<ColumnMetadata, 'propertyName'>): string {
+    let def = `${this.quoteIdentifier(column.columnName)} ${this.typeMapper.mapType(column.type, column.length)}`;
+    if (!column.nullable) def += ' NOT NULL';
+    if (column.isGenerated) def += ' AUTO_INCREMENT';
+    def += this.renderDefault(column);
+    // MySQL supports an inline column COMMENT; other dialects emit separate comment statements.
+    if (column.comment) def += ` COMMENT ${this.quoteStringLiteral(column.comment)}`;
+    return def;
+  }
+
+  protected renderAlterColumnType(columnName: string, mappedType: string): string {
+    return `MODIFY COLUMN ${this.quoteIdentifier(columnName)} ${mappedType}`;
+  }
+
+  protected renderDropUniqueConstraint(name: string): string {
+    return `DROP INDEX ${this.quoteIdentifier(name)}`;
+  }
+
   public generateAddUniqueConstraintSql(
     tableName: string,
     name: string,
     columns: string[]
   ): string {
-    const cols = columns.map((c) => quoteIdentifier(c)).join(', ');
-    return `ALTER TABLE ${quoteIdentifier(tableName)} ADD UNIQUE KEY ${quoteIdentifier(name)} (${cols})`;
-  }
-
-  /**
-   * Generates `ALTER TABLE ... DROP INDEX ...` for an alternate key.
-   * MySQL uses DROP INDEX syntax for unique keys.
-   */
-  public generateDropUniqueConstraintSql(tableName: string, name: string): string {
-    return `ALTER TABLE ${quoteIdentifier(tableName)} DROP INDEX ${quoteIdentifier(name)}`;
-  }
-
-  public generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string {
-    if (column.isComputed && column.computedExpression) {
-      const storage = column.computedStorage;
-      if (storage && storage !== 'STORED' && storage !== 'VIRTUAL') {
-        this.logger?.warn(
-          `MySQL: computedStorage='${storage}' is not supported (use 'VIRTUAL' or 'STORED'); falling back to VIRTUAL for ${column.columnName}`
-        );
-      }
-      const kind = storage === 'STORED' ? 'STORED' : 'VIRTUAL';
-      return `${quoteIdentifier(column.columnName)} ${this.mapTypeToMySql(column.type)} GENERATED ALWAYS AS (${column.computedExpression}) ${kind}`;
-    }
-    let def = `${quoteIdentifier(column.columnName)} ${this.mapTypeToMySql(column.type)}`;
-    if (column.length) def += `(${column.length})`;
-    if (!column.nullable) def += ' NOT NULL';
-    if (column.isGenerated) def += ' AUTO_INCREMENT';
-    if ((column as { defaultExpression?: string }).defaultExpression) {
-      def += ` DEFAULT ${(column as { defaultExpression?: string }).defaultExpression}`;
-    } else if (column.defaultValue !== undefined) {
-      def += ` DEFAULT ${SqlHelper.formatValue(column.defaultValue)}`;
-    }
-    if (column.comment) {
-      def += ` COMMENT ${quoteStringLiteral(column.comment)}`;
-    }
-    return def;
-  }
-
-  public mapTypeToMySql(type: string): string {
-    switch ((type || '').toUpperCase()) {
-      case 'TEXT':
-      case 'STRING':
-        return 'TEXT';
-      case 'INTEGER':
-      case 'NUMBER':
-        return 'INT';
-      case 'REAL':
-      case 'FLOAT':
-      case 'DOUBLE':
-        return 'DOUBLE';
-      case 'BOOLEAN':
-        return 'TINYINT(1)';
-      case 'DATETIME':
-      case 'DATE':
-        return 'DATETIME';
-      case 'BLOB':
-        return 'BLOB';
-      case 'JSON':
-      case 'JSONB':
-        return 'JSON';
-      default:
-        return 'TEXT';
-    }
+    const cols = columns.map((c) => this.quoteIdentifier(c)).join(', ');
+    return `ALTER TABLE ${this.quoteIdentifier(tableName)} ADD UNIQUE KEY ${this.quoteIdentifier(name)} (${cols})`;
   }
 }

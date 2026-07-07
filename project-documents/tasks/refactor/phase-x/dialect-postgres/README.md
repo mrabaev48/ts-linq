@@ -24,6 +24,9 @@ dialect packages are near-identical and the shared abstractions must live in one
 - No shared dialect contract-test harness; tests are parallel copies that miss divergences (task-6).
 - DDL strategies have no shared interface and triplicate the type-mapping/column-def algorithm (task-7).
 - Dead `chunk*Batch` exports, identical OptionsBuilders, and dialect→core/metadata coupling (task-8).
+- A **second** DDL generator in `@ts-linq/migrations` (`ColumnHandlers`/`SqlUtils`) still duplicates
+  type-mapping/quoting/`formatValue`, and `formatValue` now has copies in core + dialect-kit + migrations
+  — follow-ups surfaced by task-7 (task-10, task-11, task-12).
 
 ## Refactor goals
 - One shared base dialect (Template Method) + injected `DialectSyntax` (Strategy); concrete dialects become thin.
@@ -39,9 +42,12 @@ dialect packages are near-identical and the shared abstractions must live in one
 - task-4 — Deduplicate coerce/applyConverter/insertableCols/numberPlaceholders — P1, clean-code ✅ **completed**
 - task-5 — Replace silent `JSON.stringify` catch-and-swallow in coercion — P2, error-handling ✅ **completed**
 - task-6 — Shared dialect contract-test harness — P1, testing ✅ **completed**
-- task-7 — Shared `DdlStrategy` contract + extracted type-mapping — P1, architecture
+- task-7 — Shared `DdlStrategy` contract + extracted type-mapping — P1, architecture ✅ **completed**
 - task-8 — Remove dead `chunk*Batch`, dedup OptionsBuilder, fix dialect→core/metadata coupling — P2, package-boundary
 - task-9 — Remove PG dead clause methods + collapse 12 emitters into shared pure emitters — P2, clean-code ✅ **completed**
+- task-10 — Converge the parallel `@ts-linq/migrations` DDL generator onto the shared `DdlStrategy` — P2, package-boundary _(tech debt from task-7)_
+- task-11 — Complete the `formatValue` consolidation (remove core `SqlHelper.formatValue`, single dialect-kit SSOT) — P2, package-boundary _(tech debt from task-7)_
+- task-12 — Inject the quoter into `AbstractDdlStrategy` (DDL quoting Strategy) — P3, clean-code _(tech debt from task-7)_
 
 ## Recommended task order
 | Order | Task | Priority | Reason |
@@ -52,9 +58,12 @@ dialect packages are near-identical and the shared abstractions must live in one
 | 4 | task-4 (dedup coerce/columns) ✅ | P1 | Removes 6× duplication; resolves computed-col divergence |
 | 5 | task-5 (typed coercion error) ✅ | P2 | Lands inside task-4's shared module |
 | 6 | task-1 (shared base dialect) ✅ | P1 | The core dedup; guarded by task-6 |
-| 7 | task-7 (shared DdlStrategy) | P1 | Mirrors task-1 for DDL; depends on task-3 |
+| 7 | task-7 (shared DdlStrategy) ✅ | P1 | Mirrors task-1 for DDL; depends on task-3 |
 | 8 | task-2 (capability model) | P1 | Typed contract replacing optional methods |
 | 9 | task-8 (dead exports/options/coupling) | P2 | Cleanup; buildSelect metadata signature with task-1 |
+| 10 | task-10 (converge migrations DDL) | P2 | Cross-boundary half of task-7's DDL dedup; pairs with migrations/task-3 |
+| 11 | task-11 (formatValue SSOT) | P2 | Finishes task-7's dialect→core removal; a slice of task-8 |
+| 12 | task-12 (inject DDL quoter) | P3 | Polish; unifies quoting injection with task-1's DialectSyntax |
 
 ## Dependencies on other packages
 - `@ts-linq/types` (the `SqlDialect`/`EntityMetadata` contracts; capability + `DdlStrategy` interfaces land here).
