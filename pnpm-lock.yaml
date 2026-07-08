@@ -1179,6 +1179,28 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
+  packages/transformer-morph:
+    dependencies:
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
+      ts-morph:
+        specifier: ^22.0.0
+        version: 22.0.0
+    devDependencies:
+      '@ts-linq/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@ts-linq/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^24.3.0
+        version: 24.9.1
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   packages/types:
     devDependencies:
       '@ts-linq/eslint-config':
@@ -2219,6 +2241,9 @@ packages:
   '@ts-morph/common@0.12.3':
     resolution: {integrity: sha512-4tUmeLyXJnJWvTFOKtcNJ1yh0a3SsTLi2MUoyj8iUNznFRN1ZquaNe7Oukqrnki2FzZkm0J9adCNLDZxUzvj+w==}
 
+  '@ts-morph/common@0.23.0':
+    resolution: {integrity: sha512-m7Lllj9n/S6sOkCkRftpM7L24uvmfXQFedlW/4hENcuJH1HHm9u5EgxZb9uVjQSCGrbBWBkOGgcTxNg36r6ywA==}
+
   '@tsconfig/node10@1.0.11':
     resolution: {integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==}
 
@@ -2796,6 +2821,9 @@ packages:
 
   code-block-writer@11.0.3:
     resolution: {integrity: sha512-NiujjUFB4SwScJq2bwbYUtXbZhBSlY6vYzm++3Q6oC+U+injTqfPYFK8wS9COOmb2lueqp0ZRB4nK1VYeHgNyw==}
+
+  code-block-writer@13.0.3:
+    resolution: {integrity: sha512-Oofo0pq3IKnsFtuHqSF7TqBfr71aeyZDVJ0HpmqB7FBM2qEigL0iPONSCZSO9pE9dZTAxANe5XHG9Uy0YMv8cg==}
 
   collect-v8-coverage@1.0.3:
     resolution: {integrity: sha512-1L5aqIkwPfiodaMgQunkF1zRhNqifHBmtbbbxcr6yVxxBnliw4TDOW6NxpO8DJLgJ16OT+Y4ztZqP6p/FtXnAw==}
@@ -4153,6 +4181,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  mkdirp@3.0.1:
+    resolution: {integrity: sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   module-definition@6.0.2:
     resolution: {integrity: sha512-SvAU3lB0+Yjbq55yHY3wkRZBOh+fhU1SnIF3IFbTewv6mtAh7yUT8ACHAJ2mGIJ7tCes2QuCL/cl6m0JSZ/ArA==}
     engines: {node: '>=18'}
@@ -4981,6 +5014,9 @@ packages:
 
   ts-morph@13.0.3:
     resolution: {integrity: sha512-pSOfUMx8Ld/WUreoSzvMFQG5i9uEiWIsBYjpU9+TTASOeUa89j5HykomeqVULm1oqWtBdleI3KEFRLrlA3zGIw==}
+
+  ts-morph@22.0.0:
+    resolution: {integrity: sha512-M9MqFGZREyeb5fTl6gNHKZLqBQA0TjA1lea+CR48R8EBTDuWrNqW6ccC5QvjNR4s6wDumD3LTCjOFSp9iwlzaw==}
 
   ts-node@10.9.2:
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
@@ -6618,6 +6654,13 @@ snapshots:
       mkdirp: 1.0.4
       path-browserify: 1.0.1
 
+  '@ts-morph/common@0.23.0':
+    dependencies:
+      fast-glob: 3.3.3
+      minimatch: 9.0.5
+      mkdirp: 3.0.1
+      path-browserify: 1.0.1
+
   '@tsconfig/node10@1.0.11': {}
 
   '@tsconfig/node12@1.0.11': {}
@@ -7276,6 +7319,8 @@ snapshots:
   co@4.6.0: {}
 
   code-block-writer@11.0.3: {}
+
+  code-block-writer@13.0.3: {}
 
   collect-v8-coverage@1.0.3: {}
 
@@ -8998,6 +9043,8 @@ snapshots:
 
   mkdirp@1.0.4: {}
 
+  mkdirp@3.0.1: {}
+
   module-definition@6.0.2:
     dependencies:
       ast-module-types: 6.0.2
@@ -9895,6 +9942,11 @@ snapshots:
     dependencies:
       '@ts-morph/common': 0.12.3
       code-block-writer: 11.0.3
+
+  ts-morph@22.0.0:
+    dependencies:
+      '@ts-morph/common': 0.23.0
+      code-block-writer: 13.0.3
 
   ts-node@10.9.2(@swc/core@1.13.5)(@types/node@20.19.23)(typescript@5.9.3):
     dependencies:
