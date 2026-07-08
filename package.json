@@ -60,6 +60,7 @@
     "lint": "turbo run lint",
     "ts-patch:install": "ts-patch install",
     "ts-patch:compile:examples": "tspc -p packages/examples/tsconfig.json",
+    "morph:compile:examples": "node packages/transformer-morph/bin/ts-linq-transform.cjs build -p packages/examples/tsconfig.json",
     "docs": "typedoc",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
