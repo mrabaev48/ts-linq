@@ -1,5 +1,6 @@
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { requireBulk } from '@ts-linq/types';
 
 import type { QueryModel } from './QueryModel';
 import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
@@ -9,8 +10,9 @@ import { type ISetPropertyCalls, SetPropertyCalls } from './SetPropertyCalls';
  * `ExecuteUpdateAsync` / `ExecuteDeleteAsync` parity).
  *
  * Constructed once per `Queryable` with the entity binding + provider; the per-chain WHERE model
- * is supplied lazily so the same instance can be shared across clones. Error messages and guard
- * semantics are preserved byte-for-byte from the original facade implementation.
+ * is supplied lazily so the same instance can be shared across clones. The dialect-capability guard
+ * delegates to the shared {@link requireBulk} assertion (typed `UnsupportedOperationError`); the
+ * remaining include/metadata guard messages are preserved from the original facade implementation.
  */
 export class BulkDmlExecutor<T> {
   constructor(
@@ -48,13 +50,7 @@ export class BulkDmlExecutor<T> {
 
     const queryModel = prepareModel();
     const dialect = this.provider.getDialect();
-
-    if (!dialect.buildBulkUpdate) {
-      throw new Error(
-        `The current dialect (${this.provider.providerLabel ?? 'unknown'}) does not support buildBulkUpdate. ` +
-          'Implement buildBulkUpdate() on the dialect class.'
-      );
-    }
+    requireBulk(dialect);
 
     const { sql, parameters } = dialect.buildBulkUpdate({
       tableName: metadata.tableName,
@@ -83,13 +79,7 @@ export class BulkDmlExecutor<T> {
 
     const queryModel = prepareModel();
     const dialect = this.provider.getDialect();
-
-    if (!dialect.buildBulkDelete) {
-      throw new Error(
-        `The current dialect (${this.provider.providerLabel ?? 'unknown'}) does not support buildBulkDelete. ` +
-          'Implement buildBulkDelete() on the dialect class.'
-      );
-    }
+    requireBulk(dialect);
 
     const { sql, parameters } = dialect.buildBulkDelete({
       tableName: metadata.tableName,

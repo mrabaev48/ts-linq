@@ -1,10 +1,12 @@
 /**
  * Unit tests for {@link BulkDmlExecutor} — the bulk UPDATE/DELETE collaborator extracted from
  * `Queryable` (refactor query/task-1). Verifies the include-guard, metadata guard, dialect-capability
- * guard and the happy paths, with error messages preserved byte-for-byte.
+ * guard and the happy paths. The dialect-capability guard now delegates to the shared `requireBulk`
+ * assertion and rejects with a typed `UnsupportedOperationError`.
  */
 import type { DatabaseProvider } from '@ts-linq/core';
 import { MetadataStorage } from '@ts-linq/metadata';
+import { UnsupportedOperationError } from '@ts-linq/types';
 
 import { BulkDmlExecutor } from '../src/BulkDmlExecutor';
 import { QueryModel } from '../src/QueryModel';
@@ -71,8 +73,9 @@ describe('BulkDmlExecutor.update', () => {
   it('rejects when the dialect cannot build a bulk update', async () => {
     const exec = new BulkDmlExecutor<BulkUser>(BulkUser, makeProvider({}));
     await expect(exec.update(setName('x'), false, noModel)).rejects.toThrow(
-      'The current dialect (test) does not support buildBulkUpdate. Implement buildBulkUpdate() on the dialect class.'
+      UnsupportedOperationError
     );
+    await expect(exec.update(setName('x'), false, noModel)).rejects.toThrow(/bulk/);
   });
 
   it('builds the bulk update from setter specs and returns the affected-row count', async () => {
@@ -85,7 +88,7 @@ describe('BulkDmlExecutor.update', () => {
     const executeNonQuery = jest.fn(async () => 7);
     const exec = new BulkDmlExecutor<BulkUser>(
       BulkUser,
-      makeProvider({ buildBulkUpdate }, executeNonQuery)
+      makeProvider({ buildBulkUpdate, buildBulkDelete: jest.fn() }, executeNonQuery)
     );
 
     const result = await exec.update(setName('x'), false, noModel);
@@ -110,9 +113,8 @@ describe('BulkDmlExecutor.delete', () => {
 
   it('rejects when the dialect cannot build a bulk delete', async () => {
     const exec = new BulkDmlExecutor<BulkUser>(BulkUser, makeProvider({}));
-    await expect(exec.delete(false, noModel)).rejects.toThrow(
-      'The current dialect (test) does not support buildBulkDelete. Implement buildBulkDelete() on the dialect class.'
-    );
+    await expect(exec.delete(false, noModel)).rejects.toThrow(UnsupportedOperationError);
+    await expect(exec.delete(false, noModel)).rejects.toThrow(/bulk/);
   });
 
   it('builds the bulk delete and returns the affected-row count', async () => {
@@ -120,7 +122,7 @@ describe('BulkDmlExecutor.delete', () => {
     const executeNonQuery = jest.fn(async () => 4);
     const exec = new BulkDmlExecutor<BulkUser>(
       BulkUser,
-      makeProvider({ buildBulkDelete }, executeNonQuery)
+      makeProvider({ buildBulkUpdate: jest.fn(), buildBulkDelete }, executeNonQuery)
     );
 
     const result = await exec.delete(false, noModel);

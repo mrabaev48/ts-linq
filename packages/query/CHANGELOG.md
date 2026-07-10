@@ -1,5 +1,14 @@
 # @ts-linq/query
 
+## 4.2.6
+
+### Patch Changes
+
+- `BulkDmlExecutor` now guards its bulk UPDATE/DELETE paths with the shared `requireBulk`
+  capability assertion instead of hand-rolled `if (!dialect.buildBulkX)` checks. Unsupported
+  dialects now reject with a typed `UnsupportedOperationError` (extends `OrmError`) rather than a
+  bare `Error`, matching the repository error-handling policy.
+
 ## 4.2.5
 
 ### Patch Changes
