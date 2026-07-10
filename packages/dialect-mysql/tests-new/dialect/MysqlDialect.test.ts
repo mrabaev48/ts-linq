@@ -411,4 +411,16 @@ describe('MysqlDialect', () => {
       expect(sql).toBe('DELETE FROM `tbl``evil` WHERE `id` = ?');
     });
   });
+
+  describe('capabilities', () => {
+    it('declares the true MySQL capability matrix (no temporal support)', () => {
+      expect(dialect.capabilities).toEqual({
+        crud: true,
+        batch: true,
+        bulk: true,
+        storedProcedures: true,
+        temporal: false
+      });
+    });
+  });
 });

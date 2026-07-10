@@ -1,5 +1,12 @@
 # @ts-linq/transformer-morph
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.11.0
+
 ## 0.1.0
 
 ### Minor Changes

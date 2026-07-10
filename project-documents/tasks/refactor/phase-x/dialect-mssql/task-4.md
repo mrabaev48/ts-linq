@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: superseded
 phase: phase-x
 package: dialect-mssql
 priority: P2
@@ -49,9 +49,17 @@ it calls the optional methods directly. If a dialect (or a test double) omits on
 - Provider test: a dialect without `buildInsert` throws the same descriptive error from all three providers.
 
 ## Acceptance criteria
-- [ ] MSSQL provider no longer throws an opaque `TypeError` for missing CRUD methods.
-- [ ] Failure mode is identical across PG/MySQL/MSSQL providers.
-- [ ] Superseded by the capability-model assertion once it lands.
+- [x] MSSQL provider no longer throws an opaque `TypeError` for missing CRUD methods.
+- [x] Failure mode is identical across PG/MySQL/MSSQL providers.
+- [x] Superseded by the capability-model assertion once it lands.
+
+## Resolution
+Superseded by `dialect-postgres/task-2.md` (the capability-model host task), landed directly — the
+"long-term" step, not the "short-term" interim guard. `MssqlProvider` now calls the shared
+`requireCrud(dialect)` assertion (from `@ts-linq/types`) before `buildInsert`/`buildUpdate`/
+`buildDelete`, identical to `PostgresProvider`/`MySqlProvider`; the previous `as MssqlDialect` cast
+that bypassed the `SqlDialect` interface (and thus any guard) was removed. No separate interim fix
+was needed.
 
 ## Refactor order
 1. Add interim guards (immediate). 2. Replace with capability assertion when host `dialect-postgres/task-2.md` lands.

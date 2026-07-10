@@ -1,5 +1,46 @@
 # @ts-linq/dialect-mssql
 
+## 2.9.0
+
+### Minor Changes
+
+- Replace the all-optional `SqlDialect` interface with an explicit capability model.
+
+  **Fixes a latent bug:** the MSSQL provider called `dialect.buildInsert`/`buildUpdate`/`buildDelete`
+  with no guard at all (unlike PostgreSQL/MySQL, which at least threw a defensive `Error`) — a missing
+  capability would have surfaced as an uncaught `TypeError`. All three providers now fail the same way,
+  with a typed error.
+
+  `@ts-linq/types` adds (additive, backward compatible):
+  - `DialectCapabilities` — an explicit feature matrix (`crud`, `batch`, `bulk`, `storedProcedures`,
+    `temporal`) a dialect declares via a new, optional `SqlDialect.capabilities` field.
+  - Segregated capability interfaces (Interface Segregation): `SupportsCrud`, `SupportsBatch`,
+    `SupportsBulk`, `SupportsStoredProcedures`, `SupportsTemporal`.
+  - Assertion-function guards — `requireCrud`, `requireBatch`, `requireBulk`,
+    `requireStoredProcedures`, `requireTemporal` — each narrows `SqlDialect` to `SqlDialect & SupportsX`
+    after a successful check, so call sites no longer need `?.`/`if (!dialect.buildX)` guards. They
+    prefer the declared `capabilities` flag and fall back to method-presence sniffing when
+    `capabilities` is absent, so existing `SqlDialect` implementers (test doubles, custom dialects)
+    are unaffected. A missing capability throws the existing `UnsupportedOperationError` (or
+    `TemporalNotSupportedError` for `requireTemporal`) — no new error classes.
+
+  `@ts-linq/dialect-postgres`/`dialect-mysql`/`dialect-mssql` each now declare a `readonly
+capabilities: DialectCapabilities` literal describing their true matrix. All three currently support
+  crud/batch/bulk/storedProcedures; SQL Server is the only dialect with `temporal: true`.
+
+  `@ts-linq/provider-postgres`/`provider-mysql`/`provider-mssql` replace their ad-hoc
+  `if (!dialect.buildX) throw new Error(...)` guards (PG/MySQL) and missing guard (MSSQL) with a single
+  `requireCrud(dialect)` call before each INSERT/UPDATE/DELETE.
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.11.0
+  - @ts-linq/core@3.5.2
+  - @ts-linq/dialect-kit@0.4.1
+  - @ts-linq/metadata@4.1.10
+  - @ts-linq/sql-visitor@4.3.7
+
 ## 2.8.12
 
 ### Patch Changes
@@ -29,6 +70,7 @@
   - @ts-linq/core@3.5.1
   - @ts-linq/metadata@4.1.9
   - @ts-linq/sql-visitor@4.3.6
+
 ## 2.8.11
 
 ### Patch Changes
