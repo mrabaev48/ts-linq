@@ -2,13 +2,16 @@ import type {
   BulkDeleteContext,
   BulkUpdateContext,
   ColumnMetadata,
+  DialectCapabilities,
   EntityMetadata,
   QueryOptions,
   SqlDialect,
   SqlParameter,
   SqlQueryResult,
   SqlWithParams,
-  SqlWithReturning
+  SqlWithReturning,
+  SupportsBulk,
+  SupportsCrud
 } from '@ts-linq/types';
 
 import {
@@ -49,9 +52,18 @@ export interface InsertDecoration {
  * concrete dialect — the shared emitters and coercion/column utilities are the single source of
  * truth, replacing the ~85% duplication previously copy-pasted across the three dialect classes.
  */
-export abstract class AbstractSqlDialect implements SqlDialect {
+export abstract class AbstractSqlDialect implements SqlDialect, SupportsCrud, SupportsBulk {
   /** The dialect-variable token strategy. Supplied by each concrete dialect. */
   protected abstract readonly syntax: DialectSyntax;
+
+  /**
+   * Explicit capability matrix. Required (not merely inherited from `SqlDialect`'s optional
+   * field) so every dialect built on this shared base is statically forced to declare its true
+   * matrix — a future dialect extending `AbstractSqlDialect` cannot silently omit it and fall
+   * through to the `require*` method-presence fallback in `@ts-linq/types/runtime.ts` meant for
+   * pre-existing, non-`AbstractSqlDialect` `SqlDialect` implementers (test doubles etc.).
+   */
+  public abstract readonly capabilities: DialectCapabilities;
 
   /**
    * INSERT column policy. Identical across every current dialect (computed columns and unset
