@@ -429,4 +429,16 @@ describe('MssqlDialect', () => {
       expect(sql).toBe('DELETE FROM [tbl]]evil] WHERE [id] = @p1');
     });
   });
+
+  describe('capabilities', () => {
+    it('declares the true SQL Server capability matrix (the only dialect with temporal support)', () => {
+      expect(dialect.capabilities).toEqual({
+        crud: true,
+        batch: true,
+        bulk: true,
+        storedProcedures: true,
+        temporal: true
+      });
+    });
+  });
 });

@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: dialect-postgres
 priority: P1
@@ -61,10 +61,23 @@ Adopt an explicit **Capabilities object + segregated required interfaces** (Clea
 - Provider tests that a missing capability throws a typed, descriptive error uniformly across all three providers.
 
 ## Acceptance criteria
-- [ ] `DialectCapabilities` + segregated interfaces in `@ts-linq/types`.
-- [ ] All three providers use the shared typed guard; MSSQL no longer crashes ungracefully.
-- [ ] Each dialect declares an accurate `capabilities` matrix.
-- [ ] `pnpm typecheck` passes with no `?.`-style access on guaranteed-present methods.
+- [x] `DialectCapabilities` + segregated interfaces in `@ts-linq/types`.
+- [x] All three providers use the shared typed guard; MSSQL no longer crashes ungracefully.
+- [x] Each dialect declares an accurate `capabilities` matrix.
+- [x] `pnpm typecheck` passes with no `?.`-style access on guaranteed-present methods.
+
+## Resolution
+Implemented as designed, with one deliberate, backward-compatibility-driven deviation: `capabilities`
+was added to `SqlDialect` as **optional** (`capabilities?: DialectCapabilities`), not required, and
+the pre-existing optional CRUD/batch/bulk/SP methods on `SqlDialect` were **not** removed. Making
+`capabilities` (or the methods) required would have broken ~20 unrelated `implements SqlDialect` test
+doubles across `core`/`query`/`cli`/`testkits`. The three production dialects
+(`PostgresDialect`/`MysqlDialect`/`MssqlDialect`) declare `capabilities` as a required literal field;
+the `require*` assertion helpers in `@ts-linq/types/runtime.ts` prefer the declared `capabilities`
+flag and fall back to method-presence sniffing when it is absent, so every existing implementer keeps
+working unchanged. All three providers (`PostgresProvider`/`MySqlProvider`/`MssqlProvider`) now call
+`requireCrud(dialect)` before INSERT/UPDATE/DELETE — MSSQL's missing guard is fixed. Full validation
+suite green (typecheck/lint/unit 4190/integration 461/e2e 290/build/arch:deps/cycles/dead).
 
 ## Refactor order
 1. Types + assertion helpers. 2. Dialect `capabilities`. 3. Provider migration. 4. Contract/type tests.

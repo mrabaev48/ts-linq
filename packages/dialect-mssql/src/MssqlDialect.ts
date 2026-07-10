@@ -4,11 +4,15 @@ import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/
 import type {
   BatchInsertResult,
   BatchUpdateResult,
+  DialectCapabilities,
   EntityMetadata,
   QueryOptions,
   SqlDialect,
   SqlParameter,
-  SqlWithParams
+  SqlWithParams,
+  SupportsBatch,
+  SupportsStoredProcedures,
+  SupportsTemporal
 } from '@ts-linq/types';
 
 import {
@@ -31,10 +35,27 @@ import { mssqlSyntax } from './syntax';
  * in {@link AbstractSqlDialect}; this class wires the T-SQL {@link DialectSyntax} plus the two
  * divergent hooks (temporal `FOR SYSTEM_TIME` rendering and `OUTPUT INSERTED` write-back).
  */
-export class MssqlDialect extends AbstractSqlDialect implements SqlDialect, DialectVisitorSupport {
+export class MssqlDialect
+  extends AbstractSqlDialect
+  implements
+    SqlDialect,
+    DialectVisitorSupport,
+    SupportsBatch,
+    SupportsStoredProcedures,
+    SupportsTemporal
+{
   private readonly jsonPathTranslator = new MssqlJsonPathTranslator();
 
   readonly parameterLimit = MSSQL_PARAM_LIMIT;
+
+  /** Explicit capability matrix — SQL Server is the only dialect supporting temporal queries. */
+  public readonly capabilities: DialectCapabilities = {
+    crud: true,
+    batch: true,
+    bulk: true,
+    storedProcedures: true,
+    temporal: true
+  };
 
   protected readonly syntax = mssqlSyntax;
 

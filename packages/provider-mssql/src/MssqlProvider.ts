@@ -14,6 +14,7 @@ import {
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
   ParameterCoercionError,
+  requireCrud,
   UniqueConstraintError
 } from '@ts-linq/types';
 
@@ -214,7 +215,8 @@ export class MssqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
-    const dialect = this.getDialect() as MssqlDialect;
+    const dialect = this.getDialect();
+    requireCrud(dialect);
     const { sql, parameters, returningPk } = dialect.buildInsert(
       entity as Record<string, unknown>,
       metadata
@@ -244,7 +246,8 @@ export class MssqlProvider extends DatabaseProvider {
     const versionCol = metadata.columns.find((c) => c.isVersion);
     const concurrencyTokens = metadata.columns.filter((c) => c.isConcurrencyToken && !c.isVersion);
 
-    const dialect = this.getDialect() as MssqlDialect;
+    const dialect = this.getDialect();
+    requireCrud(dialect);
     const { sql, parameters } = dialect.buildUpdate(
       entity as Record<string, unknown>,
       metadata,
@@ -278,7 +281,8 @@ export class MssqlProvider extends DatabaseProvider {
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const concurrencyTokens = metadata.columns.filter((c) => c.isConcurrencyToken);
 
-    const dialect = this.getDialect() as MssqlDialect;
+    const dialect = this.getDialect();
+    requireCrud(dialect);
     const { sql, parameters } = dialect.buildDelete(
       entity as Record<string, unknown>,
       metadata,

@@ -4,10 +4,13 @@ import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/
 import type {
   BatchInsertResult,
   BatchUpdateResult,
+  DialectCapabilities,
   EntityMetadata,
   QueryOptions,
   SqlDialect,
-  SqlWithParams
+  SqlWithParams,
+  SupportsBatch,
+  SupportsStoredProcedures
 } from '@ts-linq/types';
 import { TemporalNotSupportedError } from '@ts-linq/types';
 
@@ -28,10 +31,22 @@ import { mysqlSyntax } from './syntax';
  * {@link AbstractSqlDialect}; this class wires the MySQL {@link DialectSyntax}. MySQL has no
  * `RETURNING`/`OUTPUT` and no temporal support, so it only overrides the temporal-rejection hook.
  */
-export class MysqlDialect extends AbstractSqlDialect implements SqlDialect, DialectVisitorSupport {
+export class MysqlDialect
+  extends AbstractSqlDialect
+  implements SqlDialect, DialectVisitorSupport, SupportsBatch, SupportsStoredProcedures
+{
   private readonly jsonPathTranslator = new MySqlJsonPathTranslator();
 
   readonly parameterLimit = MYSQL_PARAM_LIMIT;
+
+  /** Explicit capability matrix — MySQL implements every optional group except temporal. */
+  public readonly capabilities: DialectCapabilities = {
+    crud: true,
+    batch: true,
+    bulk: true,
+    storedProcedures: true,
+    temporal: false
+  };
 
   protected readonly syntax = mysqlSyntax;
 

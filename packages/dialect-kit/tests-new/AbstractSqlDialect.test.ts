@@ -1,4 +1,4 @@
-import type { EntityMetadata, QueryOptions } from '@ts-linq/types';
+import type { DialectCapabilities, EntityMetadata, QueryOptions } from '@ts-linq/types';
 
 import { AbstractSqlDialect, type DialectSyntax, type InsertDecoration } from '../src';
 
@@ -21,6 +21,13 @@ const fakeSyntax: DialectSyntax = {
 class TestDialect extends AbstractSqlDialect {
   protected readonly syntax = fakeSyntax;
   readonly calls: string[] = [];
+  public readonly capabilities: DialectCapabilities = {
+    crud: true,
+    batch: false,
+    bulk: true,
+    storedProcedures: false,
+    temporal: false
+  };
 
   constructor(private readonly meta?: EntityMetadata) {
     super();
