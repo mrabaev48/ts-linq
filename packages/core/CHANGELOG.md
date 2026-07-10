@@ -1,5 +1,16 @@
 # @ts-linq/core
 
+## 3.5.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.11.0
+  - @ts-linq/ast@3.2.11
+  - @ts-linq/concurrency@3.0.11
+  - @ts-linq/metadata@4.1.10
+  - @ts-linq/metrics-safe@1.2.13
+
 ## 3.5.1
 
 ### Patch Changes

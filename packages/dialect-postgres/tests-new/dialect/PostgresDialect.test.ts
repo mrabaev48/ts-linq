@@ -448,4 +448,16 @@ describe('PostgresDialect', () => {
       expect(sql).toBe('DELETE FROM "tbl""evil" WHERE "id" = $1');
     });
   });
+
+  describe('capabilities', () => {
+    it('declares the true PostgreSQL capability matrix (no temporal support)', () => {
+      expect(dialect.capabilities).toEqual({
+        crud: true,
+        batch: true,
+        bulk: true,
+        storedProcedures: true,
+        temporal: false
+      });
+    });
+  });
 });

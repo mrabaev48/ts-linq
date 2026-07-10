@@ -13,6 +13,7 @@ import {
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
   ParameterCoercionError,
+  requireCrud,
   UniqueConstraintError
 } from '@ts-linq/types';
 
@@ -226,7 +227,7 @@ export class PostgresProvider extends DatabaseProvider {
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
     const dialect = this.getDialect();
-    if (!dialect.buildInsert) throw new Error('Dialect does not support buildInsert');
+    requireCrud(dialect);
 
     const { sql, parameters } = dialect.buildInsert(entity as Record<string, unknown>, meta);
     const rows = await this.executeQuery<Record<string, unknown>>(sql, parameters);
@@ -247,7 +248,7 @@ export class PostgresProvider extends DatabaseProvider {
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
     const dialect = this.getDialect();
-    if (!dialect.buildUpdate) throw new Error('Dialect does not support buildUpdate');
+    requireCrud(dialect);
 
     const versionCol = meta.columns.find((c) => c.isVersion);
     const concurrencyTokens = meta.columns.filter((c) => c.isConcurrencyToken && !c.isVersion);
@@ -321,7 +322,7 @@ export class PostgresProvider extends DatabaseProvider {
     if (!meta) throw new Error(`Entity metadata not found for ${entityClass.name}`);
 
     const dialect = this.getDialect();
-    if (!dialect.buildDelete) throw new Error('Dialect does not support buildDelete');
+    requireCrud(dialect);
 
     const concurrencyTokens = meta.columns.filter((c) => c.isConcurrencyToken);
     const { sql, parameters } = dialect.buildDelete(
