@@ -1,5 +1,13 @@
 # @ts-linq/dialect-kit
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@4.11.0
+  - @ts-linq/sql-visitor@4.3.7
+
 ## 0.4.0
 
 ### Minor Changes
@@ -28,6 +36,7 @@
 - Updated dependencies
   - @ts-linq/types@4.10.0
   - @ts-linq/sql-visitor@4.3.6
+
 ## 0.3.0
 
 ### Minor Changes

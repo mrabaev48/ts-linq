@@ -13,6 +13,7 @@ import {
   ForeignKeyConstraintError,
   OptimisticConcurrencyError,
   ParameterCoercionError,
+  requireCrud,
   UniqueConstraintError
 } from '@ts-linq/types';
 
@@ -163,7 +164,7 @@ export class MySqlProvider extends DatabaseProvider {
     const metadata = MetadataStorage.getEntity(entityClass);
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const dialect = this.getDialect();
-    if (!dialect.buildInsert) throw new Error('Dialect does not support buildInsert');
+    requireCrud(dialect);
     const { sql, parameters } = dialect.buildInsert(entity as Record<string, unknown>, metadata);
     const insertId = await this.executeInsert(sql, parameters);
     const genPkProp = this.findGeneratedPkProperty(metadata);
@@ -208,7 +209,7 @@ export class MySqlProvider extends DatabaseProvider {
     const versionCol = metadata.columns.find((c) => c.isVersion);
     const concurrencyTokens = metadata.columns.filter((c) => c.isConcurrencyToken && !c.isVersion);
     const dialect = this.getDialect();
-    if (!dialect.buildUpdate) throw new Error('Dialect does not support buildUpdate');
+    requireCrud(dialect);
     const { sql, parameters } = dialect.buildUpdate(
       entity as Record<string, unknown>,
       metadata,
@@ -265,7 +266,7 @@ export class MySqlProvider extends DatabaseProvider {
     if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
     const concurrencyTokens = metadata.columns.filter((c) => c.isConcurrencyToken);
     const dialect = this.getDialect();
-    if (!dialect.buildDelete) throw new Error('Dialect does not support buildDelete');
+    requireCrud(dialect);
     const { sql, parameters } = dialect.buildDelete(
       entity as Record<string, unknown>,
       metadata,

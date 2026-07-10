@@ -1,5 +1,8 @@
-import { describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { MysqlDialect } from '@ts-linq/dialect-mysql';
+import { MetadataStorage } from '@ts-linq/metadata';
+import type { SqlDialect } from '@ts-linq/types';
+import { UnsupportedOperationError } from '@ts-linq/types';
 
 import { MySqlProvider } from '../src/MySqlProvider';
 
@@ -278,6 +281,66 @@ describe('MySqlProvider', () => {
       });
 
       expect(provider).toBeDefined();
+    });
+  });
+
+  describe('CRUD capability guard (requireCrud)', () => {
+    class NoCrudEntity {
+      id!: number;
+    }
+
+    /** A dialect with no `buildInsert`/`buildUpdate`/`buildDelete` and no `capabilities` — the
+     *  shape `requireCrud` must reject uniformly, in place of the old ad-hoc `new Error(...)`. */
+    const noCrudDialect: SqlDialect = {
+      buildSelect: () => ({ query: 'SELECT 1', parameters: [] }),
+      quoteIdentifier: (identifier: string) => `\`${identifier}\``
+    };
+
+    beforeEach(() => {
+      MetadataStorage.getInstance().clear();
+      MetadataStorage.addEntity(NoCrudEntity, 'no_crud');
+      MetadataStorage.addColumn(NoCrudEntity, {
+        propertyName: 'id',
+        columnName: 'id',
+        type: 'INTEGER',
+        nullable: false
+      });
+      MetadataStorage.addPrimaryKey(NoCrudEntity, 'id');
+    });
+
+    afterEach(() => {
+      MetadataStorage.getInstance().clear();
+    });
+
+    function providerWithNoCrudDialect(): MySqlProvider {
+      const provider = new MySqlProvider({
+        host: 'localhost',
+        database: 'testdb',
+        user: 'root'
+      });
+      jest.spyOn(provider, 'getDialect').mockReturnValue(noCrudDialect);
+      return provider;
+    }
+
+    it('insert() throws a typed UnsupportedOperationError when the dialect lacks buildInsert', async () => {
+      const provider = providerWithNoCrudDialect();
+      await expect(provider.insert(new NoCrudEntity(), NoCrudEntity)).rejects.toThrow(
+        UnsupportedOperationError
+      );
+    });
+
+    it('update() throws a typed UnsupportedOperationError when the dialect lacks buildUpdate', async () => {
+      const provider = providerWithNoCrudDialect();
+      await expect(provider.update(new NoCrudEntity(), NoCrudEntity)).rejects.toThrow(
+        UnsupportedOperationError
+      );
+    });
+
+    it('delete() throws a typed UnsupportedOperationError when the dialect lacks buildDelete', async () => {
+      const provider = providerWithNoCrudDialect();
+      await expect(provider.delete(new NoCrudEntity(), NoCrudEntity)).rejects.toThrow(
+        UnsupportedOperationError
+      );
     });
   });
 });

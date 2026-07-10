@@ -61,6 +61,73 @@ export interface BulkDeleteContext {
   where: WhereClause[];
 }
 
+// ─── Capability model ─────────────────────────────────────────────────────────
+// Explicit feature matrix (Capability/Feature object) replacing method-presence sniffing:
+// discoverable, testable, and serializable for tooling. Segregated per Interface Segregation —
+// a dialect need not fake capabilities it doesn't have. Paired with the `require*` assertion
+// functions in `runtime.ts`, which narrow `SqlDialect` to `SqlDialect & SupportsX` at call sites.
+
+/** Feature matrix a dialect declares describing which optional capability groups it truly supports. */
+export interface DialectCapabilities {
+  readonly crud: boolean;
+  readonly batch: boolean;
+  readonly bulk: boolean;
+  readonly storedProcedures: boolean;
+  readonly temporal: boolean;
+}
+
+/** Segregated capability: single-row INSERT/UPDATE/DELETE. */
+export interface SupportsCrud {
+  buildInsert(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithReturning;
+  buildUpdate(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    versionCol?: ColumnMetadata,
+    concurrencyTokens?: ColumnMetadata[],
+    originalValues?: Record<string, unknown>
+  ): SqlWithParams;
+  buildDelete(
+    entity: Record<string, unknown>,
+    metadata: EntityMetadata,
+    concurrencyTokens?: ColumnMetadata[],
+    originalValues?: Record<string, unknown>
+  ): SqlWithParams;
+}
+
+/** Segregated capability: multi-row batch INSERT/UPDATE/DELETE. */
+export interface SupportsBatch {
+  buildBatchInsert(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchInsertResult;
+  buildBatchUpdate(
+    entities: Record<string, unknown>[],
+    metadata: EntityMetadata
+  ): BatchUpdateResult;
+  buildBatchDelete(entities: Record<string, unknown>[], metadata: EntityMetadata): SqlWithParams;
+}
+
+/** Segregated capability: single-statement bulk UPDATE/DELETE without loading entities. */
+export interface SupportsBulk {
+  buildBulkUpdate(ctx: BulkUpdateContext): SqlWithParams;
+  buildBulkDelete(ctx: BulkDeleteContext): SqlWithParams;
+}
+
+/** Segregated capability: stored-procedure call syntax (P2-33). */
+export interface SupportsStoredProcedures {
+  getSpCallSyntax(): SpCallSyntax;
+}
+
+/**
+ * Segregated capability marker for temporal (`FOR SYSTEM_TIME`) query support. Has no distinct
+ * method — temporal support is enforced inside `buildSelect` itself (see
+ * `AbstractSqlDialect.assertTemporalSupported`/`TemporalNotSupportedError`). The interface exists
+ * for symmetry with the other capabilities and so `requireTemporal` can assert on
+ * `dialect.capabilities.temporal` ahead of building a query (e.g. tooling deciding upfront whether
+ * temporal DDL/queries are safe for a given dialect).
+ */
+export interface SupportsTemporal {}
+
 // SQL Dialect interface
 export interface SqlDialect {
   buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult;
@@ -96,6 +163,13 @@ export interface SqlDialect {
   buildBulkDelete?(ctx: BulkDeleteContext): SqlWithParams;
   /** Return the SP call syntax emitter for this dialect (P2-33). */
   getSpCallSyntax?(): SpCallSyntax;
+  /**
+   * Explicit capability matrix (Capability/Feature object). Optional for backward compatibility
+   * with existing `SqlDialect` implementers (test doubles, custom dialects); the three production
+   * dialects (`PostgresDialect`/`MysqlDialect`/`MssqlDialect`) always declare it. When absent, the
+   * `require*` assertion helpers in `runtime.ts` fall back to method-presence sniffing.
+   */
+  readonly capabilities?: DialectCapabilities;
 }
 
 // ─── DDL strategy contract ────────────────────────────────────────────────────
