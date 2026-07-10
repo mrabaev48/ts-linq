@@ -1,0 +1,43 @@
+{
+  "name": "@ts-linq/transformer-morph",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ts-patch-free replacement for @ts-linq/transformer built on ts-morph + the TypeScript Compiler API",
+  "main": "./dist/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "ts-linq-transform": "./bin/ts-linq-transform.cjs"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && npm run gen:esm-entry",
+    "gen:esm-entry": "echo '{\"type\":\"module\"}' > dist/esm/package.json",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix"
+  },
+  "files": [
+    "dist/**/*",
+    "bin/**/*"
+  ],
+  "dependencies": {
+    "@ts-linq/types": "workspace:*",
+    "ts-morph": "^22.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "devDependencies": {
+    "@ts-linq/typescript-config": "workspace:*",
+    "@ts-linq/eslint-config": "workspace:*",
+    "@types/node": "^24.3.0",
+    "typescript": "^5.4.5"
+  }
+}
