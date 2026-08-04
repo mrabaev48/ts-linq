@@ -2,6 +2,7 @@ import type { DatabaseProvider } from '@ts-linq/core';
 import type { MetadataRegistry } from '@ts-linq/metadata';
 import type { EntityCtorRef } from '@ts-linq/types';
 import type { StoredProcedureConfig } from '@ts-linq/types';
+import { requireStoredProcedures } from '@ts-linq/types';
 
 export class SpExecutor {
   constructor(
@@ -47,16 +48,10 @@ export class SpExecutor {
     return this._emitter(config).extractRowsAffected(config, resultRows);
   }
 
-  private _emitter(config: StoredProcedureConfig) {
-    const dialect = this.provider.getDialect?.();
-    const syntax = dialect?.getSpCallSyntax?.();
-    if (!syntax) {
-      throw new Error(
-        `Dialect does not support stored procedures (getSpCallSyntax not implemented). ` +
-          `Procedure: ${config.procedureName}`
-      );
-    }
-    return syntax;
+  private _emitter(_config: StoredProcedureConfig) {
+    const dialect = this.provider.getDialect();
+    requireStoredProcedures(dialect);
+    return dialect.getSpCallSyntax();
   }
 
   private async _call(
