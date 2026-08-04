@@ -1,5 +1,17 @@
 # @ts-linq/orm
 
+## 6.0.10
+
+### Patch Changes
+
+- Fix `SpExecutor` throwing a bare `Error` instead of a typed `OrmError` when a dialect doesn't
+  implement stored-procedure call syntax.
+
+  `SpExecutor._emitter` now calls the capability-model guard `requireStoredProcedures(dialect)`
+  from `@ts-linq/types` (introduced by the dialect-postgres/task-2 capability-model refactor),
+  which throws `UnsupportedOperationError` (an `OrmError` subclass) instead of a plain `Error`,
+  aligning stored-procedure dispatch with the rest of the codebase's typed error hierarchy.
+
 ## 6.0.9
 
 ### Patch Changes
