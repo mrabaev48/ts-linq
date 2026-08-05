@@ -12,6 +12,7 @@ import {
   batchMeta,
   batchNonGeneratedPkMeta,
   ContractEntity,
+  contractSelectMeta,
   insertComputedMeta,
   insertMeta,
   titleToken,
@@ -86,7 +87,10 @@ const selectInputs: ReadonlyArray<readonly [string, QueryOptions]> = [
 ];
 
 export const selectCases: ReadonlyArray<ContractCase<SqlQueryResult>> = selectInputs.map(
-  ([id, options]) => ({ id, invoke: (dialect) => dialect.buildSelect(ContractEntity, options) })
+  ([id, options]) => ({
+    id,
+    invoke: (dialect) => dialect.buildSelect(ContractEntity, options, contractSelectMeta)
+  })
 );
 
 // ── INSERT ───────────────────────────────────────────────────────────────────────────────────

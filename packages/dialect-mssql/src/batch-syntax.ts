@@ -5,7 +5,6 @@ import {
   selectInsertableColumns,
   selectUpdatableColumns
 } from '@ts-linq/dialect-kit';
-import { calcChunkSize, chunkArray } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
   BatchUpdateResult,
@@ -142,28 +141,4 @@ export function buildMssqlBatchDelete(entities: Entity[], metadata: EntityMetada
     '@p'
   );
   return { sql, parameters };
-}
-
-/**
- * Split entities into chunks respecting maxBatchSize and MSSQL_PARAM_LIMIT.
- */
-export function chunkMssqlBatch(
-  entities: Entity[],
-  metadata: EntityMetadata,
-  maxBatchSize: number,
-  operation: 'insert' | 'update' | 'delete'
-): Entity[][] {
-  let paramsPerRow: number;
-  if (operation === 'insert') {
-    const cols = selectInsertableColumns(metadata, entities[0] ?? {}, MSSQL_INSERT_POLICY);
-    paramsPerRow = cols.length;
-  } else if (operation === 'update') {
-    const pks = metadata.primaryKeys ?? [];
-    paramsPerRow = pks.length + selectUpdatableColumns(metadata).length;
-  } else {
-    paramsPerRow = 1;
-  }
-
-  const size = calcChunkSize(paramsPerRow, maxBatchSize, MSSQL_PARAM_LIMIT);
-  return chunkArray(entities, size);
 }

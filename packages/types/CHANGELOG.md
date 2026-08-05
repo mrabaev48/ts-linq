@@ -1,5 +1,92 @@
 # @ts-linq/types
 
+## 5.0.0
+
+### Major Changes
+
+- Dialects no longer reach into `@ts-linq/core` or `@ts-linq/metadata`: entity metadata is passed
+  into `buildSelect` by the caller, and schema introspection depends on a narrow execution port.
+  Dead `chunk*Batch` exports are gone and the three identical option builders collapse into one
+  implementation. No generated SQL changed.
+
+  ## Breaking: `SqlDialect.buildSelect` takes entity metadata
+
+  ```ts
+  // before
+  buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult;
+
+  // after
+  buildSelect<T>(
+    entityClass: new () => T,
+    options: QueryOptions,
+    metadata: EntityMetadata | undefined
+  ): SqlQueryResult;
+  ```
+
+  The dialect no longer calls `MetadataStorage.getEntity` internally — the caller resolves the
+  metadata and passes it in (Dependency Inversion). This removes a hidden dependency on a global
+  singleton and makes SELECT generation a pure function of its arguments.
+
+  **Migration** — resolve the metadata at the call site:
+
+  ```ts
+  -dialect.buildSelect(User, options);
+  +dialect.buildSelect(User, options, MetadataStorage.getEntity(User));
+  ```
+
+  `undefined` is a legitimate value: when `options.rawSqlSource` supplies the FROM target the dialect
+  never needs metadata, so `dialect.buildSelect(User, rawOpts, undefined)` is correct. The
+  `entityClass` parameter is retained only for the `Entity metadata not found for X` diagnostic.
+
+  If you subclass `AbstractSqlDialect`, delete your `getEntityMetadata` override — the abstract hook
+  no longer exists.
+
+  All in-repo callers (the three providers, `@ts-linq/query`'s `SqlCompilerImpl`, and the dialect
+  contract harness) are updated; the providers already held the metadata locally.
+
+  ## Breaking: `chunk*Batch` removed
+
+  `chunkPgBatch`, `chunkMysqlBatch` and `chunkMssqlBatch` were exported from each dialect's
+  `batch-syntax` but had no callers anywhere — batch chunking is done by the ORM's batch grouper.
+
+  **Migration** — compose the shared helpers, the way the ORM does:
+
+  ```ts
+  import { calcChunkSize, chunkArray } from '@ts-linq/sql-visitor';
+
+  const size = calcChunkSize(paramsPerRow, maxBatchSize, dialect.parameterLimit);
+  const chunks = chunkArray(entities, size);
+  ```
+
+  ## Breaking: dialects dropped their `@ts-linq/core` and `@ts-linq/metadata` dependencies
+
+  The introspectors (`PostgresDbIntrospector`, `MySqlDbIntrospector`, `MssqlDbIntrospector`) now take
+  the new `SqlQueryExecutor` port from `@ts-linq/types` instead of `DatabaseProvider` from
+  `@ts-linq/core`:
+
+  ```ts
+  export interface SqlQueryExecutor {
+    executeQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]>;
+  }
+  ```
+
+  `DatabaseProvider` satisfies this structurally, so passing a real provider still compiles and
+  requires no change. Only code that relied on a dialect package transitively providing
+  `@ts-linq/core` or `@ts-linq/metadata` needs to depend on them directly. A `no-dialect-to-core`
+  dependency-cruiser rule now enforces the boundary.
+
+  ## New: `DialectOptionsBuilder`
+
+  `@ts-linq/dialect-kit` exports `DialectOptionsBuilder`, the single implementation behind
+  `PostgresOptionsBuilder`, `MysqlOptionsBuilder` and `MssqlOptionsBuilder`. Those three names are
+  unchanged and remain constructible — they are now thin subclasses, so `instanceof` still works.
+
+  ## Breaking (`@ts-linq/testkits`): contract-harness registry helpers removed
+
+  `registerContractEntity` and `clearContractEntity` are gone: the dialect contract matrix passes the
+  new `contractSelectMeta` fixture straight to `buildSelect`, so it needs no global registry setup or
+  teardown. `runSqlDialectContract` is unchanged for callers.
+
 ## 4.11.0
 
 ### Minor Changes

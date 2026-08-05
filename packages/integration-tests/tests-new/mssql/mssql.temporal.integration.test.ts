@@ -133,9 +133,13 @@ mssqlDescribe('[integration][mssql] Temporal queries (system-versioned table)', 
 
   test('temporalAll() returns current and historical rows', async () => {
     const dialect = new MssqlDialect();
-    const { query, parameters } = dialect.buildSelect(TemporalEmployee, {
-      temporal: { mode: 'All' }
-    });
+    const { query, parameters } = dialect.buildSelect(
+      TemporalEmployee,
+      {
+        temporal: { mode: 'All' }
+      },
+      MetadataStorage.getEntity(TemporalEmployee)
+    );
     const rows = await provider.executeQuery<{ name: string; department: string }>(
       query,
       parameters as SqlParameter[]
@@ -151,9 +155,13 @@ mssqlDescribe('[integration][mssql] Temporal queries (system-versioned table)', 
 
   test('temporalAsOf() returns snapshot at insertTime (before the update)', async () => {
     const dialect = new MssqlDialect();
-    const { query, parameters } = dialect.buildSelect(TemporalEmployee, {
-      temporal: { mode: 'AsOf', from: insertTime }
-    });
+    const { query, parameters } = dialect.buildSelect(
+      TemporalEmployee,
+      {
+        temporal: { mode: 'AsOf', from: insertTime }
+      },
+      MetadataStorage.getEntity(TemporalEmployee)
+    );
     const rows = await provider.executeQuery<{ name: string; department: string }>(
       query,
       parameters as SqlParameter[]
@@ -169,9 +177,13 @@ mssqlDescribe('[integration][mssql] Temporal queries (system-versioned table)', 
 
   test('temporalAsOf() with current time returns current row', async () => {
     const dialect = new MssqlDialect();
-    const { query, parameters } = dialect.buildSelect(TemporalEmployee, {
-      temporal: { mode: 'AsOf', from: new Date() }
-    });
+    const { query, parameters } = dialect.buildSelect(
+      TemporalEmployee,
+      {
+        temporal: { mode: 'AsOf', from: new Date() }
+      },
+      MetadataStorage.getEntity(TemporalEmployee)
+    );
     const rows = await provider.executeQuery<{ name: string; department: string }>(
       query,
       parameters as SqlParameter[]
@@ -185,16 +197,24 @@ mssqlDescribe('[integration][mssql] Temporal queries (system-versioned table)', 
 
   test('MssqlDialect generates valid FOR SYSTEM_TIME ALL SQL', () => {
     const dialect = new MssqlDialect();
-    const { query } = dialect.buildSelect(TemporalEmployee, { temporal: { mode: 'All' } });
+    const { query } = dialect.buildSelect(
+      TemporalEmployee,
+      { temporal: { mode: 'All' } },
+      MetadataStorage.getEntity(TemporalEmployee)
+    );
     expect(query).toContain(`FROM [${TABLE_NAME}] FOR SYSTEM_TIME ALL`);
   });
 
   test('MssqlDialect generates valid FOR SYSTEM_TIME AS OF SQL', () => {
     const dialect = new MssqlDialect();
     const pointInTime = new Date('2023-01-01');
-    const { query, parameters } = dialect.buildSelect(TemporalEmployee, {
-      temporal: { mode: 'AsOf', from: pointInTime }
-    });
+    const { query, parameters } = dialect.buildSelect(
+      TemporalEmployee,
+      {
+        temporal: { mode: 'AsOf', from: pointInTime }
+      },
+      MetadataStorage.getEntity(TemporalEmployee)
+    );
     expect(query).toContain(`FROM [${TABLE_NAME}] FOR SYSTEM_TIME AS OF @p1`);
     expect(parameters[0]).toBe(pointInTime);
   });
@@ -203,9 +223,13 @@ mssqlDescribe('[integration][mssql] Temporal queries (system-versioned table)', 
     const dialect = new MssqlDialect();
     const from = new Date('2022-01-01');
     const to = new Date('2025-01-01');
-    const { query, parameters } = dialect.buildSelect(TemporalEmployee, {
-      temporal: { mode: 'Between', from, to }
-    });
+    const { query, parameters } = dialect.buildSelect(
+      TemporalEmployee,
+      {
+        temporal: { mode: 'Between', from, to }
+      },
+      MetadataStorage.getEntity(TemporalEmployee)
+    );
     expect(query).toContain(`FROM [${TABLE_NAME}] FOR SYSTEM_TIME BETWEEN @p1 AND @p2`);
     expect(parameters[0]).toBe(from);
     expect(parameters[1]).toBe(to);
@@ -215,9 +239,13 @@ mssqlDescribe('[integration][mssql] Temporal queries (system-versioned table)', 
     const dialect = new MssqlDialect();
     const from = new Date('2022-01-01');
     const to = new Date('2025-01-01');
-    const { query, parameters } = dialect.buildSelect(TemporalEmployee, {
-      temporal: { mode: 'FromTo', from, to }
-    });
+    const { query, parameters } = dialect.buildSelect(
+      TemporalEmployee,
+      {
+        temporal: { mode: 'FromTo', from, to }
+      },
+      MetadataStorage.getEntity(TemporalEmployee)
+    );
     expect(query).toContain(`FROM [${TABLE_NAME}] FOR SYSTEM_TIME FROM @p1 TO @p2`);
     expect(parameters[0]).toBe(from);
     expect(parameters[1]).toBe(to);
@@ -227,9 +255,13 @@ mssqlDescribe('[integration][mssql] Temporal queries (system-versioned table)', 
     const dialect = new MssqlDialect();
     const from = new Date('2022-01-01');
     const to = new Date('2025-01-01');
-    const { query, parameters } = dialect.buildSelect(TemporalEmployee, {
-      temporal: { mode: 'ContainedIn', from, to }
-    });
+    const { query, parameters } = dialect.buildSelect(
+      TemporalEmployee,
+      {
+        temporal: { mode: 'ContainedIn', from, to }
+      },
+      MetadataStorage.getEntity(TemporalEmployee)
+    );
     expect(query).toContain(`FROM [${TABLE_NAME}] FOR SYSTEM_TIME CONTAINED IN (@p1, @p2)`);
     expect(parameters[0]).toBe(from);
     expect(parameters[1]).toBe(to);

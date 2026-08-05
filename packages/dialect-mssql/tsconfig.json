@@ -15,10 +15,5 @@
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
-  "references": [
-    { "path": "../types" },
-    { "path": "../metadata" },
-    { "path": "../core" },
-    { "path": "../dialect-kit" }
-  ]
+  "references": [{ "path": "../types" }, { "path": "../dialect-kit" }]
 }

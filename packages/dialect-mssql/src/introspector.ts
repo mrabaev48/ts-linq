@@ -1,11 +1,11 @@
-import type { DatabaseProvider } from '@ts-linq/core';
 import type {
   DatabaseColumnModel,
   DatabaseForeignKeyModel,
   DatabaseIndexModel,
   DatabaseModel,
   DatabaseTableModel,
-  DbIntrospector
+  DbIntrospector,
+  SqlQueryExecutor
 } from '@ts-linq/types';
 
 function normalizeMssqlType(raw: string): string {
@@ -21,7 +21,7 @@ function normalizeMssqlType(raw: string): string {
 }
 
 export class MssqlDbIntrospector implements DbIntrospector {
-  public constructor(private readonly provider: DatabaseProvider) {}
+  public constructor(private readonly provider: SqlQueryExecutor) {}
 
   public async introspect(schema?: string): Promise<DatabaseModel> {
     const sch = schema ?? 'dbo';

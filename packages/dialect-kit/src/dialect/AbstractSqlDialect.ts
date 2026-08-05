@@ -83,7 +83,11 @@ export abstract class AbstractSqlDialect implements SqlDialect, SupportsCrud, Su
     return this.syntax.quoteStringLiteral(value);
   }
 
-  public buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult {
+  public buildSelect<T>(
+    entityClass: new () => T,
+    options: QueryOptions,
+    metadata: EntityMetadata | undefined
+  ): SqlQueryResult {
     this.assertTemporalSupported(options);
     const parameters: SqlParameter[] = [];
     let query = this.syntax.renderSelectHead(options);
@@ -95,7 +99,6 @@ export abstract class AbstractSqlDialect implements SqlDialect, SupportsCrud, Su
       parameters.push(...options.rawSqlSource.params);
       query += ` FROM (${options.rawSqlSource.sql}) AS t0`;
     } else {
-      const metadata = this.getEntityMetadata(entityClass);
       if (!metadata) throw new Error(`Entity metadata not found for ${entityClass.name}`);
       query += ` FROM ${this.syntax.quote(options.from ?? metadata.viewName ?? metadata.tableName)}`;
       query += this.renderTemporal(options, parameters);
@@ -248,13 +251,6 @@ export abstract class AbstractSqlDialect implements SqlDialect, SupportsCrud, Su
   }
 
   // --- Protected hooks: the only genuinely divergent behavior across dialects. ---
-
-  /**
-   * Resolve the entity metadata that `buildSelect` uses to derive the FROM target. Left to the
-   * concrete dialect so the base does not depend on the metadata registry (injection is the job of
-   * a later task); returns `undefined` when the entity is unknown.
-   */
-  protected abstract getEntityMetadata<T>(entityClass: new () => T): EntityMetadata | undefined;
 
   /**
    * Reject an unsupported temporal (`FOR SYSTEM_TIME`) query. Default: supported (no-op). Dialects

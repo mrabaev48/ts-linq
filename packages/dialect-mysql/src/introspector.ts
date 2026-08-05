@@ -1,11 +1,11 @@
-import type { DatabaseProvider } from '@ts-linq/core';
 import type {
   DatabaseColumnModel,
   DatabaseForeignKeyModel,
   DatabaseIndexModel,
   DatabaseModel,
   DatabaseTableModel,
-  DbIntrospector
+  DbIntrospector,
+  SqlQueryExecutor
 } from '@ts-linq/types';
 
 function normalizeMySqlType(raw: string): string {
@@ -21,7 +21,7 @@ function normalizeMySqlType(raw: string): string {
 }
 
 export class MySqlDbIntrospector implements DbIntrospector {
-  public constructor(private readonly provider: DatabaseProvider) {}
+  public constructor(private readonly provider: SqlQueryExecutor) {}
 
   public async introspect(schema?: string): Promise<DatabaseModel> {
     const tableNames = await this.listTables();

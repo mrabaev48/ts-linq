@@ -40,7 +40,7 @@ src/
 
 ## Dependencies
 
-- `@ts-linq/metadata`, `@ts-linq/sql-visitor`, `@ts-linq/types`, `@ts-linq/core`
+- `@ts-linq/dialect-kit`, `@ts-linq/sql-visitor`, `@ts-linq/types`
 
 ## License
 
