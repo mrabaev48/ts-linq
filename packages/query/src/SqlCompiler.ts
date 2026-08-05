@@ -1,3 +1,4 @@
+import { MetadataStorage } from '@ts-linq/metadata';
 import { emitTagComments } from '@ts-linq/sql-visitor';
 import type { QueryOptions, SqlDialect, SqlParameter } from '@ts-linq/types';
 
@@ -68,7 +69,14 @@ export class SqlCompilerImpl implements SqlCompiler {
         return sqlStr;
       });
     }
-    return this._dialect.buildSelect(entityClass, normalized);
+    // Metadata is resolved here, not inside the dialect: dialects are pure SQL emitters and must
+    // not reach into the global registry (parameterize-from-above). `undefined` is legitimate for
+    // a raw-SQL source, where the dialect never needs a FROM target.
+    return this._dialect.buildSelect(
+      entityClass,
+      normalized,
+      MetadataStorage.getEntity(entityClass)
+    );
   }
 
   public generateFromModel(

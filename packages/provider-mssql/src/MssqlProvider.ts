@@ -360,7 +360,7 @@ export class MssqlProvider extends DatabaseProvider {
     ];
 
     const dialect = this.getDialect();
-    const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 });
+    const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 }, metadata);
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
 
     if (rows.length === 0) return null;
@@ -375,7 +375,7 @@ export class MssqlProvider extends DatabaseProvider {
     const where: import('@ts-linq/types').WhereClause[] = [];
 
     const dialect = this.getDialect();
-    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const { query, parameters } = dialect.buildSelect(entityClass, { where }, metadata);
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
@@ -399,7 +399,7 @@ export class MssqlProvider extends DatabaseProvider {
     }
 
     const dialect = this.getDialect();
-    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const { query, parameters } = dialect.buildSelect(entityClass, { where }, metadata);
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
@@ -429,7 +429,7 @@ export class MssqlProvider extends DatabaseProvider {
     ];
 
     const dialect = this.getDialect();
-    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const { query, parameters } = dialect.buildSelect(entityClass, { where }, metadata);
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }

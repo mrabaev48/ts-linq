@@ -122,13 +122,13 @@ describe('MySQL Provider + QueryBuilder Integration', () => {
     it('should use very large number for LIMIT without OFFSET', () => {
       // MySQL requires a LIMIT to use OFFSET; uses max BIGINT unsigned as sentinel
       const opts: QueryOptions = { offset: 10 };
-      const { query } = dialect.buildSelect(Product, opts);
+      const { query } = dialect.buildSelect(Product, opts, MetadataStorage.getEntity(Product));
       expect(query).toContain('LIMIT 18446744073709551615 OFFSET 10');
     });
 
     it('should use proper LIMIT OFFSET syntax', () => {
       const opts: QueryOptions = { limit: 5, offset: 2 };
-      const { query } = dialect.buildSelect(Product, opts);
+      const { query } = dialect.buildSelect(Product, opts, MetadataStorage.getEntity(Product));
       expect(query).toContain('LIMIT 5 OFFSET 2');
     });
   });
@@ -163,7 +163,7 @@ describe('MySQL Provider + QueryBuilder Integration', () => {
       // The dialect generates standard SELECT; FOR UPDATE is added at provider/session level.
       // Verify the generated SELECT is valid and can be extended with a locking clause.
       const opts: QueryOptions = {};
-      const { query } = dialect.buildSelect(Product, opts);
+      const { query } = dialect.buildSelect(Product, opts, MetadataStorage.getEntity(Product));
       expect(query).toMatch(/^SELECT \* FROM `products`/);
       // A driver-level lock clause can be appended to the generated SQL
       const withLock = `${query} FOR UPDATE`;
@@ -176,7 +176,11 @@ describe('MySQL Provider + QueryBuilder Integration', () => {
       const opts: QueryOptions = {
         where: [{ condition: 'id = ?', parameters: [1] }]
       };
-      const { query, parameters } = dialect.buildSelect(Product, opts);
+      const { query, parameters } = dialect.buildSelect(
+        Product,
+        opts,
+        MetadataStorage.getEntity(Product)
+      );
       expect(query).toContain('WHERE');
       expect(parameters).toHaveLength(1);
       expect(parameters[0]).toBe(1);

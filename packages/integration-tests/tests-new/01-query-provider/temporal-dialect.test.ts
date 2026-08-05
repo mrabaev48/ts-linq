@@ -132,14 +132,22 @@ describe('MssqlDialect temporal SQL emission', () => {
   it('temporalAsOf: emits FOR SYSTEM_TIME AS OF @p1 after FROM', () => {
     const pointInTime = new Date('2023-01-01T00:00:00Z');
     const options: QueryOptions = { temporal: { mode: 'AsOf', from: pointInTime } };
-    const { query, parameters } = dialect.buildSelect(Employee, options);
+    const { query, parameters } = dialect.buildSelect(
+      Employee,
+      options,
+      MetadataStorage.getEntity(Employee)
+    );
     expect(query).toMatch(/FROM \[employees\] FOR SYSTEM_TIME AS OF @p1/);
     expect(parameters).toEqual([pointInTime]);
   });
 
   it('temporalAll: emits FOR SYSTEM_TIME ALL after FROM without params', () => {
     const options: QueryOptions = { temporal: { mode: 'All' } };
-    const { query, parameters } = dialect.buildSelect(Employee, options);
+    const { query, parameters } = dialect.buildSelect(
+      Employee,
+      options,
+      MetadataStorage.getEntity(Employee)
+    );
     expect(query).toMatch(/FROM \[employees\] FOR SYSTEM_TIME ALL/);
     expect(parameters).toHaveLength(0);
   });
@@ -148,7 +156,11 @@ describe('MssqlDialect temporal SQL emission', () => {
     const from = new Date('2022-01-01');
     const to = new Date('2023-01-01');
     const options: QueryOptions = { temporal: { mode: 'Between', from, to } };
-    const { query, parameters } = dialect.buildSelect(Employee, options);
+    const { query, parameters } = dialect.buildSelect(
+      Employee,
+      options,
+      MetadataStorage.getEntity(Employee)
+    );
     expect(query).toMatch(/FOR SYSTEM_TIME BETWEEN @p1 AND @p2/);
     expect(parameters).toEqual([from, to]);
   });
@@ -157,7 +169,11 @@ describe('MssqlDialect temporal SQL emission', () => {
     const from = new Date('2022-01-01');
     const to = new Date('2023-01-01');
     const options: QueryOptions = { temporal: { mode: 'FromTo', from, to } };
-    const { query, parameters } = dialect.buildSelect(Employee, options);
+    const { query, parameters } = dialect.buildSelect(
+      Employee,
+      options,
+      MetadataStorage.getEntity(Employee)
+    );
     expect(query).toMatch(/FOR SYSTEM_TIME FROM @p1 TO @p2/);
     expect(parameters).toEqual([from, to]);
   });
@@ -166,7 +182,11 @@ describe('MssqlDialect temporal SQL emission', () => {
     const from = new Date('2022-01-01');
     const to = new Date('2023-01-01');
     const options: QueryOptions = { temporal: { mode: 'ContainedIn', from, to } };
-    const { query, parameters } = dialect.buildSelect(Employee, options);
+    const { query, parameters } = dialect.buildSelect(
+      Employee,
+      options,
+      MetadataStorage.getEntity(Employee)
+    );
     expect(query).toMatch(/FOR SYSTEM_TIME CONTAINED IN \(@p1, @p2\)/);
     expect(parameters).toEqual([from, to]);
   });
@@ -177,7 +197,7 @@ describe('MssqlDialect temporal SQL emission', () => {
       temporal: { mode: 'AsOf', from: pointInTime },
       where: [{ condition: 'department = ?', parameters: ['Sales'] }]
     };
-    const { query } = dialect.buildSelect(Employee, options);
+    const { query } = dialect.buildSelect(Employee, options, MetadataStorage.getEntity(Employee));
     const fromIdx = query.indexOf('FROM [employees]');
     const temporalIdx = query.indexOf('FOR SYSTEM_TIME');
     const whereIdx = query.indexOf('WHERE');
@@ -192,7 +212,11 @@ describe('MssqlDialect temporal SQL emission', () => {
       temporal: { mode: 'AsOf', from: pointInTime },
       where: [{ condition: 'department = ?', parameters: ['Engineering'] }]
     };
-    const { query, parameters } = dialect.buildSelect(Employee, options);
+    const { query, parameters } = dialect.buildSelect(
+      Employee,
+      options,
+      MetadataStorage.getEntity(Employee)
+    );
     expect(query).toContain('@p1');
     expect(query).toContain('@p2');
     expect(parameters[0]).toBe(pointInTime);
@@ -204,7 +228,7 @@ describe('MssqlDialect temporal SQL emission', () => {
       temporal: { mode: 'All' },
       rawSqlSource: { sql: 'SELECT * FROM employees_backup', params: [] }
     };
-    const { query } = dialect.buildSelect(Employee, options);
+    const { query } = dialect.buildSelect(Employee, options, MetadataStorage.getEntity(Employee));
     expect(query).not.toContain('FOR SYSTEM_TIME');
     expect(query).toContain('FROM (SELECT * FROM employees_backup) AS t0');
   });
@@ -224,17 +248,23 @@ describe('PostgresDialect temporal guard', () => {
 
   it('throws TemporalNotSupportedError for AsOf', () => {
     const options: QueryOptions = { temporal: { mode: 'AsOf', from: new Date() } };
-    expect(() => dialect.buildSelect(Employee, options)).toThrow(TemporalNotSupportedError);
+    expect(() =>
+      dialect.buildSelect(Employee, options, MetadataStorage.getEntity(Employee))
+    ).toThrow(TemporalNotSupportedError);
   });
 
   it('throws TemporalNotSupportedError for All', () => {
     const options: QueryOptions = { temporal: { mode: 'All' } };
-    expect(() => dialect.buildSelect(Employee, options)).toThrow(TemporalNotSupportedError);
+    expect(() =>
+      dialect.buildSelect(Employee, options, MetadataStorage.getEntity(Employee))
+    ).toThrow(TemporalNotSupportedError);
   });
 
   it('error message mentions FOR SYSTEM_TIME', () => {
     const options: QueryOptions = { temporal: { mode: 'All' } };
-    expect(() => dialect.buildSelect(Employee, options)).toThrow(/FOR SYSTEM_TIME/);
+    expect(() =>
+      dialect.buildSelect(Employee, options, MetadataStorage.getEntity(Employee))
+    ).toThrow(/FOR SYSTEM_TIME/);
   });
 });
 
@@ -252,16 +282,22 @@ describe('MysqlDialect temporal guard', () => {
 
   it('throws TemporalNotSupportedError for AsOf', () => {
     const options: QueryOptions = { temporal: { mode: 'AsOf', from: new Date() } };
-    expect(() => dialect.buildSelect(Employee, options)).toThrow(TemporalNotSupportedError);
+    expect(() =>
+      dialect.buildSelect(Employee, options, MetadataStorage.getEntity(Employee))
+    ).toThrow(TemporalNotSupportedError);
   });
 
   it('throws TemporalNotSupportedError for All', () => {
     const options: QueryOptions = { temporal: { mode: 'All' } };
-    expect(() => dialect.buildSelect(Employee, options)).toThrow(TemporalNotSupportedError);
+    expect(() =>
+      dialect.buildSelect(Employee, options, MetadataStorage.getEntity(Employee))
+    ).toThrow(TemporalNotSupportedError);
   });
 
   it('error message mentions FOR SYSTEM_TIME', () => {
     const options: QueryOptions = { temporal: { mode: 'All' } };
-    expect(() => dialect.buildSelect(Employee, options)).toThrow(/FOR SYSTEM_TIME/);
+    expect(() =>
+      dialect.buildSelect(Employee, options, MetadataStorage.getEntity(Employee))
+    ).toThrow(/FOR SYSTEM_TIME/);
   });
 });

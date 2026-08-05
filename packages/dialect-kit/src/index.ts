@@ -16,6 +16,9 @@ export {
   selectUpdatableColumns
 } from './columns/select-columns';
 export { applyConverter, coerceSqlParameter } from './params/coerce';
+// Shared per-dialect option builder — the single implementation behind the per-dialect
+// `PostgresOptionsBuilder`/`MysqlOptionsBuilder`/`MssqlOptionsBuilder` names.
+export { DialectOptionsBuilder } from './options/DialectOptionsBuilder';
 export { formatValue } from './params/format-value';
 export { numberPlaceholders } from './params/placeholders';
 

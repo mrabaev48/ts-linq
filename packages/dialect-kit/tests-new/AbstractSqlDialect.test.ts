@@ -29,15 +29,6 @@ class TestDialect extends AbstractSqlDialect {
     temporal: false
   };
 
-  constructor(private readonly meta?: EntityMetadata) {
-    super();
-  }
-
-  protected getEntityMetadata(): EntityMetadata | undefined {
-    this.calls.push('getEntityMetadata');
-    return this.meta;
-  }
-
   protected assertTemporalSupported(): void {
     this.calls.push('assertTemporalSupported');
   }
@@ -70,7 +61,7 @@ class Users {}
 
 describe('AbstractSqlDialect (Template Method)', () => {
   it('assembles SELECT clauses in the invariant order via the injected syntax', () => {
-    const dialect = new TestDialect(metadata());
+    const dialect = new TestDialect();
     const options: QueryOptions = {
       select: ['id', 'name'],
       where: [{ condition: 'id = ?', parameters: [1] }],
@@ -78,37 +69,35 @@ describe('AbstractSqlDialect (Template Method)', () => {
       limit: 10
     } as unknown as QueryOptions;
 
-    const { query } = dialect.buildSelect(Users, options);
+    const { query } = dialect.buildSelect(Users, options, metadata());
 
     // head → FROM(<quoted>) → WHERE → ORDER BY → LIMIT, in that order.
     expect(query).toBe('SELECT id, name FROM <users> WHERE id = ? ORDER BY name ASC LIMIT 10');
-    // Temporal + CTE hooks run before metadata resolution.
-    expect(dialect.calls).toEqual([
-      'assertTemporalSupported',
-      'applyCtePrefix',
-      'getEntityMetadata'
-    ]);
+    // Temporal + CTE hooks still run before the FROM target is rendered.
+    expect(dialect.calls).toEqual(['assertTemporalSupported', 'applyCtePrefix']);
   });
 
   it('collects SELECT-clause params before FROM/WHERE params', () => {
-    const dialect = new TestDialect(metadata());
+    const dialect = new TestDialect();
     const options: QueryOptions = {
       select: ['?'],
       selectParams: ['select-param'],
       where: [{ condition: 'id = ?', parameters: ['where-param'] }]
     } as unknown as QueryOptions;
 
-    const { parameters } = dialect.buildSelect(Users, options);
+    const { parameters } = dialect.buildSelect(Users, options, metadata());
     expect(parameters).toEqual(['select-param', 'where-param']);
   });
 
   it('throws when the entity metadata cannot be resolved', () => {
-    const dialect = new TestDialect(undefined);
-    expect(() => dialect.buildSelect(Users, {} as QueryOptions)).toThrow(/metadata not found/i);
+    const dialect = new TestDialect();
+    expect(() => dialect.buildSelect(Users, {} as QueryOptions, undefined)).toThrow(
+      /metadata not found/i
+    );
   });
 
   it('applies INSERT decoration and the injected column separator', () => {
-    const dialect = new TestDialect(metadata());
+    const dialect = new TestDialect();
     const result = dialect.buildInsert({ id: 1, name: 'Alice' }, metadata());
     // primary key `id` is supplied, so it is included; separator is the fake `,` (no space).
     expect(result.sql).toBe('INSERT INTO <users> (<id>,<name>) VALUES (?,?) RETURNING *');
@@ -117,7 +106,7 @@ describe('AbstractSqlDialect (Template Method)', () => {
   });
 
   it('builds UPDATE with SET params before PK-WHERE params', () => {
-    const dialect = new TestDialect(metadata());
+    const dialect = new TestDialect();
     const result = dialect.buildUpdate({ id: 7, name: 'Bob' }, metadata());
     expect(result.sql).toBe('UPDATE <users> SET <name> = ? WHERE <id> = ?');
     expect(result.parameters).toEqual(['Bob', 7]);
@@ -129,7 +118,7 @@ describe('AbstractSqlDialect (Template Method)', () => {
       columns: [{ propertyName: 'id', columnName: 'id' }],
       primaryKeys: ['id']
     } as unknown as EntityMetadata;
-    const dialect = new TestDialect(pkOnly);
+    const dialect = new TestDialect();
     expect(() => dialect.buildUpdate({ id: 1 }, pkOnly)).toThrow(/no updatable columns/i);
   });
 });

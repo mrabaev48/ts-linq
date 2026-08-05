@@ -12,7 +12,7 @@ import {
   selectCases,
   updateCases
 } from './cases';
-import { batchMeta, clearContractEntity, registerContractEntity } from './fixtures';
+import { batchMeta } from './fixtures';
 import type { SqlDialectContractGolden } from './goldenTypes';
 
 /**
@@ -31,14 +31,8 @@ export function runSqlDialectContract(
   const dialect = makeDialect();
 
   describe('SqlDialect contract', () => {
-    beforeEach(() => {
-      // `buildSelect` resolves the table name via the global metadata storage.
-      registerContractEntity();
-    });
-
-    afterEach(() => {
-      clearContractEntity();
-    });
+    // No global metadata setup: every case carries its own `EntityMetadata`, so the matrix is a
+    // pure function of its inputs and cannot leak registry state between suites.
 
     describe('golden completeness', () => {
       const groups: ReadonlyArray<

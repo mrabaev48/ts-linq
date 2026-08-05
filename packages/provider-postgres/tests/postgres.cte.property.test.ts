@@ -45,7 +45,7 @@ describe('[pg] CTE/property-based', () => {
           from: 't',
           where
         };
-        const built = dialect.buildSelect(S, opts);
+        const built = dialect.buildSelect(S, opts, MetadataStorage.getEntity(S));
         expect(built.query.startsWith('WITH t AS (')).toBe(true);
         const total = sp + wp;
         if (total > 0) {

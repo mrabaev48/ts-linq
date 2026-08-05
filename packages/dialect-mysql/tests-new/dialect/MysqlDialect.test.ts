@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
-import { MetadataStorage } from '@ts-linq/metadata';
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import type { EntityMetadata, QueryOptions } from '@ts-linq/types';
 
 import { MysqlDialect } from '../../src/MysqlDialect';
@@ -9,36 +8,29 @@ class TestEntity {
   name!: string;
 }
 
+// `buildSelect` takes metadata as a parameter, so this suite needs no global registry setup.
+const testMeta: EntityMetadata = {
+  tableName: 'test_table',
+  primaryKeys: ['id'],
+  columns: [
+    { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false },
+    { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: true }
+  ],
+  relationships: [],
+  indexes: []
+};
+
 describe('MysqlDialect', () => {
   let dialect: MysqlDialect;
 
   beforeEach(() => {
     dialect = new MysqlDialect();
-    MetadataStorage.getInstance().clear();
-    MetadataStorage.addEntity(TestEntity, 'test_table');
-    MetadataStorage.addColumn(TestEntity, {
-      propertyName: 'id',
-      columnName: 'id',
-      type: 'INTEGER',
-      nullable: false
-    });
-    MetadataStorage.addColumn(TestEntity, {
-      propertyName: 'name',
-      columnName: 'name',
-      type: 'TEXT',
-      nullable: true
-    });
-    MetadataStorage.addPrimaryKey(TestEntity, 'id');
-  });
-
-  afterEach(() => {
-    MetadataStorage.getInstance().clear();
   });
 
   describe('buildSelect - basic queries', () => {
     it('should build SELECT * with backtick identifiers', () => {
       const options: QueryOptions = {};
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table`');
       expect(result.parameters).toEqual([]);
@@ -48,7 +40,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         select: ['id', 'name']
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT id, name FROM `test_table`');
       expect(result.parameters).toEqual([]);
@@ -59,7 +51,7 @@ describe('MysqlDialect', () => {
         distinct: true,
         select: ['name']
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT DISTINCT name FROM `test_table`');
       expect(result.parameters).toEqual([]);
@@ -69,7 +61,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         from: 'custom_table'
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `custom_table`');
       expect(result.parameters).toEqual([]);
@@ -78,7 +70,7 @@ describe('MysqlDialect', () => {
     it('should throw error when entity metadata not found', () => {
       class UnknownEntity {}
 
-      expect(() => dialect.buildSelect(UnknownEntity, {})).toThrow(
+      expect(() => dialect.buildSelect(UnknownEntity, {}, undefined)).toThrow(
         'Entity metadata not found for UnknownEntity'
       );
     });
@@ -89,7 +81,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         where: { condition: 'id = ?', parameters: [1] }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` WHERE id = ?');
       expect(result.parameters).toEqual([1]);
@@ -102,7 +94,7 @@ describe('MysqlDialect', () => {
           { condition: 'name LIKE ?', parameters: ['%test%'] }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` WHERE id > ? AND name LIKE ?');
       expect(result.parameters).toEqual([10, '%test%']);
@@ -112,7 +104,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         where: []
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table`');
       expect(result.parameters).toEqual([]);
@@ -125,7 +117,7 @@ describe('MysqlDialect', () => {
           { condition: 'c IN (?, ?)', parameters: [3, 4] }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` WHERE a = ? AND b = ? AND c IN (?, ?)');
       expect(result.parameters).toEqual([1, 2, 3, 4]);
@@ -137,7 +129,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         joins: [{ type: 'INNER', table: 'orders', on: 'orders.user_id = test_table.id' }]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM `test_table` INNER JOIN `orders` ON orders.user_id = test_table.id'
@@ -149,7 +141,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         joins: [{ type: 'LEFT', table: 'orders', alias: 'o', on: 'o.user_id = test_table.id' }]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM `test_table` LEFT JOIN `orders` AS o ON o.user_id = test_table.id'
@@ -164,7 +156,7 @@ describe('MysqlDialect', () => {
           { type: 'LEFT', table: 'products', alias: 'p', on: 'p.id = o.product_id' }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM `test_table` INNER JOIN `orders` AS o ON o.user_id = test_table.id LEFT JOIN `products` AS p ON p.id = o.product_id'
@@ -187,7 +179,7 @@ describe('MysqlDialect', () => {
           }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM `test_table` INNER JOIN `orders` ON `orders`.`user_id` = `test_table`.`id`'
@@ -200,7 +192,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         orderBy: [{ column: 'name', direction: 'ASC' }]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` ORDER BY name ASC');
       expect(result.parameters).toEqual([]);
@@ -210,7 +202,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         orderBy: [{ column: 'id', direction: 'DESC' }]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` ORDER BY id DESC');
       expect(result.parameters).toEqual([]);
@@ -223,7 +215,7 @@ describe('MysqlDialect', () => {
           { column: 'id', direction: 'DESC' }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` ORDER BY name ASC, id DESC');
       expect(result.parameters).toEqual([]);
@@ -235,7 +227,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         groupBy: { columns: ['name'] }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` GROUP BY name');
       expect(result.parameters).toEqual([]);
@@ -248,7 +240,7 @@ describe('MysqlDialect', () => {
           having: { condition: 'COUNT(*) > ?', parameters: [5] }
         }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` GROUP BY name HAVING COUNT(*) > ?');
       expect(result.parameters).toEqual([5]);
@@ -258,7 +250,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         groupBy: { columns: ['name', 'id'] }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` GROUP BY name, id');
       expect(result.parameters).toEqual([]);
@@ -268,7 +260,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         groupBy: ['name', 'id']
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` GROUP BY name, id');
       expect(result.parameters).toEqual([]);
@@ -280,7 +272,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         limit: 10
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` LIMIT 10');
       expect(result.parameters).toEqual([]);
@@ -291,7 +283,7 @@ describe('MysqlDialect', () => {
         limit: 10,
         offset: 20
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` LIMIT 10 OFFSET 20');
       expect(result.parameters).toEqual([]);
@@ -301,7 +293,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         offset: 20
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` LIMIT 18446744073709551615 OFFSET 20');
       expect(result.parameters).toEqual([]);
@@ -311,7 +303,7 @@ describe('MysqlDialect', () => {
       const options: QueryOptions = {
         limit: 0
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM `test_table` LIMIT 0');
       expect(result.parameters).toEqual([]);
@@ -330,7 +322,7 @@ describe('MysqlDialect', () => {
         limit: 10,
         offset: 5
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT DISTINCT test_table.id, test_table.name, COUNT(o.id) AS order_count FROM `test_table` LEFT JOIN `orders` AS o ON o.user_id = test_table.id WHERE test_table.name LIKE ? GROUP BY test_table.id, test_table.name ORDER BY order_count DESC LIMIT 10 OFFSET 5'
@@ -351,7 +343,7 @@ describe('MysqlDialect', () => {
           having: { condition: 'COUNT(*) > ?', parameters: [5] }
         }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.parameters).toEqual([100, 1, 'admin', 5]);
       const questionMarks = result.query.match(/\?/g);

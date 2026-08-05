@@ -75,6 +75,21 @@ module.exports = {
     },
 
     {
+      name: 'no-dialect-to-core',
+      severity: 'error',
+      comment:
+        'Dialects are pure SQL emitters and sit below core/metadata: they must receive metadata ' +
+        'and an execution port from above (see @ts-linq/types SqlQueryExecutor), never import the ' +
+        'core/provider runtime or the global metadata registry.',
+      from: {
+        path: '^packages/dialect-'
+      },
+      to: {
+        path: '^packages/(core|metadata)(/|$)'
+      }
+    },
+
+    {
       name: 'no-tests-in-production',
       severity: 'error',
       comment: 'Production code must not import test code.',
@@ -105,7 +120,7 @@ module.exports = {
       name: 'no-private-package-internals',
       severity: 'warn',
       comment:
-        'Avoid importing another package\'s internal files directly. Import from its public entrypoint.',
+        "Avoid importing another package's internal files directly. Import from its public entrypoint.",
       from: {
         path: '^packages/([^/]+)/src'
       },

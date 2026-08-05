@@ -1,5 +1,4 @@
 import { AbstractSqlDialect, type InsertDecoration } from '@ts-linq/dialect-kit';
-import { MetadataStorage } from '@ts-linq/metadata';
 import type { DialectVisitorSupport, DialectVisitorTranslators } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
@@ -95,10 +94,6 @@ export class MssqlDialect
     metadata: EntityMetadata
   ): SqlWithParams {
     return buildMssqlBatchDelete(entities, metadata);
-  }
-
-  protected getEntityMetadata<T>(entityClass: new () => T): EntityMetadata | undefined {
-    return MetadataStorage.getEntity(entityClass);
   }
 
   protected renderTemporal(options: QueryOptions, parameters: SqlParameter[]): string {
