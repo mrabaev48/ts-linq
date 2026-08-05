@@ -36,7 +36,7 @@ base error hierarchy. Every package imports from here; this package imports from
 | `tracking.ts` | Change tracking primitives (depends on `enums.ts`) |
 | `spatial-hierarchy.ts` | Translator interfaces (no deps) |
 | `diagnostics.ts` | Diagnostic config types (no deps) |
-| `scaffolding.ts` | DB-First scaffolding types (no deps) |
+| `scaffolding.ts` | DB-First scaffolding types + the `SqlQueryExecutor` introspection port (depends on `sql.ts`) |
 | `enums.ts` | Runtime enums — the package's value-emitting `enum`s, regular (non-`const`) string enums (no deps) |
 | `runtime.ts` | Runtime helpers — the only behaviour-carrying module: `ok()`, `err()`, `isTemplateSqlCache()` (type-only deps on `results.ts`, `cache.ts`) |
 | `errors.ts` | Base error hierarchy: `OrmError` abstract root, `OrmErrorCode`, `OrmErrorOptions`, and all concrete error classes (no deps) |

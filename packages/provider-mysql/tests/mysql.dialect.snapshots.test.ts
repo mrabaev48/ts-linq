@@ -50,7 +50,7 @@ describe('MySQL dialect snapshots', () => {
       ],
       selectParams: ['$.a.b', 'mysql search']
     };
-    const built = dialect.buildSelect(MUser, opts);
+    const built = dialect.buildSelect(MUser, opts, MetadataStorage.getEntity(MUser));
     expect(built).toMatchInlineSnapshot(`
       {
         "parameters": [

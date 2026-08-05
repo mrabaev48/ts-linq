@@ -1,3 +1,5 @@
+import { DialectOptionsBuilder } from '@ts-linq/dialect-kit';
+
 /**
  * Per-dialect option builder for PostgreSQL.
  * Mirrors EF Core's provider-extension pattern:
@@ -6,22 +8,8 @@
  * Usage:
  *   const pgOpts = new PostgresOptionsBuilder().maxBatchSize(100).build();
  *   // pass pgOpts.maxBatchSize to DbContextOptionsBuilder.maxBatchSize(...)
+ *
+ * The behaviour lives in the shared {@link DialectOptionsBuilder}; this subclass exists only to
+ * keep the Postgres-specific published name (and `instanceof`) stable.
  */
-export class PostgresOptionsBuilder {
-  private _maxBatchSize?: number;
-
-  /**
-   * Cap the number of rows per batch SQL statement.
-   * Mirrors EF Core's `UseNpgsql(conn, o => o.MaxBatchSize(n))`.
-   */
-  maxBatchSize(n: number): this {
-    this._maxBatchSize = n;
-    return this;
-  }
-
-  build(): { maxBatchSize?: number } {
-    return {
-      ...(this._maxBatchSize !== undefined ? { maxBatchSize: this._maxBatchSize } : {})
-    };
-  }
-}
+export class PostgresOptionsBuilder extends DialectOptionsBuilder {}

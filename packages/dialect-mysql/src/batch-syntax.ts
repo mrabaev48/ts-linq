@@ -4,7 +4,6 @@ import {
   selectInsertableColumns,
   selectUpdatableColumns
 } from '@ts-linq/dialect-kit';
-import { calcChunkSize, chunkArray } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
   BatchUpdateResult,
@@ -117,28 +116,4 @@ export function buildMysqlBatchDelete(entities: Entity[], metadata: EntityMetada
   const placeholders = parameters.map(() => '?').join(',');
   const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`;
   return { sql, parameters };
-}
-
-/**
- * Split entities into chunks respecting maxBatchSize and MYSQL_PARAM_LIMIT.
- */
-export function chunkMysqlBatch(
-  entities: Entity[],
-  metadata: EntityMetadata,
-  maxBatchSize: number,
-  operation: 'insert' | 'update' | 'delete'
-): Entity[][] {
-  let paramsPerRow: number;
-  if (operation === 'insert') {
-    const cols = selectInsertableColumns(metadata, entities[0] ?? {}, MYSQL_INSERT_POLICY);
-    paramsPerRow = cols.length;
-  } else if (operation === 'update') {
-    const pks = metadata.primaryKeys ?? [];
-    paramsPerRow = pks.length + selectUpdatableColumns(metadata).length;
-  } else {
-    paramsPerRow = 1;
-  }
-
-  const size = calcChunkSize(paramsPerRow, maxBatchSize, MYSQL_PARAM_LIMIT);
-  return chunkArray(entities, size);
 }

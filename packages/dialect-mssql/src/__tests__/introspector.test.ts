@@ -1,18 +1,16 @@
-import type { DatabaseProvider } from '@ts-linq/core';
+import type { SqlQueryExecutor } from '@ts-linq/types';
 
 import { MssqlDbIntrospector } from '../introspector';
 
-function makeProvider(responses: Record<string, unknown[]>): DatabaseProvider {
+function makeProvider(responses: Record<string, unknown[]>): SqlQueryExecutor {
   return {
     executeQuery: jest.fn(async (sql: string) => {
       for (const [key, rows] of Object.entries(responses)) {
         if (sql.includes(key)) return rows;
       }
       return [];
-    }),
-    connect: jest.fn(),
-    disconnect: jest.fn()
-  } as unknown as DatabaseProvider;
+    })
+  } as SqlQueryExecutor;
 }
 
 describe('MssqlDbIntrospector', () => {

@@ -367,15 +367,9 @@ importers:
 
   packages/dialect-mssql:
     dependencies:
-      '@ts-linq/core':
-        specifier: workspace:*
-        version: link:../core
       '@ts-linq/dialect-kit':
         specifier: workspace:*
         version: link:../dialect-kit
-      '@ts-linq/metadata':
-        specifier: workspace:*
-        version: link:../metadata
       '@ts-linq/sql-visitor':
         specifier: workspace:*
         version: link:../sql-visitor
@@ -398,15 +392,9 @@ importers:
 
   packages/dialect-mysql:
     dependencies:
-      '@ts-linq/core':
-        specifier: workspace:*
-        version: link:../core
       '@ts-linq/dialect-kit':
         specifier: workspace:*
         version: link:../dialect-kit
-      '@ts-linq/metadata':
-        specifier: workspace:*
-        version: link:../metadata
       '@ts-linq/sql-visitor':
         specifier: workspace:*
         version: link:../sql-visitor
@@ -429,15 +417,9 @@ importers:
 
   packages/dialect-postgres:
     dependencies:
-      '@ts-linq/core':
-        specifier: workspace:*
-        version: link:../core
       '@ts-linq/dialect-kit':
         specifier: workspace:*
         version: link:../dialect-kit
-      '@ts-linq/metadata':
-        specifier: workspace:*
-        version: link:../metadata
       '@ts-linq/sql-visitor':
         specifier: workspace:*
         version: link:../sql-visitor

@@ -222,7 +222,7 @@ describe('Dialect buildSelect with rawSqlSource', () => {
   describe('PostgresDialect', () => {
     it('wraps raw SQL as derived table FROM (...) AS t0', () => {
       const dialect = new PostgresDialect();
-      const { query } = dialect.buildSelect(User, rawOpts);
+      const { query } = dialect.buildSelect(User, rawOpts, undefined);
       expect(query).toContain('FROM (SELECT * FROM users WHERE tenant_id = $1) AS t0');
     });
 
@@ -235,7 +235,7 @@ describe('Dialect buildSelect with rawSqlSource', () => {
         },
         where: [{ condition: 'age > ?', parameters: [18] }]
       };
-      const { query, parameters } = dialect.buildSelect(User, opts);
+      const { query, parameters } = dialect.buildSelect(User, opts, undefined);
       expect(query).toContain('$1');
       expect(query).toContain('$2');
       expect(parameters).toEqual([99, 18]);
@@ -243,7 +243,7 @@ describe('Dialect buildSelect with rawSqlSource', () => {
 
     it('generates valid SQL without WHERE when no extra filters', () => {
       const dialect = new PostgresDialect();
-      const { query, parameters } = dialect.buildSelect(User, rawOpts);
+      const { query, parameters } = dialect.buildSelect(User, rawOpts, undefined);
       expect(query).toContain('SELECT');
       expect(parameters).toEqual([42]);
     });
@@ -252,7 +252,7 @@ describe('Dialect buildSelect with rawSqlSource', () => {
   describe('MysqlDialect', () => {
     it('wraps raw SQL as derived table FROM (...) AS t0', () => {
       const dialect = new MysqlDialect();
-      const { query } = dialect.buildSelect(User, rawOpts);
+      const { query } = dialect.buildSelect(User, rawOpts, undefined);
       expect(query).toContain('FROM (SELECT * FROM users WHERE tenant_id = ?) AS t0');
     });
 
@@ -265,7 +265,7 @@ describe('Dialect buildSelect with rawSqlSource', () => {
         },
         where: [{ condition: 'age > ?', parameters: [18] }]
       };
-      const { query, parameters } = dialect.buildSelect(User, opts);
+      const { query, parameters } = dialect.buildSelect(User, opts, undefined);
       expect(query).toContain('WHERE age > ?');
       expect(parameters).toEqual([99, 18]);
     });
@@ -274,7 +274,7 @@ describe('Dialect buildSelect with rawSqlSource', () => {
   describe('MssqlDialect', () => {
     it('wraps raw SQL as derived table FROM (...) AS t0', () => {
       const dialect = new MssqlDialect();
-      const { query } = dialect.buildSelect(User, rawOpts);
+      const { query } = dialect.buildSelect(User, rawOpts, undefined);
       expect(query).toContain('FROM (SELECT * FROM users WHERE tenant_id = @p1) AS t0');
     });
 
@@ -287,7 +287,7 @@ describe('Dialect buildSelect with rawSqlSource', () => {
         },
         where: [{ condition: 'age > ?', parameters: [18] }]
       };
-      const { query, parameters } = dialect.buildSelect(User, opts);
+      const { query, parameters } = dialect.buildSelect(User, opts, undefined);
       expect(query).toContain('@p1');
       expect(query).toContain('@p2');
       expect(parameters).toEqual([99, 18]);

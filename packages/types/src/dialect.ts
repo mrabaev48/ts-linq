@@ -130,7 +130,19 @@ export interface SupportsTemporal {}
 
 // SQL Dialect interface
 export interface SqlDialect {
-  buildSelect<T>(entityClass: new () => T, options: QueryOptions): SqlQueryResult;
+  /**
+   * Assemble a SELECT statement. `metadata` is resolved by the caller (parameterize-from-above) —
+   * dialects must not reach into the global metadata registry themselves.
+   *
+   * `undefined` is allowed: it means the FROM target comes from `options.rawSqlSource` or
+   * `options.from`. The dialect only raises `Entity metadata not found` when it actually needs the
+   * table/view name. `entityClass` is retained for that diagnostic.
+   */
+  buildSelect<T>(
+    entityClass: new () => T,
+    options: QueryOptions,
+    metadata: EntityMetadata | undefined
+  ): SqlQueryResult;
   buildInsert?(entity: Record<string, unknown>, metadata: EntityMetadata): SqlWithReturning;
   buildUpdate?(
     entity: Record<string, unknown>,

@@ -1,5 +1,20 @@
 # @ts-linq/orm
 
+## 6.0.11
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@5.0.0
+  - @ts-linq/query@4.2.7
+  - @ts-linq/concurrency@3.0.12
+  - @ts-linq/core@3.5.3
+  - @ts-linq/metadata@4.1.11
+  - @ts-linq/metrics-safe@1.2.14
+  - @ts-linq/migrations@2.8.10
+  - @ts-linq/sql-visitor@4.3.8
+  - @ts-linq/telemetry@2.3.5
+
 ## 6.0.10
 
 ### Patch Changes

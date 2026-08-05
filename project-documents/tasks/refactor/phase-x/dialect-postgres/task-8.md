@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: completed
 phase: phase-x
 package: dialect-postgres
 priority: P2
@@ -90,3 +90,40 @@ Three smaller boundary/dead-code issues cut across the cluster:
 The `buildSelect`-signature change is the only consumer-facing API change here and should be batched with the
 `task-1` base-dialect work to avoid two breaking passes. Verify the chunkers are truly dead before deleting —
 the ORM `BatchExecutor` (`packages/orm/src/save-changes/batch-executor.ts`) is the real chunking path.
+
+## Outcome
+
+1. **`chunk*Batch` removed.** Confirmed dead (zero importers). The real chunking path is
+   `packages/orm/src/save-changes/batch-grouper.ts`, which composes `calcChunkSize`/`chunkArray`
+   from `@ts-linq/sql-visitor` with `dialect.parameterLimit`. The now-unused `sql-visitor` chunk
+   import was dropped from each `batch-syntax.ts`; the `*_PARAM_LIMIT` constants stay (read by the
+   dialect classes' `parameterLimit`).
+2. **`DialectOptionsBuilder`** added to `@ts-linq/dialect-kit`; the three per-dialect classes became
+   one-line subclasses, so `new PostgresOptionsBuilder()` and `instanceof` are unchanged.
+3. **`formatValue`** needed no work here — `task-7` had already relocated it to
+   `dialect-kit/src/params/format-value.ts`, and no dialect imported `SqlHelper` any more. Removing
+   the now-callerless `SqlHelper.formatValue` from `@ts-linq/core` remains `task-11`.
+4. **`buildSelect` takes metadata.** New signature:
+   `buildSelect<T>(entityClass, options, metadata: EntityMetadata | undefined)`. The abstract
+   `getEntityMetadata` hook and every `MetadataStorage` import were deleted from the dialects.
+   `undefined` is legitimate (the `rawSqlSource` path never needs a FROM target); `entityClass` is
+   retained purely for the `Entity metadata not found for X` diagnostic. Production callers updated:
+   the three providers (12 sites, each already holding the metadata locally), `SqlCompilerImpl`
+   (`@ts-linq/query`, not listed in the original evidence) and the `testkits` contract harness.
+5. **dialect→core edge fully removed**, not just documented: the introspectors now depend on a new
+   narrow `SqlQueryExecutor` port in `@ts-linq/types` (they only ever called `executeQuery`), so
+   `@ts-linq/core` **and** `@ts-linq/metadata` were dropped from all three dialect `package.json`s
+   and `tsconfig.json` references. A new `no-dialect-to-core` dependency-cruiser rule (severity
+   `error`) now enforces this permanently.
+
+### Coupling reduction, demonstrated by tests
+
+The three `*Dialect.test.ts` suites and the `testkits` contract harness dropped their global
+`MetadataStorage` `beforeEach`/`afterEach` setup entirely and pass plain metadata literals; the
+introspector fakes lost their `as unknown as DatabaseProvider` casts.
+
+### Validation
+
+`typecheck`, `lint` (0 errors), `test:unit` (4201), `test:integration` (461), `test:e2e` (290),
+`build`, `arch:deps` (incl. the new rule), `arch:cycles`, `arch:dead` — all green. Contract golden
+files are byte-identical: no SQL changed.

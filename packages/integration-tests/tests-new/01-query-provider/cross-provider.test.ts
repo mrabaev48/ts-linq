@@ -64,7 +64,7 @@ describe('Cross-Provider Compatibility', () => {
 
     it('should execute same query across all providers with consistent results', () => {
       const opts: QueryOptions = { select: ['id', 'name', 'score'] };
-      const { query } = dialect.buildSelect(CrossItem, opts);
+      const { query } = dialect.buildSelect(CrossItem, opts, MetadataStorage.getEntity(CrossItem));
       // All providers must emit a SELECT with the given columns
       expect(query).toContain('SELECT');
       expect(query).toContain('id');
@@ -78,7 +78,11 @@ describe('Cross-Provider Compatibility', () => {
       const opts: QueryOptions = {
         where: [{ condition: 'name IS NULL', parameters: [] }]
       };
-      const { query, parameters } = dialect.buildSelect(CrossItem, opts);
+      const { query, parameters } = dialect.buildSelect(
+        CrossItem,
+        opts,
+        MetadataStorage.getEntity(CrossItem)
+      );
       expect(query).toContain('WHERE');
       expect(query).toContain('name IS NULL');
       expect(parameters).toHaveLength(0);
@@ -86,7 +90,7 @@ describe('Cross-Provider Compatibility', () => {
 
     it('should support DISTINCT across providers', () => {
       const opts: QueryOptions = { distinct: true, select: ['name'] };
-      const { query } = dialect.buildSelect(CrossItem, opts);
+      const { query } = dialect.buildSelect(CrossItem, opts, MetadataStorage.getEntity(CrossItem));
       expect(query).toContain('SELECT DISTINCT');
       expect(query).toContain('name');
     });
@@ -95,8 +99,16 @@ describe('Cross-Provider Compatibility', () => {
       // UNION is composed at application level from two independent SELECT statements
       const opts1: QueryOptions = { where: [{ condition: 'score > ?', parameters: [50] }] };
       const opts2: QueryOptions = { where: [{ condition: 'score < ?', parameters: [10] }] };
-      const { query: q1 } = dialect.buildSelect(CrossItem, opts1);
-      const { query: q2 } = dialect.buildSelect(CrossItem, opts2);
+      const { query: q1 } = dialect.buildSelect(
+        CrossItem,
+        opts1,
+        MetadataStorage.getEntity(CrossItem)
+      );
+      const { query: q2 } = dialect.buildSelect(
+        CrossItem,
+        opts2,
+        MetadataStorage.getEntity(CrossItem)
+      );
       const union = `${q1} UNION ${q2}`;
       // Both halves must be valid SELECT statements
       expect(q1).toContain('SELECT');
@@ -113,7 +125,7 @@ describe('Cross-Provider Compatibility', () => {
           }
         ]
       };
-      const { query } = dialect.buildSelect(CrossItem, opts);
+      const { query } = dialect.buildSelect(CrossItem, opts, MetadataStorage.getEntity(CrossItem));
       expect(query).toContain('WHERE');
       expect(query).toContain('SELECT id FROM other_items');
     });
@@ -122,7 +134,7 @@ describe('Cross-Provider Compatibility', () => {
       const opts: QueryOptions = {
         select: ["CASE WHEN score >= 50 THEN 'pass' ELSE 'fail' END AS result"]
       };
-      const { query } = dialect.buildSelect(CrossItem, opts);
+      const { query } = dialect.buildSelect(CrossItem, opts, MetadataStorage.getEntity(CrossItem));
       expect(query).toContain('CASE WHEN');
       expect(query).toContain('THEN');
       expect(query).toContain('ELSE');
@@ -137,7 +149,7 @@ describe('Cross-Provider Compatibility', () => {
           }
         ]
       };
-      const { query } = dialect.buildSelect(CrossItem, opts);
+      const { query } = dialect.buildSelect(CrossItem, opts, MetadataStorage.getEntity(CrossItem));
       expect(query).toContain('WHERE');
       expect(query).toContain('EXISTS');
     });
@@ -147,7 +159,11 @@ describe('Cross-Provider Compatibility', () => {
       const opts: QueryOptions = {
         where: [{ condition: 'created_at > ?', parameters: [new Date('2024-01-01')] }]
       };
-      const { query, parameters } = dialect.buildSelect(CrossItem, opts);
+      const { query, parameters } = dialect.buildSelect(
+        CrossItem,
+        opts,
+        MetadataStorage.getEntity(CrossItem)
+      );
       expect(query).toContain('WHERE');
       expect(query).toContain('created_at');
       // One parameter must be passed through regardless of provider

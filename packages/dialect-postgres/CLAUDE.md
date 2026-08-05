@@ -7,7 +7,10 @@ syntax and schema introspection. Implements `SqlDialect` + `sql-visitor` ports.
 
 ## Hard boundaries
 
-- Depends on `metadata`, `sql-visitor`, `types`, `core`.
+- Depends on `dialect-kit`, `sql-visitor`, `types` **only**. The `core` and `metadata` edges were
+  removed (task-8) and are now forbidden by the `no-dialect-to-core` dependency-cruiser rule:
+  entity metadata arrives as a `buildSelect` parameter, and the introspector takes the narrow
+  `SqlQueryExecutor` port from `@ts-linq/types` instead of `DatabaseProvider`.
 - Must **not** depend on `provider-postgres` — the provider depends on the dialect, not vice versa.
 - Postgres specifics live here; nothing Postgres-specific should leak into `sql-visitor`/`core`.
 
