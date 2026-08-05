@@ -7,7 +7,10 @@ sequence emulation, and introspection. Implements `SqlDialect` + `sql-visitor` p
 
 ## Hard boundaries
 
-- Depends on `metadata`, `sql-visitor`, `types`, `core`.
+- Depends on `dialect-kit`, `sql-visitor`, `types` **only**. The `core` and `metadata` edges were
+  removed (dialect-postgres/task-8) and are now forbidden by the `no-dialect-to-core`
+  dependency-cruiser rule: entity metadata arrives as a `buildSelect` parameter, and the
+  introspector takes the narrow `SqlQueryExecutor` port from `@ts-linq/types`.
 - Must **not** depend on `provider-mysql` (the provider depends on this dialect).
 
 ## Critical invariants & known hazards

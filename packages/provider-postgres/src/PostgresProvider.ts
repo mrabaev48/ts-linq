@@ -362,7 +362,7 @@ export class PostgresProvider extends DatabaseProvider {
     ];
 
     const dialect = this.getDialect();
-    const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 });
+    const { query, parameters } = dialect.buildSelect(entityClass, { where, limit: 1 }, meta);
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
 
     const firstRow = rows[0];
@@ -378,7 +378,7 @@ export class PostgresProvider extends DatabaseProvider {
     const where: import('@ts-linq/types').WhereClause[] = [];
 
     const dialect = this.getDialect();
-    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const { query, parameters } = dialect.buildSelect(entityClass, { where }, meta);
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
@@ -402,7 +402,7 @@ export class PostgresProvider extends DatabaseProvider {
     });
 
     const dialect = this.getDialect();
-    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const { query, parameters } = dialect.buildSelect(entityClass, { where }, meta);
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }
@@ -429,7 +429,7 @@ export class PostgresProvider extends DatabaseProvider {
     ];
 
     const dialect = this.getDialect();
-    const { query, parameters } = dialect.buildSelect(entityClass, { where });
+    const { query, parameters } = dialect.buildSelect(entityClass, { where }, meta);
     const rows = await this.executeQuery<Record<string, unknown>>(query, parameters);
     return rows.map((r) => this.mapRowToEntity(r, entityClass));
   }

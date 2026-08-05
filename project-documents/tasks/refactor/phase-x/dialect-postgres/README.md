@@ -43,7 +43,7 @@ dialect packages are near-identical and the shared abstractions must live in one
 - task-5 — Replace silent `JSON.stringify` catch-and-swallow in coercion — P2, error-handling ✅ **completed**
 - task-6 — Shared dialect contract-test harness — P1, testing ✅ **completed**
 - task-7 — Shared `DdlStrategy` contract + extracted type-mapping — P1, architecture ✅ **completed**
-- task-8 — Remove dead `chunk*Batch`, dedup OptionsBuilder, fix dialect→core/metadata coupling — P2, package-boundary
+- task-8 — Remove dead `chunk*Batch`, dedup OptionsBuilder, fix dialect→core/metadata coupling — P2, package-boundary ✅ **completed**
 - task-9 — Remove PG dead clause methods + collapse 12 emitters into shared pure emitters — P2, clean-code ✅ **completed**
 - task-10 — Converge the parallel `@ts-linq/migrations` DDL generator onto the shared `DdlStrategy` — P2, package-boundary _(tech debt from task-7)_
 - task-11 — Complete the `formatValue` consolidation (remove core `SqlHelper.formatValue`, single dialect-kit SSOT) — P2, package-boundary _(tech debt from task-7)_
@@ -60,7 +60,7 @@ dialect packages are near-identical and the shared abstractions must live in one
 | 6 | task-1 (shared base dialect) ✅ | P1 | The core dedup; guarded by task-6 |
 | 7 | task-7 (shared DdlStrategy) ✅ | P1 | Mirrors task-1 for DDL; depends on task-3 |
 | 8 | task-2 (capability model) ✅ | P1 | Typed contract replacing optional methods |
-| 9 | task-8 (dead exports/options/coupling) | P2 | Cleanup; buildSelect metadata signature with task-1 |
+| 9 | task-8 (dead exports/options/coupling) ✅ | P2 | Cleanup; buildSelect metadata signature with task-1 |
 | 10 | task-10 (converge migrations DDL) | P2 | Cross-boundary half of task-7's DDL dedup; pairs with migrations/task-3 |
 | 11 | task-11 (formatValue SSOT) | P2 | Finishes task-7's dialect→core removal; a slice of task-8 |
 | 12 | task-12 (inject DDL quoter) | P3 | Polish; unifies quoting injection with task-1's DialectSyntax |
@@ -68,8 +68,10 @@ dialect packages are near-identical and the shared abstractions must live in one
 ## Dependencies on other packages
 - `@ts-linq/types` (the `SqlDialect`/`EntityMetadata` contracts; capability + `DdlStrategy` interfaces land here).
 - `@ts-linq/sql-visitor` (JSON path translator, SP call syntax, batch chunk helpers) — candidate host for shared base.
-- `@ts-linq/core` (`SqlHelper`, `DatabaseProvider`) — current dialect→core coupling to be reduced (task-8).
-- `@ts-linq/metadata` (`MetadataStorage`) — global lookup in `buildSelect` to be replaced by injection (task-8).
+- ~~`@ts-linq/core` / `@ts-linq/metadata`~~ — **both edges removed in task-8**. The introspectors take the
+  `SqlQueryExecutor` port from `@ts-linq/types`; `buildSelect` receives `EntityMetadata` from the caller.
+  Enforced by the `no-dialect-to-core` dependency-cruiser rule. `@ts-linq/core` still owns the callerless
+  `SqlHelper.formatValue`, whose removal is task-11.
 - Consumers: `@ts-linq/provider-postgres`, `@ts-linq/migrations`, scaffolding.
 - Contract harness belongs in `@ts-linq/testkits` to avoid dialect→dialect dependencies.
 

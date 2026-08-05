@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
-import { MetadataStorage } from '@ts-linq/metadata';
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import type { EntityMetadata, QueryOptions } from '@ts-linq/types';
 
 import { MssqlDialect } from '../../src/MssqlDialect';
@@ -9,36 +8,29 @@ class TestEntity {
   name!: string;
 }
 
+// `buildSelect` takes metadata as a parameter, so this suite needs no global registry setup.
+const testMeta: EntityMetadata = {
+  tableName: 'test_table',
+  primaryKeys: ['id'],
+  columns: [
+    { propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false },
+    { propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: true }
+  ],
+  relationships: [],
+  indexes: []
+};
+
 describe('MssqlDialect', () => {
   let dialect: MssqlDialect;
 
   beforeEach(() => {
     dialect = new MssqlDialect();
-    MetadataStorage.getInstance().clear();
-    MetadataStorage.addEntity(TestEntity, 'test_table');
-    MetadataStorage.addColumn(TestEntity, {
-      propertyName: 'id',
-      columnName: 'id',
-      type: 'INTEGER',
-      nullable: false
-    });
-    MetadataStorage.addColumn(TestEntity, {
-      propertyName: 'name',
-      columnName: 'name',
-      type: 'TEXT',
-      nullable: true
-    });
-    MetadataStorage.addPrimaryKey(TestEntity, 'id');
-  });
-
-  afterEach(() => {
-    MetadataStorage.getInstance().clear();
   });
 
   describe('buildSelect - basic queries', () => {
     it('should build SELECT * with square bracket identifiers', () => {
       const options: QueryOptions = {};
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table]');
       expect(result.parameters).toEqual([]);
@@ -48,7 +40,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         select: ['id', 'name']
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT id, name FROM [test_table]');
       expect(result.parameters).toEqual([]);
@@ -59,7 +51,7 @@ describe('MssqlDialect', () => {
         distinct: true,
         select: ['name']
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT DISTINCT name FROM [test_table]');
       expect(result.parameters).toEqual([]);
@@ -69,7 +61,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         from: 'custom_table'
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [custom_table]');
       expect(result.parameters).toEqual([]);
@@ -78,7 +70,7 @@ describe('MssqlDialect', () => {
     it('should throw error when entity metadata not found', () => {
       class UnknownEntity {}
 
-      expect(() => dialect.buildSelect(UnknownEntity, {})).toThrow(
+      expect(() => dialect.buildSelect(UnknownEntity, {}, undefined)).toThrow(
         'Entity metadata not found for UnknownEntity'
       );
     });
@@ -89,7 +81,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         where: { condition: 'id = ?', parameters: [1] }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] WHERE id = @p1');
       expect(result.parameters).toEqual([1]);
@@ -102,7 +94,7 @@ describe('MssqlDialect', () => {
           { condition: 'name LIKE ?', parameters: ['%test%'] }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] WHERE id > @p1 AND name LIKE @p2');
       expect(result.parameters).toEqual([10, '%test%']);
@@ -112,7 +104,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         where: []
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table]');
       expect(result.parameters).toEqual([]);
@@ -125,7 +117,7 @@ describe('MssqlDialect', () => {
           { condition: 'c IN (?, ?)', parameters: [3, 4] }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM [test_table] WHERE a = @p1 AND b = @p2 AND c IN (@p3, @p4)'
@@ -139,7 +131,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         joins: [{ type: 'INNER', table: 'orders', on: 'orders.user_id = test_table.id' }]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM [test_table] INNER JOIN [orders] ON orders.user_id = test_table.id'
@@ -151,7 +143,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         joins: [{ type: 'LEFT', table: 'orders', alias: 'o', on: 'o.user_id = test_table.id' }]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM [test_table] LEFT JOIN [orders] AS o ON o.user_id = test_table.id'
@@ -166,7 +158,7 @@ describe('MssqlDialect', () => {
           { type: 'LEFT', table: 'products', alias: 'p', on: 'p.id = o.product_id' }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM [test_table] INNER JOIN [orders] AS o ON o.user_id = test_table.id LEFT JOIN [products] AS p ON p.id = o.product_id'
@@ -189,7 +181,7 @@ describe('MssqlDialect', () => {
           }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM [test_table] INNER JOIN [orders] ON [orders].[user_id] = [test_table].[id]'
@@ -202,7 +194,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         orderBy: [{ column: 'name', direction: 'ASC' }]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] ORDER BY name ASC');
       expect(result.parameters).toEqual([]);
@@ -212,7 +204,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         orderBy: [{ column: 'id', direction: 'DESC' }]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] ORDER BY id DESC');
       expect(result.parameters).toEqual([]);
@@ -225,7 +217,7 @@ describe('MssqlDialect', () => {
           { column: 'id', direction: 'DESC' }
         ]
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] ORDER BY name ASC, id DESC');
       expect(result.parameters).toEqual([]);
@@ -237,7 +229,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         groupBy: { columns: ['name'] }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] GROUP BY name');
       expect(result.parameters).toEqual([]);
@@ -250,7 +242,7 @@ describe('MssqlDialect', () => {
           having: { condition: 'COUNT(*) > ?', parameters: [5] }
         }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] GROUP BY name HAVING COUNT(*) > @p1');
       expect(result.parameters).toEqual([5]);
@@ -260,7 +252,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         groupBy: { columns: ['name', 'id'] }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] GROUP BY name, id');
       expect(result.parameters).toEqual([]);
@@ -270,7 +262,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         groupBy: ['name', 'id']
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] GROUP BY name, id');
       expect(result.parameters).toEqual([]);
@@ -282,7 +274,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         limit: 10
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT TOP (10) * FROM [test_table]');
       expect(result.parameters).toEqual([]);
@@ -293,7 +285,7 @@ describe('MssqlDialect', () => {
         limit: 10,
         offset: 20
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT * FROM [test_table] ORDER BY (SELECT NULL) OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY'
@@ -305,7 +297,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         offset: 20
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] ORDER BY (SELECT NULL) OFFSET 20 ROWS');
       expect(result.parameters).toEqual([]);
@@ -316,7 +308,7 @@ describe('MssqlDialect', () => {
         orderBy: [{ column: 'id', direction: 'ASC' }],
         offset: 20
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT * FROM [test_table] ORDER BY id ASC OFFSET 20 ROWS');
       expect(result.parameters).toEqual([]);
@@ -326,7 +318,7 @@ describe('MssqlDialect', () => {
       const options: QueryOptions = {
         limit: 0
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe('SELECT TOP (0) * FROM [test_table]');
       expect(result.parameters).toEqual([]);
@@ -345,7 +337,7 @@ describe('MssqlDialect', () => {
         limit: 10,
         offset: 5
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.query).toBe(
         'SELECT DISTINCT test_table.id, test_table.name, COUNT(o.id) AS order_count FROM [test_table] LEFT JOIN [orders] AS o ON o.user_id = test_table.id WHERE test_table.name LIKE @p1 GROUP BY test_table.id, test_table.name ORDER BY order_count DESC OFFSET 5 ROWS FETCH NEXT 10 ROWS ONLY'
@@ -366,7 +358,7 @@ describe('MssqlDialect', () => {
           having: { condition: 'COUNT(*) > ?', parameters: [5] }
         }
       };
-      const result = dialect.buildSelect(TestEntity, options);
+      const result = dialect.buildSelect(TestEntity, options, testMeta);
 
       expect(result.parameters).toEqual([100, 1, 'admin', 5]);
       expect(result.query).toContain('@p1');

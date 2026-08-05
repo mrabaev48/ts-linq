@@ -1,5 +1,19 @@
 // Database-First scaffolding types (P2-43)
 
+import type { SqlParameter } from './sql';
+
+/**
+ * The minimal execution surface a schema introspector needs: run a read-only query and get rows
+ * back. `DatabaseProvider` satisfies it structurally, so providers pass unchanged.
+ *
+ * Declared here rather than consumed from `@ts-linq/core` so the dialect packages can introspect
+ * without depending on the core/provider runtime layer — dialects sit *below* core in the layering
+ * (enforced by the `no-dialect-to-core` dependency-cruiser rule).
+ */
+export interface SqlQueryExecutor {
+  executeQuery<T>(sql: string, params?: readonly SqlParameter[]): Promise<T[]>;
+}
+
 export interface DatabaseColumnModel {
   name: string;
   dbType: string;

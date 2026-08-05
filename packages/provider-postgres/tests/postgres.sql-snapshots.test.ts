@@ -54,7 +54,7 @@ describe('PostgreSQL SQL snapshots (dialect-level, no DB required)', () => {
       orderBy: [{ column: 'score', direction: 'DESC' }],
       limit: 5
     } as any;
-    const built = dialect.buildSelect(PgUser, opts);
+    const built = dialect.buildSelect(PgUser, opts, MetadataStorage.getEntity(PgUser));
     expect(built).toMatchInlineSnapshot(`
       {
         "parameters": [

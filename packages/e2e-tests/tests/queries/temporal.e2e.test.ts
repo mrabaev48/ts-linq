@@ -51,9 +51,9 @@ describe('Temporal — pure unit (no DB)', () => {
         { mode: 'ContainedIn', from: new Date(), to: new Date() }
       ];
       for (const temporal of modes) {
-        expect(() => dialect.buildSelect(SomeEntity, { temporal })).toThrow(
-          TemporalNotSupportedError
-        );
+        expect(() =>
+          dialect.buildSelect(SomeEntity, { temporal }, MetadataStorage.getEntity(SomeEntity))
+        ).toThrow(TemporalNotSupportedError);
       }
     });
   });
@@ -69,9 +69,9 @@ describe('Temporal — pure unit (no DB)', () => {
         { mode: 'ContainedIn', from: new Date(), to: new Date() }
       ];
       for (const temporal of modes) {
-        expect(() => dialect.buildSelect(SomeEntity, { temporal })).toThrow(
-          TemporalNotSupportedError
-        );
+        expect(() =>
+          dialect.buildSelect(SomeEntity, { temporal }, MetadataStorage.getEntity(SomeEntity))
+        ).toThrow(TemporalNotSupportedError);
       }
     });
   });
@@ -79,39 +79,59 @@ describe('Temporal — pure unit (no DB)', () => {
   describe('MssqlDialect SQL shapes', () => {
     it('AsOf generates correct SQL shape', () => {
       const dialect = new MssqlDialect();
-      const { query } = dialect.buildSelect(SomeEntity, {
-        temporal: { mode: 'AsOf', from: new Date('2023-01-01') }
-      });
+      const { query } = dialect.buildSelect(
+        SomeEntity,
+        {
+          temporal: { mode: 'AsOf', from: new Date('2023-01-01') }
+        },
+        MetadataStorage.getEntity(SomeEntity)
+      );
       expect(query).toMatch(/FOR SYSTEM_TIME AS OF @p1/);
     });
 
     it('All generates correct SQL shape', () => {
       const dialect = new MssqlDialect();
-      const { query } = dialect.buildSelect(SomeEntity, { temporal: { mode: 'All' } });
+      const { query } = dialect.buildSelect(
+        SomeEntity,
+        { temporal: { mode: 'All' } },
+        MetadataStorage.getEntity(SomeEntity)
+      );
       expect(query).toMatch(/FOR SYSTEM_TIME ALL/);
     });
 
     it('Between generates correct SQL shape', () => {
       const dialect = new MssqlDialect();
-      const { query } = dialect.buildSelect(SomeEntity, {
-        temporal: { mode: 'Between', from: new Date(), to: new Date() }
-      });
+      const { query } = dialect.buildSelect(
+        SomeEntity,
+        {
+          temporal: { mode: 'Between', from: new Date(), to: new Date() }
+        },
+        MetadataStorage.getEntity(SomeEntity)
+      );
       expect(query).toMatch(/FOR SYSTEM_TIME BETWEEN @p1 AND @p2/);
     });
 
     it('FromTo generates correct SQL shape', () => {
       const dialect = new MssqlDialect();
-      const { query } = dialect.buildSelect(SomeEntity, {
-        temporal: { mode: 'FromTo', from: new Date(), to: new Date() }
-      });
+      const { query } = dialect.buildSelect(
+        SomeEntity,
+        {
+          temporal: { mode: 'FromTo', from: new Date(), to: new Date() }
+        },
+        MetadataStorage.getEntity(SomeEntity)
+      );
       expect(query).toMatch(/FOR SYSTEM_TIME FROM @p1 TO @p2/);
     });
 
     it('ContainedIn generates correct SQL shape', () => {
       const dialect = new MssqlDialect();
-      const { query } = dialect.buildSelect(SomeEntity, {
-        temporal: { mode: 'ContainedIn', from: new Date(), to: new Date() }
-      });
+      const { query } = dialect.buildSelect(
+        SomeEntity,
+        {
+          temporal: { mode: 'ContainedIn', from: new Date(), to: new Date() }
+        },
+        MetadataStorage.getEntity(SomeEntity)
+      );
       expect(query).toMatch(/FOR SYSTEM_TIME CONTAINED IN \(@p1, @p2\)/);
     });
   });
@@ -224,7 +244,11 @@ const mssqlUrl = process.env.MSSQL_URL;
 
     test('temporalAll: returns both current (Management) and historical (Engineering) rows', async () => {
       const dialect = new MssqlDialect();
-      const { query, parameters } = dialect.buildSelect(E2EEmployee, { temporal: { mode: 'All' } });
+      const { query, parameters } = dialect.buildSelect(
+        E2EEmployee,
+        { temporal: { mode: 'All' } },
+        MetadataStorage.getEntity(E2EEmployee)
+      );
       const rows = (await provider.executeQuery(query, parameters)) as Array<{
         department: string;
       }>;
@@ -235,9 +259,13 @@ const mssqlUrl = process.env.MSSQL_URL;
 
     test('temporalAsOf insertTime: returns Engineering (pre-update snapshot)', async () => {
       const dialect = new MssqlDialect();
-      const { query, parameters } = dialect.buildSelect(E2EEmployee, {
-        temporal: { mode: 'AsOf', from: insertTime }
-      });
+      const { query, parameters } = dialect.buildSelect(
+        E2EEmployee,
+        {
+          temporal: { mode: 'AsOf', from: insertTime }
+        },
+        MetadataStorage.getEntity(E2EEmployee)
+      );
       const rows = (await provider.executeQuery(query, parameters)) as Array<{
         name: string;
         department: string;
@@ -249,9 +277,13 @@ const mssqlUrl = process.env.MSSQL_URL;
 
     test('temporalAsOf now: returns current row (Management)', async () => {
       const dialect = new MssqlDialect();
-      const { query, parameters } = dialect.buildSelect(E2EEmployee, {
-        temporal: { mode: 'AsOf', from: new Date() }
-      });
+      const { query, parameters } = dialect.buildSelect(
+        E2EEmployee,
+        {
+          temporal: { mode: 'AsOf', from: new Date() }
+        },
+        MetadataStorage.getEntity(E2EEmployee)
+      );
       const rows = (await provider.executeQuery(query, parameters)) as Array<{
         name: string;
         department: string;

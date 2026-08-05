@@ -93,7 +93,13 @@ describe('QueryBuilder', () => {
       expect(result).toBeDefined();
       expect(result.query).toBe('SELECT * FROM TestEntity');
       expect(result.parameters).toEqual([]);
-      expect(mockDialect.buildSelect).toHaveBeenCalledWith(TestEntity, options);
+      // The compiler resolves the entity metadata and forwards it, so the dialect never performs
+      // the registry lookup itself.
+      expect(mockDialect.buildSelect).toHaveBeenCalledWith(
+        TestEntity,
+        options,
+        expect.objectContaining({ tableName: 'TestEntity' })
+      );
     });
 
     it('should return cached result on second call', () => {

@@ -47,7 +47,7 @@ describe('MSSQL Provider + QueryBuilder Integration', () => {
           { condition: 'total < ?', parameters: [500] }
         ]
       };
-      const { query } = dialect.buildSelect(Order, opts);
+      const { query } = dialect.buildSelect(Order, opts, MetadataStorage.getEntity(Order));
       expect(query).toContain('@p1');
       expect(query).toContain('@p2');
       // No raw ? placeholders should remain
@@ -58,7 +58,11 @@ describe('MSSQL Provider + QueryBuilder Integration', () => {
       const opts: QueryOptions = {
         where: [{ condition: 'id = ?', parameters: [1] }]
       };
-      const { query, parameters } = dialect.buildSelect(Order, opts);
+      const { query, parameters } = dialect.buildSelect(
+        Order,
+        opts,
+        MetadataStorage.getEntity(Order)
+      );
       expect(query).toContain('@p1');
       expect(parameters).toHaveLength(1);
       expect(parameters[0]).toBe(1);
@@ -103,14 +107,14 @@ describe('MSSQL Provider + QueryBuilder Integration', () => {
   describe('TOP vs OFFSET FETCH', () => {
     it('should use TOP for simple limit', () => {
       const opts: QueryOptions = { limit: 10 };
-      const { query } = dialect.buildSelect(Order, opts);
+      const { query } = dialect.buildSelect(Order, opts, MetadataStorage.getEntity(Order));
       expect(query).toContain('TOP (10)');
       expect(query).not.toContain('OFFSET');
     });
 
     it('should use OFFSET FETCH for skip + take', () => {
       const opts: QueryOptions = { limit: 10, offset: 20 };
-      const { query } = dialect.buildSelect(Order, opts);
+      const { query } = dialect.buildSelect(Order, opts, MetadataStorage.getEntity(Order));
       expect(query).toContain('OFFSET 20 ROWS');
       expect(query).toContain('FETCH NEXT 10 ROWS ONLY');
       expect(query).not.toContain('TOP');
@@ -119,7 +123,7 @@ describe('MSSQL Provider + QueryBuilder Integration', () => {
     it('should require ORDER BY with OFFSET FETCH', () => {
       // Without an explicit ORDER BY, the dialect injects ORDER BY (SELECT NULL)
       const opts: QueryOptions = { limit: 10, offset: 5 };
-      const { query } = dialect.buildSelect(Order, opts);
+      const { query } = dialect.buildSelect(Order, opts, MetadataStorage.getEntity(Order));
       expect(query).toContain('ORDER BY (SELECT NULL)');
       expect(query).toContain('OFFSET 5 ROWS');
       expect(query).toContain('FETCH NEXT 10 ROWS ONLY');

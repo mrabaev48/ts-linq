@@ -57,7 +57,7 @@ describe('Dialect placeholders (property-based)', () => {
           selectParams,
           where
         };
-        const built = dialect.buildSelect(T, opts);
+        const built = dialect.buildSelect(T, opts, MetadataStorage.getEntity(T));
         const total = selectCount + whereCount;
         for (let i = 1; i <= total; i++) {
           expect(built.query).toContain(`$${i}`);
@@ -78,11 +78,15 @@ describe('Dialect placeholders (property-based)', () => {
           condition: `a > ?`,
           parameters: [1]
         }));
-        const built = dialect.buildSelect(T, {
-          select: selectCount ? select : ['id'],
-          selectParams,
-          where
-        });
+        const built = dialect.buildSelect(
+          T,
+          {
+            select: selectCount ? select : ['id'],
+            selectParams,
+            where
+          },
+          MetadataStorage.getEntity(T)
+        );
         const total = selectCount + whereCount;
         const qCount = (built.query.match(/\?/g) || []).length;
         expect(qCount).toBe(total);
@@ -102,11 +106,15 @@ describe('Dialect placeholders (property-based)', () => {
           condition: `a = ?`,
           parameters: [i]
         }));
-        const built = dialect.buildSelect(T, {
-          select: selectCount ? select : ['id'],
-          selectParams,
-          where
-        });
+        const built = dialect.buildSelect(
+          T,
+          {
+            select: selectCount ? select : ['id'],
+            selectParams,
+            where
+          },
+          MetadataStorage.getEntity(T)
+        );
         const total = selectCount + whereCount;
         for (let i = 1; i <= total; i++) {
           expect(built.query).toContain(`@p${i}`);

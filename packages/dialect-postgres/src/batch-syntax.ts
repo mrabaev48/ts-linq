@@ -4,7 +4,6 @@ import {
   selectInsertableColumns,
   selectUpdatableColumns
 } from '@ts-linq/dialect-kit';
-import { calcChunkSize, chunkArray } from '@ts-linq/sql-visitor';
 import type {
   BatchInsertResult,
   BatchUpdateResult,
@@ -145,28 +144,4 @@ export function buildPgBatchDelete(entities: Entity[], metadata: EntityMetadata)
   const placeholders = parameters.map((_, i) => `$${i + 1}`).join(',');
   const sql = `DELETE FROM ${quoteIdentifier(metadata.tableName)} WHERE ${quoteIdentifier(pkCol.columnName)} IN (${placeholders})`;
   return { sql, parameters };
-}
-
-/**
- * Split entities into chunks respecting maxBatchSize and PG_PARAM_LIMIT.
- */
-export function chunkPgBatch(
-  entities: Entity[],
-  metadata: EntityMetadata,
-  maxBatchSize: number,
-  operation: 'insert' | 'update' | 'delete'
-): Entity[][] {
-  let paramsPerRow: number;
-  if (operation === 'insert') {
-    const cols = selectInsertableColumns(metadata, entities[0] ?? {}, PG_INSERT_POLICY);
-    paramsPerRow = cols.length;
-  } else if (operation === 'update') {
-    const pks = metadata.primaryKeys ?? [];
-    paramsPerRow = pks.length + selectUpdatableColumns(metadata).length;
-  } else {
-    paramsPerRow = 1; // single PK per DELETE row
-  }
-
-  const size = calcChunkSize(paramsPerRow, maxBatchSize, PG_PARAM_LIMIT);
-  return chunkArray(entities, size);
 }

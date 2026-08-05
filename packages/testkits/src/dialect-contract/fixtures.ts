@@ -1,4 +1,3 @@
-import { MetadataStorage } from '@ts-linq/metadata';
 import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
 
 /**
@@ -6,7 +5,7 @@ import type { ColumnMetadata, EntityMetadata } from '@ts-linq/types';
  * inputs so that any structural divergence in the produced SQL is surfaced as a golden diff.
  */
 
-/** Entity used for the `buildSelect` matrix. `buildSelect` resolves its table via `MetadataStorage`. */
+/** Entity used for the `buildSelect` matrix — only its identity and `.name` are read. */
 export class ContractEntity {
   id!: number;
   name!: string;
@@ -14,30 +13,6 @@ export class ContractEntity {
 
 /** Table name the select matrix expects for {@link ContractEntity}. */
 export const CONTRACT_TABLE = 'test_table';
-
-/** Register {@link ContractEntity} in the global metadata storage (required by `buildSelect`). */
-export function registerContractEntity(): void {
-  MetadataStorage.getInstance().clear();
-  MetadataStorage.addEntity(ContractEntity, CONTRACT_TABLE);
-  MetadataStorage.addColumn(ContractEntity, {
-    propertyName: 'id',
-    columnName: 'id',
-    type: 'INTEGER',
-    nullable: false
-  });
-  MetadataStorage.addColumn(ContractEntity, {
-    propertyName: 'name',
-    columnName: 'name',
-    type: 'TEXT',
-    nullable: true
-  });
-  MetadataStorage.addPrimaryKey(ContractEntity, 'id');
-}
-
-/** Clear the global metadata storage after the select matrix runs. */
-export function clearContractEntity(): void {
-  MetadataStorage.getInstance().clear();
-}
 
 /** Helper to build a fully-formed {@link EntityMetadata} without repeating empty collections. */
 function entity(
@@ -53,6 +28,20 @@ function col(
 ): ColumnMetadata {
   return { type: 'TEXT', ...overrides };
 }
+
+/**
+ * Metadata for the `buildSelect` matrix, passed directly to the dialect. Previously this lived in
+ * the global `MetadataStorage` because `buildSelect` resolved it there; the dialect now takes it as
+ * a parameter, so the contract harness needs no global registry setup or teardown.
+ */
+export const contractSelectMeta: EntityMetadata = entity(
+  CONTRACT_TABLE,
+  [
+    col({ propertyName: 'id', columnName: 'id', type: 'INTEGER', nullable: false }),
+    col({ propertyName: 'name', columnName: 'name', type: 'TEXT', nullable: true })
+  ],
+  ['id']
+);
 
 // ── INSERT fixtures (users: generated id + name/email, plus a computed variant) ────────────────
 

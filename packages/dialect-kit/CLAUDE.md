@@ -30,6 +30,11 @@ copy-pasting near-identical logic.
 - Public via `src/index.ts`: `emitWhere`, `emitJoin`, `emitGroup`, `emitOrder`; `coerceSqlParameter`,
   `applyConverter`, `numberPlaceholders`; `selectInsertableColumns`, `selectUpdatableColumns`,
   `InsertableColumnOptions`.
+- `DialectOptionsBuilder` is the single implementation behind the per-dialect
+  `PostgresOptionsBuilder`/`MysqlOptionsBuilder`/`MssqlOptionsBuilder` names, which are thin
+  subclasses kept only for published-name stability. Add builder options here, never in a dialect.
+- `AbstractSqlDialect.buildSelect` takes `EntityMetadata | undefined` from the caller. The base has
+  **no** metadata hook — a dialect must never resolve metadata itself.
 - `InsertableColumnOptions` (`excludeComputed`, `excludeGeneratedPk`) is the **policy object**: legit
   per-dialect INSERT differences are declared config, never hidden branches. All three dialects
   currently pass `{ excludeComputed: true, excludeGeneratedPk: true }`.
