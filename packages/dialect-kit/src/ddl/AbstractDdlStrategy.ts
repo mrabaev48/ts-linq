@@ -29,10 +29,18 @@ export type DdlLoggerLike = { warn(message: string, error?: unknown): void };
  * `*DdlStrategy` classes.
  */
 export abstract class AbstractDdlStrategy implements DdlStrategy {
-  constructor(protected readonly logger?: DdlLoggerLike) {}
-
-  /** Per-dialect logical→physical type map (Strategy). Supplied by each concrete dialect. */
-  protected abstract readonly typeMapper: TypeMapper;
+  /**
+   * Per-dialect logical→physical type map (Strategy). Each concrete dialect supplies its own as the
+   * default; callers may substitute a decorated mapper (e.g. `@ts-linq/migrations` wraps it to keep
+   * snapshot-declared physical types passing through untouched).
+   *
+   * Assigned here rather than via a field initializer in the subclasses — a subclass initializer
+   * runs *after* `super()` and would silently overwrite an injected mapper.
+   */
+  constructor(
+    protected readonly logger: DdlLoggerLike | undefined,
+    protected readonly typeMapper: TypeMapper
+  ) {}
 
   /** Clause that introduces a column in `ALTER TABLE … ADD` (`'ADD COLUMN'` or, for MSSQL, `'ADD'`). */
   protected abstract readonly addColumnClause: string;
@@ -52,13 +60,18 @@ export abstract class AbstractDdlStrategy implements DdlStrategy {
       );
     }
     const parts = metadata.columns.map((column) => this.generateColumnDefinition(column));
-    const primaryKey = this.buildPrimaryKeyClause(metadata);
+    const primaryKey = this.generatePrimaryKeyClause(metadata);
     if (primaryKey) parts.push(primaryKey);
     parts.push(...this.buildCheckConstraints(metadata));
     return this.wrapCreateTable(metadata, parts.join(', '));
   }
 
-  protected buildPrimaryKeyClause(metadata: EntityMetadata): string | undefined {
+  /**
+   * `PRIMARY KEY (…)` table-constraint clause, or `undefined` when the entity declares no key.
+   * Public so callers that own their own CREATE TABLE wrapper (`@ts-linq/migrations`) can reuse the
+   * shared key resolution + quoting instead of re-deriving it.
+   */
+  public generatePrimaryKeyClause(metadata: EntityMetadata): string | undefined {
     const primaryKeys = metadata.primaryKeys;
     if (!primaryKeys || primaryKeys.length === 0) return undefined;
     const cols = primaryKeys

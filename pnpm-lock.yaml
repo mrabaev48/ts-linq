@@ -662,6 +662,15 @@ importers:
       '@ts-linq/core':
         specifier: workspace:*
         version: link:../core
+      '@ts-linq/dialect-mssql':
+        specifier: workspace:*
+        version: link:../dialect-mssql
+      '@ts-linq/dialect-mysql':
+        specifier: workspace:*
+        version: link:../dialect-mysql
+      '@ts-linq/dialect-postgres':
+        specifier: workspace:*
+        version: link:../dialect-postgres
       '@ts-linq/metadata':
         specifier: workspace:*
         version: link:../metadata
@@ -672,15 +681,6 @@ importers:
         specifier: ^0.28.0
         version: 0.28.0
     devDependencies:
-      '@ts-linq/dialect-mssql':
-        specifier: workspace:*
-        version: link:../dialect-mssql
-      '@ts-linq/dialect-mysql':
-        specifier: workspace:*
-        version: link:../dialect-mysql
-      '@ts-linq/dialect-postgres':
-        specifier: workspace:*
-        version: link:../dialect-postgres
       '@ts-linq/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config

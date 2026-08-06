@@ -1,7 +1,10 @@
+import type { DdlStrategy } from '@ts-linq/types';
+
 import type { Dialect } from '../../Dialect';
 import type { TableDiff } from '../../DiffTypes';
+import { toColumnMetadata, toEntityMetadata } from '../ddl/ColumnAdapter';
+import { createDdlStrategy } from '../ddl/DdlStrategyFactory';
 import { q } from '../SqlUtils';
-import { renderColumn } from './ColumnHandlers';
 import { buildInlineFkSql } from './ForeignKeyHandlers';
 
 export function handleTableRename(td: TableDiff, dialect: Dialect, up: string[]): void {
@@ -24,29 +27,17 @@ export function handleTableRename(td: TableDiff, dialect: Dialect, up: string[])
 }
 
 export function handleCreateTable(
+  ddl: DdlStrategy,
   td: TableDiff,
   dialect: Dialect,
   up: string[],
   down: string[]
 ): boolean {
   if (!td.create) return false;
-  up.push(buildCreateTableSql(td, dialect));
+  up.push(buildCreateTableSql(td, dialect, ddl));
   if (td.create.uniqueConstraints && td.create.uniqueConstraints.length > 0) {
     for (const uc of td.create.uniqueConstraints) {
-      const cols = uc.columns.map((c) => q(dialect, c)).join(', ');
-      if (dialect === 'mysql') {
-        up.push(
-          `ALTER TABLE ${q(dialect, td.create.name)} ADD UNIQUE KEY ${q(dialect, uc.name)} (${cols})`
-        );
-      } else if (dialect === 'mssql') {
-        up.push(
-          `ALTER TABLE ${q(dialect, td.create.name)} ADD CONSTRAINT ${q(dialect, uc.name)} UNIQUE (${cols})`
-        );
-      } else {
-        up.push(
-          `ALTER TABLE ${q(dialect, td.create.name)} ADD CONSTRAINT ${q(dialect, uc.name)} UNIQUE (${cols})`
-        );
-      }
+      up.push(ddl.generateAddUniqueConstraintSql(td.create.name, uc.name, uc.columns));
     }
   }
   if (td.create.indexes && td.create.indexes.length > 0) {
@@ -68,11 +59,25 @@ export function handleDropTable(td: TableDiff, dialect: Dialect, up: string[]): 
   return true;
 }
 
-export function buildCreateTableSql(td: TableDiff, dialect: Dialect): string {
+/**
+ * CREATE TABLE for a snapshot table. Column definitions and the `PRIMARY KEY (…)` clause come from
+ * the shared {@link DdlStrategy}; the statement wrapper and inline foreign keys stay here because
+ * the migrations wrapper (MSSQL `IF OBJECT_ID(…)`) and composite inline FKs have no counterpart in
+ * the `DdlStrategy` contract yet.
+ *
+ * `ddl` defaults to the dialect's strategy so the published signature stays source-compatible for
+ * external callers; the migration pipeline passes its own instance.
+ */
+export function buildCreateTableSql(
+  td: TableDiff,
+  dialect: Dialect,
+  ddl: DdlStrategy = createDdlStrategy(dialect)
+): string {
   const create = td.create!;
-  const cols = create.columns.map((c) => renderColumn(dialect, c));
-  if (create.primaryKeys && create.primaryKeys.length > 0)
-    cols.push(`PRIMARY KEY (${create.primaryKeys.map((pk) => q(dialect, pk)).join(', ')})`);
+  const columns = create.columns.map((c) => toColumnMetadata(dialect, c));
+  const cols = columns.map((column) => ddl.generateColumnDefinition(column));
+  const primaryKey = ddl.generatePrimaryKeyClause(toEntityMetadata(create, columns));
+  if (primaryKey) cols.push(primaryKey);
   if (create.foreignKeys && create.foreignKeys.length > 0) {
     for (const fk of create.foreignKeys) cols.push(buildInlineFkSql(dialect, fk));
   }

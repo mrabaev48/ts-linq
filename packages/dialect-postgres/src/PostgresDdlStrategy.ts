@@ -1,5 +1,5 @@
 import { AbstractDdlStrategy, type DdlLoggerLike } from '@ts-linq/dialect-kit';
-import type { ColumnMetadata, DdlStrategy, EntityMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, DdlStrategy, EntityMetadata, TypeMapper } from '@ts-linq/types';
 
 import { PgIndexBuilder } from './builders/PgIndexBuilder';
 import { PostgresTypeMapper } from './PostgresTypeMapper';
@@ -11,12 +11,11 @@ import { quoteIdentifier, quoteStringLiteral } from './quoting';
  * hooks (identity columns, `GENERATED … STORED`, `COMMENT ON …`, `DROP CONSTRAINT IF EXISTS`).
  */
 export class PostgresDdlStrategy extends AbstractDdlStrategy implements DdlStrategy {
-  protected readonly typeMapper = new PostgresTypeMapper();
   protected readonly addColumnClause = 'ADD COLUMN';
   private readonly indexBuilder: PgIndexBuilder;
 
-  constructor(logger?: DdlLoggerLike) {
-    super(logger);
+  constructor(logger?: DdlLoggerLike, typeMapper: TypeMapper = new PostgresTypeMapper()) {
+    super(logger, typeMapper);
     this.indexBuilder = new PgIndexBuilder(logger);
   }
 

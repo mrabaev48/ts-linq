@@ -1,16 +1,21 @@
+import type { DdlStrategy } from '@ts-linq/types';
+
 import type { Dialect } from '../Dialect';
 import type { TableDiff } from '../DiffTypes';
 import { handleCreateTable, handleDropTable, handleTableRename } from './handlers/TableHandlers';
 
 export class TablesSqlBuilder {
-  constructor(private readonly dialect: Dialect) {}
+  constructor(
+    private readonly dialect: Dialect,
+    private readonly ddl: DdlStrategy
+  ) {}
 
   rename(td: TableDiff, up: string[]): void {
     handleTableRename(td, this.dialect, up);
   }
 
   create(td: TableDiff, up: string[], down: string[]): boolean {
-    return handleCreateTable(td, this.dialect, up, down);
+    return handleCreateTable(this.ddl, td, this.dialect, up, down);
   }
 
   drop(td: TableDiff, up: string[]): boolean {

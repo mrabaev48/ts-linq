@@ -1,3 +1,4 @@
+import { createDdlStrategy } from '../../src/builders/ddl/DdlStrategyFactory';
 import {
   buildAddUniqueConstraintSql as addFromBuilder,
   buildDropUniqueConstraintSql as dropFromBuilder,
@@ -69,7 +70,7 @@ describe('UniqueConstraintsSqlBuilder — class delegates to the consolidated fu
       uniqueConstraintCreates: [{ name: 'AK_User_email', columns: ['email'] }],
       uniqueConstraintDrops: ['AK_old']
     };
-    const builder = new UniqueConstraintsSqlBuilder('postgresql');
+    const builder = new UniqueConstraintsSqlBuilder(createDdlStrategy('postgresql'));
 
     const created: string[] = [];
     builder.create(td, created);
