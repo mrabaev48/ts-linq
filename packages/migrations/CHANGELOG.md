@@ -1,5 +1,38 @@
 # @ts-linq/migrations
 
+## 2.8.11
+
+### Patch Changes
+
+- Converge the migrations DDL generator onto the shared `DdlStrategy`
+
+  `@ts-linq/migrations` no longer carries a second, independent DDL generator. Column definitions,
+  `PRIMARY KEY`, UNIQUE add/drop, and ADD/DROP COLUMN + ALTER COLUMN TYPE are now emitted by the
+  dialect's `DdlStrategy`, so logical type mapping and identifier quoting on those paths have one
+  source of truth shared with the dialect packages. The duplicated `SqlUtils.mapType`/`groupType` and
+  the per-dialect column/UNIQUE emitters in `ColumnHandlers`/`TableHandlers` are gone.
+
+  Generated migration DDL is **byte-identical** on all three dialects — no reconciliations — and is
+  now pinned by a golden regression test.
+
+  New public API:
+  - `@ts-linq/types` — `DdlStrategy` gains `generatePrimaryKeyClause(metadata)`, so a caller that owns
+    its own CREATE TABLE wrapper can reuse the shared key resolution and quoting. Implementers built
+    on `AbstractDdlStrategy` get it for free; hand-rolled implementations and test doubles must add it.
+  - `@ts-linq/dialect-kit` — `AbstractDdlStrategy` accepts its `TypeMapper` as a constructor argument
+    instead of an abstract field, allowing a caller to decorate the dialect's type map.
+  - `@ts-linq/dialect-postgres` / `-mysql` / `-mssql` — the `*DdlStrategy` constructors accept an
+    optional `TypeMapper` override, and `PostgresTypeMapper` / `MySqlTypeMapper` / `MssqlTypeMapper`
+    are exported from the package entrypoints.
+
+- Updated dependencies
+  - @ts-linq/types@5.1.0
+  - @ts-linq/dialect-postgres@3.1.0
+  - @ts-linq/dialect-mysql@3.1.0
+  - @ts-linq/dialect-mssql@3.1.0
+  - @ts-linq/core@3.5.4
+  - @ts-linq/metadata@4.1.12
+
 ## 2.8.10
 
 ### Patch Changes

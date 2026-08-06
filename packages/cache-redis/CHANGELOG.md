@@ -1,5 +1,13 @@
 # @ts-linq/cache-redis
 
+## 1.0.51
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/types@5.1.0
+  - @ts-linq/core@3.5.4
+
 ## 1.0.50
 
 ### Patch Changes

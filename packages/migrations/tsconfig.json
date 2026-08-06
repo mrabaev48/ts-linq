@@ -18,6 +18,9 @@
   "references": [
     { "path": "../types" },
     { "path": "../metadata" },
-    { "path": "../core" }
+    { "path": "../core" },
+    { "path": "../dialect-postgres" },
+    { "path": "../dialect-mysql" },
+    { "path": "../dialect-mssql" }
   ]
 }

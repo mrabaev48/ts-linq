@@ -1,5 +1,5 @@
 import { AbstractDdlStrategy, type DdlLoggerLike } from '@ts-linq/dialect-kit';
-import type { ColumnMetadata, DdlStrategy, EntityMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, DdlStrategy, EntityMetadata, TypeMapper } from '@ts-linq/types';
 
 import { MssqlIndexBuilder } from './builders/MssqlIndexBuilder';
 import { MssqlTypeMapper } from './MssqlTypeMapper';
@@ -12,12 +12,11 @@ import { quoteIdentifier, quoteStringLiteral } from './quoting';
  * `sp_rename`, `sp_addextendedproperty` comments).
  */
 export class MssqlDdlStrategy extends AbstractDdlStrategy implements DdlStrategy {
-  protected readonly typeMapper = new MssqlTypeMapper();
   protected readonly addColumnClause = 'ADD';
   private readonly indexBuilder: MssqlIndexBuilder;
 
-  constructor(logger?: DdlLoggerLike) {
-    super(logger);
+  constructor(logger?: DdlLoggerLike, typeMapper: TypeMapper = new MssqlTypeMapper()) {
+    super(logger, typeMapper);
     this.indexBuilder = new MssqlIndexBuilder(logger);
   }
 

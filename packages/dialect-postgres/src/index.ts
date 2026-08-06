@@ -7,4 +7,5 @@ export * from './ltree-functions';
 export * from './PostgresDdlStrategy';
 export * from './PostgresDialect';
 export * from './PostgresOptionsBuilder';
+export * from './PostgresTypeMapper';
 export * from './spatial-functions';

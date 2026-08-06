@@ -1,4 +1,5 @@
 import { ColumnsSqlBuilder } from './builders/ColumnsSqlBuilder';
+import { createDdlStrategy } from './builders/ddl/DdlStrategyFactory';
 import { ForeignKeysSqlBuilder } from './builders/ForeignKeysSqlBuilder';
 import { IndexesSqlBuilder } from './builders/IndexesSqlBuilder';
 import { SeedsSqlBuilder } from './builders/SeedsSqlBuilder';
@@ -27,12 +28,15 @@ class MigrationSqlBuilder {
   private readonly sequences: SequencesSqlBuilder;
   constructor(dialect: Dialect) {
     this.dialect = dialect;
-    this.tables = new TablesSqlBuilder(dialect);
+    // Single composition root: the column/PK/UNIQUE/ALTER DDL is emitted by the dialect's shared
+    // `DdlStrategy` rather than by migrations-local per-dialect emitters.
+    const ddl = createDdlStrategy(dialect);
+    this.tables = new TablesSqlBuilder(dialect, ddl);
     this.indexes = new IndexesSqlBuilder(dialect);
     this.fks = new ForeignKeysSqlBuilder(dialect);
-    this.columns = new ColumnsSqlBuilder(dialect);
+    this.columns = new ColumnsSqlBuilder(dialect, ddl);
     this.seeds = new SeedsSqlBuilder(dialect);
-    this.uniqueConstraints = new UniqueConstraintsSqlBuilder(dialect);
+    this.uniqueConstraints = new UniqueConstraintsSqlBuilder(ddl);
     this.sequences = new SequencesSqlBuilder(dialect);
   }
 

@@ -4,6 +4,8 @@ export interface ColumnDef {
   nullable: boolean;
   defaultValue?: unknown;
   defaultExpression?: string;
+  /** Per-dialect override of {@link ColumnDef.defaultExpression}, keyed by dialect name. */
+  defaultExpressionDialect?: Record<string, string | undefined>;
   isPrimaryKey?: boolean;
   isComputed?: boolean;
   computedExpression?: string;

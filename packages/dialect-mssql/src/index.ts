@@ -8,4 +8,5 @@ export { MssqlJsonPathTranslator } from './json/JsonPathTranslator';
 export * from './MssqlDdlStrategy';
 export * from './MssqlDialect';
 export * from './MssqlOptionsBuilder';
+export * from './MssqlTypeMapper';
 export * from './spatial-functions';

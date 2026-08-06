@@ -134,7 +134,7 @@ Each package only depends on packages already completed above it.
 | 10 | `migrations` | runtime | Injection-safe quoting; decompose runner. Needed by `orm` + `cli`. | ✅ done |
 | 11 | `telemetry` | runtime | De-dupe span mapping; masking. Needed by `orm`; do before it. | ✅ done |
 | 12 | `orm` | runtime | Decompose `DbContext`/`ChangeTracker`/`DbSet`; public/internal boundary. Top of runtime. | ✅ done |
-| 13 | `dialect-postgres` | dialects | **Reference dialect** — extract the shared base dialect + capability model + central quoting here. | 🔄 In Progress (task-1..9 ✅; task-10/11/12 tech-debt open) |
+| 13 | `dialect-postgres` | dialects | **Reference dialect** — extract the shared base dialect + capability model + central quoting here. | 🔄 In Progress (task-1..10 ✅; task-11/12 tech-debt open) |
 | 14 | `dialect-mysql` | dialects | Consume the shared base; sequence emulation; central quoting. |
 | 15 | `dialect-mssql` | dialects | Consume the shared base; fix DDL interpolation + computed-column INSERT. |
 | 16 | `testkits` | testing | Contract-test harness + decompose `TestProvider` **before** providers, so they get contract tests. |
@@ -212,7 +212,7 @@ Each package only depends on packages already completed above it.
 | core | 10 | 4 | 3 | 2 | 1 | ✅ done (1–10; task-10 ✅ P3 coercion-tail de-dup) |
 | dialect-mssql | 4 | 1 | 2 | 1 | 0 | 🔄 In Progress (task-4 ✅ superseded by dialect-postgres/task-2) |
 | dialect-mysql | 2 | 0 | 2 | 0 | 0 | not-started |
-| dialect-postgres | 12 | 1 | 5 | 5 | 1 | 🔄 In Progress (task-1..task-9 ✅ — the original audit scope is complete; task-10/11/12 tech-debt from task-7 remain) |
+| dialect-postgres | 12 | 1 | 5 | 5 | 1 | 🔄 In Progress (task-1..task-10 ✅ — the original audit scope is complete; task-11/12 tech-debt from task-7 remain) |
 | e2e-tests | 3 | 0 | 2 | 1 | 0 | not-started |
 | eslint-config | 2 | 0 | 1 | 1 | 0 | not-started |
 | examples | 1 | 0 | 0 | 1 | 0 | not-started |

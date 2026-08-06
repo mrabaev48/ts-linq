@@ -24,9 +24,11 @@ dialect packages are near-identical and the shared abstractions must live in one
 - No shared dialect contract-test harness; tests are parallel copies that miss divergences (task-6).
 - DDL strategies have no shared interface and triplicate the type-mapping/column-def algorithm (task-7).
 - Dead `chunk*Batch` exports, identical OptionsBuilders, and dialect→core/metadata coupling (task-8).
-- A **second** DDL generator in `@ts-linq/migrations` (`ColumnHandlers`/`SqlUtils`) still duplicates
-  type-mapping/quoting/`formatValue`, and `formatValue` now has copies in core + dialect-kit + migrations
-  — follow-ups surfaced by task-7 (task-10, task-11, task-12).
+- ~~A **second** DDL generator in `@ts-linq/migrations` (`ColumnHandlers`/`SqlUtils`) duplicates
+  type mapping and column/PK/UNIQUE/ALTER emission~~ — **converged in task-10**: those paths now go
+  through the shared `DdlStrategy`, and `SqlUtils.mapType`/`groupType` are gone. `formatValue` still
+  has copies in core + dialect-kit + migrations (task-11), and DDL quoting is still injected per
+  dialect rather than through the strategy (task-12).
 
 ## Refactor goals
 - One shared base dialect (Template Method) + injected `DialectSyntax` (Strategy); concrete dialects become thin.
@@ -45,7 +47,7 @@ dialect packages are near-identical and the shared abstractions must live in one
 - task-7 — Shared `DdlStrategy` contract + extracted type-mapping — P1, architecture ✅ **completed**
 - task-8 — Remove dead `chunk*Batch`, dedup OptionsBuilder, fix dialect→core/metadata coupling — P2, package-boundary ✅ **completed**
 - task-9 — Remove PG dead clause methods + collapse 12 emitters into shared pure emitters — P2, clean-code ✅ **completed**
-- task-10 — Converge the parallel `@ts-linq/migrations` DDL generator onto the shared `DdlStrategy` — P2, package-boundary _(tech debt from task-7)_
+- task-10 — Converge the parallel `@ts-linq/migrations` DDL generator onto the shared `DdlStrategy` — P2, package-boundary _(tech debt from task-7)_ ✅ **completed**
 - task-11 — Complete the `formatValue` consolidation (remove core `SqlHelper.formatValue`, single dialect-kit SSOT) — P2, package-boundary _(tech debt from task-7)_
 - task-12 — Inject the quoter into `AbstractDdlStrategy` (DDL quoting Strategy) — P3, clean-code _(tech debt from task-7)_
 
@@ -61,7 +63,7 @@ dialect packages are near-identical and the shared abstractions must live in one
 | 7 | task-7 (shared DdlStrategy) ✅ | P1 | Mirrors task-1 for DDL; depends on task-3 |
 | 8 | task-2 (capability model) ✅ | P1 | Typed contract replacing optional methods |
 | 9 | task-8 (dead exports/options/coupling) ✅ | P2 | Cleanup; buildSelect metadata signature with task-1 |
-| 10 | task-10 (converge migrations DDL) | P2 | Cross-boundary half of task-7's DDL dedup; pairs with migrations/task-3 |
+| 10 | task-10 (converge migrations DDL) ✅ | P2 | Cross-boundary half of task-7's DDL dedup; pairs with migrations/task-3 |
 | 11 | task-11 (formatValue SSOT) | P2 | Finishes task-7's dialect→core removal; a slice of task-8 |
 | 12 | task-12 (inject DDL quoter) | P3 | Polish; unifies quoting injection with task-1's DialectSyntax |
 
@@ -86,6 +88,37 @@ All shared abstractions (`AbstractSqlDialect`, `DialectSyntax`, shared emitters,
 `AbstractDdlStrategy`, `TypeMapper`) should live in one shared package — prefer a new `@ts-linq/dialect-kit`
 to keep `@ts-linq/sql-visitor`'s surface narrow, or reuse `sql-visitor` if a new package is undesirable. The
 decision must avoid any circular dependency (`arch:cycles`).
+
+**Migrations↔dialect convergence (task-10) — what landed and what did not.** `@ts-linq/migrations`
+now composes the dialect `DdlStrategy` through `src/builders/ddl/DdlStrategyFactory.ts` (the three
+`dialect-*` packages moved from `devDependencies` to `dependencies`; graph stays acyclic). Column
+definitions, `PRIMARY KEY`, UNIQUE add/drop, ADD/DROP COLUMN and ALTER COLUMN TYPE are emitted by the
+strategy. **Migration DDL output is byte-identical** — zero reconciliations — pinned by
+`packages/migrations/tests-new/builders/ddl-convergence.golden.test.ts` across all three dialects.
+
+Deliberately **not** converged, because the shared contract cannot express them without changing the
+SQL every existing migration emits:
+
+| Left in migrations | Why |
+|---|---|
+| CREATE TABLE wrapper | MSSQL migrations guard is `IF OBJECT_ID(N'…', N'U') IS NULL`; the strategy uses `IF NOT EXISTS (SELECT * FROM sys.tables …)` — different text *and* different schema semantics. MySQL would additionally gain `COMMENT='…'`. |
+| Foreign keys (inline + ALTER) | `ForeignKeySpec` is single-column; migrations supports composite FKs. |
+| Indexes | `PgIndexBuilder` emits `IF NOT EXISTS` and has no PG `INCLUDE`; `IndexHandlers` is the inverse. |
+| RENAME TABLE | MySQL migrations emits `RENAME TABLE a TO b`; the strategy base emits `ALTER TABLE a RENAME TO b`. |
+| RENAME COLUMN, ALTER NULL | Not in the `DdlStrategy` contract at all. |
+| Seeds / DML | Out of scope for a DDL strategy; stays on the `migrations/task-3` `SqlQuoter`. |
+
+Residual debt surfaced by task-10 (beyond task-11/task-12):
+- `SnapshotTypeMapper`'s logical-type set is narrower than the dialect mappers' (`BLOB`, `UUID`,
+  `JSON`, `JSONB` pass through instead of mapping). Intentional — delegating them would rewrite
+  existing DDL — but it means the two vocabularies must be reconciled explicitly, not implicitly.
+- `handleCreateTable`'s inline `CREATE INDEX` loop (fresh-table path) discards nine `IndexDef`
+  fields that the `td.indexCreates` (ALTER) path honours — a pre-existing asymmetry, now the only
+  remaining hand-rolled index emitter in the file.
+- A plain `ADD COLUMN` drops the column comment while `CREATE TABLE` emits it. Preserved verbatim;
+  unify when the comment path is revisited.
+- Importing `@ts-linq/migrations` now eagerly evaluates all three dialect barrels. Fixable with
+  subpath `exports` on the dialect packages so the factory can deep-import just the strategy.
 
 **Shared-home decision (resolved by task-9):** the new `@ts-linq/dialect-kit` package now hosts the shared
 clause emitters (`emitWhere`/`emitJoin`/`emitGroup`/`emitOrder`). Dependency graph is

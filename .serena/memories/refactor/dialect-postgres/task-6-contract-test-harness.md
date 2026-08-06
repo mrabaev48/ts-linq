@@ -7,9 +7,13 @@
 (`packages/testkits/src/dialect-contract/`), exported from the testkits barrel:
 - `goldenTypes.ts` — `SqlDialectContractGolden` (typed per-method golden maps: parameterLimit,
   select/insert/update/delete/bulkUpdate/bulkDelete/batchInsert/batchUpdate/batchDelete).
-- `fixtures.ts` — shared `ContractEntity` (+ `registerContractEntity`/`clearContractEntity` around
-  the global `MetadataStorage`, required because `buildSelect` resolves the table via it) and
-  `EntityMetadata` fixtures (computed-col, concurrency token, rowversion, non-generated PK).
+- `fixtures.ts` — shared `ContractEntity` and `EntityMetadata` fixtures (computed-col, concurrency
+  token, rowversion, non-generated PK). **Superseded by task-8:** originally paired with
+  `registerContractEntity`/`clearContractEntity` around the global `MetadataStorage`, required
+  because `buildSelect` resolved the table via it. Task-8 changed `buildSelect` to take
+  `EntityMetadata` from the caller, so those two functions were deleted and replaced by a plain
+  `contractSelectMeta` fixture passed directly into `selectCases`. The harness needs no global
+  registry setup/teardown any more.
 - `cases.ts` — the shared **input matrix** (SELECT star/columns/distinct/where/join/order/group/
   group-empty/limit-offset/combined; INSERT basic/computed-col/supplied-pk; UPDATE no-token/
   nonversion-token/version; DELETE no-token/token; BULK update/delete; BATCH insert×3/update/delete).
@@ -41,18 +45,22 @@ Removing the `columns.length > 0` guard in `dialect-mssql/src/emitters/MssqlGrou
 MSSQL `select/group-empty` case fail the contract → proves the net catches regressions. Reverted.
 
 ## Boundaries / why testkits
-Harness depends only on `@ts-linq/types` + `@ts-linq/metadata` (never on a sibling dialect), so no
-dialect→dialect edge. Dialect test files (in `tests-new/`, outside `src/`) import testkits; jest
-resolves `@ts-linq/testkits`→`src` via moduleNameMapper (no build needed). Ambient jest globals used
-in testkits src (no `@jest/globals` import), matching `SqlSnapshotMatcher.ts`. `arch:cycles` clean.
+Harness depends only on `@ts-linq/types` (never on a sibling dialect), so no dialect→dialect edge.
+**Updated by task-8:** it no longer depends on `@ts-linq/metadata` either — the `MetadataStorage`
+import was removed from `fixtures.ts` along with the registry helpers. Dialect test files (in
+`tests-new/`, outside `src/`) import testkits; jest resolves `@ts-linq/testkits`→`src` via
+moduleNameMapper (no build needed). Ambient jest globals used in testkits src (no `@jest/globals`
+import), matching `SqlSnapshotMatcher.ts`. `arch:cycles` clean.
 
 ## Validation (all green)
 typecheck 32/32; lint 0 errors; unit 375 suites/3852; integration 88/461; e2e 19/290; build 32/32;
 arch:deps + arch:cycles + arch:dead clean.
 
 ## Changeset
-None — `@ts-linq/testkits` is `private:true`/unpublished; only test files + testkits src + docs
-changed (no versioned package source). CI "Version bump present" not triggered.
+None at the time — `@ts-linq/testkits` was treated as unpublished/no versioned source changed here.
+**Note:** task-8 later did version-bump `@ts-linq/testkits` (major) because it removed the
+`registerContractEntity`/`clearContractEntity` exports — see
+[[refactor/dialect-postgres/task-8-dead-exports-coupling]].
 
 ## Next
 `dialect-postgres` stays 🔄 In Progress. This harness is the safety net for the dedup tasks; next

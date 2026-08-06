@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/migrations",
-  "version": "2.8.10",
+  "version": "2.8.11",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
@@ -19,14 +19,14 @@
   },
   "dependencies": {
     "@ts-linq/core": "workspace:*",
+    "@ts-linq/dialect-mssql": "workspace:*",
+    "@ts-linq/dialect-mysql": "workspace:*",
+    "@ts-linq/dialect-postgres": "workspace:*",
     "@ts-linq/metadata": "workspace:*",
     "@ts-linq/types": "workspace:*",
     "esbuild": "^0.28.0"
   },
   "devDependencies": {
-    "@ts-linq/dialect-mssql": "workspace:*",
-    "@ts-linq/dialect-mysql": "workspace:*",
-    "@ts-linq/dialect-postgres": "workspace:*",
     "@ts-linq/typescript-config": "workspace:*",
     "@ts-linq/eslint-config": "workspace:*",
     "typescript": "^5.4.5"
