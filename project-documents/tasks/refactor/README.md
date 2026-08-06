@@ -131,7 +131,7 @@ Each package only depends on packages already completed above it.
 | 7 | `core` | runtime | Decompose provider/loader; kill SQL injection + singleton coupling + silent catches. | ✅ done |
 | 8 | `query` | runtime | Decompose `Queryable`; immutability; wire `SqlVisitorOptions`; move SQL out. | ✅ done |
 | 9 | `transformer` | runtime | De-dupe entrypoints; stop swallowing TypeChecker failures. Depends on `ast`. | ✅ done |
-| 10 | `migrations` | runtime | Injection-safe quoting; decompose runner. Needed by `orm` + `cli`. | ✅ done |
+| 10 | `migrations` | runtime | Injection-safe quoting; decompose runner. Needed by `orm` + `cli`. | 🔄 In Progress (task-1..7 ✅; task-8..13 open — DDL bugs + convergence debt) |
 | 11 | `telemetry` | runtime | De-dupe span mapping; masking. Needed by `orm`; do before it. | ✅ done |
 | 12 | `orm` | runtime | Decompose `DbContext`/`ChangeTracker`/`DbSet`; public/internal boundary. Top of runtime. | ✅ done |
 | 13 | `dialect-postgres` | dialects | **Reference dialect** — extract the shared base dialect + capability model + central quoting here. | 🔄 In Progress (task-1..10 ✅; task-11/12 tech-debt open) |
@@ -189,6 +189,10 @@ Each package only depends on packages already completed above it.
 - **Provider / dialect architecture (capability model, shared base, contract tests)** —
   `dialect-postgres/task-1`/`task-2`/`task-6`/`task-7`, provider `task-2`/`task-4`/`task-6`/`task-7`s,
   `testkits/task-1`/`task-3`.
+- **DDL single-source-of-truth (migrations↔dialect convergence)** — `dialect-postgres/task-7`
+  (dialect side) and `dialect-postgres/task-10` (migrations consumer) ✅, with the remainder in
+  `migrations/task-8`…`task-13` and `dialect-postgres/task-11`/`task-12`. Recurring theme: migrations
+  and the provider `EnsureCreated` path must not produce different schemas from the same model.
 - **Metadata / model building** — `metadata/task-1`/`task-2`, `orm/task-7`, `core/task-2`.
 - **Testing / testkits** — `testkits/*`, `integration-tests/*`, `e2e-tests/*`, contract-harness tasks.
 - **Type-level safety** — `types/task-4`, `core/task-7`, `orm/task-8`, `query/task-5`,
@@ -221,7 +225,7 @@ Each package only depends on packages already completed above it.
 | jest-config | 2 | 0 | 2 | 0 | 0 | not-started |
 | metadata | 5 | 1 | 2 | 2 | 0 | ✅ done (task-1/2/3/4/5 ✅) |
 | metrics-safe | 3 | 0 | 1 | 1 | 1 |  ✅ done |
-| migrations | 7 | 3 | 3 | 1 | 0 | ✅ done (task-1/2/3/4/5/6/7 ✅) |
+| migrations | 13 | 3 | 5 | 3 | 2 | 🔄 In Progress (task-1..7 ✅ — original audit scope complete; task-8..13 filed from dialect-postgres/task-10: 3 bugs + 3 debts) |
 | open-telemetry-sql-logger | 4 | 0 | 3 | 1 | 0 | not-started |
 | orm | 8 | 2 | 4 | 2 | 0 | ✅ done (task-1/2/3/4/5/6/6.1/7/8 ✅) |
 | pagination | 1 | 0 | 0 | 1 | 0 | not-started |

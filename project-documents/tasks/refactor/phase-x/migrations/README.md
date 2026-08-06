@@ -1,6 +1,9 @@
 # Refactor Audit: migrations
 
-**Status: ✅ Complete** — task-1, task-2, task-3, task-4, task-5, task-6, task-7 ✅ completed. All tasks done.
+**Status: 🔄 In Progress** — the original audit scope (task-1 … task-7) is ✅ complete. task-8 …
+task-13 were filed later, from the `dialect-postgres/task-10` convergence: two are correctness bugs
+that convergence surfaced but could not fix (it was scoped to byte-identical output), the rest is
+its residual debt.
 
 ## Package responsibility
 
@@ -68,14 +71,25 @@ dialect SQL via the `Dialect` string union instead of delegating.
 | 5 | task-5.md — Decompose snapshot builders into strategy expanders | P1 | ✅ Completed | Both god-builders → thin coordinators over ordered `EntityExpander` strategies (`snapshot/expanders/`): model = `OwnedEntity`/`ComplexType`/`Inheritance`/`SkipNavigation`; schema = `ShadowProperty`/`TableFragment`/`Sequence` + `ForeignKeyResolver`. Single `ColumnMapper` owns the column→snapshot mapping (model + schema + shadow + portable-type). `MetadataStorage`/`SequenceRegistry` coupling inverted via additive public `buildFrom(entities[, sequences])`; no-arg `buildFromMetadata`/`buildExpectedFromMetadata` retained as back-compat default. Canonical sorting centralized in the model coordinator; expanders read only the injected context |
 | 6 | task-6.md — Centralize dialect-inspector selection | P1 | ✅ Completed | New `SchemaInspector` interface + `SchemaInspectorFactory.for(label, provider)` (`SchemaInspector.ts`) — the single dialect → inspector selection point (Factory + ISP + DIP). Both duplicated dispatch chains (`SchemaSnapshot.buildActualFromProvider`, `SchemaInspectionService.buildActualSnapshot` ×2) now resolve one inspector via the factory; no `if (label === …)` inspector dispatch remains outside it. The two divergent unknown-dialect fallbacks (assume-exists vs empty indexes) are unified into one documented policy: unsupported labels throw the typed `UnsupportedOperationError` (`@ts-linq/types`). Supported-dialect snapshots unchanged |
 | 7 | task-7.md — Clean up MigrationHandlers grab-bag + structural casts | P2 | ✅ Completed | Full pure-barrel: the 359-LOC hybrid `builders/MigrationHandlers.ts` is **deleted**; its live logic moved to the matching `handlers/*` files (index → `IndexHandlers`, column-change + computed/default predicates → `ColumnHandlers`, FK creates → `ForeignKeyHandlers`) and the unique-constraint SQL consolidated into `UniqueConstraintsSqlBuilder` (already routing through the task-1 quoter — bypass confirmed closed). The four `*SqlBuilder`s and `index.ts` import directly from the new homes; all previously-exported names (`buildAddUniqueConstraintSql`, `buildDropUniqueConstraintSql`, `buildCreateIndexSql`) stay importable. Structural casts in the moved predicates removed — the fields (`isComputed`/`computedExpression`/`computedStorage`/`defaultExpression`) were already first-class on `ColumnDef`; new type-level + adversarial-escaping + barrel-contract tests added. Dead `// moved to …` comments gone with the file |
+| 8 | task-8.md — Emit snapshot CHECK constraints | P1 | ⬜ Not started | **Bug.** `TableSnapshot.checkConstraints` is written by `SchemaSnapshot.ts:166` and read by nobody — `hasCheckConstraint()` invariants silently never reach the DB via migrations, while `EnsureCreated` does create them. Promote `AbstractDdlStrategy.buildCheckConstraints` onto the `DdlStrategy` contract and append it in `buildCreateTableSql` |
+| 9 | task-9.md — One index emitter for new and existing tables | P1 | ⬜ Not started | **Bug.** Indexes arriving with a new table (`TableSnapshot.indexes`) go through a hand-rolled 4-field loop in `handleCreateTable` and lose nine `IndexDef` options (`using`, `include`, `concurrently`, `withParams`, ordering, collations, nulls, expressions, visibility); the same index added to an existing table keeps them. Route both through `buildCreateIndexSql` |
+| 10 | task-10.md — `ADD COLUMN` keeps the column comment | P3 | ⬜ Not started | **Bug.** A plain `ADD COLUMN` strips `comment`, while the computed / default-expression form and `CREATE TABLE` emit it. Behaviour preserved verbatim by `dialect-postgres/task-10`; delete the strip and update the golden |
+| 11 | task-11.md — Finish the DDL convergence (wrapper, FKs, indexes, RENAME) | P2 | ⬜ Not started | The four emitters `dialect-postgres/task-10` could not converge without changing SQL. Needs contract widening: composite `ForeignKeySpec` (**major** in `@ts-linq/types`), an inline-FK hook, a reconciled `CreateIndexSpec`, and one CREATE TABLE existence guard per dialect. Do task-9 first; pairs with `dialect-postgres/task-12` |
+| 12 | task-12.md — Reconcile the snapshot type vocabulary | P2 | ⬜ Not started | `SnapshotTypeMapper` delegates only ten logical types; `BLOB`/`UUID`/`JSON`/`JSONB` still pass through, so migrations and `EnsureCreated` emit different physical types — and `BLOB` is not a PostgreSQL type, so that DDL fails at apply time. Add an "unrecognized" signal to `TypeMapper` so the list is not re-derived |
+| 13 | task-13.md — Narrow dialect subpath exports | P3 | ⬜ Not started | Importing `@ts-linq/migrations` now evaluates all three dialect barrels (`export *`) to obtain six classes, and `orm`/`cli` inherit that transitively. Add a `./ddl` subpath per dialect; packaging only, no SQL change |
 
 ## Dependencies on other packages
 
 - **Prod:** `@ts-linq/core` (`DatabaseProvider`), `@ts-linq/metadata`
-  (`MetadataStorage`, `SequenceRegistry`), `@ts-linq/types`, `esbuild`.
-- **Dev-only:** `@ts-linq/dialect-{mssql,mysql,postgres}` (tests). Runtime re-implements
-  dialect SQL rather than delegating — a boundary smell (the dialect packages already
-  own quoting/DDL for the query path; migrations duplicates it). Flagged for follow-up.
+  (`MetadataStorage`, `SequenceRegistry`), `@ts-linq/types`, `esbuild`, and
+  `@ts-linq/dialect-{mssql,mysql,postgres}`.
+- ~~**Dev-only:** the three dialect packages; runtime re-implements dialect SQL rather than
+  delegating — a boundary smell.~~ ✅ **Resolved by `dialect-postgres/task-10`.** The dialects moved
+  to `dependencies` for one reason: `src/builders/ddl/DdlStrategyFactory.ts` is the composition root
+  resolving a dialect name to its `DdlStrategy`. It is the **only** place in the package allowed to
+  import a concrete dialect; everything downstream depends on the `DdlStrategy` contract from
+  `@ts-linq/types`. Column/PK/UNIQUE/ADD-DROP-ALTER-COLUMN emission is the dialect's; the emitters
+  still local are listed in task-11. Packaging follow-up: task-13.
 
 ## Testing strategy
 
@@ -130,5 +144,25 @@ dialect SQL via the `Dialect` string union instead of delegating.
   `comparators/IndexComparator.ts:25-30`, `comparators/ColumnComparator.ts:12-13`. These were not
   in task-7's evidence (which targeted the now-deleted `MigrationHandlers` predicates) and reach
   fields on provider-introspected objects rather than the typed model. Candidate follow-up: model
-  the actual-snapshot shape as a typed interface (or promote `defaultExpressionDialect` onto
-  `ColumnDef`) so these casts can be dropped too.
+  the actual-snapshot shape as a typed interface so these casts can be dropped too.
+  The `renderColumn` / `defaultExpressionDialect` cast named above is ✅ **resolved** —
+  `dialect-postgres/task-10` promoted `defaultExpressionDialect` onto `ColumnDef` and deleted
+  `renderColumn`.
+
+### task-8 … task-13 origin (`dialect-postgres/task-10` follow-ups)
+
+`dialect-postgres/task-10` converged the migrations DDL codegen onto the shared `DdlStrategy` under a
+hard constraint: **byte-identical output**, which it achieved with zero reconciliations (pinned by
+`tests-new/builders/ddl-convergence.golden.test.ts`). That constraint is why these six were filed
+rather than fixed in place — every one of them changes emitted SQL, needs a contract change, or both:
+
+- **Bugs the convergence surfaced** — task-8 (CHECK constraints never emitted), task-9 (index options
+  dropped on the fresh-table path), task-10 (`ADD COLUMN` drops the comment). All three predate the
+  convergence; all three make migrations disagree with the `EnsureCreated` path on the same model.
+- **Residual convergence debt** — task-11 (the four emitters the contract cannot express), task-12
+  (the four logical types `SnapshotTypeMapper` still passes through), task-13 (eager dialect barrels).
+
+Suggested sequencing: task-8 and task-9 first — small, self-contained, each closes a real divergence
+from `EnsureCreated`. task-12 next (it makes `BLOB` on PostgreSQL applyable at all). task-11 last and
+paired with `dialect-postgres/task-12`, since both touch the same quoting/contract seam. task-13 is
+independent and can land any time.
