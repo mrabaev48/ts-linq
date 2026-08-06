@@ -222,6 +222,12 @@ export interface CreateIndexSpec {
 export interface DdlStrategy {
   generateCreateTableSql(metadata: EntityMetadata): string;
   generateColumnDefinition(column: Omit<ColumnMetadata, 'propertyName'>): string;
+  /**
+   * The `PRIMARY KEY (…)` table constraint, or `undefined` when the entity declares no key.
+   * Exposed separately from {@link DdlStrategy.generateCreateTableSql} for callers that own their
+   * own CREATE TABLE wrapper (`@ts-linq/migrations`) but must not re-derive key resolution/quoting.
+   */
+  generatePrimaryKeyClause(metadata: EntityMetadata): string | undefined;
   generateCreateIndexSql(tableName: string, index: CreateIndexSpec): string;
   generateAddColumnSql(tableName: string, column: Omit<ColumnMetadata, 'propertyName'>): string;
   generateDropColumnSql(tableName: string, columnName: string): string;

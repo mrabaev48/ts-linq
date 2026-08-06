@@ -1,5 +1,5 @@
 import { AbstractDdlStrategy, type DdlLoggerLike } from '@ts-linq/dialect-kit';
-import type { ColumnMetadata, DdlStrategy, EntityMetadata } from '@ts-linq/types';
+import type { ColumnMetadata, DdlStrategy, EntityMetadata, TypeMapper } from '@ts-linq/types';
 
 import { MySqlIndexBuilder } from './builders/MySqlIndexBuilder';
 import { MySqlTypeMapper } from './MySqlTypeMapper';
@@ -16,12 +16,11 @@ import { quoteIdentifier, quoteStringLiteral } from './quoting';
  * dialect divergence, not copy-paste drift.
  */
 export class MySqlDdlStrategy extends AbstractDdlStrategy implements DdlStrategy {
-  protected readonly typeMapper = new MySqlTypeMapper();
   protected readonly addColumnClause = 'ADD COLUMN';
   private readonly indexBuilder: MySqlIndexBuilder;
 
-  constructor(logger?: DdlLoggerLike) {
-    super(logger);
+  constructor(logger?: DdlLoggerLike, typeMapper: TypeMapper = new MySqlTypeMapper()) {
+    super(logger, typeMapper);
     this.indexBuilder = new MySqlIndexBuilder(logger);
   }
 

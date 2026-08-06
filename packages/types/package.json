@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/types",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "private": true,
   "description": "Pure type definitions and interfaces for ts-linq (zero dependencies)",
   "main": "./dist/index.js",

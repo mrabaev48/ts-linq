@@ -11,6 +11,7 @@ describe('DdlBuilder', () => {
     mockStrategy = {
       generateCreateTableSql: jest.fn(),
       generateColumnDefinition: jest.fn(),
+      generatePrimaryKeyClause: jest.fn(),
       generateCreateIndexSql: jest.fn(),
       generateAddColumnSql: jest.fn(),
       generateDropColumnSql: jest.fn(),

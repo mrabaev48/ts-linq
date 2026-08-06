@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/metrics-safe",
-  "version": "1.2.14",
+  "version": "1.2.15",
   "private": true,
   "description": "Safe helpers for optional metrics/logging in ts-linq",
   "main": "./dist/index.js",
