@@ -1,7 +1,8 @@
 {
   "name": "@ts-linq/query",
-  "version": "4.2.8",
+  "version": "4.2.9",
   "private": true,
+  "license": "MIT",
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",

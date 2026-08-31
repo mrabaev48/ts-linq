@@ -1,5 +1,16 @@
 # @ts-linq/ast
 
+## 3.2.14
+
+### Patch Changes
+
+- Fix `package.json` `main` and the `exports["."].require` condition pointing at the ESM
+  build (`dist/esm/index.js`) instead of the real CommonJS build (`dist/index.js`). Any
+  plain `require('@ts-linq/ast')` — including transitively via `@ts-linq/orm` — previously
+  crashed with `ERR_MODULE_NOT_FOUND`, because the ESM output's extensionless relative
+  imports (e.g. `export * from './ast/JsonPathExpression'`) are only valid under
+  TypeScript's classic module resolution, not Node's native ESM loader.
+
 ## 3.2.13
 
 ### Patch Changes

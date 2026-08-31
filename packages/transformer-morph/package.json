@@ -2,6 +2,7 @@
   "name": "@ts-linq/transformer-morph",
   "version": "0.1.3",
   "private": true,
+  "license": "MIT",
   "description": "ts-patch-free replacement for @ts-linq/transformer built on ts-morph + the TypeScript Compiler API",
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",

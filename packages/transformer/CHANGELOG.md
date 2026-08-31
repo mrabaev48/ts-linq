@@ -1,5 +1,12 @@
 # @ts-linq/transformer
 
+## 2.1.35
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/ast@3.2.14
+
 ## 2.1.34
 
 ### Patch Changes

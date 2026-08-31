@@ -2,6 +2,7 @@
   "name": "@ts-linq/metadata",
   "version": "4.1.12",
   "private": true,
+  "license": "MIT",
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",

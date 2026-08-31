@@ -28,6 +28,7 @@ __test_configs__
 # Generated outputs (do not commit)
 /docs/
 /coverage/
+/reports/
 /jest-results.json
 /unit-jest-results.json
 /unit-jest-results-clean.json
@@ -55,3 +56,10 @@ __test_configs__
 /.claire/
 /graphify-out/
 /packages/graphify-out/
+
+# Other local AI-agent tool configs/memories (not part of the published project)
+/.agent/
+/.agents/
+/.antigraviity/
+/.opencode/
+/.serena/

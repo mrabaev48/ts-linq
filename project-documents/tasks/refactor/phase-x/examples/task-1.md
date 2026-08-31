@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: done
 phase: phase-x
 package: examples
 priority: P2
@@ -66,10 +66,11 @@ Either:
 
 ## Acceptance criteria
 
-- [ ] Decision recorded (populate / remove).
-- [ ] If populated: at least one runnable example per major public capability, executed in CI.
-- [ ] If removed: package gone, references scrubbed, `*.tsbuildinfo` gitignored.
-- [ ] No empty `placeholder` export remains.
+- [x] Decision recorded (populate / remove) — **populate**.
+- [x] If populated: at least one runnable example per major public capability, executed in CI
+      (`crud.ts`, `linq-queries.ts`; run in `.github/workflows/e2e.yml`).
+- [ ] If removed: package gone, references scrubbed, `*.tsbuildinfo` gitignored. — N/A (populated).
+- [x] No empty `placeholder` export remains.
 
 ## Refactor order
 

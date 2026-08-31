@@ -1,5 +1,12 @@
 # @ts-linq/dialect-mssql
 
+## 3.1.1
+
+### Patch Changes
+
+- @ts-linq/sql-visitor@4.3.10
+- @ts-linq/dialect-kit@1.1.1
+
 ## 3.1.0
 
 ### Minor Changes

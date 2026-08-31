@@ -1,5 +1,14 @@
 # @ts-linq/testkits
 
+## 8.0.2
+
+### Patch Changes
+
+- @ts-linq/core@3.5.5
+- @ts-linq/provider-mssql@3.0.36
+- @ts-linq/provider-mysql@3.0.36
+- @ts-linq/provider-postgres@3.0.36
+
 ## 8.0.1
 
 ### Patch Changes

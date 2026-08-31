@@ -2,23 +2,36 @@
 
 > Runnable code examples for ts-linq.
 
-Intended to hold small, runnable programs demonstrating ts-linq features (defining a `DbContext`,
-querying, migrations, caching, etc.).
+Small, runnable programs demonstrating ts-linq features against a real PostgreSQL instance.
 
-> **⚠️ Status: placeholder.** Currently a stub (`src/index.ts` only) with no declared dependencies.
-> Version `2.0.0-alpha.1`. Examples are not yet populated. See `CLAUDE.md`.
+## Prerequisites
 
-## Intended scope (not yet implemented)
+A local PostgreSQL instance — from the repo root:
 
-- Minimal "getting started" context + queries.
-- Provider-specific setup snippets.
-- Migration / scaffolding walkthroughs.
+```bash
+docker compose up -d
+export POSTGRES_URL='postgres://postgres:postgres@localhost:5432/ts_linq'  # optional, this is the default
+```
+
+## Running
+
+```bash
+pnpm --filter @ts-linq/examples build
+pnpm --filter @ts-linq/examples example:crud           # entity definition, connect, CRUD, saveChanges
+pnpm --filter @ts-linq/examples example:linq-queries    # where / orderBy / select / pagination / count
+```
+
+`build` compiles through `@ts-linq/transformer-morph` (`ts-linq-transform`), which rewrites the
+`where(...)`/`select(...)` lambdas in these examples into their compiled AST form at build time —
+the same transformer described in the root README.
 
 ## Package structure
 
 ```
 src/
-  index.ts   # placeholder
+  index.ts          # manifest / how to run the examples below
+  crud.ts           # define an entity, connect, add/read/update/remove, saveChanges
+  linq-queries.ts    # where, orderBy/orderByDescending, select, skip/take, count
 ```
 
 ## License

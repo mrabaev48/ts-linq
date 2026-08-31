@@ -1,27 +1,25 @@
 {
   "name": "@ts-linq/examples",
-  "version": "2.0.0-alpha.1",
+  "version": "1.0.0",
   "private": true,
-  "description": "Runnable code examples",
-  "main": "./dist/index.js",
-  "module": "./dist/index.esm.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
-      "require": "./dist/index.js"
-    }
-  },
+  "license": "MIT",
+  "description": "Runnable example programs demonstrating the ts-linq public API",
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
+    "build": "ts-linq-transform build -p tsconfig.json",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "example:crud": "node dist/crud.js",
+    "example:linq-queries": "node dist/linq-queries.js"
   },
-  "files": [
-    "dist/**/*"
-  ],
+  "dependencies": {
+    "@ts-linq/metadata": "workspace:*",
+    "@ts-linq/orm": "workspace:*",
+    "@ts-linq/provider-postgres": "workspace:*",
+    "@ts-linq/types": "workspace:*",
+    "reflect-metadata": "^0.2.2"
+  },
   "devDependencies": {
+    "@ts-linq/transformer-morph": "workspace:*",
     "@ts-linq/typescript-config": "workspace:*",
     "@types/node": "^24.3.0",
     "typescript": "^5.4.5"
