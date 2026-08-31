@@ -2,12 +2,16 @@
 
 ## Role
 
-Runnable **example programs** for ts-linq. Currently a **placeholder stub**.
+Runnable **example programs** for ts-linq: `crud.ts` (entity definition, connect, CRUD,
+`saveChanges`) and `linq-queries.ts` (`where`/`orderBy`/`select`/pagination/`count`), both run
+against a real PostgreSQL instance (`docker-compose.yml` at the repo root).
 
-## ⚠️ Status
+## Status
 
-- `src/index.ts` is a stub; no dependencies declared; version `2.0.0-alpha.1`.
-- Decide whether to populate with real examples or remove (refactor task below).
+- Populated (refactor `task-1` decision: populate, not remove — see below). Version `1.0.0`.
+- Built via `@ts-linq/transformer-morph` (`ts-linq-transform build`), not plain `tsc`, since
+  `where(...)`/`select(...)` need the compile-time transformer to rewrite lambdas into their
+  compiled AST form.
 
 ## Hard boundaries
 
@@ -21,7 +25,8 @@ Runnable **example programs** for ts-linq. Currently a **placeholder stub**.
 
 ## Known issues / refactor tasks
 
-See `project-documents/tasks/refactor/phase-x/examples/` — implement-vs-retire decision.
+See `project-documents/tasks/refactor/phase-x/examples/` — implement-vs-retire decision
+(resolved: populated).
 
 ## Validation
 

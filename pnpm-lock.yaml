@@ -519,7 +519,26 @@ importers:
   packages/eslint-config: {}
 
   packages/examples:
+    dependencies:
+      '@ts-linq/metadata':
+        specifier: workspace:*
+        version: link:../metadata
+      '@ts-linq/orm':
+        specifier: workspace:*
+        version: link:../orm
+      '@ts-linq/provider-postgres':
+        specifier: workspace:*
+        version: link:../provider-postgres
+      '@ts-linq/types':
+        specifier: workspace:*
+        version: link:../types
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
     devDependencies:
+      '@ts-linq/transformer-morph':
+        specifier: workspace:*
+        version: link:../transformer-morph
       '@ts-linq/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config

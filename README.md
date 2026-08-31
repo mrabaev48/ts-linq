@@ -39,8 +39,9 @@ product roadmap.
 
 ```ts
 import 'reflect-metadata';
-import { DbContext, DbSet } from '@ts-linq/orm';
+import { DbContext } from '@ts-linq/orm';
 import { Column, Entity, PrimaryKey } from '@ts-linq/metadata';
+import { PostgresProvider } from '@ts-linq/provider-postgres';
 
 @Entity({ name: 'users' })
 class User {
@@ -52,17 +53,19 @@ class User {
 }
 
 class AppDbContext extends DbContext {
-  public users!: DbSet<User>;
+  users = this.defineSet(User);
 }
 
 async function main() {
-  const ctx = new AppDbContext({
-    provider: 'postgresql',
-    connectionString:
-      process.env.POSTGRES_URL || 'postgres://postgres:postgres@localhost:5432/ts_linq'
+  const provider = new PostgresProvider({
+    host: 'localhost',
+    port: 5432,
+    database: 'ts_linq',
+    user: 'postgres',
+    password: 'postgres'
   });
+  const ctx = new AppDbContext({ provider });
 
-  ctx.register(User);
   await ctx.ensureCreated();
 
   const u = new User();
@@ -88,13 +91,13 @@ main().catch((e) => {
 Instead, a compile-time transformer rewrites:
 
 ```ts
-q.where(u => u.age >= minAge && !u.isActive)
+q.where((u) => u.age >= minAge && !u.isActive);
 ```
 
 into:
 
 ```ts
-q.whereCompiled({ ast, parameters })
+q.whereCompiled({ ast, parameters });
 ```
 
 ### Setup (ts-patch)
@@ -144,14 +147,58 @@ npx tspc -p tsconfig.json
 - If your environment cannot run the transformer, you can call `whereCompiled(...)` / `havingCompiled(...)`
   manually (but you lose the nice `where(u => ...)` UX).
 
+### ts-patch-free alternative
+
+`@ts-linq/transformer-morph` is a newer, drop-in replacement for `@ts-linq/transformer` built on
+`ts-morph` + the TypeScript Compiler API — it produces byte-compatible `whereCompiled(...)` output
+without patching your local TypeScript installation. New integrations should prefer it; see
+[`packages/transformer-morph/README.md`](./packages/transformer-morph/README.md). It's what
+[`packages/examples`](./packages/examples) builds with.
+
 ## Local PostgreSQL via Docker
 
 This repository ships a minimal `docker-compose.yml` for PostgreSQL.
 
 ```bash
 docker compose up -d
-export POSTGRES_URL='postgres://postgres:postgres@localhost:5432/ef_test'
+export POSTGRES_URL='postgres://postgres:postgres@localhost:5432/ts_linq'
 ```
+
+## Examples
+
+[`packages/examples`](./packages/examples) has two runnable programs exercising the public API
+against a real PostgreSQL instance (see [Local PostgreSQL via Docker](#local-postgresql-via-docker)
+above):
+
+```bash
+docker compose up -d
+pnpm --filter @ts-linq/examples build
+pnpm --filter @ts-linq/examples example:crud           # entity definition, CRUD, saveChanges
+pnpm --filter @ts-linq/examples example:linq-queries    # where/orderBy/select/pagination
+```
+
+## Feature guides
+
+In-depth write-ups for specific features live under [`apps/docs`](./apps/docs):
+
+- [Alternate Keys and Rich Indexes](./apps/docs/alternate-keys-indexes.md)
+- [Backing Fields and Property Access Mode](./apps/docs/backing-fields-property-access.md)
+- [Batching / MaxBatchSize](./apps/docs/batching-max-batch-size.md)
+- [Cascade Delete Behaviors](./apps/docs/cascade-delete-behaviors.md)
+- [DbContext Pooling and IDbContextFactory](./apps/docs/db-context-pooling.md)
+- [EF.Functions](./apps/docs/ef-functions.md)
+- [ExecuteUpdate and ExecuteDelete](./apps/docs/execute-update-delete.md)
+- [ExecutionStrategy and EnableRetryOnFailure](./apps/docs/execution-strategy.md)
+- [HierarchyId Support](./apps/docs/hierarchy-id.md)
+- [Idempotent Migration Scripts & HasPendingModelChanges](./apps/docs/idempotent-scripts.md)
+- [Logging, Sensitive Data, Detailed Errors, ConfigureWarnings](./apps/docs/logging-diagnostics.md)
+- [Migration Bundles](./apps/docs/migration-bundles.md)
+- [Query Tags and Call-Site Tagging](./apps/docs/query-tags.md)
+- [Spatial Types](./apps/docs/spatial.md)
+- [Stored Procedure Mapping for Insert / Update / Delete](./apps/docs/stored-procedure-mapping.md)
+- [Temporal Queries (SQL Server System-Versioned Tables)](./apps/docs/temporal-queries.md)
+- [Value Generators and Sentinel](./apps/docs/value-generators.md)
+- [Views and Keyless Entities](./apps/docs/views-keyless-entities.md)
 
 ## Repository layout
 
@@ -171,4 +218,3 @@ Monorepo packages live under `packages/`.
 ## License
 
 [MIT](./LICENSE)
-

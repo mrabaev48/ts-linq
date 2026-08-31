@@ -95,3 +95,13 @@ jobs:
           POSTGRES_URL: postgres://test:test@localhost:5432/testdb
           MYSQL_URL: mysql://test:test@localhost:3306/testdb
           MSSQL_URL: mssql://sa:YourStrong%40Passw0rd@localhost:1433/testdb
+
+      # Smoke-tests the README/examples public-API surface against the Postgres service
+      # already running above — a broken public export fails the build here.
+      - name: Run README examples
+        run: |
+          pnpm --filter @ts-linq/examples build
+          pnpm --filter @ts-linq/examples example:crud
+          pnpm --filter @ts-linq/examples example:linq-queries
+        env:
+          POSTGRES_URL: postgres://test:test@localhost:5432/testdb

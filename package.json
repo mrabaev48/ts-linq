@@ -89,6 +89,14 @@
   "author": "mrabaev48",
   "license": "MIT",
   "description": "A TypeScript ORM framework inspired by Entity Framework Core with decorator-based entities, LINQ-style querying, and multi-database support",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrabaev48/ts-linq.git"
+  },
+  "homepage": "https://github.com/mrabaev48/ts-linq#readme",
+  "bugs": {
+    "url": "https://github.com/mrabaev48/ts-linq/issues"
+  },
   "dependencies": {
     "@types/node": "^24.3.0",
     "reflect-metadata": "^0.2.2",

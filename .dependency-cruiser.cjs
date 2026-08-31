@@ -32,7 +32,8 @@ module.exports = {
           'setup-containers\\.ts$',
           '(^|/)setup\\.ts$',
           '(^|/)fixture',
-          '(^|/)e2e-tests/'
+          '(^|/)e2e-tests/',
+          '(^|/)examples/src/'
         ]
       },
       to: {}
