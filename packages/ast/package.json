@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/ast",
-  "version": "3.2.13",
+  "version": "3.2.14",
   "private": true,
   "license": "MIT",
   "description": "Query AST, parser and specifications for ts-linq ORM",

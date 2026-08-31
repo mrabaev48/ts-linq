@@ -1,5 +1,14 @@
 # @ts-linq/migrations
 
+## 2.8.12
+
+### Patch Changes
+
+- @ts-linq/core@3.5.5
+- @ts-linq/dialect-mssql@3.1.1
+- @ts-linq/dialect-mysql@3.1.1
+- @ts-linq/dialect-postgres@3.1.1
+
 ## 2.8.11
 
 ### Patch Changes

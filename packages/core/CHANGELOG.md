@@ -1,5 +1,12 @@
 # @ts-linq/core
 
+## 3.5.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/ast@3.2.14
+
 ## 3.5.4
 
 ### Patch Changes

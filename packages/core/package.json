@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/core",
-  "version": "3.5.4",
+  "version": "3.5.5",
   "private": true,
   "license": "MIT",
   "main": "./dist/index.js",

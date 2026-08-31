@@ -1,5 +1,12 @@
 # @ts-linq/provider-mysql
 
+## 3.0.36
+
+### Patch Changes
+
+- @ts-linq/core@3.5.5
+- @ts-linq/dialect-mysql@3.1.1
+
 ## 3.0.35
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/provider-mssql",
-  "version": "3.0.35",
+  "version": "3.0.36",
   "private": true,
   "license": "MIT",
   "description": "Mssql database provider for ts-linq ORM",

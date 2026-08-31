@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/cache-redis",
-  "version": "1.0.51",
+  "version": "1.0.52",
   "license": "MIT",
   "description": "Redis adapters for ts-linq caches (SqlCache, CountCache)",
   "main": "./dist/index.js",

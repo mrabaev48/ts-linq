@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/provider-postgres",
-  "version": "3.0.35",
+  "version": "3.0.36",
   "private": true,
   "license": "MIT",
   "description": "Postgres database provider for ts-linq ORM",

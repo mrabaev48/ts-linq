@@ -1,5 +1,14 @@
 # @ts-linq/orm
 
+## 6.0.13
+
+### Patch Changes
+
+- @ts-linq/core@3.5.5
+- @ts-linq/query@4.2.9
+- @ts-linq/sql-visitor@4.3.10
+- @ts-linq/migrations@2.8.12
+
 ## 6.0.12
 
 ### Patch Changes

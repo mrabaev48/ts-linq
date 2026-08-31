@@ -1,5 +1,14 @@
 # @ts-linq/query
 
+## 4.2.9
+
+### Patch Changes
+
+- Updated dependencies
+  - @ts-linq/ast@3.2.14
+  - @ts-linq/core@3.5.5
+  - @ts-linq/sql-visitor@4.3.10
+
 ## 4.2.8
 
 ### Patch Changes

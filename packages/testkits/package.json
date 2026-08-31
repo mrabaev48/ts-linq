@@ -1,6 +1,6 @@
 {
   "name": "@ts-linq/testkits",
-  "version": "8.0.1",
+  "version": "8.0.2",
   "private": true,
   "license": "MIT",
   "description": "Contract and integration test utilities",
