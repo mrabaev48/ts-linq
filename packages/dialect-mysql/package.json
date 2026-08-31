@@ -2,6 +2,7 @@
   "name": "@ts-linq/dialect-mysql",
   "version": "3.1.0",
   "private": true,
+  "license": "MIT",
   "description": "MYSQL SQL dialect for ts-linq ORM",
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",

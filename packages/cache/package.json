@@ -2,6 +2,7 @@
   "name": "@ts-linq/cache",
   "version": "13.0.4",
   "private": true,
+  "license": "MIT",
   "dependencies": {
     "@ts-linq/types": "workspace:*",
     "@ts-linq/metrics-safe": "workspace:*"

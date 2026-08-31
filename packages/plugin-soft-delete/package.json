@@ -2,6 +2,7 @@
   "name": "@ts-linq/plugin-soft-delete",
   "version": "2.0.34",
   "private": true,
+  "license": "MIT",
   "description": "Soft delete plugin",
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",

@@ -86,8 +86,8 @@
     "mysql",
     "mssql"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "mrabaev48",
+  "license": "MIT",
   "description": "A TypeScript ORM framework inspired by Entity Framework Core with decorator-based entities, LINQ-style querying, and multi-database support",
   "dependencies": {
     "@types/node": "^24.3.0",

@@ -2,6 +2,7 @@
   "name": "@ts-linq/plugin-multi-tenant",
   "version": "2.0.34",
   "private": true,
+  "license": "MIT",
   "description": "Multi-tenancy plugin",
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",

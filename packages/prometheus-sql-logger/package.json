@@ -2,6 +2,7 @@
   "name": "@ts-linq/prometheus-sql-logger",
   "version": "13.0.4",
   "private": true,
+  "license": "MIT",
   "description": "Prometheus SqlLogger implementation for ts-linq (optional package)",
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",

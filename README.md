@@ -168,3 +168,7 @@ Monorepo packages live under `packages/`.
   - `@ts-linq/provider-mysql`
   - `@ts-linq/provider-mssql`
 
+## License
+
+[MIT](./LICENSE)
+

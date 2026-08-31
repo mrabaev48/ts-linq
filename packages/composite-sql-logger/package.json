@@ -2,6 +2,7 @@
   "name": "@ts-linq/composite-sql-logger",
   "version": "13.0.4",
   "private": true,
+  "license": "MIT",
   "description": "Composite SqlLogger (+Factory) for ts-linq (optional package)",
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",

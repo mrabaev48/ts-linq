@@ -2,6 +2,7 @@
   "name": "@ts-linq/examples",
   "version": "2.0.0-alpha.1",
   "private": true,
+  "license": "MIT",
   "description": "Runnable code examples",
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",

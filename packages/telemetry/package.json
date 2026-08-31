@@ -2,6 +2,7 @@
   "name": "@ts-linq/telemetry",
   "version": "2.3.6",
   "private": true,
+  "license": "MIT",
   "description": "OpenTelemetry integration and logging",
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",

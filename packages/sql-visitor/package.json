@@ -2,6 +2,7 @@
   "name": "@ts-linq/sql-visitor",
   "version": "4.3.9",
   "private": true,
+  "license": "MIT",
   "description": "SQL visitor for AST transformation",
   "main": "./dist/index.js",
   "module": "./dist/esm/index.js",
