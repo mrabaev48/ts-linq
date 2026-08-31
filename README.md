@@ -2,6 +2,33 @@
 
 TypeScript ORM inspired by Entity Framework Core: decorator-based entities, change tracking, and LINQ-style fluent querying.
 
+## About this project
+
+`ts-linq` is a personal pet project, not a published or officially supported library. It's a
+sandbox for exploring what an EF Core-style ORM looks like when rebuilt from scratch in
+TypeScript — decorator-based entity mapping, a change tracker, a fluent LINQ-like query API,
+and multi-dialect SQL/DDL generation, organized as a proper `pnpm` monorepo with strict package
+boundaries.
+
+It's built purely for fun, and mostly with AI coding agents. The point isn't to have an LLM
+autocomplete snippets — it's to practice a different way of working: the agent writes the code,
+and I focus on driving the development process — architecture decisions, task breakdown, review,
+and keeping the whole thing consistent — rather than typing every line by hand.
+
+The main motivation is hands-on, in-depth practice with:
+
+- type-level TypeScript (generics, conditional/mapped types, fluent builder APIs that keep
+  strong inference across chained calls);
+- compiler-level work — a `ts-patch`/Compiler-API transformer that rewrites `where(u => ...)`
+  predicates into a typed AST at compile time instead of parsing them at runtime;
+- cross-dialect SQL/DDL generation shared across PostgreSQL, MySQL, and SQL Server through a
+  common strategy layer;
+- monorepo and architecture discipline — clean package boundaries, typed error hierarchies,
+  and dependency-graph enforcement across ~30+ packages.
+
+Expect it to evolve, break compatibility, and take on scope driven by curiosity rather than a
+product roadmap.
+
 ## Supported databases
 
 - PostgreSQL (`@ts-linq/provider-postgres`)
